@@ -2,10 +2,11 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 import { DashboardApi } from "metabase/services";
 import { useOnMount } from "metabase/hooks/use-on-mount";
+import { FieldId } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 
 export interface UseFilterFieldsState {
-  data?: string[][];
+  data?: FieldId[][];
   error?: string;
   loading: boolean;
 }
@@ -51,9 +52,9 @@ const getParameterFieldIds = (parameter: UiParameter) => {
   }
 };
 
-const getParameterMapping = (data: Record<string, string[]>) => {
+const getParameterMapping = (data: Record<FieldId, FieldId[]>) => {
   return Object.entries(data).flatMap(([filteredId, filteringIds]) =>
-    filteringIds.map(filteringId => [filteringId, filteredId]),
+    filteringIds.map(filteringId => [filteringId, parseInt(filteredId, 10)]),
   );
 };
 

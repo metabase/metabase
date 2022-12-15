@@ -112,32 +112,22 @@ export function DashboardSidebars({
         />
       );
     case SIDEBAR_NAME.editParameter: {
-      const { id: parameterId } = editingParameter || {};
+      const { id: editingParameterId } = editingParameter || {};
       const [[parameter], otherParameters] = _.partition(
         parameters,
-        p => p.id === parameterId,
+        p => p.id === editingParameterId,
       );
       return (
         <ParameterSidebar
           parameter={parameter}
           otherParameters={otherParameters}
-          onChangeName={value => setParameterName(parameterId, value)}
-          onChangeDefaultValue={value =>
-            setParameterDefaultValue(parameterId, value)
-          }
-          onChangeIsMultiSelect={value =>
-            setParameterIsMultiSelect(parameterId, value)
-          }
-          onChangeSourceType={value =>
-            setParameterSourceType(parameterId, value)
-          }
-          onChangeSourceOptions={value =>
-            setParameterSourceOptions(parameterId, value)
-          }
-          onChangeFilteringParameters={value =>
-            setParameterFilteringParameters(parameterId, value)
-          }
-          onRemoveParameter={() => removeParameter(parameterId)}
+          onChangeName={setParameterName}
+          onChangeDefaultValue={setParameterDefaultValue}
+          onChangeIsMultiSelect={setParameterIsMultiSelect}
+          onChangeSourceType={setParameterSourceType}
+          onChangeSourceOptions={setParameterSourceOptions}
+          onChangeFilteringParameters={setParameterFilteringParameters}
+          onRemoveParameter={removeParameter}
           onShowAddParameterPopover={showAddParameterPopover}
           onClose={closeSidebar}
         />

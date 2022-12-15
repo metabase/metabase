@@ -3,6 +3,7 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import {
+  ParameterId,
   ParameterSourceOptions,
   ParameterSourceType,
 } from "metabase-types/api";
@@ -15,13 +16,25 @@ import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 export interface ParameterSidebarProps {
   parameter: UiParameter;
   otherParameters: UiParameter[];
-  onChangeName: (name: string) => void;
-  onChangeDefaultValue: (value: unknown) => void;
-  onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
-  onChangeSourceType: (sourceType: ParameterSourceType) => void;
-  onChangeSourceOptions: (sourceOptions: ParameterSourceOptions) => void;
-  onChangeFilteringParameters: (filteringParameters: string[]) => void;
-  onRemoveParameter: () => void;
+  onChangeName: (parameterId: ParameterId, name: string) => void;
+  onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
+  onChangeIsMultiSelect: (
+    parameterId: ParameterId,
+    isMultiSelect: boolean,
+  ) => void;
+  onChangeSourceType: (
+    parameterId: ParameterId,
+    sourceType: ParameterSourceType,
+  ) => void;
+  onChangeSourceOptions: (
+    parameterId: ParameterId,
+    sourceOptions: ParameterSourceOptions,
+  ) => void;
+  onChangeFilteringParameters: (
+    parameterId: ParameterId,
+    filteringParameters: string[],
+  ) => void;
+  onRemoveParameter: (parameterId: ParameterId) => void;
   onShowAddParameterPopover: () => void;
   onClose: () => void;
 }
@@ -39,13 +52,56 @@ const ParameterSidebar = ({
   onShowAddParameterPopover,
   onClose,
 }: ParameterSidebarProps): JSX.Element => {
+  const parameterId = parameter.id;
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
   const [tab, setTab] = useState(tabs[0].value);
 
+  const handleNameChange = useCallback(
+    (name: string) => {
+      onChangeName(parameterId, name);
+    },
+    [parameterId, onChangeName],
+  );
+
+  const handleDefaultValueChange = useCallback(
+    (value: unknown) => {
+      onChangeDefaultValue(parameterId, value);
+    },
+    [parameterId, onChangeDefaultValue],
+  );
+
+  const handleIsMultiSelectChange = useCallback(
+    (isMultiSelect: boolean) => {
+      onChangeIsMultiSelect(parameterId, isMultiSelect);
+    },
+    [parameterId, onChangeIsMultiSelect],
+  );
+
+  const handleSourceTypeChange = useCallback(
+    (sourceType: ParameterSourceType) => {
+      onChangeSourceType(parameterId, sourceType);
+    },
+    [parameterId, onChangeSourceType],
+  );
+
+  const handleSourceOptionsChange = useCallback(
+    (sourceOptions: ParameterSourceOptions) => {
+      onChangeSourceOptions(parameterId, sourceOptions);
+    },
+    [parameterId, onChangeSourceOptions],
+  );
+
+  const handleFilteringParametersChange = useCallback(
+    (filteringParameters: ParameterId[]) => {
+      onChangeFilteringParameters(parameterId, filteringParameters);
+    },
+    [parameterId, onChangeFilteringParameters],
+  );
+
   const handleRemove = useCallback(() => {
-    onRemoveParameter();
+    onRemoveParameter(parameterId);
     onClose();
-  }, [onRemoveParameter, onClose]);
+  }, [parameterId, onRemoveParameter, onClose]);
 
   return (
     <Sidebar onClose={onClose}>
@@ -61,18 +117,18 @@ const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
-            onChangeName={onChangeName}
-            onChangeDefaultValue={onChangeDefaultValue}
-            onChangeIsMultiSelect={onChangeIsMultiSelect}
-            onChangeSourceType={onChangeSourceType}
-            onChangeSourceOptions={onChangeSourceOptions}
+            onChangeName={handleNameChange}
+            onChangeDefaultValue={handleDefaultValueChange}
+            onChangeIsMultiSelect={handleIsMultiSelectChange}
+            onChangeSourceType={handleSourceTypeChange}
+            onChangeSourceOptions={handleSourceOptionsChange}
             onRemoveParameter={handleRemove}
           />
         ) : (
           <ParameterLinkedFilters
             parameter={parameter}
             otherParameters={otherParameters}
-            onChangeFilteringParameters={onChangeFilteringParameters}
+            onChangeFilteringParameters={handleFilteringParametersChange}
             onShowAddParameterPopover={onShowAddParameterPopover}
           />
         )}
