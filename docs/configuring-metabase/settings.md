@@ -10,7 +10,7 @@ This section contains settings for your whole instance, like its URL, the report
 
 You can configure these settings from **Settings** > **Admin Settings** > **General**.
 
-## Site Name
+## Site name
 
 How you’d like to refer to this instance of Metabase.
 
@@ -28,25 +28,25 @@ For example, say you enable HTTPS redirect for a Metabase instance at the site U
 
 > Note: if you haven't set up HTTPS on your server, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
 
-## Email Address for Help Requests
+## Email address for help requests
 
 This email address will be displayed in various messages throughout Metabase when users encounter a scenario where they need assistance from an admin, such as a password reset request.
 
-## Approved Domains for Notifications
+## Approved domains for notifications
 
 Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/sharing/alerts.md). To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2"). To allow all domains, leave the field empty. This setting doesn't affect existing subscriptions.
 
-## Anonymous Tracking
+## Anonymous tracking
 
 This option turns determines whether or not you allow [anonymous data about your usage of Metabase](../installation-and-operation/information-collection.md) to be sent back to us to help us improve the product. [Your database’s data is never tracked or sent](https://www.metabase.com/security).
 
-## Friendly Table and Field Names
+## Friendly table and field names
 
 By default, Metabase attempts to make field and table names more readable by changing things like `somehorriblename` to `Some Horrible Name`. This does not work well for languages other than English, or for fields that have lots of abbreviations or codes in them. If you'd like to turn this setting off, you can do so from the Admin Panel under **Settings** > **Admin settings** > **General**.
 
 To manually label field or table names in Metabase, check out the [Data Model](../data-modeling/metadata-editing.md) section in your admin settings.
 
-## Enable Nested Queries
+## Enable nested queries
 
 By default, Metabase allows your users to use a previously saved question as a source for queries. If you have a lot of slow running queries, you may want to switch this option off, as performance problem can occur.
 
