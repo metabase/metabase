@@ -28,10 +28,6 @@ export const LeftPaneContainer = styled.div`
   ${Tree.Node.Root} {
     border-radius: 6px;
   }
-
-  ${Tree.NodeList.Root} {
-    padding: 0 1rem;
-  }
 `;
 
 export const BackButton = styled.a`
@@ -49,9 +45,12 @@ export const BackButton = styled.a`
   }
 `;
 
-export const TreeContainer = styled.div``;
+export const TreeContainer = styled.div`
+  margin-right: 1rem;
+`;
 
 export const RightPaneContainer = styled.div`
   display: flex;
   flex: 1;
+  overflow-y: auto;
 `;
