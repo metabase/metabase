@@ -11,10 +11,7 @@ const NEW_LINE = "\n";
 
 export interface ParameterListSourceModalProps {
   parameter: UiParameter;
-  onChangeSourceOptions: (
-    parameterId: string,
-    sourceOptions: ParameterSourceOptions,
-  ) => void;
+  onChangeSourceOptions: (sourceOptions: ParameterSourceOptions) => void;
   onClose?: () => void;
 }
 
@@ -23,7 +20,6 @@ const ParameterListSourceModal = ({
   onChangeSourceOptions,
   onClose,
 }: ParameterListSourceModalProps): JSX.Element => {
-  const parameterId = parameter.id;
   const { values } = getSourceOptions(parameter);
   const [text, setText] = useState(values?.join(NEW_LINE) ?? "");
 
@@ -36,9 +32,9 @@ const ParameterListSourceModal = ({
 
   const handleSubmit = useCallback(() => {
     const values = text.split(NEW_LINE);
-    onChangeSourceOptions(parameterId, { values });
+    onChangeSourceOptions({ values });
     onClose?.();
-  }, [parameterId, text, onChangeSourceOptions, onClose]);
+  }, [text, onChangeSourceOptions, onClose]);
 
   return (
     <ModalContent

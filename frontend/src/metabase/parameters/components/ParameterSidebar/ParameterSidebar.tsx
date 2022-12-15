@@ -15,22 +15,13 @@ import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 export interface ParameterSidebarProps {
   parameter: UiParameter;
   otherParameters: UiParameter[];
-  onChangeName: (parameterId: string, name: string) => void;
-  onChangeDefaultValue: (parameterId: string, value: unknown) => void;
-  onChangeIsMultiSelect: (parameterId: string, isMultiSelect: boolean) => void;
-  onChangeSourceType: (
-    parameterId: string,
-    sourceType: ParameterSourceType,
-  ) => void;
-  onChangeSourceOptions: (
-    parameterId: string,
-    sourceOptions: ParameterSourceOptions,
-  ) => void;
-  onChangeFilteringParameters: (
-    parameterId: string,
-    filteringParameters: string[],
-  ) => void;
-  onRemoveParameter: (parameterId: string) => void;
+  onChangeName: (name: string) => void;
+  onChangeDefaultValue: (value: unknown) => void;
+  onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
+  onChangeSourceType: (sourceType: ParameterSourceType) => void;
+  onChangeSourceOptions: (sourceOptions: ParameterSourceOptions) => void;
+  onChangeFilteringParameters: (filteringParameters: string[]) => void;
+  onRemoveParameter: () => void;
   onShowAddParameterPopover: () => void;
   onClose: () => void;
 }
@@ -51,13 +42,10 @@ const ParameterSidebar = ({
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
   const [tab, setTab] = useState(tabs[0].value);
 
-  const handleRemove = useCallback(
-    (parameterId: string) => {
-      onRemoveParameter(parameterId);
-      onClose();
-    },
-    [onRemoveParameter, onClose],
-  );
+  const handleRemove = useCallback(() => {
+    onRemoveParameter();
+    onClose();
+  }, [onRemoveParameter, onClose]);
 
   return (
     <Sidebar onClose={onClose}>

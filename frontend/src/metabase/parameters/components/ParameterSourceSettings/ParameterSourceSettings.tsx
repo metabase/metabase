@@ -17,14 +17,8 @@ import {
 
 export interface ParameterSourceSettingsProps {
   parameter: UiParameter;
-  onChangeSourceType: (
-    parameterId: string,
-    sourceType: ParameterSourceType,
-  ) => void;
-  onChangeSourceOptions: (
-    parameterId: string,
-    sourceOptions: ParameterSourceOptions,
-  ) => void;
+  onChangeSourceType: (sourceType: ParameterSourceType) => void;
+  onChangeSourceOptions: (sourceOptions: ParameterSourceOptions) => void;
 }
 
 const ParameterSourceSettings = ({
@@ -32,7 +26,6 @@ const ParameterSourceSettings = ({
   onChangeSourceType,
   onChangeSourceOptions,
 }: ParameterSourceSettingsProps): JSX.Element => {
-  const parameterId = parameter.id;
   const sourceType = getSourceType(parameter);
   const [modalType, setModalType] = useState<ParameterSourceType>();
 
@@ -43,9 +36,9 @@ const ParameterSourceSettings = ({
 
   const handleSourceTypeChange = useCallback(
     (sourceType: ParameterSourceType) => {
-      onChangeSourceType(parameterId, sourceType);
+      onChangeSourceType(sourceType);
     },
-    [parameterId, onChangeSourceType],
+    [onChangeSourceType],
   );
 
   const handleClose = useCallback(() => {

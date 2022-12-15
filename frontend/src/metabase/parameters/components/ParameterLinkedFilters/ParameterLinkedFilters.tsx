@@ -27,10 +27,7 @@ import {
 export interface ParameterLinkedFiltersProps {
   parameter: UiParameter;
   otherParameters: UiParameter[];
-  onChangeFilteringParameters: (
-    parameterId: string,
-    filteringParameters: string[],
-  ) => void;
+  onChangeFilteringParameters: (filteringParameters: string[]) => void;
   onShowAddParameterPopover: () => void;
 }
 
@@ -40,7 +37,6 @@ const ParameterLinkedFilters = ({
   onChangeFilteringParameters,
   onShowAddParameterPopover,
 }: ParameterLinkedFiltersProps): JSX.Element => {
-  const currentParameterId = parameter.id;
   const [expandedParameterId, setExpandedParameterId] = useState<string>();
 
   const filteringParameters = useMemo(
@@ -59,9 +55,9 @@ const ParameterLinkedFilters = ({
         ? filteringParameters.concat(otherParameter.id)
         : filteringParameters.filter(id => id !== otherParameter.id);
 
-      onChangeFilteringParameters(currentParameterId, newParameters);
+      onChangeFilteringParameters(newParameters);
     },
-    [currentParameterId, filteringParameters, onChangeFilteringParameters],
+    [filteringParameters, onChangeFilteringParameters],
   );
 
   const handleExpandedChange = useCallback(
