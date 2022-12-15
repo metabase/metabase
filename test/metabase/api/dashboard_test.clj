@@ -209,68 +209,6 @@
                      (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
                              (update :collection_id (partial = (u/the-id collection)))))))))))))
 
-(deftest dashboard-with-static-list-parameters-test
-  (testing "A dashboard that has parameters that has static values"
-    (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-      (testing "we could get the values"
-        (is (= {:has_more_values false,
-                :values          ["African" "American" "Asian"]}
-               (mt/user-http-request :rasta :get 200
-                                     (chain-filter-values-url (:id dashboard) (:static-category param-keys)))))
-
-        (is (= {:has_more_values false,
-                :values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}
-               (mt/user-http-request :rasta :get 200
-                                     (chain-filter-values-url (:id dashboard) (:static-category-label param-keys))))))
-
-      (testing "we could search the values"
-        (is (= {:has_more_values false,
-                :values          ["African"]}
-               (mt/user-http-request :rasta :get 200
-                                     (chain-filter-search-url (:id dashboard) (:static-category param-keys) "af"))))
-
-        (is (= {:has_more_values false,
-                :values          [["African" "Af"]]}
-               (mt/user-http-request :rasta :get 200
-                                     (chain-filter-search-url (:id dashboard) (:static-category-label param-keys) "f")))))
-
-      (testing "we could edit the values list"
-        ;; TODO add tests for schema check
-        (let [dashboard (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
-                                              {:parameters [{:name           "Static Category",
-                                                             :slug           "static_category"
-                                                             :id             "_STATIC_CATEGORY_",
-                                                             :type           "category",
-                                                             :source_type    "static-list"
-                                                             :source_options {"values" ["BBQ" "Bakery" "Bar"]}}]})]
-          (is (= [{:name           "Static Category",
-                   :slug           "static_category"
-                   :id             "_STATIC_CATEGORY_",
-                   :type           "category",
-                   :source_type    "static-list"
-                   :source_options {:values ["BBQ" "Bakery" "Bar"]}}]
-                 (:parameters dashboard))))))
-
-    (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
-      (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
-             (get-in (mt/user-http-request :rasta :post 400 "dashboard"
-                                           {:name       "a dashboard"
-                                            :parameters [{:id             "_value_",
-                                                          :name           "value",
-                                                          :type           "category",
-                                                          :source_type    "random-type"
-                                                          :source_options {"values" [1 2 3]}}]})
-                     [:errors :parameters])))
-      (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
-             (get-in (mt/user-http-request :rasta :post 400 "dashboard"
-                                           {:name       "a dashboard"
-                                            :parameters [{:id             "_value_",
-                                                          :name           "value",
-                                                          :type           "category",
-                                                          :source_type    "static-list"
-                                                          :source_options []}]})
-                     [:errors :parameters]))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1919,6 +1857,68 @@
           (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))))
+
+(deftest dashboard-with-static-list-parameters-test
+  (testing "A dashboard that has parameters that has static values"
+    (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+      (testing "we could get the values"
+        (is (= {:has_more_values false,
+                :values          ["African" "American" "Asian"]}
+               (mt/user-http-request :rasta :get 200
+                                     (chain-filter-values-url (:id dashboard) (:static-category param-keys)))))
+
+        (is (= {:has_more_values false,
+                :values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}
+               (mt/user-http-request :rasta :get 200
+                                     (chain-filter-values-url (:id dashboard) (:static-category-label param-keys))))))
+
+      (testing "we could search the values"
+        (is (= {:has_more_values false,
+                :values          ["African"]}
+               (mt/user-http-request :rasta :get 200
+                                     (chain-filter-search-url (:id dashboard) (:static-category param-keys) "af"))))
+
+        (is (= {:has_more_values false,
+                :values          [["African" "Af"]]}
+               (mt/user-http-request :rasta :get 200
+                                     (chain-filter-search-url (:id dashboard) (:static-category-label param-keys) "f")))))
+
+      (testing "we could edit the values list"
+        ;; TODO add tests for schema check
+        (let [dashboard (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
+                                              {:parameters [{:name           "Static Category",
+                                                             :slug           "static_category"
+                                                             :id             "_STATIC_CATEGORY_",
+                                                             :type           "category",
+                                                             :source_type    "static-list"
+                                                             :source_options {"values" ["BBQ" "Bakery" "Bar"]}}]})]
+          (is (= [{:name           "Static Category",
+                   :slug           "static_category"
+                   :id             "_STATIC_CATEGORY_",
+                   :type           "category",
+                   :source_type    "static-list"
+                   :source_options {:values ["BBQ" "Bakery" "Bar"]}}]
+                 (:parameters dashboard))))))
+
+    (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
+      (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+             (get-in (mt/user-http-request :rasta :post 400 "dashboard"
+                                           {:name       "a dashboard"
+                                            :parameters [{:id             "_value_",
+                                                          :name           "value",
+                                                          :type           "category",
+                                                          :source_type    "random-type"
+                                                          :source_options {"values" [1 2 3]}}]})
+                     [:errors :parameters])))
+      (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+             (get-in (mt/user-http-request :rasta :post 400 "dashboard"
+                                           {:name       "a dashboard"
+                                            :parameters [{:id             "_value_",
+                                                          :name           "value",
+                                                          :type           "category",
+                                                          :source_type    "static-list"
+                                                          :source_options []}]})
+                     [:errors :parameters]))))))
 
 (deftest chain-filter-search-test
   (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
