@@ -1,12 +1,13 @@
 import React, { MouseEvent, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio/Radio";
+import Modal from "metabase/components/Modal";
 import { getSourceType } from "metabase/parameters/utils/dashboards";
 import { ParameterSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import ParameterListSourceModal from "../ParameterListSourceModal";
 import {
-  RadioLabelLink,
+  RadioLabelButton,
   RadioLabelRoot,
   RadioLabelTitle,
 } from "./ParameterSourceSettings.styled";
@@ -72,7 +73,12 @@ const ParameterSourceSettings = ({
         onChange={handleSourceTypeChange}
       />
       {modalType === "static-list" && (
-        <ParameterListSourceModal parameter={parameter} onClose={handleClose} />
+        <Modal onClose={handleClose}>
+          <ParameterListSourceModal
+            parameter={parameter}
+            onClose={handleClose}
+          />
+        </Modal>
       )}
     </>
   );
@@ -101,7 +107,7 @@ const RadioLabel = ({
     <RadioLabelRoot>
       <RadioLabelTitle>{title}</RadioLabelTitle>
       {isSelected && onEditClick && (
-        <RadioLabelLink onClick={handleEditClick}>{t`Edit`}</RadioLabelLink>
+        <RadioLabelButton onClick={handleEditClick}>{t`Edit`}</RadioLabelButton>
       )}
     </RadioLabelRoot>
   );
