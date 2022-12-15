@@ -1,0 +1,16 @@
+version: 2.1
+
+workflows:
+  empty:
+    jobs:
+      - empty
+
+jobs:
+  empty:
+    docker:
+      - image: cimg/base:stable
+
+    steps:
+      - run:
+          name: echo
+          command: echo "Hello, World!"
