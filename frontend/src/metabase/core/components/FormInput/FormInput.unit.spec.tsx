@@ -11,7 +11,6 @@ const TEST_SCHEMA = Yup.object({
 
 interface TestFormInputProps {
   initialValue?: string;
-  optional?: boolean;
   onSubmit: () => void;
   optional?: boolean;
 }
