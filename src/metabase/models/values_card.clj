@@ -24,7 +24,9 @@
   [search-term values]
   (if (str/blank? search-term)
     values
-    (filter (partial search-match? search-term) values)))
+    (let [normalize              (comp str/lower-case str/trim)
+          normalized-search-term (normalize search-term)]
+      (filter #(search-match? normalized-search-term (normalize %)) values))))
 
 (defn- query-for-dashboard
   [{dashboard-id :id} param-key]
