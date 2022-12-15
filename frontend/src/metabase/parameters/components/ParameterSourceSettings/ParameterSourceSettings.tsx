@@ -2,7 +2,11 @@ import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio/Radio";
 import Modal from "metabase/components/Modal";
-import { getSourceType } from "metabase/parameters/utils/dashboards";
+import {
+  getSourceOptions,
+  getSourceType,
+  hasValidSourceOptions,
+} from "metabase/parameters/utils/dashboards";
 import {
   ParameterSourceOptions,
   ParameterSourceType,
@@ -27,6 +31,7 @@ const ParameterSourceSettings = ({
   onChangeSourceOptions,
 }: ParameterSourceSettingsProps): JSX.Element => {
   const sourceType = getSourceType(parameter);
+  const sourceOptions = getSourceOptions(parameter);
   const [modalType, setModalType] = useState<ParameterSourceType>();
 
   const radioOptions = useMemo(
@@ -36,9 +41,13 @@ const ParameterSourceSettings = ({
 
   const handleSourceTypeChange = useCallback(
     (sourceType: ParameterSourceType) => {
-      onChangeSourceType(sourceType);
+      if (hasValidSourceOptions(sourceType, sourceOptions)) {
+        onChangeSourceType(sourceType);
+      } else {
+        setModalType(sourceType);
+      }
     },
-    [onChangeSourceType],
+    [sourceOptions, onChangeSourceType],
   );
 
   const handleClose = useCallback(() => {
@@ -57,6 +66,7 @@ const ParameterSourceSettings = ({
         <Modal onClose={handleClose}>
           <ParameterListSourceModal
             parameter={parameter}
+            onChangeSourceType={onChangeSourceType}
             onChangeSourceOptions={onChangeSourceOptions}
             onClose={handleClose}
           />

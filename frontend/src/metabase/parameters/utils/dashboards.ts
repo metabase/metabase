@@ -76,6 +76,18 @@ export function getSourceOptions(parameter: Parameter): ParameterSourceOptions {
   return parameter.source_options ?? {};
 }
 
+export function hasValidSourceOptions(
+  sourceType: ParameterSourceType,
+  sourceOptions: ParameterSourceOptions,
+): boolean {
+  switch (sourceType) {
+    case "static-list":
+      return sourceOptions.values != null && sourceOptions.values.length > 0;
+    default:
+      return true;
+  }
+}
+
 export function getIsMultiSelect(parameter: Parameter): boolean {
   return parameter.isMultiSelect == null ? true : parameter.isMultiSelect;
 }
