@@ -159,7 +159,7 @@
    clause. It is recommended to implement this if you want to use the default SQL
    implementation of `->honeysql` for the `:datetime-diff`, which includes
    validation of argument types across all units."
-  {:arglists '([driver unit field-or-value field-or-value])}
+  {:arglists '([driver unit field-or-value field-or-value]), :added "0.46.0"}
   (fn [driver unit _ _] [(driver/dispatch-on-initialized-driver driver) unit])
   :hierarchy #'driver/hierarchy)
 
