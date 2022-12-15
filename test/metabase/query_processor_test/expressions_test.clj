@@ -129,7 +129,16 @@
                (mt/run-mbql-query venues
                  {:expressions {:x [:+ $price $id]}
                   :limit       3
-                  :order-by    [[:desc [:expression :x]]]})))))))
+                  :order-by    [[:desc [:expression :x]]]})))))
+    (testing "Can we refer to expressions inside an ORDER BY clause with a secondary order by?"
+      (is (= [[81 "Tanoshi Sushi & Sake Bar" 40 40.7677 -73.9533 4 85.0]
+              [79 "Sushi Yasuda" 40 40.7514 -73.9736 4 83.0]
+              [77 "Sushi Nakazawa" 40 40.7318 -74.0045 4 81.0]]
+             (mt/formatted-rows [int str int 4.0 4.0 int float]
+               (mt/run-mbql-query venues
+                 {:expressions {:x [:+ $price $id]}
+                  :limit       3
+                  :order-by    [[:desc $price] [:desc [:expression :x]]]})))))))
 
 (deftest aggregate-breakout-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)

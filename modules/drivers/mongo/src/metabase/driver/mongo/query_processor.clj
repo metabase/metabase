@@ -887,10 +887,6 @@
                                 :asc   1
                                 :desc -1)]))})
 
-(defn- handle-order-by [{:keys [order-by]} pipeline-ctx]
-  (cond-> pipeline-ctx
-    (seq order-by) (update :query conj (order-by->$sort order-by))))
-
 ;;; ----------------------------------------------------- fields -----------------------------------------------------
 
 (defn- remove-parent-fields
@@ -913,6 +909,17 @@
     (remove (fn [[_ field-id & _]]
               (and (integer? field-id) (contains? parent->child-id field-id)))
             fields)))
+
+(defn- handle-order-by [{:keys [order-by]} pipeline-ctx]
+  (let [sort-fields (for [field (remove-parent-fields (map second order-by))
+                          ;; We only care about expressions
+                          :when (= :expression ((.dispatchFn ->rvalue) field))]
+                      [(->lvalue field) (->rvalue field)])]
+    (cond-> pipeline-ctx
+      (seq order-by) (update :query conj
+                             ;; We $addFields before sorting, otherwise expressions will not be available for the sort
+                             {:$addFields (into (ordered-map/ordered-map) sort-fields)}
+                             (order-by->$sort order-by)))))
 
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
   (if-not (seq fields)
