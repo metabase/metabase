@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import {
   createMockTimeline,
   createMockTimelineEvent,
@@ -31,6 +31,24 @@ describe("EventCard", () => {
     render(<EventCard {...props} />);
 
     expect(screen.getByText("January 1, 2020, 10:20 AM"));
+  });
+
+  it("should toggle an event's visibility", () => {
+    const props = getProps({
+      event: createMockTimelineEvent({
+        timestamp: "2020-01-01T10:20:00Z",
+        time_matters: true,
+      }),
+    });
+
+    render(<EventCard {...props} />);
+
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    expect(props.onToggleEventVisibility).toHaveBeenCalledWith(
+      props.event,
+      false,
+    );
   });
 });
 
