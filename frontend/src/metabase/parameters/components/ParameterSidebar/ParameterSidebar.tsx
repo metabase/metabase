@@ -2,7 +2,10 @@ import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import { ParameterSourceType } from "metabase-types/api";
+import {
+  ParameterSourceOptions,
+  ParameterSourceType,
+} from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import ParameterSettings from "../ParameterSettings";
@@ -18,6 +21,10 @@ export interface ParameterSidebarProps {
   onChangeSourceType: (
     parameterId: string,
     sourceType: ParameterSourceType,
+  ) => void;
+  onChangeSourceOptions: (
+    parameterId: string,
+    sourceOptions: ParameterSourceOptions,
   ) => void;
   onChangeFilteringParameters: (
     parameterId: string,
@@ -35,6 +42,7 @@ const ParameterSidebar = ({
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onChangeSourceType,
+  onChangeSourceOptions,
   onChangeFilteringParameters,
   onRemoveParameter,
   onShowAddParameterPopover,
@@ -69,6 +77,7 @@ const ParameterSidebar = ({
             onChangeDefaultValue={onChangeDefaultValue}
             onChangeIsMultiSelect={onChangeIsMultiSelect}
             onChangeSourceType={onChangeSourceType}
+            onChangeSourceOptions={onChangeSourceOptions}
             onRemoveParameter={handleRemove}
           />
         ) : (

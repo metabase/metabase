@@ -8,7 +8,10 @@ import React, {
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
-import { ParameterSourceType } from "metabase-types/api";
+import {
+  ParameterSourceOptions,
+  ParameterSourceType,
+} from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
@@ -35,6 +38,10 @@ interface ParameterSettingsProps {
     parameterId: string,
     sourceType: ParameterSourceType,
   ) => void;
+  onChangeSourceOptions: (
+    parameterId: string,
+    sourceOptions: ParameterSourceOptions,
+  ) => void;
   onRemoveParameter: (parameterId: string) => void;
 }
 
@@ -42,6 +49,7 @@ const ParameterSettings = ({
   parameter,
   onChangeName,
   onChangeSourceType,
+  onChangeSourceOptions,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onRemoveParameter,
@@ -87,6 +95,7 @@ const ParameterSettings = ({
         <ParameterSourceSettings
           parameter={parameter}
           onChangeSourceType={onChangeSourceType}
+          onChangeSourceOptions={onChangeSourceOptions}
         />
       </SettingSection>
       <SettingSection>

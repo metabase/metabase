@@ -3,7 +3,10 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio/Radio";
 import Modal from "metabase/components/Modal";
 import { getSourceType } from "metabase/parameters/utils/dashboards";
-import { ParameterSourceType } from "metabase-types/api";
+import {
+  ParameterSourceOptions,
+  ParameterSourceType,
+} from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import ParameterListSourceModal from "../ParameterListSourceModal";
 import {
@@ -18,11 +21,16 @@ export interface ParameterSourceSettingsProps {
     parameterId: string,
     sourceType: ParameterSourceType,
   ) => void;
+  onChangeSourceOptions: (
+    parameterId: string,
+    sourceOptions: ParameterSourceOptions,
+  ) => void;
 }
 
 const ParameterSourceSettings = ({
   parameter,
   onChangeSourceType,
+  onChangeSourceOptions,
 }: ParameterSourceSettingsProps): JSX.Element => {
   const parameterId = parameter.id;
   const sourceType = getSourceType(parameter);
@@ -56,6 +64,7 @@ const ParameterSourceSettings = ({
         <Modal onClose={handleClose}>
           <ParameterListSourceModal
             parameter={parameter}
+            onChangeSourceOptions={onChangeSourceOptions}
             onClose={handleClose}
           />
         </Modal>

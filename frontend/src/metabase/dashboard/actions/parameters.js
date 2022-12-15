@@ -207,6 +207,19 @@ export const setParameterSourceType = createThunkAction(
   },
 );
 
+export const SET_PARAMETER_SOURCE_OPTIONS =
+  "metabase/dashboard/SET_PARAMETER_SOURCE_OPTIONS";
+export const setParameterSourceOptions = createThunkAction(
+  SET_PARAMETER_SOURCE_OPTIONS,
+  (parameterId, sourceOptions) => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameterId, parameter => ({
+      ...parameter,
+      source_options: sourceOptions,
+    }));
+    return { id: parameterId, sourceOptions };
+  },
+);
+
 export const SET_PARAMETER_INDEX = "metabase/dashboard/SET_PARAMETER_INDEX";
 export const setParameterIndex = createThunkAction(
   SET_PARAMETER_INDEX,
