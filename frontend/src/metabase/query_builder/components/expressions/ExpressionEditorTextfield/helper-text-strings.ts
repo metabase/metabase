@@ -410,6 +410,7 @@ const helperTextStrings: HelpText[] = [
         description: t`Choose from: "year", "month", "week", "day", "hour", "minute", or "second".`,
       },
     ],
+    docsPage: "datetimediff",
   },
   {
     name: "exp",
@@ -738,6 +739,7 @@ const helperTextStrings: HelpText[] = [
         description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
       },
     ],
+    docsPage: "datetimeadd",
   },
   {
     name: "datetime-subtract",
@@ -759,6 +761,7 @@ const helperTextStrings: HelpText[] = [
         description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
       },
     ],
+    docsPage: "datetimesubtract",
   },
   {
     name: "now",
@@ -796,6 +799,7 @@ See the full list here: https://w.wiki/4Jx`,
         description: t`The current time zone. Only required for timestamps with no time zone.`,
       },
     ],
+    docsPage: "converttimezone",
   },
 ];
 
