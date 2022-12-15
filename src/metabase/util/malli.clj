@@ -5,7 +5,8 @@
    [malli.core :as mc]
    [malli.error :as me]
    [malli.instrument :as minst]
-   [malli.experimental :as mx]))
+   [malli.experimental :as mx]
+   [clojure.string :as str]))
 
 (core/defn- explain-fn-fail!
   [type data]
@@ -45,19 +46,86 @@
        defn#)))
 
 (defmacro defn
-  "Like s/defn, but for malli. Will validate all input and output without the need for calls to instrumentation (they are built in).
-  calls to minst/unstrument! can remove this, so beware of calling that."
+  "Like s/defn, but for malli. Will always validate input and output without the need for calls to instrumentation (they are emitted automatically).
+   Calls to minst/unstrument! can remove this, so use a filter that avoids :validate! if you use that."
   [& args]
   (-defn mx/SchematizedParams args))
 
-(do
-  
-  (defn bar [x :- [:map [:x int?] [:y int?]]] "42")
+;;; -------------------------------------- Describing Schemas --------------------------------------
 
-  (= [{:x ["missing required key"], :y ["missing required key"]}]
-     (:humanized (try (bar {}) (catch Exception e (ex-data e))))))
+(defn- indent+ [context] (update context :indent inc))
 
-(do
-  (defn baz :- [:map [:x int?] [:y int?]] [] {:x "3"})
-  (= {:x ["should be an int"], :y ["missing required key"]}
-     (:humanized (try (baz) (catch Exception e (ex-data e))))))
+(defn- spaces [context] (str/join (repeat (* 4 (inc (:indent context))) " ")))
+
+(defmulti ^:private describe*
+  (fn describe*-dispatch [ast _ctx] (:type ast)))
+
+(defmethod describe* :maybe [{:keys [child]} ctx]
+  (str "A nullable " (describe* child ctx)))
+
+(defmethod describe* :or [{:keys [children]} ctx]
+  (str "( "
+       (str/join ", or " (mapv (comp str/trim #(describe* % (indent+ ctx))) children))
+       " )"))
+
+(defmethod describe* :map [{:keys [keys]} ctx]
+  (str/join
+   ["map with keys: ["
+    (str/join (for [[k v] keys]
+                (str "\n" (spaces ctx)
+                     (pr-str k) " "
+                     (when (get-in v [:properties :optional]) "(optional) ")
+                     "=> " (describe* (:value v) (indent+ ctx)))))
+    "\n" (spaces ctx) "]"]))
+
+(defmethod describe* :map-of [{:keys [key value] :as ast} ctx]
+  (str "map of " (describe* value ctx) "to " (describe* value ctx)))
+
+(defmethod describe* :tuple [{:keys [children] :as ast} ctx]
+  (str "tuple of size " (count children) " like: [ " (str/join (map #(describe* % ctx) children)) "]"))
+
+(defn- insert-or [xs]
+  (if (> (count xs) 1)
+    (concat (drop-last xs) ["or"] [(last xs)])
+    xs))
+
+(defmethod describe* :enum [{:keys [values] :as _ast} ctx]
+  (str "value that is one of: "
+       (str/join " " (insert-or (map pr-str values)))))
+
+(core/defn take-measure [title properties]
+  (let [min-len (:min properties)
+        max-len (:max properties)]
+    (cond
+      (and min-len max-len) (str "with " title " between " min-len " and " max-len " ")
+      min-len (str "at least " min-len " long ")
+      max-len (str "at most " max-len " long ")
+      :else "")))
+
+(defmethod describe* :string [{:keys [properties]} _ctx]
+  ;; todo handle min/max/other properties.
+  (str "string " (take-measure "length" properties)))
+(defmethod describe* 'string? [ast ctx] (describe* (assoc ast :type :string) ctx))
+
+(defmethod describe* :keyword [{:keys []} ctx] "keyword ")
+(defmethod describe* 'keyword? [ast ctx] (describe* (assoc ast :type :keyword) ctx))
+
+(defmethod describe* :int [{:keys []} ctx] "integer ")
+(defmethod describe* 'int? [ast ctx] (describe* (assoc ast :type :int) ctx))
+
+(defmethod describe* :pos-int [{:keys []} ctx] "positive integer ")
+(defmethod describe* 'pos-int? [ast ctx] (describe* (assoc ast :type :pos-int) ctx))
+
+(defmethod describe* :default [x ctx]
+  (str/join "\n" ["*********"
+                  "Unknown Malli Schema!"
+                  (str "type: " (pr-str (:type x)))
+                  (str "value: " (pr-str x))
+                  "*********"]))
+
+(core/defn describe
+  "Given a malli schema, should return a string with a description of the shape it expects."
+  [schema]
+  (let [ast (mc/ast schema)]
+    (str/trim
+     (str "A " (describe* ast {:indent 0})))))

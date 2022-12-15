@@ -78,7 +78,7 @@
           :route       ["/:id/dimension" :id "[0-9]+"]
           :docstr      String
           :args        '[id :as {{dimension-type :type, dimension-name :name} :body}]
-          :arg->schema '{dimension-type schema.core/Int, dimension-name schema.core/Str}
+          :arg->schema '[:arg->schema {dimension-type schema.core/Int, dimension-name schema.core/Str}]
           :fn-name     'POST_:id_dimension}
          (-> (#'api/parse-defendpoint-args
               '[POST "/:id/dimension"
@@ -86,6 +86,26 @@
                 [id :as {{dimension-type :type, dimension-name :name} :body}]
                 {dimension-type schema.core/Int
                  dimension-name schema.core/Str}])
+             (update :docstr class)
+             ;; two regex patterns are not equal even if they're the exact same pattern so convert to string so we can
+             ;; compare easily.
+             (update-in [:route 2] str)))))
+
+(deftest ^:parallel parse-defendpoint-args-test-malli
+  (is (= {:method      'POST
+          :route       ["/:id/dimension" :id "[0-9]+"]
+          :docstr      String
+          :args        '[id :as {{dimension-type :type, dimension-name :name} :body}]
+          :arg->schema '[:malli [:map [:dimension-type int?] [:dimension-name string?]]]
+          :fn-name     'POST_:id_dimension}
+         (-> (#'api/parse-defendpoint-args
+              '[POST "/:id/dimension"
+                "Sets the dimension for the given object with ID."
+                [id :as {{dimension-type :type, dimension-name :name} :body}]
+                [:malli
+                 [:map
+                  [:dimension-type int?]
+                  [:dimension-name string?]]]])
              (update :docstr class)
              ;; two regex patterns are not equal even if they're the exact same pattern so convert to string so we can
              ;; compare easily.

@@ -880,7 +880,7 @@
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Collection Permissions."
   [namespace]
-  {namespace (s/maybe su/NonBlankString)}
+  ^:malli {namespace [:maybe [:string {:min 1}]]}
   (api/check-superuser)
   (graph/graph namespace))
 
@@ -916,8 +916,9 @@
   "Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
   [:as {{:keys [namespace], :as body} :body}]
-  {body      su/Map
-   namespace (s/maybe su/NonBlankString)}
+  ^:malli
+  {body PermissionsGraph
+   namespace [:maybe [:or [:string {:min 1}] :keyword]]}
   (api/check-superuser)
   (->> (dissoc body :namespace)
        graph-decoder
@@ -925,3 +926,4 @@
   (graph/graph namespace))
 
 (api/define-routes)
+

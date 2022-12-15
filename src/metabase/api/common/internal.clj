@@ -4,13 +4,17 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [malli.core :as mc]
+   [malli.error :as me]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
-   [schema.core :as s])
+   [schema.core :as s]
+   [metabase.query-processor.middleware.validate :as validate])
   (:import
    (metabase.async.streaming_response StreamingResponse)))
 
@@ -231,8 +235,8 @@
 ;;; |                                                PARAM VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn validate-param
-  "Validate a parameter against its respective schema, or throw an Exception."
+(defn schema-validate-param
+  "Validate a schema parameter against its respective schema, or throw an Exception."
   [field-name value schema]
   (try (s/validate schema value)
        (catch Throwable e
@@ -242,11 +246,27 @@
                                                                  (:message (ex-data e))
                                                                  (.getMessage e))}})))))
 
-(defn validate-params
+(defn malli-validate-param
+  "Validate a schema parameter against its respective schema, or throw an Exception."
+  [field-name value schema]
+  (when-not (mc/validate schema value)
+    (throw (ex-info
+            (tru "Invalid field: {0}" field-name)
+            {:status-code 400
+             :errors (mc/explain schema value)
+             :humanized {field-name (me/humanize (mc/explain schema value))}}))))
+
+(mu/defn validate-params
   "Generate a series of `validate-param` calls for each param and schema pair in PARAM->SCHEMA."
-  [param->schema]
-  (for [[param schema] param->schema]
-    `(validate-param '~param ~param ~schema)))
+  [[type :- [:maybe [:enum :malli :plumatic]]
+    param->schema]]
+  (when type
+    (case type
+      :malli    (for [[param schema] param->schema]
+                  `(malli-validate-param '~param ~param ~schema))
+
+      :plumatic (for [[param schema] param->schema]
+                  `(schema-validate-param '~param ~param ~schema)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      MISC. OTHER FNS USED BY DEFENDPOINT                                       |

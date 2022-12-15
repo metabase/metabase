@@ -217,7 +217,8 @@
    :route       (some-fn string? sequential?)
    :docstr      (s/? string?)
    :args        vector?
-   :arg->schema (s/? (s/map-of symbol? any?))
+   :arg->schema (s/? (s/or :malli (fn [x] (boolean (get (meta x) :malli)))
+                           :plumatic (s/map-of symbol? any?)))
    :body        (s/* any?)))
 
 (defn- parse-defendpoint-args [args]
@@ -230,12 +231,15 @@
           route                                               (add-route-param-regexes route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (route-dox method route docstr args (m/map-vals eval arg->schema) body)]
+          docstr                                              (route-dox method route docstr args
+                                                                         (second arg->schema) body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
                                   (ns-name *ns*) fn-name)))
       (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
+
+(parse-defendpoint-args args)
 
 (defmacro defendpoint*
   "Impl macro for [[defendpoint]]; don't use this directly."
@@ -272,7 +276,7 @@
   (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
                            :body `((auto-parse ~args
-                                     ~@(validate-params arg->schema)
+                                               ~@(validate-params arg->schema)
                                      (wrap-response-if-needed
                                       (do ~@body))))))))
 
