@@ -320,8 +320,9 @@
         (mt/with-temp Card [{card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
                                                                  :target target}]}]
 
-          (is (= [{:parameter_id     "_CATEGORY_NAME_"
-                   :target expected}]
+          (is (= [{:parameter_id "_CATEGORY_NAME_"
+                   :target       expected
+                   :source_type  "field"}]
                  (db/select-one-field :parameter_mappings Card :id card-id))))))))
 
 (deftest validate-parameter-mappings-test
@@ -353,6 +354,7 @@
                                                              :target       [:dimension [:field-id 1]]}]}]
       (is (= [{:parameter_id "22486e00",
                :card_id      1,
+               :source_type  "field",
                :target       [:dimension [:field 1 nil]]}]
              (db/select-one-field :parameter_mappings Card :id card-id))))))
 

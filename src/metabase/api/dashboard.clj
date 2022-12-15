@@ -757,6 +757,7 @@
      (case (:source_type param)
        "static-list" (static-parameter-values dashboard param-key query)
        "card"        (values-card/values-for-dashboard dashboard param-key query)
+       ;; should be "field", but catch all cases just in case
        (chain-filter dashboard param-key query-params query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"

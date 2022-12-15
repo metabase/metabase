@@ -371,7 +371,7 @@
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   (with-api-error-message {:id                              NonBlankString
                            :type                            keyword-or-non-blank-str
-                           (s/optional-key :source_type)    (s/enum "static-list" "card")
+                           (s/optional-key :source_type)    (s/enum "static-list" "card" "field")
                            (s/optional-key :source_options) ParameterSourceOptions
                            (s/optional-key :card_id)        IntGreaterThanZero
                            ;; Allow blank name and slug #15279
