@@ -168,7 +168,7 @@
     nil))
 
 (defn- database-type->temporal-type [database-type]
-  (condp = (some-> database-type str/upper-case)
+  (condp = (some-> database-type u/upper-case-en)
     "TIMESTAMP" :timestamp
     "DATETIME"  :datetime
     "DATE"      :date
