@@ -341,11 +341,12 @@
                                                                    :id     "_CATEGORY_NAME_"
                                                                    :type   "category"
                                                                    :target target}]}]
-          (is (= [{:name   "Category Name"
-                   :slug   "category_name"
-                   :id     "_CATEGORY_NAME_"
-                   :type   :category
-                   :target expected}]
+          (is (= [{:name        "Category Name"
+                   :slug        "category_name"
+                   :id          "_CATEGORY_NAME_"
+                   :type        :category
+                   :target      expected
+                   :source_type "field"}]
                  (db/select-one-field :parameters Dashboard :id dashboard-id))))))))
 
 (deftest identity-hash-test

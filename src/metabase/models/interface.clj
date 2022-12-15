@@ -109,9 +109,14 @@
   (or (mbql.normalize/normalize-fragment [:parameters] parameters)
       []))
 
+(defn set-default-source
+  "If the parameters `source_type` is blank (because it came from an old version), set it to the default: `\"field\"`"
+  [parameters]
+  (map #(assoc % :source_type (or (:source_type %) "field")) parameters))
+
 (models/add-type! :parameters-list
-  :in  (comp json-in normalize-parameters-list)
-  :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization))
+  :in  (comp json-in normalize-parameters-list set-default-source)
+  :out (comp (catch-normalization-exceptions normalize-parameters-list) set-default-source json-out-with-keywordization))
 
 (def ^:private MetricSegmentDefinition
   {(s/optional-key :filter)      (s/maybe mbql.s/Filter)
