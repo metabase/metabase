@@ -46,6 +46,8 @@
 
 (deftest test-substring
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    ;; start index 0 and 1 should behave the same across all drivers
+    (is (= "Red" (test-string-extract [:substring [:field (data/id :venues :name) nil] 0 3])))
     (is (= "Red" (test-string-extract [:substring [:field (data/id :venues :name) nil] 1 3])))
     (is (= "ed Medicine" (test-string-extract [:substring [:field (data/id :venues :name) nil] 2])))
     (is (= "Red Medicin" (test-string-extract [:substring [:field (data/id :venues :name) nil]

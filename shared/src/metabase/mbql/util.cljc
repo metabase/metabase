@@ -375,17 +375,15 @@
 
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
-  clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
+  clause, dispatches off the clause name; otherwise dispatches off `x`'s class, or a namespaced keyword."
   ([x]
-   #?(:clj
-      (if (mbql-clause? x)
-        (first x)
-        (or (metabase.models.dispatch/model x)
-            (type x)))
-      :cljs
-      (if (mbql-clause? x)
-        (first x)
-        (type x))))
+   (if (mbql-clause? x)
+     (first x)
+     ;; allow namespaced keywords
+     (if (and (keyword? x) (namespace x))
+       x
+       (or #?(:clj (metabase.models.dispatch/model x))
+           (type x)))))
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
