@@ -374,6 +374,10 @@ jobs:
     env:
       CI: 'true'
       DRIVERS: oracle
+      MB_ORACLE_TEST_USER: metabase
+      MB_ORACLE_TEST_PASSWORD: ${{ secrets.MB_ORACLE_TEST_PASSWORD }}
+      MB_ORACLE_TEST_SID: ORCL
+      MB_ORACLE_TEST_HOST: ${{ secrets.MB_ORACLE_TEST_HOST }}
       MB_ORACLE_SSL_TEST_SSL: true
       MB_ORACLE_SSL_TEST_PORT: 2484
       MB_ORACLE_SSL_TEST_SSL_USE_TRUSTSTORE: true
