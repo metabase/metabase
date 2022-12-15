@@ -375,6 +375,7 @@
                                                          :collection_authority_level nil
                                                          :parameter_mappings         [{:card_id      1
                                                                                        :parameter_id "foo"
+                                                                                       :source_type  "field"
                                                                                        :target       ["dimension" ["field" field-id nil]]}]
                                                          :visualization_settings     {}
                                                          :card                       (merge api.card-test/card-defaults-no-hydrate
