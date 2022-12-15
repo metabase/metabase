@@ -463,7 +463,8 @@
                                           :column_settings
                                           {(str "[\"ref\",[\"field\"," (:id @field2s) ",null]]") {:column_title "Locus"}}}
                                          :parameter_mappings [{:parameter_id "12345678"
-                                                               :target [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
+                                                               :source_type  "field"
+                                                               :target       [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
             (reset! dashcard1s (ts/create! DashboardCard :dashboard_id (:id @dash1s) :card_id (:id @card1s)
                                            :visualization_settings
                                            {:table.pivot_column "SOURCE"
@@ -484,18 +485,20 @@
                                             :column_settings
                                             {(str "[\"ref\",[\"field\"," (:id @field2s) ",null]]") {:column_title "Locus"}}}
                                            :parameter_mappings [{:parameter_id "deadbeef"
-                                                                 :card_id (:id @card1s)
-                                                                 :target [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
+                                                                 :card_id      (:id @card1s)
+                                                                 :target       [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
 
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))
             (let [card (-> @serialized (by-model "Card") first)
                   dash (-> @serialized (by-model "Dashboard") first)]
               (testing "exported :parameter_mappings are properly converted"
                 (is (= [{:parameter_id "12345678"
-                         :target [:dimension [:field ["my-db" nil "orders" "subtotal"]
-                                              {:source-field ["my-db" nil "orders" "invoice"]}]]}]
+                         :source_type  "field"
+                         :target       [:dimension [:field ["my-db" nil "orders" "subtotal"]
+                                                    {:source-field ["my-db" nil "orders" "invoice"]}]]}]
                        (:parameter_mappings card)))
                 (is (schema= [{:parameter_mappings [{:parameter_id (s/eq "deadbeef")
+                                                     :source_type  (s/eq "field")
                                                      :card_id      (s/eq (:entity_id @card1s))
                                                      :target       (s/eq [:dimension [:field ["my-db" nil "orders" "subtotal"]
                                                                                       {:source-field ["my-db" nil "orders" "invoice"]}]])}]
@@ -560,10 +563,12 @@
                       (:parameter_mappings @card1d)))
             (testing "Card.parameter_mappings are based on the new Field IDs"
               (is (= [{:parameter_id "12345678"
+                       :source_type  "field"
                        :target       [:dimension [:field (:id @field1d) {:source-field (:id @field2d)}]]}]
                      (:parameter_mappings @card1d))))
             (testing "DashboardCard.parameter_mappings are based on the new Field IDs"
               (is (= [{:parameter_id "deadbeef"
+                       :source_type  "field"
                        :card_id      (:id @card1d)
                        :target       [:dimension [:field (:id @field1d) {:source-field (:id @field2d)}]]}]
                      (:parameter_mappings @dashcard1d))))))))))
