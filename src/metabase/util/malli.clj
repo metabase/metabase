@@ -51,13 +51,13 @@
   (-defn mx/SchematizedParams args))
 
 (do
+  
   (defn bar [x :- [:map [:x int?] [:y int?]]] "42")
+
   (= [{:x ["missing required key"], :y ["missing required key"]}]
-     (:humanized (try (bar {})
-                      (catch Exception e (ex-data e))))))
+     (:humanized (try (bar {}) (catch Exception e (ex-data e))))))
 
 (do
   (defn baz :- [:map [:x int?] [:y int?]] [] {:x "3"})
   (= {:x ["should be an int"], :y ["missing required key"]}
-     (:humanized (try (baz)
-                      (catch Exception e (ex-data e))))))
+     (:humanized (try (baz) (catch Exception e (ex-data e))))))
