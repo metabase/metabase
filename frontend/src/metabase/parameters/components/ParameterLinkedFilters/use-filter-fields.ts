@@ -20,7 +20,7 @@ const useFilterFields = (
     const filtered = getParameterFieldIds(parameter);
     const filtering = getParameterFieldIds(otherParameter);
 
-    if (!filtered.length || !filtered.length) {
+    if (!filtered.length || !filtering.length) {
       const errorParameter = !filtered.length ? parameter : otherParameter;
       const error = getParameterError(errorParameter);
       setState({ error, loading: false });
