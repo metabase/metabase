@@ -65,7 +65,9 @@
                        [(long k) (double v)])))))))
 
 (deftest sum-where-inside-expressions-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :basic-aggregations :expressions)
+                         ;; Mongo does not support expressions inside aggregations #27275
+                         :mongo)
     (is (= 90.5
            (->> {:aggregation [[:+
                                 [:/
