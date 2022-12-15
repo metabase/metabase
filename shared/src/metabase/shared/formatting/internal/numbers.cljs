@@ -1,10 +1,11 @@
 (ns metabase.shared.formatting.internal.numbers
   "ClojureScript implementation of number formatting.
   Implements the [[NumberFormatter]] protocol from numbers_core, plus some helpers."
-  (:require [clojure.string :as str]
-            [metabase.shared.formatting.internal.numbers-core :as core]
-            [metabase.shared.util :as shared.u]
-            [metabase.shared.util.currency :as currency]))
+  (:require
+    [clojure.string :as str]
+    [metabase.shared.formatting.internal.numbers-core :as core]
+    [metabase.shared.util :as shared.u]
+    [metabase.shared.util.currency :as currency]))
 
 (def ^:private default-number-separators ".,")
 
@@ -61,8 +62,8 @@
                   ;; Always use grouping separators, but we may remove them per number_separators.
                   :useGrouping              true
                   :minimumIntegerDigits     (:minimum-integer-digits     options)
-                  :minimumFractionDigits    (:minimum-fraction-digits options default-fraction-digits)
-                  :maximumFractionDigits    (:maximum-fraction-digits options default-fraction-digits)
+                  :minimumFractionDigits    (:minimum-fraction-digits    options default-fraction-digits)
+                  :maximumFractionDigits    (:maximum-fraction-digits    options default-fraction-digits)
                   :minimumSignificantDigits (:minimum-significant-digits options)
                   :maximumSignificantDigits (:maximum-significant-digits options)})))))
 
@@ -94,9 +95,9 @@
 
       (wrap-currency [_ text]
         ;; Intl.NumberFormat.formatToParts(1) returns, eg. [currency, integer, decimal, fraction]
-        ;; Drop decimal and fraction, and replace integer's :value with our provided text.
+        ;; Keep only currency and integer, and replace integer's :value with our provided text.
         (apply str (for [{:keys [type value]} (js->clj (.formatToParts nf 1) :keywordize-keys true)
-                         :when (not (#{"decimal" "fraction"} type))]
+                         :when (#{"currency" "integer"} type)]
                      (if (= type "integer")
                        text
                        value))))

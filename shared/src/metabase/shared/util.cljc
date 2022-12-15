@@ -24,10 +24,10 @@
 (defn normalize-key
   "Given a string or keyword, in snake_case or kebab-case, normalize it to a :kebab-case keyword.
 
-  Note that namespaces on input keywords are dropped! This is intended for turning idiomatic JSON
-  `\"snake_case_string_keys\"` into idiomatic Clojure `:kebab-case-keywords`."
+  If the input is a namespaced keyword, the namespace is untouched but the base name is converted."
   [k]
-  (-> k name (#(str/replace % #"_" "-")) keyword))
+  (keyword (when (keyword? k) (namespace k))
+           (-> k name (#(str/replace % #"_" "-")))))
 
 (defn normalize-map
   "Given any map-like object, return it as a Clojure map with :kebab-case keyword keys.

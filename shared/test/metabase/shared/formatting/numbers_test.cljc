@@ -1,6 +1,7 @@
 (ns metabase.shared.formatting.numbers-test
-  (:require [clojure.test :refer [are deftest is testing]]
-            [metabase.shared.formatting.numbers :as numbers]))
+  (:require
+    [clojure.test :refer [are deftest is testing]]
+    [metabase.shared.formatting.numbers :as numbers]))
 
 (deftest basics-test
   (testing "format-number basics"

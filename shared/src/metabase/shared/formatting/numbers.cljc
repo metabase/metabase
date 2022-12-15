@@ -18,17 +18,14 @@
    [1000000       "M"]
    [1000          "k"]])
 
-(defn- humanize-number [number]
-  (let [abs-value (abs number)
-        [power suffix] (first (filter #(>= abs-value (first %)) humanized-powers))]
-    (str (format-number (/ number power) {:minimum-fraction-digits 1 :maximum-fraction-digits 1})
-         suffix)))
-
 (defn- format-number-compact-basic [number]
-  (cond
-    (zero? number) "0"
-    (< (abs number) display-compact-decimals-cutoff) (format-number number {})
-    :else (humanize-number number)))
+  (let [abs-value (abs number)]
+    (cond
+      (zero? number) "0"
+      (< abs-value display-compact-decimals-cutoff) (format-number number {})
+      :else (let [[power suffix] (first (filter #(>= abs-value (first %)) humanized-powers))]
+              (str (format-number (/ number power) {:minimum-fraction-digits 1 :maximum-fraction-digits 1})
+                   suffix)))))
 
 (defmulti ^:private format-number-compact (fn [_ {:keys [number-style]}] number-style))
 

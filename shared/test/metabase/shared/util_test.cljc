@@ -28,10 +28,11 @@
        :Key                :Key
        :KEY                :KEY
        :some-key           :some-key
-       :long-key-goes-here :long-key-goes-here)
-
-  (testing "it drops namespaces off input keywords"
-    (is (= :base-name (shared.u/normalize-key :some.namespace/base-name)))))
+       :long-key-goes-here :long-key-goes-here
+       ;; namespaced keywords
+       :some/key           :some/key
+       :some/long-ns-key   :some/long_ns_key
+       :some_snake/ns-key  :some_snake/ns_key)) ; Case is not adjusted in the namespace.
 
 (deftest normalize-map-test
   (testing "nil and empty maps return empty maps"
