@@ -14,7 +14,8 @@ import {
   CardDateInfo,
   CardDescription,
   CardIcon,
-  CardIconContainer,
+  CardIconAndDateContainer,
+  CardCheckboxContainer,
   CardRoot,
   CardTitle,
 } from "./EventCard.styled";
@@ -70,13 +71,14 @@ const EventCard = ({
       isSelected={isSelected}
       onClick={handleEventClick}
     >
-      <Checkbox checked={!isHidden} onClick={handleChangeVisibility} />
-
-      <CardIconContainer>
-        <CardIcon name={event.icon} />
-      </CardIconContainer>
+      <CardCheckboxContainer>
+        <Checkbox checked={!isHidden} onClick={handleChangeVisibility} />
+      </CardCheckboxContainer>
       <CardBody>
-        <CardDateInfo>{dateMessage}</CardDateInfo>
+        <CardIconAndDateContainer>
+          <CardIcon name={event.icon} />
+          <CardDateInfo>{dateMessage}</CardDateInfo>
+        </CardIconAndDateContainer>
         <CardTitle>{event.name}</CardTitle>
         {event.description && (
           <CardDescription>{event.description}</CardDescription>
