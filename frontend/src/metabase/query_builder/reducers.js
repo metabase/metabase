@@ -570,11 +570,6 @@ export const hiddenTimelineEventIds = handleActions(
       next: (state, { payload: events }) =>
         state.filter(item => item !== events.id),
     },
-    // [HIDE_TIMELINES]: {
-    //   next: (state, { payload: timelines }) =>
-    //     _.without(state, ...timelines.flatMap(t => t.events.map(e => e.id))),
-    // },
-    // [onCloseTimelines]: { next: () => [] },
     [RESET_QB]: { next: () => [] },
   },
   [],
