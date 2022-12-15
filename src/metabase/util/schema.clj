@@ -363,7 +363,9 @@
 
 (def ParameterSourceOptions
   "Schema for valid source_options within a Parameter"
-  {:values [s/Str]})
+  ;; TODO: This should be tighter
+  {(s/optional-key :values)  [s/Str]
+   (s/optional-key :card_id) IntGreaterThanZero})
 
 (def Parameter
   "Schema for a valid Parameter.
@@ -373,7 +375,6 @@
                            :type                            keyword-or-non-blank-str
                            (s/optional-key :source_type)    (s/enum "static-list" "card" "field")
                            (s/optional-key :source_options) ParameterSourceOptions
-                           (s/optional-key :card_id)        IntGreaterThanZero
                            ;; Allow blank name and slug #15279
                            (s/optional-key :name)           s/Str
                            (s/optional-key :slug)           s/Str

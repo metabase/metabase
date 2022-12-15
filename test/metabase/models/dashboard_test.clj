@@ -217,7 +217,7 @@
     (testing "A new dashboard creates a new ValuesCard"
       (tt/with-temp* [Card      [{card-id :id}]
                       Dashboard [{dashboard-id :id}
-                                 {:parameters [(assoc default-params :source_type "card" :card_id card-id)]}]]
+                                 {:parameters [(assoc default-params :source_type "card" :source_options {:card_id card-id})]}]]
         (is (=? {:card_id                   card-id
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
@@ -229,7 +229,7 @@
                       Dashboard [{dashboard-id :id}
                                  {:parameters [default-params]}]]
         (is (nil? (db/select-one 'ValuesCard :card_id card-id)))
-        (db/update! Dashboard dashboard-id :parameters [(assoc default-params :source_type "card" :card_id card-id)])
+        (db/update! Dashboard dashboard-id :parameters [(assoc default-params :source_type "card" :source_options {:card_id card-id})])
         (is (=? {:card_id                   card-id
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
@@ -238,7 +238,7 @@
     (testing "Removing a card_id deletes old ValuesCards"
       (tt/with-temp* [Card      [{card-id :id}]
                       Dashboard [{dashboard-id :id}
-                                 {:parameters [(assoc default-params :source_type "card" :card_id card-id)]}]]
+                                 {:parameters [(assoc default-params :source_type "card" :source_options {:card_id card-id})]}]]
         ;; same setup as earlier test, we know the ValuesCard exists right now
         (db/delete! Dashboard :id dashboard-id)
         (is (nil? (db/select-one 'ValuesCard :card_id card-id)))))))
