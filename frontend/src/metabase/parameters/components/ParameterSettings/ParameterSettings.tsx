@@ -8,8 +8,9 @@ import React, {
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
+import { ParameterSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
-import { getIsMultiSelect } from "../../utils/dashboards";
+import { getIsMultiSelect, getSourceType } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import {
   SettingLabel,
@@ -18,6 +19,11 @@ import {
   SettingsRoot,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
+
+const SOURCE_TYPE_OPTIONS = [
+  { name: t`Values from column`, value: "field" },
+  { name: t`Custom list`, value: "custom-list" },
+];
 
 const MULTI_SELECT_OPTIONS = [
   { name: t`Multiple values`, value: true },
@@ -29,12 +35,17 @@ interface ParameterSettingsProps {
   onChangeName: (parameterId: string, name: string) => void;
   onChangeDefaultValue: (parameterId: string, value: unknown) => void;
   onChangeIsMultiSelect: (parameterId: string, isMultiSelect: boolean) => void;
+  onChangeSourceType: (
+    parameterId: string,
+    sourceType: ParameterSourceType,
+  ) => void;
   onRemoveParameter: (parameterId: string) => void;
 }
 
 const ParameterSettings = ({
   parameter,
   onChangeName,
+  onChangeSourceType,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onRemoveParameter,
@@ -62,6 +73,13 @@ const ParameterSettings = ({
     [parameterId, onChangeIsMultiSelect],
   );
 
+  const handleSourceTypeChange = useCallback(
+    (sourceType: ParameterSourceType) => {
+      onChangeSourceType(parameterId, sourceType);
+    },
+    [parameterId, onChangeSourceType],
+  );
+
   const handleRemove = useCallback(() => {
     onRemoveParameter(parameterId);
   }, [parameterId, onRemoveParameter]);
@@ -73,6 +91,15 @@ const ParameterSettings = ({
         <ParameterInput
           initialValue={parameter.name}
           onChange={handleNameChange}
+        />
+      </SettingSection>
+      <SettingSection>
+        <SettingLabel>{t`Options to pick from`}</SettingLabel>
+        <Radio
+          value={getSourceType(parameter)}
+          options={SOURCE_TYPE_OPTIONS}
+          vertical
+          onChange={handleSourceTypeChange}
         />
       </SettingSection>
       <SettingSection>

@@ -29,3 +29,5 @@ export type ParameterType =
 export type ParameterId = string;
 
 export type ActionParameterValue = string | number;
+
+export type ParameterSourceType = "field" | "static-list";
