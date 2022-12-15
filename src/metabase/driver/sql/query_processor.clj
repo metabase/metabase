@@ -700,7 +700,7 @@
   [driver [_ x y unit]]
   (let [x (->honeysql driver x)
         y (->honeysql driver y)]
-    (datetime-diff-check-args x y #(hx/is-of-type? % #"(?i)^(timestamp|date)"))
+    (datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
     (datetime-diff driver unit x y)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
