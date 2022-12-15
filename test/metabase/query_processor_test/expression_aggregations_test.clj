@@ -1,7 +1,6 @@
 (ns metabase.query-processor-test.expression-aggregations-test
   "Tests for expression aggregations and for named aggregations."
   (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
             [metabase.models.metric :refer [Metric]]
             [metabase.query-processor-test :as qp.test]
             [metabase.test :as mt]
@@ -46,15 +45,10 @@
 (deftest avg-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "avg, -"
-      (is (= (if (= driver/*driver* :h2)
-               [[1  55]
-                [2  97]
-                [3 142]
-                [4 246]]
-               [[1  55]
-                [2  96]
-                [3 141]
-                [4 246]])
+      (is (= [[1  55]
+              [2  96]
+              [3 141]
+              [4 246]]
              (mt/formatted-rows [int int]
                (mt/run-mbql-query venues
                  {:aggregation [[:avg [:* $id $price]]]
@@ -96,15 +90,10 @@
                     :breakout    [$price]})))))
 
       (testing "w/ avg: count + avg"
-        (is (= (if (= driver/*driver* :h2)
-                 [[1  77]
-                  [2 107]
-                  [3  60]
-                  [4  68]]
-                 [[1  77]
-                  [2 107]
-                  [3  60]
-                  [4  67]])
+        (is (= [[1  77]
+                [2 107]
+                [3  60]
+                [4  67]]
                (mt/formatted-rows [int int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:+ [:count $id] [:avg $id]]]

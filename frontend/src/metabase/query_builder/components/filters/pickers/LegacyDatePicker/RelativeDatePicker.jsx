@@ -30,7 +30,7 @@ export default class RelativeDatePicker extends Component {
     return (
       <div className={cx(className, "flex align-center")}>
         <IntervalInput
-          className="mr2 input text-right"
+          className="mr2 text-right"
           style={{
             width: 65,
             // needed to match Select's AdminSelect classes :-/

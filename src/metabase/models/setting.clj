@@ -168,7 +168,7 @@
           "Valid Setting :type"))
 
 (def ^:private Visibility
-  (s/enum :public :authenticated :admin :internal))
+  (s/enum :public :authenticated :settings-manager :admin :internal))
 
 (defmulti default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
@@ -235,7 +235,7 @@
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
-   :deprecated  (s/maybe s/Str)            ; if non-nil, contains the Metabase version in which this setting was deprecated
+   :deprecated  (s/maybe s/Str)  ; if non-nil, contains the Metabase version in which this setting was deprecated
 
    ;; whether this Setting can be Database-local or User-local. See [[metabase.models.setting]] docstring for more info.
    :database-local LocalOption
@@ -373,8 +373,13 @@
   (or (not *enforce-setting-access-checks*)
       (nil? api/*current-user-id*)
       api/*is-superuser?*
-      (has-advanced-setting-access?)
       (and
+       ;; Non-admin setting managers can only access settings that are not marked as admin-only
+       (not api/*is-superuser?*)
+       (has-advanced-setting-access?)
+       (not= (:visibility setting) :admin))
+      (and
+       ;; Non-admins can only access user-local settings not marked as admin-only
        (allows-user-local-values? setting)
        (not= (:visibility setting) :admin))))
 
@@ -905,7 +910,18 @@
 
   ###### `:visibility`
 
-  `:public`, `:authenticated`, `:admin` (default), or `:internal`. Controls where this setting is visible
+  Controls where this setting is visibile, and who can update it. Possible values are:
+
+    Visibility       | Who Can See It?              | Who Can Update It?
+    ---------------- | ---------------------------- | --------------------
+    :public          | The entire world             | Admins and Settings Managers
+    :authenticated   | Logged-in Users              | Admins and Settings Managers
+    :settings-manager| Admins and Settings Managers | Admins and Settings Managers
+    :admin           | Admins                       | Admins
+    :internal        | Nobody                       | No one (usually for env-var-only settings)
+
+  'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
+  in the Admin Panel.
 
   ###### `:getter`
 
@@ -1068,7 +1084,10 @@
 
   This is currently used by `GET /api/setting` ([[metabase.api.setting/GET_]]; admin-only; powers the Admin Settings
   page) so all admin-visible Settings should be included. We *do not* want to return env var values, since admins
-  are not allowed to modify them."
+  are not allowed to modify them.
+
+  For settings managers who are not admins, only the subset of settings with the :settings-manager visibility level
+  are returned."
   [& {:as options}]
   ;; ignore Database-local values, but not User-local values
   (binding [*database-local-values* nil]
@@ -1076,6 +1095,8 @@
      []
      (comp (filter (fn [setting]
                      (and (not= (:visibility setting) :internal)
+                          (or api/*is-superuser?*
+                              (not= (:visibility setting) :admin))
                           (not= (:database-local setting) :only))))
            (map #(m/mapply user-facing-info % options)))
      (sort-by :name (vals @registered-settings)))))

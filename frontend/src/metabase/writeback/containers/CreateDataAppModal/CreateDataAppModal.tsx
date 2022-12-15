@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -10,9 +10,14 @@ import * as Urls from "metabase/lib/urls";
 
 import DataApps, { ScaffoldNewAppParams } from "metabase/entities/data-apps";
 
-import DataAppDataPicker from "metabase/writeback/components/DataAppDataPicker";
+import DataPicker, {
+  useDataPicker,
+  useDataPickerValue,
+  DataPickerValue,
+} from "metabase/containers/DataPicker";
+import DataAppScaffoldingDataPicker from "metabase/writeback/components/DataAppScaffoldingDataPicker";
 
-import type { DataApp, TableId } from "metabase-types/api";
+import type { DataApp } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
 import {
@@ -21,6 +26,9 @@ import {
   ModalTitle,
   ModalBody,
   ModalFooter,
+  SearchInputContainer,
+  SearchInput,
+  SearchIcon,
 } from "./CreateDataAppModal.styled";
 
 interface OwnProps {
@@ -47,35 +55,67 @@ function mapDispatchToProps(dispatch: Dispatch) {
   };
 }
 
+function getSearchInputPlaceholder(value: DataPickerValue) {
+  if (value?.type === "models") {
+    return t`Search for a model…`;
+  }
+  if (value?.type === "raw-data") {
+    return t`Search for a table…`;
+  }
+  return t`Search for some data…`;
+}
+
+function DataPickerSearchInput({ value }: { value: DataPickerValue }) {
+  const { search } = useDataPicker();
+
+  return (
+    <SearchInputContainer>
+      <SearchIcon name="search" size={16} />
+      <SearchInput
+        value={search.query}
+        onChange={e => search.setQuery(e.target.value)}
+        placeholder={getSearchInputPlaceholder(value)}
+      />
+    </SearchInputContainer>
+  );
+}
+
 function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
-  const [tableId, setTableId] = useState<TableId | null>(null);
+  const [value, setValue] = useDataPickerValue();
+
+  const { tableIds } = value;
 
   const handleCreate = useCallback(async () => {
     const dataApp = await onCreate({
       name: t`New App`,
-      tables: [tableId] as number[],
+      tables: tableIds as number[],
     });
     onClose();
     onChangeLocation(Urls.dataApp(dataApp));
-  }, [tableId, onCreate, onChangeLocation, onClose]);
+  }, [tableIds, onCreate, onChangeLocation, onClose]);
+
+  const canSubmit = tableIds.length > 0;
 
   return (
-    <ModalRoot>
-      <ModalHeader>
-        <ModalTitle>{t`Pick your starting data`}</ModalTitle>
-      </ModalHeader>
-      <ModalBody>
-        <DataAppDataPicker tableId={tableId} onTableChange={setTableId} />
-      </ModalBody>
-      <ModalFooter>
-        <Button onClick={onClose}>{t`Cancel`}</Button>
-        <Button
-          primary
-          disabled={tableId == null}
-          onClick={handleCreate}
-        >{t`Create`}</Button>
-      </ModalFooter>
-    </ModalRoot>
+    <DataPicker.Provider>
+      <ModalRoot>
+        <ModalHeader>
+          <ModalTitle>{t`Pick your starting data`}</ModalTitle>
+          <DataPickerSearchInput value={value} />
+        </ModalHeader>
+        <ModalBody>
+          <DataAppScaffoldingDataPicker value={value} onChange={setValue} />
+        </ModalBody>
+        <ModalFooter>
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+          <Button
+            primary
+            disabled={!canSubmit}
+            onClick={handleCreate}
+          >{t`Create`}</Button>
+        </ModalFooter>
+      </ModalRoot>
+    </DataPicker.Provider>
   );
 }
 

@@ -22,6 +22,7 @@
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]])
   (:import [java.sql Connection ResultSet Time]
@@ -287,11 +288,11 @@
                                     hx/type-info
                                     hx/type-info->db-type
                                     name
-                                    str/lower-case
+                                    u/lower-case-en
                                     #{"time"}))
                           [x y])
         _ (when (seq disallowed-types)
-            (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+            (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
                                  (pr-str disallowed-types))
                             {:found disallowed-types
                              :type  qp.error-type/invalid-query})))
@@ -320,6 +321,20 @@
                               1
                               :else
                               0)))]
+        (hsql/call :case
+                   (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
+
+      :quarter
+      (let [positive-diff
+            (fn [a b]
+              (hx/cast
+               :integer
+               (hx/floor (hx// (hx/- (date-diff :month a b)
+                                     (hsql/call :case (hsql/call :> (date-part :day a) (date-part :day b)) 1 :else 0))
+                               3))))]
         (hsql/call :case
                    (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
                    (positive-diff x y)

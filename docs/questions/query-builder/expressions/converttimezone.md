@@ -129,11 +129,11 @@ Metabase displays timestamps without time zone or offset information, which is w
 
 The Metabase report time zone only applies to `timestamp with time zone` or `timestamp with offset` data types. For example:
 
-| Raw timestamp                            | Report time zone | Displayed As           |
-| ---------------------------------------- | ---------------- | ---------------------- |
-| `2022-12-28T12:00:00 AT TIME ZONE 'CST'` | 'Canada/Eastern' | Dec 28, 2022, 7:00 AM  |
-| `2022-12-28T12:00:00-06:00`              | 'Canada/Eastern' | Dec 28, 2022, 7:00 AM  |
-| `2022-12-28T12:00:00`                    | 'Canada/Eastern' | Dec 28, 2022, 12:00 AM |
+| Raw timestamp in your database           | Data type                     | Report time zone | Displayed as           |
+| ---------------------------------------- | ----------------------------- | ---------------- | ---------------------- |
+| `2022-12-28T12:00:00 AT TIME ZONE 'CST'` | `timestamp with time zone`    | 'Canada/Eastern' | Dec 28, 2022, 7:00 AM  |
+| `2022-12-28T12:00:00-06:00`              | `timestamp with offset`       | 'Canada/Eastern' | Dec 28, 2022, 7:00 AM  |
+| `2022-12-28T12:00:00`                    | `timestamp without time zone` | 'Canada/Eastern' | Dec 28, 2022, 12:00 AM |
 
 The Metabase report time zone will not apply to the output of a `convertTimezone` expression. For example:
 

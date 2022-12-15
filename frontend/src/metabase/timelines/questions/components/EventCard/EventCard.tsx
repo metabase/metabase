@@ -25,7 +25,7 @@ export interface EventCardProps {
   onEdit?: (event: TimelineEvent) => void;
   onMove?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
-  onToggle?: (event: TimelineEvent, isSelected: boolean) => void;
+  onToggleSelected?: (event: TimelineEvent, isSelected: boolean) => void;
 }
 
 const EventCard = ({
@@ -35,7 +35,7 @@ const EventCard = ({
   onEdit,
   onMove,
   onArchive,
-  onToggle,
+  onToggleSelected,
 }: EventCardProps): JSX.Element => {
   const selectedRef = useScrollOnMount();
   const menuItems = getMenuItems(event, timeline, onEdit, onMove, onArchive);
@@ -43,8 +43,8 @@ const EventCard = ({
   const creatorMessage = getCreatorMessage(event);
 
   const handleEventClick = useCallback(() => {
-    onToggle?.(event, !isSelected);
-  }, [event, isSelected, onToggle]);
+    onToggleSelected?.(event, !isSelected);
+  }, [event, isSelected, onToggleSelected]);
 
   const handleAsideClick = useCallback((event: SyntheticEvent) => {
     event.stopPropagation();
