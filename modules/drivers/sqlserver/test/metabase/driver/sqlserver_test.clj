@@ -406,31 +406,25 @@
                    :order-by    [[:desc [:expression "user_id * product_id"]]]})
                  mt/rows)))))))
 
-(deftest aggregations-over-same-field-test
-  (mt/test-driver
-   :sqlserver
-   (testing "Compute aggregations over same field, use percentile aggregatinos with same name"
-     (let [result
-           (mt/run-mbql-query venues
-                              {:aggregation [[:aggregation-options
-                                              [:median [:field (mt/id :venues :price) nil]]
-                                              {:name "median of price over category"}]
-                                             [:aggregation-options
-                                              [:median [:field (mt/id :venues :price) nil]]
-                                              {:name "median of price over category"}]
-                                             [:aggregation-options
-                                              [:sum [:field (mt/id :venues :price) nil]]
-                                              {:name "sum of price over category"}]]
-                               :breakout    [[:field (mt/id :venues :category_id) nil]]
-                               :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]
-                               :limit 3})]
-       (is (= [[2 2.5 2.5 20.0] [3 2.0 2.0 4.0] [4 2.0 2.0 4.0]]
-              (mt/formatted-rows [int double double double] result)))))))
-
 (comment
   (mt/set-test-drivers! [:sqlserver :postgres])
   (metabase.test-runner/run [#'metabase.driver.sqlserver-test/simple-percentile-aggregations-test])
   )
+
+(deftest duplicate-name-aggregations-test
+  (mt/test-driver
+   :sqlserver
+   (testing "Aggregations (including percentile) with duplicate name should return correct results"
+     (is (= [[2 2.5 2.5 20] [3 2.0 2.0 4] [4 2.0 2.0 4]]
+            (-> (mt/run-mbql-query
+                 venues
+                 {:aggregation [[:aggregation-options [:median $price] {:name "A"}]
+                                [:aggregation-options [:percentile $price 0.5] {:name "A"}]
+                                [:aggregation-options [:sum $price] {:name "A"}]]
+                  :breakout    [$category_id]
+                  :order-by    [[:asc $category_id]]
+                  :limit       3})
+                mt/rows))))))
 
 ;; TODO -- add here all card scenarios
 (deftest percentile-aggregations-with-card-test
