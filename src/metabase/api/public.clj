@@ -417,14 +417,14 @@
   [uuid param-key :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (api.dashboard/chain-filter dashboard param-key query-params))))
+      (api.dashboard/param-values dashboard param-key query-params))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
   [uuid param-key query :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (api.dashboard/chain-filter dashboard param-key query-params query))))
+      (api.dashboard/param-values dashboard param-key query-params query))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
