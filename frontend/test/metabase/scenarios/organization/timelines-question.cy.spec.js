@@ -256,63 +256,62 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.findByText("Visualization").should("be.visible");
       cy.findByLabelText("star icon").should("be.visible");
-
-      // should hide individual events from chart if hidden in sidebar
-      cy.icon("calendar").click();
-      cy.findByTestId("toggle-event-visibility").within(() =>
-        cy.findByRole("checkbox").click(),
-      );
-
-      cy.icon("calendar").click();
-      cy.findByLabelText("star icon").should("not.exist");
     });
 
     it("should toggle individual event visibility", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "RC1", timestamp: "2018-10-20T00:00:00Z" },
-          { name: "RC2", timestamp: "2019-10-20T00:00:00Z", icon: "bell" },
+          { name: "RC1", timestamp: "2018-10-20T00:00:00Z", icon: "cloud" },
+          { name: "RC2", timestamp: "2019-10-20T00:00:00Z", icon: "balloons" },
         ],
       });
 
-      visitQuestionAdhoc({
-        dataset_query: {
-          type: "native",
-          native: {
-            query: "SELECT ID, CREATED_AT FROM ORDERS",
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "line",
-        visualization_settings: {
-          "graph.dimensions": ["CREATED_AT"],
-          "graph.metrics": ["ID"],
-        },
-      });
+      visitQuestion(3);
 
       cy.findByText("Visualization").should("be.visible");
-      cy.findByLabelText("star icon").should("be.visible");
+      cy.findByLabelText("cloud icon").should("be.visible");
+      cy.findByLabelText("balloons icon").should("be.visible");
 
       // should hide individual events from chart if hidden in sidebar
       cy.icon("calendar").click();
-      cy.findAllByLabelText("Toogle event visibility").each(element =>
+      cy.findAllByLabelText("Toggle event visibility").each(element =>
         element.click(),
       );
 
       cy.icon("calendar").click();
-      cy.findByLabelText("bell icon").should("not.exist");
-      cy.findByLabelText("star icon").should("not.exist");
+      cy.findByLabelText("cloud icon").should("not.exist");
+      cy.findByLabelText("balloons icon").should("not.exist");
 
       // should show individual events in chart again
       cy.icon("calendar").click();
-      cy.findAllByLabelText("Toogle event visibility").each(element =>
+      cy.findAllByLabelText("Toggle event visibility").each(element =>
         element.click(),
       );
 
       cy.icon("calendar").click();
-      cy.findByLabelText("bell icon").should("be.visible");
+      cy.findByLabelText("balloons icon").should("be.visible");
+      cy.findByLabelText("cloud icon").should("be.visible");
+
+      // show show a newly created event
+      cy.icon("calendar").click();
+      cy.button("Add an event").click();
+      cy.findByLabelText("Event name").type("RC3");
+      cy.findByLabelText("Date").type("10/20/2018");
+      cy.button("Create").click();
+      cy.wait("@createEvent");
+
+      cy.icon("calendar").click();
       cy.findByLabelText("star icon").should("be.visible");
+
+      // should then hide the newly created event
+      cy.icon("calendar").click();
+      cy.findAllByLabelText("Toggle event visibility").each(element =>
+        element.click(),
+      );
+
+      cy.icon("calendar").click();
+      cy.findByLabelText("star icon").should("not.exist");
     });
   });
 
