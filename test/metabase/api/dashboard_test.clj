@@ -2085,7 +2085,6 @@
                 :has_more_values false}
                (mt/user-http-request :rasta :get 200 url)))))))
 
-
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
     (letfn [(url [filtered filtering]
