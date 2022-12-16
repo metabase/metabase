@@ -348,16 +348,6 @@
   [_driver _unit x y]
   (hx/- (time-zoned-trunc :dd y) (time-zoned-trunc :dd x)))
 
-(defmethod sql.qp/datetime-diff [:oracle :hour]
-  [_driver _unit x y]
-  (let [days (hx/- (hx/cast :date y) (hx/cast :date x))]
-    (hx/* days 24)))
-
-(defmethod sql.qp/datetime-diff [:oracle :minute]
-  [_driver _unit x y]
-  (let [days (hx/- (hx/cast :date y) (hx/cast :date x))]
-    (hx/* days 1440)))
-
 (defn- utc-days-diff
   "Calculates the number of fractional days between `x` and `y`, converting to UTC if the
    args are timestamps with time zones. This is needed because some time zones don't have
