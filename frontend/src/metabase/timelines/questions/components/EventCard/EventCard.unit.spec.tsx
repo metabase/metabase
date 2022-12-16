@@ -1,5 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   createMockTimeline,
   createMockTimelineEvent,
@@ -43,7 +44,7 @@ describe("EventCard", () => {
 
     render(<EventCard {...props} />);
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    userEvent.click(screen.getByRole("checkbox"));
 
     expect(props.onToggleEventVisibility).toHaveBeenCalledWith(
       props.event,
