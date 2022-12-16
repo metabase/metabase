@@ -568,7 +568,12 @@ export const visibleTimelineEventIds = handleActions(
         state.filter(item => item !== events.id),
     },
     [SHOW_TIMELINE_EVENTS]: {
-      next: (state, { payload: events }) => [...state, events.id],
+      next: (state, { payload: events }) => {
+        if (Array.isArray(events)) {
+          return [...state, ...events.map(event => event.id)];
+        }
+        return [...state, events.id];
+      },
     },
     [RESET_QB]: { next: () => [] },
   },
