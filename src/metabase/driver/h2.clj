@@ -272,13 +272,15 @@
 (defmethod sql.qp/datetime-diff [:h2 :month]
   [_driver _unit x y]
   (hx/+ (datediff :month x y)
-          ;; datediff counts month boundaries not whole months, so we need to adjust
-          ;; if x<y but x>y in the month calendar then subtract one month
-          ;; if x>y but x<y in the month calendar then add one month
+        ;; datediff counts month boundaries not whole months, so we need to adjust
+        ;; if x<y but x>y in the month calendar then subtract one month
+        ;; if x>y but x<y in the month calendar then add one month
         (hsql/call
          :case
-         (hsql/call :and (hsql/call :< x y) (hsql/call :> (time-zoned-extract :day x) (time-zoned-extract :day y))) -1
-         (hsql/call :and (hsql/call :> x y) (hsql/call :< (time-zoned-extract :day x) (time-zoned-extract :day y))) 1
+         (hsql/call :and (hsql/call :< x y) (hsql/call :> (time-zoned-extract :day x) (time-zoned-extract :day y)))
+         -1
+         (hsql/call :and (hsql/call :> x y) (hsql/call :< (time-zoned-extract :day x) (time-zoned-extract :day y)))
+         1
          :else 0)))
 
 (defmethod sql.qp/datetime-diff [:h2 :week] [_driver _unit x y] (hx// (datediff :day x y) 7))
