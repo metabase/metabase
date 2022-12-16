@@ -256,76 +256,36 @@
   [driver [_ field]]
   (hsql/call :log10 (sql.qp/->honeysql driver field)))
 
-(defmethod sql.qp/->honeysql [:h2 :datetime-diff]
-  [driver [_ x y unit]]
-  (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)
-        disallowed-types (keep
-                          (fn [v]
-                            (some-> v
-                                    hx/type-info
-                                    hx/type-info->db-type
-                                    name
-                                    str/lower-case
-                                    #{"time"}))
-                          [x y])
-        _ (when (seq disallowed-types)
-            (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
-                                 (pr-str disallowed-types))
-                            {:found disallowed-types
-                             :type  qp.error-type/invalid-query})))
-        x (hx/->timestamp x)
-        y (hx/->timestamp y)]
-    (case unit
-      :year
-      (let [positive-diff (fn [a b] ; precondition: a <= b
-                            (hx/-
-                             (hx/- (extract :year b) (extract :year a))
-                             ;; decrement if a is later than b in the year calendar
-                             (hx/cast
-                              :integer
-                              (hsql/call
-                               :or
-                               (hsql/call :> (extract :month a) (extract :month b))
-                               (hsql/call
-                                :and
-                                (hsql/call := (extract :month a) (extract :month b))
-                                (hsql/call :> (extract :day a) (extract :day b)))))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defn- datediff
+  "Like H2's `datediff` function but accounts for timestamps with time zones."
+  [unit x y]
+  (hsql/call :datediff (hsql/raw (name unit)) (hx/->timestamp x) (hx/->timestamp y)))
 
-      :quarter
-      (let [positive-diff
-            (fn [a b]
-              (hx/cast :integer (hx/floor (hx// (hx/- (hsql/call :datediff (hsql/raw "month") a b)
-                                                      (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b))))
-                                                3))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defn- time-zoned-extract
+  "Like H2's extract but accounts for timestamps with time zones."
+  [unit x]
+  (extract unit (hx/->timestamp x)))
 
-      :month
-      (let [positive-diff (fn [a b]
-                            (hx/-
-                             (hsql/call :datediff (hsql/raw "month") a b)
-                             (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:h2 :year]    [driver _unit x y] (hx// (sql.qp/datetime-diff driver :month x y) 12))
+(defmethod sql.qp/datetime-diff [:h2 :quarter] [driver _unit x y] (hx// (sql.qp/datetime-diff driver :month x y) 3))
 
-      :week
-      (let [positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor (hx// (hsql/call :datediff (hsql/raw "day") a b) 7))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:h2 :month]
+  [_driver _unit x y]
+  (hx/+ (datediff :month x y)
+          ;; datediff counts month boundaries not whole months, so we need to adjust
+          ;; if x<y but x>y in the month calendar then subtract one month
+          ;; if x>y but x<y in the month calendar then add one month
+        (hsql/call
+         :case
+         (hsql/call :and (hsql/call :< x y) (hsql/call :> (time-zoned-extract :day x) (time-zoned-extract :day y))) -1
+         (hsql/call :and (hsql/call :> x y) (hsql/call :< (time-zoned-extract :day x) (time-zoned-extract :day y))) 1
+         :else 0)))
 
-      :day
-      (hsql/call :datediff (hsql/raw (name unit)) x y)
-
-      (:hour :minute :second)
-      (let [positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                              (hx// (hx/cast :float (hsql/call :datediff (hsql/raw "millisecond") a b)) ; timestampdiff returns integer, so cast to float
-                                    (case unit :hour 3600000 :minute 60000 :second 1000)))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x)))))))
+(defmethod sql.qp/datetime-diff [:h2 :week] [_driver _unit x y] (hx// (datediff :day x y) 7))
+(defmethod sql.qp/datetime-diff [:h2 :day]  [_driver _unit x y] (datediff :day x y))
+(defmethod sql.qp/datetime-diff [:h2 :hour] [_driver _unit x y] (hx// (datediff :millisecond x y) 3600000))
+(defmethod sql.qp/datetime-diff [:h2 :minute] [_driver _unit x y] (datediff :minute x y))
+(defmethod sql.qp/datetime-diff [:h2 :second] [_driver _unit x y] (datediff :second x y))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
