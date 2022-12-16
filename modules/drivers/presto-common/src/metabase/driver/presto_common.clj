@@ -12,6 +12,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx])
@@ -171,12 +172,15 @@
   [_]
   (hx/with-database-type-info :%now "timestamp with time zone"))
 
+(defn- date-diff [unit a b] (hsql/call :date_diff (hx/literal unit) a b))
+(defn- date-trunc [unit x] (hsql/call :date_trunc (hx/literal unit) x))
+
 (defmethod sql.qp/date [:presto-common :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:presto-common :minute]          [_ _ expr] (hsql/call :date_trunc (hx/literal :minute) expr))
+(defmethod sql.qp/date [:presto-common :minute]          [_ _ expr] (date-trunc :minute expr))
 (defmethod sql.qp/date [:presto-common :minute-of-hour]  [_ _ expr] (hsql/call :minute expr))
-(defmethod sql.qp/date [:presto-common :hour]            [_ _ expr] (hsql/call :date_trunc (hx/literal :hour) expr))
+(defmethod sql.qp/date [:presto-common :hour]            [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:presto-common :hour-of-day]     [_ _ expr] (hsql/call :hour expr))
-(defmethod sql.qp/date [:presto-common :day]             [_ _ expr] (hsql/call :date_trunc (hx/literal :day) expr))
+(defmethod sql.qp/date [:presto-common :day]             [_ _ expr] (date-trunc :day expr))
 (defmethod sql.qp/date [:presto-common :day-of-month]    [_ _ expr] (hsql/call :day expr))
 (defmethod sql.qp/date [:presto-common :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
 
@@ -186,17 +190,31 @@
 
 (defmethod sql.qp/date [:presto-common :week]
   [driver _ expr]
-  (sql.qp/adjust-start-of-week driver (partial hsql/call :date_trunc (hx/literal :week)) expr))
+  (sql.qp/adjust-start-of-week driver (partial date-trunc :week) expr))
 
-(defmethod sql.qp/date [:presto-common :month]           [_ _ expr] (hsql/call :date_trunc (hx/literal :month) expr))
+(defmethod sql.qp/date [:presto-common :month]           [_ _ expr] (date-trunc :month expr))
 (defmethod sql.qp/date [:presto-common :month-of-year]   [_ _ expr] (hsql/call :month expr))
-(defmethod sql.qp/date [:presto-common :quarter]         [_ _ expr] (hsql/call :date_trunc (hx/literal :quarter) expr))
+(defmethod sql.qp/date [:presto-common :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:presto-common :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
-(defmethod sql.qp/date [:presto-common :year]            [_ _ expr] (hsql/call :date_trunc (hx/literal :year) expr))
+(defmethod sql.qp/date [:presto-common :year]            [_ _ expr] (date-trunc :year expr))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-common :seconds]
   [_ _ expr]
   (hsql/call :from_unixtime expr))
+
+(defn ->date
+  "Same as [[hx/->date]], but truncates `x` to the date in the results time zone."
+  [x]
+  (hx/->date (hx/->AtTimeZone x (qp.timezone/results-timezone-id))))
+
+(defmethod sql.qp/datetime-diff [:presto-common :year]    [_driver _unit x y] (date-diff :year (->date x) (->date y)))
+(defmethod sql.qp/datetime-diff [:presto-common :quarter] [_driver _unit x y] (date-diff :quarter (->date x) (->date y)))
+(defmethod sql.qp/datetime-diff [:presto-common :month]   [_driver _unit x y] (date-diff :month (->date x) (->date y)))
+(defmethod sql.qp/datetime-diff [:presto-common :week]    [_driver _unit x y] (date-diff :week (->date x) (->date y)))
+(defmethod sql.qp/datetime-diff [:presto-common :day]     [_driver _unit x y] (date-diff :day (->date x) (->date y)))
+(defmethod sql.qp/datetime-diff [:presto-common :hour]    [_driver _unit x y] (date-diff :hour x y))
+(defmethod sql.qp/datetime-diff [:presto-common :minute]  [_driver _unit x y] (date-diff :minute x y))
+(defmethod sql.qp/datetime-diff [:presto-common :second]  [_driver _unit x y] (date-diff :second x y))
 
 (defmethod driver.common/current-db-time-date-formatters :presto-common
   [_]
