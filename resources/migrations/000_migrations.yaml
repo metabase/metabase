@@ -13076,7 +13076,7 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-028
       author: tsmacdonald
-      comment: Added 0.46.0 -- Join table connecting cards to dashboards/cards that need custom filter values from the card
+      comment: Added 0.46.0 -- Join table connecting cards to dashboards/cards's parameters that need custom filter values from the card
       changes:
         - createTable:
             tableName: values_card
