@@ -121,7 +121,6 @@ function FormField<Values>({
       align={align}
       standAloneLabel={standAloneLabel}
       horizontal={horizontal}
-      required={!!formField?.required}
     >
       {children}
     </FormFieldView>

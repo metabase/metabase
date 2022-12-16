@@ -59,7 +59,6 @@ type RenderSubmitProps = {
 
 export interface OptionalFormViewProps {
   submitTitle?: string;
-  submitButtonColor?: string;
   renderSubmit?: (props: RenderSubmitProps) => JSX.Element;
   className?: string;
   style?: React.CSSProperties;
