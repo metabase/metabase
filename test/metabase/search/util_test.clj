@@ -1,6 +1,7 @@
 (ns metabase.search.util-test
-  (:require [metabase.search.util :as search-util]
-            [clojure.test :refer :all]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.search.util :as search-util]))
 
 (deftest ^:parallel tokenize-test
   (testing "basic tokenization"

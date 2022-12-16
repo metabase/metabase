@@ -20,6 +20,7 @@
                                      Field
                                      FieldValues
                                      ModelAction
+                                     ParameterCard
                                      Pulse
                                      Revision
                                      Table
@@ -209,6 +210,79 @@
                      (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
                              (update :collection_id (partial = (u/the-id collection)))))))))))))
 
+(deftest dashboard-with-static-list-parameters-test
+  (testing "A dashboard that has parameters that has static values"
+    (mt/with-model-cleanup [Dashboard]
+      (let [dashboard (mt/user-http-request :rasta :post 200 "dashboard"
+                                            {:name       "a dashboard"
+                                             :parameters [{:id             "_value_",
+                                                           :name           "value",
+                                                           :type           "category",
+                                                           :source_type    "static-list"
+                                                           :source_options {"values" ["a" "b" "c"]}}
+                                                          {:id             "_value-with-label_",
+                                                           :name           "value_with_label",
+                                                           :type           "category",
+                                                           :source_type    "static-list"
+                                                           :source_options {"values" ["one" "two" "three"]}}]})]
+
+
+        (is (= [{:id             "_value_",
+                 :name           "value",
+                 :type           "category",
+                 :source_type    "static-list"
+                 :source_options {:values ["a" "b" "c"]}}
+                {:id             "_value-with-label_",
+                 :name           "value_with_label",
+                 :type           "category",
+                 :source_type    "static-list"
+                 :source_options {:values ["one" "two" "three"]}}]
+               (:parameters dashboard)))
+
+        (testing "make sure we could update and delete the params"
+          (let [dashboard (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
+                                                {:parameters [{:id             "_value_",
+                                                               :name           "value",
+                                                               :type           "category",
+                                                               :source_type    "static-list"
+                                                               :source_options {"values" ["a" "b" "c"]}}]})]
+
+
+            (is (= [{:id             "_value_",
+                     :name           "value",
+                     :type           "category",
+                     :source_type    "static-list"
+                     :source_options {:values ["a" "b" "c"]}}]
+                   (:parameters dashboard))))))
+
+      (testing "source-options must be a map with valid `:values` and sourcetype must be `card` or `static-list` must be a string"
+        (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+               (get-in (mt/user-http-request :rasta :post 400 "dashboard"
+                                             {:name       "a dashboard"
+                                              :parameters [{:id             "_value_",
+                                                            :name           "value",
+                                                            :type           "category",
+                                                            :source_type    "random-type"
+                                                            :source_options {"values" ["a" "b" "c"]}}]})
+                       [:errors :parameters])))
+        (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+               (get-in (mt/user-http-request :rasta :post 400 "dashboard"
+                                             {:name       "a dashboard"
+                                              :parameters [{:id             "_value_",
+                                                            :name           "value",
+                                                            :type           "category",
+                                                            :source_type    "static-list"
+                                                            :source_options []}]})
+                       [:errors :parameters])))
+        (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+               (get-in (mt/user-http-request :rasta :post 400 "dashboard"
+                                             {:name       "a dashboard"
+                                              :parameters [{:id             "_value_",
+                                                            :name           "value",
+                                                            :type           "category",
+                                                            :source_type    "static-list"
+                                                            :source_options {"values" [1 2 3]}}]})
+                       [:errors :parameters])))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
@@ -2059,6 +2133,51 @@
             (is (= {:values          ["Good"]
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
+
+(deftest static-values-test
+  (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:id             "abc"
+                                                             :type           "category"
+                                                             :name           "CATEGORY"
+                                                             :source_type    "static-list"
+                                                             :source_options {:values ["toucan" "pigeon" "other bird"]}}]}]
+    (testing "It uses static values stored directly in the parameters"
+      (let-url [url (chain-filter-values-url dashboard-id "abc")]
+        (is (= {:values          ["toucan" "pigeon" "other bird"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 url)))))
+    (testing "it only returns search matches"
+      (let-url [url (chain-filter-search-url dashboard-id "abc" "OUC")]
+        (is (= {:values          ["toucan"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 url)))))))
+
+(deftest parameter-values-from-card-test
+  (mt/with-temp* [Card          [{card-id :id}      {:database_id   (mt/id)
+                                                     :table_id      (mt/id :venues)
+                                                     :dataset_query (mt/native-query {:query "SELECT name FROM venues WHERE name LIKE '%Bar%'"})}]
+                  Dashboard     [{dashboard-id :id} {:parameters [{:id             "abc"
+                                                                   :type           "category"
+                                                                   :name           "CATEGORY"
+                                                                   :source_type    "card"
+                                                                   :source_options {:card_id card-id}}]}]
+                  ParameterCard [_                  {:card_id                   card-id
+                                                     :parameterized_object_id   dashboard-id
+                                                     :parameterized_object_type "dashboard"
+                                                     :parameter_id              "abc"}]]
+    (testing "It uses the results of the card's query execution"
+      (let-url [url (chain-filter-values-url dashboard-id "abc")]
+        (is (= {:values ["The Misfit Restaurant + Bar"
+                         "My Brother's Bar-B-Q"
+                         "Two Sisters Bar & Books"
+                         "Tanoshi Sushi & Sake Bar"
+                         "Barney's Beanery"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 url)))))
+    (testing "it only returns search matches"
+      (let-url [url (chain-filter-search-url dashboard-id "abc" "sushi")]
+        (is (= {:values          ["Tanoshi Sushi & Sake Bar"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 url)))))))
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
