@@ -229,7 +229,6 @@
               (= type :malli) (m/map-vals eval arg->schema))])
 
 (defn- parse-defendpoint-args [args]
-  (def args args)
   (let [parsed (s/conform ::defendpoint-args args)]
     (when (= parsed ::s/invalid)
       (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
