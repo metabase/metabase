@@ -66,7 +66,6 @@
     metabase.models.task_history.TaskHistoryInstance
     metabase.models.timeline_event.TimelineEventInstance
     metabase.models.user.UserInstance
-    metabase.models.values_card.ValuesCardInstance
     metabase.models.view_log.ViewLogInstance
     metabase_enterprise.sandbox.models.group_table_access_policy.GroupTableAccessPolicyInstance})
 
