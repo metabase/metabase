@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.query-processor :as qp]
-   [metabase.search.scoring :as search]
+   [metabase.search.util :as search]
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.models :as models]))
