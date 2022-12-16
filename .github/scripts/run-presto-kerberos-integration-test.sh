@@ -3,6 +3,7 @@
 set -eo pipefail
 
 # Need Java commands on $PATH, which apparently is not yet the case
+export JAVA_HOME="/usr/lib/jvm/msopenjdk-current"
 export PATH="$PATH:$JAVA_HOME/bin"
 
 # ensure java commmand is available

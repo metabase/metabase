@@ -3,7 +3,8 @@ runs:
   using: "composite"
   steps:
     - name: Get Cypress cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
+      if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: ~/.cache/Cypress
         key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
