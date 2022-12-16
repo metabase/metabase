@@ -20,7 +20,6 @@
                                      Field
                                      FieldValues
                                      ModelAction
-                                     ParameterCard
                                      Pulse
                                      Revision
                                      Table
@@ -2094,11 +2093,7 @@
                                                                    :type           "category"
                                                                    :name           "CATEGORY"
                                                                    :source_type    "card"
-                                                                   :source_options {:card_id card-id}}]}]
-                  ParameterCard [_                  {:card_id                   card-id
-                                                     :parameterized_object_id   dashboard-id
-                                                     :parameterized_object_type "dashboard"
-                                                     :parameter_id              "abc"}]]
+                                                                   :source_options {:card_id card-id}}]}]]
     (testing "It uses the results of the card's query execution"
       (let-url [url (chain-filter-values-url dashboard-id "abc")]
         (is (= {:values ["The Misfit Restaurant + Bar"
