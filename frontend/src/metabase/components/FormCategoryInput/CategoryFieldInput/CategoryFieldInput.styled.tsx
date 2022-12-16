@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import TokenField from "metabase/components/TokenField";
 
 import { color, darken } from "metabase/lib/colors";
 
@@ -20,7 +21,7 @@ export const StyledFieldValuesWidget = styled(FieldValuesWidget)`
     border-color: ${color("brand")};
   }
 
-  .TokenField-ItemWrapper {
+  ${TokenField.FieldItem} {
     background-color: transparent;
     color: ${color("text-dark")};
 
@@ -35,7 +36,7 @@ export const StyledFieldValuesWidget = styled(FieldValuesWidget)`
     }
   }
 
-  .TokenField-NewItemInputContainer {
+  ${TokenField.NewItemInputContainer} {
     height: 100%;
     padding: 12px;
     margin: 0;
