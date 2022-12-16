@@ -51,8 +51,6 @@ export function renderWithProviders(
     withSampleDatabase,
     withRouter = false,
     withDND = false,
-    withSettings = false,
-    withEmbedSettings = false,
     ...options
   } = {},
 ) {
@@ -63,8 +61,8 @@ export function renderWithProviders(
   const store = getStore(
     {
       currentUser: () => getUser(currentUser),
-      settings: withSettings ? () => createMockSettingsState() : undefined,
-      embed: withEmbedSettings ? () => createMockEmbedState() : undefined,
+      settings: () => createMockSettingsState(),
+      embed: () => createMockEmbedState(),
       ...reducers,
     },
     initialReduxState,
