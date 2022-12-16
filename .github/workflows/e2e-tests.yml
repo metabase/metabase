@@ -8,7 +8,6 @@ on:
       - "**.md"
       - ".circleci/**"
       - "**.unit.spec.*"
-      - "**_test.clj"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -55,7 +54,6 @@ jobs:
       MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
-      ELECTRON_EXTRA_LAUNCH_ARGS: '--remote-debugging-port=40500' # deploysentinel
     strategy:
       fail-fast: false
       matrix:
@@ -94,13 +92,6 @@ jobs:
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      openldap:
-        image: osixia/openldap:1.5.0
-        ports:
-          - "389:389"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
       postgres-sample:
         image: metabase/qa-databases:postgres-sample-12
         ports:
@@ -124,11 +115,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v3
-    - name: Set conditional ENVs
-      run: |
-        if [[ ${{ github.event.pull_request.base.ref }} != release* ]]; then
-          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
-        fi
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare JDK ${{ matrix.java-version }}
@@ -141,7 +127,7 @@ jobs:
     - name: Run Snowplow micro
       uses: ./.github/actions/run-snowplow-micro
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v2
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -154,7 +140,7 @@ jobs:
       if: matrix.edition == 'oss'
       run: |
         yarn run test-cypress-run \
-        --env grepTags=@OSS \
+        --env grepTags=@OSS,grepFilterSpecs=true \
         --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
       env:
         TERM: xterm
@@ -169,7 +155,7 @@ jobs:
         TERM: xterm
 
     - name: Upload Cypress Artifacts upon failure
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v2
       if: failure()
       with:
         name: cypress-recording-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
@@ -211,7 +197,7 @@ jobs:
     - name: Prepare Cypress environment
       uses: ./.github/actions/prepare-cypress
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v2
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
         name: metabase-${{ matrix.edition }}-uberjar
