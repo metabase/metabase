@@ -14,7 +14,7 @@
 (s/defn normalize :- s/Str
   "Normalize a `query` to lower-case."
   [query :- s/Str]
-  (str/lower-case query))
+  (str/lower-case (str/trim query)))
 
 (s/defn tokenize :- [s/Str]
   "Break a search `query` into its constituent tokens"
