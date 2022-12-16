@@ -23,6 +23,7 @@ function CustomFormSubmit(props: CustomFormSubmitProps) {
     pristine,
     handleSubmit,
     submitTitle,
+    submitButtonColor,
     renderSubmit,
     disablePristineSubmit,
   } = useForm();
@@ -34,6 +35,9 @@ function CustomFormSubmit(props: CustomFormSubmitProps) {
     (pristine && disablePristineSubmit)
   );
 
+  // allow us to change the color of the submit button
+  const submitButtonVariant = { [submitButtonColor ?? "primary"]: canSubmit };
+
   if (renderSubmit) {
     return renderSubmit({ title, canSubmit, handleSubmit });
   }
@@ -44,6 +48,7 @@ function CustomFormSubmit(props: CustomFormSubmitProps) {
       activeText={title}
       failedText={t`Failed`}
       successText={t`Success`}
+      {...submitButtonVariant}
       primary={canSubmit}
       disabled={!canSubmit}
       {...props}
