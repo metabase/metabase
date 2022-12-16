@@ -159,8 +159,8 @@ class View extends React.Component {
       xDomain,
       showTimelines,
       hideTimelines,
-      showTimelineEvents,
-      hideTimelineEvents,
+      showTimelineEvent,
+      hideTimelineEvent,
       selectTimelineEvents,
       deselectTimelineEvents,
       onOpenModal,
@@ -194,8 +194,8 @@ class View extends React.Component {
           xDomain={xDomain}
           onShowTimelines={showTimelines}
           onHideTimelines={hideTimelines}
-          onShowTimelineEvents={showTimelineEvents}
-          onHideTimelineEvents={hideTimelineEvents}
+          onShowTimelineEvent={showTimelineEvent}
+          onHideTimelineEvent={hideTimelineEvent}
           onSelectTimelineEvents={selectTimelineEvents}
           onDeselectTimelineEvents={deselectTimelineEvents}
           onOpenModal={onOpenModal}
@@ -223,8 +223,8 @@ class View extends React.Component {
       toggleSnippetSidebar,
       showTimelines,
       hideTimelines,
-      showTimelineEvents,
-      hideTimelineEvents,
+      showTimelineEvent,
+      hideTimelineEvent,
       selectTimelineEvents,
       deselectTimelineEvents,
       onCloseTimelines,
@@ -252,8 +252,8 @@ class View extends React.Component {
           {...this.props}
           onShowTimelines={showTimelines}
           onHideTimelines={hideTimelines}
-          onShowTimelineEvents={showTimelineEvents}
-          onHideTimelineEvents={hideTimelineEvents}
+          onShowTimelineEvent={showTimelineEvent}
+          onHideTimelineEvent={hideTimelineEvent}
           onSelectTimelineEvents={selectTimelineEvents}
           onDeselectTimelineEvents={deselectTimelineEvents}
           onClose={onCloseTimelines}
