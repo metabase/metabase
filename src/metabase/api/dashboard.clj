@@ -745,7 +745,9 @@
             (parameter-card/query-matches query))
    :has_more_values false}) ;; TODO: make more clever
 
-(defn- param-values
+(defn param-values
+  "Return appropriate values for the param keyed by `:source_type`. The values could come from a chain filter, a static
+  list, or the results of a card execution."
   ([dashboard param-key query-params]
    (param-values dashboard param-key query-params nil))
   ([dashboard param-key query-params query]
