@@ -154,7 +154,7 @@ class View extends React.Component {
       runQuestionQuery,
       updateQuestion,
       visibleTimelineIds,
-      hiddenTimelineEventIds,
+      visibleTimelineEventIds,
       selectedTimelineEventIds,
       xDomain,
       showTimelines,
@@ -189,7 +189,7 @@ class View extends React.Component {
           question={question}
           timelines={timelines}
           visibleTimelineIds={visibleTimelineIds}
-          hiddenTimelineEventIds={hiddenTimelineEventIds}
+          visibleTimelineEventIds={visibleTimelineEventIds}
           selectedTimelineEventIds={selectedTimelineEventIds}
           xDomain={xDomain}
           onShowTimelines={showTimelines}

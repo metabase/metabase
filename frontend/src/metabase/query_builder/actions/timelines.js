@@ -28,4 +28,5 @@ export const showTimelinesForCollection =
       : fetchedTimelines.filter(t => t.collection_id == null);
 
     dispatch(showTimelines(collectionTimelines));
+    dispatch(showTimelineEvents(collectionTimelines.flatMap(t => t.events)));
   };

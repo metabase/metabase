@@ -21,7 +21,7 @@ describe("TimelineList", () => {
 
 const getProps = (opts?: Partial<TimelineListProps>): TimelineListProps => ({
   timelines: [],
-  hiddenEventIds: [],
+  visibleEventIds: [],
   onToggleTimeline: jest.fn(),
   onEditEvent: jest.fn(),
   onArchiveEvent: jest.fn(),

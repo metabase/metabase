@@ -11,7 +11,7 @@ export interface TimelineSidebarProps {
   question: Question;
   timelines: Timeline[];
   visibleTimelineIds: number[];
-  hiddenTimelineEventIds: number[];
+  visibleTimelineEventIds: number[];
   selectedTimelineEventIds: number[];
   xDomain?: [Moment, Moment];
   onShowTimelines?: (timelines: Timeline[]) => void;
@@ -28,7 +28,7 @@ const TimelineSidebar = ({
   question,
   timelines,
   visibleTimelineIds,
-  hiddenTimelineEventIds,
+  visibleTimelineEventIds,
   selectedTimelineEventIds,
   xDomain,
   onOpenModal,
@@ -97,7 +97,7 @@ const TimelineSidebar = ({
         timelines={timelines}
         collectionId={question.collectionId()}
         visibleTimelineIds={visibleTimelineIds}
-        hiddenEventIds={hiddenTimelineEventIds}
+        visibleEventIds={visibleTimelineEventIds}
         selectedEventIds={selectedTimelineEventIds}
         onNewEvent={handleNewEvent}
         onEditEvent={handleEditEvent}
