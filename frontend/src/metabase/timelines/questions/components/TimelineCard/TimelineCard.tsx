@@ -107,6 +107,7 @@ const TimelineCard = ({
               timeline={timeline}
               isSelected={selectedEventIds.includes(event.id)}
               isVisible={visibleEventIds.includes(event.id)}
+              isTimelineVisible={isVisible}
               onEdit={onEditEvent}
               onMove={onMoveEvent}
               onArchive={onArchiveEvent}

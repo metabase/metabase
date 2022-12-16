@@ -23,6 +23,7 @@ import {
 export interface EventCardProps {
   event: TimelineEvent;
   timeline: Timeline;
+  isTimelineVisible?: boolean;
   isSelected?: boolean;
   isVisible: boolean;
   onEdit?: (event: TimelineEvent) => void;
@@ -35,6 +36,7 @@ export interface EventCardProps {
 const EventCard = ({
   event,
   timeline,
+  isTimelineVisible,
   isSelected,
   isVisible,
   onEdit,
@@ -71,7 +73,11 @@ const EventCard = ({
       onClick={handleEventClick}
     >
       <CardCheckboxContainer data-testid="toggle-event-visibility">
-        <Checkbox checked={isVisible} onClick={handleChangeVisibility} />
+        <Checkbox
+          checked={isVisible}
+          disabled={!isTimelineVisible}
+          onClick={handleChangeVisibility}
+        />
       </CardCheckboxContainer>
       <CardBody>
         <CardIconAndDateContainer>
