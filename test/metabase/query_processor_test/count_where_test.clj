@@ -59,9 +59,7 @@
                        [(long k) (long v)])))))))
 
 (deftest count-where-inside-expression-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :basic-aggregations :expressions)
-                         ;; Mongo does not support expressions inside aggregations #27275
-                         :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
     (is (= 48
            (->> {:aggregation [[:+
                                 [:/
