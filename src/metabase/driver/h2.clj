@@ -255,6 +255,77 @@
   [driver [_ field]]
   (hsql/call :log10 (sql.qp/->honeysql driver field)))
 
+(defmethod sql.qp/->honeysql [:h2 :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [v]
+                            (some-> v
+                                    hx/type-info
+                                    hx/type-info->db-type
+                                    name
+                                    str/lower-case
+                                    #{"time"}))
+                          [x y])
+        _ (when (seq disallowed-types)
+            (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                                 (pr-str disallowed-types))
+                            {:found disallowed-types
+                             :type  qp.error-type/invalid-query})))
+        x (hx/->timestamp x)
+        y (hx/->timestamp y)]
+    (case unit
+      :year
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             (hx/- (extract :year b) (extract :year a))
+                             ;; decrement if a is later than b in the year calendar
+                             (hx/cast
+                              :integer
+                              (hsql/call
+                               :or
+                               (hsql/call :> (extract :month a) (extract :month b))
+                               (hsql/call
+                                :and
+                                (hsql/call := (extract :month a) (extract :month b))
+                                (hsql/call :> (extract :day a) (extract :day b)))))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :quarter
+      (let [positive-diff
+            (fn [a b]
+              (hx/cast :integer (hx/floor (hx// (hx/- (hsql/call :datediff (hsql/raw "month") a b)
+                                                      (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b))))
+                                                3))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :month
+      (let [positive-diff (fn [a b]
+                            (hx/-
+                             (hsql/call :datediff (hsql/raw "month") a b)
+                             (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :week
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor (hx// (hsql/call :datediff (hsql/raw "day") a b) 7))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :day
+      (hsql/call :datediff (hsql/raw (name unit)) x y)
+
+      (:hour :minute :second)
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (hx/cast :float (hsql/call :datediff (hsql/raw "millisecond") a b)) ; timestampdiff returns integer, so cast to float
+                                    (case unit :hour 3600000 :minute 60000 :second 1000)))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x)))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
