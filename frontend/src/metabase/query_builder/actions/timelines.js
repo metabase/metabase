@@ -37,8 +37,6 @@ export const showTimelinesForCollection =
 
     dispatch(showTimelines(collectionTimelines));
     dispatch(
-      initializeVisibleTimelineEvents(
-        collectionTimelines.flatMap(t => t.events),
-      ),
+      initializeVisibleTimelineEvents(fetchedTimelines.flatMap(t => t.events)),
     );
   };
