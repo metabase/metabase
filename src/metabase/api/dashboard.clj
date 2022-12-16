@@ -738,7 +738,7 @@
   [{source-options :source_options :as _param} query]
   (when-let [values (:values source-options)]
     {:values (if query
-               (paramter-card/query-matches values query)
+               (parameter-card/query-matches query values)
                values)
      :has_more_values false}))
 
@@ -762,10 +762,10 @@
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
-     (case (:source_type param)
-       "static-list" (static-parameter-values param queyr)
+     (case #p (:source_type param)
+       "static-list" (static-parameter-values param query)
        "card"        (parameter-card/values-for-dashboard dashboard param-key query)
-       (chain-filter dashboard param-key query-params query)))))
+       (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
