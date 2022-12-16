@@ -560,15 +560,15 @@ export const visibleTimelineIds = handleActions(
   [],
 );
 
-export const hiddenTimelineEventIds = handleActions(
+export const visibleTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
     [HIDE_TIMELINE_EVENTS]: {
-      next: (state, { payload: events }) => [...state, events.id],
-    },
-    [SHOW_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) =>
         state.filter(item => item !== events.id),
+    },
+    [SHOW_TIMELINE_EVENTS]: {
+      next: (state, { payload: events }) => [...state, events.id],
     },
     [RESET_QB]: { next: () => [] },
   },

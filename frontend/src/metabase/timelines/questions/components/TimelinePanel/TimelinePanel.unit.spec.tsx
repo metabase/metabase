@@ -46,7 +46,7 @@ describe("TimelinePanel", () => {
 
 const getProps = (opts?: Partial<TimelinePanelProps>): TimelinePanelProps => ({
   timelines: [],
-  hiddenEventIds: [],
+  visibleEventIds: [],
   collection: createMockCollection(),
   onNewEvent: jest.fn(),
   onEditEvent: jest.fn(),
