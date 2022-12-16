@@ -70,7 +70,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [materialize-views-learn]: https://www.metabase.com/learn/administration/making-dashboards-faster.html#materialize-views-create-new-tables-to-store-query-results
 [model-button-image]: https://www.metabase.com/learn/images/models/model-icon.png
 [model-docs]: ../data-modeling/models.md
-[nested-query-settings-docs]: ../configuring-metabase/settings.md#enabled-nested-queries
+[nested-query-settings-docs]: ../configuring-metabase/settings.md#enable-nested-queries
 [replicate-database-learn]: https://www.metabase.com/learn/administration/making-dashboards-faster.html#replicate-your-database
 [sql-explain-learn]: https://www.metabase.com/learn/sql-questions/sql-best-practices.html#explain
 [summary-tables-learn]: https://www.metabase.com/learn/administration/making-dashboards-faster.html#aggregate-data-ahead-of-time-with-summary-tables
