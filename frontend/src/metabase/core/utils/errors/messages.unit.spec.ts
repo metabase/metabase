@@ -57,6 +57,15 @@ describe("core/utils/errors/messages", () => {
       expect(message).toEqual("Error from error.data");
     });
 
+    it("handles empty data object", () => {
+      const response = {
+        data: {},
+        message: "Error from error.message",
+      };
+      const message = getResponseErrorMessage(response);
+      expect(message).toBe("Error from error.message");
+    });
+
     it("ignores field-specific errors", () => {
       const response = {
         data: {

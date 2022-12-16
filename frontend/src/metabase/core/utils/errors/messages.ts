@@ -4,7 +4,21 @@ export function getResponseErrorMessage(
   error: GenericErrorResponse,
 ): string | undefined {
   if (typeof error.data === "object") {
-    return error.data?.message ?? error.data?.errors?._error;
+    if (typeof error.data?.message === "string") {
+      return error.data.message;
+    }
+    if (typeof error.data?.errors?._error === "string") {
+      return error.data.errors?._error;
+    }
   }
-  return error.message ?? error.data;
+
+  if (error.message) {
+    return error.message;
+  }
+
+  if (typeof error.data === "string") {
+    return error.data;
+  }
+
+  return undefined;
 }
