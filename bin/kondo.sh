@@ -8,7 +8,9 @@ set -ex
 
 kondoCmd="${KONDO_CMD:-docker run --rm --volume $PWD:/work --workdir /work cljkondo/clj-kondo:2022.08.03 clj-kondo}"
 
+# Copy over Kondo configs from libraries we use.
 $kondoCmd --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)" --skip-lint --parallel
 
+# Run Kondo against all of our Clojure files in the various directories they might live.
 $kondoCmd --config .clj-kondo/config.edn --config-dir .clj-kondo --parallel --lint src test \
     $(find shared modules/drivers enterprise/backend -maxdepth 2 -type d \( -name src -o -name test \))
