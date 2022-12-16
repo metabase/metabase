@@ -349,8 +349,8 @@
                        :collection_id          true
                        :collection             true
                        :creator_id             (mt/user->id :rasta)
-                       :parameters             [{:id "abc123", :name "test", :type "date", :source_type "field"}]
-                       :parameter_mappings     [{:parameter_id "abc123", :card_id 10, :source_type "field",
+                       :parameters             [{:id "abc123", :name "test", :type "date"}]
+                       :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
                                                  :target ["dimension" ["template-tags" "category"]]}]
                        :dataset_query          true
                        :is_write               false

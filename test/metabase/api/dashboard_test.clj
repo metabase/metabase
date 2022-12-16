@@ -165,7 +165,7 @@
                     dashboard-defaults
                     {:name           test-dashboard-name
                      :creator_id     (mt/user->id :rasta)
-                     :parameters     [{:id "abc123", :name "test", :type "date", :source_type "field"}]
+                     :parameters     [{:id "abc123", :name "test", :type "date"}]
                      :updated_at     true
                      :created_at     true
                      :collection_id  true
@@ -174,7 +174,7 @@
                      :last-edit-info {:timestamp true :id true :first_name "Rasta"
                                       :last_name "Toucan" :email "rasta@metabase.com"}})
                    (-> (mt/user-http-request :rasta :post 200 "dashboard" {:name          test-dashboard-name
-                                                                           :parameters    [{:id "abc123", :name "test", :type "date", :source_type "field"}]
+                                                                           :parameters    [{:id "abc123", :name "test", :type "date"}]
                                                                            :cache_ttl     1234
                                                                            :is_app_page   true
                                                                            :collection_id (u/the-id collection)})
@@ -347,7 +347,6 @@
                                                          :card_id            card-id
                                                          :parameter_mappings [{:card_id      1
                                                                                :parameter_id "foo"
-                                                                               :source_type  "field"
                                                                                :target       [:dimension [:field field-id nil]]}]}]]
         (with-dashboards-in-readable-collection [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
@@ -375,7 +374,6 @@
                                                          :collection_authority_level nil
                                                          :parameter_mappings         [{:card_id      1
                                                                                        :parameter_id "foo"
-                                                                                       :source_type  "field"
                                                                                        :target       ["dimension" ["field" field-id nil]]}]
                                                          :visualization_settings     {}
                                                          :card                       (merge api.card-test/card-defaults-no-hydrate
@@ -1102,33 +1100,30 @@
   (testing "POST /api/dashboard/:id/copy"
     (testing "Ensure dashboard cards and parameters are copied (#23685)"
       (mt/with-temp* [Dashboard     [{dashboard-id :id}  {:name       "Test Dashboard"
-                                                          :parameters [{:name        "Category ID"
-                                                                        :slug        "category_id"
-                                                                        :id          "_CATEGORY_ID_"
-                                                                        :type        :category
-                                                                        :source_type "field"}]}]
+                                                          :parameters [{:name "Category ID"
+                                                                        :slug "category_id"
+                                                                        :id   "_CATEGORY_ID_"
+                                                                        :type :category}]}]
                       Card          [{card-id :id}]
                       Card          [{card-id2 :id}]
                       DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id,
                                                         :card_id            card-id
                                                         :parameter_mappings [{:parameter_id "random-id"
                                                                               :card_id      card-id
-                                                                              :target       [:dimension [:field (mt/id :venues :name) nil]]
-                                                                              :source_type  "field"}]}]
+                                                                              :target       [:dimension [:field (mt/id :venues :name) nil]]}]}]
                       DashboardCard [_ {:dashboard_id dashboard-id, :card_id card-id2}]]
         (let [copy-id (u/the-id (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dashboard-id)))]
           (try
             (is (= 2
                    (count (db/select-ids DashboardCard, :dashboard_id copy-id))))
-            (is (= [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category :source_type "field"}]
+            (is (= [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
                    (db/select-one-field :parameters Dashboard :id copy-id)))
             (is (= [{:parameter_id "random-id"
                      :card_id      card-id
-                     :source_type  "field"
                      :target       [:dimension [:field (mt/id :venues :name) nil]]}]
                    (db/select-one-field :parameter_mappings DashboardCard :id dashcard-id)))
-            (finally
-              (db/delete! Dashboard :id copy-id))))))))
+           (finally
+             (db/delete! Dashboard :id copy-id))))))))
 
 (deftest copy-dashboard-into-correct-collection-test
   (testing "POST /api/dashboard/:id/copy"
@@ -1162,7 +1157,7 @@
                 :col                    4
                 :row                    4
                 :series                 []
-                :parameter_mappings     [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo", :source_type "field"}]
+                :parameter_mappings     [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
                 :visualization_settings {}
                 :created_at             true
                 :updated_at             true}
@@ -1182,7 +1177,7 @@
                  :size_y                 2
                  :col                    4
                  :row                    4
-                 :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo", :source_type "field"}]
+                 :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
                  :visualization_settings {}}]
                (map (partial into {})
                     (db/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
@@ -1225,16 +1220,15 @@
 (defn do-with-add-card-parameter-mapping-permissions-fixtures [f]
   (mt/with-temp-copy-of-db
     (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-    (mt/with-temp* [Dashboard     [{dashboard-id :id} {:parameters [{:name        "Category ID"
-                                                                     :slug        "category_id"
-                                                                     :id          "_CATEGORY_ID_"
-                                                                     :type        "category"}]}]
+    (mt/with-temp* [Dashboard     [{dashboard-id :id} {:parameters [{:name "Category ID"
+                                                                     :slug "category_id"
+                                                                     :id   "_CATEGORY_ID_"
+                                                                     :type "category"}]}]
                     Card          [{card-id :id} {:database_id   (mt/id)
                                                   :table_id      (mt/id :venues)
                                                   :dataset_query (mt/mbql-query venues)}]]
       (let [mappings [{:parameter_id "_CATEGORY_ID_"
-                       :target       [:dimension [:field (mt/id :venues :category_id) nil]]
-                       :source_type "filter"}]]
+                       :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]]
         ;; TODO -- check series as well?
         (f {:dashboard-id dashboard-id
             :card-id      card-id
@@ -1289,8 +1283,7 @@
                                                   :parameter_mappings mappings}]
        (let [dashcard-info     (select-keys dashboard-card [:id :size_x :size_y :row :col :parameter_mappings])
              new-mappings      [{:parameter_id "_CATEGORY_ID_"
-                                 :target       [:dimension [:field (mt/id :venues :price) nil]]
-                                 :source_type  "field"}]
+                                 :target       [:dimension [:field (mt/id :venues :price) nil]]}]
              new-dashcard-info (assoc dashcard-info :size_x 1000)]
          (f {:dashboard-id           dashboard-id
              :card-id                card-id
