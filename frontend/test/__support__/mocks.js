@@ -17,6 +17,7 @@ global.window.ResizeObserver = class ResizeObserver {
 jest.mock("metabase/lib/analytics");
 
 jest.mock("ace/ace", () => {}, { virtual: true });
+jest.mock("ace/ext-searchbox", () => {}, { virtual: true });
 jest.mock("ace/mode-plain_text", () => {}, { virtual: true });
 jest.mock("ace/mode-javascript", () => {}, { virtual: true });
 jest.mock("ace/mode-json", () => {}, { virtual: true });
