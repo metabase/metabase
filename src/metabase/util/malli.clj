@@ -3,12 +3,11 @@
   (:require
    [clojure.core :as core]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
    [malli.experimental :as mx]
-   [malli.instrument :as minst]
-   [metabase.util :as u]
-   [ring.util.codec :as codec]))
+   [malli.instrument :as minst]))
 
 (core/defn- explain-fn-fail!
   [type data]
@@ -144,8 +143,8 @@
   (reset! (:*missing? ctx) true)
   (str "Indescribable_Malli_Schema [ " (pr-str (or (:type x) x)) " ]"))
 
-(core/defn ->malli-link [schema]
-  (str "https://malli.io/?schema=" (codec/url-encode (u/pprint-to-str schema))))
+(defmacro sanitize [schema]
+  (walk/postwalk-replace {'int? :int 'pos-int? :pos-int 'keyword? :keyword} schema))
 
 ;; n.b. this is not clojure.core/defn
 (defn describe :- [:map [:missing? :boolean] [:description :string]]
@@ -155,32 +154,4 @@
         ast (mc/ast schema)
         raw-output (describe* ast {:indent 0 :*missing? *missing?})]
     {:missing? @*missing?
-     :link (->malli-link schema)
      :description (str/trim (str "A " raw-output))}))
-
-(println (:description (describe [:map
-                                  [:revision int?]
-                                  [:groups
-                                   [:map-of
-                                    [pos-int? {:title "Group ID"}]
-                                    [:map-of
-                                     [:or
-                                      [pos-int? {:title "Collection ID"}]
-                                      [:and keyword? [:= :root]]]
-                                     [:and keyword? [:enum :write :read :none]]]]]])))
-
-
-"
-A map with keys: [
-    :revision => integer
-    :groups => map of [
-        positive integer  (title: Group ID)
-        =>
-        map of [
-            or ( positive integer  (title: Collection ID), and ( keyword, value that equals :root ) )
-            =>
-            and ( keyword, value that is one of: :write :read or :none )
-             ]
-         ]
-    ]
-"
