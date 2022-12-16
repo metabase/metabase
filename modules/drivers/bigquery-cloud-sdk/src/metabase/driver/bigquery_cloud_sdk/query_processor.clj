@@ -553,80 +553,69 @@
     (cond->> ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)
       t (->temporal-type t))))
 
+(defn- datetime-diff-check-args
+  "Validates the types of the datetime args to a `datetime-diff` clause.
+   This is exactly the same as [[sql.qp/datetime-diff-check-args]] except it uses [[temporal-type]]`
+   to get the type of each arg, not [[hx/database-type]], which is needed for bigquery."
+  [x y]
+  (doseq [arg [x y]
+          :let [db-type (some-> (temporal-type arg) name)]
+          :when (and db-type (not (re-find #"^(?i)(timestamp|date)" db-type)))]
+    (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
+                         (pr-str db-type))
+                    {:found db-type
+                     :type  qp.error-type/invalid-query}))))
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetime-diff]
   [driver [_ x y unit]]
-  (let [x               (sql.qp/->honeysql driver x)
-        y               (sql.qp/->honeysql driver y)
-        disallowed-types (keep
-                          (fn [x]
-                            (when-not (contains? #{:timestamp :date :datetime} (temporal-type x))
-                              (or (some-> (temporal-type x) name)
-                                  (hx/type-info->db-type (hx/type-info x)))))
-                          [x y])
-        x                (hx/->timestamp x)
-        y                (hx/->timestamp y)]
-    (when (seq disallowed-types)
-      (throw
-       (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
-                     (pr-str disallowed-types))
-                {:allowed #{:timestamp :datetime :date}
-                 :found   disallowed-types
-                 :type    qp.error-type/invalid-query})))
-    (case unit
-      :year
-      (let [positive-diff (fn [a b] ; precondition: a <= b
-                            (hx/-
-                             (hx/- (extract :year b) (extract :year a))
-                             ;; decrement if a is later than b in the year calendar
-                             (hx/cast
-                              :integer
-                              (hsql/call
-                               :or
-                               (hsql/call :> (extract :month a) (extract :month b))
-                               (hsql/call
-                                :and
-                                (hsql/call := (extract :month a) (extract :month b))
-                                (hsql/call :> (extract :day a) (extract :day b)))))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        _ (datetime-diff-check-args x y)]
+    (sql.qp/datetime-diff driver unit x y)))
 
-      :quarter
-      (let [positive-diff (fn [a b] ; precondition: a <= b
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                               (hx//
-                                (hx/-
-                                 ;; timestamp_diff doesn't support months, so convert to datetime to use datetime_diff
-                                 (hsql/call :datetime_diff (hx/->datetime b) (hx/->datetime a) (hsql/raw "month"))
-                                 (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b))))
-                                3))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defn- timestamp-diff [unit x y]
+  (hsql/call :timestamp_diff
+             (->temporal-type :timestamp y)
+             (->temporal-type :timestamp x)
+             (hsql/raw (name unit))))
 
-      :month
-      (let [positive-diff (fn [a b] ; precondition: a <= b
-                            (hx/-
-                             ;; timestamp_diff doesn't support months, so convert to datetime to use datetime_diff
-                             (hsql/call :datetime_diff (hx/->datetime b) (hx/->datetime a) (hsql/raw "month"))
-                             (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :year]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 12))
 
-      :week
-      (let [x (trunc :day x)
-            y (trunc :day y)
-            positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                              (hx// (hsql/call :timestamp_diff b a (hsql/raw "day")) 7))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :quarter]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 3))
 
-      :day
-      (let [x (trunc :day x)
-            y (trunc :day y)]
-        (hsql/call :timestamp_diff y x (hsql/raw (name unit))))
+(defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :month]
+  [_driver _unit x y]
+  ;; Only bigquery's `datetime_diff` supports months. We need to convert args to datetime to use it.
+  ;; Also `<` and `>` comparisons can only be made on the same type.
+  (let [x' (->temporal-type :datetime x)
+        y' (->temporal-type :datetime y)]
+    (hx/+ (hsql/call :datetime_diff y' x' (hsql/raw "month"))
+          ;; datetime_diff counts month boundaries not whole months, so we need to adjust
+          ;; if x<y but x>y in the month calendar then subtract one month
+          ;; if x>y but x<y in the month calendar then add one month
+          (hsql/call
+           :case
+           (hsql/call :and (hsql/call :< x' y') (hsql/call :> (extract :day x) (extract :day y)))
+           -1
+           (hsql/call :and (hsql/call :> x' y') (hsql/call :< (extract :day x) (extract :day y)))
+           1
+           :else 0))))
 
-      (:hour :minute :second)
-      (hsql/call :timestamp_diff y x (hsql/raw (name unit))))))
+(defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :week]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :day x y) 7))
+
+(defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :day]
+  [_driver _unit x y]
+  (timestamp-diff :day (trunc :day x) (trunc :day y)))
+
+(defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :hour] [_driver _unit x y] (timestamp-diff :hour x y))
+(defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :minute] [_driver _unit x y] (timestamp-diff :minute x y))
+(defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :second] [_driver _unit x y] (timestamp-diff :second x y))
 
 (defmethod driver/escape-alias :bigquery-cloud-sdk
   [driver s]

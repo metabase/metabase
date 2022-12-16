@@ -247,6 +247,8 @@ export function constrainToScreen(element, direction, padding) {
   return false;
 }
 
+const isAbsoluteUrl = url => url.startsWith("/");
+
 function getWithSiteUrl(url) {
   const siteUrl = MetabaseSettings.get("site-url");
   return url.startsWith("/") ? siteUrl + url : url;
@@ -302,12 +304,17 @@ export function open(
     ...options
   } = {},
 ) {
+  const isOriginalUrlAbsolute = isAbsoluteUrl(url);
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
   } else if (isSameOrigin(url)) {
-    openInSameOrigin(url, getLocation(url));
+    if (isOriginalUrlAbsolute) {
+      clickLink(url, false);
+    } else {
+      openInSameOrigin(url, getLocation(url));
+    }
   } else {
     openInSameWindow(url);
   }

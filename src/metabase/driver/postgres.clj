@@ -322,33 +322,19 @@
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]
-  (hx/cast
-   :integer
-   (hsql/call
-    :extract
-    :year
-    (hsql/call
-     :age
-     (date-trunc :day y)
-     (date-trunc :day x)))))
+  (let [interval (hsql/call :age (date-trunc :day y) (date-trunc :day x))]
+    (hx/->integer (hsql/call :extract :year interval))))
 
 (defmethod sql.qp/datetime-diff [:postgres :quarter]
   [driver _unit x y]
   (hx// (sql.qp/datetime-diff driver :month x y) 3))
 
 (defmethod sql.qp/datetime-diff [:postgres :month]
-  [driver _unit x y]
-  (hx/cast
-   :integer
-   (hx/+
-    (hx/* 12 (sql.qp/datetime-diff driver :year x y))
-    (hsql/call
-     :extract
-     :month
-     (hsql/call
-      :age
-      (date-trunc :day y)
-      (date-trunc :day x))))))
+  [_driver _unit x y]
+  (let [interval           (hsql/call :age (date-trunc :day y) (date-trunc :day x))
+        year-diff          (hsql/call :extract :year interval)
+        month-of-year-diff (hsql/call :extract :month interval)]
+    (hx/->integer (hx/+ month-of-year-diff (hx/* year-diff 12)))))
 
 (defmethod sql.qp/datetime-diff [:postgres :week]
   [driver _unit x y]
@@ -356,31 +342,21 @@
 
 (defmethod sql.qp/datetime-diff [:postgres :day]
   [_driver _unit x y]
-  (hx/cast
-   :integer
-   (hsql/call
-    :extract
-    :day
-    (hx/-
-     (date-trunc :day y)
-     (date-trunc :day x)))))
+  (let [interval (hx/- (date-trunc :day y) (date-trunc :day x))]
+    (hx/->integer (hsql/call :extract :day interval))))
 
-(defn- sub-day-diff-helper
-  [unit x y]
-  (let [ex            (extract :epoch x)
-        ey            (extract :epoch y)
-        positive-diff (fn [a b]
-                        (hx/cast
-                         :integer
-                         (hx/floor
-                          (if (= unit :second)
-                            (hx/- b a)
-                            (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))))]
-    (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex)))))
+(defmethod sql.qp/datetime-diff [:postgres :hour]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :second x y) 3600))
 
-(defmethod sql.qp/datetime-diff [:postgres :hour]   [_driver _unit x y] (sub-day-diff-helper :hour x y))
-(defmethod sql.qp/datetime-diff [:postgres :minute] [_driver _unit x y] (sub-day-diff-helper :minute x y))
-(defmethod sql.qp/datetime-diff [:postgres :second] [_driver _unit x y] (sub-day-diff-helper :second x y))
+(defmethod sql.qp/datetime-diff [:postgres :minute]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :second x y) 60))
+
+(defmethod sql.qp/datetime-diff [:postgres :second]
+  [_driver _unit x y]
+  (let [seconds (hx/- (extract :epoch y) (extract :epoch x))]
+    (hx/->integer (hsql/call :trunc seconds))))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
   hformat/ToSql
