@@ -315,10 +315,7 @@
 
 (defmethod driver/table-rows-sample :mongo
   [_driver table fields rff opts]
-  (let [mongo-opts {;; setting :truncation-start is needed because of a bug
-                    ;; in our mongo drivers handling of :substring (#27270)
-                    :truncation-start 0
-                    :limit metadata-queries/nested-field-sample-limit
+  (let [mongo-opts {:limit metadata-queries/nested-field-sample-limit
                     :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
     (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts))))
 
