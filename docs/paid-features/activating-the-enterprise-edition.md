@@ -53,10 +53,10 @@ Depending on your organization’s setup, you may need to take additional config
 
 ## IP addresses to whitelist
 
-If you're hosting Metabase behind a firewall, you'll need to whitelist these IP addresses to ensure your token checks can phone home to verify your license.
+If you're hosting Metabase behind a firewall that blocks outgoing connections, you'll need to allow these IP addresses to ensure access to `token-check.metabase.com` to verify your license.
 
 ```
-44.212.138.188
 23.23.111.13
 44.199.18.109
+44.212.138.188
 ```
