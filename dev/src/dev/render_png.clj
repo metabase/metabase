@@ -6,7 +6,6 @@
             [hiccup.core :as hiccup]
             [metabase.models.card :as card]
             [metabase.models.dashboard :as dashboard]
-            [metabase.models.dashboard-card :as dashcard]
             [metabase.models.user :as user]
             [metabase.pulse :as pulse]
             [metabase.pulse.markdown :as markdown]
@@ -125,10 +124,10 @@
    :border-radius "8px"
    :margin        "10px"
    :padding       "10px"
-   :left          (str (* 2 (+ (* dashgrid-x (or col 0)) (+ 5 1))) "px")
-   :top           (str (* 2 (+ (* dashgrid-y (or row 0)) (+ 5 1))) "px")
-   :width         (str (* 2 (- (* dashgrid-x (or size_x 5)) (+ 40 2))) "px")
-   :height        (str (* 2 (- (* dashgrid-y (or size_y 4)) (+ 40 2))) "px")})
+   :left          (str (* 2 (+ (* dashgrid-x (or col 0)) 3)) "px")
+   :top           (str (* 2 (+ (* dashgrid-y (or row 0)) 3)) "px")
+   :width         (str (* 2 (- (* dashgrid-x (or size_x 5)) 21)) "px")
+   :height        (str (* 2 (- (* dashgrid-y (or size_y 4)) 21)) "px")})
 
 (defn render-dashboard-to-png
   [dashboard-id]
@@ -153,7 +152,7 @@
                                                                  :height           (str (* 2 height) "px")
                                                                  :background-color "#f9fbfc"})}]))
         png-bytes         (-> {:content render :attachments nil} (render-html-to-png (* width 4)))
-        tmp-file          (java.io.File/createTempFile "card-png" ".png")]
+        tmp-file          (java.io.File/createTempFile "dashboard-png" ".png")]
     (with-open [w (java.io.FileOutputStream. tmp-file)]
       (.write w ^bytes png-bytes))
     (.deleteOnExit tmp-file)
