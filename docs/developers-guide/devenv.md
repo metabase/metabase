@@ -208,8 +208,6 @@ Some drivers require additional environment variables when testing since they ar
 
 ### Running the linters
 
-`clj-kondo` must be [installed separately](https://github.com/clj-kondo/clj-kondo/blob/master/doc/install.md).
-
 ```
 # Run Eastwood
 clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
@@ -217,8 +215,8 @@ clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
 # Run the namespace checker
 clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
 
-# Run clj-kondo
-clj-kondo --parallel --lint src shared/src enterprise/backend/src --config .clj-kondo/config.edn
+# Run clj-kondo (uses Docker)
+bin/kondo.sh
 ```
 
 ## Continuous integration
