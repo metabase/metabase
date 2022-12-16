@@ -1,15 +1,20 @@
 import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { State } from "metabase-types/store";
+
 import HelpCard from "metabase/components/HelpCard";
 import { SetupCardContainer } from "metabase/setup/components/SetupCardContainer";
+
 import MetabaseSettings from "metabase/lib/settings";
+import { getSetting } from "metabase/selectors/settings";
+
+import type { State } from "metabase-types/store";
+
 import { COMPLETED_STEP } from "../../constants";
 import { isStepActive } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
-  isHosted: state.settings.values["is-hosted?"],
+  isHosted: getSetting(state, "is-hosted?"),
   isStepActive: isStepActive(state, COMPLETED_STEP),
 });
 

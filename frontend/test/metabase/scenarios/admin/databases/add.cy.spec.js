@@ -55,10 +55,7 @@ describe("scenarios > admin > databases > add", () => {
     cy.onlyOn(isEE);
 
     cy.visit("/admin/databases/create");
-    cy.contains("Database type")
-      .closest(".Form-field")
-      .findByTestId("select-button")
-      .click();
+    cy.findByLabelText("Database type").click();
     popover().within(() => {
       cy.findByText("Oracle");
       cy.findByText("Vertica");
@@ -106,31 +103,6 @@ describe("scenarios > admin > databases > add", () => {
           '{"foo": 123}',
         );
       });
-    });
-
-    it("should show the old BigQuery form for previously connected databases", () => {
-      cy.intercept("GET", "/api/database/123", req => {
-        req.reply({
-          statusCode: 200,
-          body: {
-            id: 123,
-            engine: "bigquery",
-            details: {
-              "auth-code": "auth-code",
-              "client-id": "client-id",
-              "client-secret": "client-secret",
-              "dataset-id": "dataset-id",
-              "project-id": "project",
-              "use-jvm-timezone": false,
-            },
-          },
-          delay: 100,
-        });
-      });
-      cy.visit("/admin/databases/123");
-
-      cy.contains("Connect to a Service Account instead");
-      cy.contains("generate a Client ID and Client Secret for your project");
     });
 
     it("should display driver deprecation messages", () => {
@@ -264,14 +236,11 @@ describe("scenarios > admin > databases > add", () => {
   });
 });
 function toggleFieldWithDisplayName(displayName) {
-  cy.contains(displayName).closest(".Form-field").find("input").click();
+  cy.findByLabelText(displayName).click();
 }
 
 function selectFieldOption(fieldName, option) {
-  cy.contains(fieldName)
-    .parents(".Form-field")
-    .findByTestId("select-button")
-    .click();
+  cy.findByLabelText(fieldName).click();
   popover().contains(option).click({ force: true });
 }
 

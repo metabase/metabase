@@ -1,11 +1,15 @@
 import { connect } from "react-redux";
-import { State } from "metabase-types/store";
+
+import { getSetting } from "metabase/selectors/settings";
+
+import type { State } from "metabase-types/store";
+
 import GoogleAuthForm from "../../components/GoogleAuthForm";
 import { updateGoogleSettings } from "../../../settings";
 
 const mapStateToProps = (state: State) => ({
-  isEnabled: state.settings.values["google-auth-enabled"],
-  isSsoEnabled: state.settings.values["token-features"].sso,
+  isEnabled: getSetting(state, "google-auth-enabled"),
+  isSsoEnabled: getSetting(state, "token-features").sso,
 });
 
 const mapDispatchToProps = {

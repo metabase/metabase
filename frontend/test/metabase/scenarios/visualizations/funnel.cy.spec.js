@@ -59,7 +59,7 @@ describe("scenarios > visualizations > funnel chart", () => {
     getDraggableElements()
       .eq(1)
       .within(() => {
-        cy.icon("eye_filled").click();
+        cy.icon("eye_outline").click();
       });
     cy.findAllByTestId("funnel-chart-header").should("have.length", 4);
 
@@ -77,7 +77,7 @@ describe("scenarios > visualizations > funnel chart", () => {
     getDraggableElements()
       .eq(1)
       .within(() => {
-        cy.icon("eye_filled").click();
+        cy.icon("eye_outline").click();
       });
 
     cy.findByText("Filter").click();

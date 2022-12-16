@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.v2.extract-test
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
+            [java-time :as t]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field FieldValues Metric
@@ -414,60 +415,84 @@
                        Database   [{db-id        :id}        {:name "My Database"}]
                        Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
                        Field      [{email-id     :id}        {:name "email" :table_id no-schema-id}]
-                       Dimension  [{dim1-id      :id
-                                    dim1-eid     :entity_id} {:name     "Vanilla Dimension"
-                                                              :field_id email-id
-                                                              :type     "internal"}]
-
-                       ;; Advanced case: :field_id is the foreign key, :human_readable_field_id the real target field.
-                       Table      [{this-table   :id}        {:name        "Schema'd Table"
+                       Dimension  [{dim1-eid     :entity_id} {:name       "Vanilla Dimension"
+                                                              :field_id   email-id
+                                                              :type       "internal"
+                                                              :created_at (t/minus (t/offset-date-time)
+                                                                                   (t/days 3))}]
+                       ;; Advanced case: Dimension capturing a foreign relationship.
+                       ;; The parent field (Orders.customer_id) is the foreign key.
+                       ;; Dimension.field_id (Customers.id) is the foreign ID field;
+                       ;; Dimension.human_readable_field_id (Customers.name) is what we want to render.
+                       Table      [{customers    :id}        {:name        "Customers"
                                                               :db_id       db-id
                                                               :schema      "PUBLIC"}]
-                       Field      [{fk-id        :id}        {:name "foreign_id" :table_id this-table}]
-                       Table      [{other-table  :id}        {:name        "Foreign Table"
+                       Field      [{cust-id      :id}        {:name "id" :table_id customers}]
+                       Field      [{cust-name    :id}        {:name "name" :table_id customers}]
+                       Table      [{orders       :id}        {:name        "Orders"
                                                               :db_id       db-id
                                                               :schema      "PUBLIC"}]
-                       Field      [{target-id    :id}        {:name "real_field" :table_id other-table}]
-                       Dimension  [{dim2-id      :id
-                                    dim2-eid     :entity_id} {:name     "Foreign Dimension"
+                       Field      [{fk-id        :id}        {:name     "customer_id"
+                                                              :table_id orders
+                                                              :fk_target_field_id cust-id}]
+                       Dimension  [_                         {:name     "Customer Name"
                                                               :type     "external"
                                                               :field_id fk-id
-                                                              :human_readable_field_id target-id}]]
-      (testing "vanilla user-created dimensions"
-        (let [ser (serdes.base/extract-one "Dimension" {} (db/select-one 'Dimension :id dim1-id))]
-          (is (schema= {:serdes/meta             (s/eq [{:model "Dimension" :id dim1-eid :label "vanilla_dimension"}])
-                        :field_id                (s/eq ["My Database" nil "Schemaless Table" "email"])
-                        :human_readable_field_id (s/eq nil)
-                        :created_at              LocalDateTime
-                        s/Keyword                s/Any}
+                                                              :human_readable_field_id cust-name}]]
+      (testing "dimensions without foreign keys are inlined into their Fields"
+        (let [ser (serdes.base/extract-one "Field" {} (db/select-one Field :id email-id))]
+          (is (schema= {:serdes/meta   (s/eq [{:model "Database" :id "My Database"}
+                                              {:model "Table"    :id "Schemaless Table"}
+                                              {:model "Field"    :id "email"}])
+                        :dimensions    [{(s/optional-key :human_readable_field_id) [(s/maybe s/Str)]
+                                         :created_at                               LocalDateTime
+                                         s/Keyword                                 s/Any}]
+                        s/Keyword      s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "depend on the one Field"
+          (testing "As of #27062 a Field can only have one Dimension. For historic reasons it comes back as a list"
+            (is (= [dim1-eid]
+                   (->> ser :dimensions (map :entity_id)))))
+
+          (testing "which depend on just the table"
             (is (= #{[{:model "Database"   :id "My Database"}
-                      {:model "Table"      :id "Schemaless Table"}
-                      {:model "Field"      :id "email"}]}
+                      {:model "Table"      :id "Schemaless Table"}]}
                    (set (serdes.base/serdes-dependencies ser)))))))
 
-      (testing "foreign key dimensions"
-        (let [ser (serdes.base/extract-one "Dimension" {} (db/select-one 'Dimension :id dim2-id))]
-          (is (schema= {:serdes/meta             (s/eq [{:model "Dimension" :id dim2-eid :label "foreign_dimension"}])
-                        :field_id                (s/eq ["My Database" "PUBLIC" "Schema'd Table" "foreign_id"])
-                        :human_readable_field_id (s/eq ["My Database" "PUBLIC" "Foreign Table"  "real_field"])
-                        :created_at              LocalDateTime
-                        s/Keyword                s/Any}
+      (testing "foreign key dimensions are inlined into their Fields"
+        (let [ser (serdes.base/extract-one "Field" {} (db/select-one Field :id fk-id))]
+          (is (schema= {:serdes/meta        (s/eq [{:model "Database" :id "My Database"}
+                                                   {:model "Schema"   :id "PUBLIC"}
+                                                   {:model "Table"    :id "Orders"}
+                                                   {:model "Field"    :id "customer_id"}])
+                        :name               (s/eq "customer_id")
+                        :fk_target_field_id (s/eq ["My Database" "PUBLIC" "Customers" "id"])
+                        :dimensions         [{:human_readable_field_id [s/Str]
+                                              :created_at              LocalDateTime
+                                              s/Keyword                s/Any}]
+                        s/Keyword           s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "depend on both Fields"
+          (testing "dimensions are properly inlined"
+            (is (schema= [{:human_readable_field_id (s/eq ["My Database" "PUBLIC" "Customers" "name"])
+                           :created_at              LocalDateTime
+                           s/Keyword                s/Any}]
+                         (:dimensions ser))))
+
+          (testing "which depend on the Table and both real and human-readable foreign Fields"
             (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Schema"     :id "PUBLIC"}
-                      {:model "Table"      :id "Schema'd Table"}
-                      {:model "Field"      :id "foreign_id"}]
+                      {:model "Table"      :id "Orders"}]
                      [{:model "Database"   :id "My Database"}
                       {:model "Schema"     :id "PUBLIC"}
-                      {:model "Table"      :id "Foreign Table"}
-                      {:model "Field"      :id "real_field"}]}
+                      {:model "Table"      :id "Customers"}
+                      {:model "Field"      :id "id"}]
+                     [{:model "Database"   :id "My Database"}
+                      {:model "Schema"     :id "PUBLIC"}
+                      {:model "Table"      :id "Customers"}
+                      {:model "Field"      :id "name"}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest metrics-test

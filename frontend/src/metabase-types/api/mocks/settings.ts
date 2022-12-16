@@ -1,5 +1,7 @@
 import {
   Engine,
+  EngineField,
+  EngineSource,
   FontFile,
   SettingDefinition,
   Settings,
@@ -9,10 +11,25 @@ import {
 
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
-  "superseded-by": undefined,
-  source: {
-    type: "official",
-  },
+  "details-fields": [],
+  source: createMockEngineSource(),
+  "superseded-by": null,
+  ...opts,
+});
+
+export const createMockEngineField = (
+  opts?: Partial<EngineField>,
+): EngineField => ({
+  name: "field",
+  "display-name": "Field",
+  ...opts,
+});
+
+export const createMockEngineSource = (
+  opts?: Partial<EngineSource>,
+): EngineSource => ({
+  type: "official",
+  contact: null,
   ...opts,
 });
 
@@ -22,15 +39,15 @@ export const createMockEngines = (
   postgres: createMockEngine(),
   communityEngine: createMockEngine({
     "driver-name": "CommunityEngine",
-    source: {
+    source: createMockEngineSource({
       type: "community",
-    },
+    }),
   }),
   partnerEngine: createMockEngine({
     "driver-name": "PartnerEngine",
-    source: {
+    source: createMockEngineSource({
       type: "partner",
-    },
+    }),
   }),
   ...opts,
 });
@@ -99,6 +116,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "email-configured?": false,
   "enable-embedding": false,
   "enable-nested-queries": true,
+  "enable-query-caching": undefined,
   "enable-public-sharing": false,
   "enable-xrays": false,
   "experimental-enable-actions": false,
@@ -113,6 +131,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "ldap-enabled": false,
   "loading-message": "doing-science",
   "persisted-models-enabled": false,
+  "report-timezone-short": "UTC",
   "saml-configured": false,
   "saml-enabled": false,
   "session-cookies": null,

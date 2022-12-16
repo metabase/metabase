@@ -25,10 +25,10 @@
                                                                          :v         "16000000000000000000000000000000"}]
                             ;; LocalDate
                             [#t "2020-05-26"                            {:base-type :type/Date
-                                                                         :v         #t "2020-05-26T00:00Z[UTC]"}]
+                                                                         :v         #t "2020-05-26"}]
                             ;; LocaleDateTime
                             [#t "2020-05-26T17:06:00"                   {:base-type :type/DateTime
-                                                                         :v         #t "2020-05-26T17:06Z[UTC]"}]
+                                                                         :v         #t "2020-05-26T17:06"}]
                             ;; LocalTime
                             [#t "17:06:00"                              {:base-type :type/Time}]
                             ;; OffsetTime

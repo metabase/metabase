@@ -10,7 +10,9 @@
 
 (defn- do-serialize-data-model [f]
   (premium-features-test/with-premium-features #{:serialization}
-    (mt/with-temp* [Collection    [{collection-id :id}]
+    (mt/with-temp* [Collection    [{collection-id   :id
+                                    collection-eid  :entity_id
+                                    collection-slug :slug}]
                     Dashboard     [{dashboard-id :id} {:collection_id collection-id}]
                     Card          [{card-id :id}      {:collection_id collection-id}]
                     DashboardCard [_                  {:card_id card-id, :dashboard_id dashboard-id}]]
@@ -19,11 +21,15 @@
         (is (= collection-id
                (db/select-one-field :collection_id Card :id card-id))))
       (mt/with-temp-dir [dir "serdes-dir"]
-        (f {:collection-id collection-id, :dir dir})))))
+        (f {:collection-id collection-id
+            :collection-filename (if collection-slug
+                                   (str collection-eid "_" collection-slug)
+                                   collection-eid)
+            :dir dir})))))
 
 (deftest serialize-data-model-happy-path-test
   (do-serialize-data-model
-   (fn [{:keys [collection-id dir]}]
+   (fn [{:keys [collection-id collection-filename dir]}]
      (is (= {:status "ok"}
             (mt/user-http-request :crowberto :post 200 "ee/serialization/serialize/data-model"
                                   {:collection_ids [collection-id]
@@ -35,18 +41,18 @@
                  (path-files (apply u.files/get-path dir path-components)))]
          (is (= (map
                  #(.toString (u.files/get-path (System/getProperty "java.io.tmpdir") "serdes-dir" %))
-                 ["Card" "Collection" "Dashboard" "settings.yaml"])
+                 ["collections" "settings.yaml"])
                 (files)))
          (testing "subdirs"
-           (testing "Card"
+           (testing "cards"
              (is (= 1
-                    (count (files "Card")))))
-           (testing "Collection"
+                    (count (files "collections" collection-filename "cards")))))
+           (testing "collections"
              (is (= 1
-                    (count (files "Collection")))))
-           (testing "Dashboard"
+                    (count (remove #{"cards" "dashboards" "timelines"} (files "collections"))))))
+           (testing "dashboards"
              (is (= 1
-                    (count (files "Dashboard")))))))))))
+                    (count (files "collections" collection-filename "dashboards")))))))))))
 
 (deftest serialize-data-model-validation-test
   (do-serialize-data-model

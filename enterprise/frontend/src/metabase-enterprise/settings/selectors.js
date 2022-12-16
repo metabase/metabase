@@ -1,3 +1,4 @@
+import { getSetting, getSettings } from "metabase/selectors/settings";
 import { LOADING_MESSAGE_BY_SETTING } from "../whitelabel/lib/loading-message";
 
 const DEFAULT_LOGO_URL = "app/assets/img/logo.svg";
@@ -16,10 +17,9 @@ const getCustomLogoUrl = settingValues => {
   );
 };
 
-export const getLogoUrl = state => getCustomLogoUrl(state.settings.values);
+export const getLogoUrl = state => getCustomLogoUrl(getSettings(state));
 
-export const getHasCustomColors = state =>
-  hasCustomColors(state.settings.values);
+export const getHasCustomColors = state => hasCustomColors(getSettings(state));
 
 export const getLoadingMessage = state =>
-  LOADING_MESSAGE_BY_SETTING[state.settings.values["loading-message"]];
+  LOADING_MESSAGE_BY_SETTING[getSetting(state, "loading-message")];

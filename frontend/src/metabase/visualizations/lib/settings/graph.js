@@ -146,11 +146,14 @@ export const GRAPH_DATA_SETTINGS = {
             ? t`Add series breakout`
             : null,
         columns: data.cols,
-        showColumnSetting: true,
+        // When this prop is passed it will only show the
+        // column settings for any index that is included in the array
+        showColumnSettingForIndicies: [0],
       };
     },
     readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
     writeDependencies: ["graph.metrics"],
+    eraseDependencies: ["graph.series_order_dimension", "graph.series_order"],
     dashboard: false,
     useRawSeries: true,
   },

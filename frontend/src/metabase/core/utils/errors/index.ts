@@ -1,1 +1,1 @@
-export { required, email, maxLength } from "./errors";
+export { required, email, maxLength, positive } from "./errors";

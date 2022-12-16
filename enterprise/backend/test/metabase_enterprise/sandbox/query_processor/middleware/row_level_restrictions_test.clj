@@ -796,7 +796,7 @@
                                                           :coercion_strategy nil
                                                           :semantic_type  (db/select-one-field :semantic_type Field
                                                                            :id (mt/id :products :category))
-                                                          :database_type "VARCHAR"
+                                                          :database_type "CHARACTER VARYING"
                                                           :name          "CATEGORY"}]]
                                        (get-in (qp/preprocess drill-thru-query) [:query :filter])))))]
                         (testing "As an admin"

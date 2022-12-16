@@ -185,6 +185,20 @@ class PivotTable extends Component {
         return addMissingCardBreakouts(setting, card);
       },
     },
+    "pivot.show_row_totals": {
+      section: t`Columns`,
+      title: t`Show row totals`,
+      widget: "toggle",
+      default: true,
+      inline: true,
+    },
+    "pivot.show_column_totals": {
+      section: t`Columns`,
+      title: t`Show column totals`,
+      widget: "toggle",
+      default: true,
+      inline: true,
+    },
     [COLUMN_FORMATTING_SETTING]: {
       section: t`Conditional Formatting`,
       widget: ChartSettingsTableFormatting,
@@ -237,9 +251,10 @@ class PivotTable extends Component {
 
   static columnSettings = {
     [COLUMN_SORT_ORDER]: {
-      title: t`Sort Order`,
+      title: t`Sort order`,
       widget: ChartSettingIconRadio,
       inline: true,
+      borderBottom: true,
       props: {
         options: [
           {
@@ -275,7 +290,6 @@ class PivotTable extends Component {
       title: t`Column title`,
       widget: "input",
       getDefault: column => formatColumn(column),
-      variant: "form-field",
     },
   };
 

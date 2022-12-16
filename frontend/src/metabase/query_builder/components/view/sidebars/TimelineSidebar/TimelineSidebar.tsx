@@ -52,7 +52,7 @@ const TimelineSidebar = ({
     [onOpenModal],
   );
 
-  const handleToggleEvent = useCallback(
+  const handleToggleEventSelected = useCallback(
     (event: TimelineEvent, isSelected: boolean) => {
       if (isSelected) {
         onSelectTimelineEvents?.([event]);
@@ -84,7 +84,7 @@ const TimelineSidebar = ({
         onNewEvent={handleNewEvent}
         onEditEvent={handleEditEvent}
         onMoveEvent={handleMoveEvent}
-        onToggleEvent={handleToggleEvent}
+        onToggleEventSelected={handleToggleEventSelected}
         onToggleTimeline={handleToggleTimeline}
       />
     </SidebarContent>

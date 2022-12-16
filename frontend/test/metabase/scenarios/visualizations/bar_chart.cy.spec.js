@@ -150,7 +150,7 @@ describe("scenarios > visualizations > bar chart", () => {
       getDraggableElements()
         .eq(columnIndex)
         .within(() => {
-          cy.icon("eye_filled").click();
+          cy.icon("eye_outline").click();
         });
 
       getDraggableElements()
@@ -184,7 +184,7 @@ describe("scenarios > visualizations > bar chart", () => {
       getDraggableElements()
         .eq(1)
         .within(() => {
-          cy.icon("eye_filled").click();
+          cy.icon("eye_outline").click();
         });
 
       cy.findByText("Filter").click();

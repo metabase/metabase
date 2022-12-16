@@ -25,7 +25,7 @@
                      :database-position 0
                      :database-required false}
                     {:name              "NAME"
-                     :database-type     "VARCHAR"
+                     :database-type     "CHARACTER VARYING"
                      :base-type         :type/Text
                      :database-position 1
                      :database-required false}
@@ -35,12 +35,12 @@
                      :database-position 2
                      :database-required false}
                     {:name              "LATITUDE"
-                     :database-type     "DOUBLE"
+                     :database-type     "DOUBLE PRECISION"
                      :base-type         :type/Float
                      :database-position 3
                      :database-required false}
                     {:name              "LONGITUDE"
-                     :database-type     "DOUBLE"
+                     :database-type     "DOUBLE PRECISION"
                      :base-type         :type/Float
                      :database-position 4
                      :database-required false}
@@ -197,12 +197,10 @@
       (mt/$ids checkins
         (testing "splicing a date"
           (is (= 3
-                 (spliced-count-of :checkins [:= $date "2014-03-05"]))))))
-
-    ;; Oracle, Redshift, and SparkSQL don't have 'Time' types
-    (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :redshift :sparksql)
-      (testing "splicing a time"
-        (is (= 2
-               (mt/dataset test-data-with-time
-                 (mt/$ids users
-                   (spliced-count-of :users [:= $last_login_time "09:30"])))))))))
+                 (spliced-count-of :checkins [:= $date "2014-03-05"])))))
+      (when (mt/supports-time-type? driver/*driver*)
+        (testing "splicing a time"
+          (mt/dataset test-data-with-time
+            (is (= 2
+                   (mt/$ids users
+                     (spliced-count-of :users [:= $last_login_time "09:30"]))))))))))

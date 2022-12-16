@@ -42,7 +42,7 @@
 
   *  `:up`            - Migrate up
   *  `:force`         - Force migrate up, ignoring locks and any DDL statements that fail.
-  *  `:down-one`      - Rollback a single migration
+  *  `:down`          - Rollback to the previous major version schema
   *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
   *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                         (This shouldn't be necessary now that we run migrations inside a transaction, but is
@@ -52,7 +52,8 @@
   [[metabase.db.data-migrations/run-all!]]. ([[setup-db!]], below, calls both this function and [[run-all!]])."
   [db-type     :- s/Keyword
    data-source :- javax.sql.DataSource
-   direction   :- s/Keyword]
+   direction   :- s/Keyword
+   & args      :- [s/Any]]
   (with-open [conn (.getConnection data-source)]
     (.setAutoCommit conn false)
       ;; Set up liquibase and let it do its thing
@@ -65,7 +66,7 @@
         (case direction
           :up            (liquibase/migrate-up-if-needed! liquibase)
           :force         (liquibase/force-migrate-up-if-needed! conn liquibase)
-          :down-one      (liquibase/rollback-one liquibase)
+          :down          (apply liquibase/rollback-major-version db-type conn liquibase args)
           :print         (print-migrations-and-quit-if-needed! liquibase)
           :release-locks (liquibase/force-release-locks! liquibase))
         ;; Migrations were successful; commit everything and re-enable auto-commit

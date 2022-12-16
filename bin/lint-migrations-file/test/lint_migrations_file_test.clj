@@ -78,13 +78,9 @@
                            :changes [(mock-add-column-changes) (mock-add-column-changes)]))))))
 
 (deftest require-comment-test
-  (testing "[strict only] require a 'Added <version>' comment for a change set"
+  (testing "[strict only] require a comment for a change set"
     (is (= :ok
            (validate (dissoc (mock-change-set) :comment))))
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"clojure.core/re-find"
-         (validate (mock-change-set :id 200, :comment "Bad comment"))))
     (is (= :ok
            (validate (mock-change-set :id 200, :comment "Added x.38.0"))))))
 
@@ -191,3 +187,30 @@
                 (mock-change-set
                   :id "v42.00-001"
                   :changes [(mock-add-column-changes :columns [(mock-column :type problem-type)])]))))))))
+
+(deftest require-rollback-test
+  (testing "change types with no automatic rollback support"
+    (testing "missing rollback key fails"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"rollback-present-when-required"
+           (validate (mock-change-set :id "v45.12-345" :changes [{:sql {:sql "select 1"}}])))))
+    (testing "nil rollback is allowed"
+      (is (= :ok (validate (mock-change-set :id "v45.12-345"
+                                            :changes [{:sql {:sql "select 1"}}]
+                                            :rollback nil)))))
+    (testing "rollback values are allowed"
+      (is (= :ok (validate (mock-change-set :id "v45.12-345"
+                                            :changes [{:sql {:sql "select 1"}}]
+                                            :rollback {:sql {:sql "select 1"}}))))))
+  (testing "change types with automatic rollback support are allowed"
+    (is (= :ok (validate (mock-change-set :id "v45.12-345" :changes [(mock-add-column-changes)]))))))
+
+(deftest disallow-deletecascade-in-addcolumn-test
+  (testing "addColumn with deleteCascade fails"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"disallow-delete-cascade"
+         (validate (mock-change-set :id "v45.12-345"
+                                    :changes [(mock-add-column-changes
+                                               :columns [(mock-column :constraints {:deleteCascade true})])]))))))

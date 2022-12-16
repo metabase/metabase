@@ -1,6 +1,6 @@
 import React from "react";
 import { Formik } from "formik";
-import type { FormikConfig } from "formik";
+import type { FormikConfig, FormikValues } from "formik";
 import type { AnySchema } from "yup";
 import useFormSubmit from "metabase/core/hooks/use-form-submit";
 import useFormValidation from "metabase/core/hooks/use-form-validation";
@@ -11,7 +11,7 @@ export interface FormProviderProps<T, C> extends FormikConfig<T> {
   validationContext?: C;
 }
 
-function FormProvider<T, C>({
+function FormProvider<T extends FormikValues, C = unknown>({
   initialValues,
   validationSchema,
   validationContext,
@@ -19,7 +19,7 @@ function FormProvider<T, C>({
   ...props
 }: FormProviderProps<T, C>): JSX.Element {
   const { state, handleSubmit } = useFormSubmit({ onSubmit });
-  const { initialErrors, handleValidate } = useFormValidation({
+  const { initialErrors, handleValidate } = useFormValidation<T, C>({
     initialValues,
     validationSchema,
     validationContext,
@@ -27,7 +27,7 @@ function FormProvider<T, C>({
 
   return (
     <FormContext.Provider value={state}>
-      <Formik
+      <Formik<T>
         initialValues={initialValues}
         initialErrors={initialErrors}
         validate={handleValidate}

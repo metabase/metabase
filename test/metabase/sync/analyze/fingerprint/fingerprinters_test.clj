@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [metabase.driver :as driver]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.interface :as mi]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
@@ -146,7 +147,9 @@
                                            :average-length (s/pred #(< 15 % 16) "between 15 and 16")}}}
                      (db/select-one-field :fingerprint Field :id (mt/id :venues :name)))))
       (testing "date fingerprints"
-        (is (schema= {:global {:distinct-count (s/eq 618)
+        (is (schema= {:global {:distinct-count (s/eq (if (= driver/*driver* :mongo)
+                                                       383 ; mongo samples the last 500 rows only
+                                                       618))
                                :nil%           (s/eq 0.0)}
                       :type   {:type/DateTime {:earliest (s/pred #(str/starts-with? % "2013-01-03"))
                                                :latest   (s/pred #(str/starts-with? % "2015-12-29"))}}}

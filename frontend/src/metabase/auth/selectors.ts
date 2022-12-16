@@ -1,12 +1,9 @@
 import { createSelector } from "reselect";
-import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
-import { State } from "metabase-types/store";
-import { AuthProvider } from "./types";
 
-export const getSettings = createSelector(
-  (state: State) => state.settings,
-  settings => settings.values,
-);
+import { getSettings } from "metabase/selectors/settings";
+import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
+
+import type { AuthProvider } from "./types";
 
 export const getAuthProviders = createSelector(
   [getSettings],

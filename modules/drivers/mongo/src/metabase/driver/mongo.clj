@@ -12,16 +12,18 @@
             [metabase.driver.mongo.parameters :as mongo.params]
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
+            [metabase.models :refer [Field]]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
-            [monger.collection :as mc]
             [monger.command :as cmd]
             [monger.conversion :as m.conversion]
             [monger.core :as mg]
             [monger.db :as mdb]
             monger.json
-            [taoensso.nippy :as nippy])
+            [monger.query :as mq]
+            [taoensso.nippy :as nippy]
+            [toucan.db :as db])
   (:import com.mongodb.DB
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            org.bson.types.ObjectId))
@@ -176,12 +178,18 @@
                                                              first))
        (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
+(defmethod driver/dbms-version :mongo
+  [_ database]
+  (with-mongo-connection [^com.mongodb.DB conn database]
+    (let [build-info (mg/command conn {:buildInfo 1})]
+      {:version (get build-info "version")
+       :semantic-version (get build-info "versionArray")})))
+
 (defmethod driver/describe-database :mongo
   [_ database]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    {:tables  (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
-                    {:schema nil, :name collection}))
-     :version (get (mg/command conn {:buildInfo 1}) "version")}))
+    {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
+                    {:schema nil, :name collection}))}))
 
 (defn- table-sample-column-info
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
@@ -191,15 +199,18 @@
        :severity {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil}}"
   [^com.mongodb.DB conn, table]
   (try
-    (->> (mc/find-maps conn (:name table))
-         (take metadata-queries/max-sample-rows)
-         (reduce
-          (fn [field-defs row]
-            (loop [[k & more-keys] (keys row), fields field-defs]
-              (if-not k
-                fields
-                (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
-          {}))
+    (reduce
+     (fn [field-defs row]
+       (loop [[k & more-keys] (keys row), fields field-defs]
+         (if-not k
+           fields
+           (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
+     {}
+     (-> (.getCollection conn (:name table))
+         mq/empty-query
+         (assoc :sort {:_id -1}
+                :limit metadata-queries/nested-field-sample-limit)
+         mq/exec))
     (catch Throwable t
       (log/error (format "Error introspecting collection: %s" (:name table)) t))))
 
@@ -218,15 +229,20 @@
 
 (doseq [feature [:basic-aggregations
                  :nested-fields
-                 :native-parameters]]
-  (defmethod driver/supports? [:mongo feature] [_ _] true))
+                 :native-parameters
+                 :standard-deviation-aggregations]]
+  (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 
-(defn- db-major-version
-  [db]
-  (some-> (get-in db [:details :version])
-          (str/split #"\.")
-          first
-          Integer/parseInt))
+(defn- db-version [db]
+  (get-in db [:details :version]))
+
+(defn- parse-version [version]
+  (->> (str/split version #"\.")
+       (take 2)
+       (map #(Integer/parseInt %))))
+
+(defn- db-major-version [db]
+  (some-> (db-version db) parse-version first))
 
 (defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
   (let [version (db-major-version db)]
@@ -235,6 +251,12 @@
 (defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
   (let [version (db-major-version db)]
     (and (some? version) (>= version 5))))
+
+(defmethod driver/database-supports? [:mongo :now]
+  ;; The $$NOW aggregation expression was introduced in version 4.2.
+  [_ _ db]
+  (let [version (some-> (db-version db) parse-version)]
+    (and (some? version) (>= (first version) 4) (>= (second version) 2))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
@@ -292,6 +314,18 @@
 (defmethod driver/db-start-of-week :mongo
   [_]
   :sunday)
+
+(defn- get-id-field-id [table]
+  (db/select-one-id Field :name "_id" :table_id (u/the-id table)))
+
+(defmethod driver/table-rows-sample :mongo
+  [_driver table fields rff opts]
+  (let [mongo-opts {;; setting :truncation-start is needed because of a bug
+                    ;; in our mongo drivers handling of :substring (#27270)
+                    :truncation-start 0
+                    :limit metadata-queries/nested-field-sample-limit
+                    :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
+    (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts))))
 
 (comment
   (require '[clojure.java.io :as io]

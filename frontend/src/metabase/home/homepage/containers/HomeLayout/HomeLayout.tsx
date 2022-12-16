@@ -1,9 +1,10 @@
 import { connect } from "react-redux";
-import { State } from "metabase-types/store";
+import { getSetting } from "metabase/selectors/settings";
+import type { State } from "metabase-types/store";
 import HomeLayout from "../../components/HomeLayout";
 
 const mapStateToProps = (state: State) => ({
-  showIllustration: state.settings.values["show-lighthouse-illustration"],
+  showIllustration: getSetting(state, "show-lighthouse-illustration"),
 });
 
 export default connect(mapStateToProps)(HomeLayout);

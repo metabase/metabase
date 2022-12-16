@@ -40,7 +40,7 @@ describe("TimelineCard", () => {
     expect(props.onToggleTimeline).toHaveBeenCalled();
   });
 
-  it("should make a timeline visible when its even is selected", () => {
+  it("should make a timeline visible when its event is selected", () => {
     const props = getProps({
       timeline: createMockTimeline({
         name: "Releases",

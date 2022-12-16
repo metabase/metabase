@@ -33,7 +33,10 @@ import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
-import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
+import {
+  normalizeParameters,
+  normalizeParameterValue,
+} from "metabase-lib/parameters/utils/parameter-values";
 import { isPK } from "metabase-lib/types/utils/isa";
 import Mode from "metabase-lib/Mode";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -167,9 +170,6 @@ export const getPKRowIndexMap = createSelector(
   },
 );
 
-// get instance settings, used for determining whether to display certain actions
-export const getSettings = state => state.settings.values;
-
 export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
 export const getQueryStartTime = state => state.qb.queryStartTime;
@@ -276,6 +276,10 @@ const getNextRunParameterValues = createSelector([getParameters], parameters =>
       normalizeParameterValue(parameter.type, parameter.value),
     )
     .filter(p => p !== undefined),
+);
+
+const getNextRunParameters = createSelector([getParameters], parameters =>
+  normalizeParameters(parameters),
 );
 
 export const getQueryBuilderMode = createSelector(
@@ -954,4 +958,16 @@ export const getDataReferenceStack = createSelector(
       : dbId
       ? [{ type: "database", item: { id: dbId } }]
       : [],
+);
+
+export const getNativeQueryFn = createSelector(
+  [getNextRunDatasetQuery, getNextRunParameters],
+  (datasetQuery, parameters) => {
+    let lastResult = undefined;
+
+    return async () => {
+      lastResult ??= await MetabaseApi.native({ ...datasetQuery, parameters });
+      return lastResult;
+    };
+  },
 );

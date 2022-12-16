@@ -26,6 +26,7 @@ const propTypes = {
   listName: PropTypes.string,
   selectorName: PropTypes.string,
   children: PropTypes.func,
+  onLoaded: PropTypes.func,
 
   // via entityType HOC
   entityDef: PropTypes.object,
@@ -118,6 +119,9 @@ class EntityListLoaderInner extends React.Component {
           !result.payload.result || result.payload.result.length === pageSize,
         );
       }
+
+      this.props?.onLoaded?.(result);
+
       return result;
     },
     250,

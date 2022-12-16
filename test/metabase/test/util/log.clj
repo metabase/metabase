@@ -112,11 +112,21 @@
 
 (defn do-with-log-level [a-namespace level thunk]
   (test-runner.parallel/assert-test-is-not-parallel "with-log-level")
-  (let [original-log-level (ns-log-level a-namespace)]
+  (ensure-unique-logger! a-namespace)
+  (let [original-log-level (ns-log-level a-namespace)
+        logger             (exact-ns-logger a-namespace)
+        is-additive        (.isAdditive logger)
+        parent-is-root?    (= "" (-> logger .getParent .getName))]
     (try
+      ;; prevent events to be passed to the root logger's appenders which will log to the Console
+      ;; https://logging.apache.org/log4j/2.x/manual/configuration.html#Additivity
+      (when parent-is-root?
+        (.setAdditive logger false))
       (set-ns-log-level! a-namespace level)
       (thunk)
       (finally
+        (when parent-is-root?
+          (.setAdditive logger is-additive))
         (set-ns-log-level! a-namespace original-log-level)))))
 
 (defmacro with-log-level

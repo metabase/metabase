@@ -30,7 +30,8 @@
                       set)]
     (->> (concat unowned owned)
          (map collection/descendant-ids)
-         (reduce set/union top-ids))))
+         (reduce set/union top-ids)
+         (set/union #{nil}))))
 
 (defn extract-metabase
   "Extracts the appdb into a reducible stream of serializable maps, with `:serdes/meta` keys.

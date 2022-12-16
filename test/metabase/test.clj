@@ -221,7 +221,6 @@
   with-user-in-groups]
 
  [tu.async
-  wait-for-close
   wait-for-result
   with-open-channels]
 
@@ -248,7 +247,9 @@
   has-questionable-timezone-support?
   has-test-extensions?
   metabase-instance
-  sorts-nil-first?]
+  sorts-nil-first?
+  supports-time-type?
+  supports-timestamptz-type?]
 
  [tx.env
   set-test-drivers!

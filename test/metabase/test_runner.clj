@@ -93,7 +93,8 @@
       ;; a actual test var e.g. `metabase.whatever-test/my-test`
       (do
         (load-test-namespace symbol-namespace)
-        [(resolve symb)])
+        [(or (resolve symb)
+             (throw (ex-info (format "Unable to resolve test named %s" symb) {:test-symbol symb})))])
       ;; a namespace e.g. `metabase.whatever-test`
       (do
         (load-test-namespace symb)
@@ -156,6 +157,8 @@
    (run test-vars nil))
 
   ([test-vars options]
+   (when-not (every? var? test-vars)
+     (throw (ex-info "Invalid test vars" {:test-vars test-vars, :options options})))
    ;; don't randomize test order for now please, thanks anyway
    (with-redefs [eftest.runner/deterministic-shuffle (fn [_ test-vars] test-vars)]
      (binding [*parallel-test-counter* (atom {})]

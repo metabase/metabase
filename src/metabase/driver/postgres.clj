@@ -21,17 +21,16 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
             [metabase.models.secret :as secret]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.i18n :refer [trs]]
             [potemkin :as p]
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
@@ -295,19 +294,14 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        timestamptz? (hx/is-of-type? expr "timestamptz")]
-    (when (and timestamptz? source-timezone)
-      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone`")
-                      {:type            qp.error-type/invalid-query
-                       :target-timezone target-timezone
-                       :source-timezone source-timezone})))
-    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
-          expr            (cond->> expr
-                            (not timestamptz?)
-                            (hsql/call :timezone source-timezone)
-                            true
-                            (hsql/call :timezone target-timezone))]
-      (hx/with-database-type-info expr "timestamp"))))
+        timestamptz? (hx/is-of-type? expr "timestamptz")
+        _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+        expr         (cond->> expr
+                       (not timestamptz?)
+                       (hsql/call :timezone source-timezone)
+                       :always
+                       (hsql/call :timezone target-timezone))]
+    (hx/with-database-type-info expr "timestamp")))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
@@ -326,65 +320,43 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
-(defn- datetime-diff-helper [x y unit]
-  (case unit
-    (:year :day)
-    (hx/cast
-     :integer
-     (hsql/call
-      :extract
-      unit
-      (hsql/call
-       (case unit :year :age :day :-)
-       (date-trunc :day y)
-       (date-trunc :day x))))
+(defmethod sql.qp/datetime-diff [:postgres :year]
+  [_driver _unit x y]
+  (let [interval (hsql/call :age (date-trunc :day y) (date-trunc :day x))]
+    (hx/->integer (hsql/call :extract :year interval))))
 
-    :week
-    (hx// (datetime-diff-helper x y :day) 7)
+(defmethod sql.qp/datetime-diff [:postgres :quarter]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 3))
 
-    :month
-    (hx/cast
-     :integer
-     (hx/+
-      (hx/* 12 (datetime-diff-helper x y :year))
-      (hsql/call
-       :extract
-       :month
-       (hsql/call
-        :age
-        (date-trunc :day y)
-        (date-trunc :day x)))))
+(defmethod sql.qp/datetime-diff [:postgres :month]
+  [_driver _unit x y]
+  (let [interval           (hsql/call :age (date-trunc :day y) (date-trunc :day x))
+        year-diff          (hsql/call :extract :year interval)
+        month-of-year-diff (hsql/call :extract :month interval)]
+    (hx/->integer (hx/+ month-of-year-diff (hx/* year-diff 12)))))
 
-    (:hour :minute :second)
-    (let [ex            (extract :epoch x)
-          ey            (extract :epoch y)
-          positive-diff (fn [a b]
-                          (hx/cast
-                           :integer
-                           (hx/floor
-                            (if (= unit :second)
-                              (hx/- b a)
-                              (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))))]
-      (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))))
+(defmethod sql.qp/datetime-diff [:postgres :week]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :day x y) 7))
 
-(defmethod sql.qp/->honeysql [:postgres :datetime-diff]
-  [driver [_ x y unit]]
-  (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)
-        disallowed-types (keep
-                          (fn [v]
-                            (when-let [db-type (keyword (hx/type-info->db-type (hx/type-info v)))]
-                              (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
-                                (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
-                                  (name db-type)))))
-                          [x y])]
-    (when (seq disallowed-types)
-      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
-                           (pr-str disallowed-types))
-                      {:found disallowed-types
-                       :type  qp.error-type/invalid-query})))
-    (-> (datetime-diff-helper x y unit)
-        (hx/with-database-type-info :integer))))
+(defmethod sql.qp/datetime-diff [:postgres :day]
+  [_driver _unit x y]
+  (let [interval (hx/- (date-trunc :day y) (date-trunc :day x))]
+    (hx/->integer (hsql/call :extract :day interval))))
+
+(defmethod sql.qp/datetime-diff [:postgres :hour]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :second x y) 3600))
+
+(defmethod sql.qp/datetime-diff [:postgres :minute]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :second x y) 60))
+
+(defmethod sql.qp/datetime-diff [:postgres :second]
+  [_driver _unit x y]
+  (let [seconds (hx/- (extract :epoch y) (extract :epoch x))]
+    (hx/->integer (hsql/call :trunc seconds))))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
   hformat/ToSql
@@ -683,7 +655,7 @@
 ;; bug with the JDBC driver?
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [^Class klass (if (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+  (let [^Class klass (if (= (u/lower-case-en (.getColumnTypeName rsmeta i)) "timestamptz")
                        OffsetDateTime
                        LocalDateTime)]
     (fn []

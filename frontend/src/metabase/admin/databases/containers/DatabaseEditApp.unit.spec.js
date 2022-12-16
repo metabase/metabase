@@ -29,8 +29,10 @@ const ENGINES_MOCK = {
 };
 
 const ComponentMock = () => <div />;
-jest.mock("metabase/containers/DatabaseHelpCard", () => ComponentMock);
-jest.mock("metabase/containers/DriverWarning", () => ComponentMock);
+jest.mock(
+  "metabase/databases/containers/DatabaseHelpCard",
+  () => ComponentMock,
+);
 
 function mockSettings({ cachingEnabled = false }) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);
@@ -63,6 +65,8 @@ async function setup({ cachingEnabled = false } = {}) {
 
   const settingsReducer = () => ({
     values: {
+      engines: ENGINES_MOCK,
+      "enable-query-caching": cachingEnabled,
       "persisted-models-enabled": false,
     },
   });

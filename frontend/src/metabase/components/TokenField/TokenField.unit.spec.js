@@ -220,14 +220,12 @@ describe("TokenField", () => {
     render(<TokenFieldWithStateAndDefaults value={[]} options={["fooбar"]} />);
 
     type("foo");
-    screen.debug();
 
     input().focus();
     fireEvent.keyDown(input(), {
       key: "б",
       keyCode: 188,
     });
-    screen.debug(input());
     // 188 is comma on most layouts
     // input().simulate("keydown", { keyCode: 188, key: "б" });
     // if that keydown was interpreted as a comma, the value would be "fooбar"
@@ -411,13 +409,11 @@ describe("TokenField", () => {
 
         // limit our options by typing
         type("G");
-        screen.debug();
 
         // the initially selected option should be the first option
         // expect(component.state().selectedOptionValue).toBe(DEFAULT_OPTIONS[1]);
 
         inputKeydown(KEYCODE_DOWN);
-        screen.debug();
 
         // input().simulate("keydown", {
         //   keyCode: KEYCODE_DOWN,

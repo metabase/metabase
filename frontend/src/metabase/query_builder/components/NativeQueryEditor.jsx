@@ -26,10 +26,11 @@ import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import Modal from "metabase/components/Modal";
 
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
-import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
+import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import Questions from "metabase/entities/questions";
 import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
@@ -584,17 +585,20 @@ class NativeQueryEditor extends Component {
           />
 
           {this.props.modalSnippet && (
-            <SnippetModal
-              onSnippetUpdate={(newSnippet, oldSnippet) => {
-                if (newSnippet.name !== oldSnippet.name) {
-                  setDatasetQuery(query.updateSnippetNames([newSnippet]));
-                }
-              }}
-              snippet={this.props.modalSnippet}
-              insertSnippet={this.props.insertSnippet}
-              closeModal={this.props.closeSnippetModal}
-            />
+            <Modal onClose={this.props.closeSnippetModal}>
+              <SnippetFormModal
+                snippet={this.props.modalSnippet}
+                onCreate={this.props.insertSnippet}
+                onUpdate={(newSnippet, oldSnippet) => {
+                  if (newSnippet.name !== oldSnippet.name) {
+                    setDatasetQuery(query.updateSnippetNames([newSnippet]));
+                  }
+                }}
+                onClose={this.props.closeSnippetModal}
+              />
+            </Modal>
           )}
+
           {hasEditingSidebar && !readOnly && (
             <NativeQueryEditorSidebar
               runQuery={this.runQuery}

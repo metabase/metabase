@@ -112,7 +112,7 @@
 (def DatetimeDiffUnits
   "Valid units for a datetime-diff clause."
   (s/named
-    (apply s/enum #{:second :minute :hour :day :week :month :year})
+    (apply s/enum #{:second :minute :hour :day :week :month :quarter :year})
     "datetime-diff-units"))
 
 (def ExtractWeekModes
@@ -524,7 +524,7 @@
 
 (def datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now})
 
 (declare NumericExpression)
 (declare BooleanExpression)
@@ -733,13 +733,15 @@
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
+(defclause ^{:requires-features #{:now}} now)
+
 (defclause ^{:requires-features #{:date-arithmetics}} datetime-subtract
   datetime DateTimeExpressionArg
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
 (def ^:private DatetimeExpression*
-  (one-of + datetime-add datetime-subtract convert-timezone))
+  (one-of + datetime-add datetime-subtract convert-timezone now))
 
 (def DatetimeExpression
   "Schema for the definition of a date function expression."
@@ -891,9 +893,10 @@
 
 (def ^:private Filter*
   (s/conditional
-   (partial is-clause? numeric-functions) NumericExpression
-   (partial is-clause? string-functions)  StringExpression
-   (partial is-clause? boolean-functions) BooleanExpression
+   (partial is-clause? datetime-functions) DatetimeExpression
+   (partial is-clause? numeric-functions)  NumericExpression
+   (partial is-clause? string-functions)   StringExpression
+   (partial is-clause? boolean-functions)  BooleanExpression
    :else
    (one-of
     ;; filters drivers must implement

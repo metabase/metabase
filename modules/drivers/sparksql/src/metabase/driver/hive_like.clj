@@ -21,6 +21,8 @@
   :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
   :abstract? true)
 
+(defmethod driver/database-supports? [:hive-like :now] [_driver _feat _db] true)
+
 (defmethod driver/escape-alias :hive-like
   [driver s]
   ;; replace question marks inside aliases with `_QMARK_`, otherwise Spark SQL will interpret them as JDBC parameter
@@ -67,7 +69,9 @@
     #"map"              :type/Dictionary
     #".*"               :type/*))
 
-(defmethod sql.qp/current-datetime-honeysql-form :hive-like [_] :%now)
+(defmethod sql.qp/current-datetime-honeysql-form :hive-like
+  [_]
+  (hx/with-database-type-info :%now "timestamp"))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:hive-like :seconds]
   [_ _ expr]

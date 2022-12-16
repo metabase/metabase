@@ -2,63 +2,16 @@
   "Permisisons tests for API that needs to be enforced by Application Permissions to access Admin/Setting pages."
   (:require [clojure.test :refer :all]
             [metabase.api.geojson-test :as geojson-test]
-            [metabase.api.ldap-test :as ldap-test]
             [metabase.email :as email]
             [metabase.integrations.slack :as slack]
             [metabase.models :refer [Card Dashboard]]
             [metabase.models.permissions :as perms]
-            [metabase.models.setting-test :as models.setting-test]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.integrations.ldap :as ldap.test])
+            [metabase.test.fixtures :as fixtures])
   (:import java.util.UUID))
 
 (use-fixtures :once (fixtures/initialize :db))
-
-(deftest setting-api-test
-  (testing "/api/setting"
-    (mt/with-user-in-groups [group {:name "New Group"}
-                             user  [group]]
-      (letfn [(get-setting [user status]
-                (testing (format "get setting with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "setting")))
-
-              (update-setting [user status]
-                (testing (format "update single setting with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :put status "setting/test-setting-1" {:value "ABC"})))
-
-              (update-settings [user status]
-                (testing (format "update multiple settings setting with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :put status "setting" {:test-setting-1 "ABC", :test-setting-2 "DEF"})))]
-        ;; we focus on permissions in these tests, so set default value to make it easier to test
-        (models.setting-test/test-setting-1! "ABC")
-        (models.setting-test/test-setting-2! "DEF")
-
-        (testing "if `advanced-permissions` is disabled, require admins"
-          (premium-features-test/with-premium-features #{}
-            (get-setting user 403)
-            (update-setting user 403)
-            (update-settings user 403)
-            (get-setting :crowberto 200)
-            (update-setting :crowberto 204)
-            (update-settings :crowberto 204)))
-
-        (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
-            (testing "still fail if user's group doesn't have `setting` permission"
-              (get-setting user 403)
-              (update-setting user 403)
-              (update-settings user 403)
-              (get-setting :crowberto 200)
-              (update-setting :crowberto 204)
-              (update-settings :crowberto 204))
-
-            (testing "succeed if user's group has `setting` permission"
-              (perms/grant-application-permissions! group :setting)
-              (get-setting user 200)
-              (update-setting user 204)
-              (update-settings user 204))))))))
 
 (deftest email-api-test
   (testing "/api/email"
@@ -151,59 +104,6 @@
               (get-manifest user 200)
               (set-slack-settings :crowberto 200)
               (get-manifest :crowberto 200))))))))
-
-(deftest ldap-api-test
-  (testing "/api/ldap"
-    (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
-      (letfn [(update-ldap-settings [user status]
-                (testing (format "update ldap settings with %s user" (mt/user-descriptor user))
-                  (ldap.test/with-ldap-server
-                    (mt/user-http-request user :put status "ldap/settings"
-                                          (ldap-test/ldap-test-details)))))]
-
-        (testing "if `advanced-permissions` is disabled, require admins"
-          (premium-features-test/with-premium-features #{}
-            (update-ldap-settings user 403)
-            (update-ldap-settings :crowberto 200)))
-
-        (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
-            (testing "still fail if user's group doesn't have `setting` permission"
-              (update-ldap-settings user 403)
-              (update-ldap-settings :crowberto 200))
-
-            (testing "succeed if user's group has `setting` permission"
-              (perms/grant-application-permissions! group :setting)
-              (update-ldap-settings user 200)
-              (update-ldap-settings :crowberto 200))))))))
-
-(deftest google-api-test
-  (testing "/api/google"
-    (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
-      (letfn [(update-google-settings [user status]
-                (testing (format "update google settings with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :put status "google/settings"
-                                        {:google-auth-client-id "test-client-id.apps.googleusercontent.com"
-                                         :google-auth-enabled true})))]
-        (testing "if `advanced-permissions` is disabled, require admin status"
-          (premium-features-test/with-premium-features #{}
-            (update-google-settings user 403)
-            (update-google-settings :crowberto 200)))
-
-        (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
-            (testing "still fail if user's group doesn't have `setting` permission"
-              (update-google-settings user 403)
-              (update-google-settings :crowberto 200))
-
-            (testing "succeed if user's group has `setting` permission"
-              (perms/grant-application-permissions! group :setting)
-              (update-google-settings user 200)
-              (update-google-settings :crowberto 200))))))))
 
 (deftest geojson-api-test
   (testing "/api/geojson"

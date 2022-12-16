@@ -1,17 +1,18 @@
 (ns metabase.api.common.internal
   "Internal functions used by `metabase.api.common`.
    These are primarily used as the internal implementation of `defendpoint`."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.async.streaming-response :as streaming-response]
-            [metabase.config :as config]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [potemkin.types :as p.types]
-            [schema.core :as s])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel
-           metabase.async.streaming_response.StreamingResponse))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.async.streaming-response :as streaming-response]
+   [metabase.config :as config]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [potemkin.types :as p.types]
+   [schema.core :as s])
+  (:import
+   (metabase.async.streaming_response StreamingResponse)))
 
 (comment streaming-response/keep-me)
 
@@ -281,10 +282,6 @@
   StreamingResponse
   (wrap-response-if-needed [this]
     this)
-
-  ManyToManyChannel
-  (wrap-response-if-needed [chan]
-    {:status 202, :body chan})
 
   clojure.lang.IPersistentMap
   (wrap-response-if-needed [m]

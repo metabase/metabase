@@ -52,7 +52,7 @@
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults Database)
-    (select-keys db [:created_at :id :details :updated_at :timezone :name])
+    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version])
     {:engine (u/qualified-name (:engine db))
      :features (map u/qualified-name (driver.u/features driver db))
      :initial_sync_status "complete"})))
@@ -294,7 +294,7 @@
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (mt/object-defaults Database) :details :settings)
-                  (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status])
+                  (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status :dbms_version])
                   {:engine        "h2"
                    :name          "test-data"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -325,7 +325,7 @@
                                                              :semantic_type     "type/Name"
                                                              :name              "NAME"
                                                              :display_name      "Name"
-                                                             :database_type     "VARCHAR"
+                                                             :database_type     "CHARACTER VARYING"
                                                              :base_type         "type/Text"
                                                              :effective_type    "type/Text"
                                                              :visibility_type   "normal"
@@ -410,9 +410,9 @@
 
 (deftest card-autocomplete-suggestions-test
   (testing "GET /api/database/:id/card_autocomplete_suggestions"
-    (mt/with-temp* [Collection [collection {:name "Kanye West Analytics"}]
-                    Card       [card-1 (card-with-native-query "Kanye West Quote Views Per Month")]
-                    Card       [card-2 (card-with-native-query "Kanye West Quote Views Per Day" :collection_id (:id collection))]]
+    (mt/with-temp* [Collection [collection {:name "Maz Analytics"}]
+                    Card       [card-1 (card-with-native-query "Maz Quote Views Per Month")]
+                    Card       [card-2 (card-with-native-query "Maz Quote Views Per Day" :collection_id (:id collection))]]
       (let [card->result {card-1 (assoc (select-keys card-1 [:id :name :dataset]) :collection_name nil)
                           card-2 (assoc (select-keys card-2 [:id :name :dataset]) :collection_name (:name collection))}]
         (testing "exclude cards without perms"
@@ -420,25 +420,25 @@
             (is (= [(card->result card-2)]
                    (mt/user-http-request :rasta :get 200
                                          (format "database/%d/card_autocomplete_suggestions" (mt/id))
-                                         :query "kanye"))))
+                                         :query "maz"))))
           (testing "cards should match the query"
-            (doseq [[query expected-cards] {"QUOTE-views"               [card-2 card-1]
-                                            "per-day"                   [card-2]
-                                            (str (:id card-1))          [card-1]
-                                            (str (:id card-2) "-kanye") [card-2]
-                                            (str (:id card-2) "-west")  []}]
+            (doseq [[query expected-cards] {"QUOTE-views"              [card-2 card-1]
+                                            "per-day"                  [card-2]
+                                            (str (:id card-1))         [card-1]
+                                            (str (:id card-2) "-maz")  [card-2]
+                                            (str (:id card-2) "-kyle") []}]
               (is (= (map card->result expected-cards)
                      (mt/user-http-request :rasta :get 200
                                            (format "database/%d/card_autocomplete_suggestions" (mt/id))
                                            :query query)))))))
       (testing "should reject requests for databases for which the user has no perms"
         (mt/with-temp* [Database [{database-id :id}]
-                        Card     [_ (card-with-native-query "Kanye West Quote Views Per Month" :database_id database-id)]]
+                        Card     [_ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)]]
           (perms/revoke-data-perms! (perms-group/all-users) database-id)
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403
                                        (format "database/%d/card_autocomplete_suggestions" database-id)
-                                       :query "kanye"))))))))
+                                       :query "maz"))))))))
 
 (driver/register! ::no-nested-query-support
                   :parent :sql-jdbc
@@ -541,7 +541,7 @@
                       (:data (mt/user-http-request :crowberto :get 200 (str "database" params)))))]
         (testing "Check that we get back 'virtual' tables for Saved Questions"
           (testing "The saved questions virtual DB should be the last DB in the list"
-            (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
+            (mt/with-temp Card [card (card-with-native-query "Maz Quote Views Per Month")]
               ;; run the Card which will populate its result_metadata column
               (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
               ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
@@ -551,7 +551,7 @@
                 (check-tables-included response (virtual-table-for-card card)))))
 
           (testing "Make sure saved questions are NOT included if the setting is disabled"
-            (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
+            (mt/with-temp Card [card (card-with-native-query "Maz Quote Views Per Month")]
               (mt/with-temporary-setting-values [enable-nested-queries false]
                 ;; run the Card which will populate its result_metadata column
                 (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))

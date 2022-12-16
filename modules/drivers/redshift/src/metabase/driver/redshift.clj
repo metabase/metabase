@@ -4,6 +4,7 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -84,11 +85,6 @@
   [_]
   :sunday)
 
-(defmethod driver/database-supports? [:redshift :convert-timezone]
-  [_driver _feat _db]
-  ;; TODO redshift could supports convert-timezone
-  false)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -105,18 +101,11 @@
   (or (database-type->base-type column-type)
       ((get-method sql-jdbc.sync/database-type->base-type :postgres) driver column-type)))
 
-(defmethod driver/database-supports? [:redshift :datetime-diff]
-  [_driver _feat _db]
-  ;; postgres uses `date_part` on an interval or a call to `age` to get datediffs. It seems redshift does not have
-  ;; this and errors with:
-  ;; > ERROR: function pg_catalog.pgdate_part("unknown", interval) does not exist
-  ;; It offers a datediff function that tracks number of boundaries, which could be used to implement the correct behaviour,
-  ;; similar to bigquery.
-  false)
-
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
-  (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp hsql-form)))
+  (let [hsql-form (hx/->timestamp hsql-form)]
+    (-> (hsql/call :dateadd (hx/literal unit) amount hsql-form)
+        (hx/with-type-info (hx/type-info hsql-form)))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
@@ -203,6 +192,64 @@
   (->> args
        (map (partial sql.qp/->honeysql driver))
        (reduce (partial hsql/call :concat))))
+
+(defn- extract [unit temporal]
+  (hsql/call :extract (format "'%s'" (name unit)) temporal))
+
+(defn- datediff [unit x y]
+  (hsql/call :datediff (hsql/raw (name unit)) x y))
+
+(defmethod sql.qp/->honeysql [:redshift :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        _ (sql.qp/datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
+        ;; unlike postgres, we need to make sure the values are timestamps before we
+        ;; can do the calculation. otherwise, we'll get an error like
+        ;; ERROR: function pg_catalog.date_diff("unknown", ..., ...) does not exist
+        x (hx/->timestamp x)
+        y (hx/->timestamp y)]
+    (sql.qp/datetime-diff driver unit x y)))
+
+(defmethod sql.qp/datetime-diff [:redshift :year]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 12))
+
+(defmethod sql.qp/datetime-diff [:redshift :quarter]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 3))
+
+(defmethod sql.qp/datetime-diff [:redshift :month]
+  [_driver _unit x y]
+  (hx/+ (datediff :month x y)
+        ;; redshift's datediff counts month boundaries not whole months, so we need to adjust
+        (hsql/call
+         :case
+         ;; if x<y but x>y in the month calendar then subtract one month
+         (hsql/call :and (hsql/call :< x y) (hsql/call :> (extract :day x) (extract :day y))) -1
+         ;; if x>y but x<y in the month calendar then add one month
+         (hsql/call :and (hsql/call :> x y) (hsql/call :< (extract :day x) (extract :day y))) 1
+         :else 0)))
+
+(defmethod sql.qp/datetime-diff [:redshift :week]
+  [_driver _unit x y]
+  (hx// (datediff :day x y) 7))
+
+(defmethod sql.qp/datetime-diff [:redshift :day]
+  [_driver _unit x y]
+  (datediff :day x y))
+
+(defmethod sql.qp/datetime-diff [:redshift :hour]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :second x y) 3600))
+
+(defmethod sql.qp/datetime-diff [:redshift :minute]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :second x y) 60))
+
+(defmethod sql.qp/datetime-diff [:redshift :second]
+  [_driver _unit x y]
+  (hx/- (extract :epoch y) (extract :epoch x)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -303,3 +350,7 @@
             #{}
             (sql-jdbc.describe-table/describe-table-fields-xf driver table)
             (sql-jdbc.describe-table/fallback-fields-metadata-from-select-query driver conn schema table-name))))))
+
+(defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))

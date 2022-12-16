@@ -22,6 +22,7 @@ The databases listed below have official drivers maintained by the Metabase team
 
 If you don't see your database listed here, see [partner and community drivers](../developers-guide/partner-and-community-drivers.md#partner-drivers).
 
+- [Amazon Athena](./connections/athena.md)
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
 - Druid
 - [Google Analytics](./connections/google-analytics.md)

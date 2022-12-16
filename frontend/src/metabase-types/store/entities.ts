@@ -4,6 +4,8 @@ import {
   DataApp,
   DataAppId,
   Database,
+  NativeQuerySnippet,
+  NativeQuerySnippetId,
   Table,
 } from "metabase-types/api";
 
@@ -12,4 +14,5 @@ export interface EntitiesState {
   dataApps?: Record<DataAppId, DataApp>;
   databases?: Record<number, Database>;
   tables?: Record<number | string, Table>;
+  snippets?: Record<NativeQuerySnippetId, NativeQuerySnippet>;
 }
