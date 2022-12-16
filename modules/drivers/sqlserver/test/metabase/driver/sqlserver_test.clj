@@ -433,6 +433,20 @@
                    :order-by    [[:desc [:expression "user_id * product_id"]]]})
                  mt/rows)))))))
 
+(deftest percentile-aggregation-result-ordering-test
+  (mt/test-driver
+   :sqlserver
+   (testing "Result columns are ordered correctly for query containing percentile aggregation"
+     (is (= [[2 20 2.5] [3 4 2.0] [4 4 2.0] [5 14 2.0] [6 3 1.5]]
+            (-> (mt/run-mbql-query
+                 venues
+                 {:aggregation [[:aggregation-options [:sum $price] {:name "sum_price"}]
+                                [:aggregation-options [:percentile $price 0.5] {:name "p50_price"}]]
+                  :breakout    [$category_id]
+                  :limit       5
+                  :order-by    [[:asc $category_id]]})
+                mt/rows))))))
+
 (deftest duplicate-name-aggregations-test
   (mt/test-driver
    :sqlserver
