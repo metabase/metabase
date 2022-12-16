@@ -468,6 +468,40 @@
                                      #(u/round-to-decimals 6 %)]))))))))
 
 (comment
+(deftest percentile-aggregation-as-source-test
+  (mt/test-driver
+   :sqlserver
+   (testing "Query with percentile aggregation as source for other computation produces expected results"
+     (mt/dataset
+      sample-dataset
+      (is (= [[82.18 34 50.45]
+              [82.29 11 50.56]
+              [82.33 33 50.54]
+              [82.43 37 50.6]
+              [84.43 24 51.83]]
+             (-> (mt/run-mbql-query
+                  orders
+                  {;; percentile as source for expression
+                   :expressions  {"p75 + subtotal" [:+ *p75/Float &Orders.subtotal]}
+                   ;; percentile as source for filter
+                   :filter       [:> *p75/Float 50]
+                   :aggregation  [;; percentile as source for other aggregation
+                                  [:aggregation-options [:count *p75/Float] {:name "count"}]
+                                  ;; percentile as source for percentile aggregation
+                                  [:aggregation-options [:percentile *p75/Float 0.3] {:name "p30"}]]
+                   :breakout     [[:expression "p75 + subtotal"]]
+                   :order-by     [[:asc [:expression "p75 + subtotal"]]]
+                   :limit        5
+                   :joins        [{:alias        "Orders"
+                                   :strategy     :inner-join
+                                   :source-table $$orders
+                                   :condition    [:= &Orders.product_id $product_id]}]
+                   :source-query {:source-table $$orders
+                                  :aggregation  [[:aggregation-options [:percentile $total 0.75] {:name "p75"}]]
+                                  :breakout     [$product_id]}})
+                 mt/rows)))))))
+
+(comment
 ;; TODO -- add here all card scenarios
 (deftest percentile-aggregations-with-card-test
   (mt/test-driver
