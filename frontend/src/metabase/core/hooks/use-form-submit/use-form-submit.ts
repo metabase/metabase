@@ -1,10 +1,7 @@
 import { useCallback, useState } from "react";
 import type { FormikHelpers } from "formik";
 import { FormState } from "metabase/core/context/FormContext";
-import {
-  getResponseErrorMessage,
-  GenericErrorResponse,
-} from "metabase/core/utils/errors";
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { FormError } from "./types";
 
 export interface UseFormSubmitProps<T> {
@@ -28,9 +25,8 @@ const useFormSubmit = <T>({
         await onSubmit(data, helpers);
         setState({ status: "fulfilled" });
       } catch (error) {
-        const response = error as GenericErrorResponse;
-        helpers.setErrors(getFormErrors(response));
-        setState({ status: "rejected", message: getFormMessage(response) });
+        helpers.setErrors(getFormErrors(error));
+        setState({ status: "rejected", message: getFormMessage(error) });
       }
     },
     [onSubmit],
@@ -46,7 +42,7 @@ const isFormError = <T>(error: unknown): error is FormError<T> => {
   return error != null && typeof error === "object";
 };
 
-const getFormErrors = (error: GenericErrorResponse) => {
+const getFormErrors = (error: unknown) => {
   if (isFormError(error)) {
     if (typeof error.data !== "string") {
       return error.data?.errors ?? error.errors ?? {};
@@ -56,7 +52,7 @@ const getFormErrors = (error: GenericErrorResponse) => {
   return {};
 };
 
-const getFormMessage = (error: GenericErrorResponse) => {
+const getFormMessage = (error: unknown) => {
   if (isFormError(error)) {
     return getResponseErrorMessage(error);
   }
