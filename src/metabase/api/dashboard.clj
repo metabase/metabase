@@ -692,14 +692,16 @@
 
 (s/defn chain-filter
   "C H A I N filters!
-  ;; show me categories
-  (chain-filter 62 \"ee876336\" {})
-  ;; -> {:values          (\"African\" \"American\" \"Artisan\" ...)
-  :has_more_values false}
-  ;; show me categories that have expensive restaurants
-  (chain-filter 62 \"ee876336\" {\"6f10a41f\" 4})
-  ;; -> {:values          (\"Japanese\" \"Steakhouse\")
-  :has_more_values false}"
+
+    ;; show me categories
+    (chain-filter 62 \"ee876336\" {})
+    ;; -> {:values          (\"African\" \"American\" \"Artisan\" ...)
+           :has_more_values false}
+
+    ;; show me categories that have expensive restaurants
+    (chain-filter 62 \"ee876336\" {\"6f10a41f\" 4})
+    ;; -> {:values          (\"Japanese\" \"Steakhouse\")
+           :has_more_values false}"
   ([dashboard param-key constraint-param-key->value]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
@@ -752,10 +754,11 @@
 
 (s/defn param-values
   "Fetch values for a parameter.
+
   The source of values could be:
-  - a static list
-  - result of a card
-  - chain-filter"
+  - static-list: user defined values list
+  - card: values is result of running a card
+  - field | nil: chain-filter"
   ([dashboard param-key query-params]
    (param-values dashboard param-key query-params nil))
 
@@ -771,7 +774,7 @@
                         :status-code     400})))
      (case (:source_type param)
        "static-list" (static-parameter-values param query)
-       "card"        (throw (ex-info "to be implemented" {:status-code 400}))
+       "card"        (throw (ex-info "not implemented" {:status-code 400}))
        (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
