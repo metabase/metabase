@@ -58,6 +58,7 @@ import {
   SHOW_TIMELINES,
   HIDE_TIMELINES,
   CREATE_TIMELINE_EVENT,
+  INITIALIZE_VISIBLE_TIMELINE_EVENTS,
   HIDE_TIMELINE_EVENTS,
   SHOW_TIMELINE_EVENTS,
   SELECT_TIMELINE_EVENTS,
@@ -567,17 +568,15 @@ export const visibleTimelineEventIds = handleActions(
     [CREATE_TIMELINE_EVENT]: {
       next: (state, { payload }) => [...state, payload.timelineEvent.id],
     },
+    [INITIALIZE_VISIBLE_TIMELINE_EVENTS]: {
+      next: (state, { payload: events }) => events.map(event => event.id),
+    },
     [HIDE_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) =>
         state.filter(item => item !== events.id),
     },
     [SHOW_TIMELINE_EVENTS]: {
-      next: (state, { payload: events }) => {
-        if (Array.isArray(events)) {
-          return [...state, ...events.map(event => event.id)];
-        }
-        return [...state, events.id];
-      },
+      next: (state, { payload: events }) => [...state, events.id],
     },
     [RESET_QB]: { next: () => [] },
   },
