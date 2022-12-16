@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { HelpText } from "./types";
+import { HelpText } from "metabase-lib/expressions/types";
 
 const helperTextStrings: HelpText[] = [
   {
@@ -384,7 +384,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "datetime-diff",
     structure:
-      "datetime-diff(" +
+      "datetimeDiff(" +
       t`datetime1` +
       ", " +
       t`datetime2` +
@@ -393,12 +393,12 @@ const helperTextStrings: HelpText[] = [
       ")",
     description: t`Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.`,
     example:
-      "datetime-diff([" +
+      "datetimeDiff([" +
       t`created_at` +
       "], [" +
       t`shipped_at` +
       "], " +
-      t`month` +
+      t`"month"` +
       ")",
     args: [
       {
@@ -410,6 +410,7 @@ const helperTextStrings: HelpText[] = [
         description: t`Choose from: "year", "month", "week", "day", "hour", "minute", or "second".`,
       },
     ],
+    docsPage: "datetimediff",
   },
   {
     name: "exp",
@@ -738,6 +739,7 @@ const helperTextStrings: HelpText[] = [
         description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
       },
     ],
+    docsPage: "datetimeadd",
   },
   {
     name: "datetime-subtract",
@@ -759,6 +761,7 @@ const helperTextStrings: HelpText[] = [
         description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
       },
     ],
+    docsPage: "datetimesubtract",
   },
   {
     name: "now",
@@ -796,6 +799,7 @@ See the full list here: https://w.wiki/4Jx`,
         description: t`The current time zone. Only required for timestamps with no time zone.`,
       },
     ],
+    docsPage: "converttimezone",
   },
 ];
 

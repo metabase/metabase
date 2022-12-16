@@ -15,6 +15,8 @@ redirect_from:
 
 Appearance settings give you the option to white label Metabase to match your company’s branding.
 
+If you're looking for date, time, number, or currency formatting, see [Formatting defaults](../data-modeling/formatting.md).
+
 ## Changing Metabase's appearance
 
 Click on the gear icon at the bottom of the navigation sidebar and select **Admin settings** > **Settings** > **Appearance**. Here’s what you can do:

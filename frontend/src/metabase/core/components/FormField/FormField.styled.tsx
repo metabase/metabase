@@ -30,6 +30,13 @@ export const FieldLabel = styled.label<FieldLabelProps>`
   font-weight: 900;
 `;
 
+export const OptionalTag = styled.span`
+  color: ${color("text-medium")};
+  font-size: 0.77rem;
+  font-weight: 900;
+  margin-left: 0.25rem;
+`;
+
 export const FieldLabelContainer = styled.div`
   display: flex;
   align-items: center;

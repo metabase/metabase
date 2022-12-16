@@ -3,7 +3,6 @@
   (:require
     [cheshire.core :as json]
     [clojure.set :as set]
-    [clojure.string :as str]
     [clojure.tools.logging :as log]
     [compojure.core :refer [DELETE GET POST PUT]]
     [medley.core :as m]
@@ -23,6 +22,7 @@
     [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
     [metabase.models.field :refer [Field]]
     [metabase.models.interface :as mi]
+    [metabase.models.parameter-card :as parameter-card]
     [metabase.models.params :as params]
     [metabase.models.params.chain-filter :as chain-filter]
     [metabase.models.query :as query :refer [Query]]
@@ -734,21 +734,11 @@
            (api/throw-403 e)
            (throw e)))))))
 
-(defn- static-values-search
-  [values query]
-  (let [query (str/lower-case query)
-        pred  (fn [value]
-                (if (string? value)
-                  (str/includes? (str/lower-case value) query)
-                  ;; search by label
-                  (str/includes? (str/lower-case (second value)) query)))]
-    (filter pred values)))
-
 (defn- static-parameter-values
   [{source-options :source_options :as _param} query]
   (when-let [values (:values source-options)]
     {:values (if query
-               (static-values-search values query)
+               (paramter-card/query-matches values query)
                values)
      :has_more_values false}))
 
@@ -773,13 +763,13 @@
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
      (case (:source_type param)
-       "static-list" (static-parameter-values param query)
-       "card"        (throw (ex-info "not implemented" {:status-code 400}))
-       (chain-filter dashboard param-key constraint-param-key->value query)))))
+       "static-list" (static-parameter-values param queyr)
+       "card"        (parameter-card/values-for-dashboard dashboard param-key query)
+       (chain-filter dashboard param-key query-params query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
-  "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
-  parameters like `other-parameter=value` e.g.
+  "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
+  restrict these values by passing query parameters like `other-parameter=value` e.g.
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
