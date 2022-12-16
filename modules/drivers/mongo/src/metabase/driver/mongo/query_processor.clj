@@ -834,7 +834,7 @@
         group-ags    (mapcat :group expanded-ags)
         post-ags     (mapcat :post expanded-ags)]
     [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}
-     (when (not-empty post-ags)
+     (when (seq post-ags)
        {:$addFields (into (ordered-map/ordered-map) post-ags)})]))
 
 (defn- projection-group-map [fields]
@@ -924,15 +924,18 @@
               (and (integer? field-id) (contains? parent->child-id field-id)))
             fields)))
 
-(defn- handle-order-by [{:keys [order-by]} pipeline-ctx]
-  (let [sort-fields (for [field (remove-parent-fields (map second order-by))
-                          ;; We only care about expressions
-                          :when (= :expression ((.dispatchFn ->rvalue) field))]
+(defn- handle-order-by [{:keys [order-by breakout]} pipeline-ctx]
+  (let [breakout-fields (set breakout)
+        sort-fields (for [field (remove-parent-fields (map second order-by))
+                          ;; We only care about expressions not added as breakout
+                          :when (and (not (contains? breakout-fields field))
+                                     (= :expression ((.dispatchFn ^clojure.lang.MultiFn ->rvalue) field)))]
                       [(->lvalue field) (->rvalue field)])]
     (cond-> pipeline-ctx
+      (seq sort-fields) (update :query conj
+                                ;; We $addFields before sorting, otherwise expressions will not be available for the sort
+                                {:$addFields (into (ordered-map/ordered-map) sort-fields)})
       (seq order-by) (update :query conj
-                             ;; We $addFields before sorting, otherwise expressions will not be available for the sort
-                             {:$addFields (into (ordered-map/ordered-map) sort-fields)}
                              (order-by->$sort order-by)))))
 
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
