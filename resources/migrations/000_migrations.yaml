@@ -13235,6 +13235,15 @@ databaseChangeLog:
             constraintName: fk_values_card_ref_card_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v46.00-036
+      author: tsmacdonald
+      comment: Added 0.46.0 - values_card -> parameter_card
+      changes:
+        - renameTable:
+            oldTableName: values_card
+            newTableName: parameter_card
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

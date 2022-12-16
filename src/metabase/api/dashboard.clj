@@ -21,6 +21,7 @@
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.field :refer [Field]]
             [metabase.models.interface :as mi]
+            [metabase.models.parameter-card :as parameter-card]
             [metabase.models.params :as params]
             [metabase.models.params.chain-filter :as chain-filter]
             [metabase.models.query :as query :refer [Query]]
@@ -28,7 +29,6 @@
             [metabase.models.revision :as revision]
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
-            [metabase.models.values-card :as values-card]
             [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -742,7 +742,7 @@
             (first)
             (:source_options)
             (:values)
-            (values-card/query-matches query))})
+            (parameter-card/query-matches query))})
 
 (defn- param-values
   ([dashboard param-key query-params]
@@ -756,7 +756,7 @@
                         :status-code     400})))
      (case (:source_type param)
        "static-list" (static-parameter-values dashboard param-key query)
-       "card"        (values-card/values-for-dashboard dashboard param-key query)
+       "card"        (parameter-card/values-for-dashboard dashboard param-key query)
        (chain-filter dashboard param-key query-params query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"

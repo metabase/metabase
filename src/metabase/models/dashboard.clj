@@ -11,6 +11,7 @@
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.field-values :as field-values]
+            [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -20,7 +21,6 @@
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.serialization.util :as serdes.util]
-            [metabase.models.values-card :as values-card :refer [ValuesCard]]
             [metabase.moderation :as moderation]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
@@ -73,7 +73,7 @@
 
 (defn- pre-delete [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
-    (values-card/delete-for-dashboard! dashboard-id)
+    (parameter-card/delete-for-dashboard! dashboard-id)
     (db/delete! 'Revision :model "Dashboard" :model_id dashboard-id)))
 
 (defn- pre-insert [dashboard]
@@ -86,12 +86,12 @@
 (defn- post-insert
   [dashboard]
   (u/prog1 dashboard
-    (values-card/upsert-or-delete-for-dashboard! dashboard)))
+    (parameter-card/upsert-or-delete-for-dashboard! dashboard)))
 
 (defn- pre-update [dashboard]
   (u/prog1 dashboard
     (params/assert-valid-parameters dashboard)
-    (values-card/upsert-or-delete-for-dashboard! dashboard)
+    (parameter-card/upsert-or-delete-for-dashboard! dashboard)
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
 (defn- update-dashboard-subscription-pulses!
@@ -142,13 +142,13 @@
   (update-dashboard-subscription-pulses! dashboard))
 
 (defn- card-ids-by-param-id
-  "Return a map (keyed by parameter ID) of ValuesCards associated with `dashboard`"
+  "Return a map (keyed by parameter ID) of ParameterCards associated with `dashboard`"
   [dashboard-id]
-  (->> (db/select ValuesCard :parameterized_object_id dashboard-id :parameterized_object_type "dashboard")
+  (->> (db/select ParameterCard :parameterized_object_id dashboard-id :parameterized_object_type "dashboard")
        (group-by :parameter_id)
        (m/map-vals (comp :card_id first))))
 
-(defn- populate-values-card
+(defn- populate-parameter-card
   [{dashboard-id :id parameters :parameters :as dashboard}]
   (assoc dashboard :parameters
          (let [param-id->card-id (card-ids-by-param-id dashboard-id)]
@@ -168,7 +168,7 @@
           :post-insert post-insert
           :pre-update  pre-update
           :post-update post-update
-          :post-select (comp populate-values-card public-settings/remove-public-uuid-if-public-sharing-is-disabled)}))
+          :post-select (comp populate-parameter-card public-settings/remove-public-uuid-if-public-sharing-is-disabled)}))
 
 (defmethod serdes.hash/identity-hash-fields Dashboard
   [_dashboard]
