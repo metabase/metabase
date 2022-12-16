@@ -19,11 +19,10 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]])
+            [metabase.util.i18n :refer [trs]])
   (:import [java.sql Connection ResultSet Time]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
@@ -281,20 +280,7 @@
   [driver [_ x y unit]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)
-        disallowed-types (keep
-                          (fn [v]
-                            (some-> v
-                                    hx/type-info
-                                    hx/type-info->db-type
-                                    name
-                                    str/lower-case
-                                    #{"time"}))
-                          [x y])
-        _ (when (seq disallowed-types)
-            (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
-                                 (pr-str disallowed-types))
-                            {:found disallowed-types
-                             :type  qp.error-type/invalid-query})))
+        _ (sql.qp/datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
         x (if (hx/is-of-type? x "datetimeoffset")
             (hx/->AtTimeZone x (zone-id->windows-zone (qp.timezone/results-timezone-id)))
             x)
@@ -303,84 +289,33 @@
             (hx/->AtTimeZone y (zone-id->windows-zone (qp.timezone/results-timezone-id)))
             y)
         y (hx/cast "datetime2" y)]
-    (case unit
-      :year
-      (let [positive-diff (fn [a b] ; precondition: a <= b
-                            (hx/-
-                             (date-diff :year a b)
-                             (hsql/call
-                              :case
-                              (hsql/call
-                               :or
-                               (hsql/call :> (date-part :month a) (date-part :month b))
-                               (hsql/call
-                                :and
-                                (hsql/call := (date-part :month a) (date-part :month b))
-                                (hsql/call :> (date-part :day a) (date-part :day b))))
-                              1
-                              :else
-                              0)))]
-        (hsql/call :case
-                   (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
-                   (positive-diff x y)
-                   :else
-                   (hx/* -1 (positive-diff y x))))
+    (sql.qp/datetime-diff driver unit x y)))
 
-      :quarter
-      (let [positive-diff
-            (fn [a b]
-              (hx/cast
-               :integer
-               (hx/floor (hx// (hx/- (date-diff :month a b)
-                                     (hsql/call :case (hsql/call :> (date-part :day a) (date-part :day b)) 1 :else 0))
-                               3))))]
-        (hsql/call :case
-                   (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
-                   (positive-diff x y)
-                   :else
-                   (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:sqlserver :year]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 12))
 
-      :month
-      (let [positive-diff (fn [a b]
-                            (hx/-
-                             (date-diff :month a b)
-                             (hsql/call
-                              :case
-                              (hsql/call :> (date-part :day a) (date-part :day b))
-                              1
-                              :else
-                              0)))]
-        (hsql/call :case
-                   (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
-                   (positive-diff x y)
-                   :else
-                   (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:sqlserver :quarter]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 3))
 
-      :week
-      (let [positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                              (hx// (date-diff :day a b) 7))))]
-        (hsql/call :case
-                   (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
-                   (positive-diff x y)
-                   :else
-                   (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:sqlserver :month]
+  [_driver _unit x y]
+  (hx/+ (date-diff :month x y)
+        ;; datediff counts month boundaries not whole months, so we need to adjust
+        ;; if x<y but x>y in the month calendar then subtract one month
+        ;; if x>y but x<y in the month calendar then add one month
+        (hsql/call
+         :case
+         (hsql/call :and (hsql/call :< x y) (hsql/call :> (date-part :day x) (date-part :day y))) -1
+         (hsql/call :and (hsql/call :> x y) (hsql/call :< (date-part :day x) (date-part :day y))) 1
+         :else 0)))
 
-      :day
-      (date-diff :day x y)
-
-      (:hour :minute :second)
-      (let [positive-diff (fn [a b]
-                            (hx/floor
-                             (hx// (date-diff :millisecond a b)
-                                   (case unit :hour 3600000 :minute 60000 :second 1000))))]
-        (hsql/call :case
-                   (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
-                   (positive-diff x y)
-                   :else
-                   (hx/* -1 (positive-diff y x)))))))
+(defmethod sql.qp/datetime-diff [:sqlserver :week] [_driver _unit x y] (hx// (date-diff :day x y) 7))
+(defmethod sql.qp/datetime-diff [:sqlserver :day] [_driver _unit x y] (date-diff :day x y))
+(defmethod sql.qp/datetime-diff [:sqlserver :hour] [_driver _unit x y] (hx// (date-diff :millisecond x y) 3600000))
+(defmethod sql.qp/datetime-diff [:sqlserver :minute] [_driver _unit x y] (date-diff :minute x y))
+(defmethod sql.qp/datetime-diff [:sqlserver :second] [_driver _unit x y] (date-diff :second x y))
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]

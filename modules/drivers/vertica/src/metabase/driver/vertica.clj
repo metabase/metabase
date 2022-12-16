@@ -15,11 +15,10 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
             [metabase.driver.sql.util :as sql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]])
+            [metabase.util.i18n :refer [trs]])
   (:import [java.sql ResultSet ResultSetMetaData Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
@@ -138,99 +137,53 @@
        (map (partial sql.qp/->honeysql driver))
        (reduce (partial hsql/call :concat))))
 
-(defmethod sql.qp/->honeysql [:vertica :datetime-diff]
-  [driver [_ x y unit]]
-  (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)
-        disallowed-types (keep
-                          (fn [v]
-                            (some-> v
-                                    hx/type-info
-                                    hx/type-info->db-type
-                                    name
-                                    str/lower-case
-                                    #{"time" "timetz"}))
-                          [x y])]
-    (when (seq disallowed-types)
-      (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
-                           (pr-str disallowed-types))
-                      {:found disallowed-types
-                       :type  qp.error-type/invalid-query})))
-    (case unit
-      :year
-      (let [positive-diff (fn [a b] ; precondition: a <= b
-                            (hx/-
-                             (datediff :year a b)
-                             (hx/cast
-                              :integer
-                              (hsql/call
-                               :or
-                               (hsql/call :> (extract :month a) (extract :month b))
-                               (hsql/call
-                                :and
-                                (hsql/call := (extract :month a) (extract :month b))
-                                (hsql/call :> (extract :day a) (extract :day b)))))))]
-        (hsql/call :case
-                   (hsql/call :<= (cast-timestamp x) (cast-timestamp y))
-                   (positive-diff x y)
-                   :else
-                   (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:vertica :year]
+  [driver _unit x y]
+  (let [months (sql.qp/datetime-diff driver :month x y)]
+    (hx/->integer (hsql/call :trunc (hx// months 12)))))
 
-      :quarter
-      (let [positive-diff
-            (fn [a b]
-              (hx/cast
-               :integer
-               (hx/floor (hx// (hx/- (datediff :month a b)
-                                     (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b))))
-                               3))))]
-        (hsql/call :case
-                   (hsql/call :<= (cast-timestamp x) (cast-timestamp y))
-                   (positive-diff x y)
-                   :else
-                   (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:vertica :quarter]
+  [driver _unit x y]
+  (let [months (sql.qp/datetime-diff driver :month x y)]
+    (hx/->integer (hsql/call :trunc (hx// months 3)))))
 
-      :month
-      (let [positive-diff (fn [a b]
-                            (hx/-
-                             (datediff :month a b)
-                             (hx/cast
-                              :integer
-                              (hsql/call :> (extract :day a) (extract :day b)))))]
-        (hsql/call :case
-                   (hsql/call :<= (cast-timestamp x) (cast-timestamp y))
-                   (positive-diff x y)
-                   :else
-                   (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:vertica :month]
+  [_driver _unit x y]
+  (hx/+ (datediff :month x y)
+        ;; datediff counts month boundaries not whole months, so we need to adjust
+        ;; if x<y but x>y in the month calendar then subtract one month
+        ;; if x>y but x<y in the month calendar then add one month
+        (hsql/call
+         :case
+         (hsql/call :and
+                    (hsql/call :< (cast-timestamp x) (cast-timestamp y))
+                    (hsql/call :> (extract :day x) (extract :day y))) -1
+         (hsql/call :and
+                    (hsql/call :> (cast-timestamp x) (cast-timestamp y))
+                    (hsql/call :< (extract :day x) (extract :day y))) 1
+         :else 0)))
 
-      :week
-      (let [positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                              (hx// (datediff :day a b) 7))))]
-        (hsql/call :case
-                   (hsql/call :<= (cast-timestamp x) (cast-timestamp y))
-                   (positive-diff x y)
-                   :else
-                   (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:vertica :week]
+  [_driver _unit x y]
+  (hx/->integer (hsql/call :trunc (hx// (datediff :day x y) 7))))
 
-      :day
-      (datediff :day x y)
+(defmethod sql.qp/datetime-diff [:vertica :day]
+  [_driver _unit x y]
+  (datediff :day x y))
 
-      (:hour :minute :second)
-      (let [positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                              (cond-> (hsql/call :- (extract :epoch b) (extract :epoch a))
-                                (not= unit :second)
-                                (hx// (case unit :hour 3600 :minute 60))))))]
-        (hsql/call :case
-                   (hsql/call :<= (cast-timestamp x) (cast-timestamp y))
-                   (positive-diff x y)
-                   :else
-                   (hx/* -1 (positive-diff y x)))))))
+(defmethod sql.qp/datetime-diff [:vertica :hour]
+  [_driver _unit x y]
+  (let [seconds (hx/- (extract :epoch y) (extract :epoch x))]
+    (hx/->integer (hsql/call :trunc (hx// seconds 3600)))))
+
+(defmethod sql.qp/datetime-diff [:vertica :minute]
+  [_driver _unit x y]
+  (let [seconds (hx/- (extract :epoch y) (extract :epoch x))]
+    (hx/->integer (hsql/call :trunc (hx// seconds 60)))))
+
+(defmethod sql.qp/datetime-diff [:vertica :second]
+  [_driver _unit x y]
+  (hx/->integer (hsql/call :trunc (hx/- (extract :epoch y) (extract :epoch x)))))
 
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
   [driver [_ arg pattern]]

@@ -367,6 +367,36 @@ jobs:
       with:
         junit-name: 'be-tests-mysql-latest-ee'
 
+  be-tests-oracle-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: oracle
+      MB_ORACLE_TEST_USER: metabase
+      MB_ORACLE_TEST_PASSWORD: ${{ secrets.MB_ORACLE_TEST_PASSWORD }}
+      MB_ORACLE_TEST_SID: ORCL
+      MB_ORACLE_TEST_HOST: ${{ secrets.MB_ORACLE_TEST_HOST }}
+      MB_ORACLE_SSL_TEST_SSL: true
+      MB_ORACLE_SSL_TEST_PORT: 2484
+      MB_ORACLE_SSL_TEST_SSL_USE_TRUSTSTORE: true
+      MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH: './resources/certificates/rds_root_ca_truststore.jks'
+      MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_OPTIONS: local
+      MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE: metabase
+    steps:
+    - uses: actions/checkout@v3
+    - name: Ensure truststore file
+      run: ls ${{ env.MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH }}
+    - name: Make plugins directory
+      run: mkdir plugins
+    - name: Fetch JDBC driver
+      run: wget --output-document=plugins/ojdbc8.jar ${{ secrets.ORACLE_JDBC_JAR }}
+    - name: Test Oracle driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-oracle-ee'
+
   be-tests-postgres-ee:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04

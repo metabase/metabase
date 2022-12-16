@@ -7,6 +7,7 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [medley.core :as m]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
@@ -240,10 +241,6 @@
       (with-open [conn (jdbc/get-connection spec)]
         (describe-table-fks* driver conn table db-name-or-nil)))))
 
-(def ^:const nested-field-sample-limit
-  "Number of rows to sample for describe-nested-field-columns"
-  500)
-
 (def ^:dynamic *nested-field-column-max-row-length*
   "Max string length for a row for nested field column before we just give up on parsing it.
   Marked as mutable because we mutate it for tests."
@@ -402,7 +399,7 @@
               quote-type       (case driver :postgres :ansi :mysql :mysql)
               sql-args         (hsql/format {:select json-field-names
                                              :from   [table-identifier]
-                                             :limit  nested-field-sample-limit} :quoting quote-type)
+                                             :limit  metadata-queries/nested-field-sample-limit} :quoting quote-type)
               query            (jdbc/reducible-query spec sql-args {:identifiers identity})
               field-types      (transduce describe-json-xform describe-json-rf query)
               fields           (field-types->fields field-types)]

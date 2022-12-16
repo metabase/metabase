@@ -13,6 +13,7 @@ export interface FormRadioProps<
   name: string;
   title?: string;
   description?: ReactNode;
+  optional?: boolean;
 }
 
 const FormRadio = forwardRef(function FormRadio<
@@ -25,6 +26,7 @@ const FormRadio = forwardRef(function FormRadio<
     style,
     title,
     description,
+    optional,
     ...props
   }: FormRadioProps<TValue, TOption>,
   ref: Ref<HTMLDivElement>,
@@ -39,6 +41,7 @@ const FormRadio = forwardRef(function FormRadio<
       title={title}
       description={description}
       error={touched ? error : undefined}
+      optional={optional}
     >
       <Radio
         {...props}

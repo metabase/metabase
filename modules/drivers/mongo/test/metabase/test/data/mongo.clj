@@ -40,7 +40,7 @@
   (conn-details (merge
                  {:dbname (tx/escaped-database-name dbdef)
                   :host   (tx/db-test-env-var :mongo :host "localhost")
-                  :post   (Integer/parseUnsignedInt (tx/db-test-env-var :mongo :post "27017"))}
+                  :port   (Integer/parseUnsignedInt (tx/db-test-env-var :mongo :port "27017"))}
                  (when-let [user (tx/db-test-env-var :mongo :user)]
                    {:user user})
                  (when-let [password (tx/db-test-env-var :mongo :password)]

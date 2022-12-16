@@ -1,6 +1,7 @@
 (ns metabase.analytics.stats
   "Functions which summarize the usage of an instance"
-  (:require [clj-http.client :as http]
+  (:require [cheshire.core :as json]
+            [clj-http.client :as http]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
@@ -278,7 +279,12 @@
     {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
                                     {:total    1
                                      :analyzed is-full-sync?}))
-     :dbms_versions (frequencies (map #(assoc (:dbms_version %) :engine (:engine %)) databases))}))
+     :dbms_versions (frequencies (map (fn [db]
+                                        (-> db
+                                            :dbms_version
+                                            (assoc :engine (:engine db))
+                                            json/generate-string))
+                                      databases))}))
 
 
 (defn- table-metrics

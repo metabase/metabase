@@ -21,6 +21,7 @@ export interface FormTextAreaProps
   nullable?: boolean;
   infoLabel?: string;
   infoTooltip?: string;
+  optional?: boolean;
 }
 
 const FormTextArea = forwardRef(function FormTextArea(
@@ -33,6 +34,7 @@ const FormTextArea = forwardRef(function FormTextArea(
     nullable,
     infoLabel,
     infoTooltip,
+    optional,
     ...props
   }: FormTextAreaProps,
   ref: Ref<HTMLDivElement>,
@@ -58,6 +60,7 @@ const FormTextArea = forwardRef(function FormTextArea(
       error={touched ? error : undefined}
       infoLabel={infoLabel}
       infoTooltip={infoTooltip}
+      optional={optional}
     >
       <TextArea
         {...props}
