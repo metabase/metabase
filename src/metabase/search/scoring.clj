@@ -6,45 +6,9 @@
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.search.config :as search-config]
+            [metabase.search.util :refer :all]
             [metabase.util :as u]
             [schema.core :as s]))
-
-;;; Utility functions
-
-(s/defn normalize :- s/Str
-  "Normalize a `query` to lower-case."
-  [query :- s/Str]
-  (str/lower-case (str/trim query)))
-
-(s/defn tokenize :- [s/Str]
-  "Break a search `query` into its constituent tokens"
-  [query :- s/Str]
-  (filter seq
-          (str/split query #"\s+")))
-
-(def ^:private largest-common-subseq-length
-  (memoize/fifo
-   (fn
-     ([eq xs ys]
-      (largest-common-subseq-length eq xs ys 0))
-     ([eq xs ys tally]
-      (if (or (zero? (count xs))
-              (zero? (count ys)))
-        tally
-        (max
-         (if (eq (first xs)
-                 (first ys))
-           (largest-common-subseq-length eq (rest xs) (rest ys) (inc tally))
-           tally)
-         (largest-common-subseq-length eq xs (rest ys) 0)
-         (largest-common-subseq-length eq (rest xs) ys 0)))))
-   ;; Uses O(n*m) space (the lengths of the two lists) with k≤2, so napkin math suggests this gives us caching for at
-   ;; least a 31*31 search (or 50*20, etc) which sounds like more than enough. Memory is cheap and the items are
-   ;; small, so we may as well skew high.
-   ;; As a precaution, the scorer that uses this limits the number of tokens (see the `take` call below)
-   :fifo/threshold 2000))
-
-;;; Scoring
 
 (defn- matches?
   [search-token match-token]
