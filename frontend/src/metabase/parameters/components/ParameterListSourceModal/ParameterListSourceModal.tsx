@@ -25,7 +25,7 @@ const ParameterListSourceModal = ({
   onClose,
 }: ParameterListSourceModalProps): JSX.Element => {
   const options = getSourceOptions(parameter);
-  const [value, setValue] = useState(options.values?.join(NEW_LINE) ?? "");
+  const [value, setValue] = useState(getInputValue(options.values));
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -35,8 +35,7 @@ const ParameterListSourceModal = ({
   );
 
   const handleSubmit = useCallback(() => {
-    const values = value ? value.split(NEW_LINE) : [];
-    onChangeSourceOptions({ values });
+    onChangeSourceOptions({ values: getSourceValues(value) });
     onClose?.();
   }, [value, onChangeSourceOptions, onClose]);
 
@@ -61,6 +60,17 @@ const ParameterListSourceModal = ({
       </div>
     </ModalContent>
   );
+};
+
+const getInputValue = (values?: string[]) => {
+  return values?.join(NEW_LINE) ?? "";
+};
+
+const getSourceValues = (value: string) => {
+  return value
+    .split(NEW_LINE)
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
 };
 
 export default ParameterListSourceModal;
