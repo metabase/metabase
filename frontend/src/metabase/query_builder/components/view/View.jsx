@@ -189,7 +189,7 @@ class View extends React.Component {
           question={question}
           timelines={timelines}
           visibleTimelineIds={visibleTimelineIds}
-          visibleTimelineEventIds={visibleTimelineEventIds ?? []}
+          visibleTimelineEventIds={visibleTimelineEventIds}
           selectedTimelineEventIds={selectedTimelineEventIds}
           xDomain={xDomain}
           onShowTimelines={showTimelines}
