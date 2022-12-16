@@ -8,14 +8,8 @@ import ParameterListSourceModal, {
 } from "./ParameterListSourceModal";
 
 describe("ParameterListSourceModal", () => {
-  it("should edit source values", () => {
-    const props = getProps({
-      parameter: createMockUiParameter({
-        source_options: createMockParameterSourceOptions({
-          values: ["Gadget", "Gizmo"],
-        }),
-      }),
-    });
+  it("should set source values", () => {
+    const props = getProps();
 
     render(<ParameterListSourceModal {...props} />);
     userEvent.clear(screen.getByRole("textbox"));
