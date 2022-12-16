@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { specialChars } from "@testing-library/user-event";
 import { createMockParameterSourceOptions } from "metabase-types/api/mocks";
 import { createMockUiParameter } from "metabase-lib/mocks";
 import ParameterListSourceModal, {
@@ -8,6 +8,28 @@ import ParameterListSourceModal, {
 } from "./ParameterListSourceModal";
 
 describe("ParameterListSourceModal", () => {
+  it("should edit source values", () => {
+    const props = getProps({
+      parameter: createMockUiParameter({
+        source_options: createMockParameterSourceOptions({
+          values: ["Gadget", "Gizmo"],
+        }),
+      }),
+    });
+
+    render(<ParameterListSourceModal {...props} />);
+    userEvent.clear(screen.getByRole("textbox"));
+    userEvent.type(
+      screen.getByRole("textbox"),
+      `Widget ${specialChars.enter}Doohickey ${specialChars.enter}`,
+    );
+    userEvent.click(screen.getByText("Done"));
+
+    expect(props.onChangeSourceOptions).toHaveBeenCalledWith({
+      values: ["Widget", "Doohickey"],
+    });
+  });
+
   it("should clear source values", () => {
     const props = getProps({
       parameter: createMockUiParameter({
