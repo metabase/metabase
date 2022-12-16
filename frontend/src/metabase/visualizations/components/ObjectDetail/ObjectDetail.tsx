@@ -387,7 +387,7 @@ export function ObjectDetailHeader({
             )}
             <CloseButton>
               <Button
-                data-testId="object-detail-close-button"
+                data-testid="object-detail-close-button"
                 onlyIcon
                 borderless
                 onClick={closeObjectDetail}
