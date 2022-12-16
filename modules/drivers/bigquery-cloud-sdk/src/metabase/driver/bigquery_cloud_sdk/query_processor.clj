@@ -554,8 +554,9 @@
       t (->temporal-type t))))
 
 (defn- datetime-diff-check-args
-  "Validates the types of the datetime args to a `datetime-diff` clause. Bigquery's type handling
-   differs from other drivers, which means we can't use [[sql.qp/datetime-diff-check-args]]."
+  "Validates the types of the datetime args to a `datetime-diff` clause.
+   This is exactly the same as [[sql.qp/datetime-diff-check-args]] except it uses [[temporal-type]]`
+   to get the type of each arg, not [[hx/database-type]], which is needed for bigquery."
   [x y]
   (doseq [arg [x y]
           :let [db-type (some-> (temporal-type arg) name)]
