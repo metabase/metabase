@@ -562,10 +562,12 @@ export const visibleTimelineIds = handleActions(
 
 export const visibleTimelineEventIds = handleActions(
   {
-    [INITIALIZE_QB]: { next: () => [] },
+    [INITIALIZE_QB]: { next: () => null },
     [SHOW_TIMELINES]: {
       next: (state, { payload: timelines }) =>
-        timelines.flatMap(t => t.events.map(e => e.id)),
+        state === null
+          ? timelines.flatMap(t => t.events.map(e => e.id))
+          : state,
     },
     [HIDE_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) =>
@@ -574,9 +576,9 @@ export const visibleTimelineEventIds = handleActions(
     [SHOW_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) => [...state, events.id],
     },
-    [RESET_QB]: { next: () => [] },
+    [RESET_QB]: { next: () => null },
   },
-  [],
+  null,
 );
 
 export const selectedTimelineEventIds = handleActions(
