@@ -55,7 +55,7 @@ const ParameterSourceSettings = ({
       if (editingType && hasValidSourceOptions(editingType, sourceOptions)) {
         onChangeSourceType(editingType);
       } else {
-        onChangeSourceType("field");
+        onChangeSourceType(null);
       }
       onChangeSourceOptions(sourceOptions);
     },
@@ -117,7 +117,7 @@ const getRadioOptions = (
       name: (
         <RadioLabel
           title={t`Values from column`}
-          isSelected={sourceType === "field"}
+          isSelected={sourceType === null}
         />
       ),
       value: "field",

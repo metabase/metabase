@@ -69,7 +69,7 @@ export function setParameterName(
 }
 
 export function getSourceType(parameter: Parameter): ParameterSourceType {
-  return parameter.source_type ?? "field";
+  return parameter.source_type ?? null;
 }
 
 export function getSourceOptions(parameter: Parameter): ParameterSourceOptions {

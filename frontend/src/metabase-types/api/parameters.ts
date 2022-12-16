@@ -30,7 +30,7 @@ export type ParameterId = string;
 
 export type ActionParameterValue = string | number;
 
-export type ParameterSourceType = "field" | "static-list";
+export type ParameterSourceType = null | "static-list";
 
 export interface ParameterSourceOptions {
   values?: string[];
