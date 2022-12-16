@@ -10,6 +10,7 @@ import { useOnMount } from "metabase/hooks/use-on-mount";
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 
+import type { Database, DatabaseId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
@@ -32,12 +33,17 @@ interface DataPickerStateProps {
   hasDataAccess: boolean;
 }
 
+interface DatabaseListLoaderProps {
+  databases: Database[];
+}
+
 interface SearchListLoaderProps {
   search: unknown[];
 }
 
 type DataPickerProps = DataPickerOwnProps &
   DataPickerStateProps &
+  DatabaseListLoaderProps &
   SearchListLoaderProps;
 
 function mapStateToProps(state: State) {
@@ -48,6 +54,7 @@ function mapStateToProps(state: State) {
 }
 
 function DataPicker({
+  databases,
   search: modelLookupResult,
   filters: customFilters = {},
   hasNestedQueriesEnabled,
@@ -80,11 +87,16 @@ function DataPicker({
       const isModels = type === "models";
       const isUsingVirtualTables = isModels || type === "questions";
 
-      // When switching to models or questions,
-      // we want to automatically open Our analytics collection
-      const databaseId = isUsingVirtualTables
-        ? SAVED_QUESTIONS_VIRTUAL_DB_ID
-        : undefined;
+      let databaseId: DatabaseId | undefined = undefined;
+
+      if (isUsingVirtualTables) {
+        // When switching to models or questions,
+        // we want to automatically open Our analytics collection
+        databaseId = SAVED_QUESTIONS_VIRTUAL_DB_ID;
+      } else if (databases.length === 1) {
+        databaseId = databases[0].id;
+      }
+
       const schemaId = isUsingVirtualTables
         ? getRootCollectionVirtualSchemaId({ isModels })
         : undefined;
@@ -98,7 +110,7 @@ function DataPicker({
         tableIds: [],
       });
     },
-    [onChange],
+    [databases, onChange],
   );
 
   useOnMount(() => {
