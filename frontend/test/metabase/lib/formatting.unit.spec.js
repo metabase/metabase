@@ -266,7 +266,7 @@ describe("formatting", () => {
             );
           });
           expect(container.innerHTML).toEqual(
-            "<span>1.23x10<sup>5</sup></span>",
+            "<span>1.23×10<sup>5</sup></span>",
           );
         });
         it("should render using HTML <sup> for small values", () => {
@@ -280,7 +280,7 @@ describe("formatting", () => {
             );
           });
           expect(container.innerHTML).toEqual(
-            "<span>1.23x10<sup>-4</sup></span>",
+            "<span>1.23×10<sup>-4</sup></span>",
           );
         });
       });
