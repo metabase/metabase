@@ -241,11 +241,11 @@
 
 (defmethod sql.qp/datetime-diff [:redshift :hour]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :seconds x y) 3600))
+  (hx// (sql.qp/datetime-diff driver :second x y) 3600))
 
 (defmethod sql.qp/datetime-diff [:redshift :minute]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :seconds x y) 60))
+  (hx// (sql.qp/datetime-diff driver :second x y) 60))
 
 (defmethod sql.qp/datetime-diff [:redshift :second]
   [_driver _unit x y]
