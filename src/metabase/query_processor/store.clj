@@ -56,6 +56,7 @@
   [:id
    :engine
    :name
+   :dbms_version
    :details
    :settings])
 
