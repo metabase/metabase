@@ -142,7 +142,8 @@
   (update-dashboard-subscription-pulses! dashboard))
 
 (defn- card-ids-by-param-id
-  "Return a map (keyed by parameter ID) of ParameterCards associated with `dashboard`"
+  "Returns a map from parameter IDs to card IDs for the given dashboard (for parameters whose filter values come from a
+  card via a ParameterCard)."
   [dashboard-id]
   (->> (db/select ParameterCard :parameterized_object_id dashboard-id :parameterized_object_type "dashboard")
        (group-by :parameter_id)
