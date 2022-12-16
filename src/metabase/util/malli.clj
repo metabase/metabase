@@ -143,9 +143,6 @@
   (reset! (:*missing? ctx) true)
   (str "Indescribable_Malli_Schema [ " (pr-str (or (:type x) x)) " ]"))
 
-(defmacro sanitize [schema]
-  (walk/postwalk-replace {'int? :int 'pos-int? :pos-int 'keyword? :keyword} schema))
-
 ;; n.b. this is not clojure.core/defn
 (defn describe :- [:map [:missing? :boolean] [:description :string]]
   "Given a malli schema, should return a string with a description of the shape it expects."
