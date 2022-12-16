@@ -153,6 +153,16 @@
 (defmethod date [:sql :year-of-era]      [_driver _ expr] (hx/year expr))
 (defmethod date [:sql :week-of-year-iso] [_driver _ expr] (hx/week expr))
 
+(defmulti datetime-diff
+  "Returns a HoneySQL form for calculating the datetime-diff for a given unit.
+   This method is used by implementations of `->honeysql` for the `:datetime-diff`
+   clause. It is recommended to implement this if you want to use the default SQL
+   implementation of `->honeysql` for the `:datetime-diff`, which includes
+   validation of argument types across all units."
+  {:arglists '([driver unit field-or-value field-or-value]), :added "0.46.0"}
+  (fn [driver unit _ _] [(driver/dispatch-on-initialized-driver driver) unit])
+  :hierarchy #'driver/hierarchy)
+
 (defn- days-till-start-of-first-full-week
   "Takes a datetime expession, return a HoneySQL form
   that calculate how many days from the Jan 1st till the start of `first full week`.
@@ -673,6 +683,25 @@
   [driver [_ arg amount unit]]
   (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
 
+(defn datetime-diff-check-args
+  "This util function is used by SQL implementations of ->honeysql for the `:datetime-diff` clause.
+   It raises an exception if the database-type of the arguments `x` and `y` do not match the given predicate.
+   Note this doesn't raise an error if the database-type is nil, which can be the case for some drivers."
+  [x y pred]
+  (doseq [arg [x y]
+          :let [db-type (hx/database-type arg)]
+          :when (and db-type (not (pred db-type)))]
+    (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
+                         (pr-str db-type))
+                    {:found db-type
+                     :type  qp.error-type/invalid-query}))))
+
+(defmethod ->honeysql [:sql :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (->honeysql driver x)
+        y (->honeysql driver y)]
+    (datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
+    (datetime-diff driver unit x y)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |

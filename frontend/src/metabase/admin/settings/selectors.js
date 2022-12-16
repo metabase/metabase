@@ -228,6 +228,7 @@ const SECTIONS = updateSectionsWithPlugins({
     name: t`Authentication`,
     order: 6,
     settings: [], // added by plugins
+    adminOnly: true,
   },
   maps: {
     name: t`Maps`,

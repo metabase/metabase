@@ -173,7 +173,7 @@
   {(s/optional-key ::database-type) (s/constrained
                                      su/NonBlankString
                                      (fn [s]
-                                       (= s (str/lower-case s)))
+                                       (= s (u/lower-case-en s)))
                                      "lowercased string")})
 
 (s/defn ^:private normalize-type-info :- NormalizedTypeInfo
@@ -181,7 +181,7 @@
   `::database-type` to a lower-case string)."
   [type-info]
   (cond-> type-info
-    (::database-type type-info) (update ::database-type (comp str/lower-case name))))
+    (::database-type type-info) (update ::database-type (comp u/lower-case-en name))))
 
 (extend-protocol TypedHoneySQL
   Object
@@ -214,19 +214,24 @@
   {:added "0.39.0"}
   (::database-type type-info))
 
+(defn database-type
+  "Returns the `database-type` from the type-info of `honeysql-form` if present.
+   Otherwise, returns `nil`."
+  [honeysql-form]
+  (some-> honeysql-form type-info type-info->db-type))
+
 (defn is-of-type?
-  "Is `honeysql-form` a typed form with `database-type`?
-  Where `database-type` could be a string or a regex.
+  "Is `honeysql-form` a typed form with `db-type`?
+  Where `db-type` could be a string or a regex.
 
     (is-of-type? expr \"datetime\") ; -> true
     (is-of-type? expr #\"int*\") ; -> true"
-
-  [honeysql-form database-type]
-  (let [form-type (some-> honeysql-form type-info type-info->db-type str/lower-case)]
-    (if (instance? java.util.regex.Pattern database-type)
-      (and (some? form-type) (some? (re-find database-type form-type)))
+  [honeysql-form db-type]
+  (let [form-type (some-> honeysql-form database-type u/lower-case-en)]
+    (if (instance? java.util.regex.Pattern db-type)
+      (and (some? form-type) (some? (re-find db-type form-type)))
       (= form-type
-         (some-> database-type name str/lower-case)))))
+         (some-> db-type name str/lower-case)))))
 
 (s/defn with-database-type-info
   "Convenience for adding only database type information to a `honeysql-form`. Wraps `honeysql-form` and returns a
@@ -235,16 +240,16 @@
     (with-database-type-info :field \"text\")
     ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
   {:style/indent [:form]}
-  [honeysql-form database-type :- (s/maybe su/KeywordOrString)]
-  (if (some? database-type)
-    (with-type-info honeysql-form {::database-type database-type})
+  [honeysql-form db-type :- (s/maybe su/KeywordOrString)]
+  (if (some? db-type)
+    (with-type-info honeysql-form {::database-type db-type})
     (unwrap-typed-honeysql-form honeysql-form)))
 
 (s/defn cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
-  [database-type expr]
-  (-> (hsql/call :cast expr (hsql/raw (name database-type)))
-      (with-type-info {::database-type database-type})))
+  [db-type expr]
+  (-> (hsql/call :cast expr (hsql/raw (name db-type)))
+      (with-type-info {::database-type db-type})))
 
 (s/defn quoted-cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS \"sql-type\")`.

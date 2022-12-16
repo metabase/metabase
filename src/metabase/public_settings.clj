@@ -66,7 +66,8 @@
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of Metabase.")
-  :default "Metabase")
+  :default    "Metabase"
+  :visibility :settings-manager)
 
 ;; `::uuid-nonce` is a Setting that sets a site-wide random UUID value the first time it is fetched.
 (defmethod setting/get-value-of-type ::uuid-nonce
@@ -212,14 +213,15 @@
 
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
-  :type    :boolean
-  :default true
+  :type       :boolean
+  :default    true
   :visibility :authenticated)
 
 (defsetting enable-query-caching
   (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
   :type    :boolean
-  :default false)
+  :default false
+  :visibility :settings-manager)
 
 (defsetting persisted-models-enabled
   (deferred-tru "Allow persisting models into the source database.")

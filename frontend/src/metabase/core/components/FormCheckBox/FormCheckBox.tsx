@@ -9,10 +9,19 @@ export interface FormCheckBoxProps
   name: string;
   title?: string;
   description?: ReactNode;
+  optional?: boolean;
 }
 
 const FormCheckBox = forwardRef(function FormCheckBox(
-  { name, className, style, title, description, ...props }: FormCheckBoxProps,
+  {
+    name,
+    className,
+    style,
+    title,
+    description,
+    optional,
+    ...props
+  }: FormCheckBoxProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
@@ -29,6 +38,7 @@ const FormCheckBox = forwardRef(function FormCheckBox(
       orientation="horizontal"
       htmlFor={id}
       error={touched ? error : undefined}
+      optional={optional}
     >
       <CheckBox
         {...props}
