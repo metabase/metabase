@@ -32,10 +32,10 @@ const ParameterSourceSettings = ({
 }: ParameterSourceSettingsProps): JSX.Element => {
   const sourceType = getSourceType(parameter);
   const sourceOptions = getSourceOptions(parameter);
-  const [modalType, setModalType] = useState<ParameterSourceType>();
+  const [editingType, setEditingType] = useState<ParameterSourceType>();
 
   const radioOptions = useMemo(
-    () => getRadioOptions(sourceType, setModalType),
+    () => getRadioOptions(sourceType, setEditingType),
     [sourceType],
   );
 
@@ -44,14 +44,26 @@ const ParameterSourceSettings = ({
       if (hasValidSourceOptions(sourceType, sourceOptions)) {
         onChangeSourceType(sourceType);
       } else {
-        setModalType(sourceType);
+        setEditingType(sourceType);
       }
     },
     [sourceOptions, onChangeSourceType],
   );
 
+  const handleSourceOptionsChange = useCallback(
+    (sourceOptions: ParameterSourceOptions) => {
+      if (editingType && hasValidSourceOptions(editingType, sourceOptions)) {
+        onChangeSourceType(editingType);
+      } else {
+        onChangeSourceType("field");
+      }
+      onChangeSourceOptions(sourceOptions);
+    },
+    [editingType, onChangeSourceType, onChangeSourceOptions],
+  );
+
   const handleClose = useCallback(() => {
-    setModalType(undefined);
+    setEditingType(undefined);
   }, []);
 
   return (
@@ -62,12 +74,11 @@ const ParameterSourceSettings = ({
         vertical
         onChange={handleSourceTypeChange}
       />
-      {modalType === "static-list" && (
+      {editingType === "static-list" && (
         <Modal onClose={handleClose}>
           <ParameterListSourceModal
             parameter={parameter}
-            onChangeSourceType={onChangeSourceType}
-            onChangeSourceOptions={onChangeSourceOptions}
+            onChangeSourceOptions={handleSourceOptionsChange}
             onClose={handleClose}
           />
         </Modal>
@@ -99,7 +110,7 @@ const RadioLabel = ({
 
 const getRadioOptions = (
   sourceType: ParameterSourceType,
-  onModalOpen: (sourceType: ParameterSourceType) => void,
+  onEdit: (sourceType: ParameterSourceType) => void,
 ) => {
   return [
     {
@@ -116,7 +127,7 @@ const getRadioOptions = (
         <RadioLabel
           title={t`Custom list`}
           isSelected={sourceType === "static-list"}
-          onEditClick={() => onModalOpen("static-list")}
+          onEditClick={() => onEdit("static-list")}
         />
       ),
       value: "static-list",
