@@ -41,7 +41,10 @@
          (description [:string {:min 3 :max 5}])))
   (is (= "A ( string, or keyword )"
          (description [:or :string :keyword])))
-  (is (= "A map of positive integer to positive integer"
+  (is (= (str/join "\n" ["A map of ["
+                         "    integer "
+                         "    =>"
+                         "    positive integer ]"])
          (description [:map-of int? pos-int?])))
   (is (= "A tuple of size 2 like: [ integer integer ]"
          (description [:tuple :int :int])))

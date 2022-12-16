@@ -3,13 +3,12 @@
   (:require
    [clojure.core :as core]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [malli.core :as mc]
    [malli.error :as me]
    [malli.experimental :as mx]
    [malli.instrument :as minst]
-   [metabase.config :as config]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [ring.util.codec :as codec]))
 
 (core/defn- explain-fn-fail!
   [type data]
@@ -72,8 +71,8 @@
        " )"))
 
 (defmethod describe* :and [{:keys [children]} ctx]
-  (str "which matches ( "
-       (str/join ", and " (mapv (comp str/trim #(describe* % (indent+ ctx))) children))
+  (str "( "
+       (str/join ", " (mapv (comp str/trim #(describe* % ctx)) children))
        " )"))
 
 (defmethod describe* :map [{:keys [keys]} ctx]
@@ -87,7 +86,12 @@
     "\n" (spaces ctx) "]"]))
 
 (defmethod describe* :map-of [{:keys [key value] :as ast} ctx]
-  (str "map of " (describe* value ctx) "to " (describe* value ctx)))
+  (str "map of ["
+       (str/join (str "\n" (spaces ctx))
+                 [""
+                  (describe* key (indent+ ctx))
+                  "=>"
+                  (str (describe* value (indent+ ctx)) "]")])))
 
 (defmethod describe* :tuple [{:keys [children] :as ast} ctx]
   (str "tuple of size " (count children) " like: [ " (str/join (map #(describe* % ctx) children)) "]"))
@@ -110,23 +114,38 @@
       max-len               (str "at most " max-len " long ")
       :else                 "")))
 
+(core/defn generic-props [properties description]
+  (cond-> description
+    (:title properties)
+    (str " (title: " (:title properties) ")")))
+
 (defmethod describe* :string [{:keys [properties]} _ctx]
   ;; todo handle min/max/other properties.
   (str "string " (take-measure "length" properties)))
 (defmethod describe* 'string? [ast ctx] (describe* (assoc ast :type :string) ctx))
 
-(defmethod describe* :keyword [{:keys []} ctx] "keyword ")
+(defmethod describe* :keyword [ast _ctx] (generic-props (:properties ast) "keyword "))
 (defmethod describe* 'keyword? [ast ctx] (describe* (assoc ast :type :keyword) ctx))
 
-(defmethod describe* :int [{:keys []} ctx] "integer ")
+(defmethod describe* :int [ast _ctx] (generic-props (:properties ast) "integer "))
 (defmethod describe* 'int? [ast ctx] (describe* (assoc ast :type :int) ctx))
 
-(defmethod describe* :pos-int [{:keys []} ctx] "positive integer ")
+(defmethod describe* :pos-int [ast _ctx] (generic-props (:properties ast) "positive integer "))
 (defmethod describe* 'pos-int? [ast ctx] (describe* (assoc ast :type :pos-int) ctx))
 
+(defmethod describe* :nat-int [ast _ctx] (generic-props (:properties ast) "natural integer "))
+(defmethod describe* 'nat-int? [ast ctx] (describe* (assoc ast :type :nat-int) ctx))
+
+(defmethod describe* := [{:keys [value] :as ast} ctx]
+  (str "value that equals " (pr-str value)))
+
 (defmethod describe* :default [x ctx]
+  ;; TODO put custom descriptions _inside_ the malli schemas, and pick it up in here
   (reset! (:*missing? ctx) true)
-  (str "Undescribale Schema [ " (pr-str (or (:type x) x)) " ]"))
+  (str "Indescribable_Malli_Schema [ " (pr-str (or (:type x) x)) " ]"))
+
+(core/defn ->malli-link [schema]
+  (str "https://malli.io/?schema=" (codec/url-encode (u/pprint-to-str schema))))
 
 ;; n.b. this is not clojure.core/defn
 (defn describe :- [:map [:missing? :boolean] [:description :string]]
@@ -136,4 +155,32 @@
         ast (mc/ast schema)
         raw-output (describe* ast {:indent 0 :*missing? *missing?})]
     {:missing? @*missing?
-     :description (str/trim (str "A "  raw-output))}))
+     :link (->malli-link schema)
+     :description (str/trim (str "A " raw-output))}))
+
+(println (:description (describe [:map
+                                  [:revision int?]
+                                  [:groups
+                                   [:map-of
+                                    [pos-int? {:title "Group ID"}]
+                                    [:map-of
+                                     [:or
+                                      [pos-int? {:title "Collection ID"}]
+                                      [:and keyword? [:= :root]]]
+                                     [:and keyword? [:enum :write :read :none]]]]]])))
+
+
+"
+A map with keys: [
+    :revision => integer
+    :groups => map of [
+        positive integer  (title: Group ID)
+        =>
+        map of [
+            or ( positive integer  (title: Collection ID), and ( keyword, value that equals :root ) )
+            =>
+            and ( keyword, value that is one of: :write :read or :none )
+             ]
+         ]
+    ]
+"
