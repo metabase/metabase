@@ -360,6 +360,33 @@
        (is (= [[2 2.5] [3 2.0] [4 2.0]]
               (mt/rows result)))))))
 
+(deftest various-percentile-values-test
+  (mt/test-driver
+   :sqlserver
+   (testing "Aggregation is computed correctly for various percentile values"
+     (is (= [[2 2.0 2.0 2.99 3.0 3.0]
+             [3 2.0 2.0 2.0 2.0 2.0]
+             [4 1.22 1.64 2.14 2.54 2.92]]
+            (->> (mt/run-mbql-query
+                  venues
+                  {:aggregation [[:aggregation-options [:percentile $price 0.11] {:name "p11"}]
+                                 [:aggregation-options [:percentile $price 0.32] {:name "p34"}]
+                                 [:aggregation-options [:percentile $price 0.57] {:name "p57"}]
+                                 [:aggregation-options [:percentile $price 0.77] {:name "p77"}]
+                                 [:aggregation-options [:percentile $price 0.96] {:name "p96"}]]
+                   :breakout    [$category_id]
+                   :order-by    [[:asc $category_id]]
+                   :limit       3})
+                 ;; postgres vs sqlserver float handling, see formatting comment 
+                 ;; in [[percentile-aggregations-with-expressions-test]]
+                 (mt/formatted-rows [int
+                                     #(u/round-to-decimals 6 %)
+                                     #(u/round-to-decimals 6 %)
+                                     #(u/round-to-decimals 6 %)
+                                     #(u/round-to-decimals 6 %)
+                                     #(u/round-to-decimals 6 %)])))))))
+
+(comment
 (deftest percentile-aggregation-breakout-test
   (mt/test-driver
    :sqlserver
