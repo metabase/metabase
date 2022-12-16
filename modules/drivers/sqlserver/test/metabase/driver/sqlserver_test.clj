@@ -406,11 +406,6 @@
                    :order-by    [[:desc [:expression "user_id * product_id"]]]})
                  mt/rows)))))))
 
-(comment
-  (mt/set-test-drivers! [:sqlserver :postgres])
-  (metabase.test-runner/run [#'metabase.driver.sqlserver-test/simple-percentile-aggregations-test])
-  )
-
 (deftest duplicate-name-aggregations-test
   (mt/test-driver
    :sqlserver
@@ -467,7 +462,6 @@
                                      #(u/round-to-decimals 6 %) 
                                      #(u/round-to-decimals 6 %)]))))))))
 
-(comment
 (deftest percentile-aggregation-as-source-test
   (mt/test-driver
    :sqlserver
@@ -501,7 +495,6 @@
                                   :breakout     [$product_id]}})
                  mt/rows)))))))
 
-(comment
 ;; TODO -- add here all card scenarios
 (deftest percentile-aggregations-with-card-test
   (mt/test-driver
