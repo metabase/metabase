@@ -23,13 +23,12 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs tru]])
+            [metabase.util.i18n :refer [deferred-tru trs]])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
@@ -376,42 +375,20 @@
       (hsql/call :convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
       "datetime")))
 
-(defn- datetime-diff-helper [x y unit]
-  (case unit
-    (:year :month)
-    (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))
+(defn- timestampdiff-dates [unit x y]
+  (hsql/call :timestampdiff (hsql/raw (name unit)) (hx/->date x) (hx/->date y)))
 
-    :week
-    (let [positive-diff (fn [a b] (hx/floor (hx// (hsql/call :datediff b a) 7)))]
-      (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defn- timestampdiff [unit x y]
+  (hsql/call :timestampdiff (hsql/raw (name unit)) x y))
 
-    :quarter
-    (let [positive-diff (fn [a b] (hx/floor (hx// (datetime-diff-helper a b :month) 3)))]
-      (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
-
-    :day
-    (hsql/call :datediff y x)
-
-    (:hour :minute :second)
-    (hsql/call :timestampdiff (hsql/raw (name unit)) x y)))
-
-(defmethod sql.qp/->honeysql [:mysql :datetime-diff]
-  [driver [_ x y unit]]
-  (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)
-        disallowed-types (keep
-                          (fn [v]
-                            (when-let [db-type (some-> v hx/type-info hx/type-info->db-type u/upper-case-en keyword)]
-                              (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
-                                (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
-                                  (name db-type)))))
-                          [x y])]
-    (when (seq disallowed-types)
-      (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
-                           (pr-str disallowed-types))
-                      {:found disallowed-types
-                       :type  qp.error-type/invalid-query})))
-    (datetime-diff-helper x y unit)))
+(defmethod sql.qp/datetime-diff [:mysql :year]    [_driver _unit x y] (timestampdiff-dates :year x y))
+(defmethod sql.qp/datetime-diff [:mysql :quarter] [_driver _unit x y] (timestampdiff-dates :quarter x y))
+(defmethod sql.qp/datetime-diff [:mysql :month]   [_driver _unit x y] (timestampdiff-dates :month x y))
+(defmethod sql.qp/datetime-diff [:mysql :week]    [_driver _unit x y] (timestampdiff-dates :week x y))
+(defmethod sql.qp/datetime-diff [:mysql :day]     [_driver _unit x y] (hsql/call :datediff y x))
+(defmethod sql.qp/datetime-diff [:mysql :hour]    [_driver _unit x y] (timestampdiff :hour x y))
+(defmethod sql.qp/datetime-diff [:mysql :minute]  [_driver _unit x y] (timestampdiff :minute x y))
+(defmethod sql.qp/datetime-diff [:mysql :second]  [_driver _unit x y] (timestampdiff :second x y))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
