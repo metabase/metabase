@@ -11,6 +11,7 @@
   [prismatic/schema "1.2.0"]
 
   ;; new stuff
+  [camel-snake-kebab "0.4.3"]
   [com.lambdaisland/glogi "1.1.144"]]
  :nrepl
  {:middleware

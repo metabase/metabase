@@ -42,7 +42,7 @@ export function formatNumber(
     const [m, n] = formatted.split("e");
     return (
       <span>
-        {m}x10<sup>{n.replace(/^\+/, "")}</sup>
+        {m}×10<sup>{n.replace(/^\+/, "")}</sup>
       </span>
     );
   }

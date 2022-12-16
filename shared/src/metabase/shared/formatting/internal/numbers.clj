@@ -106,11 +106,11 @@
   Returns a [[core/NumberFormatter]] instance for each set of options.
   These formatters are reusable, but this does no caching."
   [options]
-  (let [currency       (some-> options :currency keyword)
-        locale         (active-locale options)
-        currency-sym   (some-> currency (symbol-for locale))
-        nf             (number-formatter-for-options-baseline options locale)
-        pre            (preformat-step options)]
+  (let [currency     (some-> options :currency keyword)
+        locale       (active-locale options)
+        currency-sym (some-> currency (symbol-for locale))
+        nf           (number-formatter-for-options-baseline options locale)
+        pre          (preformat-step options)]
     (prepare-number-formatter! nf options currency)
     (reify
       core/NumberFormatter
