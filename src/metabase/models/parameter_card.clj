@@ -1,4 +1,4 @@
-(ns metabase.models.values-card
+(ns metabase.models.parameter-card
   (:require
    [clojure.string :as str]
    [metabase.query-processor :as qp]
@@ -7,9 +7,9 @@
    [toucan.models :as models]))
 
 
-(models/defmodel ValuesCard :values_card)
+(models/defmodel ParameterCard :parameter_card)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ValuesCard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ParameterCard)
                  models/IModel
                  (merge models/IModelDefaults
                         {:properties (constantly {:timestamped? true})
@@ -32,7 +32,7 @@
   [{dashboard-id :id} param-key]
   (->> (db/query {:select [:dataset_query]
                   :from [:report_card]
-                  :join [:values_card [:= :report_card.id :values_card.card_id]]
+                  :join [:parameter_card [:= :report_card.id :parameter_card.card_id]]
                   :where [:and
                           [:= :parameterized_object_id dashboard-id]
                           [:= :parameterized_object_type "dashboard"]
@@ -56,16 +56,16 @@
           conditions {:parameterized_object_id   dashboard-id
                       :parameterized_object_type "dashboard"
                       :parameter_id              id}]
-      (or (db/update-where! ValuesCard conditions :card_id card-id)
-          (db/insert! ValuesCard (merge conditions {:card_id card-id}))))))
+      (or (db/update-where! ParameterCard conditions :card_id card-id)
+          (db/insert! ParameterCard (merge conditions {:card_id card-id}))))))
 
 (defn delete-for-dashboard!
-  "Deletes any lingering ValuesCards associated with the `dashboard` and NOT listed in the optional
+  "Deletes any lingering ParameterCards associated with the `dashboard` and NOT listed in the optional
   `parameter-ids-still-in-use`"
   ([dashboard-id]
    (delete-for-dashboard! dashboard-id []))
   ([dashboard-id parameter-ids-still-in-use]
-   (db/delete! ValuesCard
+   (db/delete! ParameterCard
      :parameterized_object_type "dashboard"
      :parameterized_object_id   dashboard-id
      (if (empty? parameter-ids-still-in-use)
@@ -73,7 +73,7 @@
        {:where [:not-in :parameter_id parameter-ids-still-in-use]}))))
 
 (defn upsert-or-delete-for-dashboard!
-  "Create, update, or delete appropriate ValuesCards for each parameter in the dashboard"
+  "Create, update, or delete appropriate ParameterCards for each parameter in the dashboard"
   [{dashboard-id :id parameters :parameters}]
   (let [upsertable?           (fn [{:keys [source_type source_options id]}] (and source_type id (:card_id source_options)
                                                                                  (= source_type "card")))

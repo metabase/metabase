@@ -19,6 +19,7 @@
             [metabase.models.metric-important-field :as metric-important-field]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.native-query-snippet :as native-query-snippet]
+            [metabase.models.parameter-card :as parameter-card]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.permissions-group-membership :as perms-group-membership]
@@ -40,7 +41,6 @@
             [metabase.models.timeline :as timeline]
             [metabase.models.timeline-event :as timeline-event]
             [metabase.models.user :as user]
-            [metabase.models.values-card :as values-card]
             [metabase.models.view-log :as view-log]
             [potemkin :as p]))
 
@@ -65,15 +65,16 @@
          moderation-review/keep-me
          metric-important-field/keep-me
          native-query-snippet/keep-me
-         perms/keep-me
-         perms-group/keep-me
+         parameter-card/keep-me
          perms-group-membership/keep-me
+         perms-group/keep-me
          perms-revision/keep-me
+         perms/keep-me
          persisted-info/keep-me
-         pulse/keep-me
          pulse-card/keep-me
-         pulse-channel/keep-me
          pulse-channel-recipient/keep-me
+         pulse-channel/keep-me
+         pulse/keep-me
          query-cache/keep-me
          query-execution/keep-me
          revision/keep-me
@@ -83,10 +84,9 @@
          setting/keep-me
          table/keep-me
          task-history/keep-me
-         timeline/keep-me
          timeline-event/keep-me
+         timeline/keep-me
          user/keep-me
-         values-card/keep-me
          view-log/keep-me)
 
 (p/import-vars
@@ -112,6 +112,7 @@
  [moderation-review ModerationReview]
  [metric-important-field MetricImportantField]
  [native-query-snippet NativeQuerySnippet]
+ [parameter-card ParameterCard]
  [perms Permissions]
  [perms-group PermissionsGroup]
  [perms-group-membership PermissionsGroupMembership]
@@ -134,5 +135,4 @@
  [timeline Timeline]
  [timeline-event TimelineEvent]
  [user User]
- [values-card ValuesCard]
  [view-log ViewLog])

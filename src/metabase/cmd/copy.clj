@@ -32,6 +32,7 @@
                                      ModelAction
                                      ModerationReview
                                      NativeQuerySnippet
+                                     ParameterCard
                                      Permissions
                                      PermissionsGroup
                                      PermissionsGroupMembership
@@ -50,7 +51,6 @@
                                      Timeline
                                      TimelineEvent
                                      User
-                                     ValuesCard
                                      ViewLog]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -122,7 +122,7 @@
    Timeline
    TimelineEvent
    Secret
-   ValuesCard
+   ParameterCard
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])

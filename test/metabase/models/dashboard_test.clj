@@ -209,12 +209,12 @@
         (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
         (is (not (nil? (db/select-one PulseCard :card_id new-card-id))))))))
 
-(deftest values-card-test
+(deftest parameter-card-test
   (let [default-params {:name       "Category Name"
                         :slug       "category_name"
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}]
-    (testing "A new dashboard creates a new ValuesCard"
+    (testing "A new dashboard creates a new ParameterCard"
       (tt/with-temp* [Card      [{card-id :id}]
                       Dashboard [{dashboard-id :id}
                                  {:parameters [(assoc default-params :source_type "card" :source_options {:card_id card-id})]}]]
@@ -222,26 +222,26 @@
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
                  :parameter_id              "_CATEGORY_NAME_"}
-                (db/select-one 'ValuesCard :card_id card-id)))))
+                (db/select-one 'ParameterCard :card_id card-id)))))
 
-    (testing "Adding a card_id creates a new ValuesCard"
+    (testing "Adding a card_id creates a new ParameterCard"
       (tt/with-temp* [Card [{card-id :id}]
                       Dashboard [{dashboard-id :id}
                                  {:parameters [default-params]}]]
-        (is (nil? (db/select-one 'ValuesCard :card_id card-id)))
+        (is (nil? (db/select-one 'ParameterCard :card_id card-id)))
         (db/update! Dashboard dashboard-id :parameters [(assoc default-params :source_type "card" :source_options {:card_id card-id})])
         (is (=? {:card_id                   card-id
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
                  :parameter_id              "_CATEGORY_NAME_"}
-                (db/select-one 'ValuesCard :card_id card-id)))))
-    (testing "Removing a card_id deletes old ValuesCards"
+                (db/select-one 'ParameterCard :card_id card-id)))))
+    (testing "Removing a card_id deletes old ParameterCards"
       (tt/with-temp* [Card      [{card-id :id}]
                       Dashboard [{dashboard-id :id}
                                  {:parameters [(assoc default-params :source_type "card" :source_options {:card_id card-id})]}]]
-        ;; same setup as earlier test, we know the ValuesCard exists right now
+        ;; same setup as earlier test, we know the ParameterCard exists right now
         (db/delete! Dashboard :id dashboard-id)
-        (is (nil? (db/select-one 'ValuesCard :card_id card-id)))))))
+        (is (nil? (db/select-one 'ParameterCard :card_id card-id)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
