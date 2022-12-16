@@ -742,7 +742,8 @@
             (first)
             (:source_options)
             (:values)
-            (parameter-card/query-matches query))})
+            (parameter-card/query-matches query))
+   :has_more_values false}) ;; TODO: make more clever
 
 (defn- param-values
   ([dashboard param-key query-params]

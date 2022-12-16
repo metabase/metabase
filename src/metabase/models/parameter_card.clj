@@ -47,7 +47,8 @@
   {:values
    (->> (qp/process-query (query-for-dashboard dashboard param-key) {:rff (constantly conj)})
         (map first)
-        (query-matches search-term))})
+        (query-matches search-term))
+   :has_more_values false}) ;; TODO: this should be more clever
 
 (defn- upsert-for-dashboard!
   [dashboard-id parameters]
