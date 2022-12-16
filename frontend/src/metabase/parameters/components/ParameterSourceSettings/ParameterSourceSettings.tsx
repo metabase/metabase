@@ -120,7 +120,7 @@ const getRadioOptions = (
           isSelected={sourceType === null}
         />
       ),
-      value: "field",
+      value: null,
     },
     {
       name: (

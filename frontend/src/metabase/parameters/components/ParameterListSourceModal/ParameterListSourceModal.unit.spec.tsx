@@ -8,7 +8,7 @@ import ParameterListSourceModal, {
 } from "./ParameterListSourceModal";
 
 describe("ParameterListSourceModal", () => {
-  it("should set source values", () => {
+  it("should trim and set source values", () => {
     const props = getProps();
 
     render(<ParameterListSourceModal {...props} />);
