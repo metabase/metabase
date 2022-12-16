@@ -251,8 +251,8 @@
 (defn- sub-day-datediff
   "Same as snowflake's `datediff`, but accurate to the millisecond for sub-day units."
   [unit x y]
-  (let [milliseconds (hx/cast :float (hsql/call :datediff (hsql/raw "milliseconds") x y))]
-    ; millseconds needs to be cast to float because division rounds incorrectly with large integers
+  (let [milliseconds (hsql/call :datediff (hsql/raw "milliseconds") x y)]
+    ;; millseconds needs to be cast to float because division rounds incorrectly with large integers
     (hsql/call :trunc (hx// (hx/cast :float milliseconds)
                             (case unit :hour 3600000 :minute 60000 :second 1000)))))
 
