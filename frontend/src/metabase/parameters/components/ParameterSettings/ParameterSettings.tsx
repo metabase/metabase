@@ -32,7 +32,7 @@ const MULTI_SELECT_OPTIONS = [
   { name: t`A single value`, value: false },
 ];
 
-interface ParameterSettingsProps {
+export interface ParameterSettingsProps {
   parameter: UiParameter;
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
