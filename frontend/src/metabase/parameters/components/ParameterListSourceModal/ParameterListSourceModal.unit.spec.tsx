@@ -12,15 +12,14 @@ describe("ParameterListSourceModal", () => {
     const props = getProps();
 
     render(<ParameterListSourceModal {...props} />);
-    userEvent.clear(screen.getByRole("textbox"));
-    userEvent.type(
-      screen.getByRole("textbox"),
-      `Widget ${specialChars.enter}Doohickey ${specialChars.enter}`,
-    );
+
+    const input = screen.getByRole("textbox");
+    userEvent.type(input, `Gadget ${specialChars.enter}`);
+    userEvent.type(input, `Widget ${specialChars.enter}`);
     userEvent.click(screen.getByText("Done"));
 
     expect(props.onChangeSourceOptions).toHaveBeenCalledWith({
-      values: ["Widget", "Doohickey"],
+      values: ["Gadget", "Widget"],
     });
   });
 
