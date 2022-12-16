@@ -22,6 +22,7 @@
   :abstract? true)
 
 (defmethod driver/database-supports? [:hive-like :now] [_driver _feat _db] true)
+(defmethod driver/database-supports? [:hive-like :datetime-diff] [_driver _feat _db] true)
 
 (defmethod driver/escape-alias :hive-like
   [driver s]
@@ -157,6 +158,82 @@
   (if (= unit :quarter)
     (recur driver hsql-form (* amount 3) :month)
     (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit))))))
+
+(defmethod sql.qp/->honeysql [:sparksql :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)]
+    (case unit
+      :year
+      (let [positive-diff
+            (fn [a b]
+              (hx/cast
+               :integer
+               (hx/floor (hx// (hx/- (hsql/call :months_between b a)
+                                     (hx/cast :integer (hsql/call :>
+                                                                  (hsql/call :dayofmonth a)
+                                                                  (hsql/call :dayofmonth b))))
+                               12))))]
+        (hsql/call :case
+                   (hsql/call :<= (hx/->timestamp x) (hx/->timestamp y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
+
+      :quarter
+      (let [positive-diff
+            (fn [a b]
+              (hx/cast
+               :integer
+               (hx/floor (hx// (hx/- (hsql/call :months_between b a)
+                                     (hx/cast :integer (hsql/call :>
+                                                                  (hsql/call :dayofmonth a)
+                                                                  (hsql/call :dayofmonth b))))
+                               3))))]
+        (hsql/call :case
+                   (hsql/call :<= (hx/->timestamp x) (hx/->timestamp y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
+
+      :month
+      (let [positive-diff
+            (fn [a b]
+              (hx/- (hsql/call :months_between b a)
+                    (hx/cast :integer (hsql/call :>
+                                                 (hsql/call :dayofmonth a)
+                                                 (hsql/call :dayofmonth b)))))]
+        (hsql/call :case
+                   (hsql/call :<= (hx/->timestamp x) (hx/->timestamp y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
+
+      :week
+      (let [positive-diff (fn [a b]
+                            (hx/cast :integer (hx/floor (hx// (hsql/call :datediff b a) 7))))]
+        (hsql/call :case
+                   (hsql/call :<= (hx/->timestamp x) (hx/->timestamp y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
+
+      :day
+      (hsql/call :datediff y x)
+
+      (:hour :minute :second)
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (cond-> (hsql/call :- (hsql/call :unix_timestamp b) (hsql/call :unix_timestamp a))
+                                (not= unit :second)
+                                (hx// (case unit :hour 3600 :minute 60))))))]
+        (hsql/call :case
+                   (hsql/call :<= (hx/->timestamp x) (hx/->timestamp y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x)))))))
 
 (def ^:dynamic *param-splice-style*
   "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
