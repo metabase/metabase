@@ -349,25 +349,67 @@
 (deftest median-aggregation-test
   (mt/test-driver
    :sqlserver
-   ;; Only verify that median function works. No more tests should be needed for explicit median,
-   ;; as under the hood it is translated as percentile 0.5.
-   ;; TODO verify this is actually true !!!
-   (testing "Compute aggregate median with breakout"
+   (testing "Use of mbql :median aggregation yields correct result rows"
      (let [result
-           (mt/run-mbql-query venues
-                              {:aggregation [[:aggregation-options
-                                              [:median [:field (mt/id :venues :price) nil]]
-                                              {:name "median of price over category"}]]
-                               :breakout    [[:field (mt/id :venues :category_id) nil]]
-                               :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]
-                               :limit 3})]
+           (mt/run-mbql-query
+            venues
+            {:aggregation [[:aggregation-options [:median $price] {:name "median of price over category"}]]
+             :breakout    [$category_id]
+             :order-by    [[:asc $category_id]]
+             :limit       3})]
        (is (= [[2 2.5] [3 2.0] [4 2.0]]
-              (mt/formatted-rows [int double] result)))))))
+              (mt/rows result)))))))
 
 (comment
   (mt/set-test-drivers! [:sqlserver :postgres])
   (metabase.test-runner/run [#'metabase.driver.sqlserver-test/median-aggregation-test])
   )
+
+(deftest percentile-aggregation-breakout-test
+  (mt/test-driver
+   :sqlserver
+   (testing "Percentile aggregation without breakout yields correct results"
+       (is (= [[2.0]]
+              (-> (mt/run-mbql-query
+                   venues
+                   {:aggregation [[:aggregation-options [:percentile $price 0.5] {:name "P50 price"}]]})
+                  mt/rows))))
+   (testing "Percentile aggregation with breakout yields correct results"
+       (is (= [[2 2.5] [3 2.0] [4 2.0] [5 2.0] [6 1.5]]
+              (-> (mt/run-mbql-query
+                   venues
+                   {:aggregation [[:aggregation-options [:percentile $price 0.5] {:name "P50 price"}]]
+                    :breakout    [$category_id]
+                    :limit       5
+                    :order-by    [[:asc $category_id]]})
+                  mt/rows))))
+   (testing "Percentile aggregation with multiple breakout fields yields correct results"
+     (mt/dataset
+      sample-dataset
+      (is (= [[1 6 102.8] [1 14 39.72] [1 55 101.04] [1 60 31.44] [1 65 63.33]]
+             (-> (mt/run-mbql-query
+                  orders
+                  {:aggregation [[:aggregation-options [:percentile $total 0.5] {:name "P50 price"}]]
+                   :breakout    [$user_id $product_id]
+                   :limit       5
+                   :order-by    [[:asc $user_id]]})
+                 mt/rows)))))
+   (testing "Percentile aggregation with expression breakout yields correct results"
+     (mt/dataset
+      sample-dataset
+      (is (= [[494000 77.23]
+              [491712 72.18]
+              [491600 73.2]
+              [486864 72.96]
+              [486684 70.15]]
+             (-> (mt/run-mbql-query
+                  orders
+                  {:expressions {"user_id * product_id" [:* $user_id $product_id]}
+                   :aggregation [[:aggregation-options [:sum $total] {:name "P50 price"}]]
+                   :breakout    [[:expression "user_id * product_id"]]
+                   :limit       5
+                   :order-by    [[:desc [:expression "user_id * product_id"]]]})
+                 mt/rows)))))))
 
 (deftest aggregations-over-same-field-test
   (mt/test-driver
@@ -389,56 +431,6 @@
                                :limit 3})]
        (is (= [[2 2.5 2.5 20.0] [3 2.0 2.0 4.0] [4 2.0 2.0 4.0]]
               (mt/formatted-rows [int double double double] result)))))))
-
-;; TODO -- rewrite to sanity?
-(deftest simple-percentile-aggregations-test
-  (mt/test-driver
-   :sqlserver
-   (testing "Compute percentile aggregation without breakout"
-     (let [result
-           (mt/run-mbql-query venues
-                              {:aggregation [[:aggregation-options
-                                              [:percentile [:field (mt/id :venues :latitude) nil] 0.5]
-                                              {:name "median of latitude"}]]})]
-       (is (= [[34.11345]]
-              (mt/formatted-rows [double] result)))))
-   (testing "Compute percentile aggreagation with breakout"
-     (let [result
-           (mt/run-mbql-query venues
-                              {:aggregation [[:aggregation-options
-                                              [:percentile [:field (mt/id :venues :price) nil] 0.5]
-                                              {:name "median of price over category"}]]
-                               :breakout    [[:field (mt/id :venues :category_id) nil]]
-                               :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]
-                               :limit 3})]
-       (is (= [[2 2.5] [3 2.0] [4 2.0]]
-              (mt/formatted-rows [int double] result)))))
-   (testing "Compute percentile aggregation with multiple breakout fields"
-     (let [result
-           (mt/run-mbql-query venues
-                              {:aggregation [[:aggregation-options
-                                              [:percentile [:field (mt/id :venues :price) nil] 0.5]
-                                              {:name "median of price over category"}]]
-                               :breakout    [[:field (mt/id :venues :category_id) nil]
-                                             [:field (mt/id :venues :latitude) {:binning {:strategy :default}}]]
-                               :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]
-                               :limit 3})]
-       (is (= [[2 30.0] [3 30.0] [4 10.0]]
-              (mt/formatted-rows [int double] result)))))
-   (testing "Compute percentile aggregation of expression field"
-     (let [result
-           (mt/run-mbql-query venues
-                              {:expressions {"silly multiplication" [:*
-                                                                     [:field (mt/id :venues :price) nil]
-                                                                     [:field (mt/id :venues :latitude) nil]]}
-                               :aggregation [[:aggregation-options
-                                              [:percentile [:expression "silly multiplication"] 0.5]
-                                              {:name "median of silly"}]]
-                               :breakout    [[:field (mt/id :venues :category_id) nil]]
-                               :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]
-                               :limit 3})]
-       (is (= [[2 85.13065] [3 68.2697] [4 33.98795]] ;; postgres
-              (mt/formatted-rows [int double] result)))))))
 
 (comment
   (mt/set-test-drivers! [:sqlserver :postgres])
