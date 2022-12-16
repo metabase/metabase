@@ -74,7 +74,8 @@ const EventCard = ({
     >
       <CardCheckboxContainer data-testid="toggle-event-visibility">
         <Checkbox
-          checked={isVisible}
+          aria-label={t`Toogle event visibility`}
+          checked={isTimelineVisible && isVisible}
           disabled={!isTimelineVisible}
           onClick={handleChangeVisibility}
         />

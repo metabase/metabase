@@ -55,6 +55,7 @@ import {
   onCloseQuestionInfo,
   onOpenTimelines,
   onCloseTimelines,
+  ADD_TIMELINE_EVENT,
   SHOW_TIMELINES,
   HIDE_TIMELINES,
   HIDE_TIMELINE_EVENTS,
@@ -563,6 +564,12 @@ export const visibleTimelineIds = handleActions(
 export const visibleTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
+    [ADD_TIMELINE_EVENT]: {
+      next: (state, payload) => {
+        console.log("🚀🚀🚀🚀", state, payload);
+        return [...state, payload];
+      },
+    },
     [HIDE_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) =>
         state.filter(item => item !== events.id),

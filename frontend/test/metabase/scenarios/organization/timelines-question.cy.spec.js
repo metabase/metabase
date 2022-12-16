@@ -266,6 +266,54 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       cy.findByLabelText("star icon").should("not.exist");
     });
+
+    it("should toggle individual event visibility", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "RC1", timestamp: "2018-10-20T00:00:00Z" },
+          { name: "RC2", timestamp: "2019-10-20T00:00:00Z", icon: "bell" },
+        ],
+      });
+
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "SELECT ID, CREATED_AT FROM ORDERS",
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT"],
+          "graph.metrics": ["ID"],
+        },
+      });
+
+      cy.findByText("Visualization").should("be.visible");
+      cy.findByLabelText("star icon").should("be.visible");
+
+      // should hide individual events from chart if hidden in sidebar
+      cy.icon("calendar").click();
+      cy.findAllByLabelText("Toogle event visibility").each(element =>
+        element.click(),
+      );
+
+      cy.icon("calendar").click();
+      cy.findByLabelText("bell icon").should("not.exist");
+      cy.findByLabelText("star icon").should("not.exist");
+
+      // should show individual events in chart again
+      cy.icon("calendar").click();
+      cy.findAllByLabelText("Toogle event visibility").each(element =>
+        element.click(),
+      );
+
+      cy.icon("calendar").click();
+      cy.findByLabelText("bell icon").should("be.visible");
+      cy.findByLabelText("star icon").should("be.visible");
+    });
   });
 
   describe("as readonly user", () => {
