@@ -20,11 +20,11 @@ const initializeVisibleTimelineEvents = createAction(
   INITIALIZE_VISIBLE_TIMELINE_EVENTS,
 );
 
-export const HIDE_TIMELINE_EVENTS = "metabase/qb/HIDE_TIMELINE_EVENTS";
-export const hideTimelineEvents = createAction(HIDE_TIMELINE_EVENTS);
+export const HIDE_TIMELINE_EVENT = "metabase/qb/HIDE_TIMELINE_EVENT";
+export const hideTimelineEvent = createAction(HIDE_TIMELINE_EVENT);
 
-export const SHOW_TIMELINE_EVENTS = "metabase/qb/SHOW_TIMELINE_EVENTS";
-export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);
+export const SHOW_TIMELINE_EVENT = "metabase/qb/SHOW_TIMELINE_EVENT";
+export const showTimelineEvent = createAction(SHOW_TIMELINE_EVENT);
 
 export const CREATE_TIMELINE_EVENT = "metabase/entities/timelineEvents/CREATE";
 
