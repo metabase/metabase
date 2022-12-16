@@ -149,13 +149,13 @@
        (group-by :parameter_id)
        (m/map-vals (comp :card_id first))))
 
-(defn- populate-parameter-card
+(defn- populate-card-id-for-parameters
   [{dashboard-id :id parameters :parameters :as dashboard}]
   (assoc dashboard :parameters
          (let [param-id->card-id (card-ids-by-param-id dashboard-id)]
            (for [{:keys [id source_type card_id] :as param} parameters]
              (if (= source_type "card")
-               (assoc param :card_id (get param-id->card-id id card_id))
+               (assoc-in param [:source_options :card_id] (get param-id->card-id id card_id))
                param)))))
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)
@@ -169,7 +169,7 @@
           :post-insert post-insert
           :pre-update  pre-update
           :post-update post-update
-          :post-select (comp populate-parameter-card public-settings/remove-public-uuid-if-public-sharing-is-disabled)}))
+          :post-select (comp populate-card-id-for-parameters public-settings/remove-public-uuid-if-public-sharing-is-disabled)}))
 
 (defmethod serdes.hash/identity-hash-fields Dashboard
   [_dashboard]
