@@ -117,8 +117,6 @@ You can also use the Redux actions and selectors directly, for example, `dispatc
 
 Metabase includes a comprehensive custom React and [`redux-form`](https://redux-form.com/5.2.3/) based form library. It also integrates with Metabase's [Entities](https://github.com/metabase/metabase/wiki/Frontend:-Entity-Loaders) system.
 
-The core React component of the system is [`metabase/containers/Form`](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/containers/Form.jsx).
-
 ### Form Definitions
 
 Form definitions can be provided in two different ways, with a JavaScript-based form definition object, or inline React `<FormField>` elements.
