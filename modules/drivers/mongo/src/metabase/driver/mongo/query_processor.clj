@@ -911,8 +911,9 @@
   To preserve the previous behavior, we will include only the child fields (since the parent field always appears first
   in the projection/field order list, and that is the stated behavior according to the link above)."
   [fields]
-  (let [parent->child-id (reduce (fn [acc [_ field-id & _]]
-                                   (if (integer? field-id)
+  (let [parent->child-id (reduce (fn [acc [agg-type field-id & _]]
+                                   (if (and (= agg-type :field)
+                                            (integer? field-id))
                                      (let [field (qp.store/field field-id)]
                                        (if-let [parent-id (:parent_id field)]
                                          (update acc parent-id conj (u/the-id field))
