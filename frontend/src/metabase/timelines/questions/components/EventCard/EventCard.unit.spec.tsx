@@ -56,6 +56,7 @@ describe("EventCard", () => {
 const getProps = (opts?: Partial<EventCardProps>): EventCardProps => ({
   event: createMockTimelineEvent(),
   timeline: createMockTimeline(),
+  isTimelineVisible: true,
   isVisible: true,
   onToggleEventVisibility: jest.fn(),
   ...opts,
