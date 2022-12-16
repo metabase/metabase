@@ -1,5 +1,5 @@
 import { assocIn } from "icepick";
-import { VisualizationSettings } from "metabase-types/api/card";
+import { VisualizationSettings, Card } from "metabase-types/api/card";
 import { Series, TransformedSeries } from "metabase-types/api/dataset";
 import { isNotNull } from "metabase/core/utils/types";
 import { SETTING_ID, keyForSingleSeries } from "./settings/series";
@@ -40,4 +40,8 @@ export const getOrderedSeries = (
   }
 
   return orderedSeries;
+};
+
+export const getNameForCard = (card: Card) => {
+  return card?.name || "";
 };

@@ -1,13 +1,24 @@
 import React from "react";
+import { queryByText } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "__support__/ui";
 
 // these tests use ChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
-function getSeries(display, index) {
+function getSeries(display, index, changeSeriesName) {
   return {
-    card: { display, visualization_settings: {}, name: `Test ${index}` },
+    card: {
+      display,
+      visualization_settings: changeSeriesName
+        ? {
+            series_settings: {
+              [`Test ${index}`]: { title: `Test ${index} updated` },
+            },
+          }
+        : {},
+      name: `Test ${index}`,
+    },
     data: {
       rows: [
         ["a", 1],
@@ -18,10 +29,10 @@ function getSeries(display, index) {
   };
 }
 
-const setup = (seriesDisplay, numberOfSeries = 1) => {
+const setup = (seriesDisplay, numberOfSeries = 1, changeSeriesName = false) => {
   const series = new Array(numberOfSeries)
     .fill(1)
-    .map((s, index) => getSeries(seriesDisplay, index));
+    .map((s, index) => getSeries(seriesDisplay, index, changeSeriesName));
   return renderWithProviders(
     <ChartSettings
       series={series}
@@ -52,7 +63,7 @@ describe("ChartNestedSettingSeries", () => {
     expect(getByRole("img", { name: /bar/i })).toBeInTheDocument();
   });
 
-  it("should show and open 'More options' on visualizations with multiple lines (metabase#17619)", async () => {
+  it("should show and open 'More options' on visualizations with multiple lines (metabase#17619)", () => {
     const { getByDisplayValue, getAllByRole, getByText, queryByText } = setup(
       "line",
       3,
@@ -84,5 +95,21 @@ describe("ChartNestedSettingSeries", () => {
     //Expand another section, should only be 1 open section
     userEvent.click(expandButtons[1]);
     expect(getAllByRole("img", { name: /chevronup/i })).toHaveLength(1);
+  });
+
+  it("should show original series title in subtitle if it's changed", () => {
+    const { getByTestId } = setup("line", 1, true);
+
+    const seriesSettings = getByTestId("series-settings");
+    expect(queryByText(seriesSettings, "Test 0")).toBeInTheDocument();
+    expect(getByTestId("series-name-input")).toHaveValue("Test 0 updated");
+  });
+
+  it("should not show a series subtitle if the series name has not changed", () => {
+    const { getByTestId } = setup("line", 1);
+
+    const seriesSettings = getByTestId("series-settings");
+    expect(queryByText(seriesSettings, "Test 0")).not.toBeInTheDocument();
+    expect(getByTestId("series-name-input")).toHaveValue("Test 0");
   });
 });

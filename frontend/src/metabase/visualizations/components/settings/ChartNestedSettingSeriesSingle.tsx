@@ -3,17 +3,21 @@ import React from "react";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorSelector from "metabase/core/components/ColorSelector";
-import { Series } from "metabase-types/types/Visualization";
+import { SingleSeries } from "metabase-types/types/Visualization";
 import { VisualizationSettings } from "metabase-types/api/card";
 
 import { SeriesNameInput } from "./ChartNestedSettingSeries.styled";
 
 export interface ChartNestedSettingsSeriesSingleProps {
-  object: Series;
-  getObjectKey: (object: Series) => string;
-  onChangeObjectSettings: (object: Series, value: Record<string, any>) => void;
+  object: SingleSeries;
+  getObjectKey: (object: SingleSeries) => string;
+  onChangeObjectSettings: (
+    object: SingleSeries,
+    value: Record<string, any>,
+  ) => void;
   objectSettingsWidgets: React.ReactNode[];
   allComputedSettings: VisualizationSettings;
+  seriesCardNames: Record<string, string>;
 }
 
 // various props injected by chartSettingNestedSettings HOC
@@ -23,12 +27,18 @@ const ChartNestedSettingsSeriesSingle = ({
   objectSettingsWidgets,
   object,
   allComputedSettings,
+  seriesCardNames,
 }: ChartNestedSettingsSeriesSingleProps) => {
   const objectKey = object && getObjectKey(object);
   const computedSettings = allComputedSettings[objectKey] || {};
+  const seriesCardName = seriesCardNames?.[objectKey];
 
   return (
-    <div key={objectKey} className="px4 align-self-stretch">
+    <div
+      key={objectKey}
+      className="px4 align-self-stretch"
+      data-testid="series-settings"
+    >
       <div className="flex align-center border-bottom pb2">
         <ColorSelector
           value={computedSettings.color}
@@ -39,6 +49,9 @@ const ChartNestedSettingsSeriesSingle = ({
           className="flex-full ml1 align-self-stretch"
           value={computedSettings.title}
           data-testid="series-name-input"
+          subtitle={
+            seriesCardName !== computedSettings.title ? seriesCardName : ""
+          }
           onBlurChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             onChangeObjectSettings(object, { title: e.target.value })
           }
