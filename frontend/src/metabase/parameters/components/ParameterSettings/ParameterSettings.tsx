@@ -14,7 +14,10 @@ import {
 } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { getIsMultiSelect } from "../../utils/dashboards";
-import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
+import {
+  canUseCustomSource,
+  isSingleOrMultiSelectable,
+} from "../../utils/parameter-type";
 import ParameterSourceSettings from "../ParameterSourceSettings";
 import {
   SettingLabel,
@@ -54,14 +57,16 @@ const ParameterSettings = ({
         <SettingLabel>{t`Label`}</SettingLabel>
         <ParameterInput initialValue={parameter.name} onChange={onChangeName} />
       </SettingSection>
-      <SettingSection>
-        <SettingLabel>{t`Options to pick from`}</SettingLabel>
-        <ParameterSourceSettings
-          parameter={parameter}
-          onChangeSourceType={onChangeSourceType}
-          onChangeSourceOptions={onChangeSourceOptions}
-        />
-      </SettingSection>
+      {canUseCustomSource(parameter) && (
+        <SettingSection>
+          <SettingLabel>{t`Options to pick from`}</SettingLabel>
+          <ParameterSourceSettings
+            parameter={parameter}
+            onChangeSourceType={onChangeSourceType}
+            onChangeSourceOptions={onChangeSourceOptions}
+          />
+        </SettingSection>
+      )}
       <SettingSection>
         <SettingLabel>{t`Default value`}</SettingLabel>
         <SettingValueWidget
