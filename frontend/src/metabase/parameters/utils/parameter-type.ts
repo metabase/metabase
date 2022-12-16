@@ -1,5 +1,4 @@
-import _ from "underscore";
-import { Parameter } from "metabase-types/types/Parameter";
+import { Parameter } from "metabase-types/api";
 import { SINGLE_OR_MULTI_SELECTABLE_TYPES } from "metabase-lib/parameters/constants";
 import {
   getParameterType,

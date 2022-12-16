@@ -3,12 +3,8 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import {
-  ParameterSourceOptions,
-  ParameterSourceType,
-} from "metabase-types/api";
 import { CardId } from "./Card";
-import { LocalFieldReference, ForeignFieldReference } from "./Query";
+import { ForeignFieldReference, LocalFieldReference } from "./Query";
 
 export type ParameterId = string;
 
@@ -40,20 +36,6 @@ export type ParameterMappingOptions = {
   combinedName?: string;
   type: ParameterType;
 };
-
-export interface Parameter {
-  id: ParameterId;
-  name: string;
-  type: ParameterType;
-  slug: string;
-  sectionId?: string;
-  default?: any;
-  filteringParameters?: ParameterId[];
-  isMultiSelect?: boolean;
-  value?: any;
-  source_type?: ParameterSourceType;
-  source_options?: ParameterSourceOptions;
-}
 
 export type ParameterQueryObject = {
   type: ParameterType;

@@ -2,10 +2,7 @@ import _ from "underscore";
 
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { slugify } from "metabase/lib/formatting";
-import type {
-  Parameter,
-  ParameterMappingOptions,
-} from "metabase-types/types/Parameter";
+import type { ParameterMappingOptions } from "metabase-types/types/Parameter";
 import type {
   Card,
   Dashboard,
@@ -13,6 +10,7 @@ import type {
   DashboardOrderedCard,
   ParameterSourceType,
   ParameterSourceOptions,
+  Parameter,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
