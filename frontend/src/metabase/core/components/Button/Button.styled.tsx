@@ -60,6 +60,10 @@ const horizontalRightIconCSS = css`
 `;
 
 export const ButtonTextContainer = styled.div<ButtonTextContainerProps>`
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+
   ${props => {
     if (props.hasIcon) {
       return props.iconVertical ? verticalTopIconCSS : horizontalLeftIconCSS;
