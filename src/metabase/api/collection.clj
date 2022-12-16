@@ -10,6 +10,8 @@
             [honeysql.core :as hsql]
             [honeysql.helpers :as hh]
             [medley.core :as m]
+            [malli.core :as mc]
+            [malli.transform :as mtx]
             [metabase.api.card :as api.card]
             [metabase.api.common :as api]
             [metabase.api.timeline :as api.timeline]
@@ -880,33 +882,42 @@
   (api/check-superuser)
   (graph/graph namespace))
 
-(defn- ->int [id] (Integer/parseInt (name id)))
+(def CollectionID "an id for a [[Collection]]."
+  [pos-int? {:title "Collection ID"}])
 
-(defn- dejsonify-collections [collections]
-  (into {} (for [[collection-id perms] collections]
-             [(if (= (keyword collection-id) :root)
-                :root
-                (->int collection-id))
-              (keyword perms)])))
+(def GroupID "an id for a [[PermissionsGroup]]."
+  [pos-int? {:title "Group ID"}])
 
-(defn- dejsonify-groups [groups]
-  (into {} (for [[group-id collections] groups]
-             {(->int group-id) (dejsonify-collections collections)})))
+(def CollectionPermissions
+  "Malli enum for what sort of colleciton permissions we have. (:write :read or :none)"
+  [:and keyword? [:enum :write :read :none]])
 
-(defn- dejsonify-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
-  parsing object keys as integers."
-  [graph]
-  (update graph :groups dejsonify-groups))
+(def GroupPermissionsGraph
+  "Map describing permissions for a (Group x Collection)"
+  [:map-of
+   [:or [:and keyword? [:= :root]]
+    CollectionID]
+   CollectionPermissions])
+
+(def PermissionsGraph
+  "Map describing permissions for 1 or more groups.
+  Revision # is used for consistency"
+  [:map
+   [:revision int?]
+   [:groups [:map-of GroupID GroupPermissionsGraph]]])
+
+(def ^:private graph-decoder
+  (mc/decoder PermissionsGraph (mtx/string-transformer)))
 
 (api/defendpoint PUT "/graph"
-  "Do a batch update of Collections Permissions by passing in a modified graph."
+  "Do a batch update of Collections Permissions by passing in a modified graph.
+  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
   [:as {{:keys [namespace], :as body} :body}]
   {body      su/Map
    namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
   (->> (dissoc body :namespace)
-       dejsonify-graph
+       graph-decoder
        (graph/update-graph! namespace))
   (graph/graph namespace))
 
