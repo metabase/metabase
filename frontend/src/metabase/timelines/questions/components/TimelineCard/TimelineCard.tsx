@@ -24,7 +24,7 @@ export interface TimelineCardProps {
   timeline: Timeline;
   isDefault?: boolean;
   isVisible?: boolean;
-  hiddenEventIds: number[];
+  visibleEventIds: number[];
   selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onMoveEvent?: (event: TimelineEvent) => void;
@@ -38,7 +38,7 @@ const TimelineCard = ({
   timeline,
   isDefault,
   isVisible,
-  hiddenEventIds = [],
+  visibleEventIds = [],
   selectedEventIds = [],
   onEditEvent,
   onMoveEvent,
@@ -106,7 +106,7 @@ const TimelineCard = ({
               event={event}
               timeline={timeline}
               isSelected={selectedEventIds.includes(event.id)}
-              isHidden={hiddenEventIds.includes(event.id)}
+              isVisible={visibleEventIds.includes(event.id)}
               onEdit={onEditEvent}
               onMove={onMoveEvent}
               onArchive={onArchiveEvent}

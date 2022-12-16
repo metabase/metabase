@@ -24,7 +24,7 @@ export interface EventCardProps {
   event: TimelineEvent;
   timeline: Timeline;
   isSelected?: boolean;
-  isHidden: boolean;
+  isVisible: boolean;
   onEdit?: (event: TimelineEvent) => void;
   onMove?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
@@ -36,7 +36,7 @@ const EventCard = ({
   event,
   timeline,
   isSelected,
-  isHidden = false,
+  isVisible,
   onEdit,
   onMove,
   onArchive,
@@ -55,9 +55,9 @@ const EventCard = ({
   const handleChangeVisibility = useCallback(
     (e: SyntheticEvent) => {
       e.stopPropagation();
-      onToggleEventVisibility(event, isHidden);
+      onToggleEventVisibility(event, !isVisible);
     },
-    [event, isHidden, onToggleEventVisibility],
+    [event, isVisible, onToggleEventVisibility],
   );
 
   const handleAsideClick = useCallback((event: SyntheticEvent) => {
@@ -71,7 +71,7 @@ const EventCard = ({
       onClick={handleEventClick}
     >
       <CardCheckboxContainer data-testid="toggle-event-visibility">
-        <Checkbox checked={!isHidden} onClick={handleChangeVisibility} />
+        <Checkbox checked={isVisible} onClick={handleChangeVisibility} />
       </CardCheckboxContainer>
       <CardBody>
         <CardIconAndDateContainer>

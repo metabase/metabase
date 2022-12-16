@@ -59,7 +59,7 @@ describe("TimelineCard", () => {
 
 const getProps = (opts?: Partial<TimelineCardProps>): TimelineCardProps => ({
   timeline: createMockTimeline(),
-  hiddenEventIds: [],
+  visibleEventIds: [],
   onEditEvent: jest.fn(),
   onArchiveEvent: jest.fn(),
   onToggleTimeline: jest.fn(),
