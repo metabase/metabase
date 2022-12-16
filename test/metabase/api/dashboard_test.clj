@@ -2049,14 +2049,20 @@
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
 (deftest static-values-test
-  (testing "It uses static values stored directly in the parameters"
-    (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:id             "abc"
-                                                               :type           "category"
-                                                               :name           "CATEGORY"
-                                                               :source_type    "static-list"
-                                                               :source_options {:values ["toucan" "pigeon" "other bird"]}}]}]
+  (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:id             "abc"
+                                                             :type           "category"
+                                                             :name           "CATEGORY"
+                                                             :source_type    "static-list"
+                                                             :source_options {:values ["toucan" "pigeon" "other bird"]}}]}]
+    (testing "It uses static values stored directly in the parameters"
       (let-url [url (chain-filter-values-url dashboard-id "abc")]
-        (is (= {:values ["toucan" "pigeon" "other bird"]}
+        (is (= {:values          ["toucan" "pigeon" "other bird"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 url)))))
+    (testing "it only returns search matches"
+      (let-url [url (chain-filter-search-url dashboard-id "abc" "OUC")]
+        (is (= {:values          ["toucan"]
+                :has_more_values false}
                (mt/user-http-request :rasta :get 200 url)))))))
 
 
