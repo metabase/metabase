@@ -360,11 +360,6 @@
        (is (= [[2 2.5] [3 2.0] [4 2.0]]
               (mt/rows result)))))))
 
-(comment
-  (mt/set-test-drivers! [:sqlserver :postgres])
-  (metabase.test-runner/run [#'metabase.driver.sqlserver-test/median-aggregation-test])
-  )
-
 (deftest percentile-aggregation-breakout-test
   (mt/test-driver
    :sqlserver
