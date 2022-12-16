@@ -715,39 +715,44 @@
                           :then (->rvalue expr)})
              :default  (->rvalue (:default options))}})
 
-(defn- aggregation->rvalue [ag]
+(defn- aggregation->rvalue [ag group-expr]
   (mbql.u/match-one ag
-    [:aggregation-options ag _]
-    (recur ag)
+    [:aggregation-options ag' _]
+    (aggregation->rvalue ag' group-expr)
 
     [:count]
-    {$sum 1}
+    [{$sum 1} group-expr]
 
     [:count arg]
-    {$sum {$cond {:if   (->rvalue arg)
-                  :then 1
-                  :else 0}}}
+    [{$sum {$cond {:if   (->rvalue arg)
+                   :then 1
+                   :else 0}}}
+     group-expr]
 
     ;; these aggregation types can all be used in expressions as well so their implementations live above in the
     ;; general [[->rvalue]] implementations
     #{:avg :stddev :sum :min :max}
-    (->rvalue &match)
+    [(->rvalue &match) group-expr]
 
     [:distinct arg]
-    {$addToSet (->rvalue arg)}
+    [{$addToSet (->rvalue arg)} group-expr]
 
     [:sum-where arg pred]
-    {$sum {$cond {:if   (compile-cond pred)
-                  :then (->rvalue arg)
-                  :else 0}}}
+    [{$sum {$cond {:if   (compile-cond pred)
+                   :then (->rvalue arg)
+                   :else 0}}}
+     group-expr]
 
     [:count-where pred]
-    (recur [:sum-where [:value 1] pred])
+    (aggregation->rvalue [:sum-where [:value 1] pred] group-expr)
+
+    [op & args]
+    (let [ges (mapv #(aggregation->rvalue % group-expr) args)
+          [group embedding-expr] (first (filter some? ges))]
+      [group (into [op] (map (fn [arg ge] (if ge embedding-expr arg)) args ges))])
 
     :else
-    (throw
-     (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
-       {:type :invalid-query, :clause ag}))))
+    nil))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :aggregation-options)
@@ -787,27 +792,36 @@
 
 (defmethod expand-aggregation :share
   [[_ pred :as ag]]
-  (let [count-where-name (name (gensym "count-where-"))
-        count-name       (name (gensym "count-"))
-        pred             (if (= (first pred) :share)
-                           (second pred)
-                           pred)]
-    {:group {count-where-name (aggregation->rvalue [:count-where pred])
-             count-name       (aggregation->rvalue [:count])}
-     :post  {(annotate/aggregation-name ag) {$divide [(str "$" count-where-name) (str "$" count-name)]}}}))
+  (let [count-where-expr    (name (gensym "$count-where-"))
+        count-expr          (name (gensym "$count-"))
+        pred                (if (= (first pred) :share)
+                              (second pred)
+                              pred)
+        [count-where-group] (aggregation->rvalue [:count-where pred] count-where-expr)
+        [count-group]       (aggregation->rvalue [:count] count-expr)]
+    {:group {(subs count-where-expr 1) count-where-group
+             (subs count-expr 1)       count-group}
+     :post  [[(annotate/aggregation-name ag) {$divide [count-where-expr count-expr]}]]}))
 
 ;; MongoDB doesn't have a variance operator, but you calculate it by taking the square of the standard deviation.
 ;; However, `$pow` is not allowed in the `$group` stage. So calculate standard deviation in the
 (defmethod expand-aggregation :var
   [ag]
   (let [[_ expr]    (unwrap-named-ag ag)
-        stddev-name (name (gensym "stddev-"))]
-    {:group {stddev-name (aggregation->rvalue [:stddev expr])}
-     :post  {(annotate/aggregation-name ag) {:$pow [(str \$ stddev-name) 2]}}}))
+        stddev-name (name (gensym "$stddev-"))
+        [group]     (aggregation->rvalue [:stddev expr] nil)]
+    {:group {(subs stddev-name 1) group}
+     :post  [[(annotate/aggregation-name ag) {:$pow [stddev-name 2]}]]}))
 
 (defmethod expand-aggregation :default
   [ag]
-  {:group {(annotate/aggregation-name ag) (aggregation->rvalue ag)}})
+  (let [agg-name (annotate/aggregation-name ag)
+        group-expr (name (gensym "$group-"))
+        [group embedding-expr] (aggregation->rvalue ag group-expr)]
+    (if (= embedding-expr group-expr)
+      {:group {agg-name group}}
+      {:group {(subs group-expr 1) group}
+       :post  [[agg-name (->rvalue embedding-expr)]]})))
 
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
