@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.query-processor :as qp]
+   [metabase.search.scoring :as search]
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.models :as models]))
@@ -15,18 +16,13 @@
                         {:properties (constantly {:timestamped? true})
                          :types      (constantly {:parameterized_object_type :keyword})}))
 
-(defn- search-match?
-  [search-term filter-term]
-  (str/includes? filter-term search-term))
-
 (defn query-matches
   "Filter the values according to the `search-term`. If `search-term` is blank, return all the values without filtering"
   [search-term values]
   (if (str/blank? search-term)
     values
-    (let [normalize              (comp str/lower-case str/trim)
-          normalized-search-term (normalize search-term)]
-      (filter #(search-match? normalized-search-term (normalize %)) values))))
+    (let [normalized-search-term (search/normalize search-term)]
+      (filter #(str/includes? (search/normalize %) normalized-search-term) values))))
 
 (defn- query-for-dashboard
   [{dashboard-id :id} param-key]
