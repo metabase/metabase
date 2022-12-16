@@ -565,6 +565,8 @@ export const visibleTimelineEventIds = handleActions(
     [INITIALIZE_QB]: { next: () => null },
     [SHOW_TIMELINES]: {
       next: (state, { payload: timelines }) =>
+        // We want to populate all event ids on a first SHOW_TIMELINES.
+        // In subsequent ones, we want to show the previously populated ids.
         state === null
           ? timelines.flatMap(t => t.events.map(e => e.id))
           : state,
