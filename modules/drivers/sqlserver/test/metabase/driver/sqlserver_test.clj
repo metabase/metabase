@@ -426,6 +426,48 @@
                   :limit       3})
                 mt/rows))))))
 
+(deftest percentile-aggregations-with-expressions-test
+  (mt/test-driver
+   :sqlserver
+   (testing "Query containing percentile aggregations and expressions yields correct results"
+     (mt/dataset
+      sample-dataset
+      (is (= [[8 155.52 631669.78 631825.3]
+              [12 220.35 428531.11 428751.46]
+              [16 293.72 368660.62 368954.34]
+              [20 370.05 343879.32 344249.37]
+              [24 444.3 243971.04 244415.34]]
+             (->> (mt/run-mbql-query
+                  orders
+                  {;; 1. expression with source of percentile aggregation
+                   :fields       [*quantity_times_4/Integer
+                                  *p50/Float
+                                  *sum/Integer
+                                  [:expression "p50 + sum"]]
+                    :expressions  {"p50 + sum" [:+ *p50/Float *sum/Integer]}
+                   :source-query {:source-table $$orders
+                                  :expressions  {"total + subtotal" [:+ $total $subtotal]
+                                                 "quantity * total" [:* $total $quantity]
+                                                 "quantity_times_4" [:* $quantity 4]}
+                                  ;; 2. expression used in filter in "source data" for aggregations
+                                  :filter       [:< [:expression "total + subtotal"] [:expression "quantity * total"]]
+                                  :aggregation  [;; 3. other aggregation has expression source
+                                                 [:aggregation-options 
+                                                  [:sum [:expression "total + subtotal"]] {:name "sum"}]
+                                                 ;; 4. other than percentile aggregation used with expression
+                                                 [:aggregation-options 
+                                                  [:percentile [:expression "quantity * total"] 0.5] {:name "p50"}]]
+                                  :breakout     [[:expression "quantity_times_4"]]
+                                  :limit        5}})
+                 ;; rounding because of postgres to sqlserver inconsistencies working with floats
+                 ;; gut feeling here is that it is ok, but may further investigate
+                 ;; sth. like 428751.46000000014 vs 428751.46
+                 (mt/formatted-rows [int 
+                                     #(u/round-to-decimals 6 %) 
+                                     #(u/round-to-decimals 6 %) 
+                                     #(u/round-to-decimals 6 %)]))))))))
+
+(comment
 ;; TODO -- add here all card scenarios
 (deftest percentile-aggregations-with-card-test
   (mt/test-driver
