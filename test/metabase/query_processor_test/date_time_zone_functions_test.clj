@@ -6,8 +6,7 @@
             [metabase.models :refer [Card]]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]
-            [metabase.util.date-2 :as u.date]
-            [metabase.driver.sql.query-processor :as sql.qp]))
+            [metabase.util.date-2 :as u.date]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Date extract tests                                              |
