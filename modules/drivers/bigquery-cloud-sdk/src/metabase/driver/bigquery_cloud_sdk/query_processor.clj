@@ -574,7 +574,10 @@
     (sql.qp/datetime-diff driver unit x y)))
 
 (defn- timestamp-diff [unit x y]
-  (hsql/call :timestamp_diff y x (hsql/raw (name unit))))
+  (hsql/call :timestamp_diff
+             (->temporal-type :timestamp y)
+             (->temporal-type :timestamp x)
+             (hsql/raw (name unit))))
 
 (defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :year]
   [driver _unit x y]
@@ -588,8 +591,8 @@
   [_driver _unit x y]
   ;; Only bigquery's `datetime_diff` supports months. We need to convert args to datetime to use it.
   ;; Also `<` and `>` comparisons can only be made on the same type.
-  (let [x' (hx/->datetime x)
-        y' (hx/->datetime y)]
+  (let [x' (->temporal-type :datetime x)
+        y' (->temporal-type :datetime y)]
     (hx/+ (hsql/call :datetime_diff y' x' (hsql/raw "month"))
           ;; datetime_diff counts month boundaries not whole months, so we need to adjust
           ;; if x<y but x>y in the month calendar then subtract one month
@@ -610,11 +613,7 @@
   [_driver _unit x y]
   (timestamp-diff :day (trunc :day x) (trunc :day y)))
 
-(defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :hour]
-  [_driver _unit x y]
-  ;; timestamp_diff with hours only has millisecond precision if the args are cast to a timestamp
-  (timestamp-diff :hour (hx/->timestamp x) (hx/->timestamp y)))
-
+(defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :hour] [_driver _unit x y] (timestamp-diff :hour x y))
 (defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :minute] [_driver _unit x y] (timestamp-diff :minute x y))
 (defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :second] [_driver _unit x y] (timestamp-diff :second x y))
 
