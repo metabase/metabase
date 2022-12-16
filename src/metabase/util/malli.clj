@@ -2,11 +2,14 @@
   (:refer-clojure :exclude [defn])
   (:require
    [clojure.core :as core]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
    [malli.core :as mc]
    [malli.error :as me]
-   [malli.instrument :as minst]
    [malli.experimental :as mx]
-   [clojure.string :as str]))
+   [malli.instrument :as minst]
+   [metabase.config :as config]
+   [metabase.util :as u]))
 
 (core/defn- explain-fn-fail!
   [type data]
@@ -61,11 +64,16 @@
   (fn describe*-dispatch [ast _ctx] (:type ast)))
 
 (defmethod describe* :maybe [{:keys [child]} ctx]
-  (str "A nullable " (describe* child ctx)))
+  (str "nullable " (describe* child ctx)))
 
 (defmethod describe* :or [{:keys [children]} ctx]
   (str "( "
        (str/join ", or " (mapv (comp str/trim #(describe* % (indent+ ctx))) children))
+       " )"))
+
+(defmethod describe* :and [{:keys [children]} ctx]
+  (str "which matches ( "
+       (str/join ", and " (mapv (comp str/trim #(describe* % (indent+ ctx))) children))
        " )"))
 
 (defmethod describe* :map [{:keys [keys]} ctx]
@@ -98,9 +106,9 @@
         max-len (:max properties)]
     (cond
       (and min-len max-len) (str "with " title " between " min-len " and " max-len " ")
-      min-len (str "at least " min-len " long ")
-      max-len (str "at most " max-len " long ")
-      :else "")))
+      min-len               (str "at least " min-len " long ")
+      max-len               (str "at most " max-len " long ")
+      :else                 "")))
 
 (defmethod describe* :string [{:keys [properties]} _ctx]
   ;; todo handle min/max/other properties.
@@ -117,15 +125,15 @@
 (defmethod describe* 'pos-int? [ast ctx] (describe* (assoc ast :type :pos-int) ctx))
 
 (defmethod describe* :default [x ctx]
-  (str/join "\n" ["*********"
-                  "Unknown Malli Schema!"
-                  (str "type: " (pr-str (:type x)))
-                  (str "value: " (pr-str x))
-                  "*********"]))
+  (reset! (:*missing? ctx) true)
+  (str "Undescribale Schema [ " (pr-str (or (:type x) x)) " ]"))
 
-(core/defn describe
+;; n.b. this is not clojure.core/defn
+(defn describe :- [:map [:missing? :boolean] [:description :string]]
   "Given a malli schema, should return a string with a description of the shape it expects."
   [schema]
-  (let [ast (mc/ast schema)]
-    (str/trim
-     (str "A " (describe* ast {:indent 0})))))
+  (let [*missing? (atom false)
+        ast (mc/ast schema)
+        raw-output (describe* ast {:indent 0 :*missing? *missing?})]
+    {:missing? @*missing?
+     :description (str/trim (str "A "  raw-output))}))

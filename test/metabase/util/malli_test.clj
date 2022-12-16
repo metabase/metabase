@@ -6,7 +6,7 @@
 
 (deftest mu-defn-test
   (testing "invalid input"
-    (um/defn bar [x :- [:map [:x int?] [:y int?]]] "42")
+    (um/defn bar [x :- [:map [:x int?] [:y int?]]] (str x))
     (is (= [{:x ["missing required key"]
              :y ["missing required key"]}]
            (:humanized
@@ -25,28 +25,30 @@
         "when baz returns an invalid form um/defn throws")
     (ns-unmap *ns* 'baz)))
 
+(defn- description [schema]
+  (:description (um/describe schema)))
 
 (deftest describe-test
   (is (= "A keyword"
-         (um/describe :keyword)))
+         (description :keyword)))
   (is (= "A string"
-         (um/describe :string)))
+         (description :string)))
   (is (= "A string at least 3 long"
-         (um/describe [:string {:min 3}])))
+         (description [:string {:min 3}])))
   (is (= "A string at most 3 long"
-         (um/describe [:string {:max 3}])))
+         (description [:string {:max 3}])))
   (is (= "A string with length between 3 and 5"
-         (um/describe [:string {:min 3 :max 5}])))
+         (description [:string {:min 3 :max 5}])))
   (is (= "A ( string, or keyword )"
-         (um/describe [:or :string :keyword])))
+         (description [:or :string :keyword])))
   (is (= "A map of positive integer to positive integer"
-         (um/describe [:map-of int? pos-int?])))
+         (description [:map-of int? pos-int?])))
   (is (= "A tuple of size 2 like: [ integer integer ]"
-         (um/describe [:tuple :int :int])))
+         (description [:tuple :int :int])))
   (is (= "A ( integer, or value that is one of: 1 2 or 3 )"
-         (um/describe [:or int? [:enum 1 2 3]])))
+         (description [:or int? [:enum 1 2 3]])))
   (is (= "A ( integer, or string, or value that is one of: :rasta or :lucky )"
-         (um/describe [:or int? string? [:enum :rasta :lucky]])))
+         (description [:or int? string? [:enum :rasta :lucky]])))
   (is (= (str/join "\n"
                    ["A map with keys: ["
                     "    :a (optional) => integer "
@@ -60,7 +62,7 @@
                     "            ]"
                     "        ]"
                     "    ]"])
-         (um/describe
+         (description
           [:map
            [:a {:optional true} int?]
            [:b [:map

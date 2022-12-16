@@ -897,8 +897,7 @@
 (def GroupPermissionsGraph
   "Map describing permissions for a (Group x Collection)"
   [:map-of
-   [:or [:and keyword?
-         [:= :root]]
+   [:or [:and keyword? [:= :root]]
     CollectionID]
    CollectionPermissions])
 
@@ -926,4 +925,3 @@
   (graph/graph namespace))
 
 (api/define-routes)
-

@@ -213,33 +213,38 @@
 
 (s/def ::defendpoint-args
   (s/cat
-   :method      symbol?
-   :route       (some-fn string? sequential?)
-   :docstr      (s/? string?)
-   :args        vector?
-   :arg->schema (s/? (s/or :malli (fn [x] (boolean (get (meta x) :malli)))
-                           :plumatic (s/map-of symbol? any?)))
-   :body        (s/* any?)))
+   :method             symbol?
+   :route              (some-fn string? sequential?)
+   :docstr             (s/? string?)
+   :args               vector?
+   :tagged-arg->schema (s/? (s/or :malli (fn [x] (boolean (get (meta x) :malli)))
+                                  :plumatic (s/map-of symbol? any?)))
+   :body               (s/* any?)))
+
+#_(defn- eval-plumatic-arg->schema [[type arg->schema]]
+  (def innnepas [type arg->schema])
+  ;; eval the vals in a plumatic arg->schema to make sure the actual schemas are resolved so we can document their API
+  ;; error messages
+  [type (cond (= type :plumatic) (m/map-vals eval arg->schema)
+              (= type :malli) (m/map-vals eval arg->schema))])
 
 (defn- parse-defendpoint-args [args]
+  (def args args)
   (let [parsed (s/conform ::defendpoint-args args)]
     (when (= parsed ::s/invalid)
       (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
                       (s/explain-data ::defendpoint-args args))))
-    (let [{:keys [method route docstr args arg->schema body]} parsed
-          fn-name                                             (route-fn-name method route)
-          route                                               (add-route-param-regexes route)
-          ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
-          ;; their API error messages
-          docstr                                              (route-dox method route docstr args
-                                                                         (second arg->schema) body)]
+    (let [{:keys [method route docstr args tagged-arg->schema body]
+           :as   parsed}     parsed
+          tagged-arg->schema (update tagged-arg->schema 1 #(m/map-vals eval %))
+          fn-name            (route-fn-name method route)
+          route              (add-route-param-regexes route)
+          docstr             (route-dox method route docstr args tagged-arg->schema body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
                                   (ns-name *ns*) fn-name)))
       (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
-
-(parse-defendpoint-args args)
 
 (defmacro defendpoint*
   "Impl macro for [[defendpoint]]; don't use this directly."

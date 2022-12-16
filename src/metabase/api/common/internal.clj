@@ -71,6 +71,13 @@
                             (not= arg 'body))]
              {arg nil})))
 
+(defn- warn-missing-error-message [schema route-str]
+  ;; Don't try to i18n this stuff! It's developer-facing only.
+  (log/warn (u/format-color 'red (str "We don't have a nice error message for schema: %s defined at %s\n"
+                                      "Consider wrapping it in `su/with-api-error-message`.")
+                            (u/pprint-to-str schema)
+                            (u/add-period route-str))))
+
 (defn- dox-for-schema
   "Look up the docstring for `schema` for use in auto-generated API documentation. In most cases this is defined by
   wrapping the schema with `with-api-error-message`."
@@ -78,12 +85,8 @@
   (if-not schema
     ""
     (or (su/api-error-message schema)
-        ;; Don't try to i18n this stuff! It's developer-facing only.
         (when config/is-dev?
-          (log/warn
-           (u/format-color 'red (str "We don't have a nice error message for schema: %s defined at %s\n"
-                                     "Consider wrapping it in `su/with-api-error-message`.")
-                           (u/pprint-to-str schema) (u/add-period route-str)))))))
+          (warn-missing-error-message schema route-str)))))
 
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
@@ -93,22 +96,37 @@
         (:api-param-name schema))
       (name param-symb)))
 
+(defn- dox-for-malli [schema route-str]
+  (if-not schema
+    ""
+    (let [{:keys [description missing?]} (mu/describe schema)]
+      (when (and config/is-dev? missing?) (warn-missing-error-message schema route-str))
+      description)))
+
 (defn- format-route-schema-dox
   "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
   `param-symb->schema` map passed in after the argslist."
-  [param-symb->schema route-str]
+  [param-symb->schema route-str schema-type]
   (when (seq param-symb->schema)
-    (str "\n\n### PARAMS:\n\n"
-         (str/join "\n\n" (for [[param-symb schema] param-symb->schema]
-                            (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-schema schema route-str)))))))
+    (if (= schema-type :plumatic)
+      (str "\n\n### PARAMS:\n\n"
+           (str/join "\n\n" (for [[param-symb schema] param-symb->schema]
+                              (format "*  **`%s`** %s"
+                                      (param-name param-symb schema)
+                                      (dox-for-schema schema route-str)))))
+      (str "\n\n### PARAMS:\n\n"
+           (str/join "\n\n" (for [[param-symb schema] param-symb->schema]
+                              (format "*  **`%s`** %s"
+                                      (name param-symb)
+                                      (dox-for-malli schema route-str))))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
-  [route-str docstr param->schema]
+  [route-str docstr param->schema schema-type]
   (str (format "## `%s`" route-str)
        (when (seq docstr)
          (str "\n\n" (u/add-period docstr)))
-       (format-route-schema-dox param->schema route-str)))
+       (format-route-schema-dox param->schema route-str schema-type)))
 
 (defn- contains-superuser-check?
   "Does the BODY of this `defendpoint` form contain a call to `check-superuser`?"
@@ -119,12 +137,12 @@
 
 (defn route-dox
   "Generate a documentation string for a `defendpoint` route."
-  [method route docstr args param->schema body]
+  [method route docstr args [schema-type param->schema] body]
   (format-route-dox (endpoint-name method route)
                     (str (u/add-period docstr) (when (contains-superuser-check? body)
                                                  "\n\nYou must be a superuser to do this."))
-                    (merge (args-form-symbols args)
-                           param->schema)))
+                    (merge (args-form-symbols args) param->schema)
+                    schema-type))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          AUTO-PARSING + ROUTE TYPING                                           |
