@@ -350,10 +350,10 @@
   "Should this `card` and `results` include a CSV attachment?"
   [{include-csv? :include_csv, include-xls? :include_xls, card-name :name, :as card} {:keys [cols rows], :as result-data}]
   (letfn [(yes [reason & args]
-            (log/tracef "Including CSV attachement for Card %s because %s" (pr-str card-name) (apply format reason args))
+            (log/tracef "Including CSV attachment for Card %s because %s" (pr-str card-name) (apply format reason args))
             true)
           (no [reason & args]
-            (log/tracef "NOT including CSV attachement for Card %s because %s" (pr-str card-name) (apply format reason args))
+            (log/tracef "NOT including CSV attachment for Card %s because %s" (pr-str card-name) (apply format reason args))
             false)]
     (cond
       include-csv?
