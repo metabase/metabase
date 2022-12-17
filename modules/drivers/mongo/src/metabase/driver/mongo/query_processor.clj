@@ -816,7 +816,9 @@
   (when (and (vector? aggregation) (seq aggregation))
     (let [[op & args] aggregation]
       (cond
-        (= op :aggregation-options) (recur (first args))
+        (= op :aggregation-options)
+        (let [[embedding-expr aggregation'] (extract-aggregation (first args))]
+          [embedding-expr (into [:aggregation-options aggregation'] (rest args))])
         (group-op op) [(str \$ (annotate/aggregation-name aggregation)) aggregation]
         :else (let [ges (map extract-aggregation args)
                     [embedding-expr aggregation'] (first (filter some? ges))]
