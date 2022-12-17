@@ -68,6 +68,7 @@
   ((some-fn :db
             :dbname
             :sid
+            :service-name
             :catalog)
    details))
 
