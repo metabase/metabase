@@ -3,6 +3,7 @@
   (:require
    [clojure.core :as core]
    [malli.core :as mc]
+   [malli.destructure]
    [malli.error :as me]
    [malli.experimental :as mx]
    [malli.generator :as mg]
@@ -38,7 +39,7 @@
 (core/defn- -defn [schema args]
   (let [{:keys [name return doc meta arities] :as parsed} (mc/parse schema args)
         _ (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
-        parse (fn [{:keys [args] :as parsed}] (merge (md/parse args) parsed))
+        parse (fn [{:keys [args] :as parsed}] (merge (malli.destructure/parse args) parsed))
         ->schema (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
         single (= :single (key arities))
         parglists (if single
