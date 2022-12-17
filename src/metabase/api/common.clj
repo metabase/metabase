@@ -8,7 +8,7 @@
             [medley.core :as m]
             [metabase.api.common.internal
              :refer
-             [add-route-param-regexes auto-parse route-dox route-fn-name validate-params wrap-response-if-needed]]
+             [add-route-param-regexes auto-parse route-dox malli-route-dox route-fn-name malli-validate-params validate-params wrap-response-if-needed]]
             [metabase.models.interface :as mi]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
@@ -237,6 +237,23 @@
                                   (ns-name *ns*) fn-name)))
       (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
 
+(defn malli-parse-defendpoint-args [args]
+  (let [parsed (s/conform ::defendpoint-args args)]
+    (when (= parsed ::s/invalid)
+      (throw (ex-info (str "Invalid malli defendpoint args: " (s/explain-str ::defendpoint-args args))
+                      (s/explain-data ::defendpoint-args args))))
+    (let [{:keys [method route docstr args arg->schema body]} parsed
+          fn-name                                             (route-fn-name method route)
+          route                                               (add-route-param-regexes route)
+          ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
+          ;; their API error messages
+          docstr                                              (malli-route-dox method route docstr args (m/map-vals eval arg->schema) body)]
+      ;; Don't i18n this, it's dev-facing only
+      (when-not docstr
+        (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
+                                  (ns-name *ns*) fn-name)))
+      (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
+
 (defmacro defendpoint*
   "Impl macro for [[defendpoint]]; don't use this directly."
   [{:keys [method route fn-name docstr args body]}]
@@ -275,6 +292,32 @@
                                      ~@(validate-params arg->schema)
                                      (wrap-response-if-needed
                                       (do ~@body))))))))
+
+(defmacro malli-defendpoint
+  "Define an API function.
+   This automatically does several things:
+
+   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
+      `Integer/parseInt`
+
+   -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+
+   -  sequentially applies specified annotation functions on args to validate them.
+
+   -  automatically calls `wrap-response-if-needed` on the result of `body`
+
+   -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
+      the function in the generated `defroutes` form.
+
+   -  Generates a super-sophisticated Markdown-formatted docstring"
+  {:arglists '([method route docstr? args schemas-map? & body])}
+  [& defendpoint-args]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
+    `(defendpoint* ~(assoc defendpoint-args
+                           :body `((auto-parse ~args
+                                               ~@(malli-validate-params arg->schema)
+                                               (wrap-response-if-needed
+                                                (do ~@body))))))))
 
 (defmacro defendpoint-async
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."

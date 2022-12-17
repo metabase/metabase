@@ -4,6 +4,8 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [malli.core :as mc]
+   [malli.error :as me]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.config :as config]
    [metabase.util :as u]
@@ -67,19 +69,21 @@
                             (not= arg 'body))]
              {arg nil})))
 
-(defn- dox-for-schema
+(defn- malli-dox-for-schema
   "Look up the docstring for `schema` for use in auto-generated API documentation. In most cases this is defined by
   wrapping the schema with `with-api-error-message`."
   [schema route-str]
   (if-not schema
     ""
-    (or (su/api-error-message schema)
-        ;; Don't try to i18n this stuff! It's developer-facing only.
-        (when config/is-dev?
-          (log/warn
-           (u/format-color 'red (str "We don't have a nice error message for schema: %s defined at %s\n"
-                                     "Consider wrapping it in `su/with-api-error-message`.")
-                           (u/pprint-to-str schema) (u/add-period route-str)))))))
+    ;; TODO print schema defn here
+    (u/prog1 "~ malli schema definition coming soon ~"
+
+     ;; Don't try to i18n this stuff! It's developer-facing only.
+     (when config/is-dev?
+       (log/warn
+        (u/format-color 'red (str "We don't have a nice error message for MALLI SCHEMA: %s defined at %s")
+                        (u/pprint-to-str schema)
+                        (u/add-period route-str)))))))
 
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
@@ -88,6 +92,19 @@
   (or (when (record? schema)
         (:api-param-name schema))
       (name param-symb)))
+
+(defn- malli-format-route-schema-dox
+  "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
+  `param-symb->schema` map passed in after the argslist."
+  [param-symb->schema route-str]
+  ;; these are here
+  (when (seq param-symb->schema)
+    (str "\n\n### PARAMS:\n\n"
+         (str/join "\n\n"
+                   (for [[param-symb schema] param-symb->schema]
+                     (format "*  **`%s`** %s"
+                             (param-name param-symb schema)
+                             (malli-dox-for-schema schema route-str)))))))
 
 (defn- format-route-schema-dox
   "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
@@ -106,12 +123,28 @@
          (str "\n\n" (u/add-period docstr)))
        (format-route-schema-dox param->schema route-str)))
 
+(defn- malli-format-route-dox
+  "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
+  [route-str docstr param->schema]
+  (str (format "## `%s`" route-str)
+       (when (seq docstr)
+         (str "\n\n" (u/add-period docstr)))
+       (malli-format-route-schema-dox param->schema route-str)))
+
 (defn- contains-superuser-check?
   "Does the BODY of this `defendpoint` form contain a call to `check-superuser`?"
   [body]
   (let [body (set body)]
     (or (contains? body '(check-superuser))
         (contains? body '(api/check-superuser)))))
+
+(defn malli-route-dox
+  [method route docstr args param->schema body]
+  (malli-format-route-dox (endpoint-name method route)
+                          (str (u/add-period docstr) (when (contains-superuser-check? body)
+                                                       "\n\nYou must be a superuser to do this."))
+                          (merge (args-form-symbols args)
+                                 param->schema)))
 
 (defn route-dox
   "Generate a documentation string for a `defendpoint` route."
@@ -231,6 +264,15 @@
 ;;; |                                                PARAM VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn malli-validate-param
+  "Validate a parameter against its respective malli schema, or throw an Exception."
+  [field-name value schema]
+  (when-not (mc/validate schema value)
+    (throw (ex-info (tru "Invalid m field: {0}" field-name)
+                    {:status-code 400
+                     :errors      {(keyword field-name)
+                                   (me/humanize (mc/explain schema value))}}))))
+
 (defn validate-param
   "Validate a parameter against its respective schema, or throw an Exception."
   [field-name value schema]
@@ -241,6 +283,12 @@
                           :errors      {(keyword field-name) (or (su/api-error-message schema)
                                                                  (:message (ex-data e))
                                                                  (.getMessage e))}})))))
+
+(defn malli-validate-params
+  "Generate a series of `malli-validate-param` calls for each param and malli schema pair in PARAM->SCHEMA."
+  [param->schema]
+  (for [[param schema] param->schema]
+    `(malli-validate-param '~param ~param ~schema)))
 
 (defn validate-params
   "Generate a series of `validate-param` calls for each param and schema pair in PARAM->SCHEMA."
