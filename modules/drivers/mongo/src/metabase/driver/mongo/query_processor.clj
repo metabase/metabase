@@ -812,15 +812,15 @@
 (def ^:private group-op
   #{:var :share :count :avg :stddev :sum :min :max :distinct :sum-where :count-where})
 
-(defn- extract-aggregation [aggregation]
+(defn- extract-aggregation [aggregation aggr-name]
   (when (and (vector? aggregation) (seq aggregation))
     (let [[op & args] aggregation]
       (cond
         (= op :aggregation-options)
-        (let [[embedding-expr aggregation'] (extract-aggregation (first args))]
+        (let [[embedding-expr aggregation'] (extract-aggregation (first args) aggr-name)]
           [embedding-expr (into [:aggregation-options aggregation'] (rest args))])
-        (group-op op) [(str \$ (annotate/aggregation-name aggregation)) aggregation]
-        :else (let [ges (map extract-aggregation args)
+        (group-op op) [(str \$ aggr-name) aggregation]
+        :else (let [ges (map #(extract-aggregation % aggr-name) args)
                     [embedding-expr aggregation'] (first (filter some? ges))]
                 (when-not aggregation'
                   (throw
@@ -830,12 +830,12 @@
                  aggregation'])))))
 
 (defn- expand-embedded-aggregation [aggregation]
-  (let [[embedding-expr aggregation-expr] (extract-aggregation aggregation)
+  (let [aggr-name (annotate/aggregation-name aggregation)
+        [embedding-expr aggregation-expr] (extract-aggregation aggregation aggr-name)
         expanded (expand-aggregation aggregation-expr)]
     (cond-> expanded
       (not (string? embedding-expr))
-      (update :post conj {(annotate/aggregation-name aggregation)
-                          (->rvalue embedding-expr)}))))
+      (update :post conj {aggr-name (->rvalue embedding-expr)}))))
 
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
