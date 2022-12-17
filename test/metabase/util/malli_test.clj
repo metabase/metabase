@@ -2,12 +2,12 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase.util.malli :as um]
+   [metabase.util.malli :as mu]
    [clojure.walk :as walk]))
 
 (deftest mu-defn-test
   (testing "invalid input"
-    (um/defn bar [x :- [:map [:x int?] [:y int?]]] (str x))
+    (mu/defn bar [x :- [:map [:x int?] [:y int?]]] (str x))
     (is (= [{:x ["missing required key"]
              :y ["missing required key"]}]
            (:humanized
@@ -17,7 +17,7 @@
     (ns-unmap *ns* 'bar))
 
   (testing "invalid output"
-    (um/defn baz :- [:map [:x int?] [:y int?]] [] {:x "3"})
+    (mu/defn baz :- [:map [:x int?] [:y int?]] [] {:x "3"})
     (is (= {:x ["should be an int"]
             :y ["missing required key"]}
            (:humanized
