@@ -12,6 +12,8 @@
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs]]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            [java.security KeyFactory KeyStore PrivateKey]
@@ -200,23 +202,24 @@
              :when  (driver/available? driver)]
          driver)))
 
-(defn semantic-version-gte
+(s/defn semantic-version-gte
   "Returns true if xv is greater than or equal to yv according to semantic versioning.
    xv and yv are sequences of integers of the form `[major minor ...]`, where only
-   major is obligatory. Missing (`nil`) version numbers are treated as `0`.
+   major is obligatory.
    Examples:
    (semantic-version-gte [4 1] [4 1]) => true
    (semantic-version-gte [4 0 1] [4 1]) => false
    (semantic-version-gte [4 1] [4]) => true
    (semantic-version-gte [3 1] [4]) => false"
-  [xv yv]
-  (or (empty? yv)
-      (let [[x & xs] xv
-            [y & ys] yv
-            x (if (nil? x) 0 x)
-            y (if (nil? y) 0 y)]
-        (or (> x y)
-            (and (>= x y) (recur xs ys))))))
+  [xv :- [su/NonNegativeInt] yv :- [su/NonNegativeInt]] :- s/Bool
+  (loop [xv (seq xv), yv (seq yv)]
+    (or (nil? yv)
+        (let [[x & xs] xv
+              [y & ys] yv
+              x (if (nil? x) 0 x)
+              y (if (nil? y) 0 y)]
+          (or (> x y)
+              (and (>= x y) (recur xs ys)))))))
 
 (defn- file-upload-props [{prop-name :name, visible-if :visible-if, disp-nm :display-name, :as conn-prop}]
   (if (premium-features/is-hosted?)
