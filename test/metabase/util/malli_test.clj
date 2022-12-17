@@ -1,9 +1,7 @@
 (ns metabase.util.malli-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase.util.malli :as mu]
-   [clojure.walk :as walk]))
+   [metabase.util.malli :as mu]))
 
 (deftest mu-defn-test
   (testing "invalid input"
