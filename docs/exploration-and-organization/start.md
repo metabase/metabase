@@ -16,7 +16,7 @@ Organize questions, dashboards, and models with collections.
 
 ## [History](./history.md)
 
-View changes to a question or dashboard, revert to previous versions, and archive outdated items.
+View changes to a question, dashboard or model, revert to previous versions, and archive outdated items.
 
 ## [Data reference](./data-model-reference.md)
 

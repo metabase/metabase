@@ -116,9 +116,11 @@ Simply typing `{% raw %}{{#}} {% endraw %}` will allow you to search for models 
 
 You can also use the data reference sidebar to browse the models available. To open the data reference sidebar, click on the **book** icon.
 
-## Model history
+## Model version history
 
-Just like with saved questions, you can click on the model name with the down arrow to bring up the model's sidebar, then click on **History** at the bottom to bring up a list of the changes made to the model over time, and by whom.
+For [questions](../questions/start.md), [dashboards](../dashboards/start.md), and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes, revert to previous versions, and archive outdated items.
+
+See [History](../exploration-and-organization/history.md).
 
 ## Verifying a model
 
