@@ -24,7 +24,7 @@ FROM --platform=linux/amd64 eclipse-temurin:11-jre-alpine as runner
 ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk add -U bash ttf-dejavu fontconfig curl java-cacerts && \
+RUN apk add -U bash curl java-cacerts && \
     apk upgrade && \
     rm -rf /var/cache/apk/* && \
     mkdir -p /app/certs && \
