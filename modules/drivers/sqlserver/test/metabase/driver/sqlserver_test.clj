@@ -535,6 +535,46 @@
                                   :breakout     [$product_id]}})
                  mt/rows)))))))
 
+(deftest percentile-aggregations-with-joins-test
+  (mt/test-driver
+   :sqlserver
+   (mt/dataset
+    sample-dataset
+    (testing "Percentile aggregation column can be joined"
+      (is (= [[448 61 1 30.86 116.91]
+              [493 65 1 30.64 76.6]
+              [607 74 1 47.28 53.91]
+              [761 98 1 46.73 70.26]
+              [979 138 1 47.23 63.62]]
+             (-> (mt/run-mbql-query
+                  orders
+                  {:fields   [$id $user_id $product_id $total &Perc.*p50/Float]
+                   :limit    5
+                   :order-by [[:asc $product_id] [:asc $id] [:asc $user_id]]
+                   :joins    [{:alias        "Perc"
+                               :strategy     :inner-join
+                               :condition    [:= &Perc.user_id $user_id]
+                               :source-query {:source-table $$orders
+                                              :aggregation  [[:aggregation-options
+                                                              [:percentile $total 0.5]
+                                                              {:name "p50"}]]
+                                              :breakout     [$user_id]}}]})
+                 mt/rows))))
+    (testing "Percentile aggregation can be computed on joined column"
+      (is (= [[1 25.1] [2 73.95] [3 35.15] [4 72.81] [5 85.25]]
+             (-> (mt/run-mbql-query
+                  orders
+                  {:joins       [{:alias        "Products"
+                                  :strategy     :inner-join
+                                  :fields       :all
+                                  :condition    [:= &Products.id $product_id]
+                                  :source-table $$products}]
+                   :aggregation [[:aggregation-options [:percentile &Products.products.price 0.5] {:name "p50"}]]
+                   :breakout    [$id]
+                   :limit       5
+                   :order-by    [[:asc $id]]})
+                 mt/rows)))))))
+
 
 (deftest percentile-aggregations-with-card-test
   (mt/test-driver
