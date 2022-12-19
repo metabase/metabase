@@ -192,9 +192,23 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
   });
 
   describe("getChangedValues", () => {
-    it("should flag changed fields", () => {
+    it("should flag changed fields from null to a value", () => {
       const oldValues = {
         "abc-def": null,
+      };
+
+      const newValues = {
+        "abc-def": "abc",
+      };
+
+      const result = getChangedValues(newValues, oldValues);
+
+      expect(result).toEqual(newValues);
+    });
+
+    it("should flag changed fields from undefined to a value", () => {
+      const oldValues = {
+        "abc-def": undefined,
       };
 
       const newValues = {
