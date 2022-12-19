@@ -45,7 +45,11 @@ function CustomURLPicker({
     linkTemplate: url,
   });
 
-  const handleLinkTemplateChange = useCallback(() => {
+  const handleLinkTemplateChange = useCallback(e => {
+    setUrl(e.currentTarget.value);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
     updateSettings({
       ...clickBehavior,
       linkTemplate: url,
@@ -103,7 +107,7 @@ function CustomURLPicker({
             primary
             type="button"
             onClick={() => {
-              handleLinkTemplateChange();
+              handleSubmit();
               onClose();
             }}
             disabled={!canSelect}
