@@ -1,32 +1,36 @@
 (ns metabase.driver.sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
-  (:require [clojure.core.match :refer [match]]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [honeysql.helpers :as hh]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.sql.query-processor.deprecated :as deprecated]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.query-processor.util.nest-query :as nest-query]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [potemkin :as p]
-            [pretty.core :refer [PrettyPrintable]]
-            [schema.core :as s])
-  (:import metabase.models.field.FieldInstance
-           [metabase.util.honeysql_extensions Identifier TypedHoneySQLForm]))
+  (:require
+   [clojure.core.match :refer [match]]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [honeysql.helpers :as hh]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.middleware.wrap-value-literals
+    :as qp.wrap-value-literals]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.nest-query :as nest-query]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [potemkin :as p]
+   [pretty.core :refer [PrettyPrintable]]
+   [schema.core :as s])
+  (:import
+   (metabase.models.field FieldInstance)
+   (metabase.util.honeysql_extensions Identifier TypedHoneySQLForm)))
+
+(comment metabase.models.field/keep-me) ; for FieldInstance
 
 (def source-query-alias
   "Alias to use for source queries, e.g.:
@@ -148,6 +152,16 @@
 (defmethod date [:sql :quarter-of-year]  [_driver _ expr] (hx/quarter expr))
 (defmethod date [:sql :year-of-era]      [_driver _ expr] (hx/year expr))
 (defmethod date [:sql :week-of-year-iso] [_driver _ expr] (hx/week expr))
+
+(defmulti datetime-diff
+  "Returns a HoneySQL form for calculating the datetime-diff for a given unit.
+   This method is used by implementations of `->honeysql` for the `:datetime-diff`
+   clause. It is recommended to implement this if you want to use the default SQL
+   implementation of `->honeysql` for the `:datetime-diff`, which includes
+   validation of argument types across all units."
+  {:arglists '([driver unit field-or-value field-or-value]), :added "0.46.0"}
+  (fn [driver unit _ _] [(driver/dispatch-on-initialized-driver driver) unit])
+  :hierarchy #'driver/hierarchy)
 
 (defn- days-till-start-of-first-full-week
   "Takes a datetime expession, return a HoneySQL form
@@ -669,6 +683,25 @@
   [driver [_ arg amount unit]]
   (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
 
+(defn datetime-diff-check-args
+  "This util function is used by SQL implementations of ->honeysql for the `:datetime-diff` clause.
+   It raises an exception if the database-type of the arguments `x` and `y` do not match the given predicate.
+   Note this doesn't raise an error if the database-type is nil, which can be the case for some drivers."
+  [x y pred]
+  (doseq [arg [x y]
+          :let [db-type (hx/database-type arg)]
+          :when (and db-type (not (pred db-type)))]
+    (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
+                         (pr-str db-type))
+                    {:found db-type
+                     :type  qp.error-type/invalid-query}))))
+
+(defmethod ->honeysql [:sql :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (->honeysql driver x)
+        y (->honeysql driver y)]
+    (datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
+    (datetime-diff driver unit x y)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |
@@ -1088,28 +1121,3 @@
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))
-
-
-
-;;; DEPRECATED STUFF
-
-(p/import-vars
- [deprecated
-  *field-options*
-  *source-query*
-  *table-alias*
-  escape-alias
-  field->alias
-  field->identifier
-  prefix-field-alias])
-
-;; deprecated, but we'll keep it here for now for backwards compatibility.
-(defmethod ->honeysql [:sql Field]
-  [driver field]
-  (deprecated/log-deprecation-warning driver "->honeysql [:sql (class Field)]" "0.42.0")
-  (->honeysql driver [:field (:id field) nil]))
-
-(defmethod field->identifier :sql
-  [driver field]
-  (deprecated/log-deprecation-warning driver `field->identifier "v0.42.0")
-  (->honeysql driver field))

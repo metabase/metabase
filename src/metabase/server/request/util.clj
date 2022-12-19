@@ -68,11 +68,6 @@
     scheme
     (= scheme :https)))
 
-(defn protocol
-  "Protocol of this request, either `:http` or `:https`."
-  [request]
-  (if (https? request) :https :http))
-
 (defn embedded?
   "Whether this frontend client that made this request is embedded inside an `<iframe>`."
   [request]

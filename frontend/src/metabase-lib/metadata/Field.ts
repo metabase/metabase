@@ -8,6 +8,7 @@ import type { FieldFingerprint } from "metabase-types/api/field";
 import type { Field as FieldRef } from "metabase-types/types/Query";
 import {
   isDate,
+  isDateWithoutTime,
   isTime,
   isNumber,
   isNumeric,
@@ -57,7 +58,6 @@ class FieldInner extends Base {
   name: string;
   description: string | null;
   semantic_type: string | null;
-  database_required: boolean;
   fingerprint?: FieldFingerprint;
   base_type: string | null;
   table?: Table;
@@ -141,6 +141,10 @@ class FieldInner extends Base {
 
   isDate() {
     return isDate(this);
+  }
+
+  isDateWithoutTime() {
+    return isDateWithoutTime(this);
   }
 
   isTime() {

@@ -54,7 +54,9 @@
 
 (deftest test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "a" (test-string-extract [:coalesce "a" "b"])))))
+    (is (= "Red Medicine" (test-string-extract [:coalesce
+                                                [:field (data/id :venues :name) nil]
+                                                "b"])))))
 
 (deftest test-concat
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)

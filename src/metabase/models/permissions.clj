@@ -526,15 +526,6 @@
   (or (is-permissions-for-object? permissions-path path)
       (str/starts-with? permissions-path path)))
 
-(defn is-permissions-set?
-  "Is `permissions-set` a valid set of permissions object paths?"
-  ^Boolean [permissions-set]
-  (and (set? permissions-set)
-       (every? (fn [path]
-                 (or (= path "/")
-                     (valid-path? path)))
-               permissions-set)))
-
 (defn set-has-full-permissions?
   "Does `permissions-set` grant *full* access to object with `path`?"
   ^Boolean [permissions-set path]

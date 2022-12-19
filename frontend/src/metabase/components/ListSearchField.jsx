@@ -18,9 +18,7 @@ export default function ListSearchField({ autoFocus, ...props }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
-    <Input autoFocus ref={inputRef} {...props} size="small" leftIcon="search" />
-  );
+  return <Input autoFocus ref={inputRef} {...props} leftIcon="search" />;
 }
 
 ListSearchField.propTypes = Input.propTypes;

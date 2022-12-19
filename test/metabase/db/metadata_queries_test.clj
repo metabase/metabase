@@ -3,6 +3,7 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+            [metabase.driver.util :as driver.u]
             [metabase.models :as models :refer [Database Field Table]]
             [metabase.models.interface :as mi]
             [metabase.models.table :as table]
@@ -24,11 +25,6 @@
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= 1000
            (metadata-queries/field-count (db/select-one Field :id (mt/id :checkins :venue_id)))))))
-
-(deftest table-row-count-test
-  (mt/test-drivers (metadata-queries-test-drivers)
-    (is (= 1000
-           (metadata-queries/table-row-count (db/select-one Table :id (mt/id :checkins)))))))
 
 (deftest field-distinct-values-test
   (mt/test-drivers (metadata-queries-test-drivers)
@@ -58,7 +54,8 @@
               "Did not truncate a text field")))))
 
   (testing "substring checking"
-    (with-redefs [table/database (constantly (mi/instance Database {:id 5678}))]
+    (with-redefs [driver.u/database->driver (constantly (:engine (mt/db)))
+                  table/database (constantly (mi/instance Database {:id 5678}))]
       (let [table  (mi/instance Table {:id 1234})
             fields [(mi/instance Field {:id 4321 :base_type :type/Text})]]
         (testing "uses substrings if driver supports expressions"
