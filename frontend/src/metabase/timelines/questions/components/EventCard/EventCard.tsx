@@ -51,7 +51,9 @@ const EventCard = ({
   const creatorMessage = getCreatorMessage(event);
 
   const handleToggleSelected = useCallback(() => {
-    isVisible && onToggleSelected?.(event, !isSelected);
+    if (isVisible) {
+      onToggleSelected?.(event, !isSelected);
+    }
   }, [event, isVisible, isSelected, onToggleSelected]);
 
   const handleChangeVisibility = useCallback(
