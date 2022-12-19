@@ -1,12 +1,12 @@
 import React, { memo, SyntheticEvent, useCallback } from "react";
 import { t } from "ttag";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 import Settings from "metabase/lib/settings";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import EntityMenu from "metabase/components/EntityMenu";
 import Checkbox from "metabase/core/components/CheckBox/CheckBox";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
-import { Timeline, TimelineEvent } from "metabase-types/api";
 import {
   CardAside,
   CardBody,
@@ -68,6 +68,7 @@ const EventCard = ({
 
   return (
     <CardRoot
+      aria-label={t`Timeline event card`}
       ref={isSelected ? selectedRef : null}
       isSelected={isSelected}
       onClick={handleEventClick}
