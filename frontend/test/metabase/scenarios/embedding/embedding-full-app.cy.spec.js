@@ -130,7 +130,7 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findAllByRole("cell").first().click();
       cy.wait("@getCardQuery");
-      cy.findByTestId("main-logo").should("be.visible");
+      cy.findByTestId("main-logo").should("exist");
     });
   });
 
