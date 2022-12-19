@@ -464,7 +464,7 @@ Related: [contains](#contains), [substring](#substring).
 
 ### replace
 
-Replaces a part of the input text with new text.
+Replaces all occurrences of a search text in the input text with the replacement text.
 
 Syntax: `replace(text, find, replace)`.
 
