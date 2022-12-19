@@ -513,7 +513,7 @@ describe("View Header | Not saved native question", () => {
 
 describe("View Header | Saved native question", () => {
   afterEach(() => {
-    nock.teardown();
+    nock.cleanAll();
   });
 
   it("displays database a question is using", () => {
