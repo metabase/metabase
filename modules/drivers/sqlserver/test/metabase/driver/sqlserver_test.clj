@@ -418,18 +418,21 @@
    (testing "Percentile aggregation with expression breakout yields correct results"
      (mt/dataset
       sample-dataset
-      (is (= [[494000 77.23]
-              [491712 72.18]
-              [491600 73.2]
-              [486864 72.96]
-              [486684 70.15]]
+      (is (= [[1091 84.84 19]
+              [2329 67.65 17]
+              [1374 71.16 17]
+              [1352 77.59 17]
+              [1254 79.43 17]]
              (-> (mt/run-mbql-query
                   orders
-                  {:expressions {"user_id * product_id" [:* $user_id $product_id]}
-                   :aggregation [[:aggregation-options [:sum $total] {:name "P50 price"}]]
-                   :breakout    [[:expression "user_id * product_id"]]
+                  {:expressions {"user_id + product_id" [:+ $user_id $product_id]}
+                   :aggregation [[:aggregation-options [:percentile $total 0.5] {:name "P50 price"}]
+                                 [:count $total]]
+                   :breakout    [[:expression "user_id + product_id"]]
                    :limit       5
-                   :order-by    [[:desc [:expression "user_id * product_id"]]]})
+                   ;; TODO update aggregation indices in rewrite
+                   :order-by    [[:desc [:aggregation #_1 0]]
+                                 [:desc [:expression "user_id + product_id"]]]})
                  mt/rows)))))))
 
 (deftest percentile-aggregations-column-ordering-test
