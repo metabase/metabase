@@ -52,6 +52,7 @@
                                    "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
                                    "https://maps.google.com"
                                    "https://accounts.google.com"
+                                   "https://api-js.mixpanel.com"
                                    (when (public-settings/anon-tracking-enabled)
                                      "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
@@ -65,7 +66,8 @@
                                     (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
                                  ;; TODO - double check that we actually need this for Google Auth
-                                 "https://accounts.google.com"]
+                                 "https://accounts.google.com"
+                                 "https://api-js.mixpanel.com"]
                   :style-src    ["'self'"
                                  "'unsafe-inline'"
                                  "https://accounts.google.com"]
@@ -76,6 +78,7 @@
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
+                                 "https://api-js.mixpanel.com"
                                  "metabase.us10.list-manage.com"
                                  ;; Google analytics
                                  (when (public-settings/anon-tracking-enabled)
