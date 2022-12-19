@@ -780,7 +780,35 @@
                          :expressions
                          {"tz,dt" [:datetime-diff $dt_tz $dt :second]
                           "tz,d"  [:datetime-diff $dt_tz $d :second]}})
-                      (mt/formatted-rows [int int int])
+                      (mt/formatted-rows [int int])
+                      first))))))))
+
+(deftest athena-datetime-diff-mixed-types-test
+  ;; This test is tests the same behaviour as [[datetime-diff-mixed-types-test]], but for Athena.
+  ;; Athena supports the `timestamp with time zone` type in query expressions but not at rest.
+  (mt/test-driver :athena
+    (testing "Can compare across dates, datetimes with timezones from a table in Athena"
+      (mt/with-temp*
+        [Card [card (qp.test-util/card-with-source-metadata-for-query
+                     (mt/native-query {:query (str "select"
+                                                   " date '2022-01-01' as d,"
+                                                   " timestamp '2022-01-01 00:00:00.000' as dt,"
+                                                   " with_timezone(timestamp '2022-01-01 00:00:00.000', 'Africa/Lagos') as dt_tz")}))]]
+        (let [d       [:field "d" {:base-type :type/Date}]
+              dt      [:field "dt" {:base-type :type/DateTime}]
+              dt_tz   [:field "dt_tz" {:base-type :type/DateTimeWithZoneID}]
+              results (mt/process-query
+                       {:database (mt/id),
+                        :type     :query
+                        :query    {:fields   [[:expression "tz,dt"]
+                                              [:expression "tz,d"]]
+                                   :expressions
+                                   {"tz,dt" [:datetime-diff dt_tz dt :second]
+                                    "tz,d"  [:datetime-diff dt_tz d :second]}
+                                   :source-table (str "card__" (u/the-id card))}})]
+          (is (= [3600 3600]
+                 (->> results
+                      (mt/formatted-rows [int int])
                       first))))))))
 
 (mt/defdataset diff-time-zones-cases
@@ -830,24 +858,25 @@
 (def diff-time-zones-athena-cases-query
   ;; This query recreates [[diff-time-zones-cases]] on an Athena database from
   ;; [[diff-time-zones-athena-cases]].
-  (str "with x as ("
-       "select"
-       "  with_timezone(dt, 'UTC') as dt"
-       "  , concat(dt_text, 'Z') as dt_text" ; e.g. `2022-10-02T00:00:00Z`
-       "from diff_time_zones_athena_cases.times"
-       "union"
-       "select"
-       "  with_timezone(dt, 'Africa/Lagos') as dt"
-       "  , concat(dt_text, '+01:00') as dt_text" ; e.g. `2022-10-02T00:00:00+01:00`
-       "from diff_time_zones_athena_cases.times"
-       ")"
-       "select"
-       "  a.dt as a_dt_tz"
-       "  , a.dt_text as a_dt_tz_text"
-       "  , b.dt as b_dt_tz"
-       "  , b.dt_text as b_dt_tz_text"
-       "from x a"
-       "join x b on a.dt < b.dt"))
+  (str/join "\n"
+            ["with x as ("
+             "select"
+             "  with_timezone(dt, 'UTC') as dt"
+             "  , concat(dt_text, 'Z') as dt_text" ; e.g. `2022-10-02T00:00:00Z`
+             "from diff_time_zones_athena_cases.times"
+             "union"
+             "select"
+             "  with_timezone(dt, 'Africa/Lagos') as dt"
+             "  , concat(dt_text, '+01:00') as dt_text" ; e.g. `2022-10-02T00:00:00+01:00`
+             "from diff_time_zones_athena_cases.times"
+             ")"
+             "select"
+             "  a.dt as a_dt_tz"
+             "  , a.dt_text as a_dt_tz_text"
+             "  , b.dt as b_dt_tz"
+             "  , b.dt_text as b_dt_tz_text"
+             "from x a"
+             "join x b on a.dt < b.dt"]))
 
 (defn run-datetime-diff-time-zone-tests
   "Runs all the test cases for datetime-diff clauses with :type/DateTimeWithTZ types.
