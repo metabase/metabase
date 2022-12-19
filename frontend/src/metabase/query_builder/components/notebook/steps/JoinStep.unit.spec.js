@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
+import nock from "nock";
 import userEvent from "@testing-library/user-event";
-import xhrMock from "xhr-mock";
 import {
   renderWithProviders,
   screen,
@@ -171,34 +171,28 @@ describe.skip("Notebook Editor > Join Step", () => {
   }
 
   beforeEach(() => {
-    xhrMock.setup();
-    xhrMock.get("/api/database", {
-      body: JSON.stringify({
+    nock(/.*/)
+      .get("/api/database")
+      .reply(200, {
         total: 1,
         data: [SAMPLE_DATABASE.getPlainObject()],
-      }),
-    });
-    xhrMock.get("/api/database/1/schemas", {
-      body: JSON.stringify(["PUBLIC"]),
-    });
-    xhrMock.get("/api/database/1/schema/PUBLIC", {
-      body: JSON.stringify(
+      });
+    nock(/.*/).get("/api/database/1/schemas").reply(200, ["PUBLIC"]);
+    nock(/.*/)
+      .get("/api/database/1/schema/PUBLIC")
+      .reply(
+        200,
         SAMPLE_DATABASE.tables.filter(table => table.schema === "PUBLIC"),
-      ),
-    });
-    xhrMock.get("/api/search?models=dataset&limit=1", {
-      body: JSON.stringify({
+      );
+    nock(/.*/)
+      .get("/api/search?models=dataset&limit=1")
+      .reply(200, {
         data: [],
         limit: 1,
         models: ["dataset"],
         offset: 0,
         total: 0,
-      }),
-    });
-  });
-
-  afterEach(() => {
-    xhrMock.teardown();
+      });
   });
 
   it("displays a source table and suggests to pick a join table", async () => {
