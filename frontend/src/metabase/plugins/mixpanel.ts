@@ -10,7 +10,7 @@ export const mixpanel = {
       email = localStorage.getItem(this.localStorageKey) || "";
     }
 
-    console.log("Track:", eventName, email);
+    console.log("Track:", eventName);
     this.identify(email);
     mixpanelBrowser.track(eventName);
   },
