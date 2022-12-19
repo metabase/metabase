@@ -303,7 +303,7 @@ export function onRenderValueLabels(
         .text(({ y, seriesIndex }) => {
           const options = {
             extent: [],
-            negative_in_parentheses: displays[seriesIndex] === "waterfall",
+            negativeInParentheses: displays[seriesIndex] === "waterfall",
             compact: compact === null ? compactForSeries[seriesIndex] : compact,
           };
 

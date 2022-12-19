@@ -25,7 +25,7 @@ function formatWithInferredType(value: any, parameter: UiParameter) {
   };
   return formatValue(value, {
     column,
-    maximum_fraction_digits: 20,
+    maximumFractionDigits: 20,
   });
 }
 
@@ -59,7 +59,7 @@ export function formatParameterValue(
       const remap = parameter.fields.length === 1;
       return formatValue(value as string, {
         column: firstField,
-        maximum_fraction_digits: 20,
+        maximumFractionDigits: 20,
         remap,
       });
     }

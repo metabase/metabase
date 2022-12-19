@@ -70,15 +70,15 @@ describe("formatting", () => {
     });
     describe("in enclosing negative mode", () => {
       it("should format -4 as (4)", () => {
-        expect(formatNumber(-4, { negative_in_parentheses: true })).toEqual(
+        expect(formatNumber(-4, { negativeInParentheses: true })).toEqual(
           "(4)",
         );
       });
       it("should format 7 as 7", () => {
-        expect(formatNumber(7, { negative_in_parentheses: true })).toEqual("7");
+        expect(formatNumber(7, { negativeInParentheses: true })).toEqual("7");
       });
       it("should format 0 as 0", () => {
-        expect(formatNumber(0, { negative_in_parentheses: true })).toEqual("0");
+        expect(formatNumber(0, { negativeInParentheses: true })).toEqual("0");
       });
     });
     describe("with currency_in_header drops the currency symbol", () => {
@@ -92,51 +92,61 @@ describe("formatting", () => {
       it("from positive USD", () => {
         expect(formatNumber(1234.56, options)).toBe("1,234.56");
       });
+
       it("from negative USD", () => {
         expect(formatNumber(-1234.56, options)).toBe("-1,234.56");
       });
+
       it("from negative USD represented with parentheses", () => {
         expect(
-          formatNumber(-1234.56, { ...options, negative_in_parentheses: true }),
+          formatNumber(-1234.56, { ...options, negativeInParentheses: true }),
         ).toBe("(1,234.56)");
       });
+
       it("from positive JPY", () => {
         expect(formatNumber(1234.56, { ...options, currency: "JPY" })).toBe(
           "1,234.56",
         );
       });
+
       it("from negative EUR", () => {
         expect(formatNumber(-1234.56, { ...options, currency: "EUR" })).toBe(
           "-1,234.56",
         );
       });
+
       it("only with type: cell", () => {
         expect(formatNumber(-1234.56, { ...options, type: undefined })).toBe(
           "-$1,234.56",
         );
       });
     });
+
     describe("in compact mode", () => {
       it("should format 0 as 0", () => {
         expect(formatNumber(0, { compact: true })).toEqual("0");
       });
+
       it("shouldn't display small numbers as 0", () => {
         expect(formatNumber(0.1, { compact: true })).toEqual("0.1");
         expect(formatNumber(-0.1, { compact: true })).toEqual("-0.1");
         expect(formatNumber(0.01, { compact: true })).toEqual("0.01");
         expect(formatNumber(-0.01, { compact: true })).toEqual("-0.01");
       });
+
       it("should round up and down", () => {
         expect(formatNumber(1.01, { compact: true })).toEqual("1.01");
         expect(formatNumber(-1.01, { compact: true })).toEqual("-1.01");
         expect(formatNumber(1.9, { compact: true })).toEqual("1.9");
         expect(formatNumber(-1.9, { compact: true })).toEqual("-1.9");
       });
+
       it("should format large numbers with metric units", () => {
         expect(formatNumber(1, { compact: true })).toEqual("1");
         expect(formatNumber(1000, { compact: true })).toEqual("1.0k");
         expect(formatNumber(1111, { compact: true })).toEqual("1.1k");
       });
+
       it("should format percentages", () => {
         const options = { compact: true, number_style: "percent" };
         expect(formatNumber(0.867, { number_style: "percent" })).toEqual(
@@ -156,6 +166,7 @@ describe("formatting", () => {
         expect(formatNumber(11.11, options)).toEqual("1.1k%");
         expect(formatNumber(-0.22, options)).toEqual("-22%");
       });
+
       it("should format scientific notation", () => {
         const options = { compact: true, number_style: "scientific" };
         expect(formatNumber(0, options)).toEqual("0.0e+0");
@@ -165,6 +176,7 @@ describe("formatting", () => {
         expect(formatNumber(123456.78, options)).toEqual("1.2e+5");
         expect(formatNumber(-123456.78, options)).toEqual("-1.2e+5");
       });
+
       it("should obey custom separators in scientific notiation", () => {
         const options = {
           compact: true,
@@ -178,6 +190,7 @@ describe("formatting", () => {
         expect(formatNumber(123456.78, options)).toEqual("1,2e+5");
         expect(formatNumber(-123456.78, options)).toEqual("-1,2e+5");
       });
+
       it("should format currency values", () => {
         const options = {
           compact: true,
@@ -200,6 +213,7 @@ describe("formatting", () => {
         ).toEqual("$1.2M");
       });
     });
+
     it("should format to correct number of decimal places", () => {
       expect(formatNumber(0.1)).toEqual("0.1");
       expect(formatNumber(0.11)).toEqual("0.11");
@@ -269,6 +283,7 @@ describe("formatting", () => {
             "<span>1.23×10<sup>5</sup></span>",
           );
         });
+
         it("should render using HTML <sup> for small values", () => {
           act(() => {
             render(

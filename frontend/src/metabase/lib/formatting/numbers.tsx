@@ -9,12 +9,12 @@ interface FormatNumberOptionsType {
   currency_in_header?: boolean;
   currency_style?: string;
   jsx?: boolean;
-  maximum_fraction_digits?: number;
-  minimum_fraction_digits?: number;
-  minimum_integer_digits?: number;
-  maximum_significant_digits?: number;
-  minimum_significant_digits?: number;
-  negative_in_parentheses?: boolean;
+  maximumFractionDigits?: number;
+  minimumFractionDigits?: number;
+  minimumIntegerDigits?: number;
+  maximumSignificantDigits?: number;
+  minimumSignificantDigits?: number;
+  negativeInParentheses?: boolean;
   number_separators?: string;
   number_style?: string;
   scale?: number;
