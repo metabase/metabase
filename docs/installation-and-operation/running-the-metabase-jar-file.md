@@ -31,7 +31,11 @@ If you just want to try Metabase out, play around with Metabase, or just use Met
 
 The below instructions are the same as the quick start above, just with a little more context around each step.
 
-### 1. Install Java JRE
+### 1. Install pre-requisites
+
+Metabase needs ttf-dejavu, fontconfig and java-cacerts packages to run correctly. Please ensure those are installed before continuing.
+
+### 2. Install Java JRE
 
 You may already have Java installed. To check the version, open a terminal and run:
 
