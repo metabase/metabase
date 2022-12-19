@@ -10,6 +10,7 @@ import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUser } from "metabase/selectors/user";
 import { State } from "metabase-types/store";
+import { mixpanel } from "metabase/plugins/mixpanel";
 import {
   trackLogin,
   trackLoginGoogle,
@@ -46,6 +47,7 @@ export const login = createThunkAction(
   (data: LoginData, redirectUrl = "/") =>
     async (dispatch: any) => {
       await SessionApi.create(data);
+      mixpanel.trackEvent(mixpanel.events.login, data.username);
       await dispatch(refreshSession());
       trackLogin();
 
