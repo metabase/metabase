@@ -271,10 +271,6 @@ class QuestionInner {
     return this._card && this._card.persisted;
   }
 
-  isAction() {
-    return false;
-  }
-
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
   }
@@ -287,10 +283,6 @@ class QuestionInner {
     return this.setCard(
       assoc(this.card(), "collection_position", pinned ? 1 : null),
     );
-  }
-
-  setIsAction(isAction) {
-    return this.card();
   }
 
   // locking the display prevents auto-selection

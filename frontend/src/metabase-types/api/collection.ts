@@ -36,11 +36,6 @@ export interface Collection {
   // Assigned on FE
   originalName?: string;
   path?: CollectionId[];
-
-  // If collection is associated to a data app, it will get an app_id
-  // Data apps are technically collections with extended features
-  // and `app_id` is used to differentiate them from regular collections
-  app_id?: number;
 }
 
 export interface CollectionItem {
