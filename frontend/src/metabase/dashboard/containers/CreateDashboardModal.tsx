@@ -7,6 +7,7 @@ import type { LocationDescriptor } from "history";
 import ModalContent from "metabase/components/ModalContent";
 
 import * as Urls from "metabase/lib/urls";
+import { mixpanel } from "metabase/plugins/mixpanel";
 
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -39,8 +40,10 @@ function CreateDashboardModal({
   const handleCreate = useCallback(
     (dashboard: Dashboard) => {
       if (typeof onCreate === "function") {
+        mixpanel.trackEvent(mixpanel.events.create_dashboard);
         onCreate(dashboard);
       } else {
+        mixpanel.trackEvent(mixpanel.events.create_dashboard);
         onClose?.();
         onChangeLocation(Urls.dashboard(dashboard, { editMode: true }));
       }

@@ -43,6 +43,7 @@ export const mixpanel = {
       native_open: "metabase_question_native_open",
     },
     model_open: "metabase_model_open",
+    create_dashboard: "metabase_create_dashboard",
   },
   localStorageKey: "metabase-user",
 };
