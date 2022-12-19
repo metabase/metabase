@@ -50,9 +50,9 @@ const EventCard = ({
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
 
-  const handleEventClick = useCallback(() => {
-    onToggleSelected?.(event, !isSelected);
-  }, [event, isSelected, onToggleSelected]);
+  const handleToggleSelected = useCallback(() => {
+    isVisible && onToggleSelected?.(event, !isSelected);
+  }, [event, isVisible, isSelected, onToggleSelected]);
 
   const handleChangeVisibility = useCallback(
     (e: SyntheticEvent) => {
@@ -70,8 +70,8 @@ const EventCard = ({
     <CardRoot
       aria-label={t`Timeline event card`}
       ref={isSelected ? selectedRef : null}
-      isSelected={isSelected}
-      onClick={handleEventClick}
+      isSelected={isVisible && isSelected}
+      onClick={handleToggleSelected}
     >
       <CardCheckboxContainer>
         <Checkbox
