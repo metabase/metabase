@@ -165,7 +165,9 @@
                     DashboardCard [_ {:dashboard_id dashboard-id
                                       :visualization_settings {:virtual_card {}, :text "test"}}]
                     User [{user-id :id}]]
-      (is (= [{:virtual_card {}, :text "test"}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
+      (is (= [{:virtual_card {}, :text "test"}]
+             (-> (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)
+                 (select-keys [:virtual_card :text])))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false} :display :table}
