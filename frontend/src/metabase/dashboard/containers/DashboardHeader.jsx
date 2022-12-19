@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import { getIsNavbarOpen } from "metabase/redux/app";
 
+import { mixpanel } from "metabase/plugins/mixpanel";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
@@ -136,6 +137,7 @@ class DashboardHeader extends Component {
 
   async onSave() {
     await this.props.saveDashboardAndCards(this.props.dashboard.id);
+    mixpanel.trackEvent(mixpanel.events.dashboard_save);
     this.onDoneEditing();
   }
 
