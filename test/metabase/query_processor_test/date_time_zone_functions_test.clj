@@ -783,7 +783,7 @@
                       (mt/formatted-rows [int int])
                       first)))))))
   ;; Athena needs special treatment. It supports the `timestamp with time zone` type in query expressions
-  ;; but not at rest. So we create a native query that returns a `timestamp with time zone` type and then
+  ;; but not in tables. So we create a native query that returns a `timestamp with time zone` type and then
   ;; run another query with `datetime-diff` against it.
   (mt/test-driver :athena
     (testing "datetime-diff can compare `date`, `timestamp`, and `timestamp with time zone` args with Athena"
@@ -855,7 +855,7 @@
       [dt (u.date/format dt)])]])
 
 (def diff-time-zones-athena-cases-query
-  ;; This query recreates [[diff-time-zones-cases]] on for Athena from [[diff-time-zones-athena-cases]].
+  ;; This query recreates [[diff-time-zones-cases]] for Athena from [[diff-time-zones-athena-cases]].
   (str/join "\n"
             ["with x as ("
              "select"
