@@ -18,6 +18,7 @@ export interface FormFileInputProps
   encoding?: FormFileInputEncoding;
   title?: string;
   description?: ReactNode;
+  optional?: boolean;
 }
 
 const FormFileInput = forwardRef(function FormFileInput(
@@ -28,6 +29,7 @@ const FormFileInput = forwardRef(function FormFileInput(
     style,
     title,
     description,
+    optional,
     ...props
   }: FormFileInputProps,
   ref: Ref<HTMLDivElement>,
@@ -51,6 +53,7 @@ const FormFileInput = forwardRef(function FormFileInput(
       description={description}
       htmlFor={id}
       error={touched ? error : undefined}
+      optional={optional}
     >
       <FileInput
         {...props}

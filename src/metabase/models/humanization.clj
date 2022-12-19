@@ -110,6 +110,7 @@
   (deferred-tru
     (str "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them "
          "with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."))
-  :type    :keyword
-  :default :simple
-  :setter  set-humanization-strategy!)
+  :type       :keyword
+  :default    :simple
+  :visibility :settings-manager
+  :setter     set-humanization-strategy!)

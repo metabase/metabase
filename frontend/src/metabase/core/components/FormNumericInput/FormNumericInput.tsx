@@ -21,6 +21,7 @@ export interface FormNumericInputProps
   title?: string;
   description?: ReactNode;
   nullable?: boolean;
+  optional?: boolean;
 }
 
 const FormNumericInput = forwardRef(function FormNumericInput(
@@ -31,6 +32,7 @@ const FormNumericInput = forwardRef(function FormNumericInput(
     title,
     description,
     nullable,
+    optional,
     ...props
   }: FormNumericInputProps,
   ref: Ref<HTMLDivElement>,
@@ -54,6 +56,7 @@ const FormNumericInput = forwardRef(function FormNumericInput(
       description={description}
       htmlFor={id}
       error={touched ? error : undefined}
+      optional={optional}
     >
       <NumericInput
         {...props}

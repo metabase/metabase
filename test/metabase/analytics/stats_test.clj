@@ -68,9 +68,7 @@
     "10000+"     100000))
 
 (def DBMSVersionStats
-  {{:engine                   s/Keyword
-    (s/optional-key :version) (s/maybe su/NonBlankString)
-    s/Keyword                 s/Any}                      su/NonNegativeInt})
+  {s/Str su/NonNegativeInt})
 
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)

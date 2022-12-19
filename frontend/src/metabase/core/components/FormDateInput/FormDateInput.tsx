@@ -16,6 +16,7 @@ export interface FormDateInputProps
   title?: string;
   description?: ReactNode;
   nullable?: boolean;
+  optional?: boolean;
 }
 
 const FormDateInput = forwardRef(function FormDateInput(
@@ -26,6 +27,7 @@ const FormDateInput = forwardRef(function FormDateInput(
     title,
     description,
     nullable,
+    optional,
     ...props
   }: FormDateInputProps,
   ref: Ref<HTMLDivElement>,
@@ -57,6 +59,7 @@ const FormDateInput = forwardRef(function FormDateInput(
       description={description}
       htmlFor={id}
       error={touched ? error : undefined}
+      optional={optional}
     >
       <DateWidget
         {...props}

@@ -131,9 +131,8 @@
                                              :type     "native"
                                              :native   {:query "foobar"}}))
                         :database_id (s/eq (mt/id))
-                        :state       (s/eq "42001")
-                        :class       (s/eq "class org.h2.jdbc.JdbcSQLException")
-                        :error_type  (s/eq "invalid-query")
+                        :state       (s/eq "42000")
+                        :class       (s/eq "class org.h2.jdbc.JdbcSQLSyntaxErrorException")
                         s/Keyword    s/Any}
                        result)))
 

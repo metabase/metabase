@@ -2,7 +2,6 @@
   "/api/google endpoints"
   (:require [compojure.core :refer [PUT]]
             [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
             [metabase.integrations.google :as google]
             [metabase.models.setting :as setting]
             [schema.core :as s]
@@ -14,7 +13,7 @@
   {google-auth-client-id                   (s/maybe s/Str)
    google-auth-enabled                     (s/maybe s/Bool)
    google-auth-auto-create-accounts-domain (s/maybe s/Str)}
-  (validation/check-has-application-permission :setting)
+  (api/check-superuser)
   ;; Set google-auth-enabled in a separate step because it requires the client ID to be set first
   (db/transaction
    (setting/set-many! {:google-auth-client-id                   google-auth-client-id

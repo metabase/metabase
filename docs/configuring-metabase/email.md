@@ -27,6 +27,8 @@ You should see this form:
 
 ![Email Credentials](images/EmailCredentials.png)
 
+You might also want to specify [approved domains for notifications](./settings.md#approved-domains-for-notifications).
+
 ## Google Apps
 
 1. In the **SMTP host** field, enter smtp.gmail.com

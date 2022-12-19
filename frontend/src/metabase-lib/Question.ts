@@ -271,10 +271,6 @@ class QuestionInner {
     return this._card && this._card.persisted;
   }
 
-  isAction() {
-    return false;
-  }
-
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
   }
@@ -287,10 +283,6 @@ class QuestionInner {
     return this.setCard(
       assoc(this.card(), "collection_position", pinned ? 1 : null),
     );
-  }
-
-  setIsAction(isAction) {
-    return this.card();
   }
 
   // locking the display prevents auto-selection
@@ -527,7 +519,10 @@ class QuestionInner {
     return filter(this, operator, column, value) || this;
   }
 
-  pivot(breakouts = [], dimensions = []): Question {
+  pivot(
+    breakouts: (Breakout | Dimension | Field)[] = [],
+    dimensions = [],
+  ): Question {
     return pivot(this, breakouts, dimensions) || this;
   }
 

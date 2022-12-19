@@ -30,7 +30,7 @@ const ChartSettingsWidgetPopover = ({
     sections.current = _.groupBy(widgets, "section");
   }, [widgets]);
 
-  const [currentSection, setCurrentSection] = useState<React.Key>("");
+  const [currentSection, setCurrentSection] = useState("");
 
   useEffect(() => {
     setCurrentSection(Object.keys(sections.current)[0]);
@@ -61,7 +61,7 @@ const ChartSettingsWidgetPopover = ({
                   name: sectionName,
                   value: sectionName,
                 }))}
-                onChange={setCurrentSection}
+                onChange={section => setCurrentSection(String(section))}
                 variant="underlined"
               />
             )}
