@@ -1,6 +1,6 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
@@ -16,9 +16,9 @@ type SetupOpts = {
 };
 
 function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
-  xhrMock.post("/api/collection", (req, res) =>
-    res.status(200).body(createMockCollection(req.body())),
-  );
+  nock(/.*/)
+    .post("/api/collection")
+    .reply(200, (url, body) => createMockCollection(body));
 
   renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
     currentUser: user,
@@ -29,20 +29,19 @@ function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
 
 describe("CreateCollectionForm", () => {
   beforeEach(() => {
-    xhrMock.setup();
-    xhrMock.get("/api/collection", {
-      body: JSON.stringify([
+    nock(/.*/)
+      .get("/api/collection")
+      .reply(200, [
         {
           id: "root",
           name: "Our analytics",
           can_write: true,
         },
-      ]),
-    });
+      ]);
   });
 
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
   });
 
   it("displays correct blank state", () => {
