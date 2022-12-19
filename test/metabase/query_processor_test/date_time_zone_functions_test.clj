@@ -842,22 +842,22 @@
        "from diff_time_zones_athena_cases.times"
        ")"
        "select"
-       "  a.dt as a_dt"
-       "  , a.dt_text as a_dt_text"
-       "  , b.dt as b_dt"
-       "  , b.dt_text as b_dt_text"
+       "  a.dt as a_dt_tz"
+       "  , a.dt_text as a_dt_tz_text"
+       "  , b.dt as b_dt_tz"
+       "  , b.dt_text as b_dt_tz_text"
        "from x a"
        "join x b on a.dt < b.dt"))
 
 (defn run-datetime-diff-time-zone-tests
   "Runs all the test cases for datetime-diff clauses with :type/DateTimeWithTZ types.
 
-   `diffs` is a function that executes a query with the `datetimeDiff` function applied to two arguments.
-   The arguments are strings in the format `:iso-offset-date-time`. It returns a map of the results `datetimeDiff`
-   applied to the arguments with all valid `datetimeDiff` units.
+   `diffs` is a function that executes a query with the `datetimeDiff` function applied to its two arguments.
+   Its args are strings in the format `:iso-offset-date-time`. It returns a map of all the valid
+   `datetimeDiff` units and the results.
 
    For example:
-    (diffs \"2022-10-02T01:00:00+01:00\" \"2022-10-03T00:00:00Z\")
+   (diffs \"2022-10-02T01:00:00+01:00\" \"2022-10-03T00:00:00Z\")
     => `{:second 86400 :minute 1440 :hour 24 :day 1 :quarter 0 :month 0 :year 0}`)."
   [diffs]
   (testing "a day"
@@ -964,10 +964,10 @@
 (deftest datetime-diff-time-zones-test
   (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :datetime-diff))
     (mt/dataset diff-time-zones-cases
-      (let [diffs (fn [a-text b-text]
+      (let [diffs (fn [a-str b-str]
                     (let [units [:second :minute :hour :day :week :month :quarter :year]]
                       (->> (mt/run-mbql-query times
-                             {:filter [:and [:= a-text $a_dt_tz_text] [:= b-text $b_dt_tz_text]]
+                             {:filter [:and [:= a-str $a_dt_tz_text] [:= b-str $b_dt_tz_text]]
                               :expressions (into {} (for [unit units]
                                                       [(name unit) [:datetime-diff $a_dt_tz $b_dt_tz unit]]))
                               :fields (into [] (for [unit units]
@@ -984,19 +984,19 @@
       (mt/with-temp* [Card [card (qp.test-util/card-with-source-metadata-for-query
                                   (mt/native-query {:query diff-time-zones-athena-cases-query}))]]
         (let [diffs
-              (fn [a-text b-text]
+              (fn [a-str b-str]
                 (let [units   [:second :minute :hour :day :week :month :quarter :year]
                       results (mt/process-query
                                {:database (mt/id),
                                 :type     :query
                                 :query    {:filter [:and
-                                                    [:= a-text [:field "a_dt_text" {:base-type :type/Text}]]
-                                                    [:= b-text [:field "b_dt_text" {:base-type :type/Text}]]]
+                                                    [:= a-str [:field "a_dt_tz_text" {:base-type :type/Text}]]
+                                                    [:= b-str [:field "b_dt_tz_text" {:base-type :type/Text}]]]
                                            :expressions  (into {}
                                                                (for [unit units]
                                                                  [(name unit) [:datetime-diff
-                                                                               [:field "a_dt" {:base-type :type/Text}]
-                                                                               [:field "b_dt" {:base-type :type/Text}]
+                                                                               [:field "a_dt_tz" {:base-type :type/Text}]
+                                                                               [:field "b_dt_tz" {:base-type :type/Text}]
                                                                                unit]]))
                                            :fields       (into [] (for [unit units]
                                                                     [:expression (name unit)])),
