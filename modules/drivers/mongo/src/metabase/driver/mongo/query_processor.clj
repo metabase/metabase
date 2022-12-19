@@ -459,13 +459,13 @@
 
 (defmethod ->rvalue :/
   [[_ & [_ & divisors :as args]]]
-  (let [build-division (fn build-division
-                         [[head & tail]]
-                         (if (seq tail)
-                           {"$divide" [(build-division tail) (->rvalue head)]}
-                           (->rvalue head)))
-        ;; args go in reversed because build-division works outside in (/ 1 2 3) => (/ (/ 1 2) 3)
-        division (build-division (reverse args))
+  ;; division works outside in (/ 1 2 3) => (/ (/ 1 2) 3)
+  (let [division (reduce
+                   (fn [accum head]
+                     (if accum
+                       {"$divide" [accum head]}
+                       head))
+                   (map ->rvalue args))
         literal-zero? (some #(and (number? %) (zero? %)) divisors)
         non-literal-nil-checks (mapv (fn [divisor] {"$eq" [(->rvalue divisor) 0]}) (remove number? divisors))]
     (cond
