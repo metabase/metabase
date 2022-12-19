@@ -49,8 +49,8 @@ export const getFormField = (
   fieldSettings: FieldSettings,
 ) => {
   if (
-    fieldSettings.fieldInstance &&
-    !isEditableField(fieldSettings.fieldInstance, parameter as Parameter)
+    fieldSettings.field &&
+    !isEditableField(fieldSettings.field, parameter as Parameter)
   ) {
     return undefined;
   }
@@ -68,7 +68,7 @@ export const getFormField = (
     placeholder: fieldSettings?.placeholder,
     required: fieldSettings.required,
     validate: fieldSettings.required ? validate.required() : _.noop,
-    fieldInstance: fieldSettings.fieldInstance,
+    field: fieldSettings.field,
   };
 
   if (inputTypeHasOptions(fieldSettings)) {

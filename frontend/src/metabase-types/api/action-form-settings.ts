@@ -52,7 +52,7 @@ export interface FieldSettings {
   width?: Size;
   height?: number;
   hasSearch?: boolean;
-  fieldInstance?: Field;
+  field?: Field;
 }
 
 export type FieldSettingsMap = Record<ParameterId, FieldSettings>;
@@ -84,7 +84,7 @@ export type ActionFormFieldProps = {
   required?: boolean;
   validate?: Validator;
   validator?: Validator;
-  fieldInstance?: Field;
+  field?: Field;
   options?: ActionFormOption[];
 };
 

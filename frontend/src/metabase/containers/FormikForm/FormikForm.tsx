@@ -19,7 +19,7 @@ import { OptionalFormViewProps } from "metabase/components/form/FormikCustomForm
 import {
   getResponseErrorMessage,
   GenericErrorResponse,
-} from "metabase/lib/errors";
+} from "metabase/core/utils/errors";
 
 import { makeFormObject, cleanObject, isNestedFieldName } from "../formUtils";
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
@@ -183,11 +183,8 @@ function Form<Values extends BaseFieldValues>({
         );
 
         if (hasUnknownFields) {
-          const generalMessage = getResponseErrorMessage(
-            error,
-            DEFAULT_ERROR_MESSAGE,
-          );
-          setError(generalMessage);
+          const generalMessage = getResponseErrorMessage(error);
+          setError(generalMessage ?? DEFAULT_ERROR_MESSAGE);
         }
 
         formikHelpers.setErrors(error.data.errors as FormikErrors<Values>);
@@ -195,8 +192,8 @@ function Form<Values extends BaseFieldValues>({
       }
 
       if (error) {
-        const message = getResponseErrorMessage(error, DEFAULT_ERROR_MESSAGE);
-        setError(message);
+        const message = getResponseErrorMessage(error);
+        setError(message ?? DEFAULT_ERROR_MESSAGE);
         return message;
       }
 

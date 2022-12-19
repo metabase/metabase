@@ -1,8 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { moveElement } from "metabase/core/utils/arrays";
 import { slugify } from "metabase/lib/formatting";
-import { moveElement } from "metabase/lib/array";
 
 import type {
   ActionFormSettings,
@@ -111,7 +111,7 @@ export const generateFieldSettingsFromParameters = (
       description: field?.description ?? "",
       fieldType: getFieldType(param),
       inputType: getInputType(param, field),
-      fieldInstance: field ?? undefined,
+      field: field ?? undefined,
     });
   });
   return fieldSettings;

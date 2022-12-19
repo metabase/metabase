@@ -23,12 +23,9 @@ interface CategoryWidgetProps
     CategoryWidgetStateProps,
     CategoryWidgetDispatchProps {}
 
-function mapStateToProps(
-  state: State,
-  { fieldInstance }: CategoryWidgetOwnProps,
-) {
+function mapStateToProps(state: State, { field }: CategoryWidgetOwnProps) {
   const fieldValues = Fields.selectors.getFieldValues(state, {
-    entityId: fieldInstance.id,
+    entityId: field.id,
   });
   return {
     fieldValues,
@@ -42,13 +39,13 @@ const mapDispatchToProps = {
 function CategoryRadioPicker({
   value,
   onChange,
-  fieldInstance,
+  field,
   fieldValues = [],
   fetchFieldValues,
 }: CategoryWidgetProps) {
   useOnMount(() => {
-    if (typeof fieldInstance.id === "number") {
-      fetchFieldValues({ id: fieldInstance.id });
+    if (typeof field.id === "number") {
+      fetchFieldValues({ id: field.id });
     }
   });
 

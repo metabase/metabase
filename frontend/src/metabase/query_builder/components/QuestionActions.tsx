@@ -217,7 +217,7 @@ const QuestionActions = ({
             iconSize={HEADER_ICON_SIZE}
             onClick={onInfoClick}
             color={infoButtonColor}
-            data-testId="qb-header-info-button"
+            data-testid="qb-header-info-button"
           />
         </ViewHeaderIconButtonContainer>
       </Tooltip>

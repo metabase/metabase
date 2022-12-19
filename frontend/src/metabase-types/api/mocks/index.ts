@@ -6,6 +6,7 @@ export * from "./dashboard";
 export * from "./data-app";
 export * from "./database";
 export * from "./dataset";
+export * from "./field";
 export * from "./metric";
 export * from "./models";
 export * from "./query";

@@ -12,7 +12,7 @@ import FormRadioWidget from "metabase/core/components/FormRadio";
 import FormSelectWidget from "metabase/core/components/FormSelect";
 import FormNumericInputWidget from "metabase/core/components/FormNumericInput";
 import FormBooleanWidget from "metabase/core/components/FormToggle";
-import CategoryFieldPicker from "metabase/core/components/FormCategoryInput";
+import CategoryFieldPicker from "metabase/components/FormCategoryInput";
 
 const VerticalRadio = (props: any) => <FormRadioWidget {...props} vertical />;
 
