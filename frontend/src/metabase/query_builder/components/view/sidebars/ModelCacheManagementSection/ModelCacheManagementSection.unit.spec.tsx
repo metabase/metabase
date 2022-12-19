@@ -1,6 +1,6 @@
 import React from "react";
 import moment from "moment-timezone";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 
 import PersistedModels from "metabase/entities/persisted-models";
 import { ModelCacheRefreshStatus } from "metabase-types/api";
@@ -42,9 +42,7 @@ async function setup({
     .spyOn(PersistedModels.objectActions, "refreshCache")
     .mockReturnValue({ type: "__MOCK__" });
 
-  xhrMock.get(`/api/persist/card/${model.id()}`, {
-    body: JSON.stringify(modelCacheInfo),
-  });
+  nock(/.*/).get(`/api/persist/card/${model.id()}`).reply(200, modelCacheInfo);
 
   if (!waitForSectionAppearance) {
     jest.spyOn(PersistedModels, "Loader").mockImplementation(props => {
@@ -69,12 +67,8 @@ async function setup({
 }
 
 describe("ModelCacheManagementSection", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
     jest.resetAllMocks();
   });
 
