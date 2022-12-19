@@ -1,14 +1,14 @@
 import React from "react";
+import nock from "nock";
 import userEvent from "@testing-library/user-event";
-import xhrMock from "xhr-mock";
 
 import {
   act,
   renderWithProviders,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import { setupEnterpriseTest } from "__support__/enterprise";
 
 import type { NativeQuerySnippet } from "metabase-types/api";
 import {
@@ -35,24 +35,24 @@ async function setup({
   withDefaultFoldersList = true,
   onClose = jest.fn(),
 }: SetupOpts = {}) {
-  xhrMock.get("/api/collection/root?namespace=snippets", {
-    body: JSON.stringify(TOP_SNIPPETS_FOLDER),
-  });
+  nock(/.*/)
+    .get("/api/collection/root?namespace=snippets")
+    .reply(200, TOP_SNIPPETS_FOLDER);
 
   if (withDefaultFoldersList) {
-    xhrMock.get("/api/collection?namespace=snippets", {
-      body: JSON.stringify([TOP_SNIPPETS_FOLDER]),
-    });
+    nock(/.*/)
+      .get("/api/collection?namespace=snippets")
+      .reply(200, [TOP_SNIPPETS_FOLDER]);
   }
 
-  xhrMock.post("/api/native-query-snippet", (req, res) =>
-    res.status(200).body(createMockNativeQuerySnippet(req.body())),
-  );
+  nock(/.*/)
+    .post("/api/native-query-snippet")
+    .reply(200, (uri, body) => createMockNativeQuerySnippet(body));
 
   if (snippet.id) {
-    xhrMock.put(`/api/native-query-snippet/${snippet.id}`, (req, res) =>
-      res.status(200).body(createMockNativeQuerySnippet(req.body())),
-    );
+    nock(/.*/)
+      .put(`/api/native-query-snippet/${snippet.id}`)
+      .reply(200, (uri, body) => createMockNativeQuerySnippet(body));
   }
 
   renderWithProviders(
@@ -79,14 +79,6 @@ const LABEL = {
 };
 
 describe("SnippetFormModal", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
-  afterEach(() => {
-    xhrMock.teardown();
-  });
-
   describe("new snippet", () => {
     it("displays correct blank state", async () => {
       await setup();
@@ -114,9 +106,9 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      xhrMock.get("/api/collection?namespace=snippets", {
-        body: JSON.stringify([TOP_SNIPPETS_FOLDER, createMockCollection()]),
-      });
+      nock(/.*/)
+        .get("/api/collection?namespace=snippets")
+        .reply(200, [TOP_SNIPPETS_FOLDER, createMockCollection()]);
 
       await setup({ withDefaultFoldersList: false });
 
@@ -207,9 +199,9 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      xhrMock.get("/api/collection?namespace=snippets", {
-        body: JSON.stringify([TOP_SNIPPETS_FOLDER, createMockCollection()]),
-      });
+      nock(/.*/)
+        .get("/api/collection?namespace=snippets")
+        .reply(200, [TOP_SNIPPETS_FOLDER, createMockCollection()]);
 
       await setupEditing({ withDefaultFoldersList: false });
 
@@ -265,10 +257,10 @@ describe("SnippetFormModal", () => {
 
     it("closes the modal after archiving", async () => {
       const { onClose } = await setupEditing();
-      await act(async () => {
-        await userEvent.click(screen.getByText("Archive"));
+      userEvent.click(screen.getByText("Archive"));
+      await waitFor(() => {
+        expect(onClose).toBeCalledTimes(1);
       });
-      expect(onClose).toBeCalledTimes(1);
     });
   });
 });
