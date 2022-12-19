@@ -690,11 +690,11 @@
 
 ;;; --- PERCENTILE AGGREGATIONS WITH USE OF WINDOW FUNCTION ----------------------------------------------------------
 
-(defmethod hformat/fn-handler "window-percentile-cont" [_ field percentile-val partition-group]
+(defmethod hformat/fn-handler "window-percentile-cont" [_ field percentile-val partition-fields]
   (str "PERCENTILE_CONT(" (hformat/to-sql percentile-val) ") "
        "WITHIN GROUP (ORDER BY " (hformat/to-sql field) ") "
-       "OVER (" (when (seq partition-group)
-                  (str "PARTITION BY " (clojure.string/join ", " (mapv hformat/to-sql partition-group))))
+       "OVER (" (when (seq partition-fields)
+                  (str "PARTITION BY " (hformat/comma-join (map hformat/to-sql partition-fields))))
        ")"))
 
 (defn percentile-aggregation? [aggregation]
