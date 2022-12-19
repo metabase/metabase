@@ -39,6 +39,10 @@ export const mixpanel = {
       done: "metabase_summarize_done",
       run_query: "metabase_summarize_run_query",
     },
+    question: {
+      native_open: "metabase_question_native_open",
+    },
+    model_open: "metabase_model_open",
   },
   localStorageKey: "metabase-user",
 };
