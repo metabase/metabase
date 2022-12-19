@@ -811,10 +811,10 @@
          (t/format :iso-offset-date-time b)]))]]) ; b_dt_tz_text
 
 (mt/defdataset diff-time-zones-athena-cases
-  ;; This dataset contains the same set of values as [[diff-time-zones-cases]], but converted
-  ;; to local date times. We need it because Athena supports the `timestamp with time zone`
-  ;; type in query expressions but not at rest. We convert them to have time zones in the test
-  ;; queries where needed.
+  ;; This dataset contains the same set of values as [[diff-time-zones-cases]], but without
+  ;; the time zones. We need it because Athena supports the `timestamp with time zone`
+  ;; type in query expressions but not at rest. The `dt` column, which has the `timestamp`
+  ;; type, is converted to a `timestamp with time zone` in the test queries.
   [["times"
     [{:field-name "dt",      :base-type :type/DateTime}
      {:field-name "dt_text", :base-type :type/Text}]
