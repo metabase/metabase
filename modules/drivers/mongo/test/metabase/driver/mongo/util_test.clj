@@ -79,72 +79,19 @@
                (connect-mongo opts)))))))
 
 (deftest srv-connection-properties-test
-  (testing "test that connection properties when using srv"
-    (is (= "No SRV record available for host fake.fqdn.com"
-           (try
-             (let [host                            "fake.fqdn.com"
-                   opts                            {:host               host
-                                                    :port               1015
-                                                    :user               "test-user"
-                                                    :authdb             "test-authdb"
-                                                    :pass               "test-passwd"
-                                                    :dbname             "test-dbname"
-                                                    :ssl                true
-                                                    :additional-options ""
-                                                    :use-srv            true}
-                   [^MongoClient mongo-client _db] (connect-mongo opts)
-                   ^ServerAddress mongo-addr       (-> mongo-client
-                                                       (.getAllAddress)
-                                                       first)
-                   mongo-host                      (-> mongo-addr .getHost)
-                   mongo-port                      (-> mongo-addr .getPort)]
-               [mongo-host mongo-port])
-             (catch MongoClientException e
-               (.getMessage e)))))
-
-    (is (= "Using DNS SRV requires a FQDN for host"
-           (try
-             (let [host                            "host1"
-                   opts                            {:host               host
-                                                    :port               1015
-                                                    :user               "test-user"
-                                                    :authdb             "test-authdb"
-                                                    :pass               "test-passwd"
-                                                    :dbname             "test-dbname"
-                                                    :ssl                true
-                                                    :additional-options ""
-                                                    :use-srv            true}
-                   [^MongoClient mongo-client _db] (connect-mongo opts)
-                   ^ServerAddress mongo-addr       (-> mongo-client
-                                                       (.getAllAddress)
-                                                       first)
-                   mongo-host                      (-> mongo-addr .getHost)
-                   mongo-port                      (-> mongo-addr .getPort)]
-               [mongo-host mongo-port])
-             (catch Exception e
-               (.getMessage e)))))
-
-    (is (= "Unable to look up SRV record for host fake.fqdn.org"
-           (try
-             (let [host                            "fake.fqdn.org"
-                   opts                            {:host               host
-                                                    :port               1015
-                                                    :user               "test-user"
-                                                    :authdb             "test-authdb"
-                                                    :pass               "test-passwd"
-                                                    :dbname             "test-dbname"
-                                                    :ssl                true
-                                                    :additional-options ""
-                                                    :use-srv            true}
-                   [^MongoClient mongo-client _db] (connect-mongo opts)
-                   ^ServerAddress mongo-addr       (-> mongo-client
-                                                       (.getAllAddress)
-                                                       first)
-                   mongo-host                      (-> mongo-addr .getHost)
-                   mongo-port                      (-> mongo-addr .getPort)]
-               [mongo-host mongo-port])
-             (catch MongoClientException e
-               (.getMessage e)))))
+  (testing "connection properties when using SRV"
+    (are [host msg] (thrown-with-msg? Throwable msg
+                      (connect-mongo {:host host
+                                      :port               1015
+                                      :user               "test-user"
+                                      :authdb             "test-authdb"
+                                      :pass               "test-passwd"
+                                      :dbname             "test-dbname"
+                                      :ssl                true
+                                      :additional-options ""
+                                      :use-srv            true}))
+      "db.fqdn.test" #"Unable to look up TXT record for host db.fqdn.test"
+      "local.test" #"Using DNS SRV requires a FQDN for host")
 
     (testing "test host and port are correct for both srv and normal"
       (let [host                            "localhost"
