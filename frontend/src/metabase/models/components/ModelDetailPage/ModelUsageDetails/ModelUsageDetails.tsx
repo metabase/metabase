@@ -1,0 +1,73 @@
+import React from "react";
+import { t } from "ttag";
+
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
+import Icon from "metabase/components/Icon";
+
+import * as Urls from "metabase/lib/urls";
+import Questions, {
+  getIcon as getQuestionIcon,
+} from "metabase/entities/questions";
+
+import type { Card } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+import type { Card as LegacyCardType } from "metabase-types/types/Card";
+import type Question from "metabase-lib/Question";
+
+import {
+  EmptyStateContainer,
+  EmptyStateTitle,
+} from "../ModelDetailPage.styled";
+
+import { CardListItem, CardTitle } from "./ModelUsageDetails.styled";
+
+interface OwnProps {
+  model: Question;
+}
+
+interface EntityLoaderProps {
+  cards: Card[];
+}
+
+type Props = OwnProps & EntityLoaderProps;
+
+function ModelUsageDetails({ model, cards }: Props) {
+  if (cards.length === 0) {
+    return (
+      <EmptyStateContainer>
+        <EmptyStateTitle>{t`This model is not used by any questions yet.`}</EmptyStateTitle>
+        <Button
+          as={Link}
+          to={model.composeDataset().getUrl()}
+          icon="add"
+        >{t`Create a new question`}</Button>
+      </EmptyStateContainer>
+    );
+  }
+
+  return (
+    <ul>
+      {cards.map(card => (
+        <li key={card.id}>
+          <CardListItem to={Urls.question(card as LegacyCardType)}>
+            <Icon name={getQuestionIcon(card).name} />
+            <CardTitle>{card.name}</CardTitle>
+          </CardListItem>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function getCardListingQuery(state: State, { model }: OwnProps) {
+  return {
+    f: "using_model",
+    model_id: model.id(),
+  };
+}
+
+export default Questions.loadList({
+  listName: "cards",
+  query: getCardListingQuery,
+})(ModelUsageDetails);
