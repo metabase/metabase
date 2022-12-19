@@ -38,14 +38,15 @@ export function setNumericValues(
 
 export const getChangedValues = (
   newValues: ParametersForActionExecution,
-  oldValues: ParametersForActionExecution,
+  oldValues: Partial<ParametersForActionExecution>,
 ) => {
   const changedValues = Object.entries(newValues).filter(
     ([newKey, newValue]) => {
       const oldValue = oldValues[newKey];
+      const hadUnsetValue = oldValue === null || oldValue === undefined;
 
       // don't flag a change when the input changes itself to an empty string
-      if (oldValue === null && newValue === "") {
+      if (hadUnsetValue && newValue === "") {
         return false;
       }
       return newValue !== oldValue;
