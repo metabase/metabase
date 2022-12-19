@@ -29,7 +29,7 @@ const DEFAULT_OPTIONS = {
 };
 
 export class Api extends EventEmitter {
-  basename = "";
+  basename = window.location.origin;
 
   GET;
   POST;
