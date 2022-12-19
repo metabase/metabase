@@ -111,7 +111,7 @@
     :time                                :type/Time
     :timestamp                           :type/DateTime
     ;; Same for timestamp with time zone... the type sort of exists. You can't store it AFAIK but you can create one
-    ;; from a literal.
+    ;; from a literal or convert a `timestamp` column, e.g. with the `with_timezone` function.
     (keyword "timestamp with time zone") :type/DateTimeWithZoneID
     :tinyint                             :type/Integer
     :varchar                             :type/Text} database-type))
