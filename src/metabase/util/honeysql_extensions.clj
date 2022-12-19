@@ -352,12 +352,3 @@
        (map hformat/to-sql)
        (hformat/comma-join)
        (str "RETURNING ")))
-
-;; following function added for aggregate percentile computation with use of window function
-;; for sqlserver driver
-(defmethod hformat/fn-handler "window-percentile-cont" [_ field percentile-val partition-group]
-  (str "PERCENTILE_CONT(" (hformat/to-sql percentile-val) ") "
-       "within group (order by " (hformat/to-sql field) ") "
-       "over (" (when (seq partition-group)
-                  (str "partition by " (clojure.string/join ", " (mapv hformat/to-sql partition-group))))
-       ")"))

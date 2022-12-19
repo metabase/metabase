@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [honeysql.helpers :as hh]
             [java-time :as t]
             [metabase.config :as config]
@@ -677,6 +678,13 @@
     database))
 
 ;;; --- PERCENTILE AGGREGATIONS WITH USE OF WINDOW FUNCTION ----------------------------------------------------------
+
+(defmethod hformat/fn-handler "window-percentile-cont" [_ field percentile-val partition-group]
+  (str "PERCENTILE_CONT(" (hformat/to-sql percentile-val) ") "
+       "WITHIN GROUP (ORDER BY " (hformat/to-sql field) ") "
+       "OVER (" (when (seq partition-group)
+                  (str "PARTITION BY " (clojure.string/join ", " (mapv hformat/to-sql partition-group))))
+       ")"))
 
 (defn percentile-aggregation? [aggregation]
   (mbql.u/match aggregation #{:percentile :median}))
