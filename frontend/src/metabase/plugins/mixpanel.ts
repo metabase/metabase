@@ -10,7 +10,7 @@ export const mixpanel = {
       email = localStorage.getItem(this.localStorageKey) || "";
     }
 
-    console.log("Track:", eventName, userEmail);
+    console.log("Track:", eventName, email);
     this.identify(email);
     mixpanelBrowser.track(eventName);
   },
@@ -33,6 +33,12 @@ export const mixpanel = {
   },
   events: {
     login: "metabase_login",
+    summarize: {
+      open: "metabase_summarize_open",
+      close: "metabase_summarize_close",
+      done: "metabase_summarize_done",
+      run_query: "metabase_summarize_run_query",
+    },
   },
   localStorageKey: "metabase-user",
 };

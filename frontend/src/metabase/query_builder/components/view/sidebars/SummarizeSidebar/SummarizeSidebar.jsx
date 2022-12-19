@@ -5,6 +5,7 @@ import cx from "classnames";
 
 import { color } from "metabase/lib/colors";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { mixpanel } from "metabase/plugins/mixpanel";
 
 import { AddAggregationButton } from "./AddAggregationButton";
 import { AggregationItem } from "./AggregationItem";
@@ -48,6 +49,7 @@ const SummarizeSidebar = ({
 
   const updateAndRunQuery = useCallback(
     query => {
+      mixpanel.trackEvent(mixpanel.events.summarize.run_query);
       updateQuestion(query.question().setDefaultDisplay(), {
         run: true,
       });
@@ -102,6 +104,7 @@ const SummarizeSidebar = ({
       title={t`Summarize by`}
       color={color("summarize")}
       onDone={() => {
+        mixpanel.trackEvent(mixpanel.events.summarize.done);
         if (isResultDirty) {
           runQuestionQuery();
         }
