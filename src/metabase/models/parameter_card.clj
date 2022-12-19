@@ -40,26 +40,38 @@
                          :pre-update pre-update}))
 
 (defn delete-all-for-parameterized-object!
-  "Delete all ParameterCard for a give Parameterized Object."
-  [parameterized-object-type parameterized-object-id]
-  (db/delete! ParameterCard
-              :parameterized_object_type parameterized-object-type
-              :parameterized_object_id  parameterized-object-id))
+  "Delete all ParameterCard for a give Parameterized Object and NOT listed in the optional
+  `parameter-ids-still-in-use`."
+  ([parameterized-object-type parameterized-object-id]
+   (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id []))
+
+  ([parameterized-object-type parameterized-object-id parameter-ids-still-in-use]
+   (db/delete! ParameterCard
+               :parameterized_object_type parameterized-object-type
+               :parameterized_object_id  parameterized-object-id
+               (if (empty? parameter-ids-still-in-use)
+                {}
+                {:where [:not-in :parameter_id parameter-ids-still-in-use]}))))
+
+(defn- upsert-for-dashboard!
+  [dashboard-id parameters]
+  (doseq [{:keys [source_options id]} parameters]
+    (let [card-id    (:card_id source_options)
+          conditions {:parameterized_object_id   dashboard-id
+                      :parameterized_object_type "dashboard"
+                      :parameter_id              id}]
+      (or (db/update-where! ParameterCard conditions :card_id card-id)
+          (db/insert! ParameterCard (merge conditions {:card_id card-id}))))))
 
 (defn upsert-or-delete-for-dashboard!
-  "Create, update, or delete appropriate ParameterCards for each parameter in the dashboard."
-  [{dashboard-id :id parameters :parameters :as _dashboard}]
-  (let [new-parameter-cards   (for [{:keys [source_type source_options id]} parameters
-                                    :when (and (= source_type "card") id (:card_id source_options))]
-                                {:parameterized_object_id   dashboard-id
-                                 :parameterized_object_type "dashboard"
-                                 :parameter_id              id
-                                 :card_id                   (:card_id source_options)})]
-    (db/transaction
-      (delete-all-for-parameterized-object! "dashboard" dashboard-id)
-      ;; note that `insert-many!` doesn't call post-select, so if it's must then we need to switch
-      ;; to do multiple single-insert
-      (db/insert-many! ParameterCard new-parameter-cards))))
+  "Create, update, or delete appropriate ParameterCards for each parameter in the dashboard"
+  [{dashboard-id :id parameters :parameters}]
+  (let [upsertable?           (fn [{:keys [source_type source_options id]}] (and source_type id (:card_id source_options)
+                                                                                 (= source_type "card")))
+        upsertable-parameters (filter upsertable? parameters)]
+
+    (upsert-for-dashboard! dashboard-id upsertable-parameters)
+    (delete-all-for-parameterized-object! "dashboard" dashboard-id (map :id upsertable-parameters))))
 
 ;;; ----------------------------------------------- param values -----------------------------------------------
 
