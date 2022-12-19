@@ -13,4 +13,4 @@ jobs:
     steps:
       - run:
           name: echo
-          command: echo "Hello, World!"
+          command: echo "Hello, World!" && false
