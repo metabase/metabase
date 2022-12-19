@@ -1,4 +1,3 @@
-import fetch, { Request } from "cross-fetch";
 import EventEmitter from "events";
 import querystring from "querystring";
 

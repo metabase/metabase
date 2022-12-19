@@ -1,3 +1,4 @@
+import fetch, { Request, Response } from "node-fetch";
 import "raf/polyfill";
 import "jest-localstorage-mock";
 import "jest-canvas-mock";
@@ -10,6 +11,12 @@ import "__support__/mocks";
 process.on("uncaughtException", err =>
   console.error("WARNING: UNCAUGHT EXCEPTION", err),
 );
+
+if (!global.fetch) {
+  global.fetch = fetch;
+  global.Request = Request;
+  global.Response = Response;
+}
 
 if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
   global.console = {
