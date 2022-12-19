@@ -47,12 +47,20 @@ async function setup({
 
   nock(/.*/)
     .post("/api/native-query-snippet")
-    .reply(200, (uri, body) => createMockNativeQuerySnippet(body));
+    .reply(200, (uri, body) => {
+      if (typeof body === "object") {
+        return createMockNativeQuerySnippet(body);
+      }
+    });
 
   if (snippet.id) {
     nock(/.*/)
       .put(`/api/native-query-snippet/${snippet.id}`)
-      .reply(200, (uri, body) => createMockNativeQuerySnippet(body));
+      .reply(200, (uri, body) => {
+        if (typeof body === "object") {
+          return createMockNativeQuerySnippet(body);
+        }
+      });
   }
 
   renderWithProviders(

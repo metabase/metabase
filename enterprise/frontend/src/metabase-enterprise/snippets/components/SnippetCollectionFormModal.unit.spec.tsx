@@ -36,7 +36,11 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
 
   nock(/.*/)
     .post("/api/collection")
-    .reply(200, (uri, body) => createMockCollection(body));
+    .reply(200, (uri, body) => {
+      if (typeof body === "object") {
+        return createMockCollection(body);
+      }
+    });
 
   if (folder.id) {
     nock(/.*/)
@@ -45,7 +49,11 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
 
     nock(/.*/)
       .put(`/api/collection/${folder.id}`)
-      .reply(200, (uri, body) => createMockCollection(body));
+      .reply(200, (uri, body) => {
+        if (typeof body === "object") {
+          return createMockCollection(body);
+        }
+      });
   }
 
   renderWithProviders(

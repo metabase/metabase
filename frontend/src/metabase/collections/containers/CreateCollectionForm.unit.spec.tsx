@@ -18,7 +18,11 @@ type SetupOpts = {
 function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
   nock(/.*/)
     .post("/api/collection")
-    .reply(200, (url, body) => createMockCollection(body));
+    .reply(200, (url, body) => {
+      if (typeof body === "object") {
+        return createMockCollection(body);
+      }
+    });
 
   renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
     currentUser: user,
