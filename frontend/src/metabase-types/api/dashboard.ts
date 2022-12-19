@@ -20,11 +20,6 @@ export interface Dashboard {
   parameters?: Parameter[] | null;
   can_write: boolean;
   cache_ttl: number | null;
-
-  // Indicates if a dashboard is a special "app page" type
-  // Pages have features like custom action buttons to write back to the database
-  // And lack features like dashboard subscriptions, auto-refresh, night-mode
-  is_app_page?: boolean;
 }
 
 export type DashCardId = EntityId;

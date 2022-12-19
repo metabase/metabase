@@ -155,15 +155,6 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
-export const DataAppsApi = {
-  list: GET("/api/app"),
-  create: POST("/api/app"),
-  update: PUT("/api/app/:id"),
-
-  scaffoldNewApp: POST("/api/app/scaffold"),
-  scaffoldNewPages: POST("/api/app/:id/scaffold"),
-};
-
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
@@ -474,22 +465,3 @@ function setParamsEndpoints(prefix) {
     prefix + "/dashboard/:dashId/params/:paramId/search/:query",
   );
 }
-
-export const ActionsApi = {
-  list: GET("/api/action"),
-  create: POST("/api/action/row/create"),
-  update: POST("/api/action/row/update"),
-  delete: POST("/api/action/row/delete"),
-  bulkUpdate: POST("/api/action/bulk/update/:tableId"),
-  bulkDelete: POST("/api/action/bulk/delete/:tableId"),
-  execute: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute/:slug",
-  ),
-};
-
-export const ModelActionsApi = {
-  connectActionToModel: POST("/api/model-action"),
-  createImplicitAction: POST("/api/model-action"),
-  updateConnection: PUT("/api/model-action/:id"),
-  disconnectActionFromModel: POST("/api/model-action"),
-};

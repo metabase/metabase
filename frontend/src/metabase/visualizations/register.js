@@ -3,8 +3,6 @@ import {
   setDefaultVisualization,
 } from "metabase/visualizations";
 
-import ActionViz from "metabase/writeback/components/ActionViz";
-
 import Scalar from "./visualizations/Scalar";
 import SmartScalar from "./visualizations/SmartScalar";
 import Progress from "./visualizations/Progress";
@@ -23,7 +21,6 @@ import Funnel from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./components/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
-import ListViz from "./visualizations/List";
 
 export default function () {
   registerVisualization(Scalar);
@@ -44,7 +41,5 @@ export default function () {
   registerVisualization(Funnel);
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
-  registerVisualization(ListViz);
-  registerVisualization(ActionViz);
   setDefaultVisualization(Table);
 }

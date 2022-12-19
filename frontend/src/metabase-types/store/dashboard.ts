@@ -10,8 +10,6 @@ import { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 export type DashboardSidebarName =
   | "addQuestion"
-  | "addActionButton"
-  | "addActionForm"
   | "clickBehavior"
   | "editParameter"
   | "sharing"

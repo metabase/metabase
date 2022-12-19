@@ -2,12 +2,7 @@ import { IconProps } from "metabase/components/Icon";
 
 import type { Collection } from "metabase-types/api";
 
-export type PickerModel =
-  | "card"
-  | "collection"
-  | "dataset"
-  | "dashboard"
-  | "page";
+export type PickerModel = "card" | "collection" | "dataset" | "dashboard";
 
 export type PickerItemId = number | null;
 

@@ -51,7 +51,7 @@
   compojure/compojure                       {:mvn/version "1.6.2"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
   crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
-  dk.ative/docjure                          {:mvn/version "1.17.0"              ; excel export
+  dk.ative/docjure                          {:mvn/version "1.19.0"              ; excel export
                                              :exclusions  [org.apache.poi/poi
                                                            org.apache.poi/poi-ooxml]}
   environ/environ                           {:mvn/version "1.2.0"}              ; env vars/Java properties abstraction
@@ -93,8 +93,8 @@
   org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.18.0"}             ; allows the commons-logging API to work with log4j 2
   org.apache.logging.log4j/log4j-jul        {:mvn/version "2.18.0"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-slf4j-impl {:mvn/version "2.18.0"}             ; allows the slf4j API to work with log4j 2
-  org.apache.poi/poi                        {:mvn/version "5.2.2"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
-  org.apache.poi/poi-ooxml                  {:mvn/version "5.2.2"
+  org.apache.poi/poi                        {:mvn/version "5.2.3"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
+  org.apache.poi/poi-ooxml                  {:mvn/version "5.2.3"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.sshd/sshd-core                 {:mvn/version "2.9.2"}              ; ssh tunneling and test server

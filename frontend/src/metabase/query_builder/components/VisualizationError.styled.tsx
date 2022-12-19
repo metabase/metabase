@@ -5,17 +5,21 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 
 export const QueryError = styled.div`
-  display: flex;
   overflow: auto;
+`;
+
+export const QueryErrorContent = styled.div`
+  display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  min-height: 100%;
 `;
 
 export const QueryErrorHeader = styled.div`
   display: flex;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 `;
 
 export const QueryErrorTitle = styled.div`
@@ -44,15 +48,16 @@ export const QueryErrorMessage = styled.div`
   border: 1px solid ${color("brand")};
   border-radius: 0.5rem;
   background-color: ${color("bg-light")};
+  overflow-wrap: break-word;
 `;
 
 export const QueryErrorLink = styled(ExternalLink)`
   color: ${color("brand")};
+  margin: 1rem 0;
   font-size: 0.75rem;
   line-height: 1rem;
   font-weight: bold;
   text-decoration: none;
-  margin-top: 1.5rem;
 
   &:hover {
     text-decoration: underline;
