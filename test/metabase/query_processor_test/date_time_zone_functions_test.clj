@@ -784,10 +784,10 @@
                       first))))))))
 
 (deftest athena-datetime-diff-mixed-types-test
-  ;; This test is tests the same behaviour as [[datetime-diff-mixed-types-test]], but for Athena.
+  ;; This test mirrors [[datetime-diff-mixed-types-test]] for Athena.
   ;; Athena supports the `timestamp with time zone` type in query expressions but not at rest.
   (mt/test-driver :athena
-    (testing "Can compare across dates, datetimes with timezones from a table in Athena"
+    (testing "datetime-diff can compare `date`, `timestamp`, and `timestamp with time zone` args with Athena"
       (mt/with-temp*
         [Card [card (qp.test-util/card-with-source-metadata-for-query
                      (mt/native-query {:query (str "select"
