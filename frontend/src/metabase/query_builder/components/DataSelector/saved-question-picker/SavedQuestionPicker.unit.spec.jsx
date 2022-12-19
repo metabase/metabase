@@ -1,5 +1,5 @@
 import React from "react";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 import {
   renderWithProviders,
   screen,
@@ -27,27 +27,28 @@ const COLLECTIONS = {
 };
 
 function mockCollectionTreeEndpoint() {
-  xhrMock.get("/api/collection/tree?tree=true", {
-    body: Object.values(COLLECTIONS),
-  });
+  nock(/.*/)
+    .get("/api/collection/tree?tree=true")
+    .reply(200, Object.values(COLLECTIONS));
 }
 
 function mockRootCollectionEndpoint(hasAccess) {
-  xhrMock.get("/api/collection/root", (req, res) => {
-    if (hasAccess) {
-      return res
-        .status(200)
-        .body(createMockCollection({ id: "root", name: "Our analytics" }));
-    }
-
-    return res.status(200).body("You don't have access to this collection");
-  });
+  if (hasAccess) {
+    nock(/.*/)
+      .get("/api/collection/root")
+      .reply(200, createMockCollection({ id: "root", name: "Our analytics" }));
+  } else {
+    nock(/.*/)
+      .get("/api/collection/root")
+      .reply(200, "You don't have access to this collection");
+  }
 }
 
 function mockCollectionEndpoint(requestedCollectionName) {
   const encodedName = encodeURIComponent(requestedCollectionName);
-  xhrMock.get(`/api/database/-1337/schema/${encodedName}`, {
-    body: [
+  nock(/.*/)
+    .get(`/api/database/-1337/schema/${encodedName}`)
+    .reply(200, [
       createMockTable({
         id: "card__1",
         display_name: "B",
@@ -63,8 +64,7 @@ function mockCollectionEndpoint(requestedCollectionName) {
         display_name: "A",
         schema: requestedCollectionName,
       }),
-    ],
-  });
+    ]);
 }
 
 async function setup({
@@ -82,12 +82,7 @@ async function setup({
 
 describe("SavedQuestionPicker", () => {
   beforeEach(() => {
-    xhrMock.setup();
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
-  afterEach(() => {
-    xhrMock.teardown();
   });
 
   it("shows the current user personal collection on the top after the root", async () => {
