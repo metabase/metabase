@@ -1,6 +1,6 @@
-import querystring from "querystring";
-
+import fetch, { Request } from "cross-fetch";
 import EventEmitter from "events";
+import querystring from "querystring";
 
 import { delay } from "metabase/lib/promise";
 import { IFRAMED } from "metabase/lib/dom";
