@@ -1,16 +1,17 @@
 version: 2.1
 
 workflows:
-  empty:
+  build_test:
     jobs:
-      - empty
+      - build_test
 
 jobs:
-  empty:
+  build_test:
     docker:
       - image: cimg/base:stable
 
     steps:
+      - checkout
       - run:
-          name: echo
+          name: Run Tests
           command: echo "Hello, World!" && false
