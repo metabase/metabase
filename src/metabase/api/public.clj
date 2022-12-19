@@ -410,7 +410,7 @@
   (let [dashboard-id (db/select-one-id Dashboard :public_uuid uuid, :archived false)]
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
-;;; ------------------------------------------------ Chain Filtering -------------------------------------------------
+;;; ------------------------------------------------ Param Values -------------------------------------------------
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."

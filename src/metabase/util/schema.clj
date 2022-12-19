@@ -364,7 +364,7 @@
 (def ParameterSourceOptions
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
-  {(s/optional-key :values)  [s/Str]
+  {(s/optional-key :values) (s/cond-pre [s/Any])
    (s/optional-key :card_id) IntGreaterThanZero})
 
 (def Parameter
@@ -373,8 +373,8 @@
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   (with-api-error-message {:id                              NonBlankString
                            :type                            keyword-or-non-blank-str
-                           (s/optional-key :source_type)    (s/enum "static-list" "card")
-                           (s/optional-key :source_options) ParameterSourceOptions
+                           (s/optional-key :source_type)    (s/enum "static-list" "card" nil)
+                           (s/optional-key :source_options) Map
                            ;; Allow blank name and slug #15279
                            (s/optional-key :name)           s/Str
                            (s/optional-key :slug)           s/Str

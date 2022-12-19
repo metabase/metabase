@@ -517,7 +517,7 @@
                  :format-rows?          false}))
 
 
-;;; ----------------------------------------------- Chain Filtering -------------------------------------------------
+;;; ----------------------------------------------- Param values -------------------------------------------------
 
 ;; embedding parameters in `:embedding_params` and the JWT are keyed by `:slug`; the chain filter endpoints instead
 ;; key by `:id`. So we need to do a little conversion back and forth below.
@@ -525,7 +525,7 @@
 ;; variables whose name includes `id-` e.g. `id-query-params` below are ones that are keyed by ID; ones whose name
 ;; includes `slug-` are keyed by slug.
 
-(s/defn ^:private chain-filter-merged-params :- {su/NonBlankString s/Any}
+(s/defn ^:private param-values-merged-params :- {su/NonBlankString s/Any}
   [id->slug slug->id embedding-params token-params id-query-params]
   (let [slug-query-params  (into {}
                                  (for [[id v] id-query-params]
@@ -541,7 +541,7 @@
     (into {} (for [[slug value] merged-slug->value]
                [(get slug->id (name slug)) value]))))
 
-(defn- chain-filter [token searched-param-id prefix id-query-params]
+(defn- param-values [token searched-param-id prefix id-query-params]
   (let [unsigned-token                       (embed/unsign token)
         dashboard-id                         (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         _                                    (check-embedding-enabled-for-dashboard dashboard-id)
@@ -560,7 +560,7 @@
         (throw (ex-info (tru "You can''t specify a value for {0} if it's already set in the JWT." (pr-str searched-param-slug))
                         {:status-code 400})))
       ;; ok, at this point we can run the query
-      (let [merged-id-params (chain-filter-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
+      (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
           (binding [api/*current-user-permissions-set* (atom #{"/"})]
             (api.dashboard/param-values (db/select-one Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
@@ -585,12 +585,12 @@
 (api/defendpoint GET "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [token param-key :as {:keys [query-params]}]
-  (chain-filter token param-key nil query-params))
+  (param-values token param-key nil query-params))
 
 (api/defendpoint GET "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [token param-key prefix :as {:keys [query-params]}]
-  (chain-filter token param-key prefix query-params))
+  (param-values token param-key prefix query-params))
 
 (api/defendpoint ^:streaming GET "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.

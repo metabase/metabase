@@ -1,46 +1,47 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [medley.core :as m]
-            [metabase.actions.execution :as actions.execution]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.card :as api.card]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.dataset :as api.dataset]
-            [metabase.automagic-dashboards.populate :as populate]
-            [metabase.events :as events]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.action :as action]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection]
-            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.parameter-card :as parameter-card]
-            [metabase.models.params :as params]
-            [metabase.models.params.chain-filter :as chain-filter]
-            [metabase.models.query :as query :refer [Query]]
-            [metabase.models.query.permissions :as query-perms]
-            [metabase.models.revision :as revision]
-            [metabase.models.revision.last-edit :as last-edit]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor.dashboard :as qp.dashboard]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.related :as related]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
+  (:require
+    [cheshire.core :as json]
+    [clojure.set :as set]
+    [clojure.tools.logging :as log]
+    [compojure.core :refer [DELETE GET POST PUT]]
+    [medley.core :as m]
+    [metabase.actions.execution :as actions.execution]
+    [metabase.analytics.snowplow :as snowplow]
+    [metabase.api.card :as api.card]
+    [metabase.api.common :as api]
+    [metabase.api.common.validation :as validation]
+    [metabase.api.dataset :as api.dataset]
+    [metabase.automagic-dashboards.populate :as populate]
+    [metabase.events :as events]
+    [metabase.mbql.util :as mbql.u]
+    [metabase.models.action :as action]
+    [metabase.models.card :refer [Card]]
+    [metabase.models.collection :as collection]
+    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+    [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+    [metabase.models.field :refer [Field]]
+    [metabase.models.interface :as mi]
+    [metabase.models.parameter-card :as parameter-card]
+    [metabase.models.params :as params]
+    [metabase.models.params.chain-filter :as chain-filter]
+    [metabase.models.query :as query :refer [Query]]
+    [metabase.models.query.permissions :as query-perms]
+    [metabase.models.revision :as revision]
+    [metabase.models.revision.last-edit :as last-edit]
+    [metabase.models.table :refer [Table]]
+    [metabase.query-processor.dashboard :as qp.dashboard]
+    [metabase.query-processor.error-type :as qp.error-type]
+    [metabase.query-processor.middleware.constraints :as qp.constraints]
+    [metabase.query-processor.pivot :as qp.pivot]
+    [metabase.query-processor.util :as qp.util]
+    [metabase.related :as related]
+    [metabase.util :as u]
+    [metabase.util.i18n :refer [tru]]
+    [metabase.util.schema :as su]
+    [schema.core :as s]
+    [toucan.db :as db]
+    [toucan.hydrate :refer [hydrate]])
   (:import java.util.UUID))
 
 (defn- dashboards-list [filter-option]
@@ -734,23 +735,27 @@
            (throw e)))))))
 
 (defn- static-parameter-values
-  [{parameters :parameters} param-key query]
-  {:values
-   (some->> parameters
-            (group-by :id)
-            (#(get %2 %1) param-key)
-            (first)
-            (:source_options)
-            (:values)
-            (parameter-card/query-matches query))
-   :has_more_values false}) ;; TODO: make more clever
+  [{source-options :source_options :as _param} query]
+  (when-let [values (:values source-options)]
+    {:values (if query
+               (parameter-card/query-matches query values)
+               values)
+     :has_more_values false}))
 
-(defn param-values
-  "Return appropriate values for the param keyed by `:source_type`. The values could come from a chain filter, a static
-  list, or the results of a card execution."
+(s/defn param-values
+  "Fetch values for a parameter.
+
+  The source of values could be:
+  - static-list: user defined values list
+  - card: values is result of running a card
+  - nil: chain-filter"
   ([dashboard param-key query-params]
    (param-values dashboard param-key query-params nil))
-  ([dashboard param-key query-params query]
+
+  ([dashboard                   :- su/Map
+    param-key                   :- su/NonBlankString
+    constraint-param-key->value :- su/Map
+    query                       :- (s/maybe su/NonBlankString)]
    (let [dashboard (hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param
@@ -758,9 +763,9 @@
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
      (case (:source_type param)
-       "static-list" (static-parameter-values dashboard param-key query)
+       "static-list" (static-parameter-values param query)
        "card"        (parameter-card/values-for-dashboard dashboard param-key query)
-       (chain-filter dashboard param-key query-params query)))))
+       (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally

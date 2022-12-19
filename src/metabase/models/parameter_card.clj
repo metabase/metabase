@@ -22,7 +22,11 @@
   (if (str/blank? search-term)
     values
     (let [normalized-search-term (search/normalize search-term)]
-      (filter #(str/includes? (search/normalize %) normalized-search-term) values))))
+      (filter #(str/includes? (search/normalize (if (string? %)
+                                                  %
+                                                  ;; search by label
+                                                  (second %)))
+                              normalized-search-term) values))))
 
 (defn- query-for-dashboard
   [{dashboard-id :id} param-key]
