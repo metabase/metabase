@@ -576,43 +576,35 @@
                  mt/rows)))))))
 
 
-(deftest percentile-aggregations-with-card-test
+(deftest percentile-aggregation-card-test
   (mt/test-driver
    :sqlserver
-   (testing "Percentile on card results is correct"
+   (mt/dataset
+    sample-dataset
      (mt/with-temp* [Card [{id :id}
                            {:dataset_query
                             (mt/mbql-query
-                             venues
+                            orders
                              {:aggregation [[:aggregation-options
-                                             [:percentile [:field (mt/id :venues :price) nil] 0.5]
-                                             {:name "median of price over category"}]]
-                              :breakout    [[:field (mt/id :venues :category_id) nil]]
-                              :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]})}]]
-       (let [query (mt/mbql-query
-                    venues
-                    {:joins [{:alias (str "Question " id)
-                              :fields :all
-                              :source-table (str "card__" id)
-                              :condition [:=
-                                          [:field (mt/id :venues :category_id) nil]
-                                          [:field (mt/id :venues :category_id)
-                                           {:join-alias (str "Question " id)}]]}]
-                     :order-by [[:asc [:field (mt/id :venues :id) nil]]]
+                                            [:percentile $total 0.5]
+                                            {:name "p50"}]]
+                             :breakout    [$user_id]})}]]
+      (testing "Percentile aggregation from card is usable in joining query"
+        (is (= [[448 61 1 116.91]
+                [493 65 1 76.6]
+                [607 74 1 53.91]
+                [761 98 1 70.26]
+                [979 138 1 63.62]]
+               (-> (mt/run-mbql-query
+                    orders
+                    {:fields [$id $user_id $product_id &Q.*p50/Float]
+                     :joins [{:alias "Q"
+                              :strategy :inner-join
+                              :condition [:= &Q.user_id $user_id]
+                              :source-table (str "card__" id)}]
+                     :order-by [[:asc $product_id] [:asc $id] [:asc $user_id]]
                      :limit 5})
-             res (qp/process-query query)
-             formatted (mt/formatted-rows [int str int double double int int double] res)]
-         (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 4 2.0]
-                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 11 2.0]
-                 [3 "The Apple Pan" 11 34.0406 -118.428 2 11 2.0]
-                 [4 "Wurstküche" 29 33.9997 -118.465 2 29 2.0]
-                 [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2 20 2.0]]
-                formatted)))))))
-
-(comment
-  (mt/set-test-drivers! [:sqlserver :postgres])
-  (metabase.test-runner/run [#'metabase.driver.sqlserver-test/percentile-aggregations-with-card-test])
-  )
+                   mt/rows))))))))
 
 (deftest nested-percentile-aggregations-test
   (testing "Compute percentile of percentile of percentile aggregation"
