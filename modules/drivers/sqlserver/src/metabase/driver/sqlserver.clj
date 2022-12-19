@@ -21,6 +21,7 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.interface :as qp.i]
+            [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.query-processor.util.nest-query :as nest-query]
@@ -735,7 +736,7 @@
   ;;
   ;; expects input as [:aggregation-options [:percentile [:field 50 nil] 0.5] {:name "bla"}]
   ;; TODO BASE TYPE
-  [:field (-> aggregation (nth 2) :name) {:base-type :type/Float}])
+  [:field (annotate/aggregation-name aggregation) {:base-type :type/Float}])
 
 ;; TODO rewrite
 (defn rewrite-percentile-aggregations--current-query [original-inner]
@@ -765,8 +766,7 @@
   ;; 4.
   {:fields       (into (:breakout original-inner)
                        ;; aggregation fields resulting from following expression are distinct
-                       (mapv #(vector :field (-> % (nth 2) :name) {:base-type :type/Float})
-                             (:aggregation original-inner)))
+                       (mapv aggregation->field (:aggregation original-inner)))
    :source-query (->
                   ;; 1.
                   (dissoc original-inner :source-table :source-query :joins :filter)
