@@ -1,5 +1,5 @@
 import React from "react";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { InfoText } from "./InfoText";
@@ -9,26 +9,14 @@ const table = { id: 1, display_name: "Table Name" };
 const database = { id: 1, name: "Database Name" };
 
 async function setup(result) {
-  xhrMock.get("/api/table/1", {
-    body: JSON.stringify(table),
-  });
+  nock(/.*/).get("/api/table/1").reply(200, table);
 
-  xhrMock.get("/api/database/1", {
-    body: JSON.stringify(database),
-  });
+  nock(/.*/).get("/api/database/1").reply(200, database);
 
   renderWithProviders(<InfoText result={result} />);
 }
 
 describe("InfoText", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
-  afterEach(() => {
-    xhrMock.teardown();
-  });
-
   it("shows collection info for a question", async () => {
     await setup({
       model: "card",

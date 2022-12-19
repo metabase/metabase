@@ -1,5 +1,5 @@
 import React from "react";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 import userEvent from "@testing-library/user-event";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import {
@@ -144,9 +144,7 @@ function setupSavedNative(props = {}) {
     name: "Our analytics",
   };
 
-  xhrMock.get("/api/collection/root", {
-    body: JSON.stringify(collection),
-  });
+  nock(/.*/).get("/api/collection/root").reply(200, collection);
 
   const utils = setup({ question: getSavedNativeQuestion(), ...props });
 
@@ -344,17 +342,10 @@ describe("ViewHeader", () => {
 
       describe(questionType, () => {
         beforeEach(() => {
-          xhrMock.setup();
-          xhrMock.get("/api/collection/root", {
-            body: JSON.stringify({
-              id: "root",
-              name: "Our analytics",
-            }),
+          nock(/.*/).get("/api/collection/root").reply(200, {
+            id: "root",
+            name: "Our analytics",
           });
-        });
-
-        afterEach(() => {
-          xhrMock.teardown();
         });
 
         it("calls save function on title update", () => {
@@ -517,14 +508,6 @@ describe("View Header | Not saved native question", () => {
 });
 
 describe("View Header | Saved native question", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
-  afterEach(() => {
-    xhrMock.teardown();
-  });
-
   it("displays database a question is using", () => {
     const { question } = setupSavedNative();
     const databaseName = question.database().displayName();
