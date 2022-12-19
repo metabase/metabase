@@ -44,7 +44,13 @@ describe("EventCard", () => {
 
     render(<EventCard {...props} />);
 
+    const checkbox = screen.getByRole("checkbox");
+
+    expect(checkbox).toBeChecked();
+
     userEvent.click(screen.getByRole("checkbox"));
+
+    expect(checkbox).not.toBeChecked();
 
     expect(props.onToggleEventVisibility).toHaveBeenCalledWith(
       props.event,
