@@ -8,6 +8,7 @@ import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
 import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import validate from "metabase/lib/validate";
+import { mixpanel } from "metabase/plugins/mixpanel";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 import { generateQueryDescription } from "metabase-lib/queries/utils/description";
@@ -106,6 +107,10 @@ export default class SaveQuestionModal extends Component {
           ? "overwrite"
           : "create",
     };
+
+    if (initialValues.saveType === "overwrite") {
+      mixpanel.trackEvent(mixpanel.events.card_save);
+    }
 
     const questionType = card.dataset ? "model" : "question";
 
