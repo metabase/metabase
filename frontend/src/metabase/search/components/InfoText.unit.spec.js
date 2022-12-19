@@ -17,6 +17,10 @@ async function setup(result) {
 }
 
 describe("InfoText", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   it("shows collection info for a question", async () => {
     await setup({
       model: "card",

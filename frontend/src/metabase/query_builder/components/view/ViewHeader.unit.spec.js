@@ -348,6 +348,10 @@ describe("ViewHeader", () => {
           });
         });
 
+        afterEach(() => {
+          nock.cleanAll();
+        });
+
         it("calls save function on title update", () => {
           const { onSave } = setup({ question });
           const title = screen.getByTestId("saved-question-header-title");
@@ -508,6 +512,10 @@ describe("View Header | Not saved native question", () => {
 });
 
 describe("View Header | Saved native question", () => {
+  afterEach(() => {
+    nock.teardown();
+  });
+
   it("displays database a question is using", () => {
     const { question } = setupSavedNative();
     const databaseName = question.database().displayName();

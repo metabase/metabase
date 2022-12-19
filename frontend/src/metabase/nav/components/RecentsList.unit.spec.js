@@ -54,6 +54,10 @@ async function setup(recents = recentsData) {
 }
 
 describe("RecentsList", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   it("shows list of recents", async () => {
     await setup();
     await screen.findByText("Question I visited");
