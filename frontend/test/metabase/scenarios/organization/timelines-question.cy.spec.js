@@ -267,6 +267,14 @@ describe("scenarios > organization > timelines > question", () => {
         ],
       });
 
+      cy.createTimelineWithEvents({
+        timeline: { name: "Timeline for collection", collection_id: 1 },
+        events: [
+          { name: "TC1", timestamp: "2016-05-20T00:00:00Z", icon: "warning" },
+          { name: "TC2", timestamp: "2017-05-20T00:00:00Z", icon: "mail" },
+        ],
+      });
+
       visitQuestion(3);
 
       cy.findByText("Visualization").should("be.visible");
@@ -275,9 +283,9 @@ describe("scenarios > organization > timelines > question", () => {
 
       // should hide individual events from chart if hidden in sidebar
       cy.icon("calendar").click();
-      cy.findAllByLabelText("Toggle event visibility").each(element =>
-        element.click(),
-      );
+      cy.findByText("Releases").click();
+      toggleEventVisibility("RC1");
+      toggleEventVisibility("RC2");
 
       cy.icon("calendar").click();
       cy.findByLabelText("cloud icon").should("not.exist");
@@ -285,15 +293,15 @@ describe("scenarios > organization > timelines > question", () => {
 
       // should show individual events in chart again
       cy.icon("calendar").click();
-      cy.findAllByLabelText("Toggle event visibility").each(element =>
-        element.click(),
-      );
+      cy.findByText("Releases").click();
+      toggleEventVisibility("RC1");
+      toggleEventVisibility("RC2");
 
       cy.icon("calendar").click();
       cy.findByLabelText("balloons icon").should("be.visible");
       cy.findByLabelText("cloud icon").should("be.visible");
 
-      // show show a newly created event
+      // should show a newly created event
       cy.icon("calendar").click();
       cy.button("Add an event").click();
       cy.findByLabelText("Event name").type("RC3");
@@ -306,28 +314,16 @@ describe("scenarios > organization > timelines > question", () => {
 
       // should then hide the newly created event
       cy.icon("calendar").click();
-      cy.findAllByLabelText("Toggle event visibility").each(element =>
-        element.click(),
-      );
+      cy.findByText("Releases").click();
+      toggleEventVisibility("RC3");
 
       cy.icon("calendar").click();
       cy.findByLabelText("star icon").should("not.exist");
 
-      cy.createTimelineWithEvents({
-        timeline: { name: "Timeline for collection", collection_id: 1 },
-        events: [
-          { name: "TC1", timestamp: "2016-05-20T00:00:00Z", icon: "cloud" },
-          { name: "TC2", timestamp: "2017-05-20T00:00:00Z", icon: "balloons" },
-        ],
-      });
-
-      // Should work with multiple timelines
-      visitQuestion(3);
-
-      cy.findByText("Visualization").should("be.visible");
-
       cy.icon("calendar").click();
 
+      // should initialize events in a hidden timelime
+      // with event checkboxes disabled and unchecked
       cy.findByText("Timeline for collection").click();
 
       cy.findByText("TC2")
@@ -337,34 +333,26 @@ describe("scenarios > organization > timelines > question", () => {
           cy.findByRole("checkbox").should("not.be.checked");
         });
 
-      // Making an invisible timeline visible
+      // making a hidden timeline visible
       // should make its events automatically visible
       cy.findByText("Timeline for collection")
         .closest("[aria-label=Timeline card header]")
         .within(() => cy.findByRole("checkbox").click());
 
       cy.icon("calendar").click();
-      cy.findAllByLabelText("cloud icon").should("have.length", 2);
-      cy.findAllByLabelText("balloons icon").should("have.length", 2);
+      cy.findByLabelText("warning icon").should("be.visible");
+      cy.findByLabelText("mail icon").should("be.visible");
 
-      // Events whose timeline was invisible on load
+      // events whose timeline was invisible on page load
       // should be hideable once their timelines are visible
       cy.icon("calendar").click();
       cy.findByText("Timeline for collection").click();
-      cy.findByText("TC1")
-        .closest("[aria-label=Timeline event card]")
-        .within(() => {
-          cy.findByRole("checkbox").click();
-        });
-      cy.findByText("TC2")
-        .closest("[aria-label=Timeline event card]")
-        .within(() => {
-          cy.findByRole("checkbox").click();
-        });
+      toggleEventVisibility("TC1");
+      toggleEventVisibility("TC2");
 
       cy.icon("calendar").click();
-      cy.findAllByLabelText("cloud icon").should("have.length", 1);
-      cy.findAllByLabelText("balloons icon").should("have.length", 1);
+      cy.findByLabelText("warning icon").should("not.exist");
+      cy.findByLabelText("mail icon").should("not.exist");
     });
   });
 
@@ -397,3 +385,11 @@ describe("scenarios > organization > timelines > question", () => {
     });
   });
 });
+
+function toggleEventVisibility(eventName) {
+  cy.findByText(eventName)
+    .closest("[aria-label=Timeline event card]")
+    .within(() => {
+      cy.findByRole("checkbox").click();
+    });
+}
