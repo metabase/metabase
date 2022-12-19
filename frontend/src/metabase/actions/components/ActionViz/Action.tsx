@@ -2,10 +2,6 @@ import React, { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import {
-  getDashcardParamValues,
-  getNotProvidedActionParameters,
-} from "metabase/modes/components/drill/ActionClickDrill/utils";
 import { executeRowAction } from "metabase/dashboard/actions";
 import { setNumericValues } from "metabase/actions/containers/ActionParametersInputForm/utils";
 
@@ -20,10 +16,14 @@ import type { Dispatch } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 import { generateFieldSettingsFromParameters } from "../ActionCreator/FormCreator";
+import {
+  getDashcardParamValues,
+  getNotProvidedActionParameters,
+  shouldShowConfirmation,
+} from "./utils";
 import LinkButton from "./LinkButton";
 import ActionVizForm from "./ActionVizForm";
 import { ActionParameterOptions } from "./ActionOptions";
-import { shouldShowConfirmation } from "./utils";
 import { StyledButton } from "./ActionButton.styled";
 
 interface ActionProps extends VisualizationProps {
