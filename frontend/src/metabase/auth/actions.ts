@@ -48,6 +48,9 @@ export const login = createThunkAction(
     async (dispatch: any) => {
       await SessionApi.create(data);
       mixpanel.trackEvent(mixpanel.events.login, data.username);
+      if (window) {
+        localStorage.setItem(mixpanel.localStorageKey, data.username);
+      }
       await dispatch(refreshSession());
       trackLogin();
 
@@ -72,6 +75,9 @@ export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createThunkAction(LOGOUT, (redirectUrl: string) => {
   return async (dispatch: any) => {
     await deleteSession();
+    if (window) {
+      localStorage.removeItem(mixpanel.localStorageKey);
+    }
     await dispatch(clearCurrentUser());
     await dispatch(refreshLocale());
     trackLogout();

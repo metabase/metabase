@@ -2,11 +2,16 @@ import mixpanelBrowser from "mixpanel-browser";
 mixpanelBrowser.init("af36711c4e68579fe13f8e2c0570edda");
 
 export const mixpanel = {
-  trackEvent(eventName: string, userEmail: string) {
-    console.log("Track:", eventName, userEmail);
+  trackEvent(eventName: string, userEmail?: string) {
+    let email = "";
     if (userEmail) {
-      this.identify(userEmail);
+      email = userEmail;
+    } else {
+      email = localStorage.getItem(this.localStorageKey) || "";
     }
+
+    console.log("Track:", eventName, userEmail);
+    this.identify(email);
     mixpanelBrowser.track(eventName);
   },
   identify(email: string) {
@@ -29,4 +34,5 @@ export const mixpanel = {
   events: {
     login: "metabase_login",
   },
+  localStorageKey: "metabase-user",
 };
