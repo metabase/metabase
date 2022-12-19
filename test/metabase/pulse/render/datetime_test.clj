@@ -67,4 +67,12 @@
                                           :effective_type :type/Date}
                                          {::mb.viz/column-settings
                                           {{::mb.viz/column-name "created_at"}
-                                           {::mb.viz/date-abbreviate true}}})))))
+                                           {::mb.viz/date-abbreviate true}}}))))
+  (testing "Can render datetimes with Day of Week option. (#27105)"
+    (is (= "Thursday, July 16, 2020"
+           (datetime/format-temporal-str "UTC" now
+                                         {:field_ref [:column_name "created_at"]
+                                          :effective_type :type/Date}
+                                         {::mb.viz/column-settings
+                                          {{::mb.viz/column-name "created_at"}
+                                           {::mb.viz/date-style "dddd, MMMM D, YYYY"}}})))))

@@ -84,9 +84,11 @@
                                           (-> (:type/Temporal (public-settings/custom-formatting))
                                               (update-keys (fn [k] (-> k name (str/replace #"_" "-") keyword)))))
            post-process-date-style      (fn [date-style]
-                                          (cond-> date-style
+                                          (cond-> (-> date-style (str/replace #"dddd" "EEEE"))
                                             date-separator (str/replace #"/" date-separator)
-                                            abbreviate     (-> (str/replace #"MMMM" "MMM") (str/replace #"DDD" "D"))))]
+                                            abbreviate     (-> (str/replace #"MMMM" "MMM")
+                                                               (str/replace #"EEEE" "EEE")
+                                                               (str/replace #"DDD" "D"))))]
        (case (:unit col)
          ;; these types have special formatting
          :minute  (reformat-temporal-str timezone-id s
@@ -116,4 +118,6 @@
          (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y (parse-long s))
 
          ;; for everything else return in this format
-         (reformat-temporal-str timezone-id s (str/replace (or date-style "MMM d, yyyy") #"D" "d")))))))
+         (reformat-temporal-str timezone-id s (-> (or date-style "MMM d, yyyy")
+                                                  (str/replace #"D" "d")
+                                                  post-process-date-style)))))))
