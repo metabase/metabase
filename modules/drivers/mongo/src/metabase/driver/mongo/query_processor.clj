@@ -466,10 +466,10 @@
                            (->rvalue head)))
         ;; args go in reversed because build-division works outside in (/ 1 2 3) => (/ (/ 1 2) 3)
         division (build-division (reverse args))
-        literal-zero-or-nil? (some #(and (number? %) (zero? %)) divisors)
+        literal-zero? (some #(and (number? %) (zero? %)) divisors)
         non-literal-nil-checks (mapv (fn [divisor] {"$eq" [(->rvalue divisor) 0]}) (remove number? divisors))]
     (cond
-      literal-zero-or-nil?
+      literal-zero?
       nil
 
       (empty? non-literal-nil-checks)
