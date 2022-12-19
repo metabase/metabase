@@ -39,11 +39,10 @@ function CreateDashboardModal({
 }: Props) {
   const handleCreate = useCallback(
     (dashboard: Dashboard) => {
+      mixpanel.trackEvent(mixpanel.events.create_dashboard);
       if (typeof onCreate === "function") {
-        mixpanel.trackEvent(mixpanel.events.create_dashboard);
         onCreate(dashboard);
       } else {
-        mixpanel.trackEvent(mixpanel.events.create_dashboard);
         onClose?.();
         onChangeLocation(Urls.dashboard(dashboard, { editMode: true }));
       }
