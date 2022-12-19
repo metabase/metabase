@@ -838,7 +838,7 @@
        "union"
        "select"
        "  with_timezone(dt, 'Africa/Lagos') as dt"
-       "  , concat(dt_text, '+01:00') as dt_text" ; e.g. `2022-10-02T00:00:00Z`
+       "  , concat(dt_text, '+01:00') as dt_text" ; e.g. `2022-10-02T00:00:00+01:00`
        "from diff_time_zones_athena_cases.times"
        ")"
        "select"
