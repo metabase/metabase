@@ -1,4 +1,5 @@
-import { DatasetQuery } from "./query";
+import type Field from "metabase-lib/metadata/Field";
+import type { DatasetQuery } from "./query";
 
 export interface Card extends UnsavedCard {
   id: CardId;
@@ -6,10 +7,13 @@ export interface Card extends UnsavedCard {
   name: string;
   description: string | null;
   dataset: boolean;
+  database_id?: number;
   can_write: boolean;
   cache_ttl: number | null;
   query_average_duration?: number | null;
   last_query_start: string | null;
+  result_metadata?: Field[];
+
   archived: boolean;
 
   creator?: {

@@ -18,7 +18,6 @@ export interface Database extends DatabaseData {
   native_permissions: NativePermissions;
   initial_sync_status: InitialSyncStatus;
 
-  // appears in frontend/src/metabase/writeback/utils.ts
   settings?: DatabaseSettings | null;
 
   // Only appears in  GET /api/database/:id

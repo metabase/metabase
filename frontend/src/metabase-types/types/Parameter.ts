@@ -40,10 +40,12 @@ export type ParameterMappingOptions = {
 export interface Parameter {
   id: ParameterId;
   name: string;
+  "display-name"?: string;
   type: ParameterType;
   slug: string;
   sectionId?: string;
   default?: any;
+  required?: boolean;
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
