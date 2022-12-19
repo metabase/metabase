@@ -163,31 +163,35 @@ export class Api extends EventEmitter {
       signal: controller.signal,
     });
 
-    const response = await fetch(request);
-    const antiCsrfToken = response.headers.get(ANTI_CSRF_HEADER);
-    if (antiCsrfToken) {
-      ANTI_CSRF_TOKEN = antiCsrfToken;
-    }
+    try {
+      const response = await fetch(request);
+      const body = options.json ? await response.json() : await response.text();
 
-    let body = options.json ? await response.json() : await response.text();
-    let status = response.status;
-    if (status === 202 && body && body._status > 0) {
-      status = body._status;
-    }
-    if (!options.noEvent) {
-      this.emit(status, url);
-    }
-    if (status >= 200 && status <= 299) {
-      if (options.transformResponse) {
-        body = options.transformResponse(body, { data });
+      let status = response.status;
+      if (status === 202 && body && body._status > 0) {
+        status = body._status;
       }
-      return body;
-    } else {
-      throw {
-        status: status,
-        data: body,
-        isCancelled: controller.signal.aborted,
-      };
+      const token = response.headers.get(ANTI_CSRF_HEADER);
+      if (token) {
+        ANTI_CSRF_TOKEN = token;
+      }
+      if (!options.noEvent) {
+        this.emit(status, url);
+      }
+
+      if (status >= 200 && status <= 299) {
+        return options.transformResponse
+          ? options.transformResponse(body, { data })
+          : data;
+      } else {
+        throw { status: status, data: body };
+      }
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw { isCancelled: true };
+      } else {
+        throw error;
+      }
     }
   }
 }
