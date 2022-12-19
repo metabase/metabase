@@ -733,7 +733,6 @@
 (defn- aggregation->field [aggregation]
   ;; Generate :field clause with name from aggregation options.
   ;;
-  ;; expects input as [:aggregation-options [:percentile [:field 50 nil] 0.5] {:name "bla"}]
   ;; TODO BASE TYPE
   [:field (annotate/aggregation-name aggregation) {:base-type :type/Float}])
 
@@ -760,7 +759,7 @@
   ;;      - computed window percentile
   ;; 4. Another level of nesting is added to preserve original order of aggregations.
   ;;    Consider query with aggr1 as sum and aggr2 as percentile. After rewrite percentile field would be used in breakout,
-  ;;    so in in query results it would appear first. Hence 
+  ;;    so in in query results it would appear first. Hence adding one more level of nesting to order fields correctly.
 
   ;; 4.
   {:fields       (into (:breakout original-inner)
@@ -786,8 +785,21 @@
     (-> original-query :source-query map?) (update :source-query rewrite-percentile-aggregations--recursive)
     (percentile-query? original-query) rewrite-percentile-aggregations--current-query))
 
-(defn rewrite-percentile-aggregations [original-query]
-  ;; original-query is not inner
+(defn rewrite-percentile-aggregations
+  "Modify original query to compute percentile aggregation with use of window function `PERCENTILE_CONT`
+
+   Overview
+   - [[rewrite-percentile-aggregations--recursive]] traverses :source-query and rewrites queries
+     containing percentile aggregations using [[rewrite-percentile-aggregations--current-query]]
+   - Finally alias info is updated, so newly created `:sub-query`s are handled properly
+   This function is ignoring :source-query in joins as it is meant to be called in [[sql.qp/preprocess]].
+
+   TODO
+   ?Elaborate on algorithm, implementation high level overview?
+
+   ?use letfn, easier to digest?
+   "
+  [original-query]
   (let [modified (rewrite-percentile-aggregations--recursive original-query)]
     (cond-> modified (not= modified original-query) add/add-alias-info)))
 
@@ -798,33 +810,7 @@
   ;;   within group (order by "dbo"."products"."price") 
   ;;   over (partition by "dbo"."products"."vendor")
   ;; over clause is :breakout of original query
-  ;; within group is field or expression to be aggregated to be aggregated
+  ;; within group is field or expression to be aggregated
     (hsql/call :window-percentile-cont
                (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)
              (map (partial sql.qp/->honeysql driver) (::partition-by sql.qp/*inner-query*))))
-
-;; tmp for debug / test purposes
-(defmethod driver/mbql->native :sqlserver
-  [driver query]
-  (def q query)
-  ((get-method driver/mbql->native :sql) :sqlserver query))
-
-
-;; tmp, while debugging
-(defn recursive-remove-metadata [query]
-
-  (cond-> query
-
-    (contains? query :source-metadata)
-    (dissoc :source-metadata)
-
-    (contains? query :query)
-    (update :query recursive-remove-metadata)
-
-
-    (seq (:joins query))
-    (update :joins (partial map recursive-remove-metadata))
-
-    ;; this works also on Join -- check whether there is :source-table, in that case, apply
-    (contains? query :source-query)
-    (update :source-query recursive-remove-metadata)))
