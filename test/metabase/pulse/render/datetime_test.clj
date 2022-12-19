@@ -1,11 +1,9 @@
 (ns metabase.pulse.render.datetime-test
-  (:require
-   [clojure.test :refer :all]
-   [metabase.pulse.render.datetime :as datetime]))
+  (:require [clojure.test :refer :all]
+            [metabase.pulse.render.datetime :as datetime]
+            [metabase.shared.models.visualization-settings :as mb.viz]))
 
 (def ^:private now "2020-07-16T18:04:00Z[UTC]")
-
-;; I don't know what exactly this is used for but we should at least make sure it's working correctly, see (#10326)
 
 (deftest format-temporal-str-test
   (testing "Null values do not blow up"
@@ -61,4 +59,12 @@
   (testing "Can render time types (#15146)"
     (is (= "08:05:06"
            (datetime/format-temporal-str "UTC" "08:05:06Z"
-                                         {:effective_type :type/Time})))))
+                                         {:effective_type :type/Time}))))
+  (testing "Can render abbreviated date styles when no other style data is explicitly set. (#27020)"
+    (is (= "Jul 16, 2020"
+           (datetime/format-temporal-str "UTC" now
+                                         {:field_ref [:column_name "created_at"]
+                                          :effective_type :type/Date}
+                                         {::mb.viz/column-settings
+                                          {{::mb.viz/column-name "created_at"}
+                                           {::mb.viz/date-abbreviate true}}})))))
