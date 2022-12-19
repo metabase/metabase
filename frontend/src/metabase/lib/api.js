@@ -153,58 +153,43 @@ export class Api extends EventEmitter {
   }
 
   // TODO Atte Keinänen 6/26/17: Replacing this with isomorphic-fetch could simplify the implementation
-  _makeRequest(method, url, headers, body, data, options) {
-    return new Promise((resolve, reject) => {
-      let isCancelled = false;
-      const xhr = new XMLHttpRequest();
-      xhr.open(method, this.basename + url);
-      for (const headerName in headers) {
-        xhr.setRequestHeader(headerName, headers[headerName]);
-      }
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState === XMLHttpRequest.DONE) {
-          // getResponseHeader() is case-insensitive
-          const antiCsrfToken = xhr.getResponseHeader(ANTI_CSRF_HEADER);
-          if (antiCsrfToken) {
-            ANTI_CSRF_TOKEN = antiCsrfToken;
-          }
+  async _makeRequest(method, url, headers, requestBody, data, options) {
+    const controller = new AbortController();
+    options.cancelled?.then(() => controller.abort());
 
-          let body = xhr.responseText;
-          if (options.json) {
-            try {
-              body = JSON.parse(body);
-            } catch (e) {}
-          }
-          let status = xhr.status;
-          if (status === 202 && body && body._status > 0) {
-            status = body._status;
-          }
-          if (status >= 200 && status <= 299) {
-            if (options.transformResponse) {
-              body = options.transformResponse(body, { data });
-            }
-            resolve(body);
-          } else {
-            reject({
-              status: status,
-              data: body,
-              isCancelled: isCancelled,
-            });
-          }
-          if (!options.noEvent) {
-            this.emit(status, url);
-          }
-        }
-      };
-      xhr.send(body);
-
-      if (options.cancelled) {
-        options.cancelled.then(() => {
-          isCancelled = true;
-          xhr.abort();
-        });
-      }
+    const request = new Request(this.basename + url, {
+      method,
+      headers,
+      body: requestBody,
+      signal: controller.signal,
     });
+
+    const response = await fetch(request);
+    const antiCsrfToken = response.headers.get(ANTI_CSRF_HEADER);
+    if (antiCsrfToken) {
+      ANTI_CSRF_TOKEN = antiCsrfToken;
+    }
+
+    let body = options.json ? await response.json() : await response.text();
+    let status = response.status;
+    if (status === 202 && body && body._status > 0) {
+      status = body._status;
+    }
+    if (!options.noEvent) {
+      this.emit(status, url);
+    }
+    if (status >= 200 && status <= 299) {
+      if (options.transformResponse) {
+        body = options.transformResponse(body, { data });
+      }
+      return body;
+    } else {
+      throw {
+        status: status,
+        data: body,
+        isCancelled: controller.signal.aborted,
+      };
+    }
   }
 }
 
