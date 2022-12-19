@@ -346,7 +346,7 @@
 
 ;;; --- PERCENTILE AGGREGATIONS WITH USE OF WINDOW FUNCTION ----------------------------------------------------------
 
-(deftest median-aggregation-test
+(deftest precentile-aggregations-median-test
   (mt/test-driver
    :sqlserver
    (testing "Use of mbql :median aggregation yields correct result rows"
@@ -360,7 +360,7 @@
        (is (= [[2 2.5] [3 2.0] [4 2.0]]
               (mt/rows result)))))))
 
-(deftest various-percentile-values-test
+(deftest precentile-aggregations-various-values-test
   (mt/test-driver
    :sqlserver
    (testing "Aggregation is computed correctly for various percentile values"
@@ -386,7 +386,7 @@
                                      #(u/round-to-decimals 6 %)
                                      #(u/round-to-decimals 6 %)])))))))
 
-(deftest percentile-aggregation-breakout-test
+(deftest percentile-aggregations-breakout-test
   (mt/test-driver
    :sqlserver
    (testing "Percentile aggregation without breakout yields correct results"
@@ -432,7 +432,7 @@
                    :order-by    [[:desc [:expression "user_id * product_id"]]]})
                  mt/rows)))))))
 
-(deftest percentile-aggregation-result-ordering-test
+(deftest percentile-aggregations-column-ordering-test
   (mt/test-driver
    :sqlserver
    (testing "Result columns are ordered correctly for query containing percentile aggregation"
@@ -446,7 +446,7 @@
                   :order-by    [[:asc $category_id]]})
                 mt/rows))))))
 
-(deftest duplicate-name-aggregations-test
+(deftest percentile-aggregations-duplicate-name-test
   (mt/test-driver
    :sqlserver
    (testing "Aggregations (including percentile) with duplicate name should return correct results"
@@ -502,7 +502,7 @@
                                      #(u/round-to-decimals 6 %) 
                                      #(u/round-to-decimals 6 %)]))))))))
 
-(deftest percentile-aggregation-as-source-test
+(deftest percentile-aggregations-as-source-test
   (mt/test-driver
    :sqlserver
    (testing "Query with percentile aggregation as source for other computation produces expected results"
@@ -575,8 +575,7 @@
                    :order-by    [[:asc $id]]})
                  mt/rows)))))))
 
-
-(deftest percentile-aggregation-card-test
+(deftest percentile-aggregations-card-test
   (mt/test-driver
    :sqlserver
    (mt/dataset
