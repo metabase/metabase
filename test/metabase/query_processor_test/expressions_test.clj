@@ -221,6 +221,10 @@
         (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
                (calculate-bird-scarcity [:/ 100.0 $count]))))
 
+    (testing "can we handle dividing by literal 0?"
+        (is (= [[nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil]]
+               (calculate-bird-scarcity [:/ $count 0]))))
+
     (testing "ok, what if we use multiple args to divide, and more than one is zero?"
         (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
                (calculate-bird-scarcity [:/ 100.0 $count $count]))))
