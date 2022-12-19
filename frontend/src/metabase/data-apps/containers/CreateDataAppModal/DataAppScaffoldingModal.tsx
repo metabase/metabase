@@ -5,11 +5,11 @@ import { push } from "react-router-redux";
 import type { LocationDescriptor } from "history";
 
 import Button from "metabase/core/components/Button";
-
 import {
   getResponseErrorMessage,
   GenericErrorResponse,
-} from "metabase/lib/errors";
+} from "metabase/core/utils/errors";
+
 import * as Urls from "metabase/lib/urls";
 
 import DataPicker, {
@@ -112,7 +112,7 @@ function DataAppScaffoldingModal({
       onChangeLocation(Urls.dataApp(dataApp));
     } catch (error) {
       const response = error as GenericErrorResponse;
-      setError(getResponseErrorMessage(response));
+      setError(getResponseErrorMessage(response) ?? t`An error occurred`);
     }
   }, [tableIds, onCreate, onChangeLocation, onClose]);
 

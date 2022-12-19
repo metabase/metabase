@@ -3,13 +3,12 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
-
-import { useDataPickerValue } from "metabase/containers/DataPicker";
-
 import {
   getResponseErrorMessage,
   GenericErrorResponse,
-} from "metabase/lib/errors";
+} from "metabase/core/utils/errors";
+
+import { useDataPickerValue } from "metabase/containers/DataPicker";
 
 import {
   scaffoldDataAppPages,
@@ -78,7 +77,7 @@ function ScaffoldDataAppPagesModal({
       onAdd(dataApp);
     } catch (error) {
       const response = error as GenericErrorResponse;
-      setError(getResponseErrorMessage(response));
+      setError(getResponseErrorMessage(response) ?? t`An error occurred`);
     }
   }, [dataAppId, tableIds, onAdd, onScaffold, onClose]);
 
