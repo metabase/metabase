@@ -6,7 +6,7 @@ import ItemPicker from "./ItemPicker";
 const ModelPicker = ({ value, onChange, ...props }) => (
   <ItemPicker
     {...props}
-    value={value === undefined ? undefined : { model: "page", id: value }}
+    value={value === undefined ? undefined : { model: "dataset", id: value }}
     onChange={page => onChange(page ? page.id : undefined)}
     models={["dataset"]}
   />

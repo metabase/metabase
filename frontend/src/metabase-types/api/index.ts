@@ -1,3 +1,5 @@
+export * from "./actions";
+export * from "./action-form-settings";
 export * from "./activity";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
@@ -24,6 +26,4 @@ export * from "./snippets";
 export * from "./table";
 export * from "./timeline";
 export * from "./user";
-export * from "./actions";
-export * from "./action-form-settings";
 export * from "./parameters";
