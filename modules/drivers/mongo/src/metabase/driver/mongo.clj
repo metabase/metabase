@@ -246,7 +246,8 @@
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
-(defmethod driver/database-supports? [:mongo :datetime-diff] [_ _ db]
+(defmethod driver/database-supports? [:mongo :datetime-diff]
+  [_driver _feature db]
   (-> (:dbms_version db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
