@@ -549,43 +549,47 @@
                     :unit      unit
                     :amount    amount}})
 
-(defmethod ->rvalue :datetime-diff [[_ x y unit]]
-  (do
-    (check-date-operations-supported)
+(defn- datetime-diff-helper [x y unit]
+  (case unit
+    :year
+    {$divide [(datetime-diff-helper x y :month) 12]}
+
+    :quarter
+    {$divide [(datetime-diff-helper x y :month) 3]}
+
+    :month
+    ;; dateDiff counts month boundaries not whole months, so we need to adjust
+    ;; if x<y but x>y in the month calendar then subtract one month
+    ;; if x>y but x<y in the month calendar then add one month
     (let [x (->rvalue x)
           y (->rvalue y)]
-      (case unit
-        :year
-        {$divide [(->rvalue [:datetime-diff x y :month]) 12]}
+      {$add [{"$dateDiff" {:startDate x, :endDate y, :unit "month"}}
+             {:$switch {:branches [{:case {:$and [{$lt [x y]}
+                                                  {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                    :then -1}
+                                   {:case {:$and [{$gt [x y]}
+                                                  {$lt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                    :then 1}]
+                        :default  0}}]})
 
-        :quarter
-        {$divide [(->rvalue [:datetime-diff x y :month]) 3]}
+    :week
+    {$divide [(datetime-diff-helper x y :day) 7]}
 
-        :week
-        {$divide [(->rvalue [:datetime-diff x y :day]) 7]}
+    (:day :minute :second)
+    (let [x (->rvalue x)
+          y (->rvalue y)]
+      {"$dateDiff" {:startDate x, :endDate y, :unit unit}})
 
-        :month
-        ;; dateDiff counts month boundaries not whole months, so we need to adjust
-        ;; if x<y but x>y in the month calendar then subtract one month
-        ;; if x>y but x<y in the month calendar then add one month
-        {$add [{"$dateDiff" {:startDate x :endDate y :unit "month"}}
-               {:$switch {:branches [{:case {:$and [{$lt [x y]}
-                                                    {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
-                                      :then -1}
-                                     {:case {:$and [{$gt [x y]}
-                                                    {$lt [{$dayOfMonth x} {$dayOfMonth y}]}]}
-                                      :then 1}]
-                           :default  0}}]}
+    :hour
+    ;; mongo's dateDiff with hour isn't accurate to the millisecond
+    (let [x (->rvalue x)
+          y (->rvalue y)]
+      {$divide [{"$dateDiff" {:startDate x, :endDate y, :unit "millisecond"}}
+                3600000]})))
 
-        (:day :minute :second)
-        {"$dateDiff" {:startDate x :endDate y :unit unit}}
-
-        :hour
-        ;; mongo's dateDiff with hour isn't accurate to the millisecond
-        {$divide [{"$dateDiff" {:startDate x
-                                :endDate   y
-                                :unit      "millisecond"}}
-                  3600000]}))))
+(defmethod ->rvalue :datetime-diff [[_ x y unit]]
+  (check-date-operations-supported)
+  (datetime-diff-helper x y unit))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
