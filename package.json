@@ -15,7 +15,6 @@
     "@react-oauth/google": "^0.4.0",
     "@snowplow/browser-tracker": "^3.1.6",
     "@tippyjs/react": "^4.2.6",
-    "@types/react-beautiful-dnd": "^13.1.2",
     "@visx/axis": "1.8.0",
     "@visx/clip-path": "^2.1.0",
     "@visx/event": "^2.6.0",
