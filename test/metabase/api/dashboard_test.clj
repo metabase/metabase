@@ -1730,13 +1730,13 @@
                                                                   :id             "_STATIC_CATEGORY_",
                                                                   :type           "category",
                                                                   :source_type    "static-list"
-                                                                  :source_options {"values" ["African" "American" "Asian"]}}
+                                                                  :source_options {:values ["African" "American" "Asian"]}}
                                                                  {:name           "Static Category label",
                                                                   :slug           "static_category_label"
                                                                   :id             "_STATIC_CATEGORY_LABEL_",
                                                                   :type           "category",
                                                                   :source_type    "static-list"
-                                                                  :source_options {"values" [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}]}
+                                                                  :source_options {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}]}
                                                    dashboard-values)]
                    Card          [card {:database_id   (mt/id)
                                         :table_id      (mt/id :venues)
