@@ -263,7 +263,6 @@ describe("scenarios > organization > timelines > question", () => {
         timeline: { name: "Releases" },
         events: [
           { name: "RC1", timestamp: "2018-10-20T00:00:00Z", icon: "cloud" },
-          { name: "RC2", timestamp: "2019-10-20T00:00:00Z", icon: "balloons" },
         ],
       });
 
@@ -271,7 +270,6 @@ describe("scenarios > organization > timelines > question", () => {
         timeline: { name: "Timeline for collection", collection_id: 1 },
         events: [
           { name: "TC1", timestamp: "2016-05-20T00:00:00Z", icon: "warning" },
-          { name: "TC2", timestamp: "2017-05-20T00:00:00Z", icon: "mail" },
         ],
       });
 
@@ -279,54 +277,46 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.findByText("Visualization").should("be.visible");
       cy.findByLabelText("cloud icon").should("be.visible");
-      cy.findByLabelText("balloons icon").should("be.visible");
 
       // should hide individual events from chart if hidden in sidebar
       cy.icon("calendar").click();
       cy.findByText("Releases").click();
       toggleEventVisibility("RC1");
-      toggleEventVisibility("RC2");
 
-      cy.icon("calendar").click();
-      cy.findByLabelText("cloud icon").should("not.exist");
-      cy.findByLabelText("balloons icon").should("not.exist");
+      cy.get(".x.axis").within(() => {
+        cy.findByLabelText("cloud icon").should("not.exist");
+      });
 
       // should show individual events in chart again
-      cy.icon("calendar").click();
-      cy.findByText("Releases").click();
       toggleEventVisibility("RC1");
-      toggleEventVisibility("RC2");
 
-      cy.icon("calendar").click();
-      cy.findByLabelText("balloons icon").should("be.visible");
-      cy.findByLabelText("cloud icon").should("be.visible");
+      cy.get(".x.axis").within(() => {
+        cy.findByLabelText("cloud icon").should("be.visible");
+      });
 
       // should show a newly created event
-      cy.icon("calendar").click();
       cy.button("Add an event").click();
-      cy.findByLabelText("Event name").type("RC3");
+      cy.findByLabelText("Event name").type("RC2");
       cy.findByLabelText("Date").type("10/20/2018");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
-      cy.icon("calendar").click();
-      cy.findByLabelText("star icon").should("be.visible");
+      cy.get(".x.axis").within(() => {
+        cy.findByLabelText("star icon").should("be.visible");
+      });
 
       // should then hide the newly created event
-      cy.icon("calendar").click();
-      cy.findByText("Releases").click();
-      toggleEventVisibility("RC3");
+      toggleEventVisibility("RC2");
 
-      cy.icon("calendar").click();
-      cy.findByLabelText("star icon").should("not.exist");
-
-      cy.icon("calendar").click();
+      cy.get(".x.axis").within(() => {
+        cy.findByLabelText("star icon").should("not.exist");
+      });
 
       // should initialize events in a hidden timelime
       // with event checkboxes disabled and unchecked
       cy.findByText("Timeline for collection").click();
 
-      cy.findByText("TC2")
+      cy.findByText("TC1")
         .closest("[aria-label=Timeline event card]")
         .within(() => {
           cy.findByRole("checkbox").should("be.disabled");
@@ -339,20 +329,17 @@ describe("scenarios > organization > timelines > question", () => {
         .closest("[aria-label=Timeline card header]")
         .within(() => cy.findByRole("checkbox").click());
 
-      cy.icon("calendar").click();
-      cy.findByLabelText("warning icon").should("be.visible");
-      cy.findByLabelText("mail icon").should("be.visible");
+      cy.get(".x.axis").within(() => {
+        cy.findByLabelText("warning icon").should("be.visible");
+      });
 
       // events whose timeline was invisible on page load
       // should be hideable once their timelines are visible
-      cy.icon("calendar").click();
-      cy.findByText("Timeline for collection").click();
       toggleEventVisibility("TC1");
-      toggleEventVisibility("TC2");
 
-      cy.icon("calendar").click();
-      cy.findByLabelText("warning icon").should("not.exist");
-      cy.findByLabelText("mail icon").should("not.exist");
+      cy.get(".x.axis").within(() => {
+        cy.findByLabelText("warning icon").should("not.exist");
+      });
     });
   });
 
