@@ -781,11 +781,10 @@
                          {"tz,dt" [:datetime-diff $dt_tz $dt :second]
                           "tz,d"  [:datetime-diff $dt_tz $d :second]}})
                       (mt/formatted-rows [int int])
-                      first))))))))
-
-(deftest athena-datetime-diff-mixed-types-test
-  ;; This test mirrors [[datetime-diff-mixed-types-test]] for Athena.
-  ;; Athena supports the `timestamp with time zone` type in query expressions but not at rest.
+                      first)))))))
+  ;; Athena needs special treatment. It supports the `timestamp with time zone` type in query expressions
+  ;; but not at rest. So we create a native query that returns a `timestamp with time zone` type and then
+  ;; run another query with `datetime-diff` against it.
   (mt/test-driver :athena
     (testing "datetime-diff can compare `date`, `timestamp`, and `timestamp with time zone` args with Athena"
       (mt/with-temp*
@@ -839,10 +838,10 @@
          (t/format :iso-offset-date-time b)]))]]) ; b_dt_tz_text
 
 (mt/defdataset diff-time-zones-athena-cases
-  ;; This dataset contains the same set of values as [[diff-time-zones-cases]], but without
-  ;; the time zones. We need it because Athena supports the `timestamp with time zone`
-  ;; type in query expressions but not at rest. The `dt` column, which has the `timestamp`
-  ;; type, is converted to a `timestamp with time zone` in the test queries.
+  ;; This dataset contains the same set of values as [[diff-time-zones-cases]], but without the time zones.
+  ;; It is needed to test `datetime-diff` with Athena, since Athena supports `timestamp with time zone`
+  ;; in query expressions but not in a table. [[diff-time-zones-athena-cases-query]] uses this dataset
+  ;; to recreate [[diff-time-zones-cases]] for Athena as a query.
   [["times"
     [{:field-name "dt",      :base-type :type/DateTime}
      {:field-name "dt_text", :base-type :type/Text}]
@@ -856,18 +855,19 @@
       [dt (u.date/format dt)])]])
 
 (def diff-time-zones-athena-cases-query
-  ;; This query recreates [[diff-time-zones-cases]] on an Athena database from
-  ;; [[diff-time-zones-athena-cases]].
+  ;; This query recreates [[diff-time-zones-cases]] on for Athena from [[diff-time-zones-athena-cases]].
   (str/join "\n"
             ["with x as ("
              "select"
              "  with_timezone(dt, 'UTC') as dt"
              "  , concat(dt_text, 'Z') as dt_text" ; e.g. `2022-10-02T00:00:00Z`
+             "  , 'UTC' as time_zone"
              "from diff_time_zones_athena_cases.times"
              "union"
              "select"
              "  with_timezone(dt, 'Africa/Lagos') as dt"
              "  , concat(dt_text, '+01:00') as dt_text" ; e.g. `2022-10-02T00:00:00+01:00`
+             "  , 'Africa/Lagos' as time_zone"
              "from diff_time_zones_athena_cases.times"
              ")"
              "select"
@@ -876,7 +876,7 @@
              "  , b.dt as b_dt_tz"
              "  , b.dt_text as b_dt_tz_text"
              "from x a"
-             "join x b on a.dt < b.dt"]))
+             "join x b on a.dt < b.dt and a.time_zone <> b.time_zone"]))
 
 (defn run-datetime-diff-time-zone-tests
   "Runs all the test cases for datetime-diff clauses with :type/DateTimeWithTZ types.
@@ -892,11 +892,11 @@
   (testing "a day"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
       (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
-                    (diffs "2022-10-02T01:00:00+01:00"     ; 2022-10-01T23:00:00-01:00 <- datetime in report-timezone offset
-                           "2022-10-03T00:00:00Z"))))      ; 2022-10-02T23:00:00-01:00
+                    (diffs "2022-10-02T01:00:00+01:00"  ; 2022-10-01T23:00:00-01:00 <- datetime in report-timezone offset
+                           "2022-10-03T00:00:00Z"))))   ; 2022-10-02T23:00:00-01:00
     (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
       (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
-                    (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00Z
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
                            "2022-10-03T00:00:00Z"))))) ; 2022-10-03T00:00:00Z
   (testing "hour under a day"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
@@ -923,11 +923,11 @@
   (testing "week"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
       (is (partial= {:hour 168 :day 7 :week 1}
-                    (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-01T23:00:00-01:00
-                           "2022-10-09T00:00:00Z"))))       ; 2022-10-08T23:00:00-01:00
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-01T23:00:00-01:00
+                           "2022-10-09T00:00:00Z"))))  ; 2022-10-08T23:00:00-01:00
     (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
       (is (partial= {:hour 168 :day 7 :week 1}
-                    (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00Z
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
                            "2022-10-09T00:00:00Z"))))) ; 2022-10-09T00:00:00Z
   (testing "hour under a month"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
@@ -943,11 +943,11 @@
   (testing "month"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
       (is (partial= {:hour 744 :day 31 :month 1 :year 0}
-                    (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-01T23:00:00-01:00
-                           "2022-11-02T00:00:00Z"))))       ; 2022-11-01T23:00:00-01:00
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-01T23:00:00-01:00
+                           "2022-11-02T00:00:00Z"))))  ; 2022-11-01T23:00:00-01:00
     (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
       (is (partial= {:hour 744 :day 31 :month 1 :year 0}
-                    (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00Z
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
                            "2022-11-02T00:00:00Z"))))) ; 2022-11-02T00:00:00Z
   (testing "hour under a quarter"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
@@ -963,11 +963,11 @@
   (testing "quarter"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
       (is (partial= {:month 3 :quarter 1}
-                    (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-01T23:00:00-01:00
-                           "2023-01-02T00:00:00Z"))))       ; 2023-01-01T23:00:00-01:00
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-01T23:00:00-01:00
+                           "2023-01-02T00:00:00Z"))))  ; 2023-01-01T23:00:00-01:00
     (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
       (is (partial= {:month 3 :quarter 1}
-                    (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00Z
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
                            "2023-01-02T00:00:00Z"))))) ; 2023-01-02T00:00:00Z
   (testing "year"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
@@ -976,7 +976,7 @@
                            "2023-10-02T00:00:00Z"))))      ; 2023-10-01T23:00:00-01:00
     (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
       (is (partial= {:day 365, :week 52, :month 12, :year 1}
-                    (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00Z
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
                            "2023-10-02T00:00:00Z"))))) ; 2023-10-02T00:00:00Z
   (testing "hour under a year"
     (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
@@ -1004,10 +1004,10 @@
                            (mt/formatted-rows (repeat (count units) int))
                            first
                            (zipmap units))))]
-       (run-datetime-diff-time-zone-tests diffs)))))
-
-(deftest datetime-diff-time-zones-athena-test
-  ;; This is the same as [[datetime-diff-time-zones-test]] but for Athena.
+        (run-datetime-diff-time-zone-tests diffs))))
+  ;; Athena needs special treatment. It supports the `timestamp with time zone` type in query expressions
+  ;; but not at rest. Here we create a native query that returns a `timestamp with time zone` type and then
+  ;; run another query with `datetime-diff` against it.
   (mt/test-driver :athena
     (mt/dataset diff-time-zones-athena-cases
       (mt/with-temp* [Card [card (qp.test-util/card-with-source-metadata-for-query
