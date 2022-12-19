@@ -70,12 +70,8 @@ const TimelineCard = ({
   const handleToggleEventSelected = useCallback(
     (event: TimelineEvent, isSelected: boolean) => {
       onToggleEventSelected?.(event, isSelected);
-
-      if (isSelected && !isVisible) {
-        onToggleTimeline?.(timeline, true);
-      }
     },
-    [timeline, isVisible, onToggleTimeline, onToggleEventSelected],
+    [onToggleEventSelected],
   );
 
   useEffect(() => {
