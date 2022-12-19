@@ -225,7 +225,7 @@
                 (db/select-one 'ParameterCard :card_id card-id)))))
 
     (testing "Adding a card_id creates a new ParameterCard"
-      (tt/with-temp* [Card [{card-id :id}]
+      (tt/with-temp* [Card      [{card-id :id}]
                       Dashboard [{dashboard-id :id}
                                  {:parameters [default-params]}]]
         (is (nil? (db/select-one 'ParameterCard :card_id card-id)))
@@ -235,6 +235,7 @@
                  :parameterized_object_id   dashboard-id
                  :parameter_id              "_CATEGORY_NAME_"}
                 (db/select-one 'ParameterCard :card_id card-id)))))
+
     (testing "Removing a card_id deletes old ParameterCards"
       (tt/with-temp* [Card      [{card-id :id}]
                       Dashboard [{dashboard-id :id}
@@ -242,7 +243,6 @@
         ;; same setup as earlier test, we know the ParameterCard exists right now
         (db/delete! Dashboard :id dashboard-id)
         (is (nil? (db/select-one 'ParameterCard :card_id card-id)))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |

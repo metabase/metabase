@@ -1,23 +1,74 @@
 (ns metabase.models.parameter-card
   (:require
-   [clojure.string :as str]
-   [metabase.query-processor :as qp]
-   [metabase.search.util :as search]
-   [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.models :as models]))
-
+    [clojure.string :as str]
+    [metabase.query-processor :as qp]
+    [metabase.search.util :as search]
+    [metabase.util :as u]
+    [metabase.util.i18n :refer [tru]]
+    [toucan.db :as db]
+    [toucan.models :as models]))
 
 (models/defmodel ParameterCard :parameter_card)
+
+(defonce ^{:doc "Set of valid parameterized_object_type for a ParameterCard"}
+  valid-parameterized_object_type #{"dashboard"})
+
+(defn- validate-parameterized-object-type
+  [{:keys [parameterized_object_type] :as _parameter-card}]
+  (when-not (valid-parameterized_object_type parameterized_object_type)
+    (throw (ex-info (tru "invalid parameterized_object_type")
+                    {:allowed-types valid-parameterized_object_type}))))
+
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+
+(defn- pre-insert
+  [pc]
+  (u/prog1 pc
+    (validate-parameterized-object-type pc)))
+
+(defn- pre-update
+  [pc]
+  (u/prog1 pc
+    (validate-parameterized-object-type pc)))
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ParameterCard)
                  models/IModel
                  (merge models/IModelDefaults
                         {:properties (constantly {:timestamped? true})
-                         :types      (constantly {:parameterized_object_type :keyword})}))
+                         :types      (constantly {:parameterized_object_type :keyword})
+                         :pre-insert pre-insert
+                         :pre-update pre-update}))
+
+(defn delete-all-for-parameterized-object!
+  "Delete all ParameterCard for a give Parameterized Object."
+  [parameterized-object-type parameterized-object-id]
+  (db/delete! ParameterCard
+              :parameterized_object_type parameterized-object-type
+              :parameterized_object_id  parameterized-object-id))
+
+(defn upsert-or-delete-for-dashboard!
+  "Create, update, or delete appropriate ParameterCards for each parameter in the dashboard."
+  [{dashboard-id :id parameters :parameters :as _dashboard}]
+  (let [new-parameter-cards   (for [{:keys [source_type source_options id]} parameters
+                                    :when (and (= source_type "card") id (:card_id source_options))]
+                                {:parameterized_object_id   dashboard-id
+                                 :parameterized_object_type "dashboard"
+                                 :parameter_id              id
+                                 :card_id                   (:card_id source_options)})]
+    (db/transaction
+      (delete-all-for-parameterized-object! "dashboard" dashboard-id)
+      ;; note that `insert-many!` doesn't call post-select, so if it's must then we need to switch
+      ;; to do multiple single-insert
+      (db/insert-many! ParameterCard new-parameter-cards))))
+
+;;; ----------------------------------------------- param values -----------------------------------------------
 
 (defn query-matches
-  "Filter the values according to the `search-term`. If `search-term` is blank, return all the values without filtering"
+  "Filter the values according to the `search-term`.
+
+  Values could have 2 shapes
+  - [value1, value2]
+  - [[value1, label1], [value2, label2]] - we search using label in this case"
   [search-term values]
   (if (str/blank? search-term)
     values
@@ -49,36 +100,3 @@
         (map first)
         (query-matches search-term))
    :has_more_values false}) ;; TODO: this should be more clever
-
-(defn- upsert-for-dashboard!
-  [dashboard-id parameters]
-  (doseq [{:keys [source_options id]} parameters]
-    (let [card-id    (:card_id source_options)
-          conditions {:parameterized_object_id   dashboard-id
-                      :parameterized_object_type "dashboard"
-                      :parameter_id              id}]
-      (or (db/update-where! ParameterCard conditions :card_id card-id)
-          (db/insert! ParameterCard (merge conditions {:card_id card-id}))))))
-
-(defn delete-for-dashboard!
-  "Deletes any lingering ParameterCards associated with the `dashboard` and NOT listed in the optional
-  `parameter-ids-still-in-use`"
-  ([dashboard-id]
-   (delete-for-dashboard! dashboard-id []))
-  ([dashboard-id parameter-ids-still-in-use]
-   (db/delete! ParameterCard
-     :parameterized_object_type "dashboard"
-     :parameterized_object_id   dashboard-id
-     (if (empty? parameter-ids-still-in-use)
-       {}
-       {:where [:not-in :parameter_id parameter-ids-still-in-use]}))))
-
-(defn upsert-or-delete-for-dashboard!
-  "Create, update, or delete appropriate ParameterCards for each parameter in the dashboard"
-  [{dashboard-id :id parameters :parameters}]
-  (let [upsertable?           (fn [{:keys [source_type source_options id]}] (and source_type id (:card_id source_options)
-                                                                                 (= source_type "card")))
-        upsertable-parameters (filter upsertable? parameters)]
-
-    (upsert-for-dashboard! dashboard-id upsertable-parameters)
-    (delete-for-dashboard! dashboard-id (map :id upsertable-parameters))))

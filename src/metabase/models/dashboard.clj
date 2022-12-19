@@ -73,7 +73,7 @@
 
 (defn- pre-delete [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
-    (parameter-card/delete-for-dashboard! dashboard-id)
+    (parameter-card/delete-all-for-parameterized-object! "dashboard" dashboard-id)
     (db/delete! 'Revision :model "Dashboard" :model_id dashboard-id)))
 
 (defn- pre-insert [dashboard]
