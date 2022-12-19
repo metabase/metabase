@@ -1,5 +1,5 @@
 import React from "react";
-import cx from "classnames";
+import { mixpanel } from "metabase/plugins/mixpanel";
 import { AdminNavLink, ExternalNavLink } from "./AdminNavItem.styled";
 
 interface AdminNavItem {
@@ -10,11 +10,11 @@ interface AdminNavItem {
 }
 
 export const AdminNavItem = ({ name, path, currentPath, id }: AdminNavItem) => {
-  console.log(id);
   if (id === "people") {
     return (
       <li>
         <a
+          onClick={() => mixpanel.trackEvent(mixpanel.events.access_people)}
           rel="noreferrer"
           target="_blank"
           href="https://app.dadosfera.ai/settings/access-management?from=metabase"

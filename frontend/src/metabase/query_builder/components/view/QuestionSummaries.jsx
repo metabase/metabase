@@ -3,6 +3,7 @@ import React from "react";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { mixpanel } from "metabase/plugins/mixpanel";
 
 import { color } from "metabase/lib/colors";
 import ViewPill from "./ViewPill";
@@ -42,8 +43,10 @@ export function QuestionSummarizeWidget({
       labelBreakpoint="sm"
       onClick={async () => {
         if (isShowingSummarySidebar) {
+          mixpanel.trackEvent(mixpanel.events.summarize.close);
           onCloseSummary();
         } else {
+          mixpanel.trackEvent(mixpanel.events.summarize.open);
           onEditSummary();
         }
       }}

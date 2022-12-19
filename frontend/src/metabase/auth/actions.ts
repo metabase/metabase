@@ -10,6 +10,7 @@ import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUser } from "metabase/selectors/user";
 import { State } from "metabase-types/store";
+import { mixpanel } from "metabase/plugins/mixpanel";
 import {
   trackLogin,
   trackLoginGoogle,
@@ -46,6 +47,10 @@ export const login = createThunkAction(
   (data: LoginData, redirectUrl = "/") =>
     async (dispatch: any) => {
       await SessionApi.create(data);
+      mixpanel.trackEvent(mixpanel.events.login, data.username);
+      if (window) {
+        localStorage.setItem(mixpanel.localStorageKey, data.username);
+      }
       await dispatch(refreshSession());
       trackLogin();
 
@@ -70,6 +75,9 @@ export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createThunkAction(LOGOUT, (redirectUrl: string) => {
   return async (dispatch: any) => {
     await deleteSession();
+    if (window) {
+      localStorage.removeItem(mixpanel.localStorageKey);
+    }
     await dispatch(clearCurrentUser());
     await dispatch(refreshLocale());
     trackLogout();

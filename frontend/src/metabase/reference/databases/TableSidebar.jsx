@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
+import { mixpanel } from "metabase/plugins/mixpanel";
 import MetabaseSettings from "metabase/lib/settings";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -46,6 +47,7 @@ const TableSidebar = ({ database, table, style, className }) => (
       />
       {MetabaseSettings.get("enable-xrays") && (
         <SidebarItem
+          onClick={() => mixpanel.trackEvent(mixpanel.events.xray)}
           key={`/auto/dashboard/table/${table.id}`}
           href={`/auto/dashboard/table/${table.id}`}
           icon="bolt"

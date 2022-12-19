@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
+import { mixpanel } from "metabase/plugins/mixpanel";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
@@ -127,6 +128,7 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
     <Fragment>
       {xraysEnabled && (
         <TableActionLink
+          onClick={() => mixpanel.trackEvent(mixpanel.events.xray)}
           to={`/auto/dashboard/table/${tableId}`}
           data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
         >
