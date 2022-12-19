@@ -45,6 +45,7 @@ export const mixpanel = {
     model_open: "metabase_model_open",
     create_dashboard: "metabase_create_dashboard",
     create_collection: "metabase_create_collection",
+    access_people: "metabase_access_people",
   },
   localStorageKey: "metabase-user",
 };
