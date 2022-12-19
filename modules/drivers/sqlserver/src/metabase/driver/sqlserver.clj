@@ -728,7 +728,7 @@
                                           (mbql.u/match :field)
                                           distinct
                                           vec))
-    (assoc under-construction ::partition-by-raw (:breakout original-query))))
+    (assoc under-construction ::partition-by (:breakout original-query))))
 
 (defn- aggregation->field [aggregation]
   ;; Generate :field clause with name from aggregation options.
@@ -791,21 +791,6 @@
   (let [modified (rewrite-percentile-aggregations--recursive original-query)]
     (cond-> modified (not= modified original-query) add/add-alias-info)))
 
-(defn- breakout-fields-for-transformed-aggregation [query]
-  (let [normalized-partition-by-fields (->> (get query ::partition-by-raw)
-                                            ;; in case where ::partition-fields contain field with nil field-options
-                                            ;; eg. [:field 100 nil] after rewrite-percentile-aggregations, until field
-                                            ;; gets here, into translation code, it is modified to [:field 100] - it
-                                            ;; is missing field-options completely.
-                                            ;; I suspect that call to mbql.u/replace somwhere in add-alias-info 
-                                            ;; is responsible for this, but I'm not sure yet.
-                                            ;; Hence destructuring in following arg to get missing nil
-                                            #_{:clj-kondo/ignore true :eastwood/ignore true}
-                                            (map (fn [[f1 f2 f3]] (add/normalize-clause [f1 f2 f3])))
-                                            set)]
-    (filter #(normalized-partition-by-fields (add/normalize-clause %)) (:fields query))))
-
-
 (defmethod sql.qp/->honeysql [:sqlserver :percentile]
   [driver [_ field p]]
   ;; example sql:
@@ -813,16 +798,10 @@
   ;;   within group (order by "dbo"."products"."price") 
   ;;   over (partition by "dbo"."products"."vendor")
   ;; over clause is :breakout of original query
-  ;; within group is field to be aggregated
-  (swap! cici conj sql.qp/*inner-query*)
-  (let [;;WIP
-        ;; partition-by-fields (filter #(get-in % [2 ::partition-by]) (:breakout sql.qp/*inner-query*))
-        ;; partition-by-fields (breakout-fields-for-transformed-aggregation sql.qp/*inner-query*)
-        partition-by-fields (::partition-by-raw sql.qp/*inner-query*)
-        ]
+  ;; within group is field or expression to be aggregated to be aggregated
     (hsql/call :window-percentile-cont
                (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)
-               (map (partial sql.qp/->honeysql driver) partition-by-fields))))
+             (map (partial sql.qp/->honeysql driver) (::partition-by sql.qp/*inner-query*))))
 
 ;; tmp for debug / test purposes
 (defmethod driver/mbql->native :sqlserver
