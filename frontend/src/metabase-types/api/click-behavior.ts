@@ -27,10 +27,7 @@ export type ClickBehaviorType =
   | "crossfilter"
   | "link";
 
-export type CustomDestinationClickBehaviorEntity =
-  | "dashboard"
-  | "question"
-  | "page";
+export type CustomDestinationClickBehaviorEntity = "dashboard" | "question";
 
 export type CustomDestinationClickBehaviorLinkType =
   | CustomDestinationClickBehaviorEntity

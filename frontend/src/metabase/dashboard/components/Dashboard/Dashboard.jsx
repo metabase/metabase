@@ -264,7 +264,6 @@ class Dashboard extends Component {
               <HeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
-                isDataApp={false}
               >
                 <DashboardHeader
                   {...this.props}
@@ -314,7 +313,6 @@ class Dashboard extends Component {
                     />
                   ) : (
                     <DashboardEmptyState
-                      isDataApp={false}
                       isNightMode={shouldRenderAsNightMode}
                     />
                   )}
