@@ -312,6 +312,59 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.icon("calendar").click();
       cy.findByLabelText("star icon").should("not.exist");
+
+      cy.createTimelineWithEvents({
+        timeline: { name: "Timeline for collection", collection_id: 1 },
+        events: [
+          { name: "TC1", timestamp: "2016-05-20T00:00:00Z", icon: "cloud" },
+          { name: "TC2", timestamp: "2017-05-20T00:00:00Z", icon: "balloons" },
+        ],
+      });
+
+      // Should work with multiple timelines
+      visitQuestion(3);
+
+      cy.findByText("Visualization").should("be.visible");
+
+      cy.icon("calendar").click();
+
+      cy.findByText("Timeline for collection").click();
+
+      cy.findByText("TC2")
+        .closest("[aria-label=Timeline event card]")
+        .within(() => {
+          cy.findByRole("checkbox").should("be.disabled");
+          cy.findByRole("checkbox").should("not.be.checked");
+        });
+
+      // Making an invisible timeline visible
+      // should make its events automatically visible
+      cy.findByText("Timeline for collection")
+        .closest("[aria-label=Timeline card header]")
+        .within(() => cy.findByRole("checkbox").click());
+
+      cy.icon("calendar").click();
+      cy.findAllByLabelText("cloud icon").should("have.length", 2);
+      cy.findAllByLabelText("balloons icon").should("have.length", 2);
+
+      // Events whose timeline was invisible on load
+      // should be hideable once their timelines are visible
+      cy.icon("calendar").click();
+      cy.findByText("Timeline for collection").click();
+      cy.findByText("TC1")
+        .closest("[aria-label=Timeline event card]")
+        .within(() => {
+          cy.findByRole("checkbox").click();
+        });
+      cy.findByText("TC2")
+        .closest("[aria-label=Timeline event card]")
+        .within(() => {
+          cy.findByRole("checkbox").click();
+        });
+
+      cy.icon("calendar").click();
+      cy.findAllByLabelText("cloud icon").should("have.length", 1);
+      cy.findAllByLabelText("balloons icon").should("have.length", 1);
     });
   });
 
