@@ -557,17 +557,27 @@
   ;; this function is not idempotent, as said in it's defmulti, because of use
   ;; of nest-expressions and rewrite-percentile-aggregations
 
+  ;; TODO CLEAN THIS UP
   ;; in following expression:
   ;; 1. [[rewrite-percentile-aggregations]] must come after nest-expressions,
   ;;    because rewrite functions are adjusted to work on query of which expressions
   ;;    were already nested.
   ;; 2. add-alias-info must come after rewrite function because rewrite function
   ;;    creates new fields to which alias info should be added
+  ;;
+  ;; prev comments probably do not hold by now
+  ;;
+  ;; according to test results add-alias-info must be called prior to nest-expressions
+  ;;
+  ;; rewrite-percentile-aggregations is calling it again only in case query was rewritten again
+  ;;
+  ;; TODO maybe add expressions test where expression / aggregation / field have a same name ???
   (-> inner-query
+      add/add-alias-info
       nest-query/nest-expressions
       rewrite-percentile-aggregations
-      add/add-alias-info
       fix-order-bys))
+
 ;; In order to support certain native queries that might return results at the end, we have to use only prepared
 ;; statements (see #9940)
 (defmethod sql-jdbc.execute/statement-supported? :sqlserver [_]
@@ -728,7 +738,9 @@
   [:field (-> aggregation (nth 2) :name) {:base-type :type/Float}])
 
 ;; TODO rewrite
-(defn rewrite-percentile-aggregations-impl [original-inner]
+(defn rewrite-percentile-aggregations--current-query [original-inner]
+  
+  ;; TODO update comments, they're probably lying now
   
   ;; WHAT THIS DOES
   ;; Rewrite query to simulate aggregate percentile with use of percentile window function
@@ -768,12 +780,17 @@
                   ;; 3.
                   (assoc :source-query (percentile-source-query original-inner)))})
 
-(defn rewrite-percentile-aggregations [original-query]
+(defn rewrite-percentile-aggregations--recursive [original-query]
   ;; recursively apply [[rewrite-percentile-aggregations-impl]] in chain of source queries from bottom up
   ;; and also in original-query
   (cond-> original-query
-    (-> original-query :source-query map?) (update :source-query rewrite-percentile-aggregations)
-    (percentile-query? original-query) rewrite-percentile-aggregations-impl))
+    (-> original-query :source-query map?) (update :source-query rewrite-percentile-aggregations--recursive)
+    (percentile-query? original-query) rewrite-percentile-aggregations--current-query))
+
+(defn rewrite-percentile-aggregations [original-query]
+  ;; original-query is not inner
+  (let [modified (rewrite-percentile-aggregations--recursive original-query)]
+    (cond-> modified (not= modified original-query) add/add-alias-info)))
 
 (defn- breakout-fields-for-transformed-aggregation [query percentile-field]
   (let [normalized-partition-by-fields (->> (get-in percentile-field [2 ::partition-fields])
