@@ -49,6 +49,10 @@ describe("scenarios > dashboard > filters", () => {
     cy.findByText("Text").click();
     popover().within(() => {
       cy.findByText("Apple").should("be.visible");
+      cy.findByText("Google").should("be.visible");
+
+      cy.findByPlaceholderText("Search the list").type("Goo");
+      cy.findByText("Apple").should("not.exist");
       cy.findByText("Google").click();
       cy.button("Add filter").click();
     });
