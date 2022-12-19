@@ -364,8 +364,8 @@
 (def ParameterSourceOptions
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
-  {(s/optional-key "values") [s/Any]
-   (s/optional-key "card_id") IntGreaterThanZero})
+  {(s/optional-key :values) (s/cond-pre [s/Any])
+   (s/optional-key :card_id) IntGreaterThanZero})
 
 (def Parameter
   "Schema for a valid Parameter.

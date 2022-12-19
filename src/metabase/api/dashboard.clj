@@ -748,7 +748,7 @@
   The source of values could be:
   - static-list: user defined values list
   - card: values is result of running a card
-  - field | nil: chain-filter"
+  - nil: chain-filter"
   ([dashboard param-key query-params]
    (param-values dashboard param-key query-params nil))
 
