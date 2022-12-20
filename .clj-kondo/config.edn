@@ -356,7 +356,7 @@
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
   honeysql.util/defalias                                                               clojure.core/def
   metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
-  metabase.actions.test-util/with-action                                               clojure.core/let
+  metabase.actions.test-util/with-actions                                              clojure.core/let
   metabase.actions.test-util/with-card-emitter                                         clojure.core/let
   metabase.actions.test-util/with-dashboard-emitter                                    clojure.core/let
   metabase.api.common/let-404                                                          clojure.core/let

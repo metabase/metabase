@@ -281,7 +281,6 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :is_write false]
                    [:= :dataset dataset?]]}
       (hh/merge-where (pinned-state->clause pinned-state))))
 
