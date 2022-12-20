@@ -10,7 +10,12 @@ import ConfirmContent from "metabase/components/ConfirmContent";
 import Button from "metabase/core/components/Button";
 
 import ModelCachingControl from "./ModelCachingControl";
-import { SidebarRoot } from "./Sidebar.styled";
+import {
+  SidebarRoot,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupName,
+} from "./Sidebar.styled";
 
 const propTypes = {
   database: PropTypes.object.isRequired,
@@ -40,9 +45,9 @@ const DatabaseEditAppSidebar = ({
 
   return (
     <SidebarRoot>
-      <div className="Actions bg-light rounded p3">
-        <div className="Actions-group">
-          <label className="Actions-groupLabel block text-bold">{t`Actions`}</label>
+      <SidebarContent className="Actions">
+        <SidebarGroup>
+          <SidebarGroupName>{t`Actions`}</SidebarGroupName>
           <ol>
             {!isSyncCompleted(database) && (
               <li>
@@ -87,10 +92,9 @@ const DatabaseEditAppSidebar = ({
               </li>
             )}
           </ol>
-        </div>
-
-        <div className="Actions-group">
-          <label className="Actions-groupLabel block text-bold">{t`Danger Zone`}</label>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupName>{t`Danger Zone`}</SidebarGroupName>
           <ol>
             {isSyncCompleted(database) && (
               <li>
@@ -109,7 +113,6 @@ const DatabaseEditAppSidebar = ({
                 </ModalWithTrigger>
               </li>
             )}
-
             {isAdmin && (
               <li className="mt2">
                 <ModalWithTrigger
@@ -126,8 +129,8 @@ const DatabaseEditAppSidebar = ({
               </li>
             )}
           </ol>
-        </div>
-      </div>
+        </SidebarGroup>
+      </SidebarContent>
     </SidebarRoot>
   );
 };
