@@ -30,7 +30,7 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
+            [metabase.util.i18n :as i18n :refer [trs tru]]
             [metabase.util.urls :as urls]
             [stencil.core :as stencil]
             [stencil.loader :as stencil-loader]
