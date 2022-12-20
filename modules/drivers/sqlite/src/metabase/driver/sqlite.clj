@@ -124,10 +124,6 @@
 
 ;; See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html).
 
-(defmethod sql.qp/date [:sqlite :default]
-  [driver _ expr]
-  (sql.qp/->honeysql driver expr))
-
 (defmethod sql.qp/date [:sqlite :second]
   [driver _ expr]
   (->datetime (strftime "%Y-%m-%d %H:%M:%S" (sql.qp/->honeysql driver expr))))
