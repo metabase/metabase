@@ -67,13 +67,6 @@ const TimelineCard = ({
     [timeline, onToggleTimeline],
   );
 
-  const handleToggleEventSelected = useCallback(
-    (event: TimelineEvent, isSelected: boolean) => {
-      onToggleEventSelected?.(event, isSelected);
-    },
-    [onToggleEventSelected],
-  );
-
   useEffect(() => {
     if (isEventSelected) {
       setIsExpanded(isEventSelected);
@@ -106,12 +99,12 @@ const TimelineCard = ({
               event={event}
               timeline={timeline}
               isSelected={selectedEventIds.includes(event.id)}
-              isVisible={visibleEventIds.includes(event.id)}
+              isVisible={!!isVisible && visibleEventIds.includes(event.id)}
               isTimelineVisible={isVisible}
               onEdit={onEditEvent}
               onMove={onMoveEvent}
               onArchive={onArchiveEvent}
-              onToggleSelected={handleToggleEventSelected}
+              onToggleSelected={onToggleEventSelected}
               onToggleEventVisibility={onToggleEventVisibility}
             />
           ))}
