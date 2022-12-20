@@ -273,6 +273,15 @@
                            :attributes {"something_random" 50}}
              (mt/run-mbql-query venues {:aggregation [[:count]]})))))
 
+    (testing (str "When processing a query that requires a user attribute and that user attribute is nil, throw an "
+                  "exception letting the user know it's missing")
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Query requires user attribute `cat`"
+           (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                           :attributes {"cat" nil}}
+             (mt/run-mbql-query venues {:aggregation [[:count]]})))))
+
     (testing "Another basic test, same as above, but with a numeric string that needs to be coerced"
       (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" "50"}}
