@@ -367,7 +367,7 @@
                                         "seconds" (t/seconds amount)
                                         "minutes" (t/minutes amount)
                                         "hours"  (t/hours amount)))
-                        years (/ (days new-value) 365.25)]
+                        years (/ days 365.25)]
                     (assert (< years 100))))
                 (setting/set-value-of-type! :json :session-timeout new-value)))
 
