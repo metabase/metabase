@@ -33,10 +33,17 @@ interface SessionTimeoutSettingProps {
 const validate = (
   setting: SessionTimeoutSettingProps["setting"],
   value: TimeoutValue,
-) =>
-  setting.value == null || value.amount > 0
-    ? null
-    : t`Timeout must be greater than 0`;
+) => {
+  if (setting.value == null) {
+    return null;
+  } else if (value.amount <= 0) {
+    return t`Timeout must be greater than 0`;
+  } else if (value.amount >= 1000000) {
+    // This prevents date formatting errors on very high timeouts (#25253).
+    // 1,000,000 hours is >100 years
+    return t`Timeout must be less than 1,000,000`;
+  }
+};
 
 const SessionTimeoutSetting = ({
   setting,
