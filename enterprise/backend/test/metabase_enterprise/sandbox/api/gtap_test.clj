@@ -4,11 +4,13 @@
    [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase.http-client :as client]
    [metabase.models :refer [Card Field PermissionsGroup Table]]
+   [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
@@ -159,3 +161,63 @@
                     (mt/user-http-request :crowberto :put 200 (format "mt/gtap/%s" gtap-id)
                                           {:card_id              nil
                                            :attribute_remappings {:bar 2}}))))))))))
+
+(deftest bulk-upsert-sandboxes-test
+  (testing "PUT /api/permissions/graph"
+    (mt/with-temp* [Table                  [{table-id-1 :id}]
+                    Table                  [{table-id-2 :id}]
+                    PermissionsGroup       [{group-id :id}]
+                    Card                   [{card-id-1 :id}]
+                    Card                   [{card-id-2 :id}]]
+      (premium-features-test/with-premium-features #{:sandboxes}
+        (with-gtap-cleanup
+          (testing "Test that we can create a new sandbox using the permission graph API"
+            (let [graph (assoc (perms/data-perms-graph)
+                               :sandboxes [{:table_id             table-id-1
+                                            :group_id             group-id
+                                            :card_id              card-id-1
+                                            :attribute_remappings {"foo" 1}}])
+                  _     (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
+              (is (db/exists? GroupTableAccessPolicy
+                              :table_id table-id-1
+                              :group_id group-id
+                              :card_id  card-id-1))))
+
+          (testing "Test that we can update a sandbox using the permission graph API"
+            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy {:table_id table-id-1
+                                                                              :group_id group-id})
+                  graph (assoc (perms/data-perms-graph)
+                               :sandboxes [{:id                   sandbox-id
+                                            :card_id              card-id-2
+                                            :attribute_remappings {"foo" 2}}])
+                  _     (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
+              (is (partial= {:card_id              card-id-2
+                             :attribute_remappings {"foo" 2}}
+                            (db/select-one GroupTableAccessPolicy
+                                           :table_id table-id-1
+                                           :group_id group-id)))))
+
+         (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
+            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy {:table_id table-id-1
+                                                                              :group_id group-id})
+                  graph (assoc (perms/data-perms-graph)
+                               :sandboxes [{:id                   sandbox-id
+                                            :card_id              card-id-1
+                                            :attribute_remappings {"foo" 3}}
+                                           {:table_id             table-id-2
+                                            :group_id             group-id
+                                            :card_id              card-id-2
+                                            :attribute_remappings {"foo" 10}}])
+                  _     (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
+              ;; Updated sandbox
+              (is (partial= {:card_id              card-id-1
+                             :attribute_remappings {"foo" 3}}
+                            (db/select-one GroupTableAccessPolicy
+                                           :table_id table-id-1
+                                           :group_id group-id)))
+              ;; Created sandbox
+              (is (partial= {:card_id              card-id-2
+                             :attribute_remappings {"foo" 10}}
+                            (db/select-one GroupTableAccessPolicy
+                                           :table_id table-id-2
+                                           :group_id group-id))))))))))

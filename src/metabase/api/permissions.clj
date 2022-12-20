@@ -12,7 +12,9 @@
    [metabase.models.permissions-group
     :as perms-group
     :refer [PermissionsGroup]]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -33,6 +35,11 @@
   (api/check-superuser)
   (perms/data-perms-graph))
 
+(defenterprise upsert-sandboxes!
+  "OSS no-op implementation of `upsert-sandboxes!`."
+  metabase-enterprise.sandbox.models.group-table-access-policy
+  [_sandboxes])
+
 (api/defendpoint-schema PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
   format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
@@ -41,7 +48,12 @@
 
   Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
-  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
+  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that.
+
+  The optional `sandboxes` key contains a list of sandboxes that should be created or modified in conjunction with
+  this permissions graph update. Since data sandboxing is an Enterprise Edition-only feature, a 402 (Payment Required)
+  response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the
+  `:sandboxes` feature flag is not present."
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
@@ -51,7 +63,11 @@
                            (s/explain-str ::api.permission-graph/data-permissions-graph body))
                       {:status-code 400
                        :error       (s/explain-data ::api.permission-graph/data-permissions-graph body)})))
-    (perms/update-data-perms-graph! graph))
+    (db/transaction
+      (when-let [sandboxes (-> body :sandboxes not-empty)]
+        (def sandboxes sandboxes)
+        (upsert-sandboxes! sandboxes))
+      (perms/update-data-perms-graph! (dissoc graph :sandboxes))))
   (perms/data-perms-graph))
 
 
