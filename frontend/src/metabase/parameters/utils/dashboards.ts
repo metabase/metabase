@@ -67,11 +67,11 @@ export function setParameterName(
 }
 
 export function getSourceType(parameter: Parameter): ParameterSourceType {
-  return parameter.source_type ?? null;
+  return parameter.values_source_type ?? null;
 }
 
 export function getSourceOptions(parameter: Parameter): ParameterSourceOptions {
-  return parameter.source_options ?? {};
+  return parameter.values_source_options ?? {};
 }
 
 export function hasValidSourceOptions(

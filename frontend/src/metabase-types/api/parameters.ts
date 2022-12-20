@@ -40,8 +40,8 @@ export interface Parameter {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
-  source_type?: ParameterSourceType;
-  source_options?: ParameterSourceOptions;
+  values_source_type?: ParameterSourceType;
+  values_source_options?: ParameterSourceOptions;
 }
 
 export type ParameterSourceType = null | "static-list";
