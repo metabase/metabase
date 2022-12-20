@@ -162,7 +162,6 @@ export class Api extends EventEmitter {
     });
 
     let response;
-
     try {
       response = await fetch(request);
     } catch (error) {
