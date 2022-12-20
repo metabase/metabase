@@ -82,7 +82,6 @@
             (testing "Only allows for valid status"
               (doseq [status moderation-review/statuses]
                 (is (= status (:status (moderate! status "good")))))
-              ;; i wish this was better. Should have a better error message and honestly shouldn't be a 500
               (mt/user-http-request :crowberto :post 400 "moderation-review"
                                     {:text                "not a chance this works"
                                      :status              "invalid status"

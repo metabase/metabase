@@ -22,6 +22,7 @@
   :abstract? true)
 
 (defmethod driver/database-supports? [:hive-like :now] [_driver _feat _db] true)
+(defmethod driver/database-supports? [:hive-like :datetime-diff] [_driver _feat _db] true)
 
 (defmethod driver/escape-alias :hive-like
   [driver s]
@@ -157,6 +158,38 @@
   (if (= unit :quarter)
     (recur driver hsql-form (* amount 3) :month)
     (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit))))))
+
+(defmethod sql.qp/datetime-diff [:hive-like :year]
+  [driver _unit x y]
+  (hsql/call :div (sql.qp/datetime-diff driver :month x y) 12))
+
+(defmethod sql.qp/datetime-diff [:hive-like :quarter]
+  [driver _unit x y]
+  (hsql/call :div (sql.qp/datetime-diff driver :month x y) 3))
+
+(defmethod sql.qp/datetime-diff [:hive-like :month]
+  [_driver _unit x y]
+  (hx/->integer (hsql/call :months_between y x)))
+
+(defmethod sql.qp/datetime-diff [:hive-like :week]
+  [_driver _unit x y]
+  (hsql/call :div (hsql/call :datediff y x) 7))
+
+(defmethod sql.qp/datetime-diff [:hive-like :day]
+  [_driver _unit x y]
+  (hsql/call :datediff y x))
+
+(defmethod sql.qp/datetime-diff [:hive-like :hour]
+  [driver _unit x y]
+  (hsql/call :div (sql.qp/datetime-diff driver :second x y) 3600))
+
+(defmethod sql.qp/datetime-diff [:hive-like :minute]
+  [driver _unit x y]
+  (hsql/call :div (sql.qp/datetime-diff driver :second x y) 60))
+
+(defmethod sql.qp/datetime-diff [:hive-like :second]
+  [_driver _unit x y]
+  (hsql/call :- (hsql/call :unix_timestamp y) (hsql/call :unix_timestamp x)))
 
 (def ^:dynamic *param-splice-style*
   "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
