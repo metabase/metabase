@@ -51,6 +51,9 @@ const TimelineCard = ({
   const events = getEvents(timeline.events);
   const isEventSelected = events.some(e => selectedEventIds.includes(e.id));
   const [isExpanded, setIsExpanded] = useState(isDefault || isEventSelected);
+  const allEventsVisible = events.every(event =>
+    visibleEventIds.includes(event.id),
+  );
 
   const handleHeaderClick = useCallback(() => {
     setIsExpanded(isExpanded => !isExpanded);
@@ -81,6 +84,7 @@ const TimelineCard = ({
       >
         <CardCheckbox
           checked={isVisible}
+          indeterminate={isVisible && !allEventsVisible}
           onClick={handleCheckboxClick}
           onChange={handleToggleTimeline}
         />
