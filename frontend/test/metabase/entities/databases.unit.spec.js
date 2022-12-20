@@ -1,4 +1,4 @@
-import mock from "xhr-mock";
+import nock from "nock";
 
 import { getStore } from "__support__/entities-store";
 
@@ -8,18 +8,19 @@ describe("database entity", () => {
   let store;
   beforeEach(() => {
     store = getStore();
-    mock.setup();
   });
 
-  afterEach(() => mock.teardown());
+  afterEach(() => {
+    nock.cleanAll();
+  });
 
   it("should save database metadata in redux", async () => {
-    mock.get("/api/database/123/metadata", {
-      body: JSON.stringify({
+    nock(/.*/)
+      .get("/api/database/123/metadata")
+      .reply(200, {
         id: 123,
         tables: [{ schema: "public", id: 234, db_id: 123, fields: [] }],
-      }),
-    });
+      });
 
     await store.dispatch(
       Databases.objectActions.fetchDatabaseMetadata({ id: 123 }),

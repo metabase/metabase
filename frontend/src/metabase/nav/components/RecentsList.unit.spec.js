@@ -1,5 +1,5 @@
 import React from "react";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 import { renderWithProviders, screen } from "__support__/ui";
 import RecentsList from "./RecentsList";
 
@@ -42,9 +42,7 @@ const recentsData = [
 ];
 
 function mockRecentsEndpoint(recents) {
-  xhrMock.get("/api/activity/recent_views", {
-    body: JSON.stringify(recents),
-  });
+  nock(/.*/).get("/api/activity/recent_views").reply(200, recents);
 }
 
 async function setup(recents = recentsData) {
@@ -56,12 +54,8 @@ async function setup(recents = recentsData) {
 }
 
 describe("RecentsList", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
   });
 
   it("shows list of recents", async () => {

@@ -1,6 +1,6 @@
 import React from "react";
-import xhrMock from "xhr-mock";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import nock from "nock";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { InfoText } from "./InfoText";
 
@@ -9,24 +9,16 @@ const table = { id: 1, display_name: "Table Name" };
 const database = { id: 1, name: "Database Name" };
 
 async function setup(result) {
-  xhrMock.get("/api/table/1", {
-    body: JSON.stringify(table),
-  });
+  nock(/.*/).get("/api/table/1").reply(200, table);
 
-  xhrMock.get("/api/database/1", {
-    body: JSON.stringify(database),
-  });
+  nock(/.*/).get("/api/database/1").reply(200, database);
 
   renderWithProviders(<InfoText result={result} />);
 }
 
 describe("InfoText", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
   });
 
   it("shows collection info for a question", async () => {
@@ -62,8 +54,8 @@ describe("InfoText", () => {
       database_id: 1,
     });
 
-    await waitFor(() => screen.queryByText("Table Name"));
-    expect(screen.queryByText("Segment of")).toHaveTextContent(
+    expect(await screen.findByText("Table Name")).toBeInTheDocument();
+    expect(await screen.findByText("Segment of")).toHaveTextContent(
       "Segment of Table Name",
     );
   });
@@ -75,8 +67,8 @@ describe("InfoText", () => {
       database_id: 1,
     });
 
-    await waitFor(() => screen.queryByText("Table Name"));
-    expect(screen.queryByText("Metric for")).toHaveTextContent(
+    expect(await screen.findByText("Table Name")).toBeInTheDocument();
+    expect(await screen.findByText("Metric for")).toHaveTextContent(
       "Metric for Table Name",
     );
   });
@@ -88,8 +80,8 @@ describe("InfoText", () => {
       database_id: 1,
     });
 
-    await waitFor(() => screen.queryByText("Database Name"));
-    expect(screen.queryByText("Table in")).toHaveTextContent(
+    expect(await screen.findByText("Database Name")).toBeInTheDocument();
+    expect(await screen.findByText("Table in")).toHaveTextContent(
       "Table in Database Name",
     );
   });
