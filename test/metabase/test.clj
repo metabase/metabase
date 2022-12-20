@@ -136,7 +136,8 @@
  [qp
   compile
   preprocess
-  process-query]
+  process-query
+  query->expected-cols]
 
  [qp.test
   col
