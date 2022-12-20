@@ -1,5 +1,4 @@
 import React, { useRef } from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -9,6 +8,9 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Button from "metabase/core/components/Button";
 
+import type { DatabaseId } from "metabase-types/api";
+import type Database from "metabase-lib/metadata/Database";
+
 import ModelCachingControl from "./ModelCachingControl";
 import {
   SidebarRoot,
@@ -17,18 +19,17 @@ import {
   SidebarGroupName,
 } from "./Sidebar.styled";
 
-const propTypes = {
-  database: PropTypes.object.isRequired,
-  updateDatabase: PropTypes.func.isRequired,
-  deleteDatabase: PropTypes.func.isRequired,
-  syncDatabaseSchema: PropTypes.func.isRequired,
-  dismissSyncSpinner: PropTypes.func.isRequired,
-  rescanDatabaseFields: PropTypes.func.isRequired,
-  discardSavedFieldValues: PropTypes.func.isRequired,
-  isAdmin: PropTypes.bool,
-  isWritebackEnabled: PropTypes.bool,
-  isModelPersistenceEnabled: PropTypes.bool,
-};
+interface DatabaseEditAppSidebarProps {
+  database: Database;
+  isAdmin: boolean;
+  isModelPersistenceEnabled: boolean;
+  updateDatabase: (database: Database) => void;
+  syncDatabaseSchema: (databaseId: DatabaseId) => void;
+  dismissSyncSpinner: (databaseId: DatabaseId) => void;
+  rescanDatabaseFields: (databaseId: DatabaseId) => void;
+  discardSavedFieldValues: (databaseId: DatabaseId) => void;
+  deleteDatabase: (databaseId: DatabaseId, isDetailView: boolean) => void;
+}
 
 const DatabaseEditAppSidebar = ({
   database,
@@ -39,9 +40,9 @@ const DatabaseEditAppSidebar = ({
   discardSavedFieldValues,
   isAdmin,
   isModelPersistenceEnabled,
-}) => {
-  const discardSavedFieldValuesModal = useRef();
-  const deleteDatabaseModal = useRef();
+}: DatabaseEditAppSidebarProps) => {
+  const discardSavedFieldValuesModal = useRef<any>();
+  const deleteDatabaseModal = useRef<any>();
 
   return (
     <SidebarRoot>
@@ -72,7 +73,7 @@ const DatabaseEditAppSidebar = ({
                 successText={t`Scan triggered!`}
               />
             </li>
-            {database["initial_sync_status"] !== "complete" && (
+            {!isSyncCompleted(database) && (
               <li className="mt2">
                 <ActionButton
                   actionFn={() => dismissSyncSpinner(database.id)}
@@ -131,7 +132,5 @@ const DatabaseEditAppSidebar = ({
     </SidebarRoot>
   );
 };
-
-DatabaseEditAppSidebar.propTypes = propTypes;
 
 export default DatabaseEditAppSidebar;
