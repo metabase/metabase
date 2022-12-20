@@ -1,6 +1,6 @@
 import { act, fireEvent, screen } from "@testing-library/react";
 import React from "react";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 import { renderWithProviders } from "__support__/ui";
 import LicenseAndBillingSettings from ".";
 
@@ -45,51 +45,27 @@ const setupState = ({
 };
 
 const mockTokenStatus = (valid: boolean, features: string[] = []) => {
-  xhrMock.get("/api/premium-features/token/status", {
-    body: JSON.stringify({
-      valid,
-      "valid-thru": "2099-12-31T12:00:00",
-      features,
-    }),
+  nock(/.*/).get("/api/premium-features/token/status").reply(200, {
+    valid,
+    "valid-thru": "2099-12-31T12:00:00",
+    features,
   });
 };
 
 const mockTokenNotExist = () => {
-  xhrMock.get("/api/premium-features/token/status", {
-    status: 404,
-  });
+  nock(/.*/).get("/api/premium-features/token/status").reply(404);
 };
 
 const mockUpdateToken = (valid: boolean) => {
-  if (valid) {
-    xhrMock.put("/api/setting/premium-embedding-token", {
-      status: 200,
-    });
-  } else {
-    xhrMock.put("/api/setting/premium-embedding-token", {
-      status: 400,
-    });
-  }
+  nock(/.*/)
+    .put("/api/setting/premium-embedding-token")
+    .reply(valid ? 200 : 400);
 };
 
 describe("LicenseAndBilling", () => {
-  const originalLocation = window.location;
-
-  beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    delete window.location;
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    window.location = { reload: jest.fn() };
-    xhrMock.setup();
-  });
-
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
     jest.restoreAllMocks();
-
-    window.location = originalLocation;
   });
 
   it("renders settings for store managed billing with a valid token", async () => {
@@ -194,8 +170,6 @@ describe("LicenseAndBilling", () => {
   });
 
   it("refreshes the page when license is accepted", async () => {
-    window.location.reload = jest.fn();
-
     mockTokenNotExist();
     mockUpdateToken(true);
     renderWithProviders(<LicenseAndBillingSettings />, setupState({}));
@@ -214,7 +188,5 @@ describe("LicenseAndBilling", () => {
       await fireEvent.change(licenseInput, { target: { value: token } });
       await fireEvent.click(activateButton);
     });
-
-    expect(window.location.reload).toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
+import nock from "nock";
 import { LocationDescriptorObject } from "history";
-import xhrMock from "xhr-mock";
 
 import * as CardLib from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
@@ -33,7 +33,6 @@ import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 
-import * as navigation from "../navigation";
 import * as querying from "../querying";
 
 import * as core from "./core";
@@ -114,9 +113,7 @@ async function setup({
   const card = question.card();
 
   if ("id" in card) {
-    xhrMock.get(`/api/card/${card.id}`, {
-      body: JSON.stringify(card),
-    });
+    nock(/.*/).get(`/api/card/${card.id}`).reply(200, card);
   }
 
   jest.spyOn(CardLib, "loadCard").mockReturnValue(Promise.resolve({ ...card }));
@@ -149,12 +146,8 @@ describe("QB Actions > initializeQB", () => {
     console.warn = jest.fn();
   });
 
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
     jest.restoreAllMocks();
   });
 
@@ -432,9 +425,9 @@ describe("QB Actions > initializeQB", () => {
           original_card_id: ORIGINAL_CARD_ID,
         });
 
-        xhrMock.get(`/api/card/${originalQuestion.id()}`, {
-          body: JSON.stringify(originalQuestion.card()),
-        });
+        nock(/.*/)
+          .get(`/api/card/${originalQuestion.id()}`)
+          .reply(200, originalQuestion.card());
 
         jest
           .spyOn(CardLib, "loadCard")
