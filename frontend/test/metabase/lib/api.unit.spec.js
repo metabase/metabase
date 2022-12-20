@@ -39,7 +39,7 @@ describe("api", () => {
     nock(/.*/)
       .put("/hello/123")
       .reply(201, (uri, body) => {
-        expect(body).toEqual('{"other":"stuff"}');
+        expect(body).toEqual({ other: "stuff" });
       });
     await PUT("/hello/:id")({ id: 123, other: "stuff" });
   });
@@ -49,7 +49,7 @@ describe("api", () => {
     nock(/.*/)
       .put("/hello/123")
       .reply(201, (uri, body) => {
-        expect(body).toEqual('["i","am","an","array"]');
+        expect(body).toEqual(["i", "am", "an", "array"]);
       });
     await PUT("/hello/:id")(
       { id: 123, notAnObject: ["i", "am", "an", "array"] },

@@ -161,11 +161,10 @@ export class Api extends EventEmitter {
       signal: controller.signal,
     });
 
-    let response, body;
+    let response;
 
     try {
       response = await fetch(request);
-      body = options.json ? await response.json() : await response.text();
     } catch (error) {
       if (controller.signal.aborted) {
         throw { isCancelled: true };
@@ -173,6 +172,11 @@ export class Api extends EventEmitter {
         throw error;
       }
     }
+
+    let body;
+    try {
+      body = options.json ? await response.json() : await response.text();
+    } catch (e) {}
 
     let status = response.status;
     if (status === 202 && body && body._status > 0) {
