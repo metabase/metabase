@@ -375,13 +375,13 @@
 (def ParameterSourceOptions
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
-  {;; source_type = 'static-list'
+  {;; for source_type = 'static-list'
    (s/optional-key :values)          (s/cond-pre [s/Any])
 
-   ;; when source_type = 'card'
+   ;; for source_type = 'card'
    (s/optional-key :card_id)         IntGreaterThanZero
    (s/optional-key :value_field_ref) FieldRef
-   ;; :label_field_ref is optional
+   ;; label_field_ref is optional
    (s/optional-key :label_field_ref) FieldRef})
 
 (def Parameter

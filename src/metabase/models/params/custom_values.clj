@@ -34,10 +34,6 @@
                       {:field-ref field-ref
                        :card-id   card-id})))))
 
-(defn- filter-clause
-  [field-to-filter query]
-  {:filter [:contains [:lower field-to-filter] (str/lower-case query)]})
-
 (defn- custom-values-query
   [card-id value-field-ref query]
   (let [value-field-ref (mbql.normalize/normalize-tokens value-field-ref)
@@ -50,7 +46,7 @@
                   :fields       [value-field]
                   :limit        *max-rows*}
                  (when query
-                   (filter-clause value-field query)))
+                   {:filter [:contains [:lower value-field] (str/lower-case query)]}))
      :middleware {:disable-remaps? true}}))
 
 (s/defn values-from-card
@@ -60,6 +56,7 @@
   ;; will execute a mbql that looks like
   ;; {:source-table (format \"card__%d\" card-id)
   ;;  :fields       [value-field]
+  ;;  :filter       [:contains [:lower value-field] \"red\"]
   ;;  :limit        *max-rows*}
   =>
   {:values          [\"Red Medicine\"]
