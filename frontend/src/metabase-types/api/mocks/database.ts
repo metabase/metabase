@@ -1,4 +1,17 @@
-import { Database, DatabaseData } from "metabase-types/api";
+import { Database, DatabaseData, DatabaseFeature } from "metabase-types/api";
+
+export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
+  "basic-aggregations",
+  "binning",
+  "case-sensitivity-string-filter-options",
+  "expression-aggregations",
+  "expressions",
+  "foreign-keys",
+  "native-parameters",
+  "nested-queries",
+  "standard-deviation-aggregations",
+  "persist-models",
+];
 
 export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   ...createMockDatabaseData(opts),
@@ -10,6 +23,7 @@ export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   timezone: "UTC",
   native_permissions: "write",
   initial_sync_status: "complete",
+  features: COMMON_DATABASE_FEATURES,
   ...opts,
 });
 
