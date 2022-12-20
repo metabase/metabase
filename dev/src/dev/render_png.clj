@@ -73,6 +73,7 @@
 (def ^:private render-html-to-png #'png/render-html-to-png)
 
 (defn render-dashboard-to-pngs
+  "Given a dashboard ID, renders each dashcard, including Markdown, to its own temporary png image, and opens each one."
   [dashboard-id]
   (let [user              (db/select-one user/User)
         dashboard         (db/select-one dashboard/Dashboard :id dashboard-id)
@@ -130,6 +131,7 @@
    :height        (str (* 2 (- (* dashgrid-y (or size_y 4)) 21)) "px")})
 
 (defn render-dashboard-to-png
+  "Given a dashboard ID, renders all of the dashcards to a single png, attempting to replicate (roughly) the grid layout of the dashboard."
   [dashboard-id]
   (let [user              (db/select-one user/User)
         dashboard         (db/select-one dashboard/Dashboard :id dashboard-id)
@@ -159,8 +161,7 @@
     (open tmp-file)))
 
 (defn render-card-to-bytes
-  "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
-  match what's rendered on another system, like a docker container."
+  "Given a card ID, renders the card to a png byte array."
   [card-id]
   (let [{:keys [dataset_query] :as card} (db/select-one card/Card :id card-id)
         user                             (db/select-one user/User)
@@ -188,6 +189,8 @@
 
 (comment
   (render-card-to-png 1)
+  (render-dashboard-to-pngs 1) ;; render the dashboard's dashcards each as their own image
+  (render-dashboard-to-png 1)  ;; render the dashboard as a single image
   ;; open viz in your browser
   (-> [["A" "B"]
        [1 2]
