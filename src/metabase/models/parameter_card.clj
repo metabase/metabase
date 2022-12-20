@@ -1,8 +1,5 @@
 (ns metabase.models.parameter-card
   (:require
-    [clojure.string :as str]
-    [metabase.query-processor :as qp]
-    [metabase.search.util :as search]
     [metabase.util :as u]
     [metabase.util.i18n :refer [tru]]
     [toucan.db :as db]
@@ -72,43 +69,3 @@
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-for-dashboard! dashboard-id upsertable-parameters)
     (delete-all-for-parameterized-object! "dashboard" dashboard-id (map :id upsertable-parameters))))
-
-;;; ----------------------------------------------- param values -----------------------------------------------
-
-(defn query-matches
-  "Filter the values according to the `search-term`.
-
-  Values could have 2 shapes
-  - [value1, value2]
-  - [[value1, label1], [value2, label2]] - we search using label in this case"
-  [search-term values]
-  (if (str/blank? search-term)
-    values
-    (let [normalized-search-term (search/normalize search-term)]
-      (filter #(str/includes? (search/normalize (if (string? %)
-                                                  %
-                                                  ;; search by label
-                                                  (second %)))
-                              normalized-search-term) values))))
-
-(defn- query-for-dashboard
-  [{dashboard-id :id} param-key]
-  (->> (db/query {:select [:dataset_query]
-                  :from [:report_card]
-                  :join [:parameter_card [:= :report_card.id :parameter_card.card_id]]
-                  :where [:and
-                          [:= :parameterized_object_id dashboard-id]
-                          [:= :parameterized_object_type "dashboard"]
-                          [:= :parameter_id param-key]]})
-       (db/do-post-select 'Card)
-       first
-       :dataset_query))
-
-(defn values-for-dashboard
-  "Returns a map with the filter `:values` associated with the dashboard."
-  [dashboard param-key search-term]
-  {:values
-   (->> (qp/process-query (query-for-dashboard dashboard param-key) {:rff (constantly conj)})
-        (map first)
-        (query-matches search-term))
-   :has_more_values false}) ;; TODO: this should be more clever
