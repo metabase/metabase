@@ -134,9 +134,10 @@ const DatabaseEditAppSidebar = ({
             {isSyncCompleted(database) && (
               <li>
                 <ModalWithTrigger
+                  triggerElement={
+                    <Button danger>{t`Discard saved field values`}</Button>
+                  }
                   ref={discardSavedFieldValuesModal}
-                  triggerClasses="Button Button--danger"
-                  triggerElement={t`Discard saved field values`}
                 >
                   <ConfirmContent
                     title={t`Discard saved field values`}
@@ -149,9 +150,10 @@ const DatabaseEditAppSidebar = ({
             {isAdmin && (
               <li className="mt2">
                 <ModalWithTrigger
+                  triggerElement={
+                    <Button danger>{t`Remove this database`}</Button>
+                  }
                   ref={deleteDatabaseModal}
-                  triggerClasses="Button Button--danger"
-                  triggerElement={t`Remove this database`}
                 >
                   <DeleteDatabaseModal
                     database={database}
