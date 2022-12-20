@@ -9,7 +9,7 @@ import {
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS } = SAMPLE_DATABASE;
+const { PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const COUNT_ALL = "200";
 const COUNT_DOOHICKEY = "42";
@@ -201,4 +201,106 @@ describe("scenarios > public", () => {
       }),
     );
   });
+
+  describe("public dashboard with parameters linked to a custom field (metabase#25473)", () => {
+    it("should show text parameter in public dashboards", () => {
+      // Setup
+      const customField = {
+        name: "email_name",
+        definition: [
+          "concat",
+          ["field", PEOPLE.EMAIL, null],
+          ["field", PEOPLE.NAME, null],
+        ],
+      };
+      const questionDetails = {
+        name: "Question",
+        query: {
+          "source-table": PEOPLE_ID,
+          expressions: {
+            [customField.name]: customField.definition,
+          },
+        },
+      };
+      const textContainsFilter = {
+        id: "890abcde",
+        name: "Text contains",
+        slug: "text_contains",
+        type: "string/contains",
+      };
+      const dashboardDetails = {
+        parameters: [textContainsFilter],
+      };
+
+      cy.createQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        cy.wrap(dashboard_id).as("dashboardId");
+
+        mapParameters({
+          id,
+          card_id,
+          dashboard_id,
+          parameter: textContainsFilter,
+          customFieldName: customField.name,
+        });
+      });
+
+      cy.get("@dashboardId").then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      // Enable public sharing
+      cy.icon("share").click();
+
+      cy.contains("Enable sharing")
+        .parent()
+        .find("input[type=checkbox]")
+        .check();
+
+      cy.contains("Public link")
+        .parent()
+        .find("input")
+        .then($input => {
+          const dashboardPublicLink = $input[0].value;
+          cy.visit(dashboardPublicLink);
+        });
+
+      // Public dashboard
+      cy.findByText(textContainsFilter.name).click();
+
+      cy.findByPlaceholderText("Enter some text").should("be.visible");
+    });
+  });
 });
+
+function mapParameters({
+  id,
+  card_id,
+  dashboard_id,
+  parameter,
+  customFieldName,
+} = {}) {
+  return cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+    cards: [
+      {
+        id,
+        card_id,
+        row: 0,
+        col: 0,
+        size_x: 18,
+        size_y: 6,
+        series: [],
+        visualization_settings: {},
+        parameter_mappings: [
+          {
+            card_id,
+            parameter_id: parameter.id,
+            target: ["dimension", ["expression", customFieldName]],
+          },
+        ],
+      },
+    ],
+  });
+}
