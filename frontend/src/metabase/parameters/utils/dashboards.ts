@@ -79,6 +79,8 @@ export function hasValidSourceOptions(
   sourceOptions: ParameterSourceConfig,
 ): boolean {
   switch (sourceType) {
+    case "card":
+      return sourceOptions.card_id != null;
     case "static-list":
       return sourceOptions.values != null && sourceOptions.values.length > 0;
     default:

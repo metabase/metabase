@@ -1,3 +1,5 @@
+import { CardId } from "./card";
+
 export type StringParameterType =
   | "string/="
   | "string/!="
@@ -40,12 +42,13 @@ export interface Parameter {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
-  values_source_type?: ParameterSourceType;
-  values_source_config?: ParameterSourceConfig;
+  source_type?: ParameterSourceType;
+  source_options?: ParameterSourceOptions;
 }
 
-export type ParameterSourceType = null | "static-list";
+export type ParameterSourceType = null | "card" | "static-list";
 
-export interface ParameterSourceConfig {
+export interface ParameterSourceOptions {
+  card_id?: CardId;
   values?: string[];
 }

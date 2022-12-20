@@ -9,6 +9,7 @@ import {
 } from "metabase/parameters/utils/dashboards";
 import { ParameterSourceConfig, ParameterSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
+import ParameterCardSourceModal from "../ParameterCardSourceModal";
 import ParameterListSourceModal from "../ParameterListSourceModal";
 import {
   RadioLabelButton,
@@ -71,6 +72,14 @@ const ParameterSourceSettings = ({
         vertical
         onChange={handleSourceTypeChange}
       />
+      {editingType === "card" && (
+        <Modal onClose={handleClose}>
+          <ParameterCardSourceModal
+            parameter={parameter}
+            onClose={handleClose}
+          />
+        </Modal>
+      )}
       {editingType === "static-list" && (
         <Modal onClose={handleClose}>
           <ParameterListSourceModal
@@ -118,6 +127,16 @@ const getRadioOptions = (
         />
       ),
       value: null,
+    },
+    {
+      name: (
+        <RadioLabel
+          title={t`Values from a modal or question`}
+          isSelected={sourceType === "card"}
+          onEditClick={() => onEdit("card")}
+        />
+      ),
+      value: "card",
     },
     {
       name: (
