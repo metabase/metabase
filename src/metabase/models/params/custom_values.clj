@@ -21,13 +21,14 @@
 
   If field_ref is a:
   - field: returns itself
-  - aggregation: reference the field by name [:field aggregation-name {]}]"
+  - aggregation: returns a field using name [:field aggregation-name nil]"
   [field-ref result-metadata card-id]
   (let [field (first (filter #(= (:field_ref %) field-ref) result-metadata))]
     (when-not field
-      (throw (ex-info (tru "No field found with field_ref: {0}" field-ref)
-                      {:field-ref field-ref
-                       :card-id   card-id})))
+      (throw (ex-info (tru "No matching field found")
+                      {:status-code 400
+                       :card-id     card-id
+                       :field-ref   field-ref})))
     (case (first field-ref)
       :aggregation
       [:field (:name field) {:base-type ((some-fn :effective_type :base_type) field)}]
@@ -36,8 +37,9 @@
       field-ref
 
       (throw (ex-info (tru "Invalid field-ref type. Must be a field or aggregation.")
-                      {:field-ref field-ref
-                       :card-id   card-id})))))
+                      {:status-code 400
+                       :card-id     card-id
+                       :field-ref   field-ref})))))
 
 (defn- custom-values-query
   [card-id value-field-ref query]
