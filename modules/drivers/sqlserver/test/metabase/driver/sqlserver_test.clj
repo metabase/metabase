@@ -384,20 +384,20 @@
   (mt/test-driver
    :sqlserver
    (testing "Percentile aggregation without breakout yields correct results"
-       (is (= [[2.0]]
-              (-> (mt/run-mbql-query
-                   venues
-                   {:aggregation [[:aggregation-options [:percentile $price 0.5] {:name "P50 price"}]]})
-                  mt/rows))))
+     (is (= [[2.0]]
+            (-> (mt/run-mbql-query
+                 venues
+                 {:aggregation [[:aggregation-options [:percentile $price 0.5] {:name "P50 price"}]]})
+                mt/rows))))
    (testing "Percentile aggregation with breakout yields correct results"
-       (is (= [[2 2.5] [3 2.0] [4 2.0] [5 2.0] [6 1.5]]
-              (-> (mt/run-mbql-query
-                   venues
-                   {:aggregation [[:aggregation-options [:percentile $price 0.5] {:name "P50 price"}]]
-                    :breakout    [$category_id]
-                    :limit       5
-                    :order-by    [[:asc $category_id]]})
-                  mt/rows))))
+     (is (= [[2 2.5] [3 2.0] [4 2.0] [5 2.0] [6 1.5]]
+            (-> (mt/run-mbql-query
+                 venues
+                 {:aggregation [[:aggregation-options [:percentile $price 0.5] {:name "P50 price"}]]
+                  :breakout    [$category_id]
+                  :limit       5
+                  :order-by    [[:asc $category_id]]})
+                mt/rows))))
    (testing "Percentile aggregation with multiple breakout fields yields correct results"
      (mt/dataset
       sample-dataset
@@ -463,27 +463,27 @@
               [20 370.05 343879.32 344249.37]
               [24 444.3 243971.04 244415.34]]
              (->> (mt/run-mbql-query
-                  orders
-                  {;; 1. expression with source of percentile aggregation
-                   :fields       [*quantity_times_4/Integer
-                                  *p50/Float
-                                  *sum/Integer
-                                  [:expression "p50 + sum"]]
+                   orders
+                   {;; 1. expression with source of percentile aggregation
+                    :fields       [*quantity_times_4/Integer
+                                   *p50/Float
+                                   *sum/Integer
+                                   [:expression "p50 + sum"]]
                     :expressions  {"p50 + sum" [:+ *p50/Float *sum/Integer]}
-                   :source-query {:source-table $$orders
-                                  :expressions  {"total + subtotal" [:+ $total $subtotal]
-                                                 "quantity * total" [:* $total $quantity]
-                                                 "quantity_times_4" [:* $quantity 4]}
-                                  ;; 2. expression used in filter in "source data" for aggregations
-                                  :filter       [:< [:expression "total + subtotal"] [:expression "quantity * total"]]
-                                  :aggregation  [;; 3. other aggregation has expression source
-                                                 [:aggregation-options 
-                                                  [:sum [:expression "total + subtotal"]] {:name "sum"}]
-                                                 ;; 4. other than percentile aggregation used with expression
-                                                 [:aggregation-options 
-                                                  [:percentile [:expression "quantity * total"] 0.5] {:name "p50"}]]
-                                  :breakout     [[:expression "quantity_times_4"]]
-                                  :limit        5}})
+                    :source-query {:source-table $$orders
+                                   :expressions  {"total + subtotal" [:+ $total $subtotal]
+                                                  "quantity * total" [:* $total $quantity]
+                                                  "quantity_times_4" [:* $quantity 4]}
+                                   ;; 2. expression used in filter in "source data" for aggregations
+                                   :filter       [:< [:expression "total + subtotal"] [:expression "quantity * total"]]
+                                   :aggregation  [;; 3. other aggregation has expression source
+                                                  [:aggregation-options
+                                                   [:sum [:expression "total + subtotal"]] {:name "sum"}]
+                                                  ;; 4. other than percentile aggregation used with expression
+                                                  [:aggregation-options
+                                                   [:percentile [:expression "quantity * total"] 0.5] {:name "p50"}]]
+                                   :breakout     [[:expression "quantity_times_4"]]
+                                   :limit        5}})
                   (mt/formatted-rows [int 2.0 2.0 2.0]))))))))
 
 
@@ -565,11 +565,11 @@
    :sqlserver
    (mt/dataset
     sample-dataset
-     (mt/with-temp* [Card [{id :id}
-                           {:dataset_query
-                            (mt/mbql-query
+    (mt/with-temp* [Card [{id :id}
+                          {:dataset_query
+                           (mt/mbql-query
                             orders
-                             {:aggregation [[:aggregation-options
+                            {:aggregation [[:aggregation-options
                                             [:percentile $total 0.5]
                                             {:name "p50"}]]
                              :breakout    [$user_id]})}]]
