@@ -3,7 +3,7 @@
             [metabase.driver.mongo.util :as mongo.util]
             [metabase.driver.util :as driver.u]
             [metabase.test :as mt])
-  (:import [com.mongodb MongoClient MongoClientException MongoClientOptions$Builder ReadPreference ServerAddress]))
+  (:import [com.mongodb MongoClient MongoClientOptions$Builder ReadPreference ServerAddress]))
 
 (defn- connect-mongo ^MongoClient [opts]
   (let [connection-info (#'mongo.util/details->mongo-connection-info
