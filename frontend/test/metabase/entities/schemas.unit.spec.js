@@ -13,7 +13,7 @@ describe("schema entity", () => {
   });
 
   afterEach(() => {
-    nock.teardown();
+    nock.cleanAll();
   });
 
   it("should save metadata from fetching a schema's tables", async () => {
