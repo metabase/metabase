@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -44,20 +44,57 @@ const DatabaseEditAppSidebar = ({
   const discardSavedFieldValuesModal = useRef<any>();
   const deleteDatabaseModal = useRef<any>();
 
+  const isSynced = isSyncCompleted(database);
+  const hasModelCachingSection =
+    isModelPersistenceEnabled && database.supportsPersistence();
+
+  const handleSyncDatabaseSchema = useCallback(
+    () => syncDatabaseSchema(database.id),
+    [database, syncDatabaseSchema],
+  );
+
+  const handleReScanFieldValues = useCallback(
+    () => rescanDatabaseFields(database.id),
+    [database, rescanDatabaseFields],
+  );
+
+  const handleDismissSyncSpinner = useCallback(
+    () => dismissSyncSpinner(database.id),
+    [database, dismissSyncSpinner],
+  );
+
+  const handleDiscardSavedFieldValues = useCallback(
+    () => discardSavedFieldValues(database.id),
+    [database, discardSavedFieldValues],
+  );
+
+  const handleDeleteDatabase = useCallback(
+    () => deleteDatabase(database.id, true),
+    [database, deleteDatabase],
+  );
+
+  const handleSavedFieldsModalClose = useCallback(() => {
+    discardSavedFieldValuesModal.current.close();
+  }, []);
+
+  const handleDeleteDatabaseModalClose = useCallback(() => {
+    deleteDatabaseModal.current.close();
+  }, []);
+
   return (
     <SidebarRoot>
       <SidebarContent data-testid="database-actions-panel">
         <SidebarGroup>
           <SidebarGroupName>{t`Actions`}</SidebarGroupName>
           <ol>
-            {!isSyncCompleted(database) && (
+            {!isSynced && (
               <li>
                 <Button disabled borderless>{t`Syncing database…`}</Button>
               </li>
             )}
             <li>
               <ActionButton
-                actionFn={() => syncDatabaseSchema(database.id)}
+                actionFn={handleSyncDatabaseSchema}
                 normalText={t`Sync database schema now`}
                 activeText={t`Starting…`}
                 failedText={t`Failed to sync`}
@@ -66,17 +103,17 @@ const DatabaseEditAppSidebar = ({
             </li>
             <li className="mt2">
               <ActionButton
-                actionFn={() => rescanDatabaseFields(database.id)}
+                actionFn={handleReScanFieldValues}
                 normalText={t`Re-scan field values now`}
                 activeText={t`Starting…`}
                 failedText={t`Failed to start scan`}
                 successText={t`Scan triggered!`}
               />
             </li>
-            {!isSyncCompleted(database) && (
+            {!isSynced && (
               <li className="mt2">
                 <ActionButton
-                  actionFn={() => dismissSyncSpinner(database.id)}
+                  actionFn={handleDismissSyncSpinner}
                   normalText={t`Dismiss sync spinner manually`}
                   activeText={t`Dismissing…`}
                   failedText={t`Failed to dismiss sync spinner`}
@@ -84,7 +121,7 @@ const DatabaseEditAppSidebar = ({
                 />
               </li>
             )}
-            {isModelPersistenceEnabled && database.supportsPersistence() && (
+            {hasModelCachingSection && (
               <li className="mt2">
                 <ModelCachingControl database={database} />
               </li>
@@ -103,10 +140,8 @@ const DatabaseEditAppSidebar = ({
                 >
                   <ConfirmContent
                     title={t`Discard saved field values`}
-                    onClose={() =>
-                      discardSavedFieldValuesModal.current.toggle()
-                    }
-                    onAction={() => discardSavedFieldValues(database.id)}
+                    onClose={handleSavedFieldsModalClose}
+                    onAction={handleDiscardSavedFieldValues}
                   />
                 </ModalWithTrigger>
               </li>
@@ -120,8 +155,8 @@ const DatabaseEditAppSidebar = ({
                 >
                   <DeleteDatabaseModal
                     database={database}
-                    onClose={() => deleteDatabaseModal.current.toggle()}
-                    onDelete={() => deleteDatabase(database.id, true)}
+                    onClose={handleDeleteDatabaseModalClose}
+                    onDelete={handleDeleteDatabase}
                   />
                 </ModalWithTrigger>
               </li>
