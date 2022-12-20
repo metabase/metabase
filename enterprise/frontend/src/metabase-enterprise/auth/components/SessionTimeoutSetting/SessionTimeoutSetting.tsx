@@ -41,6 +41,9 @@ const validate = (
   if (value.amount <= 0) {
     return t`Timeout must be greater than 0`;
   }
+  // Assert the duration is less than 100 years.
+  // Otherwise, we could fail to format the expires date if the year
+  // has more than 4 digits (#25253)
   const momentDuration = moment.duration(
     value.amount,
     value.unit as moment.unitOfTime.DurationConstructor,
