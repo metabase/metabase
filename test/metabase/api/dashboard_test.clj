@@ -30,7 +30,6 @@
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as mi]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
-            [metabase.models.params.custom-values :as custom-values]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision]

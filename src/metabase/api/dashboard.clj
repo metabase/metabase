@@ -22,7 +22,6 @@
     [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
     [metabase.models.field :refer [Field]]
     [metabase.models.interface :as mi]
-    [metabase.models.parameter-card :as parameter-card]
     [metabase.models.params :as params]
     [metabase.models.params.chain-filter :as chain-filter]
     [metabase.models.params.custom-values :as custom-values]
@@ -739,9 +738,13 @@
   [{source-options :source_options :as _param} query]
   (when-let [values (:values source-options)]
     {:values (if query
-               (parameter-card/query-matches query values)
+               (custom-values/query-matches query values)
                values)
      :has_more_values false}))
+
+(defn- card-parameter-values
+  [{source-options :source_options :as _param} query]
+  (custom-values/values-from-card (:card_id source-options) (:value_field_ref source-options) query))
 
 (s/defn param-values
   "Fetch values for a parameter.
@@ -765,7 +768,7 @@
                         :status-code     400})))
      (case (:source_type param)
        "static-list" (static-parameter-values param query)
-       "card"        (custom-values/param->values param query)
+       "card"        (card-parameter-values param query)
        (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
