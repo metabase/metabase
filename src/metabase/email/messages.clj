@@ -97,23 +97,6 @@
    :notificationManagementUrl (urls/notification-management-url)
    :siteUrl                   (public-settings/site-url)})
 
-(def ^:private notification-context
-  {:emailType  "notification"
-   :logoHeader true})
-
-(defn- abandonment-context []
-  {:heading      (trs "We’d love your feedback.")
-   :callToAction (str (deferred-trs "It looks like Metabase wasn’t quite a match for you.")
-                      " "
-                      (deferred-trs "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"))
-   :link         "https://metabase.com/feedback/inactive"})
-
-(defn- follow-up-context []
-  {:heading      (trs "We hope you''ve been enjoying Metabase.")
-   :callToAction (trs "Would you mind taking a fast 6 question survey to tell us how it’s going?")
-   :link         "https://metabase.com/feedback/active"})
-
-
 ;;; ### Public Interface
 
 
@@ -283,22 +266,19 @@
 
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
-  [email msg-type]
-  {:pre [(u/email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
-  (let [subject      (str (if (= "abandon" msg-type)
-                            (trs "[{0}] Help make [{1}] better." (app-name-trs) (app-name-trs))
-                            (trs "[{0}] Tell us how things are going." (app-name-trs))))
-        context      (merge notification-context
-                            (if (= "abandon" msg-type)
-                              (abandonment-context)
-                              (follow-up-context)))
-        message-body (stencil/render-file "metabase/email/follow_up_email"
-                                          (merge (common-context) context))]
-    (email/send-message!
-     :subject      subject
-     :recipients   [email]
-     :message-type :html
-     :message      message-body)))
+  [email]
+  {:pre [(u/email? email)]}
+  (let [context (merge (common-context)
+                       {:emailType    "notification"
+                        :logoHeader   true
+                        :heading      (trs "We hope you''ve been enjoying Metabase.")
+                        :callToAction (trs "Would you mind taking a fast 6 question survey to tell us how it’s going?")
+                        :link         "https://metabase.com/feedback/active"})
+        email {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
+               :recipients   [email]
+               :message-type :html
+               :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
+    (email/send-message! email)))
 
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline

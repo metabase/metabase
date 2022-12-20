@@ -41,7 +41,7 @@
     ;; TODO - Does it make to send to this user instead of `(public-settings/admin-email)`?
     (when-let [admin (db/select-one User :is_superuser true, :is_active true, {:order-by [:date_joined]})]
       (try
-        (messages/send-follow-up-email! (:email admin) "follow-up")
+        (messages/send-follow-up-email! (:email admin))
         (catch Throwable e
           (log/error "Problem sending follow-up email:" e))
         (finally
@@ -120,7 +120,7 @@
     (when (should-send-abandoment-email?)
       (log/info (trs "Sending abandonment email!"))
       (try
-        (messages/send-follow-up-email! admin-email "abandon")
+        (messages/send-follow-up-email! admin-email)
         (catch Throwable e
           (log/error e (trs "Problem sending abandonment email")))
         (finally
