@@ -57,7 +57,6 @@ const DatabaseEditAppSidebar = ({
             <li>
               <ActionButton
                 actionFn={() => syncDatabaseSchema(database.id)}
-                className="Button Button--syncDbSchema"
                 normalText={t`Sync database schema now`}
                 activeText={t`Starting…`}
                 failedText={t`Failed to sync`}
@@ -67,7 +66,6 @@ const DatabaseEditAppSidebar = ({
             <li className="mt2">
               <ActionButton
                 actionFn={() => rescanDatabaseFields(database.id)}
-                className="Button Button--rescanFieldValues"
                 normalText={t`Re-scan field values now`}
                 activeText={t`Starting…`}
                 failedText={t`Failed to start scan`}
@@ -78,7 +76,6 @@ const DatabaseEditAppSidebar = ({
               <li className="mt2">
                 <ActionButton
                   actionFn={() => dismissSyncSpinner(database.id)}
-                  className="Button Button--dismissSyncSpinner"
                   normalText={t`Dismiss sync spinner manually`}
                   activeText={t`Dismissing…`}
                   failedText={t`Failed to dismiss sync spinner`}
@@ -100,7 +97,7 @@ const DatabaseEditAppSidebar = ({
               <li>
                 <ModalWithTrigger
                   ref={discardSavedFieldValuesModal}
-                  triggerClasses="Button Button--danger Button--discardSavedFieldValues"
+                  triggerClasses="Button Button--danger"
                   triggerElement={t`Discard saved field values`}
                 >
                   <ConfirmContent
@@ -117,7 +114,7 @@ const DatabaseEditAppSidebar = ({
               <li className="mt2">
                 <ModalWithTrigger
                   ref={deleteDatabaseModal}
-                  triggerClasses="Button Button--deleteDatabase Button--danger"
+                  triggerClasses="Button Button--danger"
                   triggerElement={t`Remove this database`}
                 >
                   <DeleteDatabaseModal
