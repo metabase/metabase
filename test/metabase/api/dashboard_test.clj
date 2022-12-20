@@ -2241,7 +2241,7 @@
                                                    {:parameters [{:id    "_PRICE_"
                                                                   :type  :number/=
                                                                   :value [1 2 3]}]}))))))
-          (testing-only "Should return error if parameter doesn't exist"
+          (testing "Should return error if parameter doesn't exist"
             (is (= "Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\"."
                     (mt/user-http-request :rasta :post 400 url
                                           {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
