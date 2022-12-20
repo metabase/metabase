@@ -76,12 +76,12 @@ describe("scenarios > organization > timelines > question", () => {
       cy.wait("@getCollection");
       cy.findByText("Visualization").should("be.visible");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByText("v1").should("not.exist");
       cy.findByText("v2").should("be.visible");
       cy.findByText("v3").should("be.visible");
 
-      cy.findByLabelText("table2 icon").click();
+      cy.icon("table2").click();
       cy.findByText("v1").should("be.visible");
       cy.findByText("v2").should("be.visible");
       cy.findByText("v3").should("be.visible");
@@ -201,7 +201,7 @@ describe("scenarios > organization > timelines > question", () => {
       });
 
       cy.findByText("Visualization").should("be.visible");
-      cy.findByLabelText("star icon").should("be.visible");
+      cy.icon("star").should("be.visible");
     });
 
     it("should not show events for non-timeseries questions", () => {
@@ -230,7 +230,7 @@ describe("scenarios > organization > timelines > question", () => {
       });
 
       cy.findByText("Visualization").should("be.visible");
-      cy.findByLabelText("star icon").should("not.exist");
+      cy.icon("star").should("not.exist");
     });
 
     it("should show events for native queries", () => {
@@ -255,7 +255,7 @@ describe("scenarios > organization > timelines > question", () => {
       });
 
       cy.findByText("Visualization").should("be.visible");
-      cy.findByLabelText("star icon").should("be.visible");
+      cy.icon("star").should("be.visible");
     });
   });
 
