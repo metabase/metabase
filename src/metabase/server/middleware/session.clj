@@ -369,7 +369,7 @@
                 (when (some? new-value)
                   ;; Assert the duration is less than 100 years.
                   ;; Otherwise, we could fail to format the expires date if the year
-                  ;; has more than 5 digits (#25253)
+                  ;; has more than 4 digits (#25253)
                   (assert (< (/ (sesson-timeout->days new-value) 365.25) 100)))
                 (setting/set-value-of-type! :json :session-timeout new-value)))
 
