@@ -607,3 +607,18 @@
                      :order-by [[:asc $product_id] [:asc $id] [:asc $user_id]]
                      :limit 5})
                    mt/rows))))))))
+
+(deftest percentile-aggregations-order-by-reference-test
+  (mt/test-driver
+   :sqlserver
+   (mt/dataset
+    sample-dataset
+    (testing "Query with percentile aggregation reference in :orded-by yields correct results"
+      (is (= [[721 29.99] [2474 30.52] [1201 31.25] [2022 32.835] [2261 33.0]]
+             (-> (mt/run-mbql-query
+                  orders
+                  {:aggregation [[:aggregation-options [:median $total] {:name "xixi"}]]
+                   :breakout [$user_id]
+                   :order-by [[:asc [:aggregation 0]]]
+                   :limit 5})
+                 mt/rows)))))))
