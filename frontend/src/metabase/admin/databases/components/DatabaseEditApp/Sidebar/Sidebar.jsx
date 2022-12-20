@@ -45,7 +45,7 @@ const DatabaseEditAppSidebar = ({
 
   return (
     <SidebarRoot>
-      <SidebarContent className="Actions">
+      <SidebarContent data-testid="database-actions-panel">
         <SidebarGroup>
           <SidebarGroupName>{t`Actions`}</SidebarGroupName>
           <ol>
