@@ -161,46 +161,38 @@ export class Api extends EventEmitter {
       signal: controller.signal,
     });
 
-    let response, body;
-    try {
-      response = await fetch(request);
-      body = await response.text();
-    } catch (error) {
-      if (controller.signal.aborted) {
-        throw { isCancelled: true };
-      } else {
-        throw error;
-      }
-    }
+    return fetch(request).then(response => {
+      return response.text().then(body => {
+        if (options.json) {
+          try {
+            body = JSON.parse(body);
+          } catch (e) {}
+        }
 
-    if (options.json) {
-      try {
-        body = JSON.parse(body);
-      } catch (e) {}
-    }
+        let status = response.status;
+        if (status === 202 && body && body._status > 0) {
+          status = body._status;
+        }
 
-    let status = response.status;
-    if (status === 202 && body && body._status > 0) {
-      status = body._status;
-    }
+        const token = response.headers.get(ANTI_CSRF_HEADER);
+        if (token) {
+          ANTI_CSRF_TOKEN = token;
+        }
 
-    const token = response.headers.get(ANTI_CSRF_HEADER);
-    if (token) {
-      ANTI_CSRF_TOKEN = token;
-    }
+        if (!options.noEvent) {
+          this.emit(status, url);
+        }
 
-    if (!options.noEvent) {
-      this.emit(status, url);
-    }
-
-    if (status >= 200 && status <= 299) {
-      if (options.transformResponse) {
-        body = options.transformResponse(body, { data });
-      }
-      return body;
-    } else {
-      throw { status: status, data: body };
-    }
+        if (status >= 200 && status <= 299) {
+          if (options.transformResponse) {
+            body = options.transformResponse(body, { data });
+          }
+          return body;
+        } else {
+          throw { status: status, data: body };
+        }
+      });
+    });
   }
 }
 
