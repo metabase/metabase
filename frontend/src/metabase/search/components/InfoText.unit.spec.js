@@ -9,9 +9,9 @@ const table = { id: 1, display_name: "Table Name" };
 const database = { id: 1, name: "Database Name" };
 
 async function setup(result) {
-  nock(/.*/).get("/api/table/1").reply(200, table);
+  nock(location.origin).get("/api/table/1").reply(200, table);
 
-  nock(/.*/).get("/api/database/1").reply(200, database);
+  nock(location.origin).get("/api/database/1").reply(200, database);
 
   renderWithProviders(<InfoText result={result} />);
 }

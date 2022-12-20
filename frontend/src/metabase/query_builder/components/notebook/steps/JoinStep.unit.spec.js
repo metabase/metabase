@@ -171,20 +171,20 @@ describe.skip("Notebook Editor > Join Step", () => {
   }
 
   beforeEach(() => {
-    nock(/.*/)
+    nock(location.origin)
       .get("/api/database")
       .reply(200, {
         total: 1,
         data: [SAMPLE_DATABASE.getPlainObject()],
       });
-    nock(/.*/).get("/api/database/1/schemas").reply(200, ["PUBLIC"]);
-    nock(/.*/)
+    nock(location.origin).get("/api/database/1/schemas").reply(200, ["PUBLIC"]);
+    nock(location.origin)
       .get("/api/database/1/schema/PUBLIC")
       .reply(
         200,
         SAMPLE_DATABASE.tables.filter(table => table.schema === "PUBLIC"),
       );
-    nock(/.*/)
+    nock(location.origin)
       .get("/api/search?models=dataset&limit=1")
       .reply(200, {
         data: [],

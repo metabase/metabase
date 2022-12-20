@@ -20,7 +20,7 @@ import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/
 
 describe("DataSelector", () => {
   beforeEach(() => {
-    nock(/.*/)
+    nock(location.origin)
       .get("/api/search?models=dataset&limit=1")
       .reply(200, {
         data: [],

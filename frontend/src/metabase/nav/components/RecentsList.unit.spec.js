@@ -42,7 +42,7 @@ const recentsData = [
 ];
 
 function mockRecentsEndpoint(recents) {
-  nock(/.*/).get("/api/activity/recent_views").reply(200, recents);
+  nock(location.origin).get("/api/activity/recent_views").reply(200, recents);
 }
 
 async function setup(recents = recentsData) {

@@ -27,18 +27,18 @@ const COLLECTIONS = {
 };
 
 function mockCollectionTreeEndpoint() {
-  nock(/.*/)
+  nock(location.origin)
     .get("/api/collection/tree?tree=true")
     .reply(200, Object.values(COLLECTIONS));
 }
 
 function mockRootCollectionEndpoint(hasAccess) {
   if (hasAccess) {
-    nock(/.*/)
+    nock(location.origin)
       .get("/api/collection/root")
       .reply(200, createMockCollection({ id: "root", name: "Our analytics" }));
   } else {
-    nock(/.*/)
+    nock(location.origin)
       .get("/api/collection/root")
       .reply(200, "You don't have access to this collection");
   }
@@ -46,7 +46,7 @@ function mockRootCollectionEndpoint(hasAccess) {
 
 function mockCollectionEndpoint(requestedCollectionName) {
   const encodedName = encodeURIComponent(requestedCollectionName);
-  nock(/.*/)
+  nock(location.origin)
     .get(`/api/database/-1337/schema/${encodedName}`)
     .reply(200, [
       createMockTable({

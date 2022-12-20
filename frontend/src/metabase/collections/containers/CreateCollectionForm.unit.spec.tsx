@@ -16,7 +16,7 @@ type SetupOpts = {
 };
 
 function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
-  nock(/.*/)
+  nock(location.origin)
     .post("/api/collection")
     .reply(200, (url, body) => {
       if (typeof body === "object") {
@@ -33,7 +33,7 @@ function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
 
 describe("CreateCollectionForm", () => {
   beforeEach(() => {
-    nock(/.*/)
+    nock(location.origin)
       .get("/api/collection")
       .reply(200, [
         {
