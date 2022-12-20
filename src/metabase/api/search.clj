@@ -18,6 +18,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.search.config :as search-config]
             [metabase.search.scoring :as scoring]
+            [metabase.search.util :as search-util]
             [metabase.server.middleware.offset-paging :as mw.offset-paging]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -190,7 +191,7 @@
   (when query
     (into [:or]
           (for [column searchable-columns
-                token (scoring/tokenize (scoring/normalize query))]
+                token (search-util/tokenize (search-util/normalize query))]
             (if (and (= model "card") (= column (hsql/qualify (model->alias model) :dataset_query)))
               [:and
                [:= (hsql/qualify (model->alias model) :query_type) "native"]
@@ -380,7 +381,7 @@
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
   [query]
-  (let [match             (wildcard-match (scoring/normalize query))
+  (let [match             (wildcard-match (search-util/normalize query))
         columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
