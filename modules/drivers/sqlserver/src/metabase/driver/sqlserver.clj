@@ -8,6 +8,7 @@
             [honeysql.format :as hformat]
             [honeysql.helpers :as hh]
             [java-time :as t]
+            [medley.core :as m]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
@@ -775,6 +776,27 @@
                                            (->> (:aggregation original-inner)
                                                 (filter percentile-aggregation?)
                                                 (map aggregation->field))))
+                  ;; 2.2
+                  (m/update-existing :order-by
+                                     (partial mapv
+                                              (let [percentile-aggregations-count (->> (:aggregation original-inner)
+                                                                                       (filter percentile-aggregation?)
+                                                                                       count)]
+                                                (fn [[_ [order-field-type index] :as order-field]]
+                                                  (cond
+                                                    (= order-field-type :aggregation)
+                                                    (let [referenced-aggregation
+                                                          (nth (:aggregation original-inner)
+                                                               index)]
+                                                      (if (percentile-aggregation? referenced-aggregation)
+                                                        ;; update percentile aggregation references to fields
+                                                        (aggregation->field referenced-aggregation)
+                                                        ;; update other aggregation index
+                                                        ;; [:asc [:aggregation __2__]]
+                                                        (update-in (vec order-field) [1 1] #(- % percentile-aggregations-count))))
+
+                                                    :else
+                                                    order-field)))))
                   ;; 3.
                   (assoc :source-query (percentile-source-query original-inner)))})
 
