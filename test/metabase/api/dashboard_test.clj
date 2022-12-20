@@ -2061,35 +2061,63 @@
 
 (deftest parameter-values-from-card-test
   ;; TODO add permissions tests
-  (let [query (mt/mbql-query venues {:limit 5})]
-    (mt/with-temp* [Card      [{card-id         :id}
-                               {:database_id     (mt/id)
-                                :table_id        (mt/id :venues)
-                                :result_metadata (mt/query->expected-cols query)
-                                :dataset_query   query}]
-                    Dashboard [{dashboard-id :id}
-                               {:parameters [{:id             "abc"
-                                              :type           "category"
-                                              :name           "CATEGORY"
-                                              :source_type    "card"
-                                              :source_options {:card_id         card-id
-                                                               :value_field_ref (mt/$ids $venues.name)}}]}]]
+  (testing "happy path"
+    (let [query (mt/mbql-query venues {:limit 5})]
+      (mt/with-temp*
+        [Card      [{card-id         :id}
+                    {:database_id     (mt/id)
+                     :table_id        (mt/id :venues)
+                     :result_metadata (mt/query->expected-cols query)
+                     :dataset_query   query}]
+         Dashboard [{dashboard-id :id}
+                    {:parameters [{:id             "abc"
+                                   :type           "category"
+                                   :name           "CATEGORY"
+                                   :source_type    "card"
+                                   :source_options {:card_id         card-id
+                                                    :value_field_ref (mt/$ids $venues.name)}}]}]]
 
-      (testing "It uses the results of the card's query execution"
+        (testing "It uses the results of the card's query execution"
+          (let-url [url (chain-filter-values-url dashboard-id "abc")]
+            (is (= {:values          ["Red Medicine"
+                                      "Stout Burgers & Beers"
+                                      "The Apple Pan"
+                                      "Wurstküche"
+                                      "Brite Spot Family Restaurant"]
+                    :has_more_values false}
+                   (mt/user-http-request :rasta :get 200 url)))))
+
+        (testing "it only returns search matches"
+          (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
+            (is (= {:values          ["Red Medicine"]
+                    :has_more_values false}
+                   (mt/user-http-request :rasta :get 200 url))))))))
+
+  (testing "invalid field_ref shoud returns 400"
+    (mt/with-temp*
+      [Card      [{card-id         :id}
+                  {:database_id     (mt/id)
+                   :table_id        (mt/id :venues)
+                   :result_metadata (mt/query->expected-cols (mt/mbql-query venues))
+                   :dataset_query   (mt/mbql-query venues)}]
+       Dashboard [{dashboard-id :id}
+                  {:parameters [{:id             "abc"
+                                 :type           "category"
+                                 :name           "CATEGORY"
+                                 :source_type    "card"
+                                 :source_options {:card_id         card-id
+                                                  ;; this should be invalid field_ref beacuse the query
+                                                  ;; is for venues table
+                                                  :value_field_ref (mt/$ids $categories.name)}}]}]]
+      (testing "when getting values"
         (let-url [url (chain-filter-values-url dashboard-id "abc")]
-          (is (= {:values          ["Red Medicine"
-                                    "Stout Burgers & Beers"
-                                    "The Apple Pan"
-                                    "Wurstküche"
-                                    "Brite Spot Family Restaurant"]
-                  :has_more_values false}
-                 (mt/user-http-request :rasta :get 200 url)))))
+          (is (=? #"No matching field found"
+                  (:message (mt/user-http-request :rasta :get 400 url))))))
 
-      (testing "it only returns search matches"
+      (testing "when searching values"
         (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
-          (is (= {:values          ["Red Medicine"]
-                  :has_more_values false}
-                 (mt/user-http-request :rasta :get 200 url))))))))
+          (is (=? #"No matching field found"
+                  (:message (mt/user-http-request :rasta :get 400 url)))))))))
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
@@ -2193,55 +2221,55 @@
                                    :type     :native
                                    :native   {:query "delete from users;"}}}]]
               (is (= "Write queries are only executable via the Actions API."
-                     (:message (mt/user-http-request :rasta :post 405 (url :card-id (:id card))))))))))))
+                     (:message (mt/user-http-request :rasta :post 405 (url :card-id (:id card)))))))))))))
 
-  ;; see also [[metabase.query-processor.dashboard-test]]
-  (deftest dashboard-card-query-parameters-test
-    (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
-      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
-        (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
-          (testing "parameters"
-            (testing "Should respect valid parameters"
+;; see also [[metabase.query-processor.dashboard-test]]
+(deftest dashboard-card-query-parameters-test
+  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
+    (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
+      (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
+        (testing "parameters"
+          (testing "Should respect valid parameters"
+            (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
+                         (mt/user-http-request :rasta :post 202 url
+                                               {:parameters [{:id    "_PRICE_"
+                                                              :value 4}]})))
+            (testing "New parameter types"
+              (testing :number/=
+                (is (schema= (dashboard-card-query-expected-results-schema :row-count 94)
+                             (mt/user-http-request :rasta :post 202 url
+                                                   {:parameters [{:id    "_PRICE_"
+                                                                  :type  :number/=
+                                                                  :value [1 2 3]}]}))))))
+          (testing-only "Should return error if parameter doesn't exist"
+            (is (= "Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\"."
+                    (mt/user-http-request :rasta :post 400 url
+                                          {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
+                                                         :value 3}]}))))
+          (testing "Should return sensible error message for invalid parameter input"
+            (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
+                                              "Each value must be a parameter map with an 'id' key")}}
+                   (mt/user-http-request :rasta :post 400 url
+                                         {:parameters {"_PRICE_" 3}}))))
+          (testing "Should ignore parameters that are valid for the Dashboard but not part of this Card (no mapping)"
+            (testing "Sanity check"
               (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
                            (mt/user-http-request :rasta :post 202 url
                                                  {:parameters [{:id    "_PRICE_"
-                                                                :value 4}]})))
-              (testing "New parameter types"
-                (testing :number/=
-                  (is (schema= (dashboard-card-query-expected-results-schema :row-count 94)
-                               (mt/user-http-request :rasta :post 202 url
-                                                     {:parameters [{:id    "_PRICE_"
-                                                                    :type  :number/=
-                                                                    :value [1 2 3]}]}))))))
-            (testing "Should return error if parameter doesn't exist"
-              (is (= "Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\"."
-                     (mt/user-http-request :rasta :post 400 url
-                                           {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
-                                                          :value 3}]}))))
-            (testing "Should return sensible error message for invalid parameter input"
-              (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                                "Each value must be a parameter map with an 'id' key")}}
-                     (mt/user-http-request :rasta :post 400 url
-                                           {:parameters {"_PRICE_" 3}}))))
-            (testing "Should ignore parameters that are valid for the Dashboard but not part of this Card (no mapping)"
-              (testing "Sanity check"
-                (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
-                             (mt/user-http-request :rasta :post 202 url
-                                                   {:parameters [{:id    "_PRICE_"
-                                                                  :value 4}]}))))
-              (mt/with-temp-vals-in-db DashboardCard dashcard-id {:parameter_mappings []}
-                (is (schema= (dashboard-card-query-expected-results-schema :row-count 100)
-                             (mt/user-http-request :rasta :post 202 url
-                                                   {:parameters [{:id    "_PRICE_"
-                                                                  :value 4}]})))))
-
-            ;; don't let people try to be sneaky and get around our validation by passing in a different `:target`
-            (testing "Should ignore incorrect `:target` passed in to API endpoint"
-              (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
+                                                                :value 4}]}))))
+            (mt/with-temp-vals-in-db DashboardCard dashcard-id {:parameter_mappings []}
+              (is (schema= (dashboard-card-query-expected-results-schema :row-count 100)
                            (mt/user-http-request :rasta :post 202 url
-                                                 {:parameters [{:id     "_PRICE_"
-                                                                :target [:dimension [:field (mt/id :venues :id) nil]]
-                                                                :value  4}]}))))))))))
+                                                 {:parameters [{:id    "_PRICE_"
+                                                                :value 4}]})))))
+
+          ;; don't let people try to be sneaky and get around our validation by passing in a different `:target`
+          (testing "Should ignore incorrect `:target` passed in to API endpoint"
+            (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
+                         (mt/user-http-request :rasta :post 202 url
+                                               {:parameters [{:id     "_PRICE_"
+                                                              :target [:dimension [:field (mt/id :venues :id) nil]]
+                                                              :value  4}]})))))))))
 
 (defn- parse-export-format-results [^bytes results export-format]
   (with-open [is (java.io.ByteArrayInputStream. results)]
