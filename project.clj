@@ -121,12 +121,12 @@
     :exclusions [org.slf4j/slf4j-api joda-time]]                      ; exclude joda time 2.3 which has outdated timezone information
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.10"]                          ; helper methods for working with java.lang stuff
-   [org.apache.logging.log4j/log4j-api "2.13.3"]                      ; apache logging framework
-   [org.apache.logging.log4j/log4j-1.2-api "2.13.3"]                  ; add compatibility with log4j 1.2
-   [org.apache.logging.log4j/log4j-core "2.13.3"]                     ; apache logging framework
-   [org.apache.logging.log4j/log4j-jcl "2.13.3"]                      ; allows the commons-logging API to work with log4j 2
-   [org.apache.logging.log4j/log4j-liquibase "2.13.3"]                ; liquibase logging via log4j 2
-   [org.apache.logging.log4j/log4j-slf4j-impl "2.13.3"]               ; allows the slf4j API to work with log4j 2
+   [org.apache.logging.log4j/log4j-api "2.19.0"]                      ; apache logging framework
+   [org.apache.logging.log4j/log4j-1.2-api "2.19.0"]                  ; add compatibility with log4j 1.2
+   [org.apache.logging.log4j/log4j-core "2.19.0"]                     ; apache logging framework
+   [org.apache.logging.log4j/log4j-jcl "2.19.0"]                      ; allows the commons-logging API to work with log4j 2
+   [org.apache.logging.log4j/log4j-liquibase "2.19.0"]                ; liquibase logging via log4j 2
+   [org.apache.logging.log4j/log4j-slf4j-impl "2.19.0"]               ; allows the slf4j API to work with log4j 2
    [org.apache.sshd/sshd-core "2.4.0"]                                ; ssh tunneling and test server
    [org.bouncycastle/bcprov-jdk15on "1.65"]                           ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
