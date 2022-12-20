@@ -17,7 +17,7 @@ describe("schema entity", () => {
   });
 
   it("should save metadata from fetching a schema's tables", async () => {
-    nock(/.*/)
+    nock(location.origin)
       .get("/api/database/1/schema/public")
       .reply(200, [
         { id: 123, name: "foo" },
@@ -41,7 +41,9 @@ describe("schema entity", () => {
   });
 
   it("should save metadata from listing schemas", async () => {
-    nock(/.*/).get("/api/database/1/schemas").reply(200, ["foo", "bar"]);
+    nock(location.origin)
+      .get("/api/database/1/schemas")
+      .reply(200, ["foo", "bar"]);
 
     await store.dispatch(Schemas.actions.fetchList({ dbId: "1" }));
     const { schemas } = store.getState().entities;
@@ -52,7 +54,7 @@ describe("schema entity", () => {
   });
 
   it("should handle schema-less databases", async () => {
-    nock(/.*/).get("/api/database/1/schemas").reply(200, [""]);
+    nock(location.origin).get("/api/database/1/schemas").reply(200, [""]);
 
     await store.dispatch(Schemas.actions.fetchList({ dbId: "1" }));
     const { schemas } = store.getState().entities;
@@ -60,7 +62,7 @@ describe("schema entity", () => {
   });
 
   it("should fetch schema tables for a schema-less database", async () => {
-    nock(/.*/)
+    nock(location.origin)
       .get("/api/database/1/schema/")
       .reply(200, [
         { id: 123, name: "foo" },

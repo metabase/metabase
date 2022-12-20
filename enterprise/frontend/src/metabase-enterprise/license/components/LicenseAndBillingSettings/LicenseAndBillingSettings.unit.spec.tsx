@@ -45,7 +45,7 @@ const setupState = ({
 };
 
 const mockTokenStatus = (valid: boolean, features: string[] = []) => {
-  nock(/.*/).get("/api/premium-features/token/status").reply(200, {
+  nock(location.origin).get("/api/premium-features/token/status").reply(200, {
     valid,
     "valid-thru": "2099-12-31T12:00:00",
     features,
@@ -53,11 +53,11 @@ const mockTokenStatus = (valid: boolean, features: string[] = []) => {
 };
 
 const mockTokenNotExist = () => {
-  nock(/.*/).get("/api/premium-features/token/status").reply(404);
+  nock(location.origin).get("/api/premium-features/token/status").reply(404);
 };
 
 const mockUpdateToken = (valid: boolean) => {
-  nock(/.*/)
+  nock(location.origin)
     .put("/api/setting/premium-embedding-token")
     .reply(valid ? 200 : 400);
 };

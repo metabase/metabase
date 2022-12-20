@@ -45,7 +45,7 @@ describe("CategoryFieldPicker", () => {
 
   describe("given a few distinct values", () => {
     beforeEach(() => {
-      nock(/.*/)
+      nock(location.origin)
         .get(`/api/field/${productCategoryField.id}/values`)
         .reply(200, productCategoryField.fieldValues());
     });

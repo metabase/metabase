@@ -15,7 +15,7 @@ describe("database entity", () => {
   });
 
   it("should save database metadata in redux", async () => {
-    nock(/.*/)
+    nock(location.origin)
       .get("/api/database/123/metadata")
       .reply(200, {
         id: 123,

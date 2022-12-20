@@ -35,17 +35,17 @@ async function setup({
   withDefaultFoldersList = true,
   onClose = jest.fn(),
 }: SetupOpts = {}) {
-  nock(/.*/)
+  nock(location.origin)
     .get("/api/collection/root?namespace=snippets")
     .reply(200, TOP_SNIPPETS_FOLDER);
 
   if (withDefaultFoldersList) {
-    nock(/.*/)
+    nock(location.origin)
       .get("/api/collection?namespace=snippets")
       .reply(200, [TOP_SNIPPETS_FOLDER]);
   }
 
-  nock(/.*/)
+  nock(location.origin)
     .post("/api/native-query-snippet")
     .reply(200, (uri, body) => {
       if (typeof body === "object") {
@@ -54,7 +54,7 @@ async function setup({
     });
 
   if (snippet.id) {
-    nock(/.*/)
+    nock(location.origin)
       .put(`/api/native-query-snippet/${snippet.id}`)
       .reply(200, (uri, body) => {
         if (typeof body === "object") {
@@ -118,7 +118,7 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      nock(/.*/)
+      nock(location.origin)
         .get("/api/collection?namespace=snippets")
         .reply(200, [TOP_SNIPPETS_FOLDER, createMockCollection()]);
 
@@ -211,7 +211,7 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      nock(/.*/)
+      nock(location.origin)
         .get("/api/collection?namespace=snippets")
         .reply(200, [TOP_SNIPPETS_FOLDER, createMockCollection()]);
 

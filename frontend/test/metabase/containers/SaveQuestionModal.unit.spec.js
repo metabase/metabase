@@ -150,8 +150,10 @@ describe("SaveQuestionModal", () => {
   ];
 
   beforeEach(() => {
-    nock(/.*/).get("/api/collection").reply(200, TEST_COLLECTIONS);
-    nock(/.*/).get("/api/collection/root").reply(200, TEST_COLLECTIONS);
+    nock(location.origin).get("/api/collection").reply(200, TEST_COLLECTIONS);
+    nock(location.origin)
+      .get("/api/collection/root")
+      .reply(200, TEST_COLLECTIONS);
   });
 
   afterEach(() => {
