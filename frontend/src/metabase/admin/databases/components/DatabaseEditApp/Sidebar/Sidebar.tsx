@@ -1,12 +1,13 @@
 import React, { useCallback, useRef } from "react";
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
+import ActionButton from "metabase/components/ActionButton";
+import ConfirmContent from "metabase/components/ConfirmContent";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+
 import { isSyncCompleted } from "metabase/lib/syncing";
 import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModal.jsx";
-import ActionButton from "metabase/components/ActionButton";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import ConfirmContent from "metabase/components/ConfirmContent";
-import Button from "metabase/core/components/Button";
 
 import type { DatabaseId } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
