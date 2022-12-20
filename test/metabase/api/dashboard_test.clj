@@ -2085,29 +2085,6 @@
                 :has_more_values false}
                (mt/user-http-request :rasta :get 200 url)))))))
 
-(deftest parameter-values-from-card-test
-  (mt/with-temp* [Card          [{card-id :id}      {:database_id   (mt/id)
-                                                     :table_id      (mt/id :venues)
-                                                     :dataset_query (mt/native-query {:query "SELECT name FROM venues WHERE name LIKE '%Bar%'"})}]
-                  Dashboard     [{dashboard-id :id} {:parameters [{:id             "abc"
-                                                                   :type           "category"
-                                                                   :name           "CATEGORY"
-                                                                   :source_type    "card"
-                                                                   :source_options {:card_id card-id}}]}]]
-    (testing "It uses the results of the card's query execution"
-      (let-url [url (chain-filter-values-url dashboard-id "abc")]
-        (is (= {:values ["The Misfit Restaurant + Bar"
-                         "My Brother's Bar-B-Q"
-                         "Two Sisters Bar & Books"
-                         "Tanoshi Sushi & Sake Bar"
-                         "Barney's Beanery"]
-                :has_more_values false}
-               (mt/user-http-request :rasta :get 200 url)))))
-    (testing "it only returns search matches"
-      (let-url [url (chain-filter-search-url dashboard-id "abc" "sushi")]
-        (is (= {:values          ["Tanoshi Sushi & Sake Bar"]
-                :has_more_values false}
-               (mt/user-http-request :rasta :get 200 url)))))))
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
