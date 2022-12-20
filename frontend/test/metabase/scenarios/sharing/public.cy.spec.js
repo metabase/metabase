@@ -207,6 +207,7 @@ describe("scenarios > public", () => {
       // Setup
       const customField = {
         name: "email_name",
+        // Custom field is `concat([Email], [Name])`
         definition: [
           "concat",
           ["field", PEOPLE.EMAIL, null],
@@ -254,7 +255,7 @@ describe("scenarios > public", () => {
       // Enable public sharing
       cy.icon("share").click();
 
-      cy.contains("Enable sharing")
+      cy.findByText("Enable sharing")
         .parent()
         .find("input[type=checkbox]")
         .check();
@@ -267,10 +268,19 @@ describe("scenarios > public", () => {
           cy.visit(dashboardPublicLink);
         });
 
-      // Public dashboard
-      cy.findByText(textContainsFilter.name).click();
+      // Assert public dashboard
+      setFilter(textContainsFilter, "khalid-pouros@yahoo.com");
+      cy.findAllByText("khalid-pouros@yahoo.com").should("have.length", 2); // 1 for the filter and 1 for the result in the card
 
-      cy.findByPlaceholderText("Enter some text").should("be.visible");
+      clearFilter();
+      setFilter(textContainsFilter, "Edgardo Hackett");
+      cy.findAllByText("Edgardo Hackett").should("have.length", 2); // 1 for the filter and 1 for the result in the card
+
+      // search by the full value of the custom field which is email + name
+      clearFilter();
+      setFilter(textContainsFilter, "walsh-desiree@gmail.comDesiree Walsh");
+      cy.findByText("walsh-desiree@gmail.com").should("be.visible");
+      cy.findByText("Desiree Walsh").should("be.visible");
     });
   });
 });
@@ -303,4 +313,18 @@ function mapParameters({
       },
     ],
   });
+}
+
+function clearFilter() {
+  cy.icon("close").click();
+}
+
+function setFilter(filter, value) {
+  cy.findByText(filter.name).click();
+
+  cy.findByPlaceholderText("Enter some text").should("be.visible").type(value);
+
+  cy.findByRole("button", {
+    name: "Add filter",
+  }).click();
 }
