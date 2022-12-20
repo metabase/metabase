@@ -462,9 +462,7 @@
   ;; division works outside in (/ 1 2 3) => (/ (/ 1 2) 3)
   (let [division (reduce
                    (fn [accum head]
-                     (if accum
-                       {"$divide" [accum head]}
-                       head))
+                     {"$divide" [accum head]})
                    (map ->rvalue args))
         literal-zero? (some #(and (number? %) (zero? %)) divisors)
         non-literal-nil-checks (mapv (fn [divisor] {"$eq" [(->rvalue divisor) 0]}) (remove number? divisors))]
