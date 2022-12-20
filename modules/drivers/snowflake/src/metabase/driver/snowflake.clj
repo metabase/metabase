@@ -27,14 +27,19 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]])
-  (:import [java.sql ResultSet Types]
+            [metabase.util.i18n :refer [trs tru]]
+            [ring.util.codec :as codec])
+  (:import java.io.File
+           java.nio.charset.StandardCharsets
+           [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (defmethod driver/database-supports? [:snowflake :datetime-diff] [_ _ _] true)
+
+(defmethod driver/database-supports? [:snowflake :now] [_driver _feat _db] true)
 
 (defmethod driver/supports? [:snowflake :convert-timezone]
   [_driver _feature]
@@ -62,19 +67,39 @@
   []
   (inc (driver.common/start-of-week->int)))
 
+(defn- handle-conn-uri [details user account private-key-file]
+  (let [existing-conn-uri (or (:connection-uri details)
+                              (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
+        opts-str (sql-jdbc.common/additional-opts->string :url
+                                                          {:user (codec/url-encode user)
+                                                           :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))})
+        new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
+    (assoc details :connection-uri new-conn-uri)))
+
 (defn- resolve-private-key
   "Convert the private-key secret properties into a private_key_file property in `details`.
 
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [details]
-  (let [property         "private-key"
-        secret-map       (secret/db-details-prop->secret-map details property)
-        private-key-file (when (some? (:value secret-map))
-                           (secret/value->file! secret-map :snowflake))]
-    (cond-> (apply dissoc details (vals (secret/get-sub-props property)))
-      private-key-file (assoc :private_key_file (.getCanonicalPath private-key-file)))))
+  [{:keys [user password account private-key-value private-key-path] :as details}]
+  (cond
+    password
+    details
+
+    private-key-path
+    (let [secret-map       (secret/db-details-prop->secret-map details "private-key")
+          private-key-file (when (some? (:value secret-map))
+                             (secret/value->file! secret-map :snowflake))]
+      (cond-> (apply dissoc details (vals (secret/get-sub-props "private-key")))
+        private-key-file (handle-conn-uri user account private-key-file)))
+
+    private-key-value
+    (let [private-key-str  (if (bytes? private-key-value)
+                             (String. ^bytes private-key-value StandardCharsets/UTF_8)
+                             private-key-value)
+          private-key-file (secret/value->file! {:connection-property-name "private-key-file" :value private-key-str})]
+      (handle-conn-uri details user account private-key-file))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options], :as details}]
@@ -153,7 +178,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake
   [_]
-  :%current_timestamp)
+  (hx/with-database-type-info :%current_timestamp :TIMESTAMPTZ))
 
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
   [_ hsql-form amount unit]
@@ -371,7 +396,7 @@
       (->> (assoc (select-keys table [:name :schema])
                   :fields (sql-jdbc.sync/describe-table-fields driver conn table (db-name database)))
            ;; find PKs and mark them
-           (sql-jdbc.sync/add-table-pks (.getMetaData conn))))))
+           (sql-jdbc.sync/add-table-pks driver conn (db-name database))))))
 
 (defmethod driver/describe-table-fks :snowflake
   [driver database table]
@@ -402,9 +427,9 @@
   [driver {:keys [db], :as details}]
   (and ((get-method driver/can-connect? :sql-jdbc) driver details)
        (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
-         (let [sql (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
-           (jdbc/query spec sql)
-           true))))
+         ;; jdbc/query is used to see if we throw, we want to ignore the results
+         (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db))
+         true)))
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
