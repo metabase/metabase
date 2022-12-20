@@ -234,7 +234,6 @@
     "mockdate": "^2.0.2",
     "mutationobserver-shim": "^0.3.7",
     "nock": "^13.2.9",
-    "node-fetch": "^2.6.7",
     "node-polyfill-webpack-plugin": "2.0.1",
     "postcss": "8.4.19",
     "postcss-color-mod-function": "^3.0.3",
@@ -254,6 +253,7 @@
     "webpack-dev-server": "4.11.1",
     "webpack-notifier": "1.15.0",
     "xlsx": "0.18.3",
+    "xmlhttprequest": "^1.8.0",
     "yaml-lint": "~1.6.0"
   },
   "resolutions": {
