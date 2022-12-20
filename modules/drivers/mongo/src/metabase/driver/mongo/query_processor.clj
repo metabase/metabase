@@ -719,6 +719,10 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
+(def ^:private aggregation-op
+  "The set of operators handled by [[aggregation->rvalue]] and [[expand-aggregation]]."
+  #{:avg :count :count-where :distinct :max :min :share :stddev :sum :sum-where :var})
+
 (defmethod ->rvalue :case [[_ cases options]]
   {:$switch {:branches (for [[pred expr] cases]
                          {:case (compile-cond pred)
@@ -797,11 +801,11 @@
 
 (defmethod expand-aggregation :share
   [[_ pred :as ag]]
-  (let [count-where-expr    (name (gensym "$count-where-"))
-        count-expr          (name (gensym "$count-"))
-        pred                (if (= (first pred) :share)
-                              (second pred)
-                              pred)]
+  (let [count-where-expr (name (gensym "$count-where-"))
+        count-expr       (name (gensym "$count-"))
+        pred             (if (= (first pred) :share)
+                           (second pred)
+                           pred)]
     {:group {(subs count-where-expr 1) (aggregation->rvalue [:count-where pred])
              (subs count-expr 1)       (aggregation->rvalue [:count])}
      :post  [{(annotate/aggregation-name ag) {$divide [count-where-expr count-expr]}}]}))
@@ -811,33 +815,62 @@
 (defmethod expand-aggregation :var
   [ag]
   (let [[_ expr]    (unwrap-named-ag ag)
-        stddev-name (name (gensym "$stddev-"))]
-    {:group {(subs stddev-name 1) (aggregation->rvalue [:stddev expr])}
-     :post  [{(annotate/aggregation-name ag) {:$pow [stddev-name 2]}}]}))
+        stddev-expr (name (gensym "$stddev-"))]
+    {:group {(subs stddev-expr 1) (aggregation->rvalue [:stddev expr])}
+     :post  [{(annotate/aggregation-name ag) {:$pow [stddev-expr 2]}}]}))
 
 (defmethod expand-aggregation :default
   [ag]
   {:group {(annotate/aggregation-name ag) (aggregation->rvalue ag)}})
 
-(def ^:private group-op
-  #{:var :share :count :avg :stddev :sum :min :max :distinct :sum-where :count-where})
+(defn- extract-aggregation
+  "Separate the expression `aggregation` named `aggr-name` into two parts:
+  an simple expression and an aggregation expression, where the simple expression
+  references the result of the aggregation expression such that first evaluating
+  the aggregation expression and binding its result to `aggr-name` and then
+  evaluating the simple expression in this context, the result is the same as
+  evaluating the whole expression `aggregation`.
+  This separation is necessary, because MongoDB doesn't support embedding
+  aggregations in `normal' expressions.
 
-(defn- extract-aggregation [aggregation aggr-name]
+  For example the aggregation
+    [:aggregation-options
+     [:+ [:/ [:sum
+              [:case [[[:< [:field 12 nil] [:field 7 nil]]
+                       [:field 12 nil]]]
+               {:default 0}]]
+             2]
+         1]
+     {:name \"expression\"}]
+  is transformed into the simple expression
+    [:+ [:/ \"$expression\" 2] 1]
+  and the aggregation expression
+    [:aggregation-options
+     [:sum
+      [:case [[[:< [:field 12 nil] [:field 7 nil]]
+               [:field 12 nil]]]
+       {:default 0}]]
+     {:name \"expression\"}]"
+  [aggregation aggr-name]
   (when (and (vector? aggregation) (seq aggregation))
     (let [[op & args] aggregation]
       (cond
         (= op :aggregation-options)
         (let [[embedding-expr aggregation'] (extract-aggregation (first args) aggr-name)]
           [embedding-expr (into [:aggregation-options aggregation'] (rest args))])
-        (group-op op) [(str \$ aggr-name) aggregation]
-        :else (let [ges (map #(extract-aggregation % aggr-name) args)
-                    [embedding-expr aggregation'] (first (filter some? ges))]
-                (when-not aggregation'
-                  (throw
-                   (ex-info (tru "Don''t know how to handle aggregation {0}" aggregation)
-                            {:type :invalid-query, :clause aggregation})))
-                [(into [op] (map (fn [arg ge] (if ge embedding-expr arg)) args ges))
-                 aggregation'])))))
+
+        (aggregation-op op)
+        [(str \$ aggr-name) aggregation]
+
+        :else
+        (let [ges (map #(extract-aggregation % aggr-name) args)
+              [embedding-expr aggregation'] (first (filter some? ges))]
+          (when-not aggregation'
+            (throw
+             (ex-info (tru "Don''t know how to handle aggregation {0}" aggregation)
+                      {:type :invalid-query, :clause aggregation})))
+          [(into [op] (map (fn [arg ge] (if ge embedding-expr arg)) args ges))
+           aggregation'])))))
 
 (defn- expand-embedded-aggregation [aggregation]
   (let [aggr-name (annotate/aggregation-name aggregation)
@@ -851,8 +884,11 @@
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
    though [:/ [:count-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
    more complex aggregations are split in two: the reductions are done in `$group` stage after which
-   we do postprocessing in `$addFields` stage to arrive at the final result. The intermittent results
-   accrued in `$group` stage are discarded in the final `$project` stage."
+   we do postprocessing in `$addFields` stage to arrive at the final result.
+   The groups are assumed to be independent an collapsed into a single stage, but separate
+   `$addFields` stages are created for post processing so that stages can refer to the results
+   of preceding stages.
+   The intermittent results accrued in `$group` stage are discarded in the final `$project` stage."
   [id aggregations]
   (let [expanded-ags (map expand-embedded-aggregation aggregations)
         group-ags    (mapcat :group expanded-ags)
