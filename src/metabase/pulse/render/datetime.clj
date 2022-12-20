@@ -118,6 +118,6 @@
          (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y (parse-long s))
 
          ;; for everything else return in this format
-         (reformat-temporal-str timezone-id s (-> (or date-style "MMM d, yyyy")
+         (reformat-temporal-str timezone-id s (-> (or date-style "MMMM d, yyyy")
                                                   (str/replace #"D" "d")
                                                   post-process-date-style)))))))

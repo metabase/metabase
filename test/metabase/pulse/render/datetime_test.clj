@@ -63,7 +63,7 @@
   (testing "Can render abbreviated date styles when no other style data is explicitly set. (#27020)"
     (is (= "Jul 16, 2020"
            (datetime/format-temporal-str "UTC" now
-                                         {:field_ref [:column_name "created_at"]
+                                         {:field_ref      [:column_name "created_at"]
                                           :effective_type :type/Date}
                                          {::mb.viz/column-settings
                                           {{::mb.viz/column-name "created_at"}
@@ -71,8 +71,28 @@
   (testing "Can render datetimes with Day of Week option. (#27105)"
     (is (= "Thursday, July 16, 2020"
            (datetime/format-temporal-str "UTC" now
-                                         {:field_ref [:column_name "created_at"]
+                                         {:field_ref      [:column_name "created_at"]
                                           :effective_type :type/Date}
                                          {::mb.viz/column-settings
                                           {{::mb.viz/column-name "created_at"}
                                            {::mb.viz/date-style "dddd, MMMM D, YYYY"}}})))))
+
+(deftest format-temporal-str-column-viz-settings-test
+  (testing "Written Date Formatting"
+    (let [fmt (fn [col-viz]
+                (datetime/format-temporal-str "UTC" now {:field_ref      [:column_name "created_at"]
+                                                         :effective_type :type/Date}
+                                              {::mb.viz/column-settings
+                                               {{::mb.viz/column-name "created_at"} col-viz}}))]
+      (doseq [[date-style normal-result abbreviated-result]
+              [["MMMM D, YYYY" "July 16, 2020" "Jul 16, 2020"]
+               ["D MMMM, YYYY" "16 July, 2020" "16 Jul, 2020"]
+               ["dddd, MMMM D, YYYY" "Thursday, July 16, 2020" "Thu, Jul 16, 2020"]
+               [nil "July 16, 2020" "Jul 16, 2020"]]]
+        (testing (str "Date style: " date-style " correctly formats.")
+          (is (= normal-result
+                 (fmt (when date-style {::mb.viz/date-style date-style})))))
+        (testing (str "Date style: " date-style " with abbreviation correctly formats.")
+          (is (= abbreviated-result
+                 (fmt (merge {::mb.viz/date-abbreviate true}
+                             (when date-style {::mb.viz/date-style date-style}))))))))))
