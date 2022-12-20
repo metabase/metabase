@@ -16,7 +16,7 @@ export interface TimelineSidebarProps {
   xDomain?: [Moment, Moment];
   onShowTimelines?: (timelines: Timeline[]) => void;
   onHideTimelines?: (timelines: Timeline[]) => void;
-  onShowTimelineEvent: (timelineEvent: TimelineEvent) => void;
+  onShowTimelineEvent: (timelineEvent: TimelineEvent | TimelineEvent[]) => void;
   onHideTimelineEvent: (timelineEvent: TimelineEvent) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
@@ -84,11 +84,12 @@ const TimelineSidebar = ({
     (timeline: Timeline, isVisible: boolean) => {
       if (isVisible) {
         onShowTimelines?.([timeline]);
+        timeline.events && onShowTimelineEvent(timeline.events);
       } else {
         onHideTimelines?.([timeline]);
       }
     },
-    [onShowTimelines, onHideTimelines],
+    [onShowTimelines, onHideTimelines, onShowTimelineEvent],
   );
 
   return (
