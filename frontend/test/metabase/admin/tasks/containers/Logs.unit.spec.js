@@ -11,7 +11,7 @@ describe("Logs", () => {
 
     it("should call UtilApi.logs after 1 second", () => {
       jest.useFakeTimers();
-      nock.get("/api/util/logs").reply(200, []);
+      nock(/.*/).get("/api/util/logs").reply(200, []);
       render(<Logs />);
       const utilSpy = jest.spyOn(UtilApi, "logs");
 
