@@ -91,7 +91,7 @@
                                       :additional-options ""
                                       :use-srv            true}))
       "db.fqdn.test" #"Unable to look up TXT record for host db.fqdn.test"
-      "local.test" #"Using DNS SRV requires a FQDN for host")
+      "local.test"   #"Using DNS SRV requires a FQDN for host")
 
     (testing "test host and port are correct for both srv and normal"
       (let [host                            "localhost"
