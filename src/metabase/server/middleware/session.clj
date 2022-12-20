@@ -205,7 +205,7 @@
 (defn wrap-session-id
   "Middleware that sets the `:metabase-session-id` keyword on the request if a session id can be found.
   We first check the request :cookies for `metabase.SESSION`, then if no cookie is found we look in the http headers
-  for `X-METABASE-SESSION`. If neither is found then then no keyword is bound to the request."
+  for `X-METABASE-SESSION`. If neither is found then no keyword is bound to the request."
   [handler]
   (fn [request respond raise]
     (let [request (or (wrap-session-id-with-strategy :best request)
