@@ -98,18 +98,18 @@ describe("ChartNestedSettingSeries", () => {
   });
 
   it("should show original series title in subtitle if it's changed", () => {
-    const { getByTestId } = setup("line", 1, true);
+    const { getByTestId, getByLabelText } = setup("line", 1, true);
 
     const seriesSettings = getByTestId("series-settings");
     expect(queryByText(seriesSettings, "Test 0")).toBeInTheDocument();
-    expect(getByTestId("series-name-input")).toHaveValue("Test 0 updated");
+    expect(getByLabelText("series-name-input")).toHaveValue("Test 0 updated");
   });
 
   it("should not show a series subtitle if the series name has not changed", () => {
-    const { getByTestId } = setup("line", 1);
+    const { getByTestId, getByLabelText } = setup("line", 1);
 
     const seriesSettings = getByTestId("series-settings");
     expect(queryByText(seriesSettings, "Test 0")).not.toBeInTheDocument();
-    expect(getByTestId("series-name-input")).toHaveValue("Test 0");
+    expect(getByLabelText("series-name-input")).toHaveValue("Test 0");
   });
 });

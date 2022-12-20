@@ -26,7 +26,7 @@ export const SeriesNameInput = styled(InputBlurChange)`
 
     ${Input.Subtitle} {
       top: 0.375rem;
-      left: 0.875rem;
+      left: 0.8rem;
     }  
   `}
 `;

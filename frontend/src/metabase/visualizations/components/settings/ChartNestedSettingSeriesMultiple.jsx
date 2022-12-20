@@ -49,10 +49,10 @@ export default class ChartNestedSettingSeriesMultiple extends React.Component {
                     className="flex-full ml1 align-self-stretch"
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
-                    data-testid="series-name-input"
+                    aria-label="series-name-input"
                     value={settings.title}
                     subtitle={
-                      seriesCardName !== settings.title ? seriesCardName : ""
+                      seriesCardName === settings.title ? "" : seriesCardName
                     }
                     onBlurChange={e =>
                       onChangeObjectSettings(single, { title: e.target.value })

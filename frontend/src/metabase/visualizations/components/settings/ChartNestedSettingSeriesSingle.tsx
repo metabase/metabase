@@ -48,9 +48,9 @@ const ChartNestedSettingsSeriesSingle = ({
         <SeriesNameInput
           className="flex-full ml1 align-self-stretch"
           value={computedSettings.title}
-          data-testid="series-name-input"
+          aria-label="series-name-input"
           subtitle={
-            seriesCardName !== computedSettings.title ? seriesCardName : ""
+            seriesCardName === computedSettings.title ? "" : seriesCardName
           }
           onBlurChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             onChangeObjectSettings(object, { title: e.target.value })
