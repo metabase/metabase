@@ -33,7 +33,6 @@ const DatabaseEditAppSidebar = ({
   rescanDatabaseFields,
   discardSavedFieldValues,
   isAdmin,
-  isWritebackEnabled,
   isModelPersistenceEnabled,
 }) => {
   const discardSavedFieldValuesModal = useRef();
