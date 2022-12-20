@@ -165,7 +165,7 @@
 
 (defmethod sql.qp/datetime-diff [:hive-like :quarter]
   [driver _unit x y]
-  (hsql/call :div (sql.qp/datetime-diff driver :month x y) 3.0))
+  (hsql/call :div (sql.qp/datetime-diff driver :month x y) 3))
 
 (defmethod sql.qp/datetime-diff [:hive-like :month]
   [_driver _unit x y]
