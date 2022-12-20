@@ -395,6 +395,11 @@
 ;;; ----------------------------------------------------- Session timeout -----------------------------------------------------
 
 (deftest session-timeout-tests
+  (testing "Setting the session timeout should fail if the timeout is more than 100 years"
+    (is (thrown-with-msg?
+         java.lang.AssertionError
+         #"Session timeout must be less than 100 years"
+         (mw.session/session-timeout! {:unit "hours", :amount (* 101 365 24 60 60)}))))
   (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
         session-id   "8df268ab-00c0-4b40-9413-d66b966b696a"
         response     {:body    "some body",

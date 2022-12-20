@@ -368,7 +368,7 @@
                                         "minutes" (t/minutes amount)
                                         "hours"  (t/hours amount)))
                         years (/ days 365.25)]
-                    (assert (< years 100))))
+                    (assert (< years 100) "Session timeout must be less than 100 years")))
                 (setting/set-value-of-type! :json :session-timeout new-value)))
 
 (defn session-timeout->seconds
