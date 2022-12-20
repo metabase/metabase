@@ -377,14 +377,8 @@
                    :breakout    [$category_id]
                    :order-by    [[:asc $category_id]]
                    :limit       3})
-                 ;; postgres vs sqlserver float handling, see formatting comment 
-                 ;; in [[percentile-aggregations-with-expressions-test]]
-                 (mt/formatted-rows [int
-                                     #(u/round-to-decimals 6 %)
-                                     #(u/round-to-decimals 6 %)
-                                     #(u/round-to-decimals 6 %)
-                                     #(u/round-to-decimals 6 %)
-                                     #(u/round-to-decimals 6 %)])))))))
+                 (mt/formatted-rows [int 2.0 2.0 2.0 2.0 2.0])))))))
+
 
 (deftest percentile-aggregations-breakout-test
   (mt/test-driver
@@ -490,13 +484,8 @@
                                                   [:percentile [:expression "quantity * total"] 0.5] {:name "p50"}]]
                                   :breakout     [[:expression "quantity_times_4"]]
                                   :limit        5}})
-                 ;; rounding because of postgres to sqlserver inconsistencies working with floats
-                 ;; gut feeling here is that it is ok, but may further investigate
-                 ;; sth. like 428751.46000000014 vs 428751.46
-                 (mt/formatted-rows [int 
-                                     #(u/round-to-decimals 6 %) 
-                                     #(u/round-to-decimals 6 %) 
-                                     #(u/round-to-decimals 6 %)]))))))))
+                  (mt/formatted-rows [int 2.0 2.0 2.0]))))))))
+
 
 (deftest percentile-aggregations-as-source-test
   (mt/test-driver
@@ -651,4 +640,3 @@
                     :order-by [[:desc [:aggregation 2]]]
                     :limit 5})
                   (mt/formatted-rows [int int 2.0 2.0]))))))))
-
