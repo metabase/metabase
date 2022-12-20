@@ -1,6 +1,6 @@
 import React from "react";
 import nock from "nock";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { InfoText } from "./InfoText";
 
@@ -54,8 +54,8 @@ describe("InfoText", () => {
       database_id: 1,
     });
 
-    await waitFor(() => screen.queryByText("Table Name"));
-    expect(screen.queryByText("Segment of")).toHaveTextContent(
+    expect(await screen.findByText("Table Name")).toBeInTheDocument();
+    expect(await screen.findByText("Segment of")).toHaveTextContent(
       "Segment of Table Name",
     );
   });
@@ -67,8 +67,8 @@ describe("InfoText", () => {
       database_id: 1,
     });
 
-    await waitFor(() => screen.queryByText("Table Name"));
-    expect(screen.queryByText("Metric for")).toHaveTextContent(
+    expect(await screen.findByText("Table Name")).toBeInTheDocument();
+    expect(await screen.findByText("Metric for")).toHaveTextContent(
       "Metric for Table Name",
     );
   });
@@ -80,8 +80,8 @@ describe("InfoText", () => {
       database_id: 1,
     });
 
-    await waitFor(() => screen.queryByText("Database Name"));
-    expect(screen.queryByText("Table in")).toHaveTextContent(
+    expect(await screen.findByText("Database Name")).toBeInTheDocument();
+    expect(await screen.findByText("Table in")).toHaveTextContent(
       "Table in Database Name",
     );
   });
