@@ -1,5 +1,6 @@
 import React, { ChangeEventHandler, useState } from "react";
 import { t } from "ttag";
+import moment from "moment";
 
 import Toggle from "metabase/core/components/Toggle";
 import Select from "metabase/core/components/Select";
@@ -36,13 +37,18 @@ const validate = (
 ) => {
   if (setting.value == null) {
     return null;
-  } else if (value.amount <= 0) {
-    return t`Timeout must be greater than 0`;
-  } else if (value.amount >= 1000000) {
-    // This prevents date formatting errors on very high timeouts (#25253).
-    // 1,000,000 hours is >100 years
-    return t`Timeout must be less than 1,000,000`;
   }
+  if (value.amount <= 0) {
+    return t`Timeout must be greater than 0`;
+  }
+  const momentDuration = moment.duration(
+    value.amount,
+    value.unit as moment.unitOfTime.DurationConstructor,
+  );
+  if (momentDuration.asYears() >= 100) {
+    return t`Timeout must be less than 100 years`;
+  }
+  return null;
 };
 
 const SessionTimeoutSetting = ({
