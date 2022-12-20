@@ -25,6 +25,7 @@
     [metabase.models.parameter-card :as parameter-card]
     [metabase.models.params :as params]
     [metabase.models.params.chain-filter :as chain-filter]
+    [metabase.models.params.custom-values :as custom-values]
     [metabase.models.query :as query :refer [Query]]
     [metabase.models.query.permissions :as query-perms]
     [metabase.models.revision :as revision]
@@ -764,7 +765,7 @@
                         :status-code     400})))
      (case (:source_type param)
        "static-list" (static-parameter-values param query)
-       "card"        (parameter-card/values-for-dashboard dashboard param-key query)
+       "card"        (custom-values/param->values param query)
        (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"

@@ -30,6 +30,7 @@
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as mi]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
+            [metabase.models.params.custom-values :as custom-values]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision]
@@ -2061,30 +2062,35 @@
 
 (deftest parameter-values-from-card-test
   ;; TODO add permissions tests
-  (mt/with-temp* [Card      [{card-id :id}      {:database_id   (mt/id)
-                                                 :table_id      (mt/id :venues)
-                                                 :dataset_query (mt/native-query {:query "SELECT name FROM venues WHERE name LIKE '%Bar%'"})}]
-                  Dashboard [{dashboard-id :id} {:parameters [{:id             "abc"
-                                                               :type           "category"
-                                                               :name           "CATEGORY"
-                                                               :source_type    "card"
-                                                               :source_options {:card_id card-id}}]}]]
-    (testing "It uses the results of the card's query execution"
-      (let-url [url (chain-filter-values-url dashboard-id "abc")]
-        (is (= {:values          ["The Misfit Restaurant + Bar"
-                                  "My Brother's Bar-B-Q"
-                                  "Two Sisters Bar & Books"
-                                  "Tanoshi Sushi & Sake Bar"
-                                  "Barney's Beanery"]
-                :has_more_values false}
-               (mt/user-http-request :rasta :get 200 url)))))
+  (let [query (mt/mbql-query venues {:limit 5})]
+    (mt/with-temp* [Card      [{card-id         :id}
+                               {:database_id     (mt/id)
+                                :table_id        (mt/id :venues)
+                                :result_metadata (mt/query->expected-cols query)
+                                :dataset_query   query}]
+                    Dashboard [{dashboard-id :id}
+                               {:parameters [{:id             "abc"
+                                              :type           "category"
+                                              :name           "CATEGORY"
+                                              :source_type    "card"
+                                              :source_options {:card_id         card-id
+                                                               :value_field_ref (mt/$ids $venues.name)}}]}]]
 
-    (testing "it only returns search matches"
-      (let-url [url (chain-filter-search-url dashboard-id "abc" "sushi")]
-        (is (= {:values          ["Tanoshi Sushi & Sake Bar"]
-                :has_more_values false}
-               (mt/user-http-request :rasta :get 200 url)))))))
+      (testing "It uses the results of the card's query execution"
+        (let-url [url (chain-filter-values-url dashboard-id "abc")]
+          (is (= {:values          ["Red Medicine"
+                                    "Stout Burgers & Beers"
+                                    "The Apple Pan"
+                                    "Wurstküche"
+                                    "Brite Spot Family Restaurant"]
+                  :has_more_values false}
+                 (mt/user-http-request :rasta :get 200 url)))))
 
+      (testing "it only returns search matches"
+        (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
+          (is (= {:values          ["Red Medicine"]
+                  :has_more_values false}
+                 (mt/user-http-request :rasta :get 200 url))))))))
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
