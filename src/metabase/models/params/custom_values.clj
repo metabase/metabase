@@ -17,6 +17,11 @@
   *max-rows* 2000)
 
 (defn- field-ref->mbql-field
+  "Find field by field_ref.
+
+  If field_ref is a:
+  - field: returns itself
+  - aggregation: reference the field by name [:field aggregation-name {]}]"
   [field-ref result-metadata card-id]
   (let [field (first (filter #(= (:field_ref %) field-ref) result-metadata))]
     (when-not field
