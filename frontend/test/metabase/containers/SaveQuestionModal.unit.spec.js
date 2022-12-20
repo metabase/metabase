@@ -150,9 +150,7 @@ describe("SaveQuestionModal", () => {
   ];
 
   beforeEach(() => {
-    nock(/.*/).get("/api/collection", {
-      body: JSON.stringify(TEST_COLLECTIONS),
-    });
+    nock(/.*/).get("/api/collection").reply(200, TEST_COLLECTIONS);
     nock(/.*/).get("/api/collection/root").reply(200, TEST_COLLECTIONS);
   });
 
