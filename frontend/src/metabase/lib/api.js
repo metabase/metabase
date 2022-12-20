@@ -28,8 +28,6 @@ const DEFAULT_OPTIONS = {
 };
 
 export class Api extends EventEmitter {
-  basename = window.location.origin;
-
   GET;
   POST;
   PUT;
@@ -155,7 +153,8 @@ export class Api extends EventEmitter {
     const controller = new AbortController();
     options.cancelled?.then(() => controller.abort());
 
-    const request = new Request(this.basename + url, {
+    const uri = new URL(url, window.location.origin);
+    const request = new Request(uri.href, {
       method,
       headers,
       body: requestBody,

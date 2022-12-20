@@ -1,20 +1,17 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import mock from "xhr-mock";
+import nock from "nock";
 import Logs from "metabase/admin/tasks/containers/Logs";
 
 import { UtilApi } from "metabase/services";
 
 describe("Logs", () => {
   describe("log fetching", () => {
-    beforeEach(() => mock.setup());
-    afterEach(() => mock.teardown());
+    afterEach(() => nock.cleanAll());
 
     it("should call UtilApi.logs after 1 second", () => {
       jest.useFakeTimers();
-      mock.get("/api/util/logs", {
-        body: JSON.stringify([]),
-      });
+      nock.get("/api/util/logs").reply(200, []);
       render(<Logs />);
       const utilSpy = jest.spyOn(UtilApi, "logs");
 
