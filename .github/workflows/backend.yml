@@ -42,7 +42,6 @@ jobs:
         flags: back-end
 
   be-linter-clj-kondo:
-    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
