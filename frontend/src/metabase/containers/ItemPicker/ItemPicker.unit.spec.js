@@ -86,11 +86,11 @@ const DASHBOARD = {
 
 function mockCollectionEndpoint({ extraCollections = [] } = {}) {
   const collections = [...Object.values(COLLECTION), ...extraCollections];
-  nock(/.*/).get("/api/collection").reply(200, collections);
+  nock(location.origin).get("/api/collection").reply(200, collections);
 }
 
 function mockCollectionItemsEndpoint() {
-  nock(/.*/)
+  nock(location.origin)
     .persist()
     .get(/\/api\/collection\/(root|[1-9]\d*)\/items.*/)
     .reply(200, url => {
@@ -106,7 +106,7 @@ function mockCollectionItemsEndpoint() {
       };
     });
 
-  nock(/.*/)
+  nock(location.origin)
     .get("/api/collection/root/items")
     .reply(200, () => {
       const dashboards = Object.values(DASHBOARD).filter(

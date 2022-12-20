@@ -144,7 +144,7 @@ function setupSavedNative(props = {}) {
     name: "Our analytics",
   };
 
-  nock(/.*/).get("/api/collection/root").reply(200, collection);
+  nock(location.origin).get("/api/collection/root").reply(200, collection);
 
   const utils = setup({ question: getSavedNativeQuestion(), ...props });
 
@@ -342,7 +342,7 @@ describe("ViewHeader", () => {
 
       describe(questionType, () => {
         beforeEach(() => {
-          nock(/.*/).get("/api/collection/root").reply(200, {
+          nock(location.origin).get("/api/collection/root").reply(200, {
             id: "root",
             name: "Our analytics",
           });

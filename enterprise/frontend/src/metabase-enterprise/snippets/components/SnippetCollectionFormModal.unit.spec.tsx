@@ -27,11 +27,11 @@ type SetupOpts = {
 
 async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
   if (folder.id) {
-    nock(/.*/)
+    nock(location.origin)
       .get(`/api/collection/${folder.id}?namespace=snippets`)
       .reply(200, folder);
 
-    nock(/.*/)
+    nock(location.origin)
       .put(`/api/collection/${folder.id}`)
       .reply(200, (uri, body) => {
         if (typeof body === "object") {
@@ -44,11 +44,11 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
     .get("/api/collection/root?namespace=snippets")
     .reply(200, TOP_SNIPPETS_FOLDER);
 
-  nock(/.*/)
+  nock(location.origin)
     .get("/api/collection?namespace=snippets")
     .reply(200, [TOP_SNIPPETS_FOLDER]);
 
-  nock(/.*/)
+  nock(location.origin)
     .post("/api/collection")
     .reply(200, (uri, body) => {
       if (typeof body === "object") {

@@ -33,7 +33,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   const onClose = jest.fn();
 
   if (mockCreateDashboardResponse) {
-    nock(/.*/)
+    nock(location.origin)
       .post(`/api/dashboard`)
       .reply(200, (url, body) => body);
   }
@@ -47,7 +47,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
 
 describe("CreateDashboardModal", () => {
   beforeEach(() => {
-    nock(/.*/)
+    nock(location.origin)
       .get("/api/collection")
       .reply(200, [
         {

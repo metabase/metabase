@@ -113,7 +113,7 @@ async function setup({
   const card = question.card();
 
   if ("id" in card) {
-    nock(/.*/).get(`/api/card/${card.id}`).reply(200, card);
+    nock(location.origin).get(`/api/card/${card.id}`).reply(200, card);
   }
 
   jest.spyOn(CardLib, "loadCard").mockReturnValue(Promise.resolve({ ...card }));
@@ -425,7 +425,7 @@ describe("QB Actions > initializeQB", () => {
           original_card_id: ORIGINAL_CARD_ID,
         });
 
-        nock(/.*/)
+        nock(location.origin)
           .get(`/api/card/${originalQuestion.id()}`)
           .reply(200, originalQuestion.card());
 

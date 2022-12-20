@@ -42,7 +42,9 @@ async function setup({
     .spyOn(PersistedModels.objectActions, "refreshCache")
     .mockReturnValue({ type: "__MOCK__" });
 
-  nock(/.*/).get(`/api/persist/card/${model.id()}`).reply(200, modelCacheInfo);
+  nock(location.origin)
+    .get(`/api/persist/card/${model.id()}`)
+    .reply(200, modelCacheInfo);
 
   if (!waitForSectionAppearance) {
     jest.spyOn(PersistedModels, "Loader").mockImplementation(props => {
