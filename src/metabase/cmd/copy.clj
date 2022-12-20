@@ -32,6 +32,7 @@
                                      ModelAction
                                      ModerationReview
                                      NativeQuerySnippet
+                                     ParameterCard
                                      Permissions
                                      PermissionsGroup
                                      PermissionsGroupMembership
@@ -121,6 +122,7 @@
    Timeline
    TimelineEvent
    Secret
+   ParameterCard
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])

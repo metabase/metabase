@@ -29,3 +29,23 @@ export type ParameterType =
 export type ParameterId = string;
 
 export type ActionParameterValue = string | number;
+
+export interface Parameter {
+  id: ParameterId;
+  name: string;
+  type: string;
+  slug: string;
+  sectionId?: string;
+  default?: any;
+  filteringParameters?: ParameterId[];
+  isMultiSelect?: boolean;
+  value?: any;
+  source_type?: ParameterSourceType;
+  source_options?: ParameterSourceOptions;
+}
+
+export type ParameterSourceType = null | "static-list";
+
+export interface ParameterSourceOptions {
+  values?: string[];
+}

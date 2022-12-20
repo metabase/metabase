@@ -16,6 +16,7 @@ import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Query from "metabase-lib/queries/Query";
+import { UiParameter } from "metabase-lib/parameters/types";
 
 type NativeSavedCard = SavedCard<NativeDatasetQuery>;
 type NativeUnsavedCard = UnsavedCard<NativeDatasetQuery>;
@@ -138,3 +139,14 @@ export function getComposedModel(
 
   return question;
 }
+
+export const createMockUiParameter = (
+  opts?: Partial<UiParameter>,
+): UiParameter => ({
+  id: "1",
+  name: "text",
+  type: "string/=",
+  slug: "text",
+  fields: [],
+  ...opts,
+});

@@ -1,8 +1,8 @@
+import { Parameter } from "metabase-types/api/parameters";
 import type { EntityId } from "metabase-types/types";
 import type {
   ParameterTarget,
   ParameterId,
-  Parameter,
 } from "metabase-types/types/Parameter";
 
 import type { Card, CardId } from "./card";
