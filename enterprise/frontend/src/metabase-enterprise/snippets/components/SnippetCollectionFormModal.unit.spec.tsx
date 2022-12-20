@@ -26,6 +26,20 @@ type SetupOpts = {
 };
 
 async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
+  if (folder.id) {
+    nock(/.*/)
+      .get(`/api/collection/${folder.id}?namespace=snippets`)
+      .reply(200, folder);
+
+    nock(/.*/)
+      .put(`/api/collection/${folder.id}`)
+      .reply(200, (uri, body) => {
+        if (typeof body === "object") {
+          return createMockCollection(body);
+        }
+      });
+  }
+
   nock(/./)
     .get("/api/collection/root?namespace=snippets")
     .reply(200, TOP_SNIPPETS_FOLDER);
@@ -41,20 +55,6 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
         return createMockCollection(body);
       }
     });
-
-  if (folder.id) {
-    nock(/.*/)
-      .get(`/api/collection/${folder.id}?namespace=snippets`)
-      .reply(200, folder);
-
-    nock(/.*/)
-      .put(`/api/collection/${folder.id}`)
-      .reply(200, (uri, body) => {
-        if (typeof body === "object") {
-          return createMockCollection(body);
-        }
-      });
-  }
 
   renderWithProviders(
     <SnippetCollectionFormModal
