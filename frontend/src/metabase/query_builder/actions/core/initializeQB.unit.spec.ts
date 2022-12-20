@@ -113,7 +113,7 @@ async function setup({
   const card = question.card();
 
   if ("id" in card) {
-    nock(location.origin).get(`/api/card/${card.id}`).reply(200, card);
+    nock(global.location.origin).get(`/api/card/${card.id}`).reply(200, card);
   }
 
   jest.spyOn(CardLib, "loadCard").mockReturnValue(Promise.resolve({ ...card }));
