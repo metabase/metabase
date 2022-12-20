@@ -351,15 +351,30 @@
 ;;; |                                              reset-cookie-timeout                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn session-timeout->days
+  "Convert the session-timeout setting value to an integer number of days."
+  [{:keys [unit amount]}]
+  (.toDays (case unit
+             "seconds" (t/seconds amount)
+             "minutes" (t/minutes amount)
+             "hours"  (t/hours amount))))
+
 (defsetting session-timeout
   ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours".
   ;; The amount is nillable.
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
   :type       :json
-  :default    nil)
+  :default    nil
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  ;; Assert the duration is less than 100 years.
+                  ;; Otherwise, we could fail to format the expires date if the year
+                  ;; has more than 5 digits (#25253)
+                  (assert (< (/ (sesson-timeout->days new-value) 365.25) 100)))
+                (setting/set-value-of-type! :json :session-timeout new-value)))
 
 (defn session-timeout->seconds
-  "Convert a session timeout setting to seconds."
+  "Convert the session-timeout setting value to seconds."
   [{:keys [unit amount]}]
   (when amount
     (-> (case unit
