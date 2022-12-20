@@ -606,12 +606,49 @@
    :sqlserver
    (mt/dataset
     sample-dataset
-    (testing "Query with percentile aggregation reference in :orded-by yields correct results"
+    (testing "Percentile query with aggregation reference in :orded-by yields correct results"
       (is (= [[721 29.99] [2474 30.52] [1201 31.25] [2022 32.835] [2261 33.0]]
              (-> (mt/run-mbql-query
                   orders
-                  {:aggregation [[:aggregation-options [:median $total] {:name "xixi"}]]
+                  {:aggregation [[:median $total]]
                    :breakout [$user_id]
                    :order-by [[:asc [:aggregation 0]]]
                    :limit 5})
-                 mt/rows)))))))
+                 mt/rows)))
+      (is (= [[2372 46 80.57]
+              [918 45 72.96]
+              [1352 39 74.57]
+              [65 37 76.6]
+              [1066 37 76.69]]
+             (-> (mt/run-mbql-query
+                  orders
+                  {:aggregation [[:count $total] [:median $total]]
+                   :breakout [$user_id]
+                   :order-by [[:desc [:aggregation 0]]]
+                   :limit 5})
+                 mt/rows)))
+      (is (= [[1805 1 154.1]
+              [2391 3 150.49]
+              [1835 1 148.28]
+              [1809 1 147.89]
+              [1020 1 145.09]]
+             (-> (mt/run-mbql-query
+                  orders
+                  {:aggregation [[:count $total] [:median $total]]
+                   :breakout [$user_id]
+                   :order-by [[:desc [:aggregation 1]]]
+                   :limit 5})
+                 mt/rows)))
+      (is (= [[2372 46 80.57 3830.94]
+              [918 45 72.96 3523.71]
+              [1593 36 110.12 3459.03]
+              [1317 35 101.35 3401.53]
+              [1352 39 74.57 3328.43]]
+             (->> (mt/run-mbql-query
+                   orders
+                   {:aggregation [[:count $total] [:median $total] [:sum $total]]
+                    :breakout [$user_id]
+                    :order-by [[:desc [:aggregation 2]]]
+                    :limit 5})
+                  (mt/formatted-rows [int int 2.0 2.0]))))))))
+
