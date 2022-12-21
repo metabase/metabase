@@ -16,8 +16,8 @@ export interface TimelineSidebarProps {
   xDomain?: [Moment, Moment];
   onShowTimelines?: (timelines: Timeline[]) => void;
   onHideTimelines?: (timelines: Timeline[]) => void;
-  onShowTimelineEvent: (timelineEvent: TimelineEvent | TimelineEvent[]) => void;
-  onHideTimelineEvent: (timelineEvent: TimelineEvent) => void;
+  onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
+  onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
   onOpenModal?: (modal: string, modalContext?: unknown) => void;
@@ -34,8 +34,8 @@ const TimelineSidebar = ({
   onOpenModal,
   onShowTimelines,
   onHideTimelines,
-  onShowTimelineEvent,
-  onHideTimelineEvent,
+  onShowTimelineEvents,
+  onHideTimelineEvents,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
   onClose,
@@ -70,26 +70,38 @@ const TimelineSidebar = ({
   );
 
   const handleToggleEventVisibility = useCallback(
-    (event: TimelineEvent, isHidden: boolean) => {
-      if (isHidden) {
-        onShowTimelineEvent(event);
+    (event: TimelineEvent, isVisible: boolean) => {
+      if (isVisible) {
+        onHideTimelineEvents([event]);
       } else {
-        onHideTimelineEvent(event);
+        onShowTimelineEvents([event]);
       }
     },
-    [onShowTimelineEvent, onHideTimelineEvent],
+    [onShowTimelineEvents, onHideTimelineEvents],
   );
 
   const handleToggleTimeline = useCallback(
-    (timeline: Timeline, isVisible: boolean) => {
+    (
+      timeline: Timeline,
+      isVisible: boolean = true,
+      areAllEventsVisible: boolean = false,
+    ) => {
       if (isVisible) {
         onShowTimelines?.([timeline]);
-        timeline.events && onShowTimelineEvent(timeline.events);
+        if (areAllEventsVisible) {
+          timeline.events && onShowTimelineEvents(timeline.events);
+        }
       } else {
         onHideTimelines?.([timeline]);
+        timeline.events && onHideTimelineEvents(timeline.events);
       }
     },
-    [onShowTimelines, onHideTimelines, onShowTimelineEvent],
+    [
+      onShowTimelines,
+      onHideTimelines,
+      onHideTimelineEvents,
+      onShowTimelineEvents,
+    ],
   );
 
   return (

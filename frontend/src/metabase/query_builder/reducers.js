@@ -59,8 +59,8 @@ import {
   HIDE_TIMELINES,
   CREATE_TIMELINE_EVENT,
   INITIALIZE_VISIBLE_TIMELINE_EVENTS,
-  HIDE_TIMELINE_EVENT,
-  SHOW_TIMELINE_EVENT,
+  HIDE_TIMELINE_EVENTS,
+  SHOW_TIMELINE_EVENTS,
   SELECT_TIMELINE_EVENTS,
   DESELECT_TIMELINE_EVENTS,
   SET_DOCUMENT_TITLE,
@@ -571,18 +571,15 @@ export const visibleTimelineEventIds = handleActions(
     [INITIALIZE_VISIBLE_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) => events.map(event => event.id),
     },
-    [HIDE_TIMELINE_EVENT]: {
-      next: (state, { payload: event }) =>
-        state.filter(item => item !== event.id),
-    },
-    [SHOW_TIMELINE_EVENT]: {
+    [HIDE_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) => {
-        if (Array.isArray(events)) {
-          return _.uniq([...state, ...events.map(event => event.id)]);
-        } else {
-          return [...state, event.id];
-        }
+        const eventIdsToHide = events.map(event => event.id);
+        return state.filter(eventId => !eventIdsToHide.includes(eventId));
       },
+    },
+    [SHOW_TIMELINE_EVENTS]: {
+      next: (state, { payload: events }) =>
+        _.uniq([...state, ...events.map(event => event.id)]),
     },
     [RESET_QB]: { next: () => [] },
   },

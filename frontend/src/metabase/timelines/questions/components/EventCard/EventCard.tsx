@@ -31,6 +31,11 @@ export interface EventCardProps {
   onArchive?: (event: TimelineEvent) => void;
   onToggleSelected?: (event: TimelineEvent, isSelected: boolean) => void;
   onToggleEventVisibility: (event: TimelineEvent, isSelected: boolean) => void;
+  onToggleTimeline?: (
+    timeline: Timeline,
+    isVisible: boolean,
+    areAllEventsVisible: boolean,
+  ) => void;
 }
 
 const EventCard = ({
@@ -44,6 +49,7 @@ const EventCard = ({
   onArchive,
   onToggleSelected,
   onToggleEventVisibility,
+  onToggleTimeline,
 }: EventCardProps): JSX.Element => {
   const selectedRef = useScrollOnMount();
   const menuItems = getMenuItems(event, timeline, onEdit, onMove, onArchive);
@@ -59,9 +65,20 @@ const EventCard = ({
   const handleChangeVisibility = useCallback(
     (e: SyntheticEvent) => {
       e.stopPropagation();
-      onToggleEventVisibility(event, !isVisible);
+      onToggleEventVisibility(event, isVisible);
+
+      if (!isVisible && !isTimelineVisible) {
+        onToggleTimeline?.(timeline, true, false);
+      }
     },
-    [event, isVisible, onToggleEventVisibility],
+    [
+      event,
+      isVisible,
+      timeline,
+      isTimelineVisible,
+      onToggleTimeline,
+      onToggleEventVisibility,
+    ],
   );
 
   const handleAsideClick = useCallback((event: SyntheticEvent) => {
@@ -78,7 +95,6 @@ const EventCard = ({
       <CardCheckboxContainer>
         <Checkbox
           checked={isTimelineVisible && isVisible}
-          disabled={!isTimelineVisible}
           onClick={handleChangeVisibility}
         />
       </CardCheckboxContainer>

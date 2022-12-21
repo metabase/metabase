@@ -32,7 +32,11 @@ export interface TimelineCardProps {
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
   onToggleEventVisibility: (event: TimelineEvent, isSelected: boolean) => void;
-  onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
+  onToggleTimeline?: (
+    timeline: Timeline,
+    isVisible: boolean,
+    areAllEventsVisible: boolean,
+  ) => void;
 }
 
 const TimelineCard = ({
@@ -65,7 +69,7 @@ const TimelineCard = ({
 
   const handleToggleTimeline = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      onToggleTimeline?.(timeline, event.target.checked);
+      onToggleTimeline?.(timeline, event.target.checked, true);
     },
     [timeline, onToggleTimeline],
   );
@@ -108,6 +112,7 @@ const TimelineCard = ({
               onEdit={onEditEvent}
               onMove={onMoveEvent}
               onArchive={onArchiveEvent}
+              onToggleTimeline={onToggleTimeline}
               onToggleSelected={onToggleEventSelected}
               onToggleEventVisibility={onToggleEventVisibility}
             />
