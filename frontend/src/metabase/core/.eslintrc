@@ -1,0 +1,14 @@
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["metabase/*", "!metabase/core"]
+          }
+        ]
+      }
+    ]
+  }
+}
