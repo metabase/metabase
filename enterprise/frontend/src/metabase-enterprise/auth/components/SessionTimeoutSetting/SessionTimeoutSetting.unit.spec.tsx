@@ -48,7 +48,6 @@ describe("SessionTimeoutSetting", () => {
       } else {
         expect(screen.queryByText(expected)).not.toBeNull();
       }
-      cleanup();
     });
   });
 });
