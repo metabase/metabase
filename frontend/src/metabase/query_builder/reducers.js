@@ -565,15 +565,15 @@ export const visibleTimelineIds = handleActions(
 export const visibleTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
+    [SHOW_TIMELINE_EVENTS]: {
+      next: (state, { payload: events }) =>
+        _.uniq([...state, ...events.map(event => event.id)]),
+    },
     [HIDE_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) => {
         const eventIdsToHide = events.map(event => event.id);
         return state.filter(eventId => !eventIdsToHide.includes(eventId));
       },
-    },
-    [SHOW_TIMELINE_EVENTS]: {
-      next: (state, { payload: events }) =>
-        _.uniq([...state, ...events.map(event => event.id)]),
     },
     [TimelineEvents.actionTypes.CREATE]: {
       next: (state, { payload }) => [...state, payload.timelineEvent.id],
