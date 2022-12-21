@@ -31,8 +31,9 @@ interface SessionTimeoutSettingProps {
   onChange: (value: TimeoutValue | null) => void;
 }
 
+// Returns a string if the timeout value is invalid, null otherwise.
+// It should mirror the validation of the session-timeout setting on the backend.
 const validate = (value: TimeoutValue) => {
-  // This needs to mirror the validation of the session-timeout setting on the backend.
   if (value.amount <= 0) {
     return t`Timeout must be greater than 0`;
   }
