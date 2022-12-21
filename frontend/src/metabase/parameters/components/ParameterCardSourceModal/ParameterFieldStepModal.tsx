@@ -11,8 +11,6 @@ import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 
 interface ParameterFieldStepModalProps {
-  cardId: CardId;
-  card: Card;
   question: Question;
   onSubmit: (cardId: CardId) => void;
   onClose?: () => void;
@@ -37,16 +35,13 @@ const ParameterFieldStepModal = ({
   );
 };
 
-const mapStateToProps = (
-  state: State,
-  { card }: ParameterFieldStepModalProps,
-) => ({
+const mapStateToProps = (state: State, { card }: { card: Card }) => ({
   question: new Question(card, getMetadata(state)),
 });
 
 export default _.compose(
   Questions.load({
-    id: (state: State, props: ParameterFieldStepModalProps) => props.cardId,
+    id: (state: State, { cardId }: { cardId: CardId }) => cardId,
     entityAlias: "card",
   }),
   connect(mapStateToProps),
