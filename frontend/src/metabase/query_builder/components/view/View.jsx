@@ -159,8 +159,8 @@ class View extends React.Component {
       xDomain,
       showTimelines,
       hideTimelines,
-      showTimelineEvent,
-      hideTimelineEvent,
+      showTimelineEvents,
+      hideTimelineEvents,
       selectTimelineEvents,
       deselectTimelineEvents,
       onOpenModal,
@@ -194,8 +194,8 @@ class View extends React.Component {
           xDomain={xDomain}
           onShowTimelines={showTimelines}
           onHideTimelines={hideTimelines}
-          onShowTimelineEvent={showTimelineEvent}
-          onHideTimelineEvent={hideTimelineEvent}
+          onShowTimelineEvents={showTimelineEvents}
+          onHideTimelineEvents={hideTimelineEvents}
           onSelectTimelineEvents={selectTimelineEvents}
           onDeselectTimelineEvents={deselectTimelineEvents}
           onOpenModal={onOpenModal}
@@ -224,7 +224,8 @@ class View extends React.Component {
       showTimelines,
       hideTimelines,
       showTimelineEvent,
-      hideTimelineEvent,
+      showTimelineEvents,
+      hideTimelineEvents,
       selectTimelineEvents,
       deselectTimelineEvents,
       onCloseTimelines,
@@ -253,7 +254,8 @@ class View extends React.Component {
           onShowTimelines={showTimelines}
           onHideTimelines={hideTimelines}
           onShowTimelineEvent={showTimelineEvent}
-          onHideTimelineEvent={hideTimelineEvent}
+          onShowTimelineEvents={showTimelineEvents}
+          onHideTimelineEvents={hideTimelineEvents}
           onSelectTimelineEvents={selectTimelineEvents}
           onDeselectTimelineEvents={deselectTimelineEvents}
           onClose={onCloseTimelines}
