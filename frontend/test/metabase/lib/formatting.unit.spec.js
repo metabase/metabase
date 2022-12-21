@@ -1,5 +1,5 @@
-import { render, unmountComponentAtNode } from "react-dom";
-import { act, isElementOfType } from "react-dom/test-utils";
+import { render } from "@testing-library/react";
+import { isElementOfType } from "react-dom/test-utils";
 import moment from "moment-timezone";
 
 import {
@@ -257,43 +257,25 @@ describe("formatting", () => {
       });
 
       describe("with jsx: true", () => {
-        let container = null;
-        beforeEach(() => {
-          container = document.createElement("div");
-          document.body.appendChild(container);
-        });
-
-        afterEach(() => {
-          unmountComponentAtNode(container);
-          container.remove();
-          container = null;
-        });
-
         it("should render using HTML <sup>", () => {
-          act(() => {
-            render(
-              formatNumber(123456.78, {
-                number_style: "scientific",
-                jsx: true,
-              }),
-              container,
-            );
-          });
+          const { container } = render(
+            formatNumber(123456.78, {
+              number_style: "scientific",
+              jsx: true,
+            }),
+          );
           expect(container.innerHTML).toEqual(
             "<span>1.23×10<sup>5</sup></span>",
           );
         });
 
         it("should render using HTML <sup> for small values", () => {
-          act(() => {
-            render(
-              formatNumber(0.000123456, {
-                number_style: "scientific",
-                jsx: true,
-              }),
-              container,
-            );
-          });
+          const { container } = render(
+            formatNumber(0.000123456, {
+              number_style: "scientific",
+              jsx: true,
+            }),
+          );
           expect(container.innerHTML).toEqual(
             "<span>1.23×10<sup>-4</sup></span>",
           );
