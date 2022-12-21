@@ -101,6 +101,13 @@ const getFieldValidationType = (fieldSettings: FieldSettings) => {
       return Yup.number();
     case "boolean":
       return Yup.boolean();
+    case "date":
+    case "datetime":
+    case "time":
+      // for dates, cast empty strings to null
+      return Yup.string().transform((value, originalValue) =>
+        originalValue?.length ? value : null,
+      );
     default:
       return Yup.string();
   }

@@ -111,12 +111,17 @@ export const ActionForm = ({
     });
   };
 
+  const handleSubmit = (
+    values: ParametersForActionExecution,
+    actions: FormikHelpers<ParametersForActionExecution>,
+  ) => onSubmit?.(formValidationSchema.cast(values), actions);
+
   if (isSettings) {
     return (
       <FormProvider
         initialValues={initialValues}
         validationSchema={formValidationSchema}
-        onSubmit={_.noop}
+        onSubmit={handleSubmit}
       >
         <Form role="form" data-testid="action-form-editor">
           <DragDropContext onDragEnd={handleDragEnd}>
@@ -167,7 +172,7 @@ export const ActionForm = ({
     <FormProvider
       initialValues={initialValues}
       validationSchema={formValidationSchema}
-      onSubmit={onSubmit ?? _.noop}
+      onSubmit={handleSubmit}
     >
       <Form role="form" data-testid="action-form">
         {form.fields.map(field => (
