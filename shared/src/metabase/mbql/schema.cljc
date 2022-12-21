@@ -418,7 +418,8 @@
 
 (def field-options-for-identification
   "Set of FieldOptions that only mattered for identification purposes."
-  #{:source-field :join-alias})
+  ;; base-type is required for field that use name instead of id
+  #{:source-field :join-alias :base-type})
 
 (defn- require-base-type-for-field-name [schema]
   (s/constrained
