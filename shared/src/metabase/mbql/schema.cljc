@@ -416,6 +416,10 @@
       validate-temporal-unit
       no-binning-options-at-top-level))
 
+(def field-options-for-identification
+  "Set of FieldOptions that only mattered for idenfiticaiton purposes."
+  #{:source-field :join-alias})
+
 (defn- require-base-type-for-field-name [schema]
   (s/constrained
    schema
