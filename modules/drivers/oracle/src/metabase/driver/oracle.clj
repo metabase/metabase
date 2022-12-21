@@ -1,36 +1,40 @@
 (ns metabase.driver.oracle
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.impl :as driver.impl]
-            [metabase.driver.sql :as sql]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
-            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.secret :as secret]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.ssh :as ssh])
-  (:import com.mchange.v2.c3p0.C3P0ProxyConnection
-           [java.sql Connection DatabaseMetaData ResultSet Types]
-           [java.time Instant OffsetDateTime ZonedDateTime]
-           [oracle.jdbc OracleConnection OracleTypes]
-           oracle.sql.TIMESTAMPTZ))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.driver.sql :as sql]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.models.secret :as secret]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.ssh :as ssh])
+  (:import
+   (com.mchange.v2.c3p0 C3P0ProxyConnection)
+   (java.security KeyStore)
+   (java.sql Connection DatabaseMetaData ResultSet Types)
+   (java.time Instant OffsetDateTime ZonedDateTime)
+   (oracle.jdbc OracleConnection OracleTypes)
+   (oracle.sql TIMESTAMPTZ)))
 
 (defmethod driver/database-supports? [:oracle :now] [_driver _feat _db] true)
 
@@ -99,31 +103,40 @@
   "The connection property used by the Oracle JDBC Thin Driver to control the program name."
   "v$session.program")
 
+(defn- guess-keystore-type [^java.io.File keystore-file ^String password]
+  (try
+    (.getType (KeyStore/getInstance keystore-file (.toCharArray password)))
+    (catch Exception _
+      "JKS")))
+
+(defn- handle-keystore-options [details]
+  (let [keystore (-> (secret/db-details-prop->secret-map details "ssl-keystore")
+                     (secret/value->file! :oracle))
+        password (-> (secret/db-details-prop->secret-map details "ssl-keystore-password")
+                     secret/value->string)]
+    (-> details
+        (assoc :javax.net.ssl.keyStoreType (guess-keystore-type keystore password)
+               :javax.net.ssl.keyStore keystore
+               :javax.net.ssl.keyStorePassword password)
+        (dissoc :ssl-use-keystore :ssl-keystore-value :ssl-keystore-path :ssl-keystore-password-value))))
+
+(defn- handle-truststore-options [details]
+  (let [truststore (-> (secret/db-details-prop->secret-map details "ssl-truststore")
+                       (secret/value->file! :oracle))
+        password (-> (secret/db-details-prop->secret-map details "ssl-truststore-password")
+                     secret/value->string)]
+    (-> details
+        (assoc :javax.net.ssl.trustStoreType (guess-keystore-type truststore password)
+               :javax.net.ssl.trustStore truststore
+               :javax.net.ssl.trustStorePassword password)
+        (dissoc :ssl-use-truststore :ssl-truststore-value :ssl-truststore-path :ssl-truststore-password-value))))
+
 (defn- handle-ssl-options [{:keys [ssl ssl-use-keystore ssl-use-truststore] :as details}]
   (if ssl
     (cond-> details
-
-      ssl-use-keystore
-      (-> ; from outer cond->
-        (assoc :javax.net.ssl.keyStoreType "JKS"
-               :javax.net.ssl.keyStore (-> (secret/db-details-prop->secret-map details "ssl-keystore")
-                                           (secret/value->file! :oracle))
-               :javax.net.ssl.keyStorePassword (-> (secret/db-details-prop->secret-map details "ssl-keystore-password")
-                                                   secret/value->string))
-        (dissoc :ssl-use-keystore :ssl-keystore-value :ssl-keystore-path :ssl-keystore-password-value))
-
-      ssl-use-truststore
-      (-> ; from outer cond->
-        (assoc :javax.net.ssl.trustStoreType "JKS"
-               :javax.net.ssl.trustStore (-> (secret/db-details-prop->secret-map details "ssl-truststore")
-                                             (secret/value->file! :oracle))
-               :javax.net.ssl.trustStorePassword (-> (secret/db-details-prop->secret-map details
-                                                                                         "ssl-truststore-password")
-                                                     secret/value->string))
-        (dissoc :ssl-use-truststore :ssl-truststore-value :ssl-truststore-path :ssl-truststore-password-value))
-
-      true
-      (dissoc :ssl))
+      ssl-use-keystore handle-keystore-options
+      ssl-use-truststore handle-truststore-options
+      true (dissoc :ssl))
     details))
 
 (defmethod sql-jdbc.conn/connection-details->spec :oracle
