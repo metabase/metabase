@@ -21,11 +21,10 @@ const ParameterCardSourceModal = ({
   const sourceOptions = getSourceOptions(parameter);
   const [step, setStep] = useState<ParameterCardSourceModalStep>("card");
   const [cardId, setCardId] = useState(sourceOptions.card_id);
-  const [fieldRef, setFieldRef] = useState(sourceOptions.value_field_ref);
+  const fieldRef = sourceOptions.value_field_ref;
 
   const handleCardSubmit = useCallback((cardId: CardId) => {
     setCardId(cardId);
-    setFieldRef(undefined);
     setStep("field");
   }, []);
 
