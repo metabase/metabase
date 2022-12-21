@@ -76,12 +76,12 @@ describe("scenarios > organization > timelines > question", () => {
       cy.wait("@getCollection");
       cy.findByText("Visualization").should("be.visible");
 
-      cy.icon("calendar").click();
+      cy.findByLabelText("calendar icon").click();
       cy.findByText("v1").should("not.exist");
       cy.findByText("v2").should("be.visible");
       cy.findByText("v3").should("be.visible");
 
-      cy.icon("table2").click();
+      cy.findByLabelText("table2 icon").click();
       cy.findByText("v1").should("be.visible");
       cy.findByText("v2").should("be.visible");
       cy.findByText("v3").should("be.visible");
@@ -230,7 +230,7 @@ describe("scenarios > organization > timelines > question", () => {
       });
 
       cy.findByText("Visualization").should("be.visible");
-      cy.icon("star").should("not.exist");
+      cy.findByLabelText("star icon").should("not.exist");
     });
 
     it("should show events for native queries", () => {
