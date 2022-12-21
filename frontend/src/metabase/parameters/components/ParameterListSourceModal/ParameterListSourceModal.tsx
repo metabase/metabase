@@ -36,7 +36,7 @@ const ParameterListSourceModal = ({
   );
 
   const handleSubmit = useCallback(() => {
-    onChangeSourceOptions({ values: getInputLines(value) });
+    onChangeSourceOptions({ values: getSourceValues(value) });
     onClose();
   }, [value, onChangeSourceOptions, onClose]);
 
@@ -72,7 +72,7 @@ const getInputValue = (values?: string[]) => {
   return values?.join(NEW_LINE) ?? "";
 };
 
-const getInputLines = (value: string) => {
+const getSourceValues = (value: string) => {
   return value
     .split(NEW_LINE)
     .map(line => line.trim())
