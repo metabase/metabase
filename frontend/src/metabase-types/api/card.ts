@@ -11,16 +11,19 @@ export interface Card extends UnsavedCard {
   query_average_duration?: number | null;
   last_query_start: string | null;
   archived: boolean;
+  result_metadata: FieldMetadata[];
 
-  creator?: {
-    id: number;
-    common_name: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    last_login: string;
-    date_joined: string;
-  };
+  creator?: CardCreator;
+}
+
+interface CardCreator {
+  id: number;
+  common_name: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  last_login: string;
+  date_joined: string;
 }
 
 export interface UnsavedCard {
@@ -85,3 +88,12 @@ export interface ModerationReview {
 
 export type CardId = number;
 export type ModerationReviewStatus = "verified";
+
+export interface FieldMetadata {
+  id?: number;
+  name: string;
+  field_ref: unknown[];
+  display_name: string;
+  description?: string | null;
+  semantic_type?: string | null;
+}

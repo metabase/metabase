@@ -33,7 +33,7 @@ import {
 } from "metabase/services";
 import { ParameterValues } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
-import { VisualizationSettings } from "metabase-types/api/card";
+import { FieldMetadata, VisualizationSettings } from "metabase-types/api/card";
 import { Column, Dataset, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
@@ -992,7 +992,7 @@ class QuestionInner {
     });
   }
 
-  getResultMetadata() {
+  getResultMetadata(): FieldMetadata[] {
     return this.card().result_metadata ?? [];
   }
 
