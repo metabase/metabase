@@ -133,7 +133,7 @@ const getRadioOptions = (
     {
       name: (
         <RadioLabel
-          title={t`Values from a modal or question`}
+          title={t`Values from a model or question`}
           isSelected={sourceType === "card"}
           onEditClick={() => onEdit("card")}
         />
