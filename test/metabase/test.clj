@@ -136,8 +136,7 @@
  [qp
   compile
   preprocess
-  process-query
-  query->expected-cols]
+  process-query]
 
  [qp.test
   col
@@ -155,6 +154,7 @@
   with-bigquery-fks]
 
  [qp.test-util
+  card-with-source-metadata-for-query
   store-contents
   with-database-timezone-id
   with-everything-store
