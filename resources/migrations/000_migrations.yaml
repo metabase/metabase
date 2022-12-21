@@ -13201,6 +13201,7 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-011
       author: snoe
+      validCheckSum: ANY
       comment: Added 0.46.0 - Unify action representation
       changes:
         - sql:
@@ -13225,7 +13226,9 @@ databaseChangeLog:
         - sql:
             dbms: h2
             sql: >-
+              ALTER TABLE query_action DROP CONSTRAINT fk_query_action_ref_action_id;
               ALTER TABLE query_action DROP PRIMARY KEY;
+              ALTER TABLE query_action ADD CONSTRAINT fk_query_action_ref_action_id FOREIGN KEY (action_id) REFERENCES action(id) ON DELETE CASCADE;
               ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id, card_id);
         - sql:
             dbms: postgresql
