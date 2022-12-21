@@ -40,12 +40,18 @@ function cleanCollectionValue({
 }
 
 function cleanValue(value: Partial<DataPickerValue>): DataPickerValue {
+  const type = value.type;
+  const databaseId = cleanDatabaseValue({ ...value, type });
+  const schemaId = cleanSchemaValue({ ...value, databaseId });
+  const collectionId = cleanCollectionValue({ ...value, type, databaseId });
+  const tableIds = cleanTablesValue({ ...value, databaseId, schemaId });
+
   return {
-    type: value.type,
-    databaseId: cleanDatabaseValue(value),
-    schemaId: cleanSchemaValue(value),
-    collectionId: cleanCollectionValue(value),
-    tableIds: cleanTablesValue(value),
+    type,
+    databaseId,
+    schemaId,
+    collectionId,
+    tableIds,
   };
 }
 

@@ -19,13 +19,7 @@ import {
   getCollectionVirtualSchemaId,
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
-
-const DATA_PICKER_FILTER = {
-  types: (type: DataPickerDataType) =>
-    type === "questions" || type === "models",
-};
 
 interface ParameterCardStepModalProps {
   question: Question | undefined;
@@ -62,11 +56,7 @@ const ParameterCardStepModal = ({
       ]}
       onClose={onClose}
     >
-      <DataPickerContainer
-        value={value}
-        filter={DATA_PICKER_FILTER}
-        onChange={setValue}
-      />
+      <DataPickerContainer value={value} onChange={setValue} />
     </ModalContent>
   );
 };
@@ -80,7 +70,6 @@ const getInitialValue = (
 
     return {
       type: isDatasets ? "models" : "questions",
-      databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
       schemaId: getCollectionVirtualSchemaId(collection, { isDatasets }),
       collectionId: collection?.id,
       tableIds: [getQuestionVirtualTableId(question.card())],
