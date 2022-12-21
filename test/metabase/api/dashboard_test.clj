@@ -2062,44 +2062,41 @@
 (deftest parameter-values-from-card-test
   ;; TODO add permissions tests
   (testing "happy path"
-    (let [query (mt/mbql-query venues {:limit 5})]
-      (mt/with-temp*
-        [Card      [{card-id         :id}
-                    {:database_id     (mt/id)
-                     :table_id        (mt/id :venues)
-                     :result_metadata (mt/query->expected-cols query)
-                     :dataset_query   query}]
-         Dashboard [{dashboard-id :id}
-                    {:parameters [{:id             "abc"
-                                   :type           "category"
-                                   :name           "CATEGORY"
-                                   :source_type    "card"
-                                   :source_options {:card_id         card-id
-                                                    :value_field_ref (mt/$ids $venues.name)}}]}]]
+    (mt/with-temp*
+      [Card      [{card-id         :id}
+                  (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues {:limit 5}))
+                         {:database_id     (mt/id)
+                          :table_id        (mt/id :venues)})]
+       Dashboard [{dashboard-id :id}
+                  {:parameters [{:id             "abc"
+                                 :type           "category"
+                                 :name           "CATEGORY"
+                                 :source_type    "card"
+                                 :source_options {:card_id         card-id
+                                                  :value_field_ref (mt/$ids $venues.name)}}]}]]
 
-        (testing "It uses the results of the card's query execution"
-          (let-url [url (chain-filter-values-url dashboard-id "abc")]
-            (is (= {:values          ["Red Medicine"
-                                      "Stout Burgers & Beers"
-                                      "The Apple Pan"
-                                      "Wurstküche"
-                                      "Brite Spot Family Restaurant"]
-                    :has_more_values false}
-                   (mt/user-http-request :rasta :get 200 url)))))
+      (testing "It uses the results of the card's query execution"
+        (let-url [url (chain-filter-values-url dashboard-id "abc")]
+          (is (= {:values          ["Red Medicine"
+                                    "Stout Burgers & Beers"
+                                    "The Apple Pan"
+                                    "Wurstküche"
+                                    "Brite Spot Family Restaurant"]
+                  :has_more_values false}
+                 (mt/user-http-request :rasta :get 200 url)))))
 
-        (testing "it only returns search matches"
-          (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
-            (is (= {:values          ["Red Medicine"]
-                    :has_more_values false}
-                   (mt/user-http-request :rasta :get 200 url))))))))
+      (testing "it only returns search matches"
+        (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
+          (is (= {:values          ["Red Medicine"]
+                  :has_more_values false}
+                 (mt/user-http-request :rasta :get 200 url)))))))
 
   (testing "invalid field_ref shoud returns 400"
     (mt/with-temp*
       [Card      [{card-id         :id}
-                  {:database_id     (mt/id)
-                   :table_id        (mt/id :venues)
-                   :result_metadata (mt/query->expected-cols (mt/mbql-query venues))
-                   :dataset_query   (mt/mbql-query venues)}]
+                  (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
+                         {:database_id     (mt/id)
+                          :table_id        (mt/id :venues)})]
        Dashboard [{dashboard-id :id}
                   {:parameters [{:id             "abc"
                                  :type           "category"
