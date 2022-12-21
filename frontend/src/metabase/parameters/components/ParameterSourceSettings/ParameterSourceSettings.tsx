@@ -5,9 +5,11 @@ import Modal from "metabase/components/Modal";
 import {
   getSourceOptions,
   getSourceType,
-  hasValidSourceOptions,
 } from "metabase/parameters/utils/dashboards";
-import { ParameterSourceConfig, ParameterSourceType } from "metabase-types/api";
+import {
+  ParameterSourceOptions,
+  ParameterSourceType,
+} from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import ParameterCardSourceModal from "../ParameterCardSourceModal";
 import ParameterListSourceModal from "../ParameterListSourceModal";
@@ -20,7 +22,7 @@ import {
 export interface ParameterSourceSettingsProps {
   parameter: UiParameter;
   onChangeSourceType: (sourceType: ParameterSourceType) => void;
-  onChangeSourceOptions: (sourceOptions: ParameterSourceConfig) => void;
+  onChangeSourceOptions: (sourceOptions: ParameterSourceOptions) => void;
 }
 
 const ParameterSourceSettings = ({
@@ -39,23 +41,22 @@ const ParameterSourceSettings = ({
 
   const handleSourceTypeChange = useCallback(
     (sourceType: ParameterSourceType) => {
-      if (hasValidSourceOptions(sourceType, sourceOptions)) {
+      if (sourceType == null) {
         onChangeSourceType(sourceType);
+        onChangeSourceOptions({});
       } else {
         setEditingType(sourceType);
       }
     },
-    [sourceOptions, onChangeSourceType],
+    [onChangeSourceType, onChangeSourceOptions],
   );
 
   const handleSourceOptionsChange = useCallback(
-    (sourceOptions: ParameterSourceConfig) => {
-      if (editingType && hasValidSourceOptions(editingType, sourceOptions)) {
+    (sourceOptions: ParameterSourceOptions) => {
+      if (editingType) {
         onChangeSourceType(editingType);
-      } else {
-        onChangeSourceType(null);
+        onChangeSourceOptions(sourceOptions);
       }
-      onChangeSourceOptions(sourceOptions);
     },
     [editingType, onChangeSourceType, onChangeSourceOptions],
   );

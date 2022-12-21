@@ -26,6 +26,7 @@ const ParameterListSourceModal = ({
 }: ParameterListSourceModalProps): JSX.Element => {
   const options = getSourceOptions(parameter);
   const [value, setValue] = useState(getInputValue(options.values));
+  const isEmpty = !value.trim().length;
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -35,7 +36,7 @@ const ParameterListSourceModal = ({
   );
 
   const handleSubmit = useCallback(() => {
-    onChangeSourceOptions({ values: getSourceValues(value) });
+    onChangeSourceOptions({ values: getInputLines(value) });
     onClose();
   }, [value, onChangeSourceOptions, onClose]);
 
@@ -44,7 +45,12 @@ const ParameterListSourceModal = ({
       title={t`Create a custom list`}
       footer={[
         <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-        <Button key="submit" primary onClick={handleSubmit}>{t`Done`}</Button>,
+        <Button
+          key="submit"
+          primary
+          disabled={isEmpty}
+          onClick={handleSubmit}
+        >{t`Done`}</Button>,
       ]}
       onClose={onClose}
     >
@@ -66,7 +72,7 @@ const getInputValue = (values?: string[]) => {
   return values?.join(NEW_LINE) ?? "";
 };
 
-const getSourceValues = (value: string) => {
+const getInputLines = (value: string) => {
   return value
     .split(NEW_LINE)
     .map(line => line.trim())
