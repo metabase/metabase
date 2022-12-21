@@ -694,12 +694,6 @@ export function getValuesMode(
   return "none";
 }
 
-/**
- *
- * @param {import("metabase-types/types/Field").Field} field
- * @param {import("metabase-types/types/Parameter").Parameter} parameter
- * @returns {boolean}
- */
 function isNumeric(field, parameter) {
   if (parameter) {
     return isNumberParameter(parameter);
