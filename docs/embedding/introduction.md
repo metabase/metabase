@@ -16,27 +16,27 @@ There are three ways to embed Metabase in your app:
 - [Signed embedding](#signed-embedding)
 - [Public links and embeds](#public-links-and-embeds)
 
-### Full app embedding
+## Full app embedding
 
 Full-app embedding [integrate with SSO and data permissions](./full-app-embedding.md) enables true self-service access to the underlying data.
 
-#### When to use full-app embedding
+### When to use full-app embedding
 
 When you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding).
 
-### Signed embedding
+## Signed embedding
 
 Also known as standalone embedding, signed embedding is a secure way to embed charts and dashboards.
 
-#### When to use signed embedding
+### When to use signed embedding
 
 You don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once. For example, say you want to showcase some benchmarking stats: if you just want to make those stats available exclusively to your customers, you could use a signed embed.
 
-### Public links
+## Public links and embeds
 
 If you'd like to share your data with the good people of the internet, you can create a [public link](../questions/sharing/public-links.md) or embed a question or dashboard directly in your website.
 
-#### When to use public links and embeds
+### When to use public links and embeds**
 
 Public links and embeds are good for one-off charts and dashboards. Use them when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make those stats available to everyone.
 
