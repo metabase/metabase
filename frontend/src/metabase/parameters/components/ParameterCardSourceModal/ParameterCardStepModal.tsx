@@ -1,6 +1,5 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import { checkNotNull } from "metabase/core/utils/types";
 import Button from "metabase/core/components/Button/Button";
 import ModalContent from "metabase/components/ModalContent";
 import DataPickerContainer, {
@@ -14,22 +13,27 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 
 interface ParameterCardStepModalProps {
-  cardId?: CardId;
-  onSubmit: (cardId: CardId) => void;
-  onClose?: () => void;
+  cardId: CardId | undefined;
+  onChange: (cardId: CardId | undefined) => void;
+  onSubmit: () => void;
+  onClose: () => void;
 }
 
 const ParameterCardStepModal = ({
   cardId,
+  onChange,
   onSubmit,
   onClose,
 }: ParameterCardStepModalProps): JSX.Element => {
   const [value, setValue] = useDataPickerValue(getValueFromCardId(cardId));
 
-  const handleSubmit = useCallback(() => {
-    const newCardId = getCardIdFromValue(value);
-    onSubmit(checkNotNull(newCardId));
-  }, [value, onSubmit]);
+  const handleChange = useCallback(
+    (value: DataPickerValue) => {
+      setValue(value);
+      onChange(getCardIdFromValue(value));
+    },
+    [setValue, onChange],
+  );
 
   return (
     <ModalContent
@@ -40,26 +44,29 @@ const ParameterCardStepModal = ({
           key="submit"
           primary
           disabled={!value.tableIds.length}
-          onClick={handleSubmit}
+          onClick={onSubmit}
         >{t`Select columns`}</Button>,
       ]}
       onClose={onClose}
     >
-      <DataPickerContainer value={value} onChange={setValue} />
+      <DataPickerContainer value={value} onChange={handleChange} />
     </ModalContent>
   );
 };
 
-const getValueFromCardId = (cardId?: CardId): Partial<DataPickerValue> => {
-  return cardId != null
-    ? { tableIds: [getQuestionVirtualTableId(cardId)] }
-    : {};
+const getValueFromCardId = (cardId?: CardId) => {
+  if (cardId != null) {
+    return { tableIds: [getQuestionVirtualTableId(cardId)] };
+  }
 };
 
 const getCardIdFromValue = ({ tableIds }: DataPickerValue) => {
-  return tableIds.length
-    ? getQuestionIdFromVirtualTableId(tableIds[0])
-    : undefined;
+  if (tableIds.length) {
+    const cardId = getQuestionIdFromVirtualTableId(tableIds[0]);
+    if (cardId != null) {
+      return cardId;
+    }
+  }
 };
 
 export default ParameterCardStepModal;

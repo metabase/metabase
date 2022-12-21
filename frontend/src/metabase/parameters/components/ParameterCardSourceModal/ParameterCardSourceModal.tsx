@@ -8,7 +8,7 @@ import ParameterFieldStepModal from "./ParameterFieldStepModal";
 export interface ParameterCardSourceModalProps {
   parameter: UiParameter;
   onChangeSourceOptions: (sourceOptions: ParameterSourceOptions) => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 type ParameterCardSourceModalStep = "card" | "field";
@@ -20,24 +20,39 @@ const ParameterCardSourceModal = ({
 }: ParameterCardSourceModalProps): JSX.Element | null => {
   const sourceOptions = getSourceOptions(parameter);
   const [cardId, setCardId] = useState(sourceOptions.card_id);
+  const [fieldRef, setFieldRef] = useState(sourceOptions.value_field_ref);
   const [step, setStep] = useState<ParameterCardSourceModalStep>("card");
 
-  const handleSubmit = useCallback((cardId: CardId) => {
-    setCardId(cardId);
+  const handleCardSubmit = useCallback(() => {
     setStep("field");
   }, []);
+
+  const handleFieldSubmit = useCallback(() => {
+    const options = { card_id: cardId, value_field_ref: fieldRef };
+    onChangeSourceOptions(options);
+    onClose();
+  }, [cardId, fieldRef, onChangeSourceOptions, onClose]);
 
   switch (step) {
     case "card":
       return (
         <ParameterCardStepModal
           cardId={cardId}
-          onSubmit={handleSubmit}
+          onChange={setCardId}
+          onSubmit={handleCardSubmit}
           onClose={onClose}
         />
       );
     case "field":
-      return <ParameterFieldStepModal cardId={cardId} onClose={onClose} />;
+      return (
+        <ParameterFieldStepModal
+          cardId={cardId}
+          fieldRef={fieldRef}
+          onChange={setFieldRef}
+          onSubmit={handleFieldSubmit}
+          onClose={onClose}
+        />
+      );
     default:
       return null;
   }

@@ -49,6 +49,7 @@ export interface Parameter {
 export type ParameterSourceType = null | "card" | "static-list";
 
 export interface ParameterSourceOptions {
-  card_id?: CardId;
   values?: string[];
+  card_id?: CardId;
+  value_field_ref?: unknown[];
 }

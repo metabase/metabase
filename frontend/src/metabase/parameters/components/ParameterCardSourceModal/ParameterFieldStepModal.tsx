@@ -1,45 +1,65 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button/Button";
-import Select, { Option } from "metabase/core/components/Select";
+import Select, {
+  Option,
+  SelectChangeEvent,
+} from "metabase/core/components/Select";
 import ModalContent from "metabase/components/ModalContent";
 import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, CardId } from "metabase-types/api";
+import { Card, CardId, FieldMetadata } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 
 interface ParameterFieldStepModalProps {
   question: Question;
-  onSubmit: (cardId: CardId) => void;
-  onClose?: () => void;
+  fieldRef: unknown[] | undefined;
+  onChange: (fieldRef: unknown[] | undefined) => void;
+  onSubmit: () => void;
+  onClose: () => void;
 }
 
 const ParameterFieldStepModal = ({
   question,
+  fieldRef,
+  onChange,
   onSubmit,
   onClose,
 }: ParameterFieldStepModalProps): JSX.Element => {
   const fields = useMemo(() => question.getResultMetadata(), [question]);
+  const selectedField = getSelectedField(fields, fieldRef);
+
+  const handleChange = useCallback(
+    (event: SelectChangeEvent<FieldMetadata>) => {
+      onChange(event.target.value.field_ref);
+    },
+    [onChange],
+  );
 
   return (
     <ModalContent
       title={t`Which column from ${question.displayName()} should be used`}
       footer={[
         <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-        <Button key="submit" primary>{t`Done`}</Button>,
+        <Button
+          key="submit"
+          primary
+          disabled={!selectedField}
+          onClick={onSubmit}
+        >{t`Done`}</Button>,
       ]}
       onClose={onClose}
     >
-      <Select placeholder={t`Pick a column`}>
+      <Select
+        value={selectedField}
+        placeholder={t`Pick a column`}
+        onChange={handleChange}
+      >
         {fields.map((field, index) => (
-          <Option
-            key={index}
-            name={field.display_name}
-            value={field.field_ref}
-          />
+          <Option key={index} name={field.display_name} value={field} />
         ))}
       </Select>
     </ModalContent>
@@ -49,6 +69,10 @@ const ParameterFieldStepModal = ({
 const mapStateToProps = (state: State, { card }: { card: Card }) => ({
   question: new Question(card, getMetadata(state)),
 });
+
+const getSelectedField = (fields: FieldMetadata[], fieldRef?: unknown[]) => {
+  return fields.find(field => _.isEqual(field.field_ref, fieldRef));
+};
 
 export default _.compose(
   Questions.load({
