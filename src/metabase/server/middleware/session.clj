@@ -359,16 +359,17 @@
   :default    nil
   :setter     (fn [new-value]
                 (when (some? new-value)
-                  ;; Assert the duration is less than 100 years.
-                  ;; Otherwise, we could fail to format the expires date if the year
-                  ;; has more than 4 digits (#25253)
+                  ;; Assert the duration is less than 100 years and greater than 0.
+                  ;; We need to limit the duration from being too large because
+                  ;; the year of the expires date must be 4 digits (#25253)
                   (let [{:keys [unit amount]} new-value
-                        days (.toDays (case unit
-                                        "seconds" (t/seconds amount)
-                                        "minutes" (t/minutes amount)
-                                        "hours"  (t/hours amount)))
+                        days (/ amount (case unit
+                                         "seconds" (* 60 60 24)
+                                         "minutes" (* 60 24)
+                                         "hours"  24))
                         years (/ days 365.25)]
-                    (assert (< years 100) "Session timeout must be less than 100 years")))
+                    (assert (pos? amount) (tru "Session timeout amount must be positive."))
+                    (assert (< years 100) (tru "Session timeout must be less than 100 years."))))
                 (setting/set-value-of-type! :json :session-timeout new-value)))
 
 (defn session-timeout->seconds
