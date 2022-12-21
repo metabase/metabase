@@ -16,12 +16,6 @@ export const getChangedValues = (
   const changedValues = Object.entries(newValues).filter(
     ([newKey, newValue]) => {
       const oldValue = oldValues[newKey];
-      const hadUnsetValue = oldValue === null || oldValue === undefined;
-
-      // don't flag a change when the input changes itself to an empty string
-      if (hadUnsetValue && newValue === "") {
-        return false;
-      }
       return newValue !== oldValue;
     },
   );
