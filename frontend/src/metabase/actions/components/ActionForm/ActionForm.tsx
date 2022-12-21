@@ -173,22 +173,26 @@ export const ActionForm = ({
       initialValues={initialValues}
       validationSchema={formValidationSchema}
       onSubmit={handleSubmit}
+      enableReinitialize
     >
-      <Form role="form" data-testid="action-form">
-        {form.fields.map(field => (
-          <FormFieldWidget key={field.name} formField={field} />
-        ))}
+      {({ dirty }) => (
+        <Form role="form" data-testid="action-form">
+          {form.fields.map(field => (
+            <FormFieldWidget key={field.name} formField={field} />
+          ))}
 
-        <ActionFormButtonContainer>
-          {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
-          <FormSubmitButton
-            title={submitTitle ?? t`Save`}
-            {...submitButtonVariant}
-          />
-        </ActionFormButtonContainer>
+          <ActionFormButtonContainer>
+            {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
+            <FormSubmitButton
+              disabled={!dirty}
+              title={submitTitle ?? t`Save`}
+              {...submitButtonVariant}
+            />
+          </ActionFormButtonContainer>
 
-        <FormErrorMessage />
-      </Form>
+          <FormErrorMessage />
+        </Form>
+      )}
     </FormProvider>
   );
 };
