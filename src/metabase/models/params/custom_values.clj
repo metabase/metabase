@@ -24,8 +24,7 @@
   - field: returns itself
   - aggregation: returns a field using name [:field aggregation-name nil]"
   [field-ref result-metadata card-id]
-  (let [[_ttype identifier options :as field]
-        (first (filter #(= (:field_ref %) field-ref) result-metadata))]
+  (let [field (first (filter #(= (:field_ref %) field-ref) result-metadata))]
     (when-not field
       (throw (ex-info (tru "No matching field found")
                       {:status-code 400
@@ -36,7 +35,8 @@
       [:field (:name field) {:base-type ((some-fn :effective_type :base_type) field)}]
 
       :field
-      [:field identifier (select-keys options mbql.s/field-options-for-identification)]
+      (let [[_ttype identifier options] field-ref]
+        [:field identifier (select-keys options mbql.s/field-options-for-identification)])
 
       (throw (ex-info (tru "Invalid field-ref type. Must be a field or aggregation.")
                       {:status-code 400
