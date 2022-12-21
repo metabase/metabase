@@ -394,12 +394,32 @@
 
 ;;; ----------------------------------------------------- Session timeout -----------------------------------------------------
 
-(deftest session-timeout-tests
-  (testing "Setting the session timeout should fail if the timeout is more than 100 years"
+(deftest session-timeout-validation-test
+  (testing "Setting the session timeout should fail if the timeout isn't positive"
+    (is (thrown-with-msg?
+         java.lang.AssertionError
+         #"Session timeout amount must be positive"
+         (mw.session/session-timeout! {:unit "hours", :amount 0})))
+    (is (thrown-with-msg?
+         java.lang.AssertionError
+         #"Session timeout amount must be positive"
+         (mw.session/session-timeout! {:unit "minutes", :amount -1}))))
+  (testing "Setting the session timeout should fail if the timeout isn't positive"
     (is (thrown-with-msg?
          java.lang.AssertionError
          #"Session timeout must be less than 100 years"
-         (mw.session/session-timeout! {:unit "hours", :amount (* 101 365 24 60 60)}))))
+         (mw.session/session-timeout! {:unit "hours", :amount (* 100 365.25 24)})))
+    (is (thrown-with-msg?
+         java.lang.AssertionError
+         #"Session timeout must be less than 100 years"
+         (mw.session/session-timeout! {:unit "minutes", :amount (* 100 365.25 24 60)}))))
+  (testing "Setting the session timeout shouldn't fail if the timeout is between 0 and 100 years exclusive"
+    (is (some? (mw.session/session-timeout! {:unit "minutes", :amount 1})))
+    (is (some? (mw.session/session-timeout! {:unit "hours", :amount 1})))
+    (is (some? (mw.session/session-timeout! {:unit "minutes", :amount (dec (* 100 365.25 24 60))})))
+    (is (some? (mw.session/session-timeout! {:unit "hours", :amount (dec (* 100 365.25 24))})))))
+
+(deftest session-timeout-test
   (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
         session-id   "8df268ab-00c0-4b40-9413-d66b966b696a"
         response     {:body    "some body",
