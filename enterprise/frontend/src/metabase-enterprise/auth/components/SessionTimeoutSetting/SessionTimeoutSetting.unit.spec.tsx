@@ -7,47 +7,45 @@ describe("SessionTimeoutSetting", () => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
-  const TEST_CASES = [
-    { value: { amount: 1, unit: "minutes" }, expected: null },
-    {
-      value: { amount: 1, unit: "hours" },
-      expected: null,
-    },
+  const SUCCEED_TEST_CASES = [
+    { value: { amount: 1, unit: "minutes" } },
+    { value: { amount: 1, unit: "hours" } },
+    { value: { amount: 60 * 24 * 365.25 * 100 - 1, unit: "minutes" } },
+    { value: { amount: 24 * 365.25 * 100 - 1, unit: "hours" } },
+  ];
+
+  const FAIL_TEST_CASES = [
     {
       value: { amount: 0, unit: "minutes" },
-      expected: "Timeout must be greater than 0",
+      error: "Timeout must be greater than 0",
     },
     {
       value: { amount: 0, unit: "hours" },
-      expected: "Timeout must be greater than 0",
+      error: "Timeout must be greater than 0",
     },
     {
       value: { amount: 60 * 24 * 365.25 * 100, unit: "minutes" },
-      expected: "Timeout must be less than 100 years",
-    },
-    {
-      value: { amount: 60 * 24 * 365.25 * 100 - 1, unit: "minutes" },
-      expected: null,
+      error: "Timeout must be less than 100 years",
     },
     {
       value: { amount: 24 * 365.25 * 100, unit: "hours" },
-      expected: "Timeout must be less than 100 years",
-    },
-    {
-      value: { amount: 24 * 365.25 * 100 - 1, unit: "hours" },
-      expected: null,
+      error: "Timeout must be less than 100 years",
     },
   ];
-  TEST_CASES.map(({ value, expected }) => {
+
+  SUCCEED_TEST_CASES.map(({ value }) => {
     it(`validates ${value.amount} ${value.unit} correctly`, () => {
       const setting = { value: value, key: "...", default: "..." };
       render(<SessionTimeoutSetting setting={setting} onChange={jest.fn()} />);
-      const input = screen.getByTestId("session-timeout-input");
-      if (expected == null) {
-        expect(screen.getByText(/Timeout must be/)).not.toBeInTheDocument();
-      } else {
-        expect(screen.getByText(expected)).toBeInTheDocument();
-      }
+      expect(screen.queryByText(/Timeout must be/)).not.toBeInTheDocument();
+    });
+  });
+
+  FAIL_TEST_CASES.map(({ value, error }) => {
+    it(`validates ${value.amount} ${value.unit} correctly`, () => {
+      const setting = { value: value, key: "...", default: "..." };
+      render(<SessionTimeoutSetting setting={setting} onChange={jest.fn()} />);
+      expect(screen.getByText(error)).toBeInTheDocument();
     });
   });
 });
