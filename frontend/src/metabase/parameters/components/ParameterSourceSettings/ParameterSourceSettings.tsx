@@ -73,9 +73,10 @@ const ParameterSourceSettings = ({
         onChange={handleSourceTypeChange}
       />
       {editingType === "card" && (
-        <Modal onClose={handleClose}>
+        <Modal medium onClose={handleClose}>
           <ParameterCardSourceModal
             parameter={parameter}
+            onChangeSourceOptions={handleSourceOptionsChange}
             onClose={handleClose}
           />
         </Modal>
