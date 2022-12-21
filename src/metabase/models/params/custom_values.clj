@@ -3,6 +3,7 @@
     [clojure.string :as str]
     [metabase.mbql.normalize :as mbql.normalize]
     [metabase.models :refer [Card]]
+    [metabase.mbql.schema :as mbql.s]
     [metabase.query-processor :as qp]
     [metabase.search.util :as search]
     [metabase.util.i18n :refer [tru]]
@@ -34,15 +35,15 @@
       [:field (:name field) {:base-type ((some-fn :effective_type :base_type) field)}]
 
       :field
-      ;; TODO: for field with binning, field_ref does not hold the binning info,
-      ;; we might need to get it from the field-metadata
       (let [[_ttype identifier options] field-ref]
+        ;; TODO: the options for field-ref does contains the binning information
+        ;; maybe we could just need to select it from options?
         (when (some? (:binning options))
               (throw (ex-info (tru "Binning column not supported")
                               {:status-code 400
                                :card-id     card-id
                                :field-ref   field-ref})))
-        [:field identifier options])
+        [:field identifier (select-keys options mbql.s/field-options-for-identification)])
 
       (throw (ex-info (tru "Invalid field-ref type. Must be a field or aggregation.")
                       {:status-code 400
