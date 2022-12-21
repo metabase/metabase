@@ -31,24 +31,17 @@ interface SessionTimeoutSettingProps {
   onChange: (value: TimeoutValue | null) => void;
 }
 
-const validate = (
-  setting: SessionTimeoutSettingProps["setting"],
-  value: TimeoutValue,
-) => {
-  if (setting.value == null) {
-    return null;
-  }
+const validate = (value: TimeoutValue) => {
+  // This needs to mirror the validation of the session-timeout setting on the backend.
   if (value.amount <= 0) {
     return t`Timeout must be greater than 0`;
   }
   // Assert the duration is less than 100 years.
   // Otherwise, we could fail to format the expires date if the year
   // has more than 4 digits (#25253)
-  const momentDuration = moment.duration(
-    value.amount,
-    value.unit as moment.unitOfTime.DurationConstructor,
-  );
-  if (momentDuration.asYears() >= 100) {
+  const days =
+    value.amount / ({ hours: 24, minutes: 24 * 60 }[value.unit] as number);
+  if (days / 365.25 >= 100) {
     return t`Timeout must be less than 100 years`;
   }
   return null;
@@ -64,7 +57,7 @@ const SessionTimeoutSetting = ({
     setValue(prev => ({ ...prev, ...newValue }));
   };
 
-  const error = validate(setting, value);
+  const error = validate(value);
 
   const handleCommitSettings = (value: TimeoutValue | null) => {
     !error && onChange(value);
@@ -96,6 +89,7 @@ const SessionTimeoutSetting = ({
           <SessionTimeoutInputContainer>
             <SessionTimeoutInput
               type="number"
+              data-testid="session-timeout-input"
               placeholder=""
               value={value?.amount.toString()}
               onChange={e =>
