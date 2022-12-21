@@ -20,12 +20,6 @@ class EntityMenu extends Component {
     menuItemContent: null,
   };
 
-  constructor(props, context) {
-    super(props, context);
-
-    this.rootRef = React.createRef();
-  }
-
   toggleMenu = () => {
     if (this.state.freezeMenu) {
       return;
@@ -57,7 +51,7 @@ class EntityMenu extends Component {
     } = this.props;
     const { open, menuItemContent } = this.state;
     return (
-      <Container className={className} open={open} ref={this.rootRef}>
+      <Container className={className} open={open}>
         <EntityMenuTrigger
           trigger={trigger}
           icon={triggerIcon}
@@ -67,7 +61,6 @@ class EntityMenu extends Component {
           triggerProps={triggerProps}
         />
         <Popover
-          target={this.rootRef.current}
           isOpen={open}
           onClose={this.toggleMenu}
           hasArrow={false}

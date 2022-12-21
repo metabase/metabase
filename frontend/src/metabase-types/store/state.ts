@@ -22,7 +22,7 @@ export interface State {
   setup: SetupState;
 }
 
-export type Dispatch<T = any> = (action: T) => void;
+export type Dispatch<T = unknown> = (action: T) => void;
 
 export type GetState = () => State;
 

@@ -338,7 +338,7 @@ export default connect(
       updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
   }),
   null,
-  { forwardRef: true }, // HACK: needed so consuming components can call methods on the component :-/
+  { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/
 )(SettingsBatchForm);
 
 const StandardSection = ({ title, children }) => (

@@ -70,16 +70,12 @@ type State = {
 };
 
 export default class FilterWidget extends Component<Props, State> {
-  rootRef: React.RefObject<HTMLDivElement>;
-
   constructor(props: Props) {
     super(props);
 
     this.state = {
       isOpen: this.props.filter[0] == null,
     };
-
-    this.rootRef = React.createRef();
   }
 
   static defaultProps = {
@@ -113,7 +109,6 @@ export default class FilterWidget extends Component<Props, State> {
         <Popover
           id="FilterPopover"
           className="FilterPopover"
-          target={this.rootRef.current}
           isInitiallyOpen={this.props.filter[1] === null}
           onClose={this.close}
           horizontalAttachments={["left", "center"]}
@@ -122,10 +117,10 @@ export default class FilterWidget extends Component<Props, State> {
           <FilterPopover
             query={query}
             filter={filter}
-            onChangeFilter={filter => {
-              this.props.updateFilter?.(this.props.index, filter);
-              this.close();
-            }}
+            onChangeFilter={filter =>
+              this.props.updateFilter &&
+              this.props.updateFilter(this.props.index, filter)
+            }
             onClose={this.close}
             isNew={false}
           />
@@ -136,11 +131,11 @@ export default class FilterWidget extends Component<Props, State> {
 
   render() {
     return (
-      <FilterWidgetRoot isSelected={this.state.isOpen} ref={this.rootRef}>
+      <FilterWidgetRoot isSelected={this.state.isOpen}>
         <div className="flex justify-center" onClick={this.open}>
           {this.renderFilter()}
+          {this.renderPopover()}
         </div>
-        {this.renderPopover()}
       </FilterWidgetRoot>
     );
   }

@@ -138,35 +138,33 @@ const Triggerable = ComposedComponent =>
       }
 
       return (
-        <>
-          <Trigger
-            as={as}
-            id={triggerId}
-            ref={this.trigger}
-            onClick={event => {
-              event.preventDefault();
-              !this.props.disabled && this.toggle();
-            }}
-            className={cx(
-              triggerClasses,
-              isOpen && triggerClassesOpen,
-              !isOpen && triggerClassesClose,
-              "no-decoration",
-              {
-                "cursor-default": this.props.disabled,
-              },
-            )}
-            aria-disabled={this.props.disabled}
-            style={triggerStyle}
-          >
-            {typeof triggerElement === "function"
-              ? triggerElement({
-                  isTriggeredComponentOpen: isOpen,
-                  open: this.open,
-                  close: this.close,
-                })
-              : triggerElement}
-          </Trigger>
+        <Trigger
+          as={as}
+          id={triggerId}
+          ref={this.trigger}
+          onClick={event => {
+            event.preventDefault();
+            !this.props.disabled && this.toggle();
+          }}
+          className={cx(
+            triggerClasses,
+            isOpen && triggerClassesOpen,
+            !isOpen && triggerClassesClose,
+            "no-decoration",
+            {
+              "cursor-default": this.props.disabled,
+            },
+          )}
+          aria-disabled={this.props.disabled}
+          style={triggerStyle}
+        >
+          {typeof triggerElement === "function"
+            ? triggerElement({
+                isTriggeredComponentOpen: isOpen,
+                open: this.open,
+                close: this.close,
+              })
+            : triggerElement}
           <ComposedComponent
             {...this.props}
             isOpen={isOpen}
@@ -176,7 +174,7 @@ const Triggerable = ComposedComponent =>
           >
             {children}
           </ComposedComponent>
-        </>
+        </Trigger>
       );
     }
   };

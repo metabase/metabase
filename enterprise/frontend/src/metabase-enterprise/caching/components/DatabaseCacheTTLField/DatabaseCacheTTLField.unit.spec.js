@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DatabaseCacheTTLField from "./DatabaseCacheTTLField";
 
@@ -38,10 +38,10 @@ describe("DatabaseCacheTTLField", () => {
     expect(screen.queryByLabelText("Cache TTL Field")).not.toBeInTheDocument();
   });
 
-  it("sets 24 hours as a default TTL custom value", async () => {
+  it("sets 24 hours as a default TTL custom value", () => {
     const { onChange } = setup();
     selectMode("custom");
-    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(24));
+    expect(onChange).toHaveBeenLastCalledWith(24);
   });
 
   it("can select and fill custom cache TTL value", () => {
@@ -64,9 +64,9 @@ describe("DatabaseCacheTTLField", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("can reset cache_ttl to instance default", async () => {
+  it("can reset cache_ttl to instance default", () => {
     const { onChange } = setup({ value: 48 });
     selectMode("instance-default");
-    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(null));
+    expect(onChange).toHaveBeenLastCalledWith(null);
   });
 });

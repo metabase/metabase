@@ -20,13 +20,6 @@ export interface Dashboard {
   parameters?: Parameter[] | null;
   can_write: boolean;
   cache_ttl: number | null;
-  "last-edit-info": {
-    id: number;
-    email: string;
-    first_name: string;
-    last_name: string;
-    timestamp: string;
-  };
 }
 
 export type DashCardId = EntityId;
