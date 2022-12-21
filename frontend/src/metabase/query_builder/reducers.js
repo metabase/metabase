@@ -59,7 +59,6 @@ import {
   onCloseTimelines,
   SHOW_TIMELINES,
   HIDE_TIMELINES,
-  INITIALIZE_VISIBLE_TIMELINE_EVENTS,
   HIDE_TIMELINE_EVENTS,
   SHOW_TIMELINE_EVENTS,
   SELECT_TIMELINE_EVENTS,
@@ -566,9 +565,6 @@ export const visibleTimelineIds = handleActions(
 export const visibleTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
-    [INITIALIZE_VISIBLE_TIMELINE_EVENTS]: {
-      next: (state, { payload: events }) => events.map(event => event.id),
-    },
     [HIDE_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) => {
         const eventIdsToHide = events.map(event => event.id);

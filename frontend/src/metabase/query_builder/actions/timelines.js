@@ -14,12 +14,6 @@ export const selectTimelineEvents = createAction(SELECT_TIMELINE_EVENTS);
 export const DESELECT_TIMELINE_EVENTS = "metabase/qb/DESELECT_TIMELINE_EVENTS";
 export const deselectTimelineEvents = createAction(DESELECT_TIMELINE_EVENTS);
 
-export const INITIALIZE_VISIBLE_TIMELINE_EVENTS =
-  "metabase/qb/INITIALIZE_VISIBLE_TIMELINE_EVENTS";
-const initializeVisibleTimelineEvents = createAction(
-  INITIALIZE_VISIBLE_TIMELINE_EVENTS,
-);
-
 export const HIDE_TIMELINE_EVENTS = "metabase/qb/HIDE_TIMELINE_EVENTS";
 export const hideTimelineEvents = createAction(HIDE_TIMELINE_EVENTS);
 
@@ -34,7 +28,5 @@ export const showTimelinesForCollection =
       : fetchedTimelines.filter(t => t.collection_id == null);
 
     dispatch(showTimelines(collectionTimelines));
-    dispatch(
-      initializeVisibleTimelineEvents(fetchedTimelines.flatMap(t => t.events)),
-    );
+    dispatch(showTimelineEvents(fetchedTimelines.flatMap(t => t.events)));
   };
