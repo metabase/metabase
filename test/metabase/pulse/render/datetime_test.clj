@@ -1,7 +1,8 @@
 (ns metabase.pulse.render.datetime-test
   (:require [clojure.test :refer :all]
             [metabase.pulse.render.datetime :as datetime]
-            [metabase.shared.models.visualization-settings :as mb.viz]))
+            [metabase.shared.models.visualization-settings :as mb.viz]
+            [metabase.test :as mt]))
 
 (def ^:private now "2020-07-16T18:04:00Z[UTC]")
 
@@ -90,11 +91,23 @@
               [["M/D/YYYY" "7/16/2020" "7-16-2020" "7.16.2020"]
                ["D/M/YYYY" "16/7/2020" "16-7-2020" "16.7.2020"]
                ["YYYY/M/D" "2020/7/16" "2020-7-16" "2020.7.16"]
-               [nil "July 16, 2020" "July 16, 2020" "July 16, 2020"]]
+               [nil "July 16, 2020" "July 16, 2020" "July 16, 2020"]] ;; nil date-style does not blow up when date-separator exists
               date-separator ["/" "-" "."]]
         (testing (str "Date style: " date-style " with '" date-separator "' correctly formats.")
           (is (= (get {"/" slash-result
                        "-" dash-result
                        "." dot-result} date-separator)
                  (fmt (merge {::mb.viz/date-separator date-separator}
-                             (when date-style {::mb.viz/date-style date-style}))))))))))
+                             (when date-style {::mb.viz/date-style date-style})))))))
+      (testing "Default date separator is '/'"
+        (is (= "7/16/2020"
+               (fmt {::mb.viz/date-style "M/D/YYYY"}))))))
+  (testing "Custom Formatting options are respected as defaults."
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style "MMMM D, YYYY"
+                                                                                  :date_abbreviate true}}]
+      (is (= "Jul 16, 2020"
+             (datetime/format-temporal-str "UTC" now nil nil))))
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style "M/DD/YYYY"
+                                                                                    :date_separator "-"}}]
+      (is (= "7-16-2020"
+             (datetime/format-temporal-str "UTC" now nil nil))))))
