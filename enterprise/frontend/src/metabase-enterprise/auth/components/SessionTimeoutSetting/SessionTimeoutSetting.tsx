@@ -1,6 +1,5 @@
 import React, { ChangeEventHandler, useState } from "react";
 import { t } from "ttag";
-import moment from "moment";
 
 import Toggle from "metabase/core/components/Toggle";
 import Select from "metabase/core/components/Select";
