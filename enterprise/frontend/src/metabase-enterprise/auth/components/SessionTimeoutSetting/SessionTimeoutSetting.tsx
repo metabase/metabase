@@ -30,7 +30,7 @@ interface SessionTimeoutSettingProps {
   onChange: (value: TimeoutValue | null) => void;
 }
 
-// It should mirror the validation of the session-timeout setting on the backend.
+// This should mirror the BE validation of the session-timeout setting.
 const validate = (value: TimeoutValue) => {
   if (value.amount <= 0) {
     return t`Timeout must be greater than 0`;
@@ -39,8 +39,8 @@ const validate = (value: TimeoutValue) => {
   // the year of the expires date must be 4 digits (#25253)
   const unitsPerDay = { hours: 24, minutes: 24 * 60 }[value.unit] as number;
   const days = value.amount / unitsPerDay;
-  const isLessThan100Years = days < 100 * 365.25;
-  if (!isLessThan100Years) {
+  const daysIn100Years = 365.25 * 100;
+  if (days >= daysIn100Years) {
     return t`Timeout must be less than 100 years`;
   }
   return null;
