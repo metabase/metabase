@@ -17,7 +17,6 @@ export const getColumnKey = (
   let fieldRef = column.field_ref;
 
   if (!fieldRef) {
-    console.error("column is missing field_ref", column);
     fieldRef = createFieldReference(column.name);
   }
 

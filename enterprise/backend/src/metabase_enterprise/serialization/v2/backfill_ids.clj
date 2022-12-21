@@ -34,7 +34,7 @@
   `entity_id` set. If the `entity_id` is NULL, it is set based on the [[serdes.hash/identity-hash]] for that
   row."
   []
-  (doseq [model-name serdes.models/exported-models
+  (doseq [model-name (concat serdes.models/exported-models serdes.models/inlined-models)
           :let [model (db/resolve-model (symbol model-name))]
           :when (has-entity-id? model)]
     (backfill-ids-for model)))

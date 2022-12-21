@@ -59,3 +59,11 @@
                                                    secret/value->string))]
       {:tables (set (for [table-name druid-datasources]
                       {:schema nil, :name table-name}))})))
+
+(defn dbms-version
+  "Impl of `driver/dbms-version` for Druid."
+  [database]
+  {:pre [(map? (:details database))]}
+  (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
+    (-> (druid.client/GET (druid.client/details->url details-with-tunnel "/status"))
+        (select-keys [:version]))))

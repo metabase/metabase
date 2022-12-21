@@ -1,4 +1,3 @@
-import { DatasetData } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 import {
   BreakoutChartColumns,
@@ -20,16 +19,12 @@ const avgMetricColumn = createMockColumn({
   name: "avg",
 });
 
-const dataset: DatasetData = {
-  cols: [dimensionColumn, breakoutColumn, countMetricColumn, avgMetricColumn],
-  rows: [
-    [2020, "Doohickey", 400, 90],
-    [2020, "Gadget", 450, 100],
-    [2021, "Doohickey", 500, 110],
-    [2021, "Gadget", 550, 120],
-  ],
-  rows_truncated: 0,
-};
+const rows = [
+  [2020, "Doohickey", 400, 90],
+  [2020, "Gadget", 450, 100],
+  [2021, "Doohickey", 500, 110],
+  [2021, "Gadget", 550, 120],
+];
 
 const breakoutChartColumns: BreakoutChartColumns = {
   dimension: {
@@ -68,7 +63,7 @@ describe("data utils", () => {
     describe("chart with multiple metrics", () => {
       it("should group dataset by dimension values", () => {
         const groupedData = getGroupedDataset(
-          dataset,
+          rows,
           multipleMetricsChartColumns,
           columnFormatter,
         );
@@ -81,6 +76,7 @@ describe("data utils", () => {
               count: 850,
               avg: 190,
             },
+            rawRows: [rows[0], rows[1]],
           },
           {
             dimensionValue: 2021,
@@ -89,6 +85,7 @@ describe("data utils", () => {
               count: 1050,
               avg: 230,
             },
+            rawRows: [rows[2], rows[3]],
           },
         ]);
       });
@@ -98,7 +95,7 @@ describe("data utils", () => {
   describe("chart with a breakout", () => {
     it("should group dataset by dimension values and breakout", () => {
       const groupedData = getGroupedDataset(
-        dataset,
+        rows,
         breakoutChartColumns,
         columnFormatter,
       );
@@ -109,16 +106,20 @@ describe("data utils", () => {
           isClickable: true,
           metrics: {
             count: 850,
-            avg: 190,
           },
+          rawRows: [rows[0], rows[1]],
           breakout: {
             Doohickey: {
-              count: 400,
-              avg: 90,
+              metrics: {
+                count: 400,
+              },
+              rawRows: [rows[0]],
             },
             Gadget: {
-              count: 450,
-              avg: 100,
+              metrics: {
+                count: 450,
+              },
+              rawRows: [rows[1]],
             },
           },
         },
@@ -127,16 +128,20 @@ describe("data utils", () => {
           isClickable: true,
           metrics: {
             count: 1050,
-            avg: 230,
           },
+          rawRows: [rows[2], rows[3]],
           breakout: {
             Doohickey: {
-              count: 500,
-              avg: 110,
+              metrics: {
+                count: 500,
+              },
+              rawRows: [rows[2]],
             },
             Gadget: {
-              count: 550,
-              avg: 120,
+              metrics: {
+                count: 550,
+              },
+              rawRows: [rows[3]],
             },
           },
         },

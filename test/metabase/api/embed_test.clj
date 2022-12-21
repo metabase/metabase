@@ -797,10 +797,12 @@
       (db/update! Dashboard (u/the-id dashboard) :enable_embedding true)
       (letfn [(token [params]
                 (dash-token dashboard (when params {:params params})))
-              (values-url [& [params]]
-                (format "embed/dashboard/%s/params/_CATEGORY_ID_/values" (token params)))
-              (search-url [& [params]]
-                (format "embed/dashboard/%s/params/_CATEGORY_NAME_/search/food" (token params)))]
+              (values-url [& [params param-key]]
+                (format "embed/dashboard/%s/params/%s/values"
+                        (token params) (or param-key "_CATEGORY_ID_")))
+              (search-url [& [params param-key query]]
+                (format "embed/dashboard/%s/params/%s/search/%s"
+                        (token params) (or param-key "_CATEGORY_NAME_") (or query "food")))]
         (f (assoc m
                   :token token
                   :values-url values-url
@@ -829,6 +831,21 @@
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
         (is (= "Cannot search for values: \"category_name\" is not an enabled parameter."
                (client/client :get 400 (search-url))))))))
+
+(deftest params-with-static-list-test
+  (testing "embedding with parameter that has source is a static list"
+    (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+      (db/update! Dashboard (:id dashboard)
+        :embedding_params {"static_category" "enabled", "static_category_label" "enabled"})
+      (testing "Should work if the param we're fetching values for is enabled"
+        (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
+          (is (= {:values          ["African" "American" "Asian"]
+                  :has_more_values false}
+                 (client/client :get 200 (values-url {} "_STATIC_CATEGORY_")))))
+        (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
+          (is (= {:values          [["African" "Af"]]
+                  :has_more_values false}
+                 (client/client :get 200 (search-url {} "_STATIC_CATEGORY_LABEL_" "AF")))))))))
 
 (deftest chain-filter-enabled-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]

@@ -46,59 +46,55 @@ We'll select that question, and Metabase will update our code with the question'
 
 ```
 SELECT count(*)
-FROM {% raw %}{{#5}}{% endraw %}
+FROM {% raw %}{{#5-gizmo-orders-in-2019}}{% endraw %}
 ```
 
 This query returns the number of rows in our saved question.
 
-## Saved question as a Common Table Expression (CTE)
+## Model, table, or saved question as a Common Table Expression (CTE)
 
-The same syntax can be used in [Common Table Expressions (CTEs)](https://en.wikipedia.org/wiki/Hierarchical_and_recursive_queries_in_SQL#Common_table_expression) (with SQL databases that support CTEs):
+The same syntax can be used in [Common Table Expressions (CTEs)](https://www.metabase.com/learn/sql-questions/sql-cte) (with SQL databases that support CTEs):
 
 ```
-WITH 2019_gizmo_orders AS {% raw %}{{#5}}{% endraw %}
+WITH gizmo_orders AS {% raw %}{{#5-gizmo-orders-in-2019}}{% endraw %}
 SELECT count(*)
-FROM 2019_gizmo_orders
+FROM gizmo_orders
 ```
 
-When this query is run, the `{% raw %}{{#5}}{% endraw %}` tag will be substituted with the SQL query of the referenced question, surrounded by parentheses. So it'll look like this under the hood:
+When this query is run, the `{% raw %}{{#5-gizmo-orders-in-2019}}{% endraw %}` tag will be substituted with the SQL query of the referenced question, surrounded by parentheses. So it'll look like this under the hood:
 
 ```
-WITH 2019_gizmo_orders AS (SELECT *
+WITH gizmo_orders AS (SELECT *
 FROM   orders AS o
        INNER JOIN products AS p
                ON o.product_id = p.id
 WHERE  p.category = 'Gizmo'
        AND o.created_at BETWEEN '2019-01-01' AND '2019-12-31')
 SELECT count(*)
-FROM 2019_gizmo_orders
+FROM gizmo_orders
 ```
 
-## How to find a question's ID
+## Search for models and questions as you type
 
-- Selecting a question from the variable sidebar in the SQL editor will automatically add the ID number to the variable in our query.
-- You can also navigate to the question you'd like to reference and find its ID at the end of the URL in your browser's address bar, after `/question/`. E.g., for `https://metabase.example.com/question/12345`, the question's ID would be `12345`.
+Use the typeahead search in the your variable to find your model or question. Type `{% raw %}{{#your search term }} {% endraw %}` and Metabase will display
 
-## When and why to use saved questions as a data source
+Selecting a question from the variable sidebar in the SQL editor will automatically add the ID number to the variable in our query.
 
-- If you can't create a view in the database, since saved questions effectively act as views. If you can create a view, and you expect that you and others will frequently query the results, consider creating a materialized view. The results will be stored in the database (as opposed to computed each time), which will speed up query time.
-- To simplify or standardize queries for people. If you have data split across multiple tables, you can perform those complicated joins once, and provide the results as a simplified "table" that people can query.
-
-For other ways to standardize analytics, check out:
-
-- [Segments and Metrics](../../data-modeling/segments-and-metrics.md)
-- [SQL Snippets](https://www.metabase.com/learn/building-analytics/sql-templates/sql-snippets.html)
-- [SQL Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/building-analytics/sql-templates/organizing-sql.html)
+You can also navigate to the model or question you'd like to reference and find its ID in the URL in your browser's address bar, after `/model/` or `/question/`. E.g., for `https://metabase.example.com/model/12345-example-name`, the model's ID would be `12345`.
 
 ## Limitations and tradeoffs
 
-- You can only reference a saved question in a query when working with a SQL database like PostgreSQL, MySQL, or SQL Server.
-- The saved question you select has to be one that's based on the same database as the one you've currently selected in the native query editor.
-- You cannot reference variables in sub-queries. You only have access to the _results_ of the saved question, not the saved question's query. For example, if you have a saved question that uses a [field filter](https://www.metabase.com/learn/building-analytics/sql-templates/field-filters), you won't be able to reference that variable. If you need to change how the saved question has filtered the results, you'll need to update (or duplicate) that question and apply the filter.
+- You can only reference a model or saved question in a query when working with a SQL database like PostgreSQL, MySQL, or SQL Server.
+- The model or saved question you select has to be one that's based on the same database as the one you've currently selected in the native query editor.
+- You cannot refer to variables in sub-queries. You only have access to the _results_ of the model or saved question, not the model or saved question's query. For example, if you have a saved question that uses a [field filter](https://www.metabase.com/learn/building-analytics/sql-templates/field-filters), you won't be able to reference that variable. If you need to change how the saved question has filtered the results, you'll need to update (or duplicate) that question and apply the filter.
 
-## Need help?
+## Further reading
 
-If you're having trouble with your SQL query, go to the [SQL troubleshooting guide](../../troubleshooting-guide/sql.md).
+- [Models](../../data-modeling/models.md)
+- [SQL Snippets](https://www.metabase.com/learn/building-analytics/sql-templates/sql-snippets.html)
+- [SQL Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/building-analytics/sql-templates/organizing-sql.html)
+- [SQL troubleshooting guide](../../troubleshooting-guide/sql.md).
+- [Segments and Metrics](../../data-modeling/segments-and-metrics.md)
 
 
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte

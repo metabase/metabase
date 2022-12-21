@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import moment, { Moment } from "moment-timezone";
-import { ComponentStory } from "@storybook/react";
+import type { ComponentStory } from "@storybook/react";
 import DateSelector from "./DateSelector";
 
 export default {

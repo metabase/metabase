@@ -1,24 +1,24 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.tools.reader.edn :as edn]
-            [metabase.api.common :as api]
-            [metabase.config :as config]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Database Field FieldValues Table]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.sync :as sync]
-            [metabase.sync.util :as sync-util]
-            [metabase.test.data.dataset-definitions :as defs]
-            [metabase.test.data.impl.verify :as verify]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.initialize :as initialize]
-            [metabase.test.util.timezone :as test.tz]
-            [metabase.util :as u]
-            [potemkin :as p]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.tools.reader.edn :as edn]
+   [metabase.api.common :as api]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.driver :as driver]
+   [metabase.models :refer [Database Field FieldValues Table]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.sync :as sync]
+   [metabase.sync.util :as sync-util]
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.test.data.impl.verify :as verify]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.initialize :as initialize]
+   [metabase.test.util.timezone :as test.tz]
+   [metabase.util :as u]
+   [potemkin :as p]
+   [toucan.db :as db]))
 
 (comment verify/keep-me)
 
@@ -130,17 +130,12 @@
             (db/delete! Database :id (u/the-id db))
             (throw e)))))
     (catch Throwable e
-      (let [message (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))]
-        (log/fatal e message)
-        (if config/is-test?
-          (System/exit -1)
-          (do
-            (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
-            (tx/destroy-db! driver database-definition)
-            (throw (ex-info message
-                            {:driver        driver
-                             :database-name database-name}
-                            e))))))))
+      (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
+      (tx/destroy-db! driver database-definition)
+      (throw (ex-info (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))
+                      {:driver        driver
+                       :database-name database-name}
+                      e)))))
 
 (defmethod get-or-create-database! :default
   [driver dbdef]

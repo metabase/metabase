@@ -22,8 +22,9 @@ describe("static visualizations", () => {
     cy.createDashboardWithQuestions({
       dashboardName,
       questions: [
-        createPieQuestion({ showDataLabels: false }),
-        createPieQuestion({ showDataLabels: true }),
+        createPieQuestion({ percentVisibility: "off " }),
+        createPieQuestion({ percentVisibility: "legend" }),
+        createPieQuestion({ percentVisibility: "inside" }),
       ],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);
@@ -37,9 +38,9 @@ describe("static visualizations", () => {
   });
 });
 
-function createPieQuestion({ showDataLabels }) {
+function createPieQuestion({ percentVisibility }) {
   const query = {
-    name: `pie showDataLabels=${showDataLabels}`,
+    name: `pie showDataLabels=${percentVisibility}`,
     native: {
       query:
         "select 1 x, 1000 y\n" +
@@ -53,7 +54,7 @@ function createPieQuestion({ showDataLabels }) {
       "template-tags": {},
     },
     visualization_settings: {
-      "pie.show_data_labels": showDataLabels,
+      "pie.percent_visibility": percentVisibility,
     },
     display: "pie",
     database: SAMPLE_DB_ID,

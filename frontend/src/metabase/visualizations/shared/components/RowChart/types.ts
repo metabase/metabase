@@ -13,8 +13,8 @@ export type Series<TDatum, TSeriesInfo = unknown> = {
 };
 
 export type BarData<TDatum, TSeriesInfo = unknown> = {
-  xStartValue: number;
-  xEndValue: number;
+  xStartValue: number | null;
+  xEndValue: number | null;
   yValue: StringLike;
   isNegative: boolean;
   isBorderValue?: boolean;

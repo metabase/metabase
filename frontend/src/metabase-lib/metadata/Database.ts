@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { NativePermissions } from "metabase-types/api";
 import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
 import Question from "../Question";
@@ -20,10 +21,12 @@ import Metadata from "./Metadata";
 class DatabaseInner extends Base {
   id: number;
   name: string;
+  engine: string;
   description: string;
   tables: Table[];
   schemas: Schema[];
   metadata: Metadata;
+  native_permissions: NativePermissions;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;

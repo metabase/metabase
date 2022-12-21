@@ -75,14 +75,8 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes.base/extract-query "NativeQuerySnippet" [_ {:keys [collection-set]}]
-  (eduction cat [(db/select-reducible NativeQuerySnippet :collection_id nil)
-                 (when (seq collection-set)
-                   (db/select-reducible NativeQuerySnippet :collection_id [:in collection-set]))]))
-
-(defmethod serdes.base/serdes-generate-path "NativeQuerySnippet" [_ snippet]
-  [(assoc (serdes.base/infer-self-path "NativeQuerySnippet" snippet)
-          :label (:name snippet))])
+(defmethod serdes.base/extract-query "NativeQuerySnippet" [_ opts]
+  (serdes.base/extract-query-collections NativeQuerySnippet opts))
 
 (defmethod serdes.base/extract-one "NativeQuerySnippet"
   [_model-name _opts snippet]
@@ -101,3 +95,21 @@
   (if collection_id
     [[{:model "Collection" :id collection_id}]]
     []))
+
+(defmethod serdes.base/storage-path "NativeQuerySnippet" [snippet ctx]
+  ;; Intended path here is ["snippets" "nested" "collections" "snippet_eid_and_slug"]
+  ;; We just the default path, then pull it apart.
+  ;; The default is ["collections" "nested" collections" "nativequerysnippets" "base_name"]
+  (let [basis  (serdes.base/storage-default-collection-path snippet ctx)
+        file   (last basis)
+        colls  (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
+    (concat ["snippets"] colls [file])))
+
+(serdes.base/register-ingestion-path!
+  "NativeQuerySnippet"
+  (fn [path]
+    (when-let [[id slug] (and (= (first path) "snippets")
+                              (serdes.base/split-leaf-file-name (last path)))]
+      (cond-> {:model "NativeQuerySnippet" :id id}
+        slug (assoc :label slug)
+        true vector))))

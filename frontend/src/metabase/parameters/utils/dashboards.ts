@@ -2,16 +2,16 @@ import _ from "underscore";
 
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { slugify } from "metabase/lib/formatting";
+import type { ParameterMappingOptions } from "metabase-types/types/Parameter";
 import type {
-  Parameter,
-  ParameterMappingOptions,
-} from "metabase-types/types/Parameter";
-import type {
+  Card,
   Dashboard,
   DashboardParameterMapping,
   DashboardOrderedCard,
+  ParameterSourceType,
+  ParameterSourceOptions,
+  Parameter,
 } from "metabase-types/api";
-import type { SavedCard } from "metabase-types/types/Card";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
   UiParameter,
@@ -27,7 +27,7 @@ import type Field from "metabase-lib/metadata/Field";
 
 type ExtendedMapping = DashboardParameterMapping & {
   dashcard_id: number;
-  card: SavedCard;
+  card: Card;
 };
 
 export function createParameter(
@@ -64,6 +64,26 @@ export function setParameterName(
     name: name,
     slug: slug,
   };
+}
+
+export function getSourceType(parameter: Parameter): ParameterSourceType {
+  return parameter.source_type ?? null;
+}
+
+export function getSourceOptions(parameter: Parameter): ParameterSourceOptions {
+  return parameter.source_options ?? {};
+}
+
+export function hasValidSourceOptions(
+  sourceType: ParameterSourceType,
+  sourceOptions: ParameterSourceOptions,
+): boolean {
+  switch (sourceType) {
+    case "static-list":
+      return sourceOptions.values != null && sourceOptions.values.length > 0;
+    default:
+      return true;
+  }
 }
 
 export function getIsMultiSelect(parameter: Parameter): boolean {

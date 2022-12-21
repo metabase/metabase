@@ -30,7 +30,8 @@
                               :regex                                  false
                               :percentile-aggregations                false
                               :advanced-math-expressions              false
-                              :standard-deviation-aggregations        false}]
+                              :standard-deviation-aggregations        false
+                              :now                                    true}]
   (defmethod driver/supports? [:sqlite feature] [_ _] supported?))
 
 ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know

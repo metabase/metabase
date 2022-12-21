@@ -273,6 +273,15 @@
                            :attributes {"something_random" 50}}
              (mt/run-mbql-query venues {:aggregation [[:count]]})))))
 
+    (testing (str "When processing a query that requires a user attribute and that user attribute is nil, throw an "
+                  "exception letting the user know it's missing")
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Query requires user attribute `cat`"
+           (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                           :attributes {"cat" nil}}
+             (mt/run-mbql-query venues {:aggregation [[:count]]})))))
+
     (testing "Another basic test, same as above, but with a numeric string that needs to be coerced"
       (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" "50"}}
@@ -796,7 +805,7 @@
                                                           :coercion_strategy nil
                                                           :semantic_type  (db/select-one-field :semantic_type Field
                                                                            :id (mt/id :products :category))
-                                                          :database_type "VARCHAR"
+                                                          :database_type "CHARACTER VARYING"
                                                           :name          "CATEGORY"}]]
                                        (get-in (qp/preprocess drill-thru-query) [:query :filter])))))]
                         (testing "As an admin"
@@ -1007,12 +1016,11 @@
     (mt/dataset sample-dataset
       ;; with-gtaps creates a new copy of the database. So make sure to do that before anything else. Gets really
       ;; confusing when `(mt/id)` and friends change value halfway through the test
-      (mt/with-gtaps {:gtaps      {:products
-                                   {:remappings {:category
-                                                 ["dimension"
-                                                  [:field (mt/id :products :category)
-                                                   nil]]}}}
-                      :attributes {"category" nil}}
+      (mt/with-gtaps {:gtaps {:products
+                              {:remappings {:category
+                                            ["dimension"
+                                             [:field (mt/id :products :category)
+                                              nil]]}}}}
         (mt/with-persistence-enabled [persist-models!]
           (mt/with-temp* [Card [model {:dataset       true
                                        :dataset_query (mt/mbql-query
@@ -1020,8 +1028,9 @@
                                                        ;; note does not include the field we have to filter on. No way
                                                        ;; to use the sandbox filter on the cached table
                                                        {:fields [$id $price]})}]]
-            ;; persist model
-            (persist-models!)
+            ;; persist model (as admin, so sandboxing is not applied to the persisted query)
+            (mt/with-test-user :crowberto
+              (persist-models!))
             (let [persisted-info (db/select-one 'PersistedInfo
                                                 :database_id (mt/id)
                                                 :card_id (:id model))]

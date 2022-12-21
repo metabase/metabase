@@ -11,6 +11,10 @@ export const getDataLabel = <TDatum>(
   const { xStartValue, xEndValue, isNegative } = bar;
   const value = isNegative ? xStartValue : xEndValue;
 
+  if (value == null) {
+    return null;
+  }
+
   const [xDomainStart, xDomainEnd] = xScale.domain();
   const isOutOfDomain = value <= xDomainStart || value >= xDomainEnd;
 

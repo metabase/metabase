@@ -8,7 +8,6 @@
             [medley.core :as m]
             [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
@@ -45,7 +44,9 @@
   (let [features (set (cons feature more-features))]
     (set (for [driver (normal-drivers)
                :let   [driver (tx/the-driver-with-test-extensions driver)]
-               :when  (set/subset? features (driver.u/features driver (data/db)))]
+               :when  (driver/with-driver driver
+                        (let [db (data/db)]
+                          (every? #(driver/database-supports? driver % db) features)))]
            driver))))
 
 (alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
@@ -320,7 +321,11 @@
                       (try
                         (f v)
                         (catch Throwable e
-                          (throw (ex-info (format "format-rows-by failed (f = %s, value = %s %s): %s" f (.getName (class v)) v (.getMessage e))
+                          (throw (ex-info (format "format-rows-by failed (f = %s, value = %s %s): %s"
+                                                  (pr-str f)
+                                                  (.getName (class v))
+                                                  (pr-str v)
+                                                  (.getMessage e))
                                    {:f f, :v v, :format-nil-values? format-nil-values?}
                                    e)))))))))
 

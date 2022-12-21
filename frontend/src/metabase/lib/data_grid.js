@@ -130,7 +130,10 @@ export function multiLevelPivot(data, settings) {
     topIndexFormatters,
     topIndexColumns,
   );
-  if (formattedColumnTreeWithoutValues.length > 1) {
+  if (
+    formattedColumnTreeWithoutValues.length > 1 &&
+    settings["pivot.show_row_totals"]
+  ) {
     // if there are multiple columns, we should add another for row totals
     formattedColumnTreeWithoutValues.push({
       value: t`Row totals`,
@@ -161,11 +164,15 @@ export function multiLevelPivot(data, settings) {
   const showSubtotalsByColumn = rowColumnIndexes.map(
     index => getIn(columnSettings, [index, COLUMN_SHOW_TOTALS]) !== false,
   );
-  const formattedRowTree = addSubtotals(
-    formattedRowTreeWithoutSubtotals,
-    showSubtotalsByColumn,
-  );
-  if (formattedRowTreeWithoutSubtotals.length > 1) {
+
+  const formattedRowTree = settings["pivot.show_column_totals"]
+    ? addSubtotals(formattedRowTreeWithoutSubtotals, showSubtotalsByColumn)
+    : formattedRowTreeWithoutSubtotals;
+
+  if (
+    formattedRowTreeWithoutSubtotals.length > 1 &&
+    settings["pivot.show_column_totals"]
+  ) {
     // if there are multiple columns, we should add another for row totals
     formattedRowTree.push({
       value: t`Grand totals`,

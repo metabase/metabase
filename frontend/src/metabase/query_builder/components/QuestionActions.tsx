@@ -57,8 +57,6 @@ interface Props {
     opt: { datasetEditorTab: string },
   ) => void;
   turnDatasetIntoQuestion: () => void;
-  turnQuestionIntoAction: () => void;
-  turnActionIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
   isModerator: boolean;
@@ -73,8 +71,6 @@ const QuestionActions = ({
   question,
   setQueryBuilderMode,
   turnDatasetIntoQuestion,
-  turnQuestionIntoAction,
-  turnActionIntoQuestion,
   onInfoClick,
   onModelPersistenceChange,
   isModerator,
@@ -86,7 +82,6 @@ const QuestionActions = ({
     ? color("brand")
     : undefined;
 
-  const isAction = question.isAction();
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
@@ -169,7 +164,7 @@ const QuestionActions = ({
       action: () => onOpenModal(MODAL_TYPES.MOVE),
       testId: MOVE_TESTID,
     });
-    if (!isDataset && !isAction) {
+    if (!isDataset) {
       extraButtons.push({
         title: t`Turn into a model`,
         icon: "model",
@@ -182,15 +177,6 @@ const QuestionActions = ({
         title: t`Turn back to saved question`,
         icon: "model_framed",
         action: turnDatasetIntoQuestion,
-      });
-    }
-    if (isSaved && isNative && !isDataset) {
-      extraButtons.push({
-        title: isAction
-          ? t`Turn back to saved question`
-          : t`Turn into an action`,
-        icon: "bolt",
-        action: isAction ? turnActionIntoQuestion : turnQuestionIntoAction,
       });
     }
   }
@@ -231,7 +217,7 @@ const QuestionActions = ({
             iconSize={HEADER_ICON_SIZE}
             onClick={onInfoClick}
             color={infoButtonColor}
-            data-testId="qb-header-info-button"
+            data-testid="qb-header-info-button"
           />
         </ViewHeaderIconButtonContainer>
       </Tooltip>

@@ -3,6 +3,7 @@
   (:require [clojure.core.async :as a]
             [dev.debug-qp :as debug-qp]
             [honeysql.core :as hsql]
+            [malli.dev :as malli-dev]
             [metabase.api.common :as api]
             [metabase.core :as mbc]
             [metabase.db.connection :as mdb.connection]
@@ -76,7 +77,7 @@
      (ns-unalias a-namespace symb))))
 
 (defmacro require-model
-  "Rather than requiring all models inn the ns declaration, make it easy to require the ones you need for your current
+  "Rather than requiring all models in the ns declaration, make it easy to require the ones you need for your current
   session"
   [model-sym]
   `(require [(symbol (str "metabase.models." (quote ~model-sym))) :as (quote ~model-sym)]))
@@ -128,6 +129,13 @@
         (throw e)))))
 
 (defn migrate!
-  "Run migrations for the Metabase application database."
+  "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:down`, and
+  `:release-locks`."
+  ([]
+   (migrate! :up))
+  ([direction]
+   (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source) direction)))
+
+(defn start-malli!
   []
-  (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source) :up))
+  (malli-dev/start!))

@@ -53,7 +53,7 @@ const ColumnItem = ({
           <ColumnItemSpan>{title}</ColumnItemSpan>
           {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}
           {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
-          {onRemove && <ActionIcon icon="eye_filled" onClick={onRemove} />}
+          {onRemove && <ActionIcon icon="eye_outline" onClick={onRemove} />}
           {onEnable && <ActionIcon icon="eye_crossed_out" onClick={onEnable} />}
         </ColumnItemContent>
       </ColumnItemContainer>

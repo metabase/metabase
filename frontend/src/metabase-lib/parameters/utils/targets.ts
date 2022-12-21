@@ -3,7 +3,7 @@ import {
   ParameterDimensionTarget,
   ParameterVariableTarget,
 } from "metabase-types/types/Parameter";
-import { SavedCard } from "metabase-types/types/Card";
+import type { Card } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import Dimension from "metabase-lib/Dimension";
 import Metadata from "metabase-lib/metadata/Metadata";
@@ -54,7 +54,7 @@ export function buildTextTagTarget(tagName: string) {
 
 export function getTargetFieldFromCard(
   target: ParameterVariableTarget | ParameterDimensionTarget,
-  card: SavedCard,
+  card: Card,
   metadata: Metadata,
 ) {
   if (!card?.dataset_query) {

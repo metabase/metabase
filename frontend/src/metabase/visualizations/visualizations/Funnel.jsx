@@ -19,6 +19,7 @@ import {
   dimensionSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
@@ -110,36 +111,52 @@ export default class Funnel extends Component {
       showColumnSetting: true,
       marginBottom: "0.625rem",
     }),
+    "funnel.order_dimension": {
+      getValue: (_series, settings) => settings["funnel.dimension"],
+      readDependencies: ["funnel.rows"],
+    },
     "funnel.rows": {
       section: t`Data`,
       widget: ChartSettingOrderedSimple,
-      isValid: (series, settings) => {
-        const funnelRows = settings["funnel.rows"];
 
-        if (!funnelRows || !_.isArray(funnelRows)) {
-          return false;
+      getValue: (series, settings) => {
+        const seriesOrder = settings["funnel.rows"];
+        const seriesKeys = series.map(s => keyForSingleSeries(s));
+        const orderDimension = settings["funnel.order_dimension"];
+        const dimension = settings["funnel.dimension"];
+
+        const getDefault = keys =>
+          keys.map(key => ({
+            key,
+            name: key,
+            enabled: true,
+          }));
+        if (
+          !seriesOrder ||
+          !_.isArray(seriesOrder) ||
+          !seriesOrder.every(setting => setting.key !== undefined) ||
+          orderDimension !== dimension
+        ) {
+          return getDefault(seriesKeys);
         }
-        if (!funnelRows.every(setting => setting.originalIndex !== undefined)) {
-          return false;
-        }
 
-        return (
-          funnelRows.every(setting => series[setting.originalIndex]) &&
-          funnelRows.length === series.length
-        );
-      },
+        const removeMissingOrder = (keys, order) =>
+          order.filter(o => keys.includes(o.key));
+        const newKeys = (keys, order) =>
+          keys.filter(key => !order.find(o => o.key === key));
 
-      getDefault: transformedSeries => {
-        return transformedSeries.map(s => ({
-          name: s.card.name,
-          originalIndex: s.card.originalIndex,
-          enabled: true,
-        }));
+        return [
+          ...removeMissingOrder(seriesKeys, seriesOrder),
+          ...getDefault(newKeys(seriesKeys, seriesOrder)),
+        ];
       },
-      getProps: transformedSeries => ({
-        items: transformedSeries.map(s => s.card),
+      props: {
         hasEditSettings: false,
-      }),
+      },
+      getHidden: (series, settings) =>
+        settings["funnel.dimension"] === null ||
+        settings["funnel.metric"] === null,
+      writeDependencies: ["funnel.order_dimension"],
       dataTestId: "funnel-row-sort",
     },
     ...metricSetting("funnel.metric", {

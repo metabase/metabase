@@ -124,29 +124,30 @@ describe("scenarios > admin > databases > edit", () => {
       cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
 
       cy.findByText("Show advanced options").click();
-      cy.findByText("Database syncing")
-        .closest(".Form-field")
-        .findByText("Hourly");
-
-      cy.findByText("Regularly, on a schedule")
-        .closest("div")
-        .should("have.class", "text-brand");
+      cy.findByText("Regularly, on a schedule").should("exist");
+      cy.findByText("Hourly").should("exist");
+      cy.findByLabelText("Regularly, on a schedule").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
     });
 
     it("lets you change the metadata_sync period", () => {
       cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
 
       cy.findByText("Show advanced options").click();
-      cy.findByText("Database syncing").closest(".Form-field").as("sync");
 
-      cy.get("@sync").findByText("Hourly").click();
+      cy.findByText("Hourly").click();
       popover().within(() => {
         cy.findByText("Daily").click({ force: true });
       });
 
-      cy.findByText("Regularly, on a schedule")
-        .closest("div")
-        .should("have.class", "text-brand");
+      cy.findByLabelText("Regularly, on a schedule").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
 
       cy.findByText("Save changes").click();
       cy.wait("@databaseUpdate").then(({ response }) =>

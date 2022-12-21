@@ -6,6 +6,7 @@ import cx from "classnames";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { findSeriesByKey } from "metabase/visualizations/lib/series";
 
 import { color } from "metabase/lib/colors";
 import styles from "./FunnelNormal.css";
@@ -29,7 +30,7 @@ export default class FunnelNormal extends Component {
     const rows = settings["funnel.rows"]
       ? settings["funnel.rows"]
           .filter(fr => fr.enabled)
-          .map(fr => series[fr.originalIndex].data.rows[0])
+          .map(fr => findSeriesByKey(series, fr.key).data.rows[0])
       : series.map(s => s.data.rows[0]);
 
     const isNarrow = gridSize && gridSize.width < 7;
@@ -107,6 +108,7 @@ export default class FunnelNormal extends Component {
               column: cols[dimensionIndex],
             },
           ],
+          settings,
         },
       };
     });

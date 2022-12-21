@@ -81,3 +81,7 @@ See which queries are failing to help keep your Metabase tidy.
 You can export Metabase application data and use that to spin up new instances preloaded with questions, dashboards, and collections.
 
 - [Serialization](../installation-and-operation/serialization.md)
+
+## Configuration file
+
+For self-hosted installations, you can load Metabase from a [configuration file](../configuring-metabase/config-file.md).

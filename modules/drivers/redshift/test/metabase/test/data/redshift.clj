@@ -7,6 +7,8 @@
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]))
 
+(defmethod tx/supports-time-type? :redshift [_driver] false)
+
 ;; we don't need to add test extensions here because redshift derives from Postgres and thus already has test
 ;; extensions
 

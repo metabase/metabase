@@ -9,17 +9,14 @@ import { updateIn } from "icepick";
 
 import title from "metabase/hoc/Title";
 
-import Button from "metabase/core/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
-import DriverWarning from "metabase/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getWritebackEnabled } from "metabase/writeback/selectors";
 
-import Databases from "metabase/entities/databases";
 import { getSetting } from "metabase/selectors/settings";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import DatabaseForm from "metabase/databases/containers/DatabaseForm";
 import Database from "metabase-lib/metadata/Database";
 
 import { getEditingDatabase, getInitializeError } from "../selectors";
@@ -44,8 +41,6 @@ import {
   DatabaseEditRoot,
 } from "./DatabaseEditApp.styled";
 
-const DATABASE_FORM_NAME = "database";
-
 const mapStateToProps = state => {
   const database = getEditingDatabase(state);
 
@@ -53,7 +48,6 @@ const mapStateToProps = state => {
     database: database ? new Database(database) : undefined,
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
-    isWritebackEnabled: getWritebackEnabled(state),
     isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
   };
 };
@@ -92,7 +86,6 @@ class DatabaseEditApp extends Component {
     selectEngine: PropTypes.func.isRequired,
     location: PropTypes.object,
     isAdmin: PropTypes.bool,
-    isWritebackEnabled: PropTypes.bool,
     isModelPersistenceEnabled: PropTypes.bool,
   };
 
@@ -112,7 +105,6 @@ class DatabaseEditApp extends Component {
       syncDatabaseSchema,
       dismissSyncSpinner,
       isAdmin,
-      isWritebackEnabled,
       isModelPersistenceEnabled,
     } = this.props;
     const editingExistingDatabase = database?.id != null;
@@ -142,59 +134,16 @@ class DatabaseEditApp extends Component {
                 loading={!database}
                 error={initializeError}
               >
-                {() => (
-                  <Databases.Form
-                    database={database}
-                    form={Databases.forms.details}
-                    formName={DATABASE_FORM_NAME}
-                    onSubmit={handleSubmit}
-                    submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
-                    submitButtonComponent={Button}
-                    useLegacyForm
-                  >
-                    {({
-                      Form,
-                      FormField,
-                      FormMessage,
-                      FormSubmit,
-                      formFields,
-                      values,
-                      submitTitle,
-                      onChangeField,
-                    }) => {
-                      return (
-                        <DatabaseEditContent>
-                          <DatabaseEditForm>
-                            <Form>
-                              <FormField
-                                name="engine"
-                                disabled={database.is_sample}
-                              />
-                              <DriverWarning
-                                engine={values.engine}
-                                onChange={engine =>
-                                  onChangeField("engine", engine)
-                                }
-                              />
-                              {_.reject(formFields, { name: "engine" }).map(
-                                ({ name }) => (
-                                  <FormField key={name} name={name} />
-                                ),
-                              )}
-                              <FormMessage />
-                              <div className="Form-actions text-centered">
-                                <FormSubmit className="block mb2">
-                                  {submitTitle}
-                                </FormSubmit>
-                              </div>
-                            </Form>
-                          </DatabaseEditForm>
-                          <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
-                        </DatabaseEditContent>
-                      );
-                    }}
-                  </Databases.Form>
-                )}
+                <DatabaseEditContent>
+                  <DatabaseEditForm>
+                    <DatabaseForm
+                      initialValues={database}
+                      isAdvanced
+                      onSubmit={handleSubmit}
+                    />
+                  </DatabaseEditForm>
+                  <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
+                </DatabaseEditContent>
               </LoadingAndErrorWrapper>
             </div>
           </div>
@@ -203,7 +152,6 @@ class DatabaseEditApp extends Component {
             <Sidebar
               database={database}
               isAdmin={isAdmin}
-              isWritebackEnabled={isWritebackEnabled}
               isModelPersistenceEnabled={isModelPersistenceEnabled}
               updateDatabase={updateDatabase}
               deleteDatabase={deleteDatabase}

@@ -126,6 +126,9 @@ describe("metabase-lib/expressions/parser", () => {
     it("should accept the function upper", () => {
       expect(() => parseExpression("Upper([Title])")).not.toThrow();
     });
+    it("should accept the function now", () => {
+      expect(() => parseExpression("now")).not.toThrow();
+    });
 
     it("should accept the function CASE", () => {
       expect(() => parseExpression("Case([Z]>7, 'X', 'Y')")).not.toThrow();

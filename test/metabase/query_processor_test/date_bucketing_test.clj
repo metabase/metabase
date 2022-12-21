@@ -273,7 +273,7 @@
   ;; timezone
   ;;
   ;; TIMEZONE FIXME
-  (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo})
+  (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :athena})
     (testing "Change JVM timezone from UTC to Pacific"
       (is (= (cond
                (= :sqlite driver/*driver*)
@@ -525,7 +525,7 @@
     ;; timezone
     ;;
     ;; TIMEZONE FIXME
-    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :vertica})
+    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :vertica :athena})
       (is (= (cond
                (= :sqlite driver/*driver*)
                (results-by-day u.date/parse date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
@@ -740,9 +740,9 @@
         (mt/dataset sample-dataset
           (letfn [(test-break-out [unit]
                     (->> (mt/mbql-query orders
-                                        {:filter      [:between $created_at "2019-01-01" "2019-12-31"]
-                                         :breakout    [:field $created_at {:temporal-unit unit}]
-                                         :aggregation [[:count]]})
+                           {:filter      [:between $created_at "2019-01-01" "2019-12-31"]
+                            :breakout    [:field $created_at {:temporal-unit unit}]
+                            :aggregation [[:count]]})
                          mt/process-query
                          (mt/formatted-rows [fmt-str-or-int int])))]
             (testing "count result should be the same between week and week-of-year"
@@ -953,21 +953,22 @@
         (or (some-> results mt/first-row first int)
             results)))))
 
-;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests
-;;        are ran and loading data into these DBs is mind-bogglingly slow.
+;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests are
+;;        ran and loading data into these DBs is mind-bogglingly slow. This also applies to Athena for now, because
+;;        deleting data is not easy.
 ;;
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
 ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
 ;; machine isn't as slow as the CircleCI ones)
 (deftest count-of-grouping-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
           (is (= 4
                  (apply count-of-grouping checkins:4-per-minute :minute args))
               (format "filter by minute = %s" (into [:relative-datetime] args)))))))
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per hour dataset"
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
@@ -986,7 +987,7 @@
             "filter by week = [:relative-datetime :current]")))))
 
 (deftest time-interval-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
         (is (= 1
@@ -1018,7 +1019,7 @@
      :unit (-> results :data :cols first :unit)}))
 
 (deftest date-bucketing-when-you-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (is (= {:rows 1, :unit :day}
            (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day")))
     (is (= {:rows 7, :unit :day}
@@ -1046,7 +1047,7 @@
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
 ;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
 (deftest default-bucketing-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
              (mt/formatted-rows [int]
@@ -1073,7 +1074,7 @@
                                   [:= [:field $timestamp nil] "2019-01-16"]
                                   [:= [:field $id nil] 6]]})))))))
 
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
         (is (=
@@ -1129,7 +1130,7 @@
                 "WHERE ("
                 "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(now() AS date) "
                 "AND "
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), now()) AS date)"
+                "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), CAST(now() AS datetime)) AS date)"
                 ")")
            (:query
             (qp/compile
@@ -1143,9 +1144,9 @@
       (is (= (str "SELECT CHECKINS.DATE AS DATE "
                   "FROM CHECKINS "
                   "WHERE ("
-                  "CHECKINS.DATE >= parsedatetime(formatdatetime(dateadd('month', CAST(-4 AS long), now()), 'yyyyMM'), 'yyyyMM')"
+                  "CHECKINS.DATE >= date_trunc('month', dateadd('month', CAST(-4 AS long), CAST(now() AS datetime)))"
                   " AND "
-                  "CHECKINS.DATE < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM')) "
+                  "CHECKINS.DATE < date_trunc('month', now())) "
                   "GROUP BY CHECKINS.DATE "
                   "ORDER BY CHECKINS.DATE ASC "
                   "LIMIT 1048575")
@@ -1159,7 +1160,7 @@
 (deftest field-filter-start-of-week-test
   (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
     (mt/dataset checkins:1-per-day
-      (let [query (mt/native-query {:query         (str "SELECT dayname(\"TIMESTAMP\") as day "
+      (let [query (mt/native-query {:query         (str "SELECT dayname(\"TIMESTAMP\") as \"day\" "
                                                         "FROM checkins "
                                                         "[[WHERE {{date_range}}]] "
                                                         "ORDER BY \"TIMESTAMP\" ASC "

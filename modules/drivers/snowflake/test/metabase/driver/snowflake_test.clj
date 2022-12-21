@@ -28,7 +28,7 @@
               #(str/replace % #"\s+" " ")
               ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
                "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
-                \"last_login\" TIMESTAMP_LTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
+                \"last_login\" TIMESTAMP_NTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
                "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
                "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
                 PRIMARY KEY (\"id\")) ;"
@@ -109,7 +109,7 @@
                          :database-type     "VARCHAR"
                          :base-type         :type/Text
                          :database-position 1
-                         :database-required false}}}
+                         :database-required true}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
@@ -123,27 +123,40 @@
 (defn- format-env-key [env-key]
   (let [[_ header body footer]
         (re-find #"(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
-    (str header (str/replace body #"\s+" "\n") footer)))
+    (str header (str/replace body #"\s+|\\n" "\n") footer)))
 
 (deftest can-connect-test
-  (mt/test-driver :snowflake
-    (let [can-connect? (partial driver/can-connect? :snowflake)]
-      (is (= true
-             (can-connect? (:details (mt/db))))
-          "can-connect? should return true for normal Snowflake DB details")
-      (is (thrown?
-           net.snowflake.client.jdbc.SnowflakeSQLException
-           (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
-          "can-connect? should throw for Snowflake databases that don't exist (#9511)")
-      (let [pk-user (tx/db-test-env-var-or-throw :snowflake :pk-user)
-            pk-key  (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))]
-        (is (= true
-               (-> (:details (mt/db))
-                   (dissoc :password)
-                   (assoc :user pk-user
-                          :private-key-value pk-key)
-                   can-connect?))
-            "can-connect? should return true when authenticating with private key")))))
+  (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+        pk-user (tx/db-test-env-var :snowflake :pk-user)
+        pk-db (tx/db-test-env-var :snowflake :pk-db "SNOWFLAKE_SAMPLE_DATA")]
+    (mt/test-driver :snowflake
+      (let [can-connect? (partial driver/can-connect? :snowflake)]
+        (is (can-connect? (:details (mt/db)))
+            "can-connect? should return true for normal Snowflake DB details")
+        (let [original-query jdbc/query]
+          ;; make jdbc/query return a falsey value, but should still be able to connect
+          (with-redefs [jdbc/query (fn fake-jdbc-query
+                                     ([db sql-params] (fake-jdbc-query db sql-params {}))
+                                     ([db sql-params opts] (if (str/starts-with? sql-params "SHOW OBJECTS IN DATABASE")
+                                                             nil
+                                                             (original-query db sql-params (or opts {})))))]
+            (is (can-connect? (:details (mt/db))))))
+        (is (thrown?
+             net.snowflake.client.jdbc.SnowflakeSQLException
+             (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
+            "can-connect? should throw for Snowflake databases that don't exist (#9511)")
+
+        (when (and pk-key pk-user)
+          (mt/with-temp-file [pk-path]
+            (testing "private key authentication"
+              (spit pk-path pk-key)
+              (doseq [to-merge [{:private-key-value pk-key} ;; uploaded string
+                                {:private-key-value (.getBytes pk-key)} ;; uploaded byte array
+                                {:private-key-path pk-path}]] ;; local file path
+                (let [details (-> (:details (mt/db))
+                                  (dissoc :password)
+                                  (merge {:db pk-db :user pk-user} to-merge))]
+                  (is (can-connect? details)))))))))))
 
 (deftest report-timezone-test
   (mt/test-driver :snowflake
@@ -188,8 +201,8 @@
                   ["2014-08-02T00:00:00Z" "2014-08-02T09:30:00Z"]]
                  (run-query))))
         (testing "with report timezone set"
-          (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T05:30:00-07:00"]
-                  ["2014-08-02T00:00:00-07:00" "2014-08-02T02:30:00-07:00"]]
+          (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T12:30:00-07:00"]
+                  ["2014-08-02T00:00:00-07:00" "2014-08-02T09:30:00-07:00"]]
                  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
                    (run-query)))))))))
 
@@ -240,5 +253,5 @@
                                   :engine  :snowflake,
                                   :details {:account  "my-instance"
                                             :regionid "us-west-1"}}]
-                             (is (= {:account "my-instance.us-west-1"}
-                                    (:details db)))))))
+        (is (= {:account "my-instance.us-west-1"}
+               (:details db)))))))

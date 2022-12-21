@@ -9,9 +9,11 @@
 
   If the model is not exported, add it to the exclusion lists in the tests. Every model should be explicitly listed as
   exported or not, and a test enforces this so serialization isn't forgotten for new models."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.models.interface :as mi]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -69,7 +71,8 @@
   against existing entities.
 
   The default implementation is a single level, using the model name provided and the ID from either
-  [[serdes-entity-id]] or [[serdes.hash/identity-hash]].
+  [[serdes-entity-id]] or [[serdes.hash/identity-hash]], and any `:name` field as the `:label`.
+  This default implementation is factored out as [[maybe-labeled]] for reuse.
 
   Implementation notes:
   - `:serdes/meta` might be defined - if so it's coming from ingestion and might have truncated values in it, and should
@@ -98,9 +101,22 @@
                 (throw (ex-info "Could not infer-self-path on this entity - maybe implement serdes-entity-id ?"
                                 {:model model-name :entity entity})))}))
 
+(defn maybe-labeled
+  "Common helper for defining [[serdes-generate-path]] for an entity that is
+  (1) top-level, ie. a one layer path;
+  (2) labeled by a single field, slugified.
+
+  For example, a Card's or Dashboard's `:name` field."
+  [model-name entity slug-key]
+  (let [self  (infer-self-path model-name entity)
+        label (get entity slug-key)]
+    [(if label
+       (assoc self :label (u/slugify label {:unicode? true}))
+       self)]))
+
 (defmethod serdes-generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for nested ones.
-  [(infer-self-path model-name entity)])
+  (maybe-labeled model-name entity :name))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Serialization Process                                                 |
@@ -136,6 +152,18 @@
 ;;; Storage:
 ;;; The storage system might transform that stream in some arbitrary way. Storage is a dead end - it should perform side
 ;;; effects like writing to the disk or network, and return nothing.
+;;;
+;;; Not all storage solutions use directory structure, but for those that do, [[storage-path]] should give the path as
+;;; a list of strings: `["foo" "bar" "some_file"]`. Note the lack of a file extension on the last segment - that
+;;; is deliberately left off so that no filename surgery is required to support eg. both JSON and YAML output.
+;;;
+;;; By convention, models are named as plural and in lower case:
+;;; `["collections" "1234ABC_my_collection" "dashboards" "8765def_health_metrics"]`.
+;;;
+;;; As a final remark, note that some entities have their own directories and some do not. For example a Field is
+;;; simply a file, while a Table has a directory. So a Table's itself is
+;;; `["databases" "some-db" "schemas" "PUBLIC" "tables" "Customer" "Customer"]`
+;;; so that's a directory called `Customer` with a file called (for YAML output) `Customer.yaml` in it.
 ;;;
 ;;; Selective Serialization:
 ;;; Sometimes we want to export a "subtree" instead of the complete appdb. At the simplest, we might serialize a single
@@ -195,6 +223,19 @@
 (defmethod extract-all :default [model opts]
   (eduction (map (partial extract-one model opts))
             (extract-query model opts)))
+
+(defn extract-query-collections
+  "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
+  collection."
+  [model {:keys [collection-set]}]
+  (if collection-set
+    ;; If collection-set is defined, select everything in those collections, or with nil :collection_id.
+    (let [in-colls  (db/select-reducible model :collection_id [:in collection-set])]
+      (if (contains? collection-set nil)
+        (eduction cat [in-colls (db/select-reducible model :collection_id nil)])
+        in-colls))
+    ;; If collection-set is nil, just select everything.
+    (db/select-reducible model)))
 
 (defmethod extract-query :default [model-name _]
   (db/select-reducible (symbol model-name)))
@@ -457,3 +498,136 @@
   (if (entity-id? id-str)
     (db/select-one model :entity_id id-str)
     (find-by-identity-hash model id-str)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Storage                                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; These storage multimethods take a second argument known as the context. This is a good place for a particular
+;;; storage implementation to include some precomputed information, or options.
+;;; In particular, it should include a table of collection IDs to path fragments that is precomputed by the host.
+;;; [[storage-base-context]] computes that, since many things go in a collections tree.
+(def ^:private max-label-length 100)
+
+(defn- truncate-label [s]
+  (if (> (count s) max-label-length)
+      (subs s 0 max-label-length)
+      s))
+
+(defn- lower-plural [s]
+  (-> s u/lower-case-en (str "s")))
+
+(defn storage-leaf-file-name
+  "Captures the common pattern for leaf file names as `entityID_label`."
+  ([id]       (str id))
+  ([id label] (if (nil? label)
+                (storage-leaf-file-name id)
+                (str id "_" (truncate-label label)))))
+
+(defn storage-default-collection-path
+  "Implements the most common structure for [[storage-path]] - `collections/c1/c2/c3/models/entityid_slug.ext`"
+  [entity {:keys [collections]}]
+  (let [{:keys [model id label]} (-> entity serdes-path last)]
+    (concat ["collections"]
+            (get collections (:collection_id entity)) ;; This can be nil, but that's fine - that's the root collection.
+            [(lower-plural model) (storage-leaf-file-name id label)])))
+
+(defmulti storage-path
+  "Computes the complete storage path for a given entity.
+  `(storage-path entity ctx)`
+  Dispatches on the model name, eg. \"Dashboard\".
+
+  Returns a list of strings giving the path, with the final entry being the file name with no extension.
+
+  The default implementation works for entities which are:
+  - Part of the regular (not snippet) collections tree, per a :collection_id field; and
+  - Stored as `foos/1234abc_slug.extension` underneath their collection
+  eg. Cards, Dashboards, Timelines
+
+  The default logic is captured by [[storage-default-collection-path]] so it can be reused."
+  {:arglists '([entity ctx])}
+  (fn [entity _] (ingested-model entity)))
+
+(defmethod storage-path :default [entity ctx]
+  (storage-default-collection-path entity ctx))
+
+(defn storage-base-context
+  "Creates the basic context for storage. This is a map with a single entry: `:collections` is a map from collection ID
+  to the path of collections."
+  []
+  (let [colls      (db/select ['Collection :id :entity_id :location :slug])
+        coll-names (into {} (for [{:keys [id entity_id slug]} colls]
+                              [(str id) (storage-leaf-file-name entity_id slug)]))
+        coll->path (into {} (for [{:keys [entity_id id location]} colls
+                                  :let [parents (rest (str/split location #"/"))]]
+                              [entity_id (map coll-names (concat parents [(str id)]))]))]
+    {:collections coll->path}))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Ingestion                                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+(defonce ^:private ingest-path-matchers (atom {}))
+
+(defn ingest-path
+  "Transforms a file path (as a sequence of strings with no file extension on the last part) into a `:serdes/meta`
+  hierarchy, or nil if nothing matches.
+
+  The set of matchers is maintained in an atom, and each model should call [[register-ingestion-path!]] to add its
+  matcher.
+
+  Note that the input format is the same as the return value of [[storage-path]]."
+  [path]
+  (first (keep #(% path) (vals @ingest-path-matchers))))
+
+(defn register-ingestion-path!
+  "Registers the matcher for the given model. Expects the model name to be a string.
+  The matcher is a function from a path (see [[ingest-path]] for the format) to a `:serdes/meta` hierarchy, or nil
+  if there's no match."
+  [model-name matcher]
+  (swap! ingest-path-matchers assoc model-name matcher)
+  ;; Return a readable symbol so this call shows up nicely when (a buffer containing) a register-ingestion-path! call
+  ;; is evaluated at the REPL.
+  ['register-ingestion-path! model-name])
+
+(defn split-leaf-file-name
+  "Given a leaf file name of the type generated by [[storage-leaf-file-name]], break it apart into an [id slug] pair,
+  where the slug might be nil."
+  [file]
+  (when-let [[_ id slug] (or (re-matches #"^([A-Za-z0-9_\.:-]{21})_(.*)$" file)    ; entity_id and slug
+                             (re-matches #"^([A-Za-z0-9_\.:-]{21})$"      file)    ; entity_id only
+                             (re-matches #"^([a-fA-F0-9]{8})_(.*)$"       file)    ; Hash and slug
+                             (re-matches #"^([a-fA-F0-9]{8})$"            file))]  ; Hash only
+    [id slug]))
+
+(defn ingestion-matcher-collected
+  "A helper for the common case of paths like `collections/some/nested/collections/model-name/entityID_slug`.
+  Expects the (lowercase) first segment, and the model name (eg. \"Dashboard\", not \"dashboards\" as it appears in
+  the path).
+  For example `(ingestion-matcher-collected \"collections\" \"Card\")`.
+
+  Returns a matcher function.
+  The resulting hierarchy is "
+  [first-segment model-name]
+  (fn [path]
+    (let [head         (first path)
+          [model file] (take-last 2 path)]
+      (when-let [[id slug] (and (= head first-segment)
+                                (= model (lower-plural model-name))
+                                (split-leaf-file-name file))]
+        (cond-> {:model model-name :id id}
+          slug (assoc :label slug)
+          true vector)))))
+
+(defn- match-pairs [path pattern]
+  (let [chunks (take (count pattern) (partition 2 path))]
+    (when (= pattern (map first chunks))
+      (reduce (fn [out [k v]] (assoc out k v)) {} chunks))))
+
+(defn ingestion-matcher-pairs
+  "A helper for the common case of paths like `databases/my-db/schemas/my-schema/tables/my-table` which alternate
+  fixed and arbitrary segments.
+  The input is a *list* of sequences like `[[\"databases\" \"schemas\" \"tables\"] [\"databases\" \"tables\"]]` and the
+  response is a map of those fixed tokens as keys to the following segment as values, eg.
+  `{\"databases\" \"my-db\"  \"schemas\" \"my-schema\"  \"tables\" \"my-table\"}`.
+  This matches a *prefix*, not necessarily the entire sequence."
+  [path patterns]
+  (some (partial match-pairs path) patterns))

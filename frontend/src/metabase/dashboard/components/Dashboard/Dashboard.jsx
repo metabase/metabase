@@ -130,6 +130,7 @@ class Dashboard extends Component {
   componentDidUpdate(prevProps) {
     if (prevProps.dashboardId !== this.props.dashboardId) {
       this.loadDashboard(this.props.dashboardId);
+      this.throttleParameterWidgetStickiness();
     } else if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       (!prevProps.dashboard && this.props.dashboard)
@@ -263,7 +264,6 @@ class Dashboard extends Component {
               <HeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
-                isDataApp={false}
               >
                 <DashboardHeader
                   {...this.props}
@@ -313,7 +313,6 @@ class Dashboard extends Component {
                     />
                   ) : (
                     <DashboardEmptyState
-                      isDataApp={false}
                       isNightMode={shouldRenderAsNightMode}
                     />
                   )}

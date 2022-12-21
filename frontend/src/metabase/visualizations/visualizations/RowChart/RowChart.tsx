@@ -33,6 +33,7 @@ import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/uti
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import {
   GroupedDatum,
+  RemappingHydratedChartData,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
 import { IconProps } from "metabase/components/Icon";
@@ -43,6 +44,7 @@ import {
 } from "metabase/visualizations/lib/settings/validation";
 import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
 import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
+import { extractRemappedColumns } from "metabase/visualizations";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -124,7 +126,12 @@ const RowChartVisualization = ({
   const [chartSeries] = useMemo(() => {
     return isPlaceholder ? multipleSeries : rawMultipleSeries;
   }, [isPlaceholder, multipleSeries, rawMultipleSeries]);
-  const data = chartSeries.data;
+
+  const data = useMemo(
+    () =>
+      extractRemappedColumns(chartSeries.data) as RemappingHydratedChartData,
+    [chartSeries.data],
+  );
 
   const { chartColumns, series, seriesColors } = useMemo(
     () => getTwoDimensionalChartSeries(data, settings, formatColumnValue),
@@ -132,7 +139,7 @@ const RowChartVisualization = ({
   );
 
   const groupedData = useMemo(
-    () => getGroupedDataset(data, chartColumns, formatColumnValue),
+    () => getGroupedDataset(data.rows, chartColumns, formatColumnValue),
     [chartColumns, data, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
@@ -170,11 +177,6 @@ const RowChartVisualization = ({
     }
 
     const clickData = getClickData(bar, settings, chartColumns, data.cols);
-
-    if (!visualizationIsClickable(clickData)) {
-      return;
-    }
-
     onVisualizationClick({ ...clickData, element: event.target });
   };
 

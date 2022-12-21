@@ -1,5 +1,4 @@
 import { combineReducers, applyMiddleware, createStore, compose } from "redux";
-import { reducer as form } from "redux-form";
 import { routerReducer as routing, routerMiddleware } from "react-router-redux";
 import promise from "redux-promise";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
@@ -29,7 +28,6 @@ const devToolsExtension = window.__REDUX_DEVTOOLS_EXTENSION__
 export function getStore(reducers, history, intialState, enhancer = a => a) {
   const reducer = combineReducers({
     ...reducers,
-    form,
     routing,
   });
 

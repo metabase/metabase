@@ -14,7 +14,6 @@ import GroupMappingsWidget from "metabase/admin/settings/components/widgets/Grou
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 
-import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import SettingsJWTForm from "./components/SettingsJWTForm";
@@ -263,30 +262,5 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     },
   ]),
 );
-
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
-  ...sections,
-  "authentication/google": {
-    component: SettingsGoogleForm,
-    settings: [
-      {
-        key: "google-auth-client-id",
-        required: true,
-        autoFocus: true,
-      },
-      {
-        // Default to OSS fields if enterprise SSO is not enabled
-        ...sections["authentication/google"].settings.find(
-          setting => setting.key === "google-auth-auto-create-accounts-domain",
-        ),
-        ...(hasPremiumFeature("sso") && {
-          placeholder: "mycompany.com, example.com.br, otherdomain.co.uk",
-          description:
-            "Allow users to sign up on their own if their Google account email address is from one of the domains you specify here:",
-        }),
-      },
-    ],
-  },
-}));
 
 PLUGIN_REDUX_MIDDLEWARES.push(createSessionMiddleware([LOGIN, LOGIN_GOOGLE]));

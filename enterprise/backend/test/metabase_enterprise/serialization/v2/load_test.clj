@@ -5,9 +5,10 @@
             [metabase-enterprise.serialization.v2.extract :as serdes.extract]
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
             [metabase-enterprise.serialization.v2.load :as serdes.load]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric Pulse
-                                     PulseChannel PulseChannelRecipient Segment Table Timeline TimelineEvent User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric
+                                     NativeQuerySnippet Segment Table Timeline TimelineEvent User]]
             [metabase.models.serialization.base :as serdes.base]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.time.OffsetDateTime))
@@ -116,7 +117,9 @@
           db2s       (atom nil)
           db2d       (atom nil)
           t1s        (atom nil)
-          t2s        (atom nil)]
+          t2s        (atom nil)
+          f1s        (atom nil)
+          f2s        (atom nil)]
       (ts/with-source-and-dest-dbs
         (testing "serializing the two databases"
           (ts/with-source-db
@@ -124,6 +127,8 @@
             (reset! t1s  (ts/create! Table    :name "posts" :db_id (:id @db1s)))
             (reset! db2s (ts/create! Database :name "db2"))
             (reset! t2s  (ts/create! Table    :name "posts" :db_id (:id @db2s))) ; Deliberately the same name!
+            (reset! f1s  (ts/create! Field    :name "Target Field" :table_id (:id @t1s)))
+            (reset! f2s  (ts/create! Field    :name "Foreign Key"  :table_id (:id @t2s) :fk_target_field_id (:id @f1s)))
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
 
         (testing "serialization of databases is based on the :name"
@@ -136,6 +141,14 @@
                       (filter #(-> % :serdes/meta last :model (= "Table")))
                       (map :db_id)
                       set))))
+
+        (testing "foreign key references are serialized as a field path"
+          (is (= ["db1" nil "posts" "Target Field"]
+                 (->> @serialized
+                      (filter #(-> % :serdes/meta last :model (= "Field")))
+                      (filter #(-> % :table_id (= ["db2" nil "posts"])))
+                      (keep :fk_target_field_id)
+                      first))))
 
         (testing "deserialization works properly, keeping the same-named tables apart"
           (ts/with-dest-db
@@ -150,76 +163,6 @@
                    (db/select-field :db_id Table :name "posts")))
             (is (db/exists? Table :name "posts" :db_id (:id @db1d)))
             (is (db/exists? Table :name "posts" :db_id (:id @db2d)))))))))
-
-(deftest pulse-channel-recipient-merging-test
-  (testing "pulse channel recipients are listed as emails on a channel, then merged with the existing ones"
-    (let [serialized (atom nil)
-          u1s        (atom nil)
-          u2s        (atom nil)
-          u3s        (atom nil)
-          pulse-s    (atom nil)
-          pc1s       (atom nil)
-          pc2s       (atom nil)
-          pcr1s      (atom nil)
-          pcr2s      (atom nil)
-
-          u1d        (atom nil)
-          u2d        (atom nil)
-          u3d        (atom nil)
-          pulse-d    (atom nil)
-          pc1d       (atom nil)]
-      (ts/with-source-and-dest-dbs
-        (testing "serializing the pulse, channel and recipients"
-          (ts/with-source-db
-            (reset! u1s (ts/create! User :first_name "Alex"  :last_name "Lifeson" :email "alifeson@rush.yyz"))
-            (reset! u2s (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz"))
-            (reset! u3s (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! pulse-s (ts/create! Pulse :name "Heartbeat" :creator_id (:id @u1s)))
-            (reset! pc1s    (ts/create! PulseChannel
-                                        :pulse_id      (:id @pulse-s)
-                                        :channel_type  :email
-                                        :schedule_type :daily
-                                        :schedule_hour 16))
-            (reset! pc2s    (ts/create! PulseChannel
-                                        :pulse_id      (:id @pulse-s)
-                                        :channel_type  :slack
-                                        :schedule_type :hourly))
-            ;; Only Lifeson and Lee are recipients in the source.
-            (reset! pcr1s  (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1s) :user_id (:id @u1s)))
-            (reset! pcr2s  (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1s) :user_id (:id @u2s)))
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
-
-        (testing "recipients are serialized as :recipients [email] on the PulseChannel"
-          (is (= #{["alifeson@rush.yyz" "glee@rush.yyz"]
-                   []}
-                 (set (map :recipients (by-model @serialized "PulseChannel"))))))
-
-        (testing "deserialization merges the existing recipients with the new ones"
-          (ts/with-dest-db
-            ;; Users in a different order, so different IDs.
-            (reset! u2d (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz"))
-            (reset! u1d (ts/create! User :first_name "Alex"  :last_name "Lifeson" :email "alifeson@rush.yyz"))
-            (reset! u3d (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! pulse-d (ts/create! Pulse :name "Heartbeat" :creator_id (:id @u1d) :entity_id (:entity_id @pulse-s)))
-            (reset! pc1d    (ts/create! PulseChannel
-                                        :entity_id     (:entity_id @pc1s)
-                                        :pulse_id      (:id @pulse-d)
-                                        :channel_type  :email
-                                        :schedule_type :daily
-                                        :schedule_hour 16))
-            ;; Only Lee and Peart are recipients in the source.
-            (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1d) :user_id (:id @u2d))
-            (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1d) :user_id (:id @u3d))
-
-            (is (= 2 (db/count PulseChannelRecipient)))
-            (is (= #{(:id @u2d) (:id @u3d)}
-                   (db/select-field :user_id PulseChannelRecipient)))
-
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
-
-            (is (= 3 (db/count PulseChannelRecipient)))
-            (is (= #{(:id @u1d) (:id @u2d) (:id @u3d)}
-                   (db/select-field :user_id PulseChannelRecipient)))))))))
 
 (deftest card-dataset-query-test
   ;; Card.dataset_query is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
@@ -671,13 +614,15 @@
                   timeline1 (first (filter #(= (:entity_id %) (:entity_id @timeline1s)) timelines))
                   timeline2 (first (filter #(= (:entity_id %) (:entity_id @timeline2s)) timelines))]
               (testing "with inline :events"
-                (is (schema= {:archived                    (s/eq false)
+                (is (schema= {:serdes/meta                 (s/eq [{:model "Timeline"
+                                                                   :id    (:entity_id timeline1)
+                                                                   :label "some_events"}])
+                              :archived                    (s/eq false)
                               :collection_id               (s/eq (:entity_id @coll1s))
                               :name                        (s/eq "Some events")
                               :creator_id                  (s/eq "tom@bost.on")
                               (s/optional-key :updated_at) OffsetDateTime
                               :created_at                  OffsetDateTime
-                              :serdes/meta                 (s/eq [{:model "Timeline" :id (:entity_id timeline1)}])
                               :entity_id                   (s/eq (:entity_id timeline1))
                               (s/optional-key :icon)       (s/maybe s/Str)
                               :description                 (s/maybe s/Str)
@@ -940,3 +885,43 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Failed to read file"
                                   (serdes.load/load-metabase ingestion)))))))))
+
+(deftest card-with-snippet-test
+  (let [db1s       (atom nil)
+        table1s    (atom nil)
+        snippet1s  (atom nil)
+        card1s     (atom nil)
+        extracted  (atom nil)]
+    (testing "snippets referenced by native cards must be deserialized"
+      (ts/with-empty-h2-app-db
+        (reset! db1s      (ts/create! Database :name "my-db"))
+        (reset! table1s   (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
+        (reset! snippet1s (ts/create! NativeQuerySnippet :name "some snippet"))
+        (reset! card1s    (ts/create! Card
+                                      :name "the query"
+                                      :dataset_query {:database (:id @db1s)
+                                                      :native {:template-tags {"snippet: things"
+                                                                               {:id "e2d15f07-37b3-01fc-3944-2ff860a5eb46",
+                                                                                :name "snippet: filtered data",
+                                                                                :display-name "Snippet: Filtered Data",
+                                                                                :type :snippet,
+                                                                                :snippet-name "filtered data",
+                                                                                :snippet-id (:id @snippet1s)}}}}))
+        (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
+
+        (testing "on extraction"
+          (reset! extracted (serdes.base/extract-one "Card" {} @card1s))
+          (is (= (:entity_id @snippet1s)
+                 (-> @extracted :dataset_query :native :template-tags (get "snippet: things") :snippet-id))))
+
+        (testing "when loading"
+          (let [new-eid   (u/generate-nano-id)
+                ingestion (ingestion-in-memory [(assoc @extracted :entity_id new-eid)])]
+            (is (some? (serdes.load/load-metabase ingestion)))
+            (is (= (:id @snippet1s)
+                   (-> (db/select-one Card :entity_id new-eid)
+                       :dataset_query
+                       :native
+                       :template-tags
+                       (get "snippet: things")
+                       :snippet-id)))))))))

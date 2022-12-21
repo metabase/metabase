@@ -17,7 +17,7 @@ const propTypes = {
   }),
   settings: PropTypes.shape({
     metric: PropTypes.object,
-    show_values: PropTypes.bool,
+    percent_visibility: PropTypes.oneOf(["off", "legend", "inside"]),
   }),
 };
 
@@ -59,7 +59,7 @@ const CategoricalDonutChart = ({
   const totalValue = data.map(accessors.metric).reduce((a, b) => a + b, 0);
   const totalLabel = t`Total`.toUpperCase();
 
-  const shouldShowLabels = settings?.show_values;
+  const shouldShowLabels = settings?.percent_visibility === "inside";
 
   return (
     <svg width={layout.width} height={layout.height}>

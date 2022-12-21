@@ -101,7 +101,7 @@
 ;; `log-info` below takes an info map and actually writes the log message, using the format functions from the section
 ;; above to create the combined message.
 
-;; `log-options` determines som other formating options, such as the color of the message. The first logger out of the
+;; `log-options` determines some other formatting options, such as the color of the message. The first logger out of the
 ;; list below whose `:status-pred` is true will be used to log the API request/response.
 ;;
 ;; `include-stats?` here is to avoid incurring the cost of collecting the Jetty stats and concatenating the extra

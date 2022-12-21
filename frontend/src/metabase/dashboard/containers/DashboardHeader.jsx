@@ -35,13 +35,10 @@ import {
 } from "./DashboardHeader.styled";
 
 const mapStateToProps = (state, props) => {
-  const isDataApp = false;
-  const isShowingDashboardInfoSidebar =
-    !isDataApp && getIsShowDashboardInfoSidebar(state);
   return {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
-    isShowingDashboardInfoSidebar,
+    isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
   };
 };
 
@@ -202,7 +199,6 @@ class DashboardHeader extends Component {
       closeSidebar,
     } = this.props;
 
-    const isDataAppPage = false;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
     const buttons = [];
@@ -313,7 +309,7 @@ class DashboardHeader extends Component {
 
       extraButtons.push({
         title: t`Duplicate`,
-        icon: "copy",
+        icon: "clone",
         link: `${location.pathname}/copy`,
         event: "Dashboard;Copy",
       });
@@ -348,19 +344,17 @@ class DashboardHeader extends Component {
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
           />,
-          !isDataAppPage && (
-            <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
-              <DashboardHeaderButton
-                icon="info"
-                isActive={isShowingDashboardInfoSidebar}
-                onClick={() =>
-                  isShowingDashboardInfoSidebar
-                    ? closeSidebar()
-                    : setSidebar({ name: SIDEBAR_NAME.info })
-                }
-              />
-            </Tooltip>
-          ),
+          <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
+            <DashboardHeaderButton
+              icon="info"
+              isActive={isShowingDashboardInfoSidebar}
+              onClick={() =>
+                isShowingDashboardInfoSidebar
+                  ? closeSidebar()
+                  : setSidebar({ name: SIDEBAR_NAME.info })
+              }
+            />
+          </Tooltip>,
           <EntityMenu
             key="dashboard-action-menu-button"
             items={extraButtons}
@@ -384,7 +378,6 @@ class DashboardHeader extends Component {
       setSidebar,
     } = this.props;
 
-    const isDataAppPage = false;
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
@@ -395,9 +388,7 @@ class DashboardHeader extends Component {
         dashboard={dashboard}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
-        isLastEditInfoVisible={
-          !isDataAppPage && hasLastEditInfo && isAdditionalInfoVisible
-        }
+        isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
         isEditingInfo={isEditing}
         isNavBarOpen={this.props.isNavBarOpen}
         headerButtons={this.getHeaderButtons()}

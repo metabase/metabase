@@ -3,7 +3,6 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { LocationDescriptor } from "history";
 
-import { IconProps } from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
@@ -11,18 +10,18 @@ import * as Urls from "metabase/lib/urls";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { isDataAppCollection } from "metabase/entities/data-apps";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import Collections, {
   buildCollectionTree,
   getCollectionIcon,
   ROOT_COLLECTION,
+  CollectionTreeItem,
 } from "metabase/entities/collections";
 import { logout } from "metabase/auth/actions";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
 
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
@@ -49,11 +48,6 @@ const mapDispatchToProps = {
   logout,
   onReorderBookmarks: Bookmarks.actions.reorder,
 };
-
-interface CollectionTreeItem extends Collection {
-  icon: string | IconProps;
-  children: CollectionTreeItem[];
-}
 
 interface Props extends MainNavbarProps {
   isAdmin: boolean;
@@ -98,10 +92,8 @@ function MainNavbarContainer({
       collections,
       currentUser.id,
     );
-    const displayableCollections = collections.filter(
-      collection =>
-        nonPersonalOrArchivedCollection(collection) &&
-        !isDataAppCollection(collection),
+    const displayableCollections = collections.filter(collection =>
+      nonPersonalOrArchivedCollection(collection),
     );
 
     preparedCollections.push(...userPersonalCollections);
@@ -143,9 +135,9 @@ function MainNavbarContainer({
   const renderModalContent = useCallback(() => {
     if (modal === "MODAL_NEW_COLLECTION") {
       return (
-        <CollectionCreate
+        <CreateCollectionModal
           onClose={closeModal}
-          onSaved={(collection: Collection) => {
+          onCreate={(collection: Collection) => {
             closeModal();
             onChangeLocation(Urls.collection(collection));
           }}

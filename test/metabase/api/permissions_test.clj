@@ -207,6 +207,22 @@
         (is (= "The group manager permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (mt/user-http-request :crowberto :put 402 (format "permissions/membership/%d" id) {:is_group_manager false})))))))
 
+(deftest clear-group-membership-test
+  (testing "PUT /api/permissions/membership/:group-id/clear"
+    (mt/with-temp* [User                       [{user-id :id}]
+                    PermissionsGroup           [{group-id :id}]
+                    PermissionsGroupMembership [_ {:group_id group-id
+                                                   :user_id  user-id}]]
+      (testing "requires superuser permisisons"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (format "permissions/membership/%d/clear" group-id)))))
+
+      (testing "Membership of a group can be cleared succesfully, while preserving the group itself"
+        (is (= 1 (db/count PermissionsGroupMembership :group_id group-id)))
+        (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
+        (is (true? (db/exists? PermissionsGroup :id group-id)))
+        (is (= 0 (db/count PermissionsGroupMembership :group_id group-id)))))))
+
 (deftest delete-group-membership-test
   (testing "DELETE /api/permissions/membership/:id"
     (mt/with-temp* [User                       [user]

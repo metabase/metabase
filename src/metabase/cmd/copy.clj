@@ -32,6 +32,7 @@
                                      ModelAction
                                      ModerationReview
                                      NativeQuerySnippet
+                                     ParameterCard
                                      Permissions
                                      PermissionsGroup
                                      PermissionsGroupMembership
@@ -121,6 +122,7 @@
    Timeline
    TimelineEvent
    Secret
+   ParameterCard
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])
@@ -325,6 +327,19 @@
                      sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val"
                                         seq-name (name table-name))]]
         (jdbc/db-query-with-resultset target-db-conn [sql] :val)))))
+
+
+(defmethod update-sequence-values! :h2
+  [_ data-source]
+  (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
+    (step (trs "Setting H2 sequence ids to proper values...")
+          (doseq [e     entities
+                  :when (not (contains? entities-without-autoinc-ids e))
+                  :let  [table-name (name (:table e))
+                         sql        (format "ALTER TABLE %s ALTER COLUMN ID RESTART WITH COALESCE((SELECT MAX(ID) + 1 FROM %s), 1)"
+                                            table-name table-name)]]
+            (jdbc/execute! target-db-conn sql)))))
+
 
 (s/defn copy!
   "Copy data from a source application database into an empty destination application database."

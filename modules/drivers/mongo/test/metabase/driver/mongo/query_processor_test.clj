@@ -57,6 +57,22 @@
                     {:aggregation [[:count]]
                      :filter      [:time-interval $datetime :last :month]})))))))))
 
+(deftest absolute-datetime-test
+  (mt/test-driver :mongo
+    (testing "Make sure absolute-datetime are compiled correctly"
+      (doseq [[expected date]
+              [["2014-01-01"        (t/local-date "2014-01-01")]
+               ["10:00"             (t/local-time "10:00:00")]
+               ["2014-01-01T10:00"  (t/local-date-time "2014-01-01T10:00")]
+               ["03:00Z"            (t/offset-time "10:00:00+07:00")]
+               ["2014-01-01T03:00Z" (t/offset-date-time "2014-01-01T10:00+07:00")]
+               ["2014-01-01T00:00Z" (t/zoned-date-time "2014-01-01T07:00:00+07:00[Asia/Ho_Chi_Minh]")]]]
+        (testing (format "with %s" (type date))
+          (is (= {:$expr {"$lt" ["$date-field" {:$dateFromString {:dateString expected}}]}}
+                 (mongo.qp/compile-filter [:<
+                                           [:field "date-field"]
+                                           [:absolute-datetime date]]))))))))
+
 (deftest no-initial-projection-test
   (mt/test-driver :mongo
     (testing "Don't need to create initial projections anymore (#4216)"
@@ -314,7 +330,7 @@
 
 (deftest temporal-arithmetic-test
   (testing "Mixed integer and date arithmetic works with Mongo 5+"
-    (with-redefs [mongo.qp/get-mongo-version (constantly "5.2.13")]
+    (with-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
       (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
         (is (= {:$expr
                 {"$lt"
@@ -341,7 +357,7 @@
                                           [:interval -1 :week]
                                           86400000]]))))))
   (testing "Date arithmetic fails with Mongo 4-"
-    (with-redefs [mongo.qp/get-mongo-version (constantly "4")]
+    (with-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo  #"Date arithmetic not supported in versions before 5"
                             (mongo.qp/compile-filter [:<
                                                       [:+
@@ -398,3 +414,45 @@
                                  :breakout    [[:expression "expr"]]}}]]
               (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
                 (is (= (set expected) (set (qp.datetime-test/test-datetime-math query))))))))))))
+
+(deftest expr-test
+  (mt/test-driver
+    :mongo
+    (testing "Should use $expr for simple comparisons and ops for others"
+      (are [x y] (partial= {:query [{"$match" x}]}
+                           (mt/compile (mt/mbql-query venues {:filter y})))
+        {"price" 100}
+        [:= $price 100]
+
+        {"price" {"$ne" 100}}
+        [:!= $price 100]
+
+        {"price" {"$gt" 100}}
+        [:> $price 100]
+
+        {"price" {"$gte" 100}}
+        [:>= $price 100]
+
+        {"price" {"$lt" 100}}
+        [:< $price 100]
+
+        {"price" {"$lte" 100}}
+        [:<= $price 100]
+
+        {"name" {"$regex" "hello"}}
+        [:contains $name "hello"]
+
+        {"name" {"$regex" "^hello"}}
+        [:starts-with $name "hello"]
+
+        {"$and" [{:$expr {"$eq" ["$price" {"$add" ["$price" 1]}]}} {"name" "hello"}]}
+        [:and [:= $price [:+ $price 1]] [:= $name "hello"]]
+
+        {:$expr {"$eq" ["$price" "$price"]}}
+        [:= $price $price]
+
+        {:$expr {"$eq" [{"$add" ["$price" 1]} 100]}}
+        [:= [:+ $price 1] 100]
+
+        {:$expr {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
+        [:= $price [:+ [:- $price 5] 100]]))))

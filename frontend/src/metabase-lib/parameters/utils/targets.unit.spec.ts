@@ -5,7 +5,7 @@ import {
 } from "__support__/sample_database_fixture";
 import { ParameterDimensionTarget } from "metabase-types/types/Parameter";
 import { isDimensionTarget } from "metabase-types/guards";
-import { SavedCard } from "metabase-types/types/Card";
+import type { Card } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
 import {
   getParameterTargetField,
@@ -140,7 +140,7 @@ describe("parameters/utils/targets", () => {
     it("should return null when given a card without a `dataset_query`", () => {
       const card = {
         id: 1,
-      } as SavedCard;
+      } as Card;
 
       expect(getTargetFieldFromCard(target, card, metadata)).toBe(null);
     });
@@ -157,7 +157,7 @@ describe("parameters/utils/targets", () => {
             "source-table": PRODUCTS.id,
           },
         },
-      } as SavedCard;
+      } as Card;
 
       expect(getTargetFieldFromCard(target, card, metadata)).toEqual(
         expect.objectContaining({ id: field.id }),

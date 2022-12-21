@@ -1,5 +1,5 @@
 import React from "react";
-import { ComponentStory } from "@storybook/react";
+import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 import Tab from "../Tab";
 import TabList from "../TabList";

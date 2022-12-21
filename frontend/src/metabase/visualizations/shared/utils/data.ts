@@ -4,7 +4,6 @@ import { RowValue, RowValues, SeriesOrderSetting } from "metabase-types/api";
 import {
   ChartColumns,
   ColumnDescriptor,
-  getColumnDescriptors,
 } from "metabase/visualizations/lib/graph/columns";
 import { ColumnFormatter } from "metabase/visualizations/shared/types/format";
 import {
@@ -17,7 +16,7 @@ import {
 } from "metabase/visualizations/shared/types/data";
 import { Series } from "metabase/visualizations/shared/components/RowChart/types";
 import { formatNullable } from "metabase/lib/formatting/nullable";
-import { isMetric } from "metabase-lib/types/utils/isa";
+import { getChartMetrics } from "./series";
 
 const getMetricValue = (value: RowValue): MetricValue => {
   if (typeof value === "number") {
@@ -27,26 +26,29 @@ const getMetricValue = (value: RowValue): MetricValue => {
   return null;
 };
 
+export const sumMetric = (left: RowValue, right: RowValue) => {
+  if (typeof left === "number" && typeof right === "number") {
+    return left + right;
+  } else if (typeof left === "number") {
+    return left;
+  } else if (typeof right === "number") {
+    return right;
+  }
+
+  return null;
+};
+
 const sumMetrics = (left: MetricDatum, right: MetricDatum): MetricDatum => {
   const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
   return Array.from(keys).reduce<MetricDatum>((datum, metricKey) => {
-    const leftValue = left[metricKey];
-    const rightValue = right[metricKey];
-
-    if (typeof leftValue === "number" || typeof rightValue === "number") {
-      datum[metricKey] = (leftValue ?? 0) + (rightValue ?? 0);
-    } else {
-      datum[metricKey] = null;
-    }
-
+    datum[metricKey] = sumMetric(left[metricKey], right[metricKey]);
     return datum;
   }, {});
 };
 
-const groupDataByDimensions = (
+export const getGroupedDataset = (
   rows: RowValues[],
   chartColumns: ChartColumns,
-  allMetrics: ColumnDescriptor[],
   columnFormatter: ColumnFormatter,
 ): GroupedDataset => {
   const { dimension } = chartColumns;
@@ -60,12 +62,16 @@ const groupDataByDimensions = (
       dimensionValue,
       metrics: {},
       isClickable: true,
+      rawRows: [],
     };
 
-    const rowMetrics = allMetrics.reduce<MetricDatum>((datum, metric) => {
-      datum[metric.column.name] = getMetricValue(row[metric.index]);
-      return datum;
-    }, {});
+    const rowMetrics = getChartMetrics(chartColumns).reduce<MetricDatum>(
+      (datum, metric) => {
+        datum[metric.column.name] = getMetricValue(row[metric.index]);
+        return datum;
+      },
+      {},
+    );
 
     datum.metrics = sumMetrics(rowMetrics, datum.metrics);
 
@@ -75,45 +81,29 @@ const groupDataByDimensions = (
         chartColumns.breakout.column,
       );
 
+      const breakoutRawRows = datum.breakout?.[breakoutName]?.rawRows ?? [];
+      breakoutRawRows.push(row);
+
+      const breakoutMetrics = sumMetrics(
+        rowMetrics,
+        datum.breakout?.[breakoutName]?.metrics ?? {},
+      );
+
       datum.breakout = {
         ...datum.breakout,
-        [breakoutName]: sumMetrics(
-          rowMetrics,
-          datum.breakout?.[breakoutName] ?? {},
-        ),
+        [breakoutName]: {
+          metrics: breakoutMetrics,
+          rawRows: breakoutRawRows,
+        },
       };
     }
+
+    datum.rawRows.push(row);
 
     groupedData.set(dimensionValue, datum);
   }
 
   return Array.from(groupedData.values());
-};
-
-export const getGroupedDataset = (
-  data: TwoDimensionalChartData,
-  chartColumns: ChartColumns,
-  columnFormatter: ColumnFormatter,
-): GroupedDataset => {
-  // We are grouping all metrics because they are used in chart tooltips
-  const allMetricColumns = data.cols
-    .filter(
-      (column, index) =>
-        isMetric(column) && index !== chartColumns.dimension.index,
-    )
-    .map(column => column.name);
-
-  const allMetricDescriptors = getColumnDescriptors(
-    allMetricColumns,
-    data.cols,
-  );
-
-  return groupDataByDimensions(
-    data.rows,
-    chartColumns,
-    allMetricDescriptors,
-    columnFormatter,
-  );
 };
 
 export const trimData = (
@@ -142,12 +132,19 @@ export const trimData = (
 
       Object.keys(currentValue.breakout ?? {}).map(breakoutName => {
         groupedValue.breakout ??= {};
-
-        groupedValue.breakout[breakoutName] = sumMetrics(
-          groupedValue.breakout[breakoutName] ?? {},
-          currentValue.breakout?.[breakoutName] ?? {},
-        );
+        groupedValue.breakout[breakoutName] = {
+          metrics: sumMetrics(
+            groupedValue.breakout[breakoutName]?.metrics ?? {},
+            currentValue.breakout?.[breakoutName].metrics ?? {},
+          ),
+          rawRows: [
+            ...(groupedValue.breakout[breakoutName]?.rawRows ?? []),
+            ...(currentValue.breakout?.[breakoutName].rawRows ?? []),
+          ],
+        };
       });
+
+      groupedValue.rawRows.push(...currentValue.rawRows);
 
       return groupedValue;
     },
@@ -155,6 +152,7 @@ export const trimData = (
       dimensionValue: groupedDatumDimensionValue,
       metrics: {},
       isClickable: false,
+      rawRows: [],
     },
   );
 
@@ -166,13 +164,21 @@ const getBreakoutDistinctValues = (
   breakout: ColumnDescriptor,
   columnFormatter: ColumnFormatter,
 ) => {
-  return Array.from(
-    new Set(
-      data.rows.map(row =>
-        columnFormatter(row[breakout.index], breakout.column),
-      ),
-    ),
-  );
+  const formattedDistinctValues: string[] = [];
+  const usedRawValues = new Set<RowValue>();
+
+  data.rows.forEach(row => {
+    const rawValue = row[breakout.index];
+
+    if (usedRawValues.has(rawValue)) {
+      return;
+    }
+
+    usedRawValues.add(rawValue);
+    formattedDistinctValues.push(columnFormatter(rawValue, breakout.column));
+  });
+
+  return formattedDistinctValues;
 };
 
 const getBreakoutSeries = (
@@ -187,7 +193,7 @@ const getBreakoutSeries = (
       seriesName: breakoutName,
       yAccessor: (datum: GroupedDatum) => formatNullable(datum.dimensionValue),
       xAccessor: (datum: GroupedDatum) =>
-        datum.breakout?.[breakoutName]?.[metric.column.name] ?? null,
+        datum.breakout?.[breakoutName]?.metrics[metric.column.name] ?? null,
       seriesInfo: {
         metricColumn: metric.column,
         dimensionColumn: dimension.column,
@@ -241,11 +247,19 @@ export const getOrderedSeries = (
   series: Series<GroupedDatum, SeriesInfo>[],
   seriesOrder?: SeriesOrderSetting[],
 ) => {
-  if (seriesOrder == null) {
+  if (seriesOrder == null || seriesOrder.length === 0) {
     return series;
   }
 
   return seriesOrder
     .filter(orderSetting => orderSetting.enabled)
-    .map(orderSetting => series[orderSetting.originalIndex]);
+    .map(orderSetting => {
+      const foundSeries = series.find(
+        singleSeries => singleSeries.seriesKey === orderSetting.key,
+      );
+      if (foundSeries === undefined) {
+        throw new TypeError("Series not found");
+      }
+      return foundSeries;
+    });
 };

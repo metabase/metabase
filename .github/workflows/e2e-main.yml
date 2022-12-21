@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     needs: build
-    name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
+    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
@@ -52,14 +52,12 @@ jobs:
       MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
-      RECORDING_ENABLED: ${{ secrets.CURRENTS_KEY }}
-      CYPRESS_DEPLOYSENTINEL_KEY: ${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}
       ELECTRON_EXTRA_LAUNCH_ARGS: '--remote-debugging-port=40500' # deploysentinel
     strategy:
       fail-fast: false
       matrix:
         java-version: [11]
-        edition: [oss, ee]
+        edition: [ee]
         folder:
           - "admin"
           - "binning"
@@ -80,6 +78,10 @@ jobs:
           - "question"
           - "sharing"
           - "visualizations"
+        include:
+          - edition: oss
+            context: grep
+            java-version: 11
     services:
       maildev:
         image: maildev/maildev:1.1.0
@@ -119,6 +121,11 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v3
+    # Test runs will be recorded using Deploysentinel on `master` only
+    - name: Set conditional ENVs
+      if: github.ref == 'refs/heads/master'
+      run: |
+        echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare JDK ${{ matrix.java-version }}
@@ -140,19 +147,18 @@ jobs:
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
 
-    - name: Run Cypress tests on ${{ matrix.folder }} - Master Branch
-      if: github.ref == 'refs/heads/master' && env.RECORDING_ENABLED != null
+    - name: Run OSS-specific Cypress tests
+      if: matrix.edition == 'oss'
       run: |
         yarn run test-cypress-run \
-          --folder ${{ matrix.folder }} \
-          --record --key ${{ secrets.CURRENTS_KEY }} \
-          --group ${{ matrix.folder }}-${{ matrix.edition }} \
-          --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
+        --env grepTags=@OSS \
+        --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
       env:
         TERM: xterm
 
-    - name: Run Cypress tests on ${{ matrix.folder }}
-      if: ${{ github.ref != 'refs/heads/master' }}
+    # These are EE-specific and version-agnostic tests
+    - name: Run Cypress E2E tests against EE uberjar
+      if: matrix.edition == 'ee'
       run: |
         yarn run test-cypress-run \
           --folder ${{ matrix.folder }}
@@ -163,7 +169,7 @@ jobs:
       uses: actions/upload-artifact@v3
       if: failure()
       with:
-        name: cypress-artifacts-${{ matrix.folder }}-${{ matrix.edition }}
+        name: cypress-recording-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
         path: |
           ./cypress
           ./logs/test.log

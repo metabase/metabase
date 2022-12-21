@@ -26,7 +26,7 @@ describe("visual tests > visualizations > pie", () => {
       dataset_query: testQuery,
       display: "pie",
       visualization_settings: {
-        "pie.show_data_labels": true,
+        "pie.percent_visibility": "inside",
         "pie.dimension": "X",
         "pie.metric": "Y",
       },

@@ -27,13 +27,15 @@ export default class Mode {
     settings: Record<string, any>,
     extraData: Record<string, any>,
   ): ClickAction[] {
-    return this._queryMode.drills().flatMap(actionCreator =>
-      actionCreator({
-        question: this._question,
-        settings,
-        clicked,
-        extraData,
-      }),
-    );
+    const mode = this._queryMode;
+    const question = this._question;
+    const props = { question, settings, clicked, extraData };
+    const actions = mode.drills.flatMap(drill => drill(props));
+
+    if (!actions.length && mode.fallback) {
+      return mode.fallback(props);
+    } else {
+      return actions;
+    }
   }
 }

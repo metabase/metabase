@@ -19,7 +19,7 @@
 (doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
                               :type/Boolean        "BOOLEAN"
                               :type/Date           "DATE"
-                              :type/DateTime       "TIMESTAMP_LTZ"
+                              :type/DateTime       "TIMESTAMP_NTZ"
                               :type/DateTimeWithTZ "TIMESTAMP_TZ"
                               :type/Decimal        "DECIMAL"
                               :type/Float          "FLOAT"

@@ -3,6 +3,8 @@ inputs:
   junit-name:
     required: true
     default: 'driver'
+  test-args:
+    required: false
 
 runs:
   using: "composite"
@@ -15,11 +17,12 @@ runs:
       run: yarn build-static-viz
       shell: bash
     - name: Test database driver
-      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test
+      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
       shell: bash
     - name: Publish Test Report (JUnit)
-      uses: mikepenz/action-junit-report@v3
+      uses: dorny/test-reporter@v1
       if: always()
       with:
-        report_paths: 'target/junit/**/*_test.xml'
-        check_name: JUnit Test Report ${{ inputs.junit-name }}
+        path: 'target/junit/**/*_test.xml'
+        name: JUnit Test Report ${{ inputs.junit-name }}
+        reporter: java-junit

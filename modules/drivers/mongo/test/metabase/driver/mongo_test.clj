@@ -196,7 +196,7 @@
     [["House Finch" nil]
      ["Mourning Dove" nil]]]])
 
-(deftest all-num-columns-test
+(deftest all-null-columns-test
   (mt/test-driver :mongo
     (mt/dataset all-null-columns
       ;; do a full sync on the DB to get the correct semantic type info
@@ -210,20 +210,43 @@
                 :table_id (mt/id :bird_species)
                 {:order-by [:name]})))))))
 
+(tx/defdataset beginning-null-columns
+  [["bird_species"
+    [{:field-name "name", :base-type :type/Text}
+     {:field-name "favorite_snack", :base-type :type/Text}]
+    [["House Finch" nil]
+     ["Mourning Dove" nil]
+     ["Common Blackbird" "earthworms"]
+     ["Silvereye" "cherries"]]]])
+
+(deftest new-rows-take-precedence-when-collecting-metadata
+  (mt/test-driver :mongo
+    (with-redefs [metadata-queries/nested-field-sample-limit 2]
+      (mt/dataset beginning-null-columns
+        ;; do a full sync on the DB to get the correct semantic type info
+        (sync/sync-database! (mt/db))
+        (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :semantic_type :type/PK}
+                {:name "favorite_snack", :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :type/Category}
+                {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :type/Name}]
+               (map
+                (partial into {})
+                (db/select [Field :name :database_type :base_type :semantic_type]
+                  :table_id (mt/id :bird_species)
+                  {:order-by [:name]}))))))))
+
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
-    (driver/sync-in-context :mongo (mt/db)
-      (fn []
-        (is (= [[1 "Red Medicine"]
-                [2 "Stout Burgers & Beers"]
-                [3 "The Apple Pan"]
-                [4 "Wurstküche"]
-                [5 "Brite Spot Family Restaurant"]]
-               (vec (take 5 (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
-                              [(db/select-one Field :id (mt/id :venues :id))
-                               (db/select-one Field :id (mt/id :venues :name))]
-                              (constantly conj))))))))))
-
+    (testing "Should return the latest `nested-field-sample-limit` rows"
+      (let [table (db/select-one Table :id (mt/id :venues))
+            fields (map #(db/select-one Field :id (mt/id :venues %)) [:name :category_id])
+            rff (constantly conj)]
+        (with-redefs [metadata-queries/nested-field-sample-limit 5]
+          (is (= [["Mohawk Bend" 46]
+                  ["Golden Road Brewing" 10]
+                  ["Lucky Baldwin's Pub" 7]
+                  ["Barney's Beanery" 46]
+                  ["Busby's West" 48]]
+                 (driver/table-rows-sample :mongo table fields rff {}))))))))
 
 ;; ## Big-picture tests for the way data should look post-sync
 (deftest table-sync-test
@@ -452,3 +475,20 @@
                                  [:= $list_field "value_lf_a"]]
                    :aggregation [[:count]]
                    :breakout    [$coll.metas.group_field]}))))))))
+
+;; Make sure that simple `_` columns can be queried (#4647)
+(tx/defdataset underscore-column
+  [["bird_species"
+    [{:field-name "name", :base-type :type/Text}
+     {:field-name "_", :base-type :type/Text}]
+    [["House Finch" "sunflower seeds, ants, nettle, dandelion"]
+     ["Mourning Dove" "millet seeds, breadcrumbs, ice cream"]]]])
+
+(deftest underscore-filter-test
+  (testing "Simple `_` columns should be possible to query (#4647)"
+    (mt/test-driver :mongo
+      (mt/dataset underscore-column
+        (is (= [[1 "House Finch" "sunflower seeds, ants, nettle, dandelion"]]
+               (mt/rows
+                (mt/run-mbql-query bird_species
+                  {:filter [:contains $bird_species._ "nett"]}))))))))

@@ -46,7 +46,7 @@ describe("formatNumber", () => {
       number_style: "scientific",
     });
 
-    expect(text).toEqual("1.2E3");
+    expect(text).toEqual("1.2e+3");
   });
 
   it("should format a number with custom number separators", () => {

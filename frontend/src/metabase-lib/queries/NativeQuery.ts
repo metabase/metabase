@@ -137,7 +137,7 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   static isDatasetQueryType(datasetQuery: DatasetQuery) {
-    return datasetQuery && datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
+    return datasetQuery?.type === NATIVE_QUERY_TEMPLATE.type;
   }
 
   /* Query superclass methods */
@@ -331,6 +331,10 @@ export default class NativeQuery extends AtomicQuery {
     return this.templateTags().filter(t =>
       ["dimension", "text", "number", "date"].includes(t.type),
     );
+  }
+
+  hasVariableTemplateTags(): boolean {
+    return this.variableTemplateTags().length > 0;
   }
 
   hasSnippets() {
