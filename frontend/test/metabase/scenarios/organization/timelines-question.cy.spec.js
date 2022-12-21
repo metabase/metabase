@@ -276,7 +276,7 @@ describe("scenarios > organization > timelines > question", () => {
       visitQuestion(3);
 
       cy.findByText("Visualization").should("be.visible");
-      cy.icon("cloud").should("be.visible");
+      cy.findByLabelText("cloud icon").should("be.visible");
 
       // should hide individual events from chart if hidden in sidebar
       cy.icon("calendar").click();
@@ -284,14 +284,14 @@ describe("scenarios > organization > timelines > question", () => {
       toggleEventVisibility("RC1");
 
       cy.get(".x.axis").within(() => {
-        cy.icon("cloud").should("not.exist");
+        cy.findByLabelText("cloud icon").should("not.exist");
       });
 
       // should show individual events in chart again
       toggleEventVisibility("RC1");
 
       cy.get(".x.axis").within(() => {
-        cy.icon("cloud").should("be.visible");
+        cy.findByLabelText("cloud icon").should("be.visible");
       });
 
       // should show a newly created event
@@ -302,14 +302,14 @@ describe("scenarios > organization > timelines > question", () => {
       cy.wait("@createEvent");
 
       cy.get(".x.axis").within(() => {
-        cy.icon("star").should("be.visible");
+        cy.findByLabelText("star icon").should("be.visible");
       });
 
       // should then hide the newly created event
       toggleEventVisibility("RC2");
 
       cy.get(".x.axis").within(() => {
-        cy.icon("star").should("not.exist");
+        cy.findByLabelText("star icon").should("not.exist");
       });
 
       // should initialize events in a hidden timelime
@@ -330,7 +330,7 @@ describe("scenarios > organization > timelines > question", () => {
         .within(() => cy.findByRole("checkbox").click());
 
       cy.get(".x.axis").within(() => {
-        cy.icon("warning").should("be.visible");
+        cy.findByLabelText("warning icon").should("be.visible");
       });
 
       // events whose timeline was invisible on page load
@@ -338,7 +338,7 @@ describe("scenarios > organization > timelines > question", () => {
       toggleEventVisibility("TC1");
 
       cy.get(".x.axis").within(() => {
-        cy.icon("warning").should("not.exist");
+        cy.findByLabelText("warning icon").should("not.exist");
       });
     });
   });
