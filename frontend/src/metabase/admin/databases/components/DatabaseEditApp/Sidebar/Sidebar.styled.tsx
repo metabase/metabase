@@ -11,11 +11,11 @@ export const SidebarRoot = styled.div`
   }
 `;
 
-export const SidebarGroup = styled.div`
+const _SidebarGroup = styled.div`
   margin-bottom: 2em;
 `;
 
-export const SidebarGroupName = styled.span`
+const SidebarGroupName = styled.span`
   display: block;
 
   font-size: 1em;
@@ -23,6 +23,18 @@ export const SidebarGroupName = styled.span`
 
   margin-bottom: 1em;
 `;
+
+const SidebarGroupList = styled.ol``;
+
+const SidebarGroupListItem = styled.li<{ hasMarginTop?: boolean }>`
+  ${({ hasMarginTop = true }) => hasMarginTop && "margin-top: 1rem;"}
+`;
+
+export const SidebarGroup = Object.assign(_SidebarGroup, {
+  Name: SidebarGroupName,
+  List: SidebarGroupList,
+  ListItem: SidebarGroupListItem,
+});
 
 export const SidebarContent = styled.div`
   padding: 1.5rem;

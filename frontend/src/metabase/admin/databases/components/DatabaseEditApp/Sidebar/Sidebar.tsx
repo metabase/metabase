@@ -13,12 +13,7 @@ import type { DatabaseId } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 
 import ModelCachingControl from "./ModelCachingControl";
-import {
-  SidebarRoot,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupName,
-} from "./Sidebar.styled";
+import { SidebarRoot, SidebarContent, SidebarGroup } from "./Sidebar.styled";
 
 interface DatabaseEditAppSidebarProps {
   database: Database;
@@ -86,14 +81,14 @@ const DatabaseEditAppSidebar = ({
     <SidebarRoot>
       <SidebarContent data-testid="database-actions-panel">
         <SidebarGroup>
-          <SidebarGroupName>{t`Actions`}</SidebarGroupName>
-          <ol>
+          <SidebarGroup.Name>{t`Actions`}</SidebarGroup.Name>
+          <SidebarGroup.List>
             {!isSynced && (
-              <li>
+              <SidebarGroup.ListItem hasMarginTop={false}>
                 <Button disabled borderless>{t`Syncing database…`}</Button>
-              </li>
+              </SidebarGroup.ListItem>
             )}
-            <li>
+            <SidebarGroup.ListItem hasMarginTop={false}>
               <ActionButton
                 actionFn={handleSyncDatabaseSchema}
                 normalText={t`Sync database schema now`}
@@ -101,8 +96,8 @@ const DatabaseEditAppSidebar = ({
                 failedText={t`Failed to sync`}
                 successText={t`Sync triggered!`}
               />
-            </li>
-            <li className="mt2">
+            </SidebarGroup.ListItem>
+            <SidebarGroup.ListItem>
               <ActionButton
                 actionFn={handleReScanFieldValues}
                 normalText={t`Re-scan field values now`}
@@ -110,9 +105,9 @@ const DatabaseEditAppSidebar = ({
                 failedText={t`Failed to start scan`}
                 successText={t`Scan triggered!`}
               />
-            </li>
+            </SidebarGroup.ListItem>
             {!isSynced && (
-              <li className="mt2">
+              <SidebarGroup.ListItem>
                 <ActionButton
                   actionFn={handleDismissSyncSpinner}
                   normalText={t`Dismiss sync spinner manually`}
@@ -120,20 +115,20 @@ const DatabaseEditAppSidebar = ({
                   failedText={t`Failed to dismiss sync spinner`}
                   successText={t`Sync spinners dismissed!`}
                 />
-              </li>
+              </SidebarGroup.ListItem>
             )}
             {hasModelCachingSection && (
-              <li className="mt2">
+              <SidebarGroup.ListItem>
                 <ModelCachingControl database={database} />
-              </li>
+              </SidebarGroup.ListItem>
             )}
-          </ol>
+          </SidebarGroup.List>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupName>{t`Danger Zone`}</SidebarGroupName>
-          <ol>
+          <SidebarGroup.Name>{t`Danger Zone`}</SidebarGroup.Name>
+          <SidebarGroup.List>
             {isSyncCompleted(database) && (
-              <li>
+              <SidebarGroup.ListItem hasMarginTop={false}>
                 <ModalWithTrigger
                   triggerElement={
                     <Button danger>{t`Discard saved field values`}</Button>
@@ -146,10 +141,10 @@ const DatabaseEditAppSidebar = ({
                     onAction={handleDiscardSavedFieldValues}
                   />
                 </ModalWithTrigger>
-              </li>
+              </SidebarGroup.ListItem>
             )}
             {isAdmin && (
-              <li className="mt2">
+              <SidebarGroup.ListItem>
                 <ModalWithTrigger
                   triggerElement={
                     <Button danger>{t`Remove this database`}</Button>
@@ -162,9 +157,9 @@ const DatabaseEditAppSidebar = ({
                     onDelete={handleDeleteDatabase}
                   />
                 </ModalWithTrigger>
-              </li>
+              </SidebarGroup.ListItem>
             )}
-          </ol>
+          </SidebarGroup.List>
         </SidebarGroup>
       </SidebarContent>
     </SidebarRoot>
