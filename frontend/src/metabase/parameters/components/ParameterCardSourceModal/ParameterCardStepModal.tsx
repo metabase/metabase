@@ -14,14 +14,14 @@ import {
 
 interface ParameterCardStepModalProps {
   cardId: CardId | undefined;
-  onChange: (cardId: CardId | undefined) => void;
+  onChangeCardId: (cardId: CardId | undefined) => void;
   onSubmit: () => void;
   onClose: () => void;
 }
 
 const ParameterCardStepModal = ({
   cardId,
-  onChange,
+  onChangeCardId,
   onSubmit,
   onClose,
 }: ParameterCardStepModalProps): JSX.Element => {
@@ -30,9 +30,9 @@ const ParameterCardStepModal = ({
   const handleChange = useCallback(
     (value: DataPickerValue) => {
       setValue(value);
-      onChange(getCardIdFromValue(value));
+      onChangeCardId(getCardIdFromValue(value));
     },
-    [setValue, onChange],
+    [setValue, onChangeCardId],
   );
 
   return (

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { getSourceOptions } from "metabase/parameters/utils/dashboards";
-import { CardId, ParameterSourceOptions } from "metabase-types/api";
+import { ParameterSourceOptions } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import ParameterCardStepModal from "./ParameterCardStepModal";
 import ParameterFieldStepModal from "./ParameterFieldStepModal";
@@ -19,9 +19,9 @@ const ParameterCardSourceModal = ({
   onClose,
 }: ParameterCardSourceModalProps): JSX.Element | null => {
   const sourceOptions = getSourceOptions(parameter);
+  const [step, setStep] = useState<ParameterCardSourceModalStep>("card");
   const [cardId, setCardId] = useState(sourceOptions.card_id);
   const [fieldRef, setFieldRef] = useState(sourceOptions.value_field_ref);
-  const [step, setStep] = useState<ParameterCardSourceModalStep>("card");
 
   const handleCardSubmit = useCallback(() => {
     setStep("field");
@@ -38,7 +38,7 @@ const ParameterCardSourceModal = ({
       return (
         <ParameterCardStepModal
           cardId={cardId}
-          onChange={setCardId}
+          onChangeCardId={setCardId}
           onSubmit={handleCardSubmit}
           onClose={onClose}
         />
@@ -48,7 +48,7 @@ const ParameterCardSourceModal = ({
         <ParameterFieldStepModal
           cardId={cardId}
           fieldRef={fieldRef}
-          onChange={setFieldRef}
+          onChangeFieldRef={setFieldRef}
           onSubmit={handleFieldSubmit}
           onClose={onClose}
         />

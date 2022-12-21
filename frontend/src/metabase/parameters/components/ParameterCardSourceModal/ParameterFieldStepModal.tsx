@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -17,7 +17,7 @@ import Question from "metabase-lib/Question";
 interface ParameterFieldStepModalProps {
   question: Question;
   fieldRef: unknown[] | undefined;
-  onChange: (fieldRef: unknown[] | undefined) => void;
+  onChangeFieldRef: (fieldRef: unknown[] | undefined) => void;
   onSubmit: () => void;
   onClose: () => void;
 }
@@ -25,7 +25,7 @@ interface ParameterFieldStepModalProps {
 const ParameterFieldStepModal = ({
   question,
   fieldRef,
-  onChange,
+  onChangeFieldRef,
   onSubmit,
   onClose,
 }: ParameterFieldStepModalProps): JSX.Element => {
@@ -34,9 +34,9 @@ const ParameterFieldStepModal = ({
 
   const handleChange = useCallback(
     (event: SelectChangeEvent<FieldMetadata>) => {
-      onChange(event.target.value.field_ref);
+      onChangeFieldRef(event.target.value.field_ref);
     },
-    [onChange],
+    [onChangeFieldRef],
   );
 
   return (
