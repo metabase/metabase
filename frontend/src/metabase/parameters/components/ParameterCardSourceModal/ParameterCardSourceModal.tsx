@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from "react";
 import { getSourceOptions } from "metabase/parameters/utils/dashboards";
-import { CardId, ParameterSourceOptions } from "metabase-types/api";
+import { ParameterSourceOptions } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
-import ParameterCardStepModal from "./ParameterCardStepModal";
-import ParameterFieldStepModal from "./ParameterFieldStepModal";
+import ParameterCardStepModal from "./ParameterCardStep";
+import ParameterFieldStepModal from "./ParameterFieldStep";
 
 export interface ParameterCardSourceModalProps {
   parameter: UiParameter;
@@ -21,21 +21,16 @@ const ParameterCardSourceModal = ({
   const sourceOptions = getSourceOptions(parameter);
   const [step, setStep] = useState<ParameterCardSourceModalStep>("card");
   const [cardId, setCardId] = useState(sourceOptions.card_id);
-  const fieldRef = sourceOptions.value_field_ref;
+  const [fieldRef, setFieldRef] = useState(sourceOptions.value_field_ref);
 
-  const handleCardSubmit = useCallback((cardId: CardId) => {
-    setCardId(cardId);
+  const handleCardSubmit = useCallback(() => {
     setStep("field");
   }, []);
 
-  const handleFieldSubmit = useCallback(
-    (fieldRef: unknown[]) => {
-      const options = { card_id: cardId, value_field_ref: fieldRef };
-      onChangeSourceOptions(options);
-      onClose();
-    },
-    [cardId, onChangeSourceOptions, onClose],
-  );
+  const handleFieldSubmit = useCallback(() => {
+    onChangeSourceOptions({ card_id: cardId, value_field_ref: fieldRef });
+    onClose();
+  }, [cardId, fieldRef, onChangeSourceOptions, onClose]);
 
   const handleFieldCancel = useCallback(() => {
     setStep("card");
@@ -46,7 +41,7 @@ const ParameterCardSourceModal = ({
       return (
         <ParameterCardStepModal
           cardId={cardId}
-          onChange={setCardId}
+          onChangeCard={setCardId}
           onSubmit={handleCardSubmit}
           onClose={onClose}
         />
@@ -56,6 +51,7 @@ const ParameterCardSourceModal = ({
         <ParameterFieldStepModal
           cardId={cardId}
           fieldRef={fieldRef}
+          onChangeField={setFieldRef}
           onSubmit={handleFieldSubmit}
           onCancel={handleFieldCancel}
           onClose={onClose}

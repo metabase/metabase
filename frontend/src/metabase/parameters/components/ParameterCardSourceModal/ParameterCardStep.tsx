@@ -5,7 +5,6 @@ import _ from "underscore";
 import Button from "metabase/core/components/Button/Button";
 import ModalContent from "metabase/components/ModalContent";
 import DataPickerContainer, {
-  DataPickerDataType,
   DataPickerValue,
   useDataPickerValue,
 } from "metabase/containers/DataPicker";
@@ -21,26 +20,45 @@ import {
   getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
 
-interface ParameterCardStepModalProps {
-  question: Question | undefined;
-  collection: Collection | undefined;
-  onSubmit: (cardId: CardId | undefined) => void;
+interface ParameterCardStepOwnProps {
+  cardId: CardId | undefined;
+  onChangeCard: (cardId: CardId | undefined) => void;
+  onSubmit: () => void;
   onClose: () => void;
 }
 
-const ParameterCardStepModal = ({
+interface ParameterCardStepCardProps {
+  card: Card | undefined;
+}
+
+interface ParameterCardStepCollectionProps {
+  collection: Collection | undefined;
+}
+
+interface ParameterCardStepStateProps {
+  question: Question | undefined;
+}
+
+type ParameterCardStepProps = ParameterCardStepOwnProps &
+  ParameterCardStepCardProps &
+  ParameterCardStepCollectionProps &
+  ParameterCardStepStateProps;
+
+const ParameterCardStep = ({
   question,
   collection,
+  onChangeCard,
   onSubmit,
   onClose,
-}: ParameterCardStepModalProps): JSX.Element => {
+}: ParameterCardStepProps): JSX.Element => {
   const initialValue = getInitialValue(question, collection);
   const [value, setValue] = useDataPickerValue(initialValue);
   const cardId = getCardIdFromValue(value);
 
   const handleSubmit = useCallback(() => {
-    onSubmit(cardId);
-  }, [cardId, onSubmit]);
+    onChangeCard(cardId);
+    onSubmit();
+  }, [cardId, onChangeCard, onSubmit]);
 
   return (
     <ModalContent
@@ -50,11 +68,11 @@ const ParameterCardStepModal = ({
         <Button
           key="submit"
           primary
-          disabled={cardId == null}
+          disabled={!value.tableIds.length}
           onClick={handleSubmit}
         >{t`Select columns`}</Button>,
       ]}
-      onClose={onClose}
+      onClose={onSubmit}
     >
       <DataPickerContainer value={value} onChange={setValue} />
     </ModalContent>
@@ -88,14 +106,14 @@ const getCardIdFromValue = ({ tableIds }: DataPickerValue) => {
 
 export default _.compose(
   Questions.load({
-    id: (state: State, { cardId }: { cardId: CardId }) => cardId,
+    id: (state: State, { cardId }: ParameterCardStepOwnProps) => cardId,
     entityAlias: "card",
   }),
   Collections.load({
-    id: (state: State, { card }: { card?: Card }) =>
+    id: (state: State, { card }: ParameterCardStepCardProps) =>
       card?.collection_id ?? "root",
   }),
-  connect((state: State, { card }: { card?: Card }) => ({
+  connect((state: State, { card }: ParameterCardStepCardProps) => ({
     question: card ? new Question(card, getMetadata(state)) : undefined,
   })),
-)(ParameterCardStepModal);
+)(ParameterCardStep);

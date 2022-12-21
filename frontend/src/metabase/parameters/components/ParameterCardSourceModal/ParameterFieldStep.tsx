@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -14,36 +14,44 @@ import { Card, CardId, FieldMetadata } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 
-interface ParameterFieldStepModalProps {
-  question: Question;
+interface ParameterFieldStepOwnProps {
+  cardId: CardId | undefined;
   fieldRef: unknown[] | undefined;
-  onSubmit: (fieldRef: unknown[]) => void;
+  onChangeField: (fieldRef: unknown[]) => void;
+  onSubmit: () => void;
   onCancel: () => void;
   onClose: () => void;
 }
 
-const ParameterFieldStepModal = ({
+interface ParameterFieldStepCardProps {
+  card: Card;
+}
+
+interface ParameterFieldStepStateProps {
+  question: Question;
+}
+
+type ParameterFieldStepProps = ParameterFieldStepOwnProps &
+  ParameterFieldStepCardProps &
+  ParameterFieldStepStateProps;
+
+const ParameterFieldStep = ({
   question,
   fieldRef,
+  onChangeField,
   onSubmit,
   onCancel,
   onClose,
-}: ParameterFieldStepModalProps): JSX.Element => {
+}: ParameterFieldStepProps): JSX.Element => {
   const fields = useMemo(() => question.getResultMetadata(), [question]);
-  const [field, setField] = useState(() => getSelectedField(fields, fieldRef));
+  const selectedField = getSelectedField(fields, fieldRef);
 
   const handleChange = useCallback(
     (event: SelectChangeEvent<FieldMetadata>) => {
-      setField(event.target.value);
+      onChangeField(event.target.value.field_ref);
     },
-    [],
+    [onChangeField],
   );
-
-  const handleSubmit = useCallback(() => {
-    if (field) {
-      onSubmit(field.field_ref);
-    }
-  }, [field, onSubmit]);
 
   return (
     <ModalContent
@@ -53,14 +61,14 @@ const ParameterFieldStepModal = ({
         <Button
           key="submit"
           primary
-          disabled={!field}
-          onClick={handleSubmit}
+          disabled={!selectedField}
+          onClick={onSubmit}
         >{t`Done`}</Button>,
       ]}
       onClose={onClose}
     >
       <Select
-        value={field}
+        value={selectedField}
         placeholder={t`Pick a column`}
         onChange={handleChange}
       >
@@ -78,10 +86,10 @@ const getSelectedField = (fields: FieldMetadata[], fieldRef?: unknown[]) => {
 
 export default _.compose(
   Questions.load({
-    id: (state: State, { cardId }: { cardId: CardId }) => cardId,
+    id: (state: State, { cardId }: ParameterFieldStepOwnProps) => cardId,
     entityAlias: "card",
   }),
-  connect((state: State, { card }: { card: Card }) => ({
+  connect((state: State, { card }: ParameterFieldStepCardProps) => ({
     question: new Question(card, getMetadata(state)),
   })),
-)(ParameterFieldStepModal);
+)(ParameterFieldStep);
