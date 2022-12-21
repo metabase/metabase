@@ -31,18 +31,17 @@ interface SessionTimeoutSettingProps {
   onChange: (value: TimeoutValue | null) => void;
 }
 
-// Returns a string if the timeout value is invalid, null otherwise.
 // It should mirror the validation of the session-timeout setting on the backend.
 const validate = (value: TimeoutValue) => {
   if (value.amount <= 0) {
     return t`Timeout must be greater than 0`;
   }
-  // Assert the duration is less than 100 years.
-  // Otherwise, we could fail to format the expires date if the year
-  // has more than 4 digits (#25253)
-  const days =
-    value.amount / ({ hours: 24, minutes: 24 * 60 }[value.unit] as number);
-  if (days / 365.25 >= 100) {
+  // We need to limit the duration from being too large because
+  // the year of the expires date must be 4 digits (#25253)
+  const unitsPerDay = { hours: 24, minutes: 24 * 60 }[value.unit] as number;
+  const days = value.amount / unitsPerDay;
+  const isLessThan100Years = days < 100 * 365.25;
+  if (!isLessThan100Years) {
     return t`Timeout must be less than 100 years`;
   }
   return null;
