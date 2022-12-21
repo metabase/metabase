@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -17,8 +17,7 @@ import Question from "metabase-lib/Question";
 interface ParameterFieldStepModalProps {
   question: Question;
   fieldRef: unknown[] | undefined;
-  onChangeFieldRef: (fieldRef: unknown[] | undefined) => void;
-  onSubmit: () => void;
+  onSubmit: (fieldRef: unknown[]) => void;
   onCancel: () => void;
   onClose: () => void;
 }
@@ -26,20 +25,25 @@ interface ParameterFieldStepModalProps {
 const ParameterFieldStepModal = ({
   question,
   fieldRef,
-  onChangeFieldRef,
   onSubmit,
   onCancel,
   onClose,
 }: ParameterFieldStepModalProps): JSX.Element => {
   const fields = useMemo(() => question.getResultMetadata(), [question]);
-  const selectedField = getSelectedField(fields, fieldRef);
+  const [field, setField] = useState(() => getSelectedField(fields, fieldRef));
 
   const handleChange = useCallback(
     (event: SelectChangeEvent<FieldMetadata>) => {
-      onChangeFieldRef(event.target.value.field_ref);
+      setField(event.target.value);
     },
-    [onChangeFieldRef],
+    [],
   );
+
+  const handleSubmit = useCallback(() => {
+    if (field) {
+      onSubmit(field.field_ref);
+    }
+  }, [field, onSubmit]);
 
   return (
     <ModalContent
@@ -49,14 +53,14 @@ const ParameterFieldStepModal = ({
         <Button
           key="submit"
           primary
-          disabled={!selectedField}
-          onClick={onSubmit}
+          disabled={!field}
+          onClick={handleSubmit}
         >{t`Done`}</Button>,
       ]}
       onClose={onClose}
     >
       <Select
-        value={selectedField}
+        value={field}
         placeholder={t`Pick a column`}
         onChange={handleChange}
       >
@@ -68,10 +72,6 @@ const ParameterFieldStepModal = ({
   );
 };
 
-const mapStateToProps = (state: State, { card }: { card: Card }) => ({
-  question: new Question(card, getMetadata(state)),
-});
-
 const getSelectedField = (fields: FieldMetadata[], fieldRef?: unknown[]) => {
   return fields.find(field => _.isEqual(field.field_ref, fieldRef));
 };
@@ -81,5 +81,7 @@ export default _.compose(
     id: (state: State, { cardId }: { cardId: CardId }) => cardId,
     entityAlias: "card",
   }),
-  connect(mapStateToProps),
+  connect((state: State, { card }: { card: Card }) => ({
+    question: new Question(card, getMetadata(state)),
+  })),
 )(ParameterFieldStepModal);
