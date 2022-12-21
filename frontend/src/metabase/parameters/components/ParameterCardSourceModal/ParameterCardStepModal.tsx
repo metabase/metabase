@@ -34,13 +34,13 @@ const ParameterCardStepModal = ({
   onSubmit,
   onClose,
 }: ParameterCardStepModalProps): JSX.Element => {
-  const [value, setValue] = useDataPickerValue(
-    getInitialValue(question, collection),
-  );
+  const initialValue = getInitialValue(question, collection);
+  const [value, setValue] = useDataPickerValue(initialValue);
+  const cardId = getCardIdFromValue(value);
 
   const handleSubmit = useCallback(() => {
-    onSubmit(getCardIdFromValue(value));
-  }, [value, onSubmit]);
+    onSubmit(cardId);
+  }, [cardId, onSubmit]);
 
   return (
     <ModalContent
@@ -50,7 +50,7 @@ const ParameterCardStepModal = ({
         <Button
           key="submit"
           primary
-          disabled={!value.tableIds.length}
+          disabled={cardId == null}
           onClick={handleSubmit}
         >{t`Select columns`}</Button>,
       ]}
