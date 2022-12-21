@@ -1,6 +1,5 @@
 (ns metabase.task.follow-up-emails-test
   (:require [clojure.test :refer :all]
-            [java-time :as t]
             [metabase.email-test :refer [inbox with-fake-inbox]]
             [metabase.task.follow-up-emails :as follow-up-emails]
             [metabase.test.fixtures :as fixtures]
