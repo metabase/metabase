@@ -130,11 +130,12 @@
 
 (defn migrate!
   "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:down`, and
-  `:release-locks`."
+  `:release-locks`. When migrating `:down` pass along a version to migrate to (44+)."
   ([]
    (migrate! :up))
-  ([direction]
-   (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source) direction)))
+  ([direction & [version]]
+   (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source)
+                       direction version)))
 
 (defn start-malli!
   []
