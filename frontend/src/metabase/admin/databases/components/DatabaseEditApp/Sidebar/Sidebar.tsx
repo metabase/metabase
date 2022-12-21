@@ -7,19 +7,29 @@ import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import { isSyncCompleted } from "metabase/lib/syncing";
+import {
+  checkDatabaseSupportsActions,
+  checkDatabaseActionsEnabled,
+} from "metabase/actions/utils";
 import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModal.jsx";
 
-import type { DatabaseId } from "metabase-types/api";
+import type { Database as IDatabase, DatabaseId } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 
+import ModelActionsSection from "./ModelActionsSection";
 import ModelCachingControl from "./ModelCachingControl";
-import { SidebarRoot, SidebarContent, SidebarGroup } from "./Sidebar.styled";
+import {
+  SidebarRoot,
+  SidebarContent,
+  SidebarGroup,
+  ModelActionsSidebarContent,
+} from "./Sidebar.styled";
 
 interface DatabaseEditAppSidebarProps {
   database: Database;
   isAdmin: boolean;
   isModelPersistenceEnabled: boolean;
-  updateDatabase: (database: Database) => void;
+  updateDatabase: (database: { id: DatabaseId } & Partial<IDatabase>) => void;
   syncDatabaseSchema: (databaseId: DatabaseId) => void;
   dismissSyncSpinner: (databaseId: DatabaseId) => void;
   rescanDatabaseFields: (databaseId: DatabaseId) => void;
@@ -29,6 +39,7 @@ interface DatabaseEditAppSidebarProps {
 
 const DatabaseEditAppSidebar = ({
   database,
+  updateDatabase,
   deleteDatabase,
   syncDatabaseSchema,
   dismissSyncSpinner,
@@ -40,7 +51,12 @@ const DatabaseEditAppSidebar = ({
   const discardSavedFieldValuesModal = useRef<any>();
   const deleteDatabaseModal = useRef<any>();
 
+  const databaseObject = database.getPlainObject();
+  const isNewDatabase = !databaseObject.id;
+
   const isSynced = isSyncCompleted(database);
+  const hasModelActionsSection =
+    !isNewDatabase && checkDatabaseSupportsActions(database);
   const hasModelCachingSection =
     isModelPersistenceEnabled && database.supportsPersistence();
 
@@ -57,6 +73,15 @@ const DatabaseEditAppSidebar = ({
   const handleDismissSyncSpinner = useCallback(
     () => dismissSyncSpinner(database.id),
     [database, dismissSyncSpinner],
+  );
+
+  const handleToggleModelActionsEnabled = useCallback(
+    (nextValue: boolean) =>
+      updateDatabase({
+        id: database.id,
+        settings: { "database-enable-actions": nextValue },
+      }),
+    [database, updateDatabase],
   );
 
   const handleDiscardSavedFieldValues = useCallback(
@@ -162,6 +187,14 @@ const DatabaseEditAppSidebar = ({
           </SidebarGroup.List>
         </SidebarGroup>
       </SidebarContent>
+      {hasModelActionsSection && (
+        <ModelActionsSidebarContent>
+          <ModelActionsSection
+            hasActionsEnabled={checkDatabaseActionsEnabled(databaseObject)}
+            onToggleActionsEnabled={handleToggleModelActionsEnabled}
+          />
+        </ModelActionsSidebarContent>
+      )}
     </SidebarRoot>
   );
 };
