@@ -7,10 +7,7 @@ import {
   getSourceType,
   hasValidSourceOptions,
 } from "metabase/parameters/utils/dashboards";
-import {
-  ParameterSourceOptions,
-  ParameterSourceType,
-} from "metabase-types/api";
+import { ParameterSourceConfig, ParameterSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import ParameterListSourceModal from "../ParameterListSourceModal";
 import {
@@ -22,7 +19,7 @@ import {
 export interface ParameterSourceSettingsProps {
   parameter: UiParameter;
   onChangeSourceType: (sourceType: ParameterSourceType) => void;
-  onChangeSourceOptions: (sourceOptions: ParameterSourceOptions) => void;
+  onChangeSourceOptions: (sourceOptions: ParameterSourceConfig) => void;
 }
 
 const ParameterSourceSettings = ({
@@ -51,7 +48,7 @@ const ParameterSourceSettings = ({
   );
 
   const handleSourceOptionsChange = useCallback(
-    (sourceOptions: ParameterSourceOptions) => {
+    (sourceOptions: ParameterSourceConfig) => {
       if (editingType && hasValidSourceOptions(editingType, sourceOptions)) {
         onChangeSourceType(editingType);
       } else {

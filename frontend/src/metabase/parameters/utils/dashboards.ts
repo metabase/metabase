@@ -9,7 +9,7 @@ import type {
   DashboardParameterMapping,
   DashboardOrderedCard,
   ParameterSourceType,
-  ParameterSourceOptions,
+  ParameterSourceConfig,
   Parameter,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
@@ -70,13 +70,13 @@ export function getSourceType(parameter: Parameter): ParameterSourceType {
   return parameter.values_source_type ?? null;
 }
 
-export function getSourceOptions(parameter: Parameter): ParameterSourceOptions {
-  return parameter.values_source_options ?? {};
+export function getSourceOptions(parameter: Parameter): ParameterSourceConfig {
+  return parameter.values_source_config ?? {};
 }
 
 export function hasValidSourceOptions(
   sourceType: ParameterSourceType,
-  sourceOptions: ParameterSourceOptions,
+  sourceOptions: ParameterSourceConfig,
 ): boolean {
   switch (sourceType) {
     case "static-list":

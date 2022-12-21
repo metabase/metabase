@@ -374,7 +374,7 @@
   (with-api-error-message {:id                                     NonBlankString
                            :type                                   keyword-or-non-blank-str
                            (s/optional-key :values_source_type)    (s/enum "static-list" "card" nil)
-                           (s/optional-key :values_source_options) ParameterSourceOptions
+                           (s/optional-key :values_source_config) ParameterSourceOptions
                            ;; Allow blank name and slug #15279
                            (s/optional-key :name)                  s/Str
                            (s/optional-key :slug)                  s/Str

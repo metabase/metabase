@@ -26,7 +26,7 @@ describe("ParameterListSourceModal", () => {
   it("should clear source values", () => {
     const props = getProps({
       parameter: createMockUiParameter({
-        values_source_options: createMockParameterSourceOptions({
+        values_source_config: createMockParameterSourceOptions({
           values: ["Gadget", "Gizmo"],
         }),
       }),

@@ -214,7 +214,7 @@ export const setParameterSourceOptions = createThunkAction(
   (parameterId, sourceOptions) => (dispatch, getState) => {
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
-      values_source_options: sourceOptions,
+      values_source_config: sourceOptions,
     }));
     return { id: parameterId, sourceOptions };
   },

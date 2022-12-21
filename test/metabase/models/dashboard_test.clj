@@ -219,7 +219,7 @@
                       Dashboard [{dashboard-id :id}
                                  {:parameters [(merge default-params
                                                       {:values_source_type    "card"
-                                                       :values_source_options {:card_id card-id}})]}]]
+                                                       :values_source_config {:card_id card-id}})]}]]
         (is (=? {:card_id                   card-id
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
@@ -233,7 +233,7 @@
         (is (nil? (db/select-one 'ParameterCard :card_id card-id)))
         (db/update! Dashboard dashboard-id :parameters [(merge default-params
                                                                {:values_source_type    "card"
-                                                                :values_source_options {:card_id card-id}})])
+                                                                :values_source_config {:card_id card-id}})])
         (is (=? {:card_id                   card-id
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
@@ -245,7 +245,7 @@
                       Dashboard [{dashboard-id :id}
                                  {:parameters [(merge default-params
                                                       {:values_source_type    "card"
-                                                       :values_source_options {:card_id card-id}})]}]]
+                                                       :values_source_config {:card_id card-id}})]}]]
         ;; same setup as earlier test, we know the ParameterCard exists right now
         (db/delete! Dashboard :id dashboard-id)
         (is (nil? (db/select-one 'ParameterCard :card_id card-id)))))))

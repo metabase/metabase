@@ -3,10 +3,7 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import { getSourceOptions } from "metabase/parameters/utils/dashboards";
-import {
-  ParameterSourceOptions,
-  ParameterSourceType,
-} from "metabase-types/api";
+import { ParameterSourceConfig, ParameterSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { ModalMessage, ModalTextArea } from "./ParameterListSourceModal.styled";
 
@@ -15,7 +12,7 @@ const PLACEHOLDER = [t`banana`, t`orange`].join(NEW_LINE);
 
 export interface ParameterListSourceModalProps {
   parameter: UiParameter;
-  onChangeSourceOptions: (sourceOptions: ParameterSourceOptions) => void;
+  onChangeSourceOptions: (sourceOptions: ParameterSourceConfig) => void;
   onClose?: () => void;
 }
 

@@ -1730,13 +1730,13 @@
                                                                   :id                    "_STATIC_CATEGORY_",
                                                                   :type                  "category",
                                                                   :values_source_type    "static-list"
-                                                                  :values_source_options {:values ["African" "American" "Asian"]}}
+                                                                  :values_source_config {:values ["African" "American" "Asian"]}}
                                                                  {:name                  "Static Category label",
                                                                   :slug                  "static_category_label"
                                                                   :id                    "_STATIC_CATEGORY_LABEL_",
                                                                   :type                  "category",
                                                                   :values_source_type    "static-list"
-                                                                  :values_source_options {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}]}
+                                                                  :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}]}
                                                    dashboard-values)]
                    Card          [card {:database_id   (mt/id)
                                         :table_id      (mt/id :venues)
@@ -1891,13 +1891,13 @@
                                                              :id                    "_STATIC_CATEGORY_",
                                                              :type                  "category",
                                                              :values_source_type    "static-list"
-                                                             :values_source_options {"values" ["BBQ" "Bakery" "Bar"]}}]})]
+                                                             :values_source_config {"values" ["BBQ" "Bakery" "Bar"]}}]})]
           (is (= [{:name                  "Static Category",
                    :slug                  "static_category"
                    :id                    "_STATIC_CATEGORY_",
                    :type                  "category",
                    :values_source_type    "static-list"
-                   :values_source_options {:values ["BBQ" "Bakery" "Bar"]}}]
+                   :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                  (:parameters dashboard))))))
 
     (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
@@ -1908,7 +1908,7 @@
                                                           :name                  "value",
                                                           :type                  "category",
                                                           :values_source_type    "random-type"
-                                                          :values_source_options {"values" [1 2 3]}}]})
+                                                          :values_source_config {"values" [1 2 3]}}]})
                      [:errors :parameters])))
       (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"
@@ -1917,7 +1917,7 @@
                                                           :name                  "value",
                                                           :type                  "category",
                                                           :values_source_type    "static-list"
-                                                          :values_source_options []}]})
+                                                          :values_source_config []}]})
                      [:errors :parameters]))))))
 
 (deftest chain-filter-search-test
@@ -2068,7 +2068,7 @@
                                                                :type                  "category"
                                                                :name                  "CATEGORY"
                                                                :values_source_type    "card"
-                                                               :values_source_options {:card_id card-id}}]}]]
+                                                               :values_source_config {:card_id card-id}}]}]]
     (testing "It uses the results of the card's query execution"
       (let-url [url (chain-filter-values-url dashboard-id "abc")]
         (is (= {:values          ["The Misfit Restaurant + Bar"

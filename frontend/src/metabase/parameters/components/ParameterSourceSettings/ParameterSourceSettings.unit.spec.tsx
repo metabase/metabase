@@ -38,7 +38,7 @@ describe("ParameterSourceSettings", () => {
     const props = getProps({
       parameter: createMockUiParameter({
         values_source_type: "static-list",
-        values_source_options: { values: ["Gadget"] },
+        values_source_config: { values: ["Gadget"] },
       }),
     });
 
@@ -69,7 +69,7 @@ describe("ParameterSourceSettings", () => {
     const props = getProps({
       parameter: createMockUiParameter({
         values_source_type: "static-list",
-        values_source_options: { values: ["Gadget"] },
+        values_source_config: { values: ["Gadget"] },
       }),
     });
 

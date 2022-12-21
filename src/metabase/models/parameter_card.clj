@@ -55,8 +55,8 @@
 
 (defn- upsert-for-dashboard!
   [dashboard-id parameters]
-  (doseq [{:keys [values_source_options id]} parameters]
-    (let [card-id    (:card_id values_source_options)
+  (doseq [{:keys [values_source_config id]} parameters]
+    (let [card-id    (:card_id values_source_config)
           conditions {:parameterized_object_id   dashboard-id
                       :parameterized_object_type "dashboard"
                       :parameter_id              id}]
@@ -66,8 +66,8 @@
 (defn upsert-or-delete-for-dashboard!
   "Create, update, or delete appropriate ParameterCards for each parameter in the dashboard"
   [{dashboard-id :id parameters :parameters}]
-  (let [upsertable?           (fn [{:keys [values_source_type values_source_options id]}]
-                                (and values_source_type id (:card_id values_source_options)
+  (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
+                                (and values_source_type id (:card_id values_source_config)
                                      (= values_source_type "card")))
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-for-dashboard! dashboard-id upsertable-parameters)

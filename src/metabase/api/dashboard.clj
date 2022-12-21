@@ -735,7 +735,7 @@
            (throw e)))))))
 
 (defn- static-parameter-values
-  [{values-source-options :values_source_options :as _param} query]
+  [{values-source-options :values_source_config :as _param} query]
   (when-let [values (:values values-source-options)]
     {:values          (if query
                         (parameter-card/query-matches query values)
