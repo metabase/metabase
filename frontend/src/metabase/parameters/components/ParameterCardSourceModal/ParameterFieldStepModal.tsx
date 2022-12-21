@@ -19,6 +19,7 @@ interface ParameterFieldStepModalProps {
   fieldRef: unknown[] | undefined;
   onChangeFieldRef: (fieldRef: unknown[] | undefined) => void;
   onSubmit: () => void;
+  onCancel: () => void;
   onClose: () => void;
 }
 
@@ -27,6 +28,7 @@ const ParameterFieldStepModal = ({
   fieldRef,
   onChangeFieldRef,
   onSubmit,
+  onCancel,
   onClose,
 }: ParameterFieldStepModalProps): JSX.Element => {
   const fields = useMemo(() => question.getResultMetadata(), [question]);
@@ -43,7 +45,7 @@ const ParameterFieldStepModal = ({
     <ModalContent
       title={t`Which column from ${question.displayName()} should be used`}
       footer={[
-        <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
+        <Button key="cancel" onClick={onCancel}>{t`Back`}</Button>,
         <Button
           key="submit"
           primary

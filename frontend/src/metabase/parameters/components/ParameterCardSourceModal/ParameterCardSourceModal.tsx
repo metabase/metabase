@@ -33,6 +33,10 @@ const ParameterCardSourceModal = ({
     onClose();
   }, [cardId, fieldRef, onChangeSourceOptions, onClose]);
 
+  const handleFieldCancel = useCallback(() => {
+    setStep("card");
+  }, []);
+
   switch (step) {
     case "card":
       return (
@@ -50,6 +54,7 @@ const ParameterCardSourceModal = ({
           fieldRef={fieldRef}
           onChangeFieldRef={setFieldRef}
           onSubmit={handleFieldSubmit}
+          onCancel={handleFieldCancel}
           onClose={onClose}
         />
       );
