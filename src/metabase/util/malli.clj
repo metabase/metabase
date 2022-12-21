@@ -14,8 +14,8 @@
 (core/defn- ->malli-io-link
   ([schema]
    (->malli-io-link schema (try (mg/generate schema {:seed 1 :size 1})
-                                ;; can't generate every sort of schema
-                                (catch Exception e ::none))))
+                                ;; not all schemas can generate values
+                                (catch Exception _ ::none))))
   ([schema value]
    (let [url-schema (codec/url-encode (u/pprint-to-str (mc/form schema)))
          url-value (if (= ::none value)
