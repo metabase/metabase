@@ -69,7 +69,7 @@ export const getFormField = (
     description: fieldSettings.description ?? "",
     placeholder: fieldSettings?.placeholder,
     optional: !fieldSettings.required,
-    fieldInstance: fieldSettings.fieldInstance,
+    field: fieldSettings.field,
   };
 
   if (inputTypeHasOptions(fieldSettings)) {

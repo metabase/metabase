@@ -80,7 +80,7 @@ export type ActionFormFieldProps = {
   placeholder?: string;
   type: InputComponentType;
   optional?: boolean;
-  fieldInstance?: Field;
+  field?: Field;
   options?: ActionFormOption[];
 };
 
