@@ -163,7 +163,10 @@
                                               :format {:date_style "YYYY/MM/DD"}}
                      :y                      {:type   "linear"
                                               :format {:prefix   "prefix"
-                                                       :decimals 4}}
+                                                       :decimals 4
+                                                       :minimum-fraction-digits 4
+                                                       :maximum-fraction-digits 4
+                                                       }}
                      :labels                 {:bottom ""
                                               :left   ""
                                               :right  ""}
