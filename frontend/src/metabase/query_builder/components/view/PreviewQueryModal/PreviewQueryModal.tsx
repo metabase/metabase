@@ -44,7 +44,9 @@ const PreviewQueryModal = ({
 };
 
 const mapStateToProps = (state: State) => ({
-  question: getQuestion(state),
+  // FIXME: remove the non-null assertion operator
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  question: getQuestion(state)!,
   onLoadQuery: getNativeQueryFn(state),
 });
 

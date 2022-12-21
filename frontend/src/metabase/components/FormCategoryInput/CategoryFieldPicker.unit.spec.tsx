@@ -1,5 +1,5 @@
 import React from "react";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
@@ -39,19 +39,15 @@ const productVendorField = new Field({
 });
 
 describe("CategoryFieldPicker", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
   });
 
   describe("given a few distinct values", () => {
     beforeEach(() => {
-      xhrMock.get(`/api/field/${productCategoryField.id}/values`, {
-        body: JSON.stringify(productCategoryField.fieldValues()),
-      });
+      nock(location.origin)
+        .get(`/api/field/${productCategoryField.id}/values`)
+        .reply(200, productCategoryField.fieldValues());
     });
 
     it("should render a radio picker", () => {
