@@ -68,7 +68,7 @@ const ParameterCardStep = ({
         <Button
           key="submit"
           primary
-          disabled={!value.tableIds.length}
+          disabled={cardId == null}
           onClick={handleSubmit}
         >{t`Select columns`}</Button>,
       ]}
