@@ -201,7 +201,7 @@ describe("scenarios > organization > timelines > question", () => {
       });
 
       cy.findByText("Visualization").should("be.visible");
-      cy.icon("star").should("be.visible");
+      cy.findByLabelText("star icon").should("be.visible");
     });
 
     it("should not show events for non-timeseries questions", () => {
@@ -255,7 +255,7 @@ describe("scenarios > organization > timelines > question", () => {
       });
 
       cy.findByText("Visualization").should("be.visible");
-      cy.icon("star").should("be.visible");
+      cy.findByLabelText("star icon").should("be.visible");
     });
   });
 
