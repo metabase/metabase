@@ -14,11 +14,13 @@ import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { Dispatch } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
-import { generateFieldSettingsFromParameters } from "../ActionCreator/FormCreator";
+import { generateFieldSettingsFromParameters } from "metabase/actions/components/ActionCreator/FormCreator";
+
 import {
   getDashcardParamValues,
   getNotProvidedActionParameters,
   shouldShowConfirmation,
+  setNumericValues,
 } from "./utils";
 import LinkButton from "./LinkButton";
 import ActionVizForm from "./ActionVizForm";
@@ -72,7 +74,12 @@ function ActionComponent({
   const onSubmit = useCallback(
     (parameterMap: ParametersForActionExecution) => {
       const params = {
-        ...dashcardParamValues,
+        ...setNumericValues(
+          dashcardParamValues,
+          generateFieldSettingsFromParameters(
+            dashcard?.action?.parameters ?? [],
+          ),
+        ),
         ...parameterMap,
       };
 
