@@ -17,8 +17,7 @@
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.test :as mt]))
 
 (deftest fix-order-bys-test
   (testing "Remove order-by from joins"
