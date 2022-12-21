@@ -64,12 +64,15 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
 
   const zoomedRow = isZooming ? getZoomRow(state) : getSingleResultsRow(data);
   const canZoomPreviousRow = isZooming ? getCanZoomPreviousRow(state) : false;
-  const canZoomNextRow = isZooming ? getCanZoomNextRow(state) : false;
+  const canZoomNextRow = isZooming ? Boolean(getCanZoomNextRow(state)) : false;
 
   return {
-    question: getQuestion(state),
+    // FIXME: remove the non-null assertion operator
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    question: getQuestion(state)!,
     table: getTableMetadata(state),
-    tableForeignKeys: getTableForeignKeys(state),
+    // FIXME: remove the type cast
+    tableForeignKeys: getTableForeignKeys(state) as ForeignKey[],
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
     zoomedRowID,
     zoomedRow,
@@ -85,8 +88,13 @@ const mapDispatchToProps = (dispatch: any) => ({
     dispatch(Tables.objectActions.fetchForeignKeys({ id })),
   loadObjectDetailFKReferences: (args: any) =>
     dispatch(loadObjectDetailFKReferences(args)),
-  followForeignKey: ({ objectId, fk }: { objectId: number; fk: ForeignKey }) =>
-    dispatch(followForeignKey({ objectId, fk })),
+  followForeignKey: ({
+    objectId,
+    fk,
+  }: {
+    objectId: ObjectId;
+    fk: ForeignKey;
+  }) => dispatch(followForeignKey({ objectId, fk })),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
