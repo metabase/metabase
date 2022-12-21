@@ -44,9 +44,9 @@ describe("SessionTimeoutSetting", () => {
       render(<SessionTimeoutSetting setting={setting} onChange={jest.fn()} />);
       const input = screen.getByTestId("session-timeout-input");
       if (expected == null) {
-        expect(screen.queryByText(/Timeout must be/)).not.toBeInTheDocument();
+        expect(screen.getByText(/Timeout must be/)).not.toBeInTheDocument();
       } else {
-        expect(screen.queryByText(expected)).toBeInTheDocument();
+        expect(screen.getByText(expected)).toBeInTheDocument();
       }
     });
   });
