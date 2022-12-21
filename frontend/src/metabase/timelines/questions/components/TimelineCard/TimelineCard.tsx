@@ -11,6 +11,8 @@ import _ from "underscore";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import { getTimelineName } from "metabase/lib/timelines";
 import Ellipsified from "metabase/core/components/Ellipsified";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import Icon from "metabase/components/Icon";
 import EventCard from "../EventCard";
 import {
   CardHeader,
@@ -59,9 +61,13 @@ const TimelineCard = ({
     setIsExpanded(isExpanded => !isExpanded);
   }, []);
 
-  const handleCheckboxClick = useCallback((event: MouseEvent) => {
-    event.stopPropagation();
-  }, []);
+  const handleCheckboxClick = useCallback(
+    (event: MouseEvent) => {
+      event.stopPropagation();
+      onToggleTimeline?.(timeline, !isVisible);
+    },
+    [timeline, isVisible, onToggleTimeline],
+  );
 
   const handleToggleTimeline = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -82,12 +88,13 @@ const TimelineCard = ({
         onClick={handleHeaderClick}
         aria-label={t`Timeline card header`}
       >
-        <CardCheckbox
-          checked={isVisible}
-          indeterminate={isVisible && !allEventsVisible}
+        <IconButtonWrapper
           onClick={handleCheckboxClick}
-          onChange={handleToggleTimeline}
-        />
+          style={{ opacity: isVisible ? 0.6 : 0.3 }}
+        >
+          <Icon name={isVisible ? "eye_outline" : "eye_crossed_out"} />
+        </IconButtonWrapper>
+
         <CardLabel>
           <Ellipsified tooltipMaxWidth="100%">
             {getTimelineName(timeline)}

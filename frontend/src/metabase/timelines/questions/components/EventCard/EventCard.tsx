@@ -6,6 +6,9 @@ import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import EntityMenu from "metabase/components/EntityMenu";
 import Checkbox from "metabase/core/components/CheckBox/CheckBox";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import Icon from "metabase/components/Icon";
+
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 import {
   CardAside,
@@ -76,11 +79,16 @@ const EventCard = ({
       onClick={handleToggleSelected}
     >
       <CardCheckboxContainer>
-        <Checkbox
-          checked={isTimelineVisible && isVisible}
-          disabled={!isTimelineVisible}
+        <IconButtonWrapper
           onClick={handleChangeVisibility}
-        />
+          style={{ opacity: isTimelineVisible && isVisible ? 0.6 : 0.3 }}
+        >
+          <Icon
+            name={
+              isTimelineVisible && isVisible ? "eye_outline" : "eye_crossed_out"
+            }
+          />
+        </IconButtonWrapper>
       </CardCheckboxContainer>
       <CardBody>
         <CardIconAndDateContainer>

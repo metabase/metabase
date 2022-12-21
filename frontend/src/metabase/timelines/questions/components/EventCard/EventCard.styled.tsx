@@ -9,7 +9,7 @@ export interface CardRootProps {
 
 export const CardRoot = styled.div<CardRootProps>`
   display: flex;
-  padding: 0.25rem 0.75rem;
+  padding: 0.25rem 1rem 0.25rem 1.25rem;
   border-left: 0.25rem solid
     ${props => (props.isSelected ? color("brand") : "transparent")};
   background-color: ${props =>
