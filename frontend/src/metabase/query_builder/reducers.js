@@ -3,6 +3,8 @@ import { assoc, dissoc, merge } from "icepick";
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
 
+import TimelineEvents from "metabase/entities/timeline-events";
+
 import {
   RESET_QB,
   INITIALIZE_QB,
@@ -57,7 +59,6 @@ import {
   onCloseTimelines,
   SHOW_TIMELINES,
   HIDE_TIMELINES,
-  CREATE_TIMELINE_EVENT,
   INITIALIZE_VISIBLE_TIMELINE_EVENTS,
   HIDE_TIMELINE_EVENTS,
   SHOW_TIMELINE_EVENTS,
@@ -565,9 +566,6 @@ export const visibleTimelineIds = handleActions(
 export const visibleTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
-    [CREATE_TIMELINE_EVENT]: {
-      next: (state, { payload }) => [...state, payload.timelineEvent.id],
-    },
     [INITIALIZE_VISIBLE_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) => events.map(event => event.id),
     },
@@ -580,6 +578,9 @@ export const visibleTimelineEventIds = handleActions(
     [SHOW_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) =>
         _.uniq([...state, ...events.map(event => event.id)]),
+    },
+    [TimelineEvents.actionTypes.CREATE]: {
+      next: (state, { payload }) => [...state, payload.timelineEvent.id],
     },
     [RESET_QB]: { next: () => [] },
   },

@@ -26,8 +26,6 @@ export const hideTimelineEvents = createAction(HIDE_TIMELINE_EVENTS);
 export const SHOW_TIMELINE_EVENTS = "metabase/qb/SHOW_TIMELINE_EVENTS";
 export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);
 
-export const CREATE_TIMELINE_EVENT = "metabase/entities/timelineEvents/CREATE";
-
 export const showTimelinesForCollection =
   collectionId => (dispatch, getState) => {
     const fetchedTimelines = getFetchedTimelines(getState());
