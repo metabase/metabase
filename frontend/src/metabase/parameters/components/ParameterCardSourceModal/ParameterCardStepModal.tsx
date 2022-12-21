@@ -76,10 +76,12 @@ const getInitialValue = (
   collection?: Collection,
 ): Partial<DataPickerValue> | undefined => {
   if (question) {
+    const isDatasets = question.isDataset();
+
     return {
-      type: question.isDataset() ? "models" : "questions",
+      type: isDatasets ? "models" : "questions",
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-      schemaId: getCollectionVirtualSchemaId(collection),
+      schemaId: getCollectionVirtualSchemaId(collection, { isDatasets }),
       collectionId: collection?.id,
       tableIds: [getQuestionVirtualTableId(question.card())],
     };
