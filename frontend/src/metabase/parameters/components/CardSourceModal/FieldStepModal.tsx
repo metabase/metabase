@@ -18,8 +18,8 @@ import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-que
 
 interface FieldStepModalOwnProps {
   cardId: CardId | undefined;
-  fieldRef: unknown[] | undefined;
-  onChangeField: (fieldRef: unknown[]) => void;
+  fieldReference: unknown[] | undefined;
+  onChangeField: (field: unknown[]) => void;
   onSubmit: () => void;
   onCancel: () => void;
   onClose: () => void;
@@ -45,7 +45,7 @@ const FieldStepModal = ({
   tableId,
   loading,
   error,
-  fieldRef,
+  fieldReference,
   onFetchMetadata,
   onChangeField,
   onSubmit,
@@ -57,8 +57,8 @@ const FieldStepModal = ({
   }, [table]);
 
   const selectedField = useMemo(() => {
-    return fieldRef && getFieldByRef(fields, fieldRef);
-  }, [fields, fieldRef]);
+    return fieldReference && getFieldByReference(fields, fieldReference);
+  }, [fields, fieldReference]);
 
   const handleChange = useCallback(
     (event: SelectChangeEvent<Field>) => {
@@ -102,8 +102,8 @@ const FieldStepModal = ({
   );
 };
 
-const getFieldByRef = (fields: Field[], fieldRef: unknown[]) => {
-  return fields.find(field => _.isEqual(field.reference(), fieldRef));
+const getFieldByReference = (fields: Field[], fieldReference: unknown[]) => {
+  return fields.find(field => _.isEqual(field.reference(), fieldReference));
 };
 
 const getSupportedFields = (table: Table) => {

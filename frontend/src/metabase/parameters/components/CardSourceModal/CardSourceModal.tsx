@@ -18,16 +18,18 @@ const CardSourceModal = ({
 }: CardSourceModalProps): JSX.Element | null => {
   const [step, setStep] = useState<CardSourceStep>("card");
   const [cardId, setCardId] = useState(sourceConfig.card_id);
-  const [fieldRef, setFieldRef] = useState(sourceConfig.value_field_ref);
+  const [fieldReference, setFieldReference] = useState(
+    sourceConfig.value_field,
+  );
 
   const handleCardSubmit = useCallback(() => {
     setStep("field");
   }, []);
 
   const handleFieldSubmit = useCallback(() => {
-    onChangeSourceConfig({ card_id: cardId, value_field_ref: fieldRef });
+    onChangeSourceConfig({ card_id: cardId, value_field: fieldReference });
     onClose();
-  }, [cardId, fieldRef, onChangeSourceConfig, onClose]);
+  }, [cardId, fieldReference, onChangeSourceConfig, onClose]);
 
   const handleFieldCancel = useCallback(() => {
     setStep("card");
@@ -47,8 +49,8 @@ const CardSourceModal = ({
       return (
         <FieldStepModal
           cardId={cardId}
-          fieldRef={fieldRef}
-          onChangeField={setFieldRef}
+          fieldReference={fieldReference}
+          onChangeField={setFieldReference}
           onSubmit={handleFieldSubmit}
           onCancel={handleFieldCancel}
           onClose={onClose}
