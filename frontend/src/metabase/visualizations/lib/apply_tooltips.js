@@ -170,7 +170,10 @@ export function getClickHoverObject(
             value: formatValue(d.data.value, {
               number_style: "percent",
               column: cols[1],
-              decimals: cols[1].decimals,
+              minimum_fraction_digits:
+                cols[1].minimum_fraction_digits || cols[1].decimals,
+              maximum_fraction_digits:
+                cols[1].maximum_fraction_digits || cols[1].decimals,
             }),
             col: col,
           };

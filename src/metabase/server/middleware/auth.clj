@@ -21,7 +21,7 @@
 
 (defn wrap-api-key
   "Middleware that sets the `:metabase-api-key` keyword on the request if a valid API Key can be found. We check the
-  request headers for `X-METABASE-APIKEY` and if it's not found then then no keyword is bound to the request."
+  request headers for `X-METABASE-APIKEY` and if it's not found then no keyword is bound to the request."
   [handler]
   (fn [request respond raise]
     (handler (wrap-api-key* request) respond raise)))

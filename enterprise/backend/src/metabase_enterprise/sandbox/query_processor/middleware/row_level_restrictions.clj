@@ -121,9 +121,9 @@
       attr-value)))
 
 (defn- attr-remapping->parameter [login-attributes [attr-name target]]
-  (let [attr-value      (get login-attributes attr-name ::not-found)
+  (let [attr-value      (get login-attributes attr-name)
         field-base-type (target-field->base-type target)]
-    (when (= attr-value ::not-found)
+    (when (not attr-value)
       (throw (ex-info (tru "Query requires user attribute `{0}`" (name attr-name))
                       {:type qp.error-type/missing-required-parameter})))
     {:type   :category

@@ -1,8 +1,8 @@
+import { Parameter } from "metabase-types/api/parameters";
 import type { EntityId } from "metabase-types/types";
 import type {
   ParameterTarget,
   ParameterId,
-  Parameter,
 } from "metabase-types/types/Parameter";
 
 import type { Card, CardId } from "./card";
@@ -20,6 +20,13 @@ export interface Dashboard {
   parameters?: Parameter[] | null;
   can_write: boolean;
   cache_ttl: number | null;
+  "last-edit-info": {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+    timestamp: string;
+  };
 }
 
 export type DashCardId = EntityId;

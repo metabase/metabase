@@ -751,16 +751,16 @@
                             normalized-query) values)))
 
 (defn- static-parameter-values
-  [{source-options :source_options :as _param} query]
-  (let [values (:values source-options)]
-    {:values         (if query
-                       (query-matches query values)
-                       values)
+  [{values-source-config :values_source_config :as _param} query]
+  (when-let [values (:values values-source-config)]
+    {:values          (if query
+                        (query-matches query values)
+                        values)
      :has_more_values false}))
 
 (defn- card-parameter-values
-  [{source-options :source_options :as _param} query]
-  (params.card-values/values-from-card (:card_id source-options) (:value_field_ref source-options) query))
+  [{values-source-config :values_source_config :as _param} query]
+  (params.card-values/values-from-card (:card_id values-source-config) (:value_field_ref values-source-config) query))
 
 (s/defn param-values
   "Fetch values for a parameter.
@@ -782,7 +782,7 @@
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
-     (case (:source_type param)
+     (case (:values_source_type param)
        "static-list" (static-parameter-values param query)
        "card"        (card-parameter-values param query)
        nil           (chain-filter dashboard param-key constraint-param-key->value query)))))
