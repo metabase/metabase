@@ -4,7 +4,11 @@ import _ from "underscore";
 import moment from "moment-timezone";
 
 import { formatField, stripId } from "metabase/lib/formatting";
-import type { FieldFingerprint } from "metabase-types/api/field";
+import type {
+  DatasetColumn,
+  Field as IField,
+  FieldFingerprint,
+} from "metabase-types/api";
 import type { Field as FieldRef } from "metabase-types/types/Query";
 import {
   isDate,
@@ -70,6 +74,10 @@ class FieldInner extends Base {
 
   // added when creating "virtual fields" that are associated with a given query
   query?: StructuredQuery | NativeQuery;
+
+  getPlainObject(): IField {
+    return this._plainObject;
+  }
 
   getId() {
     if (Array.isArray(this.id)) {
@@ -436,7 +444,7 @@ class FieldInner extends Base {
     return this.isString();
   }
 
-  column(extra = {}) {
+  column(extra = {}): DatasetColumn {
     return this.dimension().column({
       source: "fields",
       ...extra,

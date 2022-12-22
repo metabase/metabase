@@ -1,11 +1,24 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+
 import { normalize } from "normalizr";
 import { chain } from "icepick";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { FieldSchema } from "metabase/schema";
 
-import state from "./sample_database_fixture.json";
-export { default as state } from "./sample_database_fixture.json";
+import type { Field as IField, FieldId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
+import type Database from "metabase-lib/metadata/Database";
+import type Field from "metabase-lib/metadata/Field";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type Table from "metabase-lib/metadata/Table";
+
+import stateFixture from "./sample_database_fixture.json";
+
+export const state = stateFixture as unknown as State;
+
+export default state;
 
 export const SAMPLE_DATABASE_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;
@@ -15,16 +28,18 @@ export const OTHER_MULTI_SCHEMA_DATABASE_ID = 5;
 
 export const MAIN_METRIC_ID = 1;
 
-function aliasTablesAndFields(metadata) {
+function aliasTablesAndFields(metadata: Metadata) {
   // alias DATABASE.TABLE.FIELD for convenience in tests
   // NOTE: this assume names don't conflict with other properties in Database/Table which I think is safe for Sample Database
   for (const database of Object.values(metadata.databases)) {
     for (const table of database.tables) {
       if (!(table.name in database)) {
+        // @ts-ignore
         database[table.name] = table;
       }
       for (const field of table.fields) {
         if (!(field.name in table)) {
+          // @ts-ignore
           table[field.name] = field;
         }
       }
@@ -32,14 +47,21 @@ function aliasTablesAndFields(metadata) {
   }
 }
 
-function normalizeFields(fields) {
+function normalizeFields(fields: Record<string, IField>) {
   return normalize(fields, [FieldSchema]).entities.fields || {};
 }
 
-export function createMetadata(updateState = state => state) {
+// Icepick doesn't expose it's IcepickWrapper type,
+// so this trick pulls it out of the return type of chain()
+type EnhancedState = ReturnType<typeof chain<State>>;
+
+export function createMetadata(updateState = (state: EnhancedState) => state) {
+  // This allows to use icepick helpers inside custom `updateState` functions
+  // Example: const metadata = createMetadata(state => state.assocIn(...))
   const stateModified = updateState(chain(state)).thaw().value();
+
   stateModified.entities.fields = normalizeFields(
-    stateModified.entities.fields,
+    stateModified.entities.fields || {},
   );
 
   const metadata = getMetadata(stateModified);
@@ -49,22 +71,55 @@ export function createMetadata(updateState = state => state) {
 
 export const metadata = createMetadata();
 
-export const SAMPLE_DATABASE = metadata.database(SAMPLE_DATABASE_ID);
-export const ANOTHER_DATABASE = metadata.database(ANOTHER_DATABASE_ID);
-export const MONGO_DATABASE = metadata.database(MONGO_DATABASE_ID);
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
+/**
+ * In the wild, fields might not have a concrete ID
+ * (e.g. when coming from a native query)
+ * But for our sample data we can be sure that they're always concrete.
+ */
+type SimpleField = Omit<Field, "id"> & {
+  id: FieldId;
+};
+
+type AliasedTable = Table & {
+  [fieldName: string]: SimpleField;
+};
+
+/**
+ * Databases below are extended with table aliases.
+ * So it's possible to do SAMPLE_DATABASE.ORDERS or SAMPLE_DATABASE.ORDERS.TOTAL
+ * to retrieve tables and field instances.
+ */
+type AliasedSampleDatabase = Database & {
+  ORDERS: AliasedTable;
+  PRODUCTS: AliasedTable;
+  PEOPLE: AliasedTable;
+  REVIEWS: AliasedTable;
+};
+
+export const SAMPLE_DATABASE = metadata.database(
+  SAMPLE_DATABASE_ID,
+) as AliasedSampleDatabase;
+
+export const ANOTHER_DATABASE = metadata.database(ANOTHER_DATABASE_ID)!;
+export const MONGO_DATABASE = metadata.database(MONGO_DATABASE_ID)!;
 export const MULTI_SCHEMA_DATABASE = metadata.database(
   MULTI_SCHEMA_DATABASE_ID,
-);
+)!;
 export const OTHER_MULTI_SCHEMA_DATABASE = metadata.database(
   OTHER_MULTI_SCHEMA_DATABASE_ID,
-);
+)!;
+/* eslint-enable @typescript-eslint/no-non-null-assertion */
 
 export const ORDERS = SAMPLE_DATABASE.ORDERS;
 export const PRODUCTS = SAMPLE_DATABASE.PRODUCTS;
 export const PEOPLE = SAMPLE_DATABASE.PEOPLE;
 export const REVIEWS = SAMPLE_DATABASE.REVIEWS;
 
-export function makeMetadata(metadata) {
+export function makeMetadata(
+  metadata: Record<string, Record<string, any>>,
+): Metadata {
   metadata = {
     databases: {
       1: { name: "database", tables: [] },
@@ -86,6 +141,7 @@ export function makeMetadata(metadata) {
     questions: {},
     ...metadata,
   };
+
   // convenience for filling in missing bits
   for (const objects of Object.values(metadata)) {
     for (const [id, object] of Object.entries(objects)) {
@@ -95,6 +151,7 @@ export function makeMetadata(metadata) {
       }
     }
   }
+
   // linking to default db
   for (const table of Object.values(metadata.tables)) {
     if (table.db == null) {
@@ -103,6 +160,7 @@ export function makeMetadata(metadata) {
       (db0.tables = db0.tables || []).push(table.id);
     }
   }
+
   // linking to default table
   for (const childType of ["fields", "segments", "metrics"]) {
     for (const child of Object.values(metadata[childType])) {
