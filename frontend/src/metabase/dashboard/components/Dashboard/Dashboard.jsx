@@ -127,9 +127,9 @@ class Dashboard extends Component {
     });
   }
 
-  componentDidUpdate(prevProps) {
+  async componentDidUpdate(prevProps) {
     if (prevProps.dashboardId !== this.props.dashboardId) {
-      this.loadDashboard(this.props.dashboardId);
+      await this.loadDashboard(this.props.dashboardId);
       this.throttleParameterWidgetStickiness();
     } else if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
