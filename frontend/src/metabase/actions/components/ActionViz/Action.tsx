@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import { executeRowAction } from "metabase/dashboard/actions";
-import { setNumericValues } from "metabase/actions/containers/ActionParametersInputForm/utils";
 
 import type {
   ActionDashboardCard,
@@ -15,11 +14,13 @@ import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { Dispatch } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
-import { generateFieldSettingsFromParameters } from "../ActionCreator/FormCreator";
+import { generateFieldSettingsFromParameters } from "metabase/actions/components/ActionCreator/FormCreator";
+
 import {
   getDashcardParamValues,
   getNotProvidedActionParameters,
   shouldShowConfirmation,
+  setNumericValues,
 } from "./utils";
 import LinkButton from "./LinkButton";
 import ActionVizForm from "./ActionVizForm";
@@ -73,19 +74,19 @@ function ActionComponent({
   const onSubmit = useCallback(
     (parameterMap: ParametersForActionExecution) => {
       const params = {
-        ...dashcardParamValues,
+        ...setNumericValues(
+          dashcardParamValues,
+          generateFieldSettingsFromParameters(
+            dashcard?.action?.parameters ?? [],
+          ),
+        ),
         ...parameterMap,
       };
-
-      const paramsForExecution = setNumericValues(
-        params,
-        generateFieldSettingsFromParameters(dashcard?.action?.parameters ?? []),
-      );
 
       return executeRowAction({
         page,
         dashcard,
-        parameters: paramsForExecution,
+        parameters: params,
         dispatch,
         shouldToast: shouldDisplayButton,
       });

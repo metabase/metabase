@@ -73,17 +73,13 @@ export type ActionFormOption = {
   value: string | number;
 };
 
-export type Validator = (value: string) => undefined | string;
-
 export type ActionFormFieldProps = {
   name: string;
   title: string;
   description?: string;
   placeholder?: string;
   type: InputComponentType;
-  required?: boolean;
-  validate?: Validator;
-  validator?: Validator;
+  optional?: boolean;
   field?: Field;
   options?: ActionFormOption[];
 };

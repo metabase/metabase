@@ -37,7 +37,7 @@ import {
   InputContainer,
 } from "./ActionForm.styled";
 
-import { getForm } from "./utils";
+import { getForm, getFormValidationSchema } from "./utils";
 
 export interface ActionFormComponentProps {
   parameters: WritebackParameter[] | Parameter[];
@@ -70,6 +70,11 @@ export const ActionForm = ({
 
   const form = useMemo(
     () => getForm(parameters, formSettings?.fields),
+    [parameters, formSettings?.fields],
+  );
+
+  const formValidationSchema = useMemo(
+    () => getFormValidationSchema(parameters, formSettings?.fields),
     [parameters, formSettings?.fields],
   );
 
@@ -106,9 +111,18 @@ export const ActionForm = ({
     });
   };
 
+  const handleSubmit = (
+    values: ParametersForActionExecution,
+    actions: FormikHelpers<ParametersForActionExecution>,
+  ) => onSubmit?.(formValidationSchema.cast(values), actions);
+
   if (isSettings) {
     return (
-      <FormProvider initialValues={initialValues} onSubmit={_.noop}>
+      <FormProvider
+        initialValues={initialValues}
+        validationSchema={formValidationSchema}
+        onSubmit={handleSubmit}
+      >
         <Form role="form" data-testid="action-form-editor">
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="action-form-droppable">
@@ -155,22 +169,30 @@ export const ActionForm = ({
   }
 
   return (
-    <FormProvider initialValues={initialValues} onSubmit={onSubmit ?? _.noop}>
-      <Form role="form" data-testid="action-form">
-        {form.fields.map(field => (
-          <FormFieldWidget key={field.name} formField={field} />
-        ))}
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={formValidationSchema}
+      onSubmit={handleSubmit}
+      enableReinitialize
+    >
+      {({ dirty }) => (
+        <Form role="form" data-testid="action-form">
+          {form.fields.map(field => (
+            <FormFieldWidget key={field.name} formField={field} />
+          ))}
 
-        <ActionFormButtonContainer>
-          {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
-          <FormSubmitButton
-            title={submitTitle ?? t`Save`}
-            {...submitButtonVariant}
-          />
-        </ActionFormButtonContainer>
+          <ActionFormButtonContainer>
+            {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
+            <FormSubmitButton
+              disabled={!dirty}
+              title={submitTitle ?? t`Save`}
+              {...submitButtonVariant}
+            />
+          </ActionFormButtonContainer>
 
-        <FormErrorMessage />
-      </Form>
+          <FormErrorMessage />
+        </Form>
+      )}
     </FormProvider>
   );
 };
