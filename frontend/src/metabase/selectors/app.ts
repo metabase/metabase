@@ -72,7 +72,8 @@ export const getIsAppBarVisible = createSelector(
     const allEmbeddedAppBarElementsHidden =
       !embedOptions.search &&
       !embedOptions.new_button &&
-      !embedOptions.breadcrumbs;
+      !embedOptions.breadcrumbs &&
+      !embedOptions.logo;
     const isEmbeddedAppBarHidden =
       !embedOptions.top_nav || allEmbeddedAppBarElementsHidden;
     if (
@@ -107,6 +108,13 @@ export const getIsNavBarEnabled = createSelector(
       return EMBEDDED_PATHS_WITH_NAVBAR.some(pattern => pattern.test(path));
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
+  },
+);
+
+export const getIsLogoVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => {
+    return !isEmbedded || embedOptions.logo;
   },
 );
 

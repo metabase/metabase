@@ -19,6 +19,7 @@ export interface AppBarLargeProps {
   collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
+  isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
@@ -33,6 +34,7 @@ const AppBarLarge = ({
   collectionId,
   isNavBarOpen,
   isNavBarEnabled,
+  isLogoVisible,
   isSearchVisible,
   isNewButtonVisible,
   isProfileLinkVisible,
@@ -45,7 +47,10 @@ const AppBarLarge = ({
 
   return (
     <AppBarRoot isNavBarOpen={isNavBarVisible}>
-      <AppBarLeftContainer isNavBarEnabled={isNavBarEnabled}>
+      <AppBarLeftContainer
+        isNavBarEnabled={isNavBarEnabled}
+        isLogoVisible={isLogoVisible}
+      >
         <AppBarLogo
           isNavBarOpen={isNavBarVisible}
           isNavBarEnabled={isNavBarEnabled}

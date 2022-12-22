@@ -10,6 +10,7 @@ const DEFAULT_OPTIONS = {
   search: false,
   new_button: false,
   breadcrumbs: true,
+  logo: true,
   header: true,
   additional_info: true,
   action_buttons: true,

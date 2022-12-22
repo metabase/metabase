@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
@@ -22,6 +23,7 @@ export const AppBarRoot = styled.div<AppBarRootProps>`
 
 export interface AppBarLeftContainerProps {
   isNavBarEnabled?: boolean;
+  isLogoVisible?: boolean;
 }
 
 export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
@@ -44,6 +46,22 @@ export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
       opacity: ${props => (props.isNavBarEnabled ? 1 : 0)};
     }
   }
+
+  ${props =>
+    !props.isLogoVisible &&
+    css`
+      ${SidebarButton} {
+        opacity: 1;
+      }
+
+      padding-left: ${!props.isNavBarEnabled && "1rem"};
+
+      &:hover ${LogoLink}, ${LogoLink} {
+        display: ${!props.isNavBarEnabled && "none"};
+        opacity: 0;
+        pointer-events: none;
+      }
+    `}
 `;
 
 export const AppBarRightContainer = styled.div`

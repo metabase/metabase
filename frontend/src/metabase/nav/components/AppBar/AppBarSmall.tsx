@@ -21,6 +21,7 @@ export interface AppBarSmallProps {
   currentUser: User;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
+  isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
@@ -34,6 +35,7 @@ const AppBarSmall = ({
   currentUser,
   isNavBarOpen,
   isNavBarEnabled,
+  isLogoVisible,
   isSearchVisible,
   isProfileLinkVisible,
   isCollectionPathVisible,
@@ -46,6 +48,8 @@ const AppBarSmall = ({
 
   const [isSearchActive, setSearchActive] = useState(false);
   const isInfoVisible = isQuestionLineageVisible || isCollectionPathVisible;
+  const isHeaderVisible =
+    isLogoVisible || isNavBarEnabled || isSearchVisible || isProfileLinkVisible;
   const isSubheaderVisible = !isNavBarVisible && isInfoVisible;
 
   const handleLogoClick = useCallback(() => {
@@ -63,7 +67,10 @@ const AppBarSmall = ({
 
   return (
     <AppBarRoot>
-      <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
+      <AppBarHeader
+        isSubheaderVisible={isSubheaderVisible}
+        isHeaderVisible={isHeaderVisible}
+      >
         <AppBarMainContainer>
           <AppBarToggleContainer>
             {isNavBarEnabled && (
@@ -87,7 +94,7 @@ const AppBarSmall = ({
             </AppBarProfileLinkContainer>
           )}
         </AppBarMainContainer>
-        <AppBarLogoContainer isVisible={!isSearchActive}>
+        <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
           <AppBarLogo onLogoClick={handleLogoClick} />
         </AppBarLogoContainer>
       </AppBarHeader>
