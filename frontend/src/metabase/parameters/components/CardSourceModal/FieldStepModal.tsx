@@ -26,7 +26,10 @@ interface FieldStepModalOwnProps {
 }
 
 interface FieldStepModalStateProps {
+  tableId: string;
   table: Table | undefined;
+  loading: boolean;
+  error: unknown;
 }
 
 interface FieldStepModalDispatchProps {
@@ -38,8 +41,10 @@ type FieldStepModalProps = FieldStepModalOwnProps &
   FieldStepModalDispatchProps;
 
 const FieldStepModal = ({
-  cardId,
   table,
+  tableId,
+  loading,
+  error,
   fieldRef,
   onFetchMetadata,
   onChangeField,
@@ -56,8 +61,8 @@ const FieldStepModal = ({
   }, [fields, fieldRef]);
 
   useEffect(() => {
-    onFetchMetadata({ id: getQuestionVirtualTableId({ id: cardId }) });
-  }, [cardId, onFetchMetadata]);
+    onFetchMetadata({ id: tableId });
+  }, [tableId, onFetchMetadata]);
 
   const handleChange = useCallback(
     (event: SelectChangeEvent<Field>) => {
@@ -67,7 +72,7 @@ const FieldStepModal = ({
   );
 
   return (
-    <LoadingAndErrorWrapper loading={!table}>
+    <LoadingAndErrorWrapper loading={loading} error={error}>
       {table && (
         <ModalContent
           title={t`Which column from ${table.displayName()} should be used`}
@@ -105,11 +110,17 @@ const getSupportedFields = (table: Table) => {
   return table.fields.filter(field => field.isString());
 };
 
-const mapStateToProps = (state: State, { cardId }: FieldStepModalOwnProps) => ({
-  table: Tables.selectors.getObject(state, {
-    entityId: getQuestionVirtualTableId({ id: cardId }),
-  }),
-});
+const mapStateToProps = (state: State, { cardId }: FieldStepModalOwnProps) => {
+  const tableId = getQuestionVirtualTableId({ id: cardId });
+  const options = { entityId: tableId, requestType: "fetchMetadata" };
+
+  return {
+    tableId,
+    table: Tables.selectors.getObject(state, options),
+    loading: Tables.selectors.getLoading(state, options),
+    error: Tables.selectors.getError(state, options),
+  };
+};
 
 const mapDispatchToProps = {
   onFetchMetadata: Tables.actions.fetchMetadata,

@@ -125,7 +125,7 @@ export function DashboardSidebars({
           onChangeDefaultValue={setParameterDefaultValue}
           onChangeIsMultiSelect={setParameterIsMultiSelect}
           onChangeSourceType={setParameterSourceType}
-          onChangeSourceOptions={setParameterSourceConfig}
+          onChangeSourceConfig={setParameterSourceConfig}
           onChangeFilteringParameters={setParameterFilteringParameters}
           onRemoveParameter={removeParameter}
           onShowAddParameterPopover={showAddParameterPopover}
