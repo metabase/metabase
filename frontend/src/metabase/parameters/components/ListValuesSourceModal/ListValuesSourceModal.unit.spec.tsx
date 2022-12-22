@@ -22,7 +22,7 @@ describe("ListValuesSourceModal", () => {
     });
   });
 
-  it("should clear source values", () => {
+  it("should not allow to submit empty values", () => {
     const props = getProps({
       sourceConfig: createMockValuesSourceConfig({
         values: ["Gadget", "Gizmo"],
@@ -31,9 +31,8 @@ describe("ListValuesSourceModal", () => {
 
     render(<ListValuesSourceModal {...props} />);
     userEvent.clear(screen.getByRole("textbox"));
-    userEvent.click(screen.getByText("Done"));
 
-    expect(props.onChangeSourceConfig).toHaveBeenCalledWith({ values: [] });
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
   });
 });
 
