@@ -1,16 +1,14 @@
 import React from "react";
 import _ from "underscore";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { act } from "react-dom/test-utils";
 import type {
-  ActionFormProps,
   ActionFormSettings,
   FieldSettings,
   WritebackParameter,
 } from "metabase-types/api";
-import type { Parameter } from "metabase-types/types/Parameter";
 
 import { ActionForm } from "./ActionForm";
 
@@ -390,6 +388,47 @@ describe("Actions > ActionForm", () => {
       expect(submitSpy).not.toHaveBeenCalled();
     });
 
+    it("disables form submission when no fields are changed", async () => {
+      const formSettings: ActionFormSettings = {
+        type: "form",
+        fields: {
+          "abc-123": makeFieldSettings({
+            inputType: "string",
+            id: "abc-123",
+            title: "foo input",
+            required: false,
+          }),
+          "def-456": makeFieldSettings({
+            inputType: "string",
+            id: "def-456",
+            title: "bar input",
+            required: false,
+          }),
+        },
+      };
+      const params = [
+        makeParameter({ id: "abc-123" }),
+        makeParameter({ id: "def-456" }),
+      ];
+
+      const submitSpy = jest.fn();
+
+      render(
+        <ActionForm
+          parameters={params as WritebackParameter[]}
+          formSettings={formSettings}
+          onSubmit={submitSpy}
+        />,
+      );
+
+      await act(async () => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      expect(submitSpy).not.toHaveBeenCalled();
+    });
+
     it("cannot type a string in a numeric field", async () => {
       const formSettings: ActionFormSettings = {
         type: "form",
@@ -561,6 +600,92 @@ describe("Actions > ActionForm", () => {
           "ghi-789": 1,
         },
         expect.anything(),
+      );
+    });
+  });
+
+  // this may not be the final desired behavior, but it's what we have for now
+  describe("Null Handling", () => {
+    const inputTypes = ["string", "number", "text", "date", "datetime", "time"];
+    inputTypes.forEach(inputType => {
+      it(`casts empty optional ${inputType} field to null`, async () => {
+        const formSettings: ActionFormSettings = {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: inputType as FieldSettings["inputType"],
+              id: "abc-123",
+              title: "input",
+              required: false,
+            }),
+          },
+        };
+        const params = [makeParameter({ id: "abc-123" })];
+
+        const submitSpy = jest.fn();
+
+        render(
+          <ActionForm
+            parameters={params as WritebackParameter[]}
+            initialValues={{ "abc-123": 1 }}
+            formSettings={formSettings}
+            onSubmit={submitSpy}
+          />,
+        );
+
+        await act(async () => {
+          // userEvent.clear doesn't work for date or time inputs 🤷
+          await fireEvent.change(screen.getByLabelText(/input/i), {
+            target: { value: "" },
+          });
+          await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        });
+
+        expect(submitSpy).toHaveBeenCalledWith(
+          {
+            "abc-123": null,
+          },
+          expect.any(Object),
+        );
+      });
+    });
+
+    // bug repro: https://github.com/metabase/metabase/issues/27377
+    it.skip("casts empty optional category fields to null", async () => {
+      const formSettings: ActionFormSettings = {
+        type: "form",
+        fields: {
+          "abc-123": makeFieldSettings({
+            inputType: "category",
+            id: "abc-123",
+            title: "input",
+            required: false,
+          }),
+        },
+      };
+      const params = [makeParameter({ id: "abc-123" })];
+
+      const submitSpy = jest.fn();
+
+      render(
+        <ActionForm
+          parameters={params as WritebackParameter[]}
+          initialValues={{ "abc-123": "aaa" }}
+          formSettings={formSettings}
+          onSubmit={submitSpy}
+        />,
+      );
+
+      await act(async () => {
+        await userEvent.clear(screen.getByLabelText(/input/i));
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      expect(submitSpy).toHaveBeenCalledWith(
+        {
+          "abc-123": null,
+        },
+        expect.any(Object),
       );
     });
   });
