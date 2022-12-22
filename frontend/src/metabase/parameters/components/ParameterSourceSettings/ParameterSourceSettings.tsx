@@ -8,8 +8,8 @@ import {
 } from "metabase/parameters/utils/dashboards";
 import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
-import ValuesCardSourceModal from "../ValuesCardSourceModal";
-import ValuesListSourceModal from "../ValuesListSourceModal";
+import CardSourceModal from "../CardSourceModal";
+import ListSourceModal from "../ListSourceModal";
 import {
   RadioLabelButton,
   RadioLabelRoot,
@@ -72,7 +72,7 @@ const ParameterSourceSettings = ({
       />
       {editingType === "card" && (
         <Modal medium onClose={handleClose}>
-          <ValuesCardSourceModal
+          <CardSourceModal
             sourceConfig={sourceConfig}
             onChangeSourceConfig={handleSourceConfigChange}
             onClose={handleClose}
@@ -81,7 +81,7 @@ const ParameterSourceSettings = ({
       )}
       {editingType === "static-list" && (
         <Modal onClose={handleClose}>
-          <ValuesListSourceModal
+          <ListSourceModal
             sourceConfig={sourceConfig}
             onChangeSourceConfig={handleSourceConfigChange}
             onClose={handleClose}

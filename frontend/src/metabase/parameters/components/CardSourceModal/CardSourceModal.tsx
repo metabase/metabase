@@ -1,22 +1,22 @@
 import React, { useCallback, useState } from "react";
-import ParameterCardStepModal from "./ParameterCardStep";
-import ParameterFieldStepModal from "./ParameterFieldStep";
 import { ValuesSourceConfig } from "metabase-types/api";
+import ParameterCardStepModal from "./CardStepModal";
+import ParameterFieldStepModal from "./FieldStepModal";
 
-export interface ValuesCardSourceModalProps {
+type CardSourceStep = "card" | "field";
+
+export interface CardSourceModalProps {
   sourceConfig: ValuesSourceConfig;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onClose: () => void;
 }
 
-type ValuesCardSourceModalStep = "card" | "field";
-
-const ValuesCardSourceModal = ({
+const CardSourceModal = ({
   sourceConfig,
   onChangeSourceConfig,
   onClose,
-}: ValuesCardSourceModalProps): JSX.Element | null => {
-  const [step, setStep] = useState<ValuesCardSourceModalStep>("card");
+}: CardSourceModalProps): JSX.Element | null => {
+  const [step, setStep] = useState<CardSourceStep>("card");
   const [cardId, setCardId] = useState(sourceConfig.card_id);
   const [fieldRef, setFieldRef] = useState(sourceConfig.value_field_ref);
 
@@ -59,4 +59,4 @@ const ValuesCardSourceModal = ({
   }
 };
 
-export default ValuesCardSourceModal;
+export default CardSourceModal;

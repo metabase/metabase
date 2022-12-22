@@ -1,7 +1,6 @@
 import React, { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import _ from "underscore";
 import Button from "metabase/core/components/Button/Button";
 import Select, {
   Option,
@@ -12,10 +11,9 @@ import Tables from "metabase/entities/tables";
 import { CardId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Table from "metabase-lib/metadata/Table";
-import Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
-interface ParameterFieldStepOwnProps {
+interface FieldStepModalOwnProps {
   cardId: CardId | undefined;
   fieldRef: unknown[] | undefined;
   onChangeField: (fieldRef: unknown[]) => void;
@@ -24,26 +22,23 @@ interface ParameterFieldStepOwnProps {
   onClose: () => void;
 }
 
-interface ParameterFieldStepStateProps {
+interface FieldStepModalStateProps {
   table: Table;
 }
 
-type ParameterFieldStepProps = ParameterFieldStepOwnProps &
-  ParameterFieldStepStateProps;
+type FieldStepModalProps = FieldStepModalOwnProps & FieldStepModalStateProps;
 
-const ParameterFieldStep = ({
+const FieldStepModal = ({
   table,
   fieldRef,
   onChangeField,
   onSubmit,
   onCancel,
   onClose,
-}: ParameterFieldStepProps): JSX.Element => {
-  const selectedField = getSelectedField(table, fieldRef);
-
+}: FieldStepModalProps): JSX.Element => {
   const handleChange = useCallback(
-    (event: SelectChangeEvent<Field>) => {
-      onChangeField(event.target.value.reference());
+    (event: SelectChangeEvent<unknown[]>) => {
+      onChangeField(event.target.value);
     },
     [onChangeField],
   );
@@ -56,29 +51,30 @@ const ParameterFieldStep = ({
         <Button
           key="submit"
           primary
-          disabled={!selectedField}
+          disabled={!fieldRef}
           onClick={onSubmit}
         >{t`Done`}</Button>,
       ]}
       onClose={onClose}
     >
-      <Select placeholder={t`Pick a column`} onChange={handleChange}>
+      <Select
+        value={fieldRef}
+        placeholder={t`Pick a column`}
+        onChange={handleChange}
+      >
         {table.fields.map((field, index) => (
-          <Option key={index} name={field.displayName()} value={field} />
+          <Option
+            key={index}
+            name={field.displayName()}
+            value={field.reference()}
+          />
         ))}
       </Select>
     </ModalContent>
   );
 };
 
-const getSelectedField = (table: Table, fieldRef?: unknown[]) => {
-  return table.fields.find(field => _.isEqual(field.reference(), fieldRef));
-};
-
-const mapStateToProps = (
-  state: State,
-  { cardId }: ParameterFieldStepOwnProps,
-) => ({
+const mapStateToProps = (state: State, { cardId }: FieldStepModalOwnProps) => ({
   table: Tables.selectors.getObject(state, {
     entityId: getQuestionVirtualTableId({ id: cardId }),
   }),
@@ -88,4 +84,4 @@ const mapDispatchToProps = {
   onFetchMetadata: Tables.actions.fetchMetadata,
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(ParameterFieldStep);
+export default connect(mapStateToProps, mapDispatchToProps)(FieldStepModal);

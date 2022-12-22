@@ -3,22 +3,22 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import { ValuesSourceConfig } from "metabase-types/api";
-import { ModalMessage, ModalTextArea } from "./ValuesListSourceModal.styled";
+import { ModalMessage, ModalTextArea } from "./ListSourceModal.styled";
 
 const NEW_LINE = "\n";
 const PLACEHOLDER = [t`banana`, t`orange`].join(NEW_LINE);
 
-export interface ValuesListSourceModalProps {
+export interface ListSourceModalProps {
   sourceConfig: ValuesSourceConfig;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onClose: () => void;
 }
 
-const ValuesListSourceModal = ({
+const ListSourceModal = ({
   sourceConfig,
   onChangeSourceConfig,
   onClose,
-}: ValuesListSourceModalProps): JSX.Element => {
+}: ListSourceModalProps): JSX.Element => {
   const [value, setValue] = useState(getInputValue(sourceConfig.values));
   const isEmpty = !value.trim().length;
 
@@ -73,4 +73,4 @@ const getSourceValues = (value: string) => {
     .filter(line => line.length > 0);
 };
 
-export default ValuesListSourceModal;
+export default ListSourceModal;

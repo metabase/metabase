@@ -20,37 +20,37 @@ import {
   getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
 
-interface ParameterCardStepOwnProps {
+interface CardStepModalOwnProps {
   cardId: CardId | undefined;
   onChangeCard: (cardId: CardId | undefined) => void;
   onSubmit: () => void;
   onClose: () => void;
 }
 
-interface ParameterCardStepCardProps {
+interface CardStepModalCardProps {
   card: Card | undefined;
 }
 
-interface ParameterCardStepCollectionProps {
+interface CardStepModalCollectionProps {
   collection: Collection | undefined;
 }
 
-interface ParameterCardStepStateProps {
+interface CardStepModalStateProps {
   question: Question | undefined;
 }
 
-type ParameterCardStepProps = ParameterCardStepOwnProps &
-  ParameterCardStepCardProps &
-  ParameterCardStepCollectionProps &
-  ParameterCardStepStateProps;
+type CardStepModalProps = CardStepModalOwnProps &
+  CardStepModalCardProps &
+  CardStepModalCollectionProps &
+  CardStepModalStateProps;
 
-const ParameterCardStep = ({
+const CardStepModal = ({
   question,
   collection,
   onChangeCard,
   onSubmit,
   onClose,
-}: ParameterCardStepProps): JSX.Element => {
+}: CardStepModalProps): JSX.Element => {
   const initialValue = getInitialValue(question, collection);
   const [value, setValue] = useDataPickerValue(initialValue);
   const cardId = getCardIdFromValue(value);
@@ -84,13 +84,14 @@ const getInitialValue = (
   collection?: Collection,
 ): Partial<DataPickerValue> | undefined => {
   if (question) {
+    const id = question.id();
     const isDatasets = question.isDataset();
 
     return {
       type: isDatasets ? "models" : "questions",
       schemaId: getCollectionVirtualSchemaId(collection, { isDatasets }),
       collectionId: collection?.id,
-      tableIds: [getQuestionVirtualTableId(question.card())],
+      tableIds: [getQuestionVirtualTableId({ id })],
     };
   }
 };
@@ -106,14 +107,14 @@ const getCardIdFromValue = ({ tableIds }: DataPickerValue) => {
 
 export default _.compose(
   Questions.load({
-    id: (state: State, { cardId }: ParameterCardStepOwnProps) => cardId,
+    id: (state: State, { cardId }: CardStepModalOwnProps) => cardId,
     entityAlias: "card",
   }),
   Collections.load({
-    id: (state: State, { card }: ParameterCardStepCardProps) =>
+    id: (state: State, { card }: CardStepModalCardProps) =>
       card?.collection_id ?? "root",
   }),
-  connect((state: State, { card }: ParameterCardStepCardProps) => ({
+  connect((state: State, { card }: CardStepModalCardProps) => ({
     question: card ? new Question(card, getMetadata(state)) : undefined,
   })),
-)(ParameterCardStep);
+)(CardStepModal);
