@@ -1,9 +1,5 @@
-/* eslint-disable react/prop-types */
-import React from "react";
-import { Provider } from "react-redux";
 import { normalize } from "normalizr";
 import { chain } from "icepick";
-import { getStore } from "metabase/store";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { FieldSchema } from "metabase/schema";
@@ -122,12 +118,3 @@ export function makeMetadata(metadata) {
 
   return getMetadata({ entities: metadata });
 }
-
-const nopEntitiesReducer = (s = state.entities, a) => s;
-
-// simple provider which only supports static metadata defined above, no actions will take effect
-export const StaticEntitiesProvider = ({ children }) => (
-  <Provider store={getStore({ entities: nopEntitiesReducer }, null, state)}>
-    {children}
-  </Provider>
-);
