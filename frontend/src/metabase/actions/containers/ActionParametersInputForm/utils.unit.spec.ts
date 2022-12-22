@@ -58,7 +58,7 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
       expect(result).toEqual(newValues);
     });
 
-    it("should not flag fields changed from null to empty string", () => {
+    it("should flag fields changed from null to empty string", () => {
       const oldValues = {
         "abc-def": null,
       };
@@ -69,7 +69,7 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
 
       const result = getChangedValues(newValues, oldValues);
 
-      expect(result).toEqual({});
+      expect(result).toEqual({ "abc-def": "" });
     });
   });
 });
