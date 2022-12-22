@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { ValuesSourceConfig } from "metabase-types/api";
-import ParameterCardStepModal from "./CardStepModal";
-import ParameterFieldStepModal from "./FieldStepModal";
+import CardStepModal from "./CardStepModal";
+import FieldStepModal from "./FieldStepModal";
 
 type CardSourceStep = "card" | "field";
 
@@ -36,7 +36,7 @@ const CardSourceModal = ({
   switch (step) {
     case "card":
       return (
-        <ParameterCardStepModal
+        <CardStepModal
           cardId={cardId}
           onChangeCard={setCardId}
           onSubmit={handleCardSubmit}
@@ -45,7 +45,7 @@ const CardSourceModal = ({
       );
     case "field":
       return (
-        <ParameterFieldStepModal
+        <FieldStepModal
           cardId={cardId}
           fieldRef={fieldRef}
           onChangeField={setFieldRef}
