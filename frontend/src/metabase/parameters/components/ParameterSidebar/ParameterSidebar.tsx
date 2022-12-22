@@ -4,7 +4,7 @@ import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import {
   ParameterId,
-  ParameterSourceOptions,
+  ParameterSourceConfig,
   ParameterSourceType,
 } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
@@ -28,7 +28,7 @@ export interface ParameterSidebarProps {
   ) => void;
   onChangeSourceOptions: (
     parameterId: ParameterId,
-    sourceOptions: ParameterSourceOptions,
+    sourceOptions: ParameterSourceConfig,
   ) => void;
   onChangeFilteringParameters: (
     parameterId: ParameterId,
@@ -85,7 +85,7 @@ const ParameterSidebar = ({
   );
 
   const handleSourceOptionsChange = useCallback(
-    (sourceOptions: ParameterSourceOptions) => {
+    (sourceOptions: ParameterSourceConfig) => {
       onChangeSourceOptions(parameterId, sourceOptions);
     },
     [parameterId, onChangeSourceOptions],

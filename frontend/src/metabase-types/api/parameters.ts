@@ -40,12 +40,12 @@ export interface Parameter {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
-  source_type?: ParameterSourceType;
-  source_options?: ParameterSourceOptions;
+  values_source_type?: ParameterSourceType;
+  values_source_config?: ParameterSourceConfig;
 }
 
 export type ParameterSourceType = null | "static-list";
 
-export interface ParameterSourceOptions {
+export interface ParameterSourceConfig {
   values?: string[];
 }

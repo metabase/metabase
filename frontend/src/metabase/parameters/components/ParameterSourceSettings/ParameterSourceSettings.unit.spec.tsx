@@ -10,7 +10,7 @@ describe("ParameterSourceSettings", () => {
   it("should set the default source type", () => {
     const props = getProps({
       parameter: createMockUiParameter({
-        source_type: "static-list",
+        values_source_type: "static-list",
       }),
     });
 
@@ -37,8 +37,8 @@ describe("ParameterSourceSettings", () => {
   it("should edit the static list source via the modal", () => {
     const props = getProps({
       parameter: createMockUiParameter({
-        source_type: "static-list",
-        source_options: { values: ["Gadget"] },
+        values_source_type: "static-list",
+        values_source_config: { values: ["Gadget"] },
       }),
     });
 
@@ -68,8 +68,8 @@ describe("ParameterSourceSettings", () => {
   it("should set the default source type if the static list is empty", () => {
     const props = getProps({
       parameter: createMockUiParameter({
-        source_type: "static-list",
-        source_options: { values: ["Gadget"] },
+        values_source_type: "static-list",
+        values_source_config: { values: ["Gadget"] },
       }),
     });
 

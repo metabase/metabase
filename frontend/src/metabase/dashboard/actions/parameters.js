@@ -201,7 +201,7 @@ export const setParameterSourceType = createThunkAction(
   (parameterId, sourceType) => (dispatch, getState) => {
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
-      source_type: sourceType,
+      values_source_type: sourceType,
     }));
     return { id: parameterId, sourceType };
   },
@@ -214,7 +214,7 @@ export const setParameterSourceOptions = createThunkAction(
   (parameterId, sourceOptions) => (dispatch, getState) => {
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
-      source_options: sourceOptions,
+      values_source_config: sourceOptions,
     }));
     return { id: parameterId, sourceOptions };
   },

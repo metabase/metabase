@@ -735,11 +735,11 @@
            (throw e)))))))
 
 (defn- static-parameter-values
-  [{source-options :source_options :as _param} query]
-  (when-let [values (:values source-options)]
-    {:values (if query
-               (parameter-card/query-matches query values)
-               values)
+  [{values-source-options :values_source_config :as _param} query]
+  (when-let [values (:values values-source-options)]
+    {:values          (if query
+                        (parameter-card/query-matches query values)
+                        values)
      :has_more_values false}))
 
 (s/defn param-values
@@ -762,7 +762,7 @@
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
-     (case (:source_type param)
+     (case (:values_source_type param)
        "static-list" (static-parameter-values param query)
        "card"        (parameter-card/values-for-dashboard dashboard param-key query)
        (chain-filter dashboard param-key constraint-param-key->value query)))))
