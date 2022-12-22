@@ -65,12 +65,13 @@ describe("scenarios > dashboard > filters", () => {
 
     cy.findByText("Text").click();
     popover().within(() => {
+      cy.findByText("Doohickey").should("be.visible");
       cy.findByText("Gadget").should("be.visible");
-      cy.findByText("Gizmo").should("be.visible");
+      cy.findByText("Gizmo").should("not.exist");
 
-      cy.findByPlaceholderText("Search the list").type("Giz");
-      cy.findByText("Gadget").should("not.exist");
-      cy.findByText("Gizmo").click();
+      cy.findByPlaceholderText("Search the list").type("Gadget");
+      cy.findByText("Doohickey").should("not.exist");
+      cy.findByText("Gadget").click();
       cy.button("Add filter").click();
     });
     cy.wait("@getCardQuery");
