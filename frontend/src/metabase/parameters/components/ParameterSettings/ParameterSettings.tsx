@@ -35,7 +35,7 @@ export interface ParameterSettingsProps {
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
-  onChangeSourceOptions: (sourceOptions: ValuesSourceConfig) => void;
+  onChangeSourceConfig: (sourceOptions: ValuesSourceConfig) => void;
   onRemoveParameter: () => void;
 }
 
@@ -43,7 +43,7 @@ const ParameterSettings = ({
   parameter,
   onChangeName,
   onChangeSourceType,
-  onChangeSourceOptions,
+  onChangeSourceConfig,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onRemoveParameter,
@@ -60,7 +60,7 @@ const ParameterSettings = ({
           <ParameterSourceSettings
             parameter={parameter}
             onChangeSourceType={onChangeSourceType}
-            onChangeSourceOptions={onChangeSourceOptions}
+            onChangeSourceConfig={onChangeSourceConfig}
           />
         </SettingSection>
       )}

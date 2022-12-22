@@ -29,7 +29,7 @@ describe("ParameterSourceSettings", () => {
     userEvent.click(screen.getByText("Done"));
 
     expect(props.onChangeSourceType).toHaveBeenCalledWith("static-list");
-    expect(props.onChangeSourceOptions).toHaveBeenCalledWith({
+    expect(props.onChangeSourceConfig).toHaveBeenCalledWith({
       values: ["Gadget"],
     });
   });
@@ -49,7 +49,7 @@ describe("ParameterSourceSettings", () => {
     userEvent.click(screen.getByText("Done"));
 
     expect(props.onChangeSourceType).toHaveBeenCalledWith("static-list");
-    expect(props.onChangeSourceOptions).toHaveBeenCalledWith({
+    expect(props.onChangeSourceConfig).toHaveBeenCalledWith({
       values: ["Widget"],
     });
   });
@@ -62,7 +62,7 @@ describe("ParameterSourceSettings", () => {
     userEvent.click(screen.getByText("Cancel"));
 
     expect(props.onChangeSourceType).not.toHaveBeenCalled();
-    expect(props.onChangeSourceOptions).not.toHaveBeenCalled();
+    expect(props.onChangeSourceConfig).not.toHaveBeenCalled();
   });
 
   it("should set the default source type if the static list is empty", () => {
@@ -79,7 +79,7 @@ describe("ParameterSourceSettings", () => {
     userEvent.click(screen.getByText("Done"));
 
     expect(props.onChangeSourceType).toHaveBeenCalledWith(null);
-    expect(props.onChangeSourceOptions).toHaveBeenCalledWith({ values: [] });
+    expect(props.onChangeSourceConfig).toHaveBeenCalledWith({ values: [] });
   });
 });
 
@@ -88,6 +88,6 @@ const getProps = (
 ): ParameterSourceSettingsProps => ({
   parameter: createMockUiParameter(),
   onChangeSourceType: jest.fn(),
-  onChangeSourceOptions: jest.fn(),
+  onChangeSourceConfig: jest.fn(),
   ...opts,
 });

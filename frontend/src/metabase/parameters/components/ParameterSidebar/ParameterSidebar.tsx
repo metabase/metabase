@@ -26,7 +26,7 @@ export interface ParameterSidebarProps {
     parameterId: ParameterId,
     sourceType: ValuesSourceType,
   ) => void;
-  onChangeSourceOptions: (
+  onChangeSourceConfig: (
     parameterId: ParameterId,
     sourceOptions: ValuesSourceConfig,
   ) => void;
@@ -46,7 +46,7 @@ const ParameterSidebar = ({
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onChangeSourceType,
-  onChangeSourceOptions,
+  onChangeSourceConfig,
   onChangeFilteringParameters,
   onRemoveParameter,
   onShowAddParameterPopover,
@@ -84,11 +84,11 @@ const ParameterSidebar = ({
     [parameterId, onChangeSourceType],
   );
 
-  const handleSourceOptionsChange = useCallback(
+  const handleSourceConfigChange = useCallback(
     (sourceOptions: ValuesSourceConfig) => {
-      onChangeSourceOptions(parameterId, sourceOptions);
+      onChangeSourceConfig(parameterId, sourceOptions);
     },
-    [parameterId, onChangeSourceOptions],
+    [parameterId, onChangeSourceConfig],
   );
 
   const handleFilteringParametersChange = useCallback(
@@ -121,7 +121,7 @@ const ParameterSidebar = ({
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}
             onChangeSourceType={handleSourceTypeChange}
-            onChangeSourceOptions={handleSourceOptionsChange}
+            onChangeSourceConfig={handleSourceConfigChange}
             onRemoveParameter={handleRemove}
           />
         ) : (
