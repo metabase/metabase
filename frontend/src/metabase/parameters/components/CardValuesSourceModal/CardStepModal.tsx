@@ -19,6 +19,7 @@ import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
+import { ModalBody } from "./CardStepModal.styled";
 
 interface CardStepModalOwnProps {
   cardId: CardId | undefined;
@@ -74,7 +75,9 @@ const CardStepModal = ({
       ]}
       onClose={onSubmit}
     >
-      <DataPickerContainer value={value} onChange={setValue} />
+      <ModalBody>
+        <DataPickerContainer value={value} onChange={setValue} />
+      </ModalBody>
     </ModalContent>
   );
 };

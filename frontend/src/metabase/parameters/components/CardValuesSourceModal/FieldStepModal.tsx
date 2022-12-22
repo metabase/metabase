@@ -13,6 +13,7 @@ import { State } from "metabase-types/store";
 import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import { ModalBody } from "./FieldStepModal.styled";
 
 interface FieldStepModalOwnProps {
   cardId: CardId | undefined;
@@ -66,15 +67,17 @@ const FieldStepModal = ({
       ]}
       onClose={onClose}
     >
-      <Select
-        value={selectedField}
-        placeholder={t`Pick a column`}
-        onChange={handleChange}
-      >
-        {fields.map((field, index) => (
-          <Option key={index} name={field.displayName()} value={field} />
-        ))}
-      </Select>
+      <ModalBody>
+        <Select
+          value={selectedField}
+          placeholder={t`Pick a column`}
+          onChange={handleChange}
+        >
+          {fields.map((field, index) => (
+            <Option key={index} name={field.displayName()} value={field} />
+          ))}
+        </Select>
+      </ModalBody>
     </ModalContent>
   );
 };
