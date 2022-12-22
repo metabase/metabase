@@ -16,7 +16,7 @@ export const OTHER_MULTI_SCHEMA_DATABASE_ID = 5;
 export const MAIN_METRIC_ID = 1;
 
 function aliasTablesAndFields(metadata) {
-  // alias DATABASE.TABLE.FIELD for convienence in tests
+  // alias DATABASE.TABLE.FIELD for convenience in tests
   // NOTE: this assume names don't conflict with other properties in Database/Table which I think is safe for Sample Database
   for (const database of Object.values(metadata.databases)) {
     for (const table of database.tables) {
@@ -86,7 +86,7 @@ export function makeMetadata(metadata) {
     questions: {},
     ...metadata,
   };
-  // convienence for filling in missing bits
+  // convenience for filling in missing bits
   for (const objects of Object.values(metadata)) {
     for (const [id, object] of Object.entries(objects)) {
       object.id = /^\d+$/.test(id) ? parseInt(id) : id;
