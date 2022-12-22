@@ -154,7 +154,6 @@
   with-bigquery-fks]
 
  [qp.test-util
-  card-with-source-metadata-for-query
   store-contents
   with-database-timezone-id
   with-everything-store
