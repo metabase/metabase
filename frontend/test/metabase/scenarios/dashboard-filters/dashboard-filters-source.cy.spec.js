@@ -9,13 +9,20 @@ import {
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const questionDetails = {
+const countQuestionDetails = {
   display: "scalar",
   query: {
-    "source-table": ORDERS_ID,
+    "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
+  },
+};
+
+const categoriesQuestionDetails = {
+  name: "Product categories",
+  native: {
+    query: "select distinct CATEGORY from PRODUCTS order by CATEGORY limit 2",
   },
 };
 
@@ -26,12 +33,55 @@ describe("scenarios > dashboard > filters", () => {
     cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
+  it("should be able to use a native card source", () => {
+    cy.createNativeQuestion(categoriesQuestionDetails);
+    cy.createQuestionAndDashboard({
+      questionDetails: countQuestionDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+    setFilter("Text or Category", "Dropdown");
+    cy.findByText("Values from a model or question").click();
+    modal().within(() => {
+      cy.findByText("Saved Questions").click();
+      cy.findByText("Product categories").click();
+      cy.button("Select column").click();
+    });
+    modal().within(() => {
+      cy.findByText("Pick a column").click();
+    });
+    popover().within(() => {
+      cy.findByText("CATEGORY").click();
+    });
+    modal().within(() => {
+      cy.button("Done").click();
+    });
+
+    cy.findByText("Select…").click();
+    popover().within(() => cy.findByText("Category").click());
+    saveDashboard();
+
+    cy.findByText("Text").click();
+    popover().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+      cy.findByText("Gizmo").should("be.visible");
+
+      cy.findByPlaceholderText("Search the list").type("Giz");
+      cy.findByText("Gadget").should("not.exist");
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
+    cy.wait("@getCardQuery");
+  });
+
   it("should be able to use a static list source", () => {
-    cy.createQuestionAndDashboard({ questionDetails }).then(
-      ({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
-      },
-    );
+    cy.createQuestionAndDashboard({
+      questionDetails: countQuestionDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      visitDashboard(dashboard_id);
+    });
 
     editDashboard();
     setFilter("Text or Category", "Dropdown");

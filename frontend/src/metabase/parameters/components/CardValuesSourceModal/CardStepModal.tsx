@@ -71,7 +71,7 @@ const CardStepModal = ({
           primary
           disabled={cardId == null}
           onClick={handleSubmit}
-        >{t`Select columns`}</Button>,
+        >{t`Select column`}</Button>,
       ]}
       onClose={onSubmit}
     >
