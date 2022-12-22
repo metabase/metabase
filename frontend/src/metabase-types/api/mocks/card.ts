@@ -20,7 +20,6 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   collection_id: null,
   last_query_start: null,
   archived: false,
-  result_metadata: [],
   ...opts,
 });
 
