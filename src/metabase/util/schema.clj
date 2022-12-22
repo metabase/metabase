@@ -291,13 +291,11 @@
     (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
 (def FieldRef
-  "Schema for a valid Field Referenced."
-  (s/cond-pre
-    mbql.s/FieldOrAggregationReference
-    (s/pred
-      (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
-            mbql.normalize/normalize-tokens)
-      "Field or aggregation reference as it comes in to the API")))
+  "Schema for a valid Field Reference."
+  (with-api-error-message (s/pred
+                            (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
+                                  mbql.normalize/normalize-tokens))
+    (deferred-tru "value must a field or an aggregation reference")))
 
 (def CoercionStrategyKeywordOrString
   "Like `CoercionStrategy` but accepts either a keyword or string."
