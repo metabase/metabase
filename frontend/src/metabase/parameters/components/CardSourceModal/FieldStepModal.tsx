@@ -47,9 +47,13 @@ const FieldStepModal = ({
   onCancel,
   onClose,
 }: FieldStepModalProps): JSX.Element => {
+  const fields = useMemo(() => {
+    return table ? getSupportedFields(table) : [];
+  }, [table]);
+
   const selectedField = useMemo(() => {
-    return table && fieldRef && getFieldByRef(table, fieldRef);
-  }, [table, fieldRef]);
+    return fieldRef && getFieldByRef(fields, fieldRef);
+  }, [fields, fieldRef]);
 
   useEffect(() => {
     onFetchMetadata({ id: getQuestionVirtualTableId({ id: cardId }) });
@@ -83,7 +87,7 @@ const FieldStepModal = ({
             placeholder={t`Pick a column`}
             onChange={handleChange}
           >
-            {table.fields.map((field, index) => (
+            {fields.map((field, index) => (
               <Option key={index} name={field.displayName()} value={field} />
             ))}
           </Select>
@@ -93,8 +97,12 @@ const FieldStepModal = ({
   );
 };
 
-const getFieldByRef = (table: Table, fieldRef: unknown[]) => {
-  return table.fields.find(field => _.isEqual(field.reference(), fieldRef));
+const getFieldByRef = (fields: Field[], fieldRef: unknown[]) => {
+  return fields.find(field => _.isEqual(field.reference(), fieldRef));
+};
+
+const getSupportedFields = (table: Table) => {
+  return table.fields.filter(field => field.isString());
 };
 
 const mapStateToProps = (state: State, { cardId }: FieldStepModalOwnProps) => ({
