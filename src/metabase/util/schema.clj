@@ -378,7 +378,7 @@
 
    ;; for source_type = 'card'
    (s/optional-key :card_id)         IntGreaterThanZero
-   (s/optional-key :value_field_ref) Field
+   (s/optional-key :value_field) Field
    ;; label_field_ref is optional
    (s/optional-key :label_field_ref) Field})
 

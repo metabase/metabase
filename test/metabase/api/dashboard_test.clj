@@ -2073,7 +2073,7 @@
                                  :name           "CATEGORY"
                                  :source_type    "card"
                                  :source_options {:card_id         card-id
-                                                  :value_field_ref (mt/$ids $venues.name)}}]}]]
+                                                  :value_field (mt/$ids $venues.name)}}]}]]
 
       (testing "It uses the results of the card's query execution"
         (let-url [url (chain-filter-values-url dashboard-id "abc")]
@@ -2102,10 +2102,10 @@
                                    :type           "category"
                                    :name           "CATEGORY"
                                    :source_type    "card"
-                                   :source_options {:card_id         card-id
+                                   :source_options {:card_id     card-id
                                                     ;; this should be invalid field_ref beacuse the query
                                                     ;; is for venues table
-                                                    :value_field_ref (mt/$ids $categories.name)}}]}]]
+                                                    :value_field (mt/$ids $categories.name)}}]}]]
         (testing "when getting values"
           (let-url [url (chain-filter-values-url dashboard-id "abc")]
             (is (=? #"No matching field found"
