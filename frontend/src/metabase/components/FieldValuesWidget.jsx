@@ -23,6 +23,11 @@ import { stripId } from "metabase/lib/formatting";
 import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
 
 import Fields from "metabase/entities/fields";
+import {
+  isIdParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase-lib/parameters/utils/parameter-type";
 
 const MAX_SEARCH_RESULTS = 100;
 
@@ -291,6 +296,7 @@ class FieldValuesWidgetInner extends Component {
 
     const tokenFieldPlaceholder = getTokenFieldPlaceholder({
       fields,
+      parameter,
       disableSearch,
       placeholder,
       disablePKRemappingForSearch,
@@ -306,6 +312,12 @@ class FieldValuesWidgetInner extends Component {
       !forceTokenField;
     const isLoading = loadingState === "LOADING";
     const hasListValues = hasList({ fields, disableSearch, options });
+
+    const parseFreeformValue = value => {
+      return isNumeric(fields[0], parameter)
+        ? parseNumberValue(value)
+        : parseStringValue(value);
+    };
 
     return (
       <div
@@ -368,11 +380,7 @@ class FieldValuesWidgetInner extends Component {
               );
             }}
             onInputChange={this.onInputChange}
-            parseFreeformValue={value => {
-              return fields[0].isNumeric()
-                ? parseNumberValue(value)
-                : parseStringValue(value);
-            }}
+            parseFreeformValue={parseFreeformValue}
           />
         )}
       </div>
@@ -446,17 +454,30 @@ function shouldList(fields, disableSearch) {
   );
 }
 
-function getNonSearchableTokenFieldPlaceholder(firstField) {
-  if (firstField.isID()) {
-    return t`Enter an ID`;
-  } else if (firstField.isString()) {
-    return t`Enter some text`;
-  } else if (firstField.isNumeric()) {
-    return t`Enter a number`;
-  }
+function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
+  if (parameter) {
+    if (isIdParameter(parameter)) {
+      return t`Enter an ID`;
+    } else if (isStringParameter(parameter)) {
+      return t`Enter some text`;
+    } else if (isNumberParameter(parameter)) {
+      return t`Enter a number`;
+    }
 
-  // fallback
-  return t`Enter some text`;
+    // fallback
+    return t`Enter some text`;
+  } else {
+    if (firstField.isID()) {
+      return t`Enter an ID`;
+    } else if (firstField.isString()) {
+      return t`Enter some text`;
+    } else if (firstField.isNumeric()) {
+      return t`Enter a number`;
+    }
+
+    // fallback
+    return t`Enter some text`;
+  }
 }
 
 export function searchField(field, disablePKRemappingForSearch) {
@@ -544,6 +565,7 @@ export function isSearchable({
 
 function getTokenFieldPlaceholder({
   fields,
+  parameter,
   disableSearch,
   placeholder,
   disablePKRemappingForSearch,
@@ -578,7 +600,7 @@ function getTokenFieldPlaceholder({
       disablePKRemappingForSearch,
     );
   } else {
-    return getNonSearchableTokenFieldPlaceholder(firstField);
+    return getNonSearchableTokenFieldPlaceholder(firstField, parameter);
   }
 }
 
@@ -670,4 +692,12 @@ export function getValuesMode(
   }
 
   return "none";
+}
+
+function isNumeric(field, parameter) {
+  if (parameter) {
+    return isNumberParameter(parameter);
+  }
+
+  return field.isNumeric();
 }
