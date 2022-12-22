@@ -760,7 +760,7 @@
 
 (defn- card-parameter-values
   [{config :values_source_config :as _param} query]
-  (params.card-values/values-from-card #p (:card_id config) #p (:value_field config) query))
+  (params.card-values/values-from-card (:card_id config) (:value_field config) query))
 
 (s/defn param-values
   "Fetch values for a parameter.
