@@ -297,7 +297,7 @@ describe("scenarios > organization > timelines > question", () => {
       // should show a newly created event
       cy.button("Add an event").click();
       cy.findByLabelText("Event name").type("RC2");
-      cy.findByLabelText("Date").type("10/20/2018");
+      cy.findByLabelText("Date").type("10/20/2017");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
@@ -312,14 +312,31 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByLabelText("star icon").should("not.exist");
       });
 
+      // its timeline, visible but having one hidden event
+      // should display its checkbox with a "dash" icon
+      cy.findByText("Releases")
+        .closest("[aria-label=Timeline card header]")
+        .within(() => {
+          cy.icon("dash").should("be.visible");
+
+          // Hide the timeline then show it again
+          cy.findByRole("checkbox").click();
+          cy.findByRole("checkbox").click();
+        });
+
+      // once timeline is visible, all its events should be visible
+      cy.get(".x.axis").within(() => {
+        cy.findByLabelText("star icon").should("be.visible");
+        cy.findByLabelText("cloud icon").should("be.visible");
+      });
+
       // should initialize events in a hidden timelime
-      // with event checkboxes disabled and unchecked
+      // with event checkboxes unchecked
       cy.findByText("Timeline for collection").click();
 
       cy.findByText("TC1")
         .closest("[aria-label=Timeline event card]")
         .within(() => {
-          cy.findByRole("checkbox").should("be.disabled");
           cy.findByRole("checkbox").should("not.be.checked");
         });
 
