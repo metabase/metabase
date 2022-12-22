@@ -94,7 +94,7 @@ const getInitialValue = (
       type: isDatasets ? "models" : "questions",
       schemaId: getCollectionVirtualSchemaId(collection, { isDatasets }),
       collectionId: collection?.id,
-      tableIds: [getQuestionVirtualTableId({ id })],
+      tableIds: [getQuestionVirtualTableId(id)],
     };
   }
 };

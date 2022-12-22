@@ -92,6 +92,6 @@ const getSupportedFields = (table: Table) => {
 
 export default Tables.load({
   id: (state: State, { cardId }: FieldStepModalOwnProps) =>
-    getQuestionVirtualTableId({ id: cardId }),
+    getQuestionVirtualTableId(cardId),
   requestType: "fetchMetadata",
 })(FieldStepModal);

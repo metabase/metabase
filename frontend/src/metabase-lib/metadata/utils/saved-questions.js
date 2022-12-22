@@ -28,7 +28,7 @@ export function getRootCollectionVirtualSchemaId({ isModels }) {
   return getCollectionVirtualSchemaId(null, { isDatasets: isModels });
 }
 
-export function getQuestionVirtualTableId({ id }) {
+export function getQuestionVirtualTableId(id) {
   return `card__${id}`;
 }
 
@@ -46,7 +46,7 @@ export function getQuestionIdFromVirtualTableId(tableId) {
 
 export function convertSavedQuestionToVirtualTable(card) {
   return {
-    id: getQuestionVirtualTableId(card),
+    id: getQuestionVirtualTableId(card.id),
     display_name: card.name,
     description: card.description,
     moderated_status: card.moderated_status,
