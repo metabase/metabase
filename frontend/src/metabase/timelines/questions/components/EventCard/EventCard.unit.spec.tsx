@@ -54,7 +54,7 @@ describe("EventCard", () => {
 
     expect(props.onToggleEventVisibility).toHaveBeenCalledWith(
       props.event,
-      false,
+      true,
     );
   });
 });
