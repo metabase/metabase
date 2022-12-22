@@ -290,10 +290,10 @@
                                   (deferred-tru "Valid field semantic or relation type (keyword or string)"))
     (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
-(def FieldRef
-  "Schema for a valid Field Reference."
+(def Field
+  "Schema for a valid Field for API usage."
   (with-api-error-message (s/pred
-                            (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
+                            (comp (complement (s/checker mbql.s/Field))
                                   mbql.normalize/normalize-tokens))
     (deferred-tru "value must a field or an aggregation reference")))
 
@@ -378,9 +378,9 @@
 
    ;; for source_type = 'card'
    (s/optional-key :card_id)         IntGreaterThanZero
-   (s/optional-key :value_field_ref) FieldRef
+   (s/optional-key :value_field_ref) Field
    ;; label_field_ref is optional
-   (s/optional-key :label_field_ref) FieldRef})
+   (s/optional-key :label_field_ref) Field})
 
 (def Parameter
   "Schema for a valid Parameter.
