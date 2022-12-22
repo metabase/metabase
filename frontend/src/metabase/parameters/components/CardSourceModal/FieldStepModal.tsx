@@ -12,6 +12,7 @@ import { CardId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
 interface FieldStepModalOwnProps {
   cardId: CardId | undefined;
@@ -87,6 +88,7 @@ const getSupportedFields = (table: Table) => {
 };
 
 export default Tables.load({
-  id: (state: State, { cardId }: FieldStepModalOwnProps) => cardId,
+  id: (state: State, { cardId }: FieldStepModalOwnProps) =>
+    getQuestionVirtualTableId({ id: cardId }),
   requestType: "fetchMetadata",
 })(FieldStepModal);
