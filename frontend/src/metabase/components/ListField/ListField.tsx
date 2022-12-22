@@ -129,8 +129,8 @@ const ListField = ({
       )}
 
       <OptionsList isDashboardFilter={isDashboardFilter}>
-        {filteredOptions.map(option => (
-          <OptionContainer key={option[0]}>
+        {filteredOptions.map((option, index) => (
+          <OptionContainer key={index}>
             <Checkbox
               data-testid={`${option[0]}-filter-value`}
               checkedColor={
