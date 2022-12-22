@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
-import { connect } from "react-redux";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button/Button";
@@ -8,13 +7,11 @@ import Select, {
   SelectChangeEvent,
 } from "metabase/core/components/Select";
 import ModalContent from "metabase/components/ModalContent";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Tables from "metabase/entities/tables";
 import { CardId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
 interface FieldStepModalOwnProps {
   cardId: CardId | undefined;
@@ -25,35 +22,22 @@ interface FieldStepModalOwnProps {
   onClose: () => void;
 }
 
-interface FieldStepModalStateProps {
-  tableId: string;
-  table: Table | undefined;
-  loading: boolean;
-  error: unknown;
+interface FieldStepModalTableProps {
+  table: Table;
 }
 
-interface FieldStepModalDispatchProps {
-  onFetchMetadata: ({ id }: { id: string }) => void;
-}
-
-type FieldStepModalProps = FieldStepModalOwnProps &
-  FieldStepModalStateProps &
-  FieldStepModalDispatchProps;
+type FieldStepModalProps = FieldStepModalOwnProps & FieldStepModalTableProps;
 
 const FieldStepModal = ({
   table,
-  tableId,
-  loading,
-  error,
   fieldReference,
-  onFetchMetadata,
   onChangeField,
   onSubmit,
   onCancel,
   onClose,
 }: FieldStepModalProps): JSX.Element => {
   const fields = useMemo(() => {
-    return table ? getSupportedFields(table) : [];
+    return getSupportedFields(table);
   }, [table]);
 
   const selectedField = useMemo(() => {
@@ -67,38 +51,30 @@ const FieldStepModal = ({
     [onChangeField],
   );
 
-  useEffect(() => {
-    onFetchMetadata({ id: tableId });
-  }, [tableId, onFetchMetadata]);
-
   return (
-    <LoadingAndErrorWrapper loading={loading} error={error}>
-      {table && (
-        <ModalContent
-          title={t`Which column from ${table.displayName()} should be used`}
-          footer={[
-            <Button key="cancel" onClick={onCancel}>{t`Back`}</Button>,
-            <Button
-              key="submit"
-              primary
-              disabled={!selectedField}
-              onClick={onSubmit}
-            >{t`Done`}</Button>,
-          ]}
-          onClose={onClose}
-        >
-          <Select
-            value={selectedField}
-            placeholder={t`Pick a column`}
-            onChange={handleChange}
-          >
-            {fields.map((field, index) => (
-              <Option key={index} name={field.displayName()} value={field} />
-            ))}
-          </Select>
-        </ModalContent>
-      )}
-    </LoadingAndErrorWrapper>
+    <ModalContent
+      title={t`Which column from ${table.displayName()} should be used`}
+      footer={[
+        <Button key="cancel" onClick={onCancel}>{t`Back`}</Button>,
+        <Button
+          key="submit"
+          primary
+          disabled={!selectedField}
+          onClick={onSubmit}
+        >{t`Done`}</Button>,
+      ]}
+      onClose={onClose}
+    >
+      <Select
+        value={selectedField}
+        placeholder={t`Pick a column`}
+        onChange={handleChange}
+      >
+        {fields.map((field, index) => (
+          <Option key={index} name={field.displayName()} value={field} />
+        ))}
+      </Select>
+    </ModalContent>
   );
 };
 
@@ -110,20 +86,7 @@ const getSupportedFields = (table: Table) => {
   return table.fields.filter(field => field.isString());
 };
 
-const mapStateToProps = (state: State, { cardId }: FieldStepModalOwnProps) => {
-  const tableId = getQuestionVirtualTableId({ id: cardId });
-  const options = { entityId: tableId, requestType: "fetchMetadata" };
-
-  return {
-    tableId,
-    table: Tables.selectors.getObject(state, options),
-    loading: Tables.selectors.getLoading(state, options),
-    error: Tables.selectors.getError(state, options),
-  };
-};
-
-const mapDispatchToProps = {
-  onFetchMetadata: Tables.actions.fetchMetadata,
-};
-
-export default connect(mapStateToProps, mapDispatchToProps)(FieldStepModal);
+export default Tables.load({
+  id: (state: State, { cardId }: FieldStepModalOwnProps) => cardId,
+  requestType: "fetchMetadata",
+})(FieldStepModal);
