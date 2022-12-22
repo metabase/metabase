@@ -18,9 +18,9 @@ There are three ways to embed Metabase in your app:
 
 ## Full app embedding
 
-Full-app embedding [integrates with SSO and data permissions](./full-app-embedding.md) to enable true self-service access to the underlying data.
+Full-app embedding is the only kind of embedding that [integrates with SSO and data permissions](./full-app-embedding.md) to enable true self-service access to the underlying data.
 
-**When to use full-app embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding).
+**When to use full-app embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With full-app embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
 
 ## Signed embedding
 
