@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { render } from "@testing-library/react";
 import { merge } from "icepick";
@@ -8,51 +7,59 @@ import { Provider } from "react-redux";
 import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
+
 import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";
+
+import type { User } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
+import { createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockEmbedState,
 } from "metabase-types/store/mocks";
+
 import { getStore } from "./entities-store";
 
-function getUser(user = {}) {
-  return {
-    id: 1,
-    first_name: "Bobby",
-    last_name: "Tables",
-    email: "bobby@metabase.test",
-    is_superuser: true,
-    ...user,
-  };
+type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;
+
+export interface RenderWithProvidersOptions {
+  currentUser?: User;
+  reducers?: Record<string, (state: any) => any>;
+  storeInitialState?: DeepPartial<State>;
+  withSampleDatabase?: boolean;
+  withRouter?: boolean;
+  withDND?: boolean;
 }
+
+const DEFAULT_USER = createMockUser({
+  id: 1,
+  first_name: "Bobby",
+  last_name: "Tables",
+  email: "bobby@metabase.test",
+  is_superuser: true,
+});
 
 /**
  * Custom wrapper of react testing library's render function,
  * helping to setup common wrappers and provider components
  * (router, redux, drag-n-drop provider, etc.)
- *
- * @param {React.ReactElement} ui - JSX to render
- * @param {Option}  prop - various wrapper settings and RTL render options
- *
- * @typedef Option
- * @property {object} [currentUser]
- * @property {{[key: string]: import("redux").Reducer}} [reducers]
- * @property {object} [storeInitialState]
- * @property {boolean} [withSampleDatabase]
- * @property {boolean} [withRouter]
- * @property {boolean} [withDND]
  */
 export function renderWithProviders(
-  ui,
+  ui: React.ReactElement,
   {
-    currentUser,
+    currentUser = DEFAULT_USER,
     reducers,
     storeInitialState = {},
     withSampleDatabase,
     withRouter = false,
     withDND = false,
     ...options
-  } = {},
+  }: RenderWithProvidersOptions = {},
 ) {
   const initialReduxState = withSampleDatabase
     ? merge(sampleDatabaseReduxState, storeInitialState)
@@ -60,7 +67,7 @@ export function renderWithProviders(
 
   const store = getStore(
     {
-      currentUser: () => getUser(currentUser),
+      currentUser: () => currentUser,
       settings: () => createMockSettingsState(),
       embed: () => createMockEmbedState(),
       ...reducers,
@@ -68,7 +75,7 @@ export function renderWithProviders(
     initialReduxState,
   );
 
-  const wrapper = props => (
+  const wrapper = (props: any) => (
     <Wrapper
       {...props}
       store={store}
@@ -88,7 +95,17 @@ export function renderWithProviders(
   };
 }
 
-function Wrapper({ children, store, withRouter, withDND }) {
+function Wrapper({
+  children,
+  store,
+  withRouter,
+  withDND,
+}: {
+  children: React.ReactNode;
+  store: any;
+  withRouter: boolean;
+  withDND: boolean;
+}) {
   return (
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
@@ -100,14 +117,20 @@ function Wrapper({ children, store, withRouter, withDND }) {
   );
 }
 
-function MaybeRouter({ children, hasRouter }) {
+function MaybeRouter({
+  children,
+  hasRouter,
+}: {
+  children: React.ReactNode;
+  hasRouter: boolean;
+}): JSX.Element {
   if (!hasRouter) {
-    return children;
+    return <>{children}</>;
   }
-  const history = createMemoryHistory({ initialEntries: ["/"] });
+  const history = createMemoryHistory({ entries: ["/"] });
 
-  function Page(props) {
-    return React.cloneElement(children, props);
+  function Page(props: any) {
+    return React.cloneElement(<>{children}</>, props);
   }
 
   return (
@@ -117,9 +140,15 @@ function MaybeRouter({ children, hasRouter }) {
   );
 }
 
-function MaybeDNDProvider({ children, hasDND }) {
+function MaybeDNDProvider({
+  children,
+  hasDND,
+}: {
+  children: React.ReactNode;
+  hasDND: boolean;
+}): JSX.Element {
   if (!hasDND) {
-    return children;
+    return <>{children}</>;
   }
   return (
     <DragDropContextProvider backend={HTML5Backend}>
