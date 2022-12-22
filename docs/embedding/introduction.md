@@ -16,7 +16,7 @@ There are three ways to embed Metabase in your app:
 - [Signed embedding](#signed-embedding)
 - [Public links and embeds](#public-links-and-embeds)
 
-## Full app embedding
+## Full-app embedding
 
 Full-app embedding is the only kind of embedding that [integrates with SSO and data permissions](./full-app-embedding.md) to enable true self-service access to the underlying data.
 
