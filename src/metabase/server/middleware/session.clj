@@ -366,7 +366,7 @@
                         days (/ amount (case unit
                                          "seconds" (* 60 60 24)
                                          "minutes" (* 60 24)
-                                         "hours"  24))
+                                         "hours"   24))
                         years (/ days 365.25)]
                     (assert (pos? amount) (tru "Session timeout amount must be positive."))
                     (assert (< years 100) (tru "Session timeout must be less than 100 years."))))
@@ -379,7 +379,7 @@
     (-> (case unit
           "seconds" amount
           "minutes" (* amount 60)
-          "hours"  (* amount 3600))
+          "hours"   (* amount 3600))
         (max 60)))) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
 
 (defn session-timeout-seconds
