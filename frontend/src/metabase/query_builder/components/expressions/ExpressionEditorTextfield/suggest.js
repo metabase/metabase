@@ -28,6 +28,7 @@ const suggestionText = func => {
 export function suggest({
   source,
   query,
+  reportTimezone,
   startRule,
   targetOffset = source.length,
 } = {}) {
@@ -43,6 +44,7 @@ export function suggest({
       const helpText = getHelpText(
         getMBQLName(functionDisplayName),
         query.database(),
+        reportTimezone,
       );
       if (helpText) {
         return { suggestions, helpText };
@@ -191,7 +193,11 @@ export function suggest({
   if (suggestions.length === 1 && matchPrefix) {
     const { icon } = suggestions[0];
     if (icon === "function") {
-      const helpText = getHelpText(getMBQLName(matchPrefix), query.database());
+      const helpText = getHelpText(
+        getMBQLName(matchPrefix),
+        query.database(),
+        reportTimezone,
+      );
       if (helpText) {
         return { helpText };
       }

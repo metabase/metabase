@@ -1,12 +1,9 @@
 import { t } from "ttag";
 import moment from "moment-timezone";
-import MetabaseSettings from "metabase/lib/settings";
 
 import { formatTime } from "metabase/lib/formatting";
 import type { Database } from "metabase-types/types/Database";
 import { HelpText } from "metabase-lib/expressions/types";
-
-const reportTimezone = MetabaseSettings.get("report-timezone-long");
 
 const helperTextStrings: HelpText[] = [
   {
@@ -813,23 +810,24 @@ See the full list here: https://w.wiki/4Jx`,
 export const getHelpText = (
   name: string,
   database: Database,
+  reportTimezone: string,
 ): HelpText | undefined => {
   const helperText = helperTextStrings.find(h => h.name === name);
 
   if (helperText && name === "now") {
-    helperText.description = getDescriptionForNow(database);
+    helperText.description = getDescriptionForNow(database, reportTimezone);
   }
 
   return helperText;
 };
 
-const getNowAtTimezone = (timezone: string) =>
+const getNowAtTimezone = (timezone: string, reportTimezone: string) =>
   timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");
 
-const getDescriptionForNow = (database: Database) => {
+const getDescriptionForNow = (database: Database, reportTimezone: string) => {
   const hasTimezoneFeatureFlag = database.features.includes("set-timezone");
   const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
-  const nowAtTimezone = getNowAtTimezone(timezone);
+  const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
 
   return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
 };

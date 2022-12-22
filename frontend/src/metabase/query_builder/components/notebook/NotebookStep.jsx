@@ -111,8 +111,14 @@ export default class NotebookStep extends React.Component {
   };
 
   render() {
-    const { step, openStep, isLastStep, isLastOpened, updateQuery } =
-      this.props;
+    const {
+      step,
+      openStep,
+      isLastStep,
+      isLastOpened,
+      updateQuery,
+      reportTimezone,
+    } = this.props;
     const { showPreview } = this.state;
 
     const {
@@ -180,6 +186,7 @@ export default class NotebookStep extends React.Component {
                   query={step.query}
                   updateQuery={updateQuery}
                   isLastOpened={isLastOpened}
+                  reportTimezone={reportTimezone}
                 />
               </StepContent>
               <StepButtonContainer>
