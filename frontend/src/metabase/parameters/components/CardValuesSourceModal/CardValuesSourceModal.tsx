@@ -3,20 +3,20 @@ import { ValuesSourceConfig } from "metabase-types/api";
 import CardStepModal from "./CardStepModal";
 import FieldStepModal from "./FieldStepModal";
 
-type CardSourceStep = "card" | "field";
+type ModalStep = "card" | "field";
 
-export interface CardSourceModalProps {
+export interface CardValuesSourceModalProps {
   sourceConfig: ValuesSourceConfig;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onClose: () => void;
 }
 
-const CardSourceModal = ({
+const CardValuesSourceModal = ({
   sourceConfig,
   onChangeSourceConfig,
   onClose,
-}: CardSourceModalProps): JSX.Element | null => {
-  const [step, setStep] = useState<CardSourceStep>("card");
+}: CardValuesSourceModalProps): JSX.Element | null => {
+  const [step, setStep] = useState<ModalStep>("card");
   const [cardId, setCardId] = useState(sourceConfig.card_id);
   const [fieldReference, setFieldReference] = useState(
     sourceConfig.value_field,
@@ -61,4 +61,4 @@ const CardSourceModal = ({
   }
 };
 
-export default CardSourceModal;
+export default CardValuesSourceModal;

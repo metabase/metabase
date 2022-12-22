@@ -2,13 +2,15 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent, { specialChars } from "@testing-library/user-event";
 import { createMockValuesSourceConfig } from "metabase-types/api/mocks";
-import ListSourceModal, { ListSourceModalProps } from "./ListSourceModal";
+import ListValuesSourceModal, {
+  ListValuesSourceModalProps,
+} from "./ListValuesSourceModal";
 
-describe("ListSourceModal", () => {
+describe("ListValuesSourceModal", () => {
   it("should trim and set source values", () => {
     const props = getProps();
 
-    render(<ListSourceModal {...props} />);
+    render(<ListValuesSourceModal {...props} />);
 
     const input = screen.getByRole("textbox");
     userEvent.type(input, `Gadget ${specialChars.enter}`);
@@ -27,7 +29,7 @@ describe("ListSourceModal", () => {
       }),
     });
 
-    render(<ListSourceModal {...props} />);
+    render(<ListValuesSourceModal {...props} />);
     userEvent.clear(screen.getByRole("textbox"));
     userEvent.click(screen.getByText("Done"));
 
@@ -36,8 +38,8 @@ describe("ListSourceModal", () => {
 });
 
 const getProps = (
-  opts?: Partial<ListSourceModalProps>,
-): ListSourceModalProps => ({
+  opts?: Partial<ListValuesSourceModalProps>,
+): ListValuesSourceModalProps => ({
   sourceConfig: createMockValuesSourceConfig(),
   onChangeSourceConfig: jest.fn(),
   onClose: jest.fn(),
