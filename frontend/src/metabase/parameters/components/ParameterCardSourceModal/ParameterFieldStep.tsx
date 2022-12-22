@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -8,11 +8,12 @@ import Select, {
   SelectChangeEvent,
 } from "metabase/core/components/Select";
 import ModalContent from "metabase/components/ModalContent";
-import Questions from "metabase/entities/questions";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Card, CardId, FieldMetadata } from "metabase-types/api";
+import Tables from "metabase/entities/tables";
+import { CardId } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import Table from "metabase-lib/metadata/Table";
+import Field from "metabase-lib/metadata/Field";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
 interface ParameterFieldStepOwnProps {
   cardId: CardId | undefined;
@@ -23,39 +24,33 @@ interface ParameterFieldStepOwnProps {
   onClose: () => void;
 }
 
-interface ParameterFieldStepCardProps {
-  card: Card;
-}
-
 interface ParameterFieldStepStateProps {
-  question: Question;
+  table: Table;
 }
 
 type ParameterFieldStepProps = ParameterFieldStepOwnProps &
-  ParameterFieldStepCardProps &
   ParameterFieldStepStateProps;
 
 const ParameterFieldStep = ({
-  question,
+  table,
   fieldRef,
   onChangeField,
   onSubmit,
   onCancel,
   onClose,
 }: ParameterFieldStepProps): JSX.Element => {
-  const fields = useMemo(() => question.getResultMetadata(), [question]);
-  const selectedField = getSelectedField(fields, fieldRef);
+  const selectedField = getSelectedField(table, fieldRef);
 
   const handleChange = useCallback(
-    (event: SelectChangeEvent<FieldMetadata>) => {
-      onChangeField(event.target.value.field_ref);
+    (event: SelectChangeEvent<Field>) => {
+      onChangeField(event.target.value.reference());
     },
     [onChangeField],
   );
 
   return (
     <ModalContent
-      title={t`Which column from ${question.displayName()} should be used`}
+      title={t`Which column from ${table.displayName()} should be used`}
       footer={[
         <Button key="cancel" onClick={onCancel}>{t`Back`}</Button>,
         <Button
@@ -67,29 +62,30 @@ const ParameterFieldStep = ({
       ]}
       onClose={onClose}
     >
-      <Select
-        value={selectedField}
-        placeholder={t`Pick a column`}
-        onChange={handleChange}
-      >
-        {fields.map((field, index) => (
-          <Option key={index} name={field.display_name} value={field} />
+      <Select placeholder={t`Pick a column`} onChange={handleChange}>
+        {table.fields.map((field, index) => (
+          <Option key={index} name={field.displayName()} value={field} />
         ))}
       </Select>
     </ModalContent>
   );
 };
 
-const getSelectedField = (fields: FieldMetadata[], fieldRef?: unknown[]) => {
-  return fields.find(field => _.isEqual(field.field_ref, fieldRef));
+const getSelectedField = (table: Table, fieldRef?: unknown[]) => {
+  return table.fields.find(field => _.isEqual(field.reference(), fieldRef));
 };
 
-export default _.compose(
-  Questions.load({
-    id: (state: State, { cardId }: ParameterFieldStepOwnProps) => cardId,
-    entityAlias: "card",
+const mapStateToProps = (
+  state: State,
+  { cardId }: ParameterFieldStepOwnProps,
+) => ({
+  table: Tables.selectors.getObject(state, {
+    entityId: getQuestionVirtualTableId({ id: cardId }),
   }),
-  connect((state: State, { card }: ParameterFieldStepCardProps) => ({
-    question: new Question(card, getMetadata(state)),
-  })),
-)(ParameterFieldStep);
+});
+
+const mapDispatchToProps = {
+  onFetchMetadata: Tables.actions.fetchMetadata,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(ParameterFieldStep);

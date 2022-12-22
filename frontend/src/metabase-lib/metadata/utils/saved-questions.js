@@ -28,8 +28,8 @@ export function getRootCollectionVirtualSchemaId({ isModels }) {
   return getCollectionVirtualSchemaId(null, { isDatasets: isModels });
 }
 
-export function getQuestionVirtualTableId(card) {
-  return `card__${card.id}`;
+export function getQuestionVirtualTableId({ id }) {
+  return `card__${id}`;
 }
 
 export function isVirtualCardId(tableId) {
