@@ -37,12 +37,12 @@
    (s/optional-key :id)                 (s/maybe su/IntGreaterThanZero)
    ;; only optional because it's not present right away, but it should be present at the end.
    (s/optional-key :field_ref)          (s/cond-pre
-                                            mbql.s/FieldOrAggregationReference
-                                            (s/pred
-                                              (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
-                                                    mbql.normalize/normalize-tokens)
-                                              "Field or aggregation reference as it comes in to the API"))
-                                        ;; the timezone in which the column was converted to using `:convert-timezone` expression
+                                          mbql.s/FieldOrAggregationReference
+                                          (s/pred
+                                            (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
+                                                  mbql.normalize/normalize-tokens)
+                                            "Field or aggregation reference as it comes in to the API"))
+   ;; the timezone in which the column was converted to using `:convert-timezone` expression
    (s/optional-key :converted_timezone) (s/pred mbql.preds/TimezoneId?)
    s/Keyword                            s/Any})
 

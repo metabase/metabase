@@ -26,7 +26,7 @@
      :middleware {:disable-remaps? true}}))
 
 (s/defn values-from-card
-  "Get a column of a card using field_ref.
+  "Get values a field from a card.
 
   (values-from-card 1 [:field \"name\" nil] \"red\")
   ;; will execute a mbql that looks like

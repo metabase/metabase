@@ -295,7 +295,7 @@
   (with-api-error-message (s/pred
                             (comp (complement (s/checker mbql.s/Field))
                                   mbql.normalize/normalize-tokens))
-    (deferred-tru "value must a field or an aggregation reference")))
+    (deferred-tru "value must an array with :field id-or-name and an options map")))
 
 (def CoercionStrategyKeywordOrString
   "Like `CoercionStrategy` but accepts either a keyword or string."
@@ -374,13 +374,13 @@
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
   {;; for source_type = 'static-list'
-   (s/optional-key :values)          (s/cond-pre [s/Any])
+   (s/optional-key :values)      (s/cond-pre [s/Any])
 
    ;; for source_type = 'card'
-   (s/optional-key :card_id)         IntGreaterThanZero
+   (s/optional-key :card_id)     IntGreaterThanZero
    (s/optional-key :value_field) Field
-   ;; label_field_ref is optional
-   (s/optional-key :label_field_ref) Field})
+   ;; label_field is optional
+   (s/optional-key :label_field) Field})
 
 (def Parameter
   "Schema for a valid Parameter.
