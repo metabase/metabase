@@ -88,6 +88,11 @@ const TimelineSidebar = ({
     ) => {
       if (isVisible) {
         onShowTimelines?.([timeline]);
+        // Making the timeline visible directly
+        // should make all its events visible
+        // The alternative is when a timeline is hidden
+        // and we make one of its events visible, in which case
+        // we also make its timeline visible, but no other event in it
         if (areAllEventsVisible) {
           timeline.events && onShowTimelineEvents(timeline.events);
         }
