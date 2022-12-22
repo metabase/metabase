@@ -1,24 +1,27 @@
 (ns metabase.server.middleware.session-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [environ.core :as env]
-            [java-time :as t]
-            [metabase.api.common :refer [*current-user* *current-user-id*]]
-            [metabase.config :as config]
-            [metabase.core.initialization-status :as init-status]
-            [metabase.db :as mdb]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models :refer [PermissionsGroupMembership Session User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test :as mt]
-            [metabase.util.i18n :as i18n]
-            [ring.mock.request :as ring.mock]
-            [toucan.db :as db])
-  (:import clojure.lang.ExceptionInfo
-           java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [environ.core :as env]
+   [java-time :as t]
+   [metabase.api.common :refer [*current-user* *current-user-id*]]
+   [metabase.config :as config]
+   [metabase.core.initialization-status :as init-status]
+   [metabase.db :as mdb]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models :refer [PermissionsGroupMembership Session User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test :as mt]
+   [metabase.util.i18n :as i18n]
+   [ring.mock.request :as ring.mock]
+   [toucan.db :as db])
+  (:import
+   clojure.lang.ExceptionInfo
+   java.util.UUID))
 
 (use-fixtures :once (fn [thunk]
                       (init-status/set-complete!)
@@ -404,7 +407,7 @@
          java.lang.AssertionError
          #"Session timeout amount must be positive"
          (mw.session/session-timeout! {:unit "minutes", :amount -1}))))
-  (testing "Setting the session timeout should fail if the timeout isn't positive"
+  (testing "Setting the session timeout should fail if the timeout is too large"
     (is (thrown-with-msg?
          java.lang.AssertionError
          #"Session timeout must be less than 100 years"
@@ -418,6 +421,32 @@
     (is (some? (mw.session/session-timeout! {:unit "hours", :amount 1})))
     (is (some? (mw.session/session-timeout! {:unit "minutes", :amount (dec (* 100 365.25 24 60))})))
     (is (some? (mw.session/session-timeout! {:unit "hours", :amount (dec (* 100 365.25 24))})))))
+
+(deftest session-timeout-env-var-validation-test
+  (let [set-and-get (fn [timeout]
+                      (mt/with-temp-env-var-value [mb-session-timeout (json/generate-string timeout)]
+                        (mw.session/session-timeout)))]
+    (testing "Setting the session timeout via the env var should fail if the timeout isn't positive"
+      (is (thrown-with-msg?
+           java.lang.AssertionError
+           #"Session timeout amount must be positive"
+           (set-and-get {:unit "hours", :amount 0})))
+      (is (thrown-with-msg?
+           java.lang.AssertionError
+           #"Session timeout amount must be positive"
+           (set-and-get {:unit "hours", :amount -1}))))
+    (testing "Setting the session timeout with env var should work with valid timeouts"
+      (is (= {:unit "hours", :amount 1}
+             (set-and-get {:unit "hours", :amount 1}))))
+    (testing "Setting the session timeout via env var should fail if the timeout is too large"
+      (is (thrown-with-msg?
+           java.lang.AssertionError
+           #"Session timeout must be less than 100 years"
+           (set-and-get {:unit "hours", :amount (* 100 365.25 24)})))
+      (is (thrown-with-msg?
+           java.lang.AssertionError
+           #"Session timeout must be less than 100 years"
+           (set-and-get {:unit "minutes", :amount (* 100 365.25 24 60)}))))))
 
 (deftest session-timeout-test
   (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")

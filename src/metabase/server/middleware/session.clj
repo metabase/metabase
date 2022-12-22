@@ -351,26 +351,30 @@
 ;;; |                                              reset-cookie-timeout                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn check-session-timeout [timeout]
+  (when (some? timeout)
+    (let [{:keys [unit amount]} timeout
+          days (/ amount (case unit
+                           "seconds" (* 60 60 24)
+                           "minutes" (* 60 24)
+                           "hours"   24))
+          years (/ days 365.25)]
+      (assert (pos? amount) (tru "Session timeout amount must be positive."))
+      (assert (< years 100) (tru "Session timeout must be less than 100 years.")))))
+
 (defsetting session-timeout
   ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours".
   ;; The amount is nillable.
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
-  :type       :json
-  :default    nil
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  ;; Assert the duration is less than 100 years and greater than 0.
-                  ;; We need to limit the duration from being too large because
-                  ;; the year of the expires date must be 4 digits (#25253)
-                  (let [{:keys [unit amount]} new-value
-                        days (/ amount (case unit
-                                         "seconds" (* 60 60 24)
-                                         "minutes" (* 60 24)
-                                         "hours"   24))
-                        years (/ days 365.25)]
-                    (assert (pos? amount) (tru "Session timeout amount must be positive."))
-                    (assert (< years 100) (tru "Session timeout must be less than 100 years."))))
-                (setting/set-value-of-type! :json :session-timeout new-value)))
+  :type    :json
+  :default nil
+  :getter  (fn []
+             (let [value (setting/get-value-of-type :json :session-timeout)]
+               (check-session-timeout value)
+               value))
+  :setter  (fn [new-value]
+             (check-session-timeout new-value)
+             (setting/set-value-of-type! :json :session-timeout new-value)))
 
 (defn session-timeout->seconds
   "Convert the session-timeout setting value to seconds."
