@@ -238,10 +238,10 @@ Notice the "\_FILE" on the environment variables that have a secret):
 ```
 version: '3.9'
 services:
-  metabase-secrets:
+  metabase:
     image: metabase/metabase:latest
-    container_name: metabase-secrets
-    hostname: metabase-secrets
+    container_name: metabase
+    hostname: metabase
     volumes:
     - /dev/urandom:/dev/random:ro
     ports:
@@ -252,29 +252,32 @@ services:
       MB_DB_PORT: 5432
       MB_DB_USER_FILE: /run/secrets/db_user
       MB_DB_PASS_FILE: /run/secrets/db_password
-      MB_DB_HOST: postgres-secrets
+      MB_DB_HOST: postgres
     networks:
-      - metanet1-secrets
-    depends_on:
-      - postgres-secrets
+      - metanet1
     secrets:
       - db_password
       - db_user
-  postgres-secrets:
+    healthcheck:
+      test: curl --fail -I http://localhost:3000/api/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 5
+  postgres:
     image: postgres:latest
-    container_name: postgres-secrets
-    hostname: postgres-secrets
+    container_name: postgres
+    hostname: postgres
     environment:
       POSTGRES_USER_FILE: /run/secrets/db_user
       POSTGRES_DB: metabase
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
     networks:
-      - metanet1-secrets
+      - metanet1
     secrets:
       - db_password
       - db_user
 networks:
-  metanet1-secrets:
+  metanet1:
     driver: bridge
 secrets:
    db_password:

@@ -1725,18 +1725,18 @@
                                                                   :slug "id"
                                                                   :id   "_ID_"
                                                                   :type "category"}
-                                                                 {:name           "Static Category",
-                                                                  :slug           "static_category"
-                                                                  :id             "_STATIC_CATEGORY_",
-                                                                  :type           "category",
-                                                                  :source_type    "static-list"
-                                                                  :source_options {:values ["African" "American" "Asian"]}}
-                                                                 {:name           "Static Category label",
-                                                                  :slug           "static_category_label"
-                                                                  :id             "_STATIC_CATEGORY_LABEL_",
-                                                                  :type           "category",
-                                                                  :source_type    "static-list"
-                                                                  :source_options {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}]}
+                                                                 {:name                  "Static Category",
+                                                                  :slug                  "static_category"
+                                                                  :id                    "_STATIC_CATEGORY_",
+                                                                  :type                  "category",
+                                                                  :values_source_type    "static-list"
+                                                                  :values_source_config {:values ["African" "American" "Asian"]}}
+                                                                 {:name                  "Static Category label",
+                                                                  :slug                  "static_category_label"
+                                                                  :id                    "_STATIC_CATEGORY_LABEL_",
+                                                                  :type                  "category",
+                                                                  :values_source_type    "static-list"
+                                                                  :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}]}
                                                    dashboard-values)]
                    Card          [card {:database_id   (mt/id)
                                         :table_id      (mt/id :venues)
@@ -1886,38 +1886,38 @@
       (testing "we could edit the values list"
         ;; TODO add tests for schema check
         (let [dashboard (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
-                                              {:parameters [{:name           "Static Category",
-                                                             :slug           "static_category"
-                                                             :id             "_STATIC_CATEGORY_",
-                                                             :type           "category",
-                                                             :source_type    "static-list"
-                                                             :source_options {"values" ["BBQ" "Bakery" "Bar"]}}]})]
-          (is (= [{:name           "Static Category",
-                   :slug           "static_category"
-                   :id             "_STATIC_CATEGORY_",
-                   :type           "category",
-                   :source_type    "static-list"
-                   :source_options {:values ["BBQ" "Bakery" "Bar"]}}]
+                                              {:parameters [{:name                  "Static Category",
+                                                             :slug                  "static_category"
+                                                             :id                    "_STATIC_CATEGORY_",
+                                                             :type                  "category",
+                                                             :values_source_type    "static-list"
+                                                             :values_source_config {"values" ["BBQ" "Bakery" "Bar"]}}]})]
+          (is (= [{:name                  "Static Category",
+                   :slug                  "static_category"
+                   :id                    "_STATIC_CATEGORY_",
+                   :type                  "category",
+                   :values_source_type    "static-list"
+                   :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                  (:parameters dashboard))))))
 
     (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
       (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"
                                            {:name       "a dashboard"
-                                            :parameters [{:id             "_value_",
-                                                          :name           "value",
-                                                          :type           "category",
-                                                          :source_type    "random-type"
-                                                          :source_options {"values" [1 2 3]}}]})
+                                            :parameters [{:id                    "_value_",
+                                                          :name                  "value",
+                                                          :type                  "category",
+                                                          :values_source_type    "random-type"
+                                                          :values_source_config {"values" [1 2 3]}}]})
                      [:errors :parameters])))
       (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"
                                            {:name       "a dashboard"
-                                            :parameters [{:id             "_value_",
-                                                          :name           "value",
-                                                          :type           "category",
-                                                          :source_type    "static-list"
-                                                          :source_options []}]})
+                                            :parameters [{:id                    "_value_",
+                                                          :name                  "value",
+                                                          :type                  "category",
+                                                          :values_source_type    "static-list"
+                                                          :values_source_config []}]})
                      [:errors :parameters]))))))
 
 (deftest chain-filter-search-test
@@ -2061,60 +2061,34 @@
 
 (deftest parameter-values-from-card-test
   ;; TODO add permissions tests
-  (testing "happy path"
-    (mt/with-temp*
-      [Card      [{card-id         :id}
-                  (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues {:limit 5}))
-                         {:database_id     (mt/id)
-                          :table_id        (mt/id :venues)})]
-       Dashboard [{dashboard-id :id}
-                  {:parameters [{:id             "abc"
-                                 :type           "category"
-                                 :name           "CATEGORY"
-                                 :source_type    "card"
-                                 :source_options {:card_id         card-id
-                                                  :value_field (mt/$ids $venues.name)}}]}]]
+  (mt/with-temp*
+    [Card      [{card-id         :id}
+                (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues {:limit 5}))
+                       {:database_id     (mt/id)
+                        :table_id        (mt/id :venues)})]
+     Dashboard [{dashboard-id :id}
+                {:parameters [{:id                   "abc"
+                               :type                 "category"
+                               :name                 "CATEGORY"
+                               :values_source_type   "card"
+                               :values_source_config {:card_id     card-id
+                                                      :value_field (mt/$ids $venues.name)}}]}]]
 
-      (testing "It uses the results of the card's query execution"
-        (let-url [url (chain-filter-values-url dashboard-id "abc")]
-          (is (= {:values          ["Red Medicine"
-                                    "Stout Burgers & Beers"
-                                    "The Apple Pan"
-                                    "Wurstküche"
-                                    "Brite Spot Family Restaurant"]
-                  :has_more_values false}
-                 (mt/user-http-request :rasta :get 200 url)))))
+    (testing "It uses the results of the card's query execution"
+      (let-url [url (chain-filter-values-url dashboard-id "abc")]
+        (is (= {:values          ["Red Medicine"
+                                  "Stout Burgers & Beers"
+                                  "The Apple Pan"
+                                  "Wurstküche"
+                                  "Brite Spot Family Restaurant"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 url)))))
 
-      (testing "it only returns search matches"
-        (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
-          (is (= {:values          ["Red Medicine"]
-                  :has_more_values false}
-                 (mt/user-http-request :rasta :get 200 url)))))))
-
-  #_(testing "invalid field_ref shoud returns 400"
-      (mt/with-temp*
-        [Card      [{card-id         :id}
-                    (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
-                           {:database_id     (mt/id)
-                            :table_id        (mt/id :venues)})]
-         Dashboard [{dashboard-id :id}
-                    {:parameters [{:id             "abc"
-                                   :type           "category"
-                                   :name           "CATEGORY"
-                                   :source_type    "card"
-                                   :source_options {:card_id     card-id
-                                                    ;; this should be invalid field_ref beacuse the query
-                                                    ;; is for venues table
-                                                    :value_field (mt/$ids $categories.name)}}]}]]
-        (testing "when getting values"
-          (let-url [url (chain-filter-values-url dashboard-id "abc")]
-            (is (=? #"No matching field found"
-                    (:message (mt/user-http-request :rasta :get 400 url))))))
-
-        (testing "when searching values"
-          (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
-            (is (=? #"No matching field found"
-                    (:message (mt/user-http-request :rasta :get 400 url)))))))))
+    (testing "it only returns search matches"
+      (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
+        (is (= {:values          ["Red Medicine"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 url)))))))
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"

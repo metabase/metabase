@@ -184,13 +184,39 @@ export const setParameterDefaultValue = createThunkAction(
 export const SET_PARAMETER_IS_MULTI_SELECT =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
 export const setParameterIsMultiSelect = createThunkAction(
-  SET_PARAMETER_DEFAULT_VALUE,
+  SET_PARAMETER_IS_MULTI_SELECT,
   (parameterId, isMultiSelect) => (dispatch, getState) => {
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
       isMultiSelect: isMultiSelect,
     }));
     return { id: parameterId, isMultiSelect };
+  },
+);
+
+export const SET_PARAMETER_SOURCE_TYPE =
+  "metabase/dashboard/SET_PARAMETER_SOURCE_TYPE";
+export const setParameterSourceType = createThunkAction(
+  SET_PARAMETER_SOURCE_TYPE,
+  (parameterId, sourceType) => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameterId, parameter => ({
+      ...parameter,
+      values_source_type: sourceType,
+    }));
+    return { id: parameterId, sourceType };
+  },
+);
+
+export const SET_PARAMETER_SOURCE_OPTIONS =
+  "metabase/dashboard/SET_PARAMETER_SOURCE_OPTIONS";
+export const setParameterSourceOptions = createThunkAction(
+  SET_PARAMETER_SOURCE_OPTIONS,
+  (parameterId, sourceOptions) => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameterId, parameter => ({
+      ...parameter,
+      values_source_config: sourceOptions,
+    }));
+    return { id: parameterId, sourceOptions };
   },
 );
 

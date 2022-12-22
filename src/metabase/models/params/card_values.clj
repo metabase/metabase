@@ -2,56 +2,19 @@
   "Code related to getting values for a parameter where its source values is a card."
   (:require
     [clojure.string :as str]
-    [metabase.mbql.normalize :as mbql.normalize]
-    [metabase.mbql.schema :as mbql.s]
     [metabase.models :refer [Card]]
     [metabase.query-processor :as qp]
-    [metabase.util.i18n :refer [tru]]
     [metabase.util.schema :as su]
     [schema.core :as s]
     [toucan.db :as db]))
 
-(def ^{:dynamic true
-       :doc     "Maximum number of rows returned when running a card."}
-  *max-rows* 2000)
-
-(defn- field-ref->mbql-field
-  "Find field by field_ref.
-
-  If field_ref is a:
-  - field: returns itself
-  - aggregation: returns a field using name [:field aggregation-name nil]"
-  [field-ref result-metadata card-id]
-  (let [field (first (filter #(= (:field_ref %) field-ref) result-metadata))]
-    (when-not field
-      (throw (ex-info (tru "No matching field found")
-                      {:status-code 400
-                       :card-id     card-id
-                       :field-ref   field-ref})))
-    (case (first field-ref)
-      :aggregation
-      [:field (:name field) {:base-type ((some-fn :effective_type :base_type) field)}]
-
-      :field
-      (let [[_ttype identifier options] field-ref]
-        ;; TODO: the options for field-ref does contains the binning information
-        ;; maybe we could just need to select it from options?
-        (when (some? (:binning options))
-          (throw (ex-info (tru "Binning column not supported")
-                          {:status-code 400
-                           :card-id     card-id
-                           :field-ref   field-ref})))
-        [:field identifier (select-keys options mbql.s/field-options-for-identification)])
-
-      (throw (ex-info (tru "Invalid field-ref type. Must be a field or aggregation.")
-                      {:status-code 400
-                       :card-id     card-id
-                       :field-ref   field-ref})))))
+(def ^:dynamic *max-rows*
+  "Maximum number of rows returned when running a card."
+  2000)
 
 (defn- values-from-card-query
   [card-id value-field query]
-  (let [value-field (mbql.normalize/normalize-tokens value-field)
-        card        (db/select-one Card :id card-id)]
+  (let [card        (db/select-one Card :id card-id)]
     {:database (:database_id card)
      :type     :query
      :query    (merge
