@@ -3,6 +3,7 @@
   (:require
     [cheshire.core :as json]
     [clojure.set :as set]
+    [clojure.string :as str]
     [clojure.tools.logging :as log]
     [compojure.core :refer [DELETE GET POST PUT]]
     [medley.core :as m]
@@ -24,7 +25,7 @@
     [metabase.models.interface :as mi]
     [metabase.models.params :as params]
     [metabase.models.params.chain-filter :as chain-filter]
-    [metabase.models.params.custom-values :as custom-values]
+    [metabase.models.params.card-values :as params.card-values]
     [metabase.models.query :as query :refer [Query]]
     [metabase.models.query.permissions :as query-perms]
     [metabase.models.revision :as revision]
@@ -36,6 +37,7 @@
     [metabase.query-processor.pivot :as qp.pivot]
     [metabase.query-processor.util :as qp.util]
     [metabase.related :as related]
+    [metabase.search.util :as search]
     [metabase.util :as u]
     [metabase.util.i18n :refer [tru]]
     [metabase.util.schema :as su]
@@ -734,17 +736,31 @@
            (api/throw-403 e)
            (throw e)))))))
 
+(defn- query-matches
+  "Filter the values according to the `search-term`.
+
+  Values could have 2 shapes
+  - [value1, value2]
+  - [[value1, label1], [value2, label2]] - we search using label in this case"
+  [query values]
+  (let [normalized-query (search/normalize query)]
+    (filter #(str/includes? (search/normalize (if (string? %)
+                                                %
+                                                ;; search by label
+                                                (second %)))
+                            normalized-query) values)))
+
 (defn- static-parameter-values
   [{source-options :source_options :as _param} query]
-  (when-let [values (:values source-options)]
-    {:values (if query
-               (custom-values/query-matches query values)
-               values)
+  (let [values (:values source-options)]
+    {:values         (if query
+                       (query-matches query values)
+                       values)
      :has_more_values false}))
 
 (defn- card-parameter-values
   [{source-options :source_options :as _param} query]
-  (custom-values/values-from-card (:card_id source-options) (:value_field_ref source-options) query))
+  (params.card-values/values-from-card (:card_id source-options) (:value_field_ref source-options) query))
 
 (s/defn param-values
   "Fetch values for a parameter.
@@ -769,7 +785,7 @@
      (case (:source_type param)
        "static-list" (static-parameter-values param query)
        "card"        (card-parameter-values param query)
-       (chain-filter dashboard param-key constraint-param-key->value query)))))
+       nil           (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally

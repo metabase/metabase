@@ -1,17 +1,15 @@
-(ns metabase.models.params.custom-values
+(ns metabase.models.params.card-values
+  "Code related to getting values for a parameter where its source values is a card."
   (:require
     [clojure.string :as str]
     [metabase.mbql.normalize :as mbql.normalize]
-    [metabase.models :refer [Card]]
     [metabase.mbql.schema :as mbql.s]
+    [metabase.models :refer [Card]]
     [metabase.query-processor :as qp]
-    [metabase.search.util :as search]
     [metabase.util.i18n :refer [tru]]
     [metabase.util.schema :as su]
     [schema.core :as s]
     [toucan.db :as db]))
-
-;; -------------------------------------- source=card --------------------------------------
 
 (def ^{:dynamic true
        :doc     "Maximum number of rows returned when running a card."}
@@ -50,7 +48,7 @@
                        :card-id     card-id
                        :field-ref   field-ref})))))
 
-(defn- custom-values-query
+(defn- values-from-card-query
   [card-id value-field-ref query]
   (let [value-field-ref (mbql.normalize/normalize-tokens value-field-ref)
         card            (db/select-one Card :id card-id)
@@ -66,7 +64,7 @@
      :middleware {:disable-remaps? true}}))
 
 (s/defn values-from-card
-  "Get a column from of a card using field_ref.
+  "Get a column of a card using field_ref.
 
   (values-from-card 1 [:field \"name\" nil] \"red\")
   ;; will execute a mbql that looks like
@@ -84,27 +82,9 @@
   ([card-id         :- su/IntGreaterThanZero
     value-field-ref :- su/FieldRef
     query           :- (s/maybe su/NonBlankString)]
-   (let [mbql-query   (custom-values-query card-id value-field-ref query)
+   (let [mbql-query   (values-from-card-query card-id value-field-ref query)
          query-limit  (get-in mbql-query [:query :limit])
          result       (qp/process-query mbql-query)]
      {:values          (map first (get-in result [:data :rows]))
       ;; if the row_count returned = the limit we specified, then it's probably has more than that
       :has_more_values (= (:row_count result) query-limit)})))
-
-;; ------------------------------------ source=static-list ------------------------------------
-
-(defn query-matches
-  "Filter the values according to the `search-term`.
-
-  Values could have 2 shapes
-  - [value1, value2]
-  - [[value1, label1], [value2, label2]] - we search using label in this case"
-  [search-term values]
-  (if (str/blank? search-term)
-    values
-    (let [normalized-search-term (search/normalize search-term)]
-      (filter #(str/includes? (search/normalize (if (string? %)
-                                                  %
-                                                  ;; search by label
-                                                  (second %)))
-                              normalized-search-term) values))))
