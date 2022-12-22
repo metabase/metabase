@@ -53,7 +53,10 @@ function normalizeFields(fields: Record<string, IField>) {
 
 // Icepick doesn't expose it's IcepickWrapper type,
 // so this trick pulls it out of the return type of chain()
-type EnhancedState = ReturnType<typeof chain<State>>;
+// `icepickChainWrapper` is needed because typeof chain<State> doesn't work
+// See: https://stackoverflow.com/questions/50321419/typescript-returntype-of-generic-function
+const icepickChainWrapper = (state: State) => chain(state);
+type EnhancedState = ReturnType<typeof icepickChainWrapper>;
 
 export function createMetadata(updateState = (state: EnhancedState) => state) {
   // This allows to use icepick helpers inside custom `updateState` functions
