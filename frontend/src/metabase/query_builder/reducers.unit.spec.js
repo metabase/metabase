@@ -28,11 +28,11 @@ describe("timeline event reducers", () => {
 
   it("should add event ids on show", () => {
     expect(
-      visibleTimelineEventIds([], {
+      visibleTimelineEventIds([0, 1, 2], {
         type: SHOW_TIMELINE_EVENTS,
-        payload: [{ id: 0 }, { id: 1 }, { id: 2 }],
+        payload: [{ id: 1 }, { id: 2 }, { id: 3 }],
       }),
-    ).toEqual([0, 1, 2]);
+    ).toEqual([0, 1, 2, 3]);
   });
 
   it("should remove event ids on hide", () => {
