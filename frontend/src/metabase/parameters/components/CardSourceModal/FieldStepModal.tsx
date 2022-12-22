@@ -60,16 +60,16 @@ const FieldStepModal = ({
     return fieldRef && getFieldByRef(fields, fieldRef);
   }, [fields, fieldRef]);
 
-  useEffect(() => {
-    onFetchMetadata({ id: tableId });
-  }, [tableId, onFetchMetadata]);
-
   const handleChange = useCallback(
     (event: SelectChangeEvent<Field>) => {
       onChangeField(event.target.value.reference());
     },
     [onChangeField],
   );
+
+  useEffect(() => {
+    onFetchMetadata({ id: tableId });
+  }, [tableId, onFetchMetadata]);
 
   return (
     <LoadingAndErrorWrapper loading={loading} error={error}>
