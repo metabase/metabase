@@ -4,8 +4,8 @@ import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import {
   ParameterId,
-  ParameterSourceConfig,
-  ParameterSourceType,
+  ValuesSourceConfig,
+  ValuesSourceType,
 } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
@@ -24,11 +24,11 @@ export interface ParameterSidebarProps {
   ) => void;
   onChangeSourceType: (
     parameterId: ParameterId,
-    sourceType: ParameterSourceType,
+    sourceType: ValuesSourceType,
   ) => void;
   onChangeSourceOptions: (
     parameterId: ParameterId,
-    sourceOptions: ParameterSourceConfig,
+    sourceOptions: ValuesSourceConfig,
   ) => void;
   onChangeFilteringParameters: (
     parameterId: ParameterId,
@@ -78,14 +78,14 @@ const ParameterSidebar = ({
   );
 
   const handleSourceTypeChange = useCallback(
-    (sourceType: ParameterSourceType) => {
+    (sourceType: ValuesSourceType) => {
       onChangeSourceType(parameterId, sourceType);
     },
     [parameterId, onChangeSourceType],
   );
 
   const handleSourceOptionsChange = useCallback(
-    (sourceOptions: ParameterSourceConfig) => {
+    (sourceOptions: ValuesSourceConfig) => {
       onChangeSourceOptions(parameterId, sourceOptions);
     },
     [parameterId, onChangeSourceOptions],

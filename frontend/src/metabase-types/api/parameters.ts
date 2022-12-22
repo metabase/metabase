@@ -42,13 +42,13 @@ export interface Parameter {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
-  source_type?: ParameterSourceType;
-  source_options?: ParameterSourceOptions;
+  values_source_type?: ValuesSourceType;
+  values_source_config?: ValuesSourceConfig;
 }
 
-export type ParameterSourceType = null | "card" | "static-list";
+export type ValuesSourceType = null | "card" | "static-list";
 
-export interface ParameterSourceOptions {
+export interface ValuesSourceConfig {
   values?: string[];
   card_id?: CardId;
   value_field_ref?: unknown[];
