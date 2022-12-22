@@ -128,10 +128,11 @@ export interface TokenFeatures {
   whitelabel: boolean;
 }
 
-export interface SettingDefinition {
+export interface SettingDefinition<Value = unknown> {
   key: string;
   env_name: string;
   is_env_setting: boolean;
+  value: Value;
 }
 
 export interface Settings {
