@@ -2091,30 +2091,30 @@
                   :has_more_values false}
                  (mt/user-http-request :rasta :get 200 url)))))))
 
-  (testing "invalid field_ref shoud returns 400"
-    (mt/with-temp*
-      [Card      [{card-id         :id}
-                  (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
-                         {:database_id     (mt/id)
-                          :table_id        (mt/id :venues)})]
-       Dashboard [{dashboard-id :id}
-                  {:parameters [{:id             "abc"
-                                 :type           "category"
-                                 :name           "CATEGORY"
-                                 :source_type    "card"
-                                 :source_options {:card_id         card-id
-                                                  ;; this should be invalid field_ref beacuse the query
-                                                  ;; is for venues table
-                                                  :value_field_ref (mt/$ids $categories.name)}}]}]]
-      (testing "when getting values"
-        (let-url [url (chain-filter-values-url dashboard-id "abc")]
-          (is (=? #"No matching field found"
-                  (:message (mt/user-http-request :rasta :get 400 url))))))
+  #_(testing "invalid field_ref shoud returns 400"
+      (mt/with-temp*
+        [Card      [{card-id         :id}
+                    (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
+                           {:database_id     (mt/id)
+                            :table_id        (mt/id :venues)})]
+         Dashboard [{dashboard-id :id}
+                    {:parameters [{:id             "abc"
+                                   :type           "category"
+                                   :name           "CATEGORY"
+                                   :source_type    "card"
+                                   :source_options {:card_id         card-id
+                                                    ;; this should be invalid field_ref beacuse the query
+                                                    ;; is for venues table
+                                                    :value_field_ref (mt/$ids $categories.name)}}]}]]
+        (testing "when getting values"
+          (let-url [url (chain-filter-values-url dashboard-id "abc")]
+            (is (=? #"No matching field found"
+                    (:message (mt/user-http-request :rasta :get 400 url))))))
 
-      (testing "when searching values"
-        (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
-          (is (=? #"No matching field found"
-                  (:message (mt/user-http-request :rasta :get 400 url)))))))))
+        (testing "when searching values"
+          (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
+            (is (=? #"No matching field found"
+                    (:message (mt/user-http-request :rasta :get 400 url)))))))))
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"

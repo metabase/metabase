@@ -37,10 +37,10 @@
         ;; TODO: the options for field-ref does contains the binning information
         ;; maybe we could just need to select it from options?
         (when (some? (:binning options))
-              (throw (ex-info (tru "Binning column not supported")
-                              {:status-code 400
-                               :card-id     card-id
-                               :field-ref   field-ref})))
+          (throw (ex-info (tru "Binning column not supported")
+                          {:status-code 400
+                           :card-id     card-id
+                           :field-ref   field-ref})))
         [:field identifier (select-keys options mbql.s/field-options-for-identification)])
 
       (throw (ex-info (tru "Invalid field-ref type. Must be a field or aggregation.")
@@ -49,10 +49,9 @@
                        :field-ref   field-ref})))))
 
 (defn- values-from-card-query
-  [card-id value-field-ref query]
-  (let [value-field-ref (mbql.normalize/normalize-tokens value-field-ref)
-        card            (db/select-one Card :id card-id)
-        value-field     (field-ref->mbql-field value-field-ref (:result_metadata card) card-id)]
+  [card-id value-field query]
+  (let [value-field (mbql.normalize/normalize-tokens value-field)
+        card        (db/select-one Card :id card-id)]
     {:database (:database_id card)
      :type     :query
      :query    (merge
@@ -79,10 +78,10 @@
   ([card-id value-field-ref]
    (values-from-card card-id value-field-ref nil))
 
-  ([card-id         :- su/IntGreaterThanZero
-    value-field-ref :- su/FieldRef
-    query           :- (s/maybe su/NonBlankString)]
-   (let [mbql-query   (values-from-card-query card-id value-field-ref query)
+  ([card-id     :- su/IntGreaterThanZero
+    value-field :- su/Field
+    query       :- (s/maybe su/NonBlankString)]
+   (let [mbql-query   (values-from-card-query card-id value-field query)
          query-limit  (get-in mbql-query [:query :limit])
          result       (qp/process-query mbql-query)]
      {:values          (map first (get-in result [:data :rows]))
