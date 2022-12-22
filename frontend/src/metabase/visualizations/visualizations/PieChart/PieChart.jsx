@@ -24,7 +24,6 @@ import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import ChartWithLegend from "../../components/ChartWithLegend";
-import ChartTooltip from "../../components/ChartTooltip";
 import styles from "./PieChart.css";
 
 import { PieArc } from "./PieArc";
@@ -582,7 +581,6 @@ export default class PieChart extends Component {
             </svg>
           </div>
         </div>
-        <ChartTooltip series={series} hovered={hovered} />
       </ChartWithLegend>
     );
   }

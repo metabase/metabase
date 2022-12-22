@@ -7,6 +7,7 @@ import { DatasetData, Column, Row, Value } from "metabase-types/types/Dataset";
 import { Card } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { ReduxAction } from "metabase-types/types/redux";
+import { TooltipModel } from "metabase/visualizations/components/ChartTooltip/DataPointTooltip/types";
 
 // import Question from "metabase-lib/Question";
 type Question = any;

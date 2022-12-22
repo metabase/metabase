@@ -1,20 +1,20 @@
 import { MouseEvent } from "react";
-import { Column } from "metabase-types/types/Dataset";
 import { TimelineEvent } from "metabase-types/api/timeline";
-
-export type VisualizationSettings = Record<string, unknown> & {
-  column?: (col: Column) => Column;
-};
+import { DatasetColumn, VisualizationSettings } from "metabase-types/api";
+import { TooltipModel } from "./DataPointTooltip/types";
 
 export interface DataPoint {
   key: string;
-  col?: Column;
+  col?: DatasetColumn;
   value?: unknown;
+  isHovered?: boolean;
+  color?: string;
+  percent?: number;
 }
 
 export interface HoveredDimension {
   value: string;
-  column: Column;
+  column: DatasetColumn;
 }
 
 export interface HoveredTimelineEvent {
@@ -27,11 +27,14 @@ export interface HoveredObject {
   axisIndex?: number;
   seriesIndex?: number;
   value?: unknown;
-  column?: Column;
+  column?: DatasetColumn;
   timelineEvents?: TimelineEvent[];
   data?: DataPoint[];
   dimensions?: HoveredDimension[];
   settings?: VisualizationSettings;
   element?: HTMLElement;
   event?: MouseEvent;
+  totalValue?: number;
+
+  dataTooltip?: TooltipModel;
 }

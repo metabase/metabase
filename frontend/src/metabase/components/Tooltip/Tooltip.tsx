@@ -19,6 +19,7 @@ Tooltip.propTypes = {
   isOpen: PropTypes.bool,
   offset: PropTypes.oneOfType([PropTypes.array, PropTypes.func]),
   maxWidth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  isPadded: PropTypes.bool,
 };
 
 export interface TooltipProps
@@ -34,6 +35,7 @@ export interface TooltipProps
   isEnabled?: boolean;
   isOpen?: boolean;
   maxWidth?: string | number | undefined;
+  isPadded?: boolean;
 }
 
 // Tippy relies on child nodes forwarding refs, so when `children` is neither
@@ -68,6 +70,7 @@ function Tooltip({
   isOpen,
   preventOverflow = false,
   maxWidth = 200,
+  isPadded = true,
 }: TooltipProps) {
   const visible = isOpen != null ? isOpen : undefined;
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
@@ -91,10 +94,12 @@ function Tooltip({
     [preventOverflow],
   );
 
+  const theme = `tooltip ${isPadded ? "" : "no-padding"}`;
+
   if (tooltip && targetProps) {
     return (
       <TippyComponent
-        theme="tooltip"
+        theme={theme}
         className="popover"
         appendTo={() => document.body}
         content={tooltip}

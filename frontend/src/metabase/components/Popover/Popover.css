@@ -59,6 +59,10 @@
   padding: 0;
 }
 
+.tippy-box[data-theme~="no-padding"] .tippy-content {
+  padding: 0;
+}
+
 /* remove the max-width in cases where the popover content needs to expand
  * initially added  for date pickers so the dual date picker can fully
  * expand as necessary - metabase#5971

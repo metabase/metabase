@@ -504,7 +504,12 @@ class Visualization extends React.PureComponent {
             }
           />
         )}
-        <ChartTooltip series={series} hovered={hovered} settings={settings} />
+        <ChartTooltip
+          series={series}
+          hovered={hovered}
+          settings={settings}
+          computedSettings={this.state.computedSettings}
+        />
         {this.props.onChangeCardAndRun && (
           <ChartClickActions
             clicked={clicked}

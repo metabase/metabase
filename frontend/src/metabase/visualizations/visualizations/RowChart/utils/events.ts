@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   DatasetColumn,
   RowValue,
@@ -6,9 +7,11 @@ import {
 import { isNotNull } from "metabase/core/utils/types";
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import {
+  BreakoutChartColumns,
   ChartColumns,
   ColumnDescriptor,
   getColumnDescriptors,
+  MultipleMetricsChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
 import {
   BarData,
@@ -20,6 +23,8 @@ import {
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
 import { sumMetric } from "metabase/visualizations/shared/utils/data";
+import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
+import { TooltipModel } from "metabase/visualizations/components/ChartTooltip/DataPointTooltip/types";
 import { isMetric } from "metabase-lib/types/utils/isa";
 
 const getMetricColumnData = (
@@ -167,23 +172,131 @@ export const getLegendClickData = (
   };
 };
 
+const getBreakoutsTooltipModel = (
+  bar: BarData<GroupedDatum>,
+  settings: VisualizationSettings,
+  chartColumns: BreakoutChartColumns,
+  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
+  seriesColors: Record<string, string>,
+): TooltipModel => {
+  const { series, datum } = bar;
+  const dimensionValue = series.yAccessor(datum);
+
+  const headerTitle = String(
+    formatValueForTooltip({
+      value: dimensionValue,
+      column: chartColumns.dimension.column,
+      settings,
+    }),
+  );
+
+  const breakoutsSum = multipleSeries.reduce(
+    (sum, series) => sum + (series.xAccessor(datum) ?? 0),
+    0,
+  );
+
+  const rows = multipleSeries.map(series => {
+    const value = series.xAccessor(bar.datum);
+
+    return {
+      name: series.seriesName,
+      color: seriesColors[series.seriesKey],
+      value: String(
+        formatValueForTooltip({
+          value,
+          settings,
+          column: series.seriesInfo?.metricColumn,
+        }),
+      ),
+      percent: value != null ? value / breakoutsSum : undefined,
+    };
+  });
+
+  const [headerRows, bodyRows] = _.partition(
+    rows,
+    row => row.name === series.seriesName,
+  );
+
+  const totalValue = String(breakoutsSum);
+
+  return { headerTitle, headerRows, bodyRows, totalValue };
+};
+
+const getMultipleMetricsTooltipModel = (
+  bar: BarData<GroupedDatum>,
+  settings: VisualizationSettings,
+  chartColumns: MultipleMetricsChartColumns,
+  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
+  seriesColors: Record<string, string>,
+): TooltipModel => {
+  const { series, datum } = bar;
+
+  const dimensionValue = series.yAccessor(datum);
+
+  const headerTitle = String(
+    formatValueForTooltip({
+      value: dimensionValue,
+      column: chartColumns.dimension.column,
+      settings,
+    }),
+  );
+
+  const rows = multipleSeries.map(series => {
+    const value = series.xAccessor(bar.datum);
+
+    return {
+      name: series.seriesName,
+      color: seriesColors[series.seriesKey],
+      value: String(
+        formatValueForTooltip({
+          value,
+          settings,
+          column: series.seriesInfo?.metricColumn,
+        }),
+      ),
+    };
+  });
+
+  const [headerRows, bodyRows] = _.partition(
+    rows,
+    row => row.name === series.seriesName,
+  );
+
+  return {
+    headerTitle,
+    headerRows,
+    bodyRows,
+  };
+};
+
 export const getHoverData = (
   bar: BarData<GroupedDatum>,
   settings: VisualizationSettings,
   chartColumns: ChartColumns,
-  datasetColumns: DatasetColumn[],
+  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
+  seriesColors: Record<string, string>,
 ) => {
-  const data = getColumnsData(
-    chartColumns,
-    bar.series,
-    bar.datum,
-    datasetColumns,
-  );
+  const dataTooltip =
+    "breakout" in chartColumns
+      ? getBreakoutsTooltipModel(
+          bar,
+          settings,
+          chartColumns,
+          multipleSeries,
+          seriesColors,
+        )
+      : getMultipleMetricsTooltipModel(
+          bar,
+          settings,
+          chartColumns,
+          multipleSeries,
+          seriesColors,
+        );
 
   return {
     settings,
     datumIndex: bar.datumIndex,
     index: bar.seriesIndex,
-    data,
+    dataTooltip,
   };
 };
