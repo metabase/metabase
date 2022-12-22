@@ -351,7 +351,9 @@
 ;;; |                                              reset-cookie-timeout                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn check-session-timeout [timeout]
+(defn- check-session-timeout
+  "Asserts the [[session-timeout]] value is valid."
+  [timeout]
   (when (some? timeout)
     (let [{:keys [unit amount]} timeout
           days (/ amount (case unit
