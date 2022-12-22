@@ -3,17 +3,7 @@
     [clojure.test :refer :all]
     [metabase.models :refer [Card]]
     [metabase.models.params.card-values :as params.card-values]
-    [metabase.test :as mt]
-    [toucan.db :as db]))
-
-(defn- find-field-ref
-  [id-or-name result-metadata]
-  (let [selector (if (string? id-or-name)
-                   :name
-                   :id)]
-    (-> (filter #(= id-or-name (selector %)) result-metadata)
-        first
-        :field_ref)))
+    [metabase.test :as mt]))
 
 (deftest with-mbql-card-test
   (doseq [dataset? [true false]]
