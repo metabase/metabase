@@ -101,7 +101,7 @@ function Wrapper({
   withRouter,
   withDND,
 }: {
-  children: React.ReactNode;
+  children: React.ReactElement;
   store: any;
   withRouter: boolean;
   withDND: boolean;
@@ -121,16 +121,16 @@ function MaybeRouter({
   children,
   hasRouter,
 }: {
-  children: React.ReactNode;
+  children: React.ReactElement;
   hasRouter: boolean;
 }): JSX.Element {
   if (!hasRouter) {
-    return <>{children}</>;
+    return children;
   }
   const history = createMemoryHistory({ entries: ["/"] });
 
   function Page(props: any) {
-    return React.cloneElement(<>{children}</>, props);
+    return React.cloneElement(children, props);
   }
 
   return (
@@ -144,11 +144,11 @@ function MaybeDNDProvider({
   children,
   hasDND,
 }: {
-  children: React.ReactNode;
+  children: React.ReactElement;
   hasDND: boolean;
 }): JSX.Element {
   if (!hasDND) {
-    return <>{children}</>;
+    return children;
   }
   return (
     <DragDropContextProvider backend={HTML5Backend}>
