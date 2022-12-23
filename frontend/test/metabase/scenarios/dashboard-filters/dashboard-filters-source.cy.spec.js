@@ -94,7 +94,7 @@ describe("scenarios > dashboard > filters", () => {
 const setupStructuredQuestionSource = () => {
   cy.findByText("Values from a model or question").click();
   modal().within(() => {
-    cy.findByText("Saved Questions").click();
+    cy.findByPlaceholderText(/Search for a question/).type("GUI categories");
     cy.findByText("GUI categories").click();
     cy.button("Select column").click();
   });
