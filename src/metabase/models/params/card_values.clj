@@ -9,7 +9,9 @@
     [toucan.db :as db]))
 
 (def ^:dynamic *max-rows*
-  "Maximum number of rows returned when running a card."
+  "Maximum number of rows returned when running a card.
+  It's 2000 because this is the limit we use when viewing a question.
+  Maybe we should lower it for the sake of display a parameter dropdown."
   2000)
 
 (defn- values-from-card-query

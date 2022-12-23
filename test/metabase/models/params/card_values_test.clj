@@ -62,7 +62,34 @@
                       (params.card-values/values-from-card
                         card-id
                         (mt/$ids $categories.name)
-                        "bakery"))))))))))
+                        "bakery"))))))
+
+        (testing "should disable remapping when getting fk columns"
+          (mt/with-column-remappings [venues.name {"Red Medicine"          "RM",
+                                                   "Stout Burgers & Beers" "SBB",
+                                                   "The Apple Pan"         "TAP"}]
+            (mt/with-temp* [Card [{card-id :id}
+                                  (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues))
+
+                                         {:database_id     (mt/id)
+                                          :dataset         dataset?
+                                          :table_id        (mt/id :venues)})]]
+
+             (testing "get values returns the value, not remapped values"
+               (is (=? {:has_more_values true,
+                        :values          ["Red Medicine" "Stout Burgers & Beers" "The Apple Pan"]}
+                       (params.card-values/values-from-card
+                         card-id
+                         (mt/$ids $categories.name)))))
+
+             (testing "search with  the value, not remapped values"
+               (is (=? {:has_more_values false,
+                        :values          ["Red Medicine"]}
+                       (params.card-values/values-from-card
+                         card-id
+                         (mt/$ids $categories.name)
+                         "medicine")))))))))))
 
 (deftest with-native-card-test
   (doseq [dataset? [true false]]
