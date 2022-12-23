@@ -73,7 +73,7 @@ const CardStepModal = ({
           onClick={handleSubmit}
         >{t`Select column`}</Button>,
       ]}
-      onClose={onSubmit}
+      onClose={onClose}
     >
       <ModalBody>
         <DataPickerContainer value={value} onChange={setValue} />
