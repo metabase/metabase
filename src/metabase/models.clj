@@ -1,8 +1,6 @@
 (ns metabase.models
   (:require [metabase.models.action :as action]
             [metabase.models.activity :as activity]
-            [metabase.models.app :as app]
-            [metabase.models.app-permission-graph-revision :as app-perm-revision]
             [metabase.models.application-permissions-revision :as a-perm-revision]
             [metabase.models.bookmark :as bookmark]
             [metabase.models.card :as card]
@@ -48,8 +46,6 @@
 ;; Fool the linter
 (comment action/keep-me
          activity/keep-me
-         app/keep-me
-         app-perm-revision/keep-me
          card/keep-me
          bookmark/keep-me
          collection/keep-me
@@ -94,8 +90,6 @@
 (p/import-vars
  [action Action HTTPAction ImplicitAction QueryAction]
  [activity Activity]
- [app App]
- [app-perm-revision AppPermissionGraphRevision]
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]

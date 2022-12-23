@@ -192,8 +192,7 @@
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
   [result all-scores relevant-scores]
-  (let [{:keys [name display_name collection_id collection_name collection_authority_level
-                collection_app_id]} result
+  (let [{:keys [name display_name collection_id collection_name collection_authority_level]} result
         matching-columns            (into #{} (remove nil? (map :column relevant-scores)))
         match-context-thunk         (first (keep :match-context-thunk relevant-scores))]
     (-> result
@@ -207,14 +206,12 @@
                            (match-context-thunk))
          :collection     {:id              collection_id
                           :name            collection_name
-                          :authority_level collection_authority_level
-                          :app_id          collection_app_id}
+                          :authority_level collection_authority_level}
          :scores          all-scores)
         (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
         (dissoc
          :collection_id
          :collection_name
-         :collection_app_id
          :display_name))))
 
 (defn weights-and-scores

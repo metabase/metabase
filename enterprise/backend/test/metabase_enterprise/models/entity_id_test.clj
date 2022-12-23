@@ -36,7 +36,6 @@
     metabase.models.action.ImplicitActionInstance
     metabase.models.action.QueryActionInstance
     metabase.models.activity.ActivityInstance
-    metabase.models.app_permission_graph_revision.AppPermissionGraphRevisionInstance
     metabase.models.application_permissions_revision.ApplicationPermissionsRevisionInstance
     metabase.models.bookmark.BookmarkOrderingInstance
     metabase.models.bookmark.CardBookmarkInstance

@@ -408,14 +408,6 @@
   [collection-or-id :- MapOrID]
   (str (collection-readwrite-path collection-or-id) "read/"))
 
-(s/defn app-root-collection-permission :- Path
-  "Return path for the app root collection permission `read-or-write`."
-  [read-or-write :- (s/enum :read :write)]
-  (let [app-root-collection {:metabase.models.collection.root/is-root? true, :namespace :apps}]
-    (case read-or-write
-      :write (collection-readwrite-path app-root-collection)
-      :read  (collection-read-path app-root-collection))))
-
 (s/defn table-read-path :- Path
   "Return the permissions path required to fetch the Metadata for a Table."
   ([table-or-id]
@@ -1226,8 +1218,7 @@
   "Save changes made to permission graph for logging/auditing purposes.
   This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage).
   *  `model`   -- revision model, should be one of
-                  [PermissionsRevision, CollectionPermissionGraphRevision, ApplicationPermissionsRevision
-                   AppPermissionGraphRevision]
+                  [PermissionsRevision, CollectionPermissionGraphRevision, ApplicationPermissionsRevision]
   *  `before`  -- the graph before the changes
   *  `changes` -- set of changes applied in this revision."
   [model current-revision before changes]
@@ -1275,7 +1266,7 @@
    (update-data-perms-graph! (assoc-in (data-perms-graph) (cons :groups ks) new-value))))
 
 (s/defn update-execution-perms-graph!
-  "Update the *execution* permissions graph, making any changes necessary to make it match NEW-GRAPH.
+  "Update the *execution* permissions graph, making any changes necessary to make it match `new-graph`.
    This should take in a graph that is exactly the same as the one obtained by `graph` with any changes made as
    needed. The graph is revisioned, so if it has been updated by a third party since you fetched it this function will
    fail and return a 409 (Conflict) exception. If nothing needs to be done, this function returns `nil`; otherwise it

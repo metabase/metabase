@@ -20,8 +20,7 @@
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
-(def CollectionPermissions
-  "The valid collection permissions."
+(def ^:private CollectionPermissions
   (s/enum :write :read :none))
 
 (def ^:private GroupPermissionsGraph
@@ -29,8 +28,7 @@
   {(s/optional-key :root) CollectionPermissions   ; when doing a delta between old graph and new graph root won't always
    su/IntGreaterThanZero  CollectionPermissions}) ; be present, which is why it's *optional*
 
-(def PermissionsGraph
-  "A versioned map of group permissions. See [[GroupPermissionsGraph]]."
+(def ^:private PermissionsGraph
   {:revision s/Int
    :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
 
@@ -106,19 +104,7 @@
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
-(defn- check-no-app-collections [changes]
-  (let [coll-ids (into #{}
-                       (comp (mapcat second)
-                             (map first)
-                             (filter int?))
-                       changes)]
-    (when-let [app-ids (and (seq coll-ids)
-                            (db/select-ids 'App :collection_id [:in coll-ids]))]
-      (throw (ex-info (tru "Cannot set app permissions using this endpoint")
-                      {:status-code 400
-                       :app-ids app-ids})))))
-
-(s/defn update-collection-permissions!
+(s/defn ^:private update-collection-permissions!
   "Update the permissions for group ID with `group-id` on collection with ID
   `collection-id` in the optional `collection-namespace` to `new-collection-perms`."
   [collection-namespace :- (s/maybe su/KeywordOrString)
@@ -162,7 +148,6 @@
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
      (when (seq changes)
-       (check-no-app-collections changes)
        (db/transaction
          (doseq [[group-id changes] changes]
            (update-group-permissions! collection-namespace group-id changes))

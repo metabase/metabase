@@ -6,7 +6,7 @@
             [metabase.api.search :as api.search]
             [metabase.models
              :refer
-             [App Card CardBookmark Collection Dashboard DashboardBookmark DashboardCard
+             [Card CardBookmark Collection Dashboard DashboardBookmark DashboardCard
               Database Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard
               Segment Table]]
             [metabase.models.permissions :as perms]
@@ -22,10 +22,9 @@
   {:id                         true
    :description                nil
    :archived                   false
-   :collection                 {:id false :name nil :authority_level nil :app_id false}
+   :collection                 {:id false :name nil :authority_level nil}
    :collection_authority_level nil
    :collection_position        nil
-   :app_id                     false
    :moderated_status           nil
    :context                    nil
    :dashboardcard_count        nil
@@ -60,8 +59,7 @@
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
                                             :model "collection"
-                                            :collection {:id true, :name true :authority_level nil
-                                                         :app_id false}
+                                            :collection {:id true, :name true :authority_level nil}
                                             :updated_at false))
 
 (defn- default-search-results []
@@ -94,25 +92,24 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card" "dataset"}
-                   #(assoc % :collection {:id true, :name true :authority_level nil :app_id false})
+                   #(assoc % :collection {:id true, :name true :authority_level nil})
                    (default-search-results)))
 
-(defn- do-with-search-items [search-string {:keys [in-root-collection? in-app-collection?]} f]
-  (let [data-map      (fn [instance-name app-collection?]
-                        (cond-> {:name (format instance-name search-string)}
-                          app-collection? (assoc :namespace :apps)))
+(defn- do-with-search-items [search-string {:keys [in-root-collection?]} f]
+  (let [data-map      (fn [instance-name]
+                        {:name (format instance-name search-string)})
         coll-data-map (fn [instance-name collection]
-                        (merge (data-map instance-name false)
+                        (merge (data-map instance-name)
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
-    (mt/with-temp* [Collection [coll      (data-map "collection %s collection" in-app-collection?)]
+    (mt/with-temp* [Collection [coll      (data-map "collection %s collection")]
                     Card       [card      (coll-data-map "card %s card" coll)]
                     Card       [dataset   (assoc (coll-data-map "dataset %s dataset" coll)
                                                  :dataset true)]
                     Dashboard  [dashboard (coll-data-map "dashboard %s dashboard" coll)]
                     Pulse      [pulse     (coll-data-map "pulse %s pulse" coll)]
-                    Metric     [metric    (data-map "metric %s metric" false)]
-                    Segment    [segment   (data-map "segment %s segment" false)]]
+                    Metric     [metric    (data-map "metric %s metric")]
+                    Segment    [segment   (data-map "segment %s segment")]]
       (f {:collection coll
           :card       card
           :dataset    dataset
@@ -126,9 +123,6 @@
 
 (defmacro ^:private with-search-items-in-collection [created-items-sym search-string & body]
   `(do-with-search-items ~search-string nil (fn [~created-items-sym] ~@body)))
-
-(defmacro ^:private with-search-items-in-app-collection [created-items-sym search-string & body]
-  `(do-with-search-items ~search-string {:in-app-collection? true} (fn [~created-items-sym] ~@body)))
 
 (def ^:private ^:dynamic *search-request-results-database-id*
   "Filter out all results from `search-request` that don't have this Database ID. Default: the default H2 `test-data`
@@ -615,57 +609,3 @@
         (is (= ["Another SQL query" "Dataset"]
                (->> (search-request-data :rasta :q "aggregation")
                     (map :name))))))))
-
-(deftest app-test
-  (testing "App collections should come with app_id set"
-    (with-search-items-in-app-collection {:keys [collection]} "test"
-      (mt/with-temp App [_app {:collection_id (:id collection)}]
-        (is (= (mapv
-                (fn [result]
-                  (cond-> result
-                    (not (#{"metric" "segment"} (:model result))) (assoc-in [:collection :app_id] true)
-                    (= (:model result) "collection")              (assoc :model "app" :app_id true)))
-                (default-results-with-collection))
-               (search-request-data :crowberto :q "test"))))))
-  (testing "App collections should filterable as \"app\""
-    (mt/with-temp* [Collection [collection {:name "App collection to find", :namespace :apps}]
-                    App [_ {:collection_id (:id collection)}]
-                    Collection [_ {:name "Another collection to find"}]]
-      (is (partial= [(assoc (select-keys collection [:name])
-                            :model "app")]
-             (search-request-data :crowberto :q "find" :models "app"))))))
-
-(deftest page-test
-  (testing "Search results should pages with model \"page\""
-    (mt/with-temp* [Dashboard [_ {:name "Not a page but contains important text!"}]
-                    Dashboard [page {:name        "Page"
-                                     :description "Contains important text!"
-                                     :is_app_page true}]]
-      (is (partial= [(assoc (select-keys page [:name :description])
-                            :model "page")]
-                    (search-request-data :rasta :q "important text" :models "page"))))))
-
-(deftest collection-app-id-test
-  (testing "app_id and id of containing collection should not be confused (#25213)"
-    (mt/with-temp* [Collection [{coll-id :id} {:namespace :apps}]
-                      ;; The ignored elements are there to make sure the IDs
-                      ;; coll-id and app-id are different.
-                    Collection [{ignored-collection-id :id} {:namespace :apps}]
-                    App [_ignored-app {:collection_id ignored-collection-id}]
-                    App [{app-id :id} {:collection_id coll-id}]
-                    Dashboard [_ {:name          "Not a page but contains important text!"
-                                  :collection_id coll-id}]
-                    Dashboard [_ {:name          "Page"
-                                  :description   "Contains important text!"
-                                  :collection_id coll-id
-                                  :is_app_page   true}]
-                    Card [_ {:name          "Query looking for important text"
-                             :query_type    "native"
-                             :dataset_query (mt/native-query {:query "SELECT 0 FROM venues"})
-                             :collection_id coll-id}]
-                    Pulse [_ {:name         "Pulse about important text"
-                              :collection_id coll-id}]]
-      (is (not= app-id coll-id) "app-id and coll-id should be different. Fix the test!")
-      (is (partial= (repeat 4 {:collection {:app_id app-id
-                                            :id coll-id}})
-                    (:data (make-search-request :crowberto [:q "important text"])))))))
