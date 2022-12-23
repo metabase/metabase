@@ -5,6 +5,8 @@
             [clojure.string :as str]
             [clojure.walk :as walk]
             [medley.core :as m]
+            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -288,6 +290,13 @@
                                   (deferred-tru "Valid field semantic or relation type (keyword or string)"))
     (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
+(def Field
+  "Schema for a valid Field for API usage."
+  (with-api-error-message (s/pred
+                            (comp (complement (s/checker mbql.s/Field))
+                                  mbql.normalize/normalize-tokens))
+    (deferred-tru "value must an array with :field id-or-name and an options map")))
+
 (def CoercionStrategyKeywordOrString
   "Like `CoercionStrategy` but accepts either a keyword or string."
   (with-api-error-message (s/pred #(isa? (keyword %) :Coercion/*) (deferred-tru "Valid coercion strategy"))
@@ -364,8 +373,14 @@
 (def ValuesSourceConfig
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
-  {(s/optional-key :values) (s/cond-pre [s/Any])
-   (s/optional-key :card_id) IntGreaterThanZero})
+  {;; for source_type = 'static-list'
+   (s/optional-key :values)      (s/cond-pre [s/Any])
+
+   ;; for source_type = 'card'
+   (s/optional-key :card_id)     IntGreaterThanZero
+   (s/optional-key :value_field) Field
+   ;; label_field is optional
+   (s/optional-key :label_field) Field})
 
 (def Parameter
   "Schema for a valid Parameter.
