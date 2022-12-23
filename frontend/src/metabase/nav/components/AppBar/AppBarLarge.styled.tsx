@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { LogoLink } from "./AppBarLogo.styled";
-import { SidebarButton } from "./AppBarToggle.styled";
+import { SidebarButton, SidebarIcon } from "./AppBarToggle.styled";
 
 interface AppBarRootProps {
   isNavBarOpen?: boolean;
@@ -52,6 +52,14 @@ export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
     css`
       ${SidebarButton} {
         opacity: 1;
+      }
+
+      ${SidebarIcon} {
+        color: ${color("text-medium")};
+
+        &:hover {
+          color: ${color("brand")};
+        }
       }
 
       padding-left: ${!props.isNavBarEnabled && "1rem"};
