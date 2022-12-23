@@ -1,6 +1,7 @@
 import { Database, DatabaseData, DatabaseFeature } from "metabase-types/api";
 
 export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
+  "actions",
   "basic-aggregations",
   "binning",
   "case-sensitivity-string-filter-options",

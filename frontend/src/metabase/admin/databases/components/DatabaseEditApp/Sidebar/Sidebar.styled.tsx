@@ -46,3 +46,7 @@ export const SidebarContent = styled.div`
     margin-bottom: 0;
   }
 `;
+
+export const ModelActionsSidebarContent = styled(SidebarContent)`
+  margin-top: 32px;
+`;

@@ -7,9 +7,11 @@ export type InitialSyncStatus = "incomplete" | "complete" | "aborted";
 
 export type DatabaseSettings = {
   [key: string]: any;
+  "database-enable-actions"?: boolean;
 };
 
 export type DatabaseFeature =
+  | "actions"
   | "basic-aggregations"
   | "binning"
   | "case-sensitivity-string-filter-options"

@@ -163,6 +163,75 @@ describe("DatabaseEditApp/Sidebar", () => {
     });
   });
 
+  describe("model actions control", () => {
+    it("is shown if database supports actions", () => {
+      setup();
+      expect(screen.getByLabelText(/Model actions/i)).toBeInTheDocument();
+    });
+
+    it("is shown for non-admin users", () => {
+      setup({ isAdmin: false });
+      expect(screen.getByLabelText(/Model actions/i)).toBeInTheDocument();
+    });
+
+    it("shows if actions are enabled", () => {
+      setup({
+        database: createMockDatabase({
+          settings: { "database-enable-actions": true },
+        }),
+      });
+
+      expect(screen.getByLabelText(/Model actions/i)).toBeChecked();
+    });
+
+    it("shows if actions are disabled", () => {
+      setup({
+        database: createMockDatabase({
+          settings: { "database-enable-actions": false },
+        }),
+      });
+
+      expect(screen.getByLabelText(/Model actions/i)).not.toBeChecked();
+    });
+
+    it("isn't shown if database doesn't support actions", () => {
+      const features = _.without(COMMON_DATABASE_FEATURES, "actions");
+      setup({ database: createMockDatabase({ features }) });
+
+      expect(screen.queryByText(/Model actions/i)).not.toBeInTheDocument();
+    });
+
+    it("isn't shown when adding a new database", () => {
+      setup({ database: createMockDatabase({ id: undefined }) });
+      expect(screen.queryByText(/Model actions/i)).not.toBeInTheDocument();
+    });
+
+    it("enables actions", () => {
+      const { database, updateDatabase } = setup();
+
+      userEvent.click(screen.getByLabelText(/Model actions/i));
+
+      expect(updateDatabase).toBeCalledWith({
+        id: database.id,
+        settings: { "database-enable-actions": true },
+      });
+    });
+
+    it("disables actions", () => {
+      const database = createMockDatabase({
+        settings: { "database-enable-actions": true },
+      });
+      const { updateDatabase } = setup({ database });
+
+      userEvent.click(screen.getByLabelText(/Model actions/i));
+
+      expect(updateDatabase).toBeCalledWith({
+        id: database.id,
+        settings: { "database-enable-actions": false },
+      });
+    });
+  });
+
   describe("model caching control", () => {
     it("isn't shown if model caching is turned off globally", () => {
       setup({ isModelPersistenceEnabled: false });
