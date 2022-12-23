@@ -59,6 +59,8 @@ const BaseTreeNode = React.memo(
         {...props}
         depth={depth}
         isSelected={isSelected}
+        aria-selected={isSelected}
+        aria-expanded={isExpanded}
         onKeyDown={handleKeyDown}
         ref={ref}
       >

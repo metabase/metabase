@@ -32,6 +32,7 @@ export function BaseSelectListItem({
     <Root
       ref={isSelected ? ref : undefined}
       isSelected={isSelected}
+      aria-selected={isSelected}
       role="menuitem"
       tabIndex={0}
       size={size}
