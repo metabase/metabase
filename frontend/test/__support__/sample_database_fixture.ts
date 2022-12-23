@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-
 import { normalize } from "normalizr";
 import { chain } from "icepick";
 
@@ -31,6 +29,7 @@ export const MAIN_METRIC_ID = 1;
 function aliasTablesAndFields(metadata: Metadata) {
   // alias DATABASE.TABLE.FIELD for convenience in tests
   // NOTE: this assume names don't conflict with other properties in Database/Table which I think is safe for Sample Database
+  /* eslint-disable @typescript-eslint/ban-ts-comment */
   for (const database of Object.values(metadata.databases)) {
     for (const table of database.tables) {
       if (!(table.name in database)) {
@@ -45,6 +44,7 @@ function aliasTablesAndFields(metadata: Metadata) {
       }
     }
   }
+  /* eslint-enable @typescript-eslint/ban-ts-comment */
 }
 
 function normalizeFields(fields: Record<string, IField>) {
