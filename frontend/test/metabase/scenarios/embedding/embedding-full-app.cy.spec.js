@@ -13,24 +13,35 @@ describe("scenarios > embedding > full app", () => {
   describe("navigation", () => {
     it("should show the top nav and breadcrumbs by default", () => {
       visitUrl({ url: "/" });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByText("Our analytics").should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
     });
 
     it("should hide the top nav by a param", () => {
       visitUrl({ url: "/", qs: { top_nav: false } });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
       cy.findByTestId("main-logo").should("not.exist");
     });
 
-    it("should hide the top nav when all nav elements are hidden", () => {
+    it("should not hide the top nav when the logo is still visible", () => {
       visitUrl({ url: "/", qs: { breadcrumbs: false } });
+      cy.findByText(/Bobby/).should("be.visible");
+      cy.findByText("Our analytics").should("be.visible");
+      cy.findByTestId("main-logo").should("be.visible");
+    });
+
+    it("should hide the top nav when all nav elements are hidden", () => {
+      visitUrl({ url: "/", qs: { breadcrumbs: false, logo: false } });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
       cy.findByTestId("main-logo").should("not.exist");
     });
 
     it("should show the top nav by a param", () => {
       visitUrl({ url: "/" });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
       cy.button(/New/).should("not.exist");
       cy.findByPlaceholderText("Search").should("not.exist");
@@ -38,22 +49,26 @@ describe("scenarios > embedding > full app", () => {
 
     it("should hide the side nav by a param", () => {
       visitUrl({ url: "/", qs: { side_nav: false } });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
     });
 
     it("should show question creation controls by a param", () => {
       visitUrl({ url: "/", qs: { new_button: true } });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.button(/New/).should("be.visible");
     });
 
     it("should show search controls by a param", () => {
       visitUrl({ url: "/", qs: { search: true } });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByPlaceholderText("Search…").should("be.visible");
     });
 
     it("should preserve params when navigating", () => {
       visitUrl({ url: "/" });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
 
       cy.findByText("Our analytics").click();
@@ -96,6 +111,162 @@ describe("scenarios > embedding > full app", () => {
       cy.icon("notebook").should("not.exist");
       cy.button("Summarize").should("not.exist");
       cy.button("Filter").should("not.exist");
+    });
+
+    describe("desktop logo", () => {
+      it("should be able to toggle side nav", () => {
+        // default logo: true
+        visitQuestionUrl({ url: "/question/1", qs: { side_nav: true } });
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("be.visible");
+          cy.findByTestId("main-logo").should("be.visible");
+        });
+
+        cy.findByTestId("sidebar-toggle").click();
+        cy.findByText(/Add your own data/i).should("be.visible");
+
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("not.be.visible");
+          cy.findByTestId("main-logo").should("be.visible");
+        });
+      });
+
+      it("should hide side nav toggle icon on hover", () => {
+        // default logo: true
+        visitQuestionUrl({ url: "/question/1", qs: { side_nav: false } });
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("be.visible");
+          cy.findByTestId("main-logo").should("be.visible");
+        });
+
+        cy.findByTestId("sidebar-toggle").should("not.exist");
+      });
+
+      it("should always show side nav toggle icon when logo is hidden", () => {
+        visitQuestionUrl({
+          url: "/question/1",
+          qs: { side_nav: true, logo: false },
+        });
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("be.visible");
+          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.icon("sidebar_closed").should("be.visible");
+        });
+
+        cy.findByTestId("sidebar-toggle").click();
+        cy.findByText(/Add your own data/i).should("be.visible");
+
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("not.be.visible");
+          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.icon("sidebar_open").should("be.visible");
+        });
+      });
+
+      it("should not show either logo or side nav toggle button at all", () => {
+        visitQuestionUrl({
+          url: "/question/1",
+          qs: { side_nav: false, logo: false },
+        });
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("be.visible");
+          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.icon("sidebar_closed").should("not.exist");
+        });
+
+        cy.findByTestId("sidebar-toggle").should("not.exist");
+      });
+
+      it("should hide main header when there's nothing to display there", () => {
+        visitQuestionUrl({
+          url: "/question/1",
+          qs: { side_nav: false, logo: false, breadcrumbs: false },
+        });
+        cy.findByRole("banner").should("not.exist");
+        cy.findByTestId("main-logo").should("not.exist");
+        cy.icon("sidebar_closed").should("not.exist");
+        cy.findByTestId("sidebar-toggle").should("not.exist");
+      });
+    });
+
+    describe("mobile logo", () => {
+      beforeEach(() => {
+        cy.viewport("iphone-x");
+      });
+
+      it("should be able to toggle side nav", () => {
+        // default logo: true
+        visitQuestionUrl({ url: "/question/1", qs: { side_nav: true } });
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("be.visible");
+          cy.findByTestId("main-logo").should("be.visible");
+        });
+
+        cy.findByTestId("sidebar-toggle").click();
+        cy.findByText(/Add your own data/i).should("be.visible");
+
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("not.exist");
+          cy.findByTestId("main-logo").should("be.visible");
+        });
+      });
+
+      it("should hide side nav toggle icon on hover", () => {
+        // default logo: true
+        visitQuestionUrl({ url: "/question/1", qs: { side_nav: false } });
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("be.visible");
+          cy.findByTestId("main-logo").should("be.visible");
+        });
+
+        cy.findByTestId("sidebar-toggle").should("not.exist");
+      });
+
+      it("should always show side nav toggle icon when logo is hidden", () => {
+        visitQuestionUrl({
+          url: "/question/1",
+          qs: { side_nav: true, logo: false },
+        });
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("be.visible");
+          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.icon("sidebar_closed").should("be.visible");
+        });
+
+        cy.findByTestId("sidebar-toggle").click();
+        cy.findByText(/Add your own data/i).should("be.visible");
+
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("not.exist");
+          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.icon("sidebar_open").should("be.visible");
+        });
+      });
+
+      it("should not show either logo or side nav toggle button at all", () => {
+        visitQuestionUrl({
+          url: "/question/1",
+          qs: { side_nav: false, logo: false },
+        });
+        cy.findByRole("banner").within(() => {
+          cy.findByText(/Our analytics/i).should("be.visible");
+          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.icon("sidebar_closed").should("not.exist");
+        });
+
+        cy.findByTestId("sidebar-toggle").should("not.exist");
+      });
+
+      it("should hide main header when there's nothing to display there", () => {
+        visitQuestionUrl({
+          url: "/question/1",
+          qs: { side_nav: false, logo: false, breadcrumbs: false },
+        });
+        cy.findByRole("banner").should("not.exist");
+        cy.findByTestId("main-logo").should("not.exist");
+        cy.icon("sidebar_closed").should("not.exist");
+        cy.findByTestId("sidebar-toggle").should("not.exist");
+      });
     });
   });
 
