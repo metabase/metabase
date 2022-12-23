@@ -1,8 +1,7 @@
-import type { Database as IDatabase } from "metabase-types/api";
-import type Database from "metabase-lib/metadata/Database";
+import type { Database } from "metabase-types/api";
 
 export const checkDatabaseSupportsActions = (database: Database) =>
-  database.hasFeature("actions");
+  database.features.includes("actions");
 
-export const checkDatabaseActionsEnabled = (database: IDatabase) =>
+export const checkDatabaseActionsEnabled = (database: Database) =>
   !!database.settings?.["database-enable-actions"];

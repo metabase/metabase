@@ -10,13 +10,13 @@ import {
 } from "./ModelActionsSection.styled";
 
 interface ModelActionsSectionProps {
-  hasActionsEnabled: boolean;
-  onToggleActionsEnabled: (enabled: boolean) => void;
+  hasModelActionsEnabled: boolean;
+  onToggleModelActionsEnabled: (enabled: boolean) => void;
 }
 
 function ModelActionsSection({
-  hasActionsEnabled,
-  onToggleActionsEnabled,
+  hasModelActionsEnabled,
+  onToggleModelActionsEnabled,
 }: ModelActionsSectionProps) {
   return (
     <div>
@@ -24,8 +24,8 @@ function ModelActionsSection({
         <Label htmlFor="model-actions-toggle">{t`Model actions`}</Label>
         <Toggle
           id="model-actions-toggle"
-          value={hasActionsEnabled}
-          onChange={onToggleActionsEnabled}
+          value={hasModelActionsEnabled}
+          onChange={onToggleModelActionsEnabled}
         />
       </ToggleContainer>
       <Description>{t`Allow actions from models created from this data to be run. Actions are able to read, write, and possibly delete data.`}</Description>

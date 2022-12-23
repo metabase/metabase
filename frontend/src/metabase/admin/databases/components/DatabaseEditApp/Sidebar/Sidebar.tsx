@@ -51,28 +51,28 @@ const DatabaseEditAppSidebar = ({
   const discardSavedFieldValuesModal = useRef<any>();
   const deleteDatabaseModal = useRef<any>();
 
-  const databaseObject = database.getPlainObject();
-  const isNewDatabase = !databaseObject.id;
+  const isEditingDatabase = !!database.id;
 
   const isSynced = isSyncCompleted(database);
   const hasModelActionsSection =
-    !isNewDatabase && checkDatabaseSupportsActions(database);
+    isEditingDatabase &&
+    checkDatabaseSupportsActions(database.getPlainObject());
   const hasModelCachingSection =
     isModelPersistenceEnabled && database.supportsPersistence();
 
   const handleSyncDatabaseSchema = useCallback(
     () => syncDatabaseSchema(database.id),
-    [database, syncDatabaseSchema],
+    [database.id, syncDatabaseSchema],
   );
 
   const handleReScanFieldValues = useCallback(
     () => rescanDatabaseFields(database.id),
-    [database, rescanDatabaseFields],
+    [database.id, rescanDatabaseFields],
   );
 
   const handleDismissSyncSpinner = useCallback(
     () => dismissSyncSpinner(database.id),
-    [database, dismissSyncSpinner],
+    [database.id, dismissSyncSpinner],
   );
 
   const handleToggleModelActionsEnabled = useCallback(
@@ -81,17 +81,17 @@ const DatabaseEditAppSidebar = ({
         id: database.id,
         settings: { "database-enable-actions": nextValue },
       }),
-    [database, updateDatabase],
+    [database.id, updateDatabase],
   );
 
   const handleDiscardSavedFieldValues = useCallback(
     () => discardSavedFieldValues(database.id),
-    [database, discardSavedFieldValues],
+    [database.id, discardSavedFieldValues],
   );
 
   const handleDeleteDatabase = useCallback(
     () => deleteDatabase(database.id, true),
-    [database, deleteDatabase],
+    [database.id, deleteDatabase],
   );
 
   const handleSavedFieldsModalClose = useCallback(() => {
@@ -190,8 +190,10 @@ const DatabaseEditAppSidebar = ({
       {hasModelActionsSection && (
         <ModelActionsSidebarContent>
           <ModelActionsSection
-            hasActionsEnabled={checkDatabaseActionsEnabled(databaseObject)}
-            onToggleActionsEnabled={handleToggleModelActionsEnabled}
+            hasModelActionsEnabled={checkDatabaseActionsEnabled(
+              database.getPlainObject(),
+            )}
+            onToggleModelActionsEnabled={handleToggleModelActionsEnabled}
           />
         </ModelActionsSidebarContent>
       )}
