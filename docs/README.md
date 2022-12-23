@@ -142,9 +142,9 @@ Metabase's reference documentation.
 
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
+- [Full-app embedding](./embedding/full-app-embedding.md)
 - [Signed embedding](./embedding/signed-embedding.md)
 - [Parameters for signed embeds](./embedding/signed-embedding-parameters.md)
-- [Full-app embedding](./embedding/full-app-embedding.md)
 
 ### Configuration
 
