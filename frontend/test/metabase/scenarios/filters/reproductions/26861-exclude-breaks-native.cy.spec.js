@@ -3,8 +3,6 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS } = SAMPLE_DATABASE;
 
-const ORIGINAL_QUERY = "SELECT * FROM ORDERS WHERE {{filter}} LIMIT 2";
-
 const filter = {
   id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
   name: "filter",
@@ -18,7 +16,7 @@ const filter = {
 const nativeQuery = {
   name: "26861",
   native: {
-    query: ORIGINAL_QUERY,
+    query: "select * from orders where {{filter}} limit 2",
     "template-tags": {
       filter,
     },
