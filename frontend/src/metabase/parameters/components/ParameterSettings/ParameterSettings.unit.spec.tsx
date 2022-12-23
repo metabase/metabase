@@ -1,6 +1,5 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { createMockUiParameter } from "metabase-lib/mocks";
 import ParameterSettings, { ParameterSettingsProps } from "./ParameterSettings";
 
@@ -38,7 +37,7 @@ const getProps = (
   onChangeDefaultValue: jest.fn(),
   onChangeIsMultiSelect: jest.fn(),
   onChangeSourceType: jest.fn(),
-  onChangeSourceOptions: jest.fn(),
+  onChangeSourceConfig: jest.fn(),
   onRemoveParameter: jest.fn(),
   ...opts,
 });

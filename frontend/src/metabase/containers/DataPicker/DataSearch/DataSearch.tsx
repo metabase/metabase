@@ -23,6 +23,7 @@ interface DataSearchProps {
 }
 
 type TableSearchResult = {
+  id: number;
   database_id: number;
   table_schema: string;
   table_id: number;
@@ -71,7 +72,7 @@ function getValueForVirtualTable(table: TableSearchResult): DataPickerValue {
     databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
     schemaId,
     collectionId: table.collection?.id || "root",
-    tableIds: [getQuestionVirtualTableId(table)],
+    tableIds: [getQuestionVirtualTableId(table.id)],
   };
 }
 

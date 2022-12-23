@@ -8,8 +8,8 @@ import type {
   Dashboard,
   DashboardParameterMapping,
   DashboardOrderedCard,
-  ParameterSourceType,
-  ParameterSourceConfig,
+  ValuesSourceType,
+  ValuesSourceConfig,
   Parameter,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
@@ -66,24 +66,12 @@ export function setParameterName(
   };
 }
 
-export function getSourceType(parameter: Parameter): ParameterSourceType {
+export function getSourceType(parameter: Parameter): ValuesSourceType {
   return parameter.values_source_type ?? null;
 }
 
-export function getSourceOptions(parameter: Parameter): ParameterSourceConfig {
+export function getSourceConfig(parameter: Parameter): ValuesSourceConfig {
   return parameter.values_source_config ?? {};
-}
-
-export function hasValidSourceOptions(
-  sourceType: ParameterSourceType,
-  sourceOptions: ParameterSourceConfig,
-): boolean {
-  switch (sourceType) {
-    case "static-list":
-      return sourceOptions.values != null && sourceOptions.values.length > 0;
-    default:
-      return true;
-  }
 }
 
 export function getIsMultiSelect(parameter: Parameter): boolean {
