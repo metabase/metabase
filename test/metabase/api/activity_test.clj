@@ -5,7 +5,6 @@
             [metabase.api.activity :as api.activity]
             [metabase.models.activity :refer [Activity]]
             [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
             [metabase.models.query-execution :refer [QueryExecution]]
