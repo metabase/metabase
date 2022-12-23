@@ -61,7 +61,7 @@ describe("DataSelectorFieldPicker", () => {
         <DataSelectorFieldPicker
           {...props}
           selectedTable={selectedTable as Table}
-          fields={[ORDERS.PRODUCT_ID.getPlainObject()]}
+          fields={[ORDERS.PRODUCT_ID]}
         />,
       );
 
