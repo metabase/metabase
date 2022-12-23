@@ -26,6 +26,7 @@
     [metabase.models.params :as params]
     [metabase.models.params.card-values :as params.card-values]
     [metabase.models.params.chain-filter :as chain-filter]
+    [metabase.models.params.custom-values :as custom-values]
     [metabase.models.query :as query :refer [Query]]
     [metabase.models.query.permissions :as query-perms]
     [metabase.models.revision :as revision]
@@ -752,7 +753,7 @@
 
 (defn- static-parameter-values
   [{values-source-options :values_source_config :as _param} query]
-  (when-let [values (:values values-source-options)]
+  (let [values (:values values-source-options)]
     {:values          (if query
                         (query-matches query values)
                         values)
@@ -760,7 +761,10 @@
 
 (defn- card-parameter-values
   [{config :values_source_config :as _param} query]
-  (params.card-values/values-from-card (:card_id config) (:value_field config) query))
+  (params.card-values/values-from-card
+    (:card_id config)
+    (filter some? (map [:value_field :label_field] source-options))
+    query))
 
 (s/defn param-values
   "Fetch values for a parameter.
