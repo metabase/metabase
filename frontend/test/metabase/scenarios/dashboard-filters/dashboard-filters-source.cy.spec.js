@@ -20,7 +20,7 @@ const dashboardQuestionDetails = {
 };
 
 const structuredQuestionDetails = {
-  name: "GUI categories",
+  name: "Categories",
   query: {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
@@ -30,7 +30,7 @@ const structuredQuestionDetails = {
 };
 
 const nativeQuestionDetails = {
-  name: "SQL categories",
+  name: "Categories",
   native: {
     query: "select distinct CATEGORY from PRODUCTS order by CATEGORY limit 2",
   },
@@ -94,8 +94,8 @@ describe("scenarios > dashboard > filters", () => {
 const setupStructuredQuestionSource = () => {
   cy.findByText("Values from a model or question").click();
   modal().within(() => {
-    cy.findByPlaceholderText(/Search for a question/).type("GUI categories");
-    cy.findByText("GUI categories").click();
+    cy.findByPlaceholderText(/Search for a question/).type("Categories");
+    cy.findByText("Categories").click();
     cy.button("Select column").click();
   });
   modal().within(() => {
@@ -113,7 +113,7 @@ const setupNativeQuestionSource = () => {
   cy.findByText("Values from a model or question").click();
   modal().within(() => {
     cy.findByText("Saved Questions").click();
-    cy.findByText("SQL categories").click();
+    cy.findByText("Categories").click();
     cy.button("Select column").click();
   });
   modal().within(() => {
