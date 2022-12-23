@@ -11,6 +11,7 @@
   [prismatic/schema "1.2.0"]
 
   ;; new stuff
+  [camel-snake-kebab "0.4.3"]
   [com.lambdaisland/glogi "1.1.144"]]
  :nrepl
  {:middleware
@@ -24,6 +25,10 @@
    :output-dir "frontend/src/cljs/"
    :entries    [metabase.mbql.js
                 metabase.types
+                metabase.shared.formatting.internal.numbers-core
+                metabase.shared.formatting.internal.numbers
+                metabase.shared.formatting.numbers
+                metabase.shared.util
                 metabase.shared.util.currency
                 metabase.shared.parameters.parameters]}
 

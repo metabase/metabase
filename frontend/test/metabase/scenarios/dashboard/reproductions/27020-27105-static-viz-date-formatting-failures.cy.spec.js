@@ -28,7 +28,7 @@ const questionDetails27020 = {
   },
 };
 
-describe.skip("issues 27020 and 27105: static-viz fails to render for certain date formatting options", () => {
+describe("issues 27020 and 27105: static-viz fails to render for certain date formatting options", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

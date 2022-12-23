@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { NativePermissions } from "metabase-types/api";
+import { Database as IDatabase, NativePermissions } from "metabase-types/api";
 import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
 import Question from "../Question";
@@ -30,6 +30,10 @@ class DatabaseInner extends Base {
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
+
+  getPlainObject(): IDatabase {
+    return this._plainObject;
+  }
 
   // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
   displayName() {

@@ -4,8 +4,8 @@ import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import {
   ParameterId,
-  ParameterSourceOptions,
-  ParameterSourceType,
+  ValuesSourceConfig,
+  ValuesSourceType,
 } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
@@ -24,11 +24,11 @@ export interface ParameterSidebarProps {
   ) => void;
   onChangeSourceType: (
     parameterId: ParameterId,
-    sourceType: ParameterSourceType,
+    sourceType: ValuesSourceType,
   ) => void;
-  onChangeSourceOptions: (
+  onChangeSourceConfig: (
     parameterId: ParameterId,
-    sourceOptions: ParameterSourceOptions,
+    sourceOptions: ValuesSourceConfig,
   ) => void;
   onChangeFilteringParameters: (
     parameterId: ParameterId,
@@ -46,7 +46,7 @@ const ParameterSidebar = ({
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onChangeSourceType,
-  onChangeSourceOptions,
+  onChangeSourceConfig,
   onChangeFilteringParameters,
   onRemoveParameter,
   onShowAddParameterPopover,
@@ -78,17 +78,17 @@ const ParameterSidebar = ({
   );
 
   const handleSourceTypeChange = useCallback(
-    (sourceType: ParameterSourceType) => {
+    (sourceType: ValuesSourceType) => {
       onChangeSourceType(parameterId, sourceType);
     },
     [parameterId, onChangeSourceType],
   );
 
-  const handleSourceOptionsChange = useCallback(
-    (sourceOptions: ParameterSourceOptions) => {
-      onChangeSourceOptions(parameterId, sourceOptions);
+  const handleSourceConfigChange = useCallback(
+    (sourceOptions: ValuesSourceConfig) => {
+      onChangeSourceConfig(parameterId, sourceOptions);
     },
-    [parameterId, onChangeSourceOptions],
+    [parameterId, onChangeSourceConfig],
   );
 
   const handleFilteringParametersChange = useCallback(
@@ -121,7 +121,7 @@ const ParameterSidebar = ({
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}
             onChangeSourceType={handleSourceTypeChange}
-            onChangeSourceOptions={handleSourceOptionsChange}
+            onChangeSourceConfig={handleSourceConfigChange}
             onRemoveParameter={handleRemove}
           />
         ) : (

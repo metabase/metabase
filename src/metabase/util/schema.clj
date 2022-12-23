@@ -5,6 +5,8 @@
             [clojure.string :as str]
             [clojure.walk :as walk]
             [medley.core :as m]
+            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -288,6 +290,13 @@
                                   (deferred-tru "Valid field semantic or relation type (keyword or string)"))
     (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
+(def Field
+  "Schema for a valid Field for API usage."
+  (with-api-error-message (s/pred
+                            (comp (complement (s/checker mbql.s/Field))
+                                  mbql.normalize/normalize-tokens))
+    (deferred-tru "value must an array with :field id-or-name and an options map")))
+
 (def CoercionStrategyKeywordOrString
   "Like `CoercionStrategy` but accepts either a keyword or string."
   (with-api-error-message (s/pred #(isa? (keyword %) :Coercion/*) (deferred-tru "Valid coercion strategy"))
@@ -361,26 +370,32 @@
     string?  NonBlankString
     keyword? s/Keyword))
 
-(def ParameterSourceOptions
+(def ValuesSourceConfig
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
-  {(s/optional-key :values) (s/cond-pre [s/Any])
-   (s/optional-key :card_id) IntGreaterThanZero})
+  {;; for source_type = 'static-list'
+   (s/optional-key :values)      (s/cond-pre [s/Any])
+
+   ;; for source_type = 'card'
+   (s/optional-key :card_id)     IntGreaterThanZero
+   (s/optional-key :value_field) Field
+   ;; label_field is optional
+   (s/optional-key :label_field) Field})
 
 (def Parameter
   "Schema for a valid Parameter.
   We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
-  (with-api-error-message {:id                              NonBlankString
-                           :type                            keyword-or-non-blank-str
-                           (s/optional-key :source_type)    (s/enum "static-list" "card" nil)
-                           (s/optional-key :source_options) ParameterSourceOptions
+  (with-api-error-message {:id                                    NonBlankString
+                           :type                                  keyword-or-non-blank-str
+                           (s/optional-key :values_source_type)   (s/enum "static-list" "card" nil)
+                           (s/optional-key :values_source_config) ValuesSourceConfig
                            ;; Allow blank name and slug #15279
-                           (s/optional-key :name)           s/Str
-                           (s/optional-key :slug)           s/Str
-                           (s/optional-key :default)        s/Any
-                           (s/optional-key :sectionId)      NonBlankString
-                           s/Keyword                        s/Any}
+                           (s/optional-key :slug)                 s/Str
+                           (s/optional-key :name)                 s/Str
+                           (s/optional-key :default)              s/Any
+                           (s/optional-key :sectionId)            NonBlankString
+                           s/Keyword                              s/Any}
     (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
