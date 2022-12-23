@@ -24,37 +24,36 @@ import {
 export interface TimelineCardProps {
   timeline: Timeline;
   isDefault?: boolean;
-  isVisible?: boolean;
   visibleEventIds: number[];
   selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onMoveEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
-  onToggleEventVisibility: (event: TimelineEvent, isSelected: boolean) => void;
-  onToggleTimeline?: (
-    timeline: Timeline,
-    isVisible: boolean,
-    areAllEventsVisible: boolean,
-  ) => void;
+  onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
+  onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
 }
 
 const TimelineCard = ({
   timeline,
   isDefault,
-  isVisible,
   visibleEventIds = [],
   selectedEventIds = [],
   onEditEvent,
   onMoveEvent,
   onArchiveEvent,
   onToggleEventSelected,
-  onToggleEventVisibility,
-  onToggleTimeline,
+  onShowTimelineEvents,
+  onHideTimelineEvents,
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
   const isEventSelected = events.some(e => selectedEventIds.includes(e.id));
   const [isExpanded, setIsExpanded] = useState(isDefault || isEventSelected);
+
+  const anyEventVisible = events.some(event =>
+    visibleEventIds.includes(event.id),
+  );
+
   const allEventsVisible = events.every(event =>
     visibleEventIds.includes(event.id),
   );
@@ -67,11 +66,15 @@ const TimelineCard = ({
     event.stopPropagation();
   }, []);
 
-  const handleToggleTimeline = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      onToggleTimeline?.(timeline, event.target.checked, true);
+  const handleChangeVisibility = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (e.target.checked) {
+        timeline.events && onShowTimelineEvents(timeline.events);
+      } else {
+        timeline.events && onHideTimelineEvents(timeline.events);
+      }
     },
-    [timeline, onToggleTimeline],
+    [timeline, onShowTimelineEvents, onHideTimelineEvents],
   );
 
   useEffect(() => {
@@ -87,10 +90,10 @@ const TimelineCard = ({
         aria-label={t`Timeline card header`}
       >
         <CardCheckbox
-          checked={isVisible}
-          indeterminate={isVisible && !allEventsVisible}
+          checked={anyEventVisible}
+          indeterminate={anyEventVisible && !allEventsVisible}
           onClick={handleCheckboxClick}
-          onChange={handleToggleTimeline}
+          onChange={handleChangeVisibility}
         />
         <CardLabel>
           <Ellipsified tooltipMaxWidth="100%">
@@ -107,14 +110,13 @@ const TimelineCard = ({
               event={event}
               timeline={timeline}
               isSelected={selectedEventIds.includes(event.id)}
-              isVisible={!!isVisible && visibleEventIds.includes(event.id)}
-              isTimelineVisible={isVisible}
+              isVisible={visibleEventIds.includes(event.id)}
               onEdit={onEditEvent}
               onMove={onMoveEvent}
               onArchive={onArchiveEvent}
-              onToggleTimeline={onToggleTimeline}
               onToggleSelected={onToggleEventSelected}
-              onToggleEventVisibility={onToggleEventVisibility}
+              onShowTimelineEvents={onShowTimelineEvents}
+              onHideTimelineEvents={onHideTimelineEvents}
             />
           ))}
         </CardContent>

@@ -86,7 +86,6 @@ export const getParameterValues = state => state.qb.parameterValues;
 export const getMetadataDiff = state => state.qb.metadataDiff;
 
 export const getEntities = state => state.entities;
-export const getVisibleTimelineIds = state => state.qb.visibleTimelineIds;
 export const getVisibleTimelineEventIds = state =>
   state.qb.visibleTimelineEventIds;
 export const getSelectedTimelineEventIds = state =>
@@ -777,15 +776,8 @@ export const getFilteredTimelines = createSelector(
   },
 );
 
-export const getVisibleTimelines = createSelector(
-  [getFilteredTimelines, getVisibleTimelineIds],
-  (timelines, timelineIds) => {
-    return timelines.filter(t => timelineIds.includes(t.id));
-  },
-);
-
 export const getVisibleTimelineEvents = createSelector(
-  [getVisibleTimelines, getVisibleTimelineEventIds],
+  [getFilteredTimelines, getVisibleTimelineEventIds],
   (timelines, visibleTimelineEventIds) =>
     _.chain(timelines)
       .map(timeline => timeline.events)
