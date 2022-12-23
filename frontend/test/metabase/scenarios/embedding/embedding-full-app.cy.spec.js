@@ -327,6 +327,13 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findAllByRole("cell").first().click();
       cy.wait("@getCardQuery");
+
+      // I don't know why this test starts to fail, but this command
+      // will force the cursor to move away from the app bar, if
+      // the cursor is still on the app bar, the logo will not be
+      // be visible, since we'll only see the side bar toggle button.
+      cy.findByRole("button", { name: /Filter/i }).realHover();
+
       cy.findByTestId("main-logo").should("be.visible");
     });
   });
