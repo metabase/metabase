@@ -49,21 +49,15 @@ describe("EventCard", () => {
     expect(checkbox).toBeChecked();
 
     userEvent.click(screen.getByRole("checkbox"));
-
-    expect(checkbox).not.toBeChecked();
-
-    expect(props.onToggleEventVisibility).toHaveBeenCalledWith(
-      props.event,
-      true,
-    );
+    expect(props.onHideTimelineEvents).toHaveBeenCalled();
   });
 });
 
 const getProps = (opts?: Partial<EventCardProps>): EventCardProps => ({
   event: createMockTimelineEvent(),
   timeline: createMockTimeline(),
-  isTimelineVisible: true,
   isVisible: true,
-  onToggleEventVisibility: jest.fn(),
+  onShowTimelineEvents: jest.fn(),
+  onHideTimelineEvents: jest.fn(),
   ...opts,
 });
