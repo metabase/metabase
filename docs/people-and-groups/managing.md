@@ -16,7 +16,7 @@ To add a new person, click **Invite someone** in the upper right corner. You’l
 
 You can optionally add attributes to that user account, though you can add attributes to accounts at any time (as well as [via SSO](../people-and-groups/start.md#authentication)). Metabase uses attributes to create [data sandboxes](../permissions/data-sandboxes.md).
 
-Click **Create** to activate their account. **Once created, this account is considered active, even if the person you invited never signs in**. The account will remain active until you [deactivate the account](#deactivating-an-account). If you're on a paid Metabase plan, all active accounts will count toward your user account total (see [how billing works](a https://www.metabase.com/pricing/how-billing-works)).
+Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a paid Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](https://www.metabase.com/pricing/how-billing-works)).
 
 If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet setup email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
 
