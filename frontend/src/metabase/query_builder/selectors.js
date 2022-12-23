@@ -776,18 +776,8 @@ export const getFilteredTimelines = createSelector(
   },
 );
 
-export const getVisibleTimelineIds = state => state.qb.visibleTimelineIds;
-
-export const getVisibleTimelines = createSelector(
-  [getFilteredTimelines, getVisibleTimelineIds],
-  (timelines, timelineIds) => {
-    return timelines;
-    // return timelines.filter(t => timelineIds.includes(t.id));
-  },
-);
-
 export const getVisibleTimelineEvents = createSelector(
-  [getVisibleTimelines, getVisibleTimelineEventIds],
+  [getFilteredTimelines, getVisibleTimelineEventIds],
   (timelines, visibleTimelineEventIds) =>
     _.chain(timelines)
       .map(timeline => timeline.events)
