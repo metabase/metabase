@@ -29,6 +29,8 @@
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.params.card-values :as params.card-values]
+   [metabase.models.params.static-values :as params.static-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
@@ -908,5 +910,49 @@ saved later when it is ready."
       (api/write-check (db/select-one Database :id (:database_id persisted-info)))
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
       api/generic-204-no-content)))
+
+(s/defn param-values
+  "Fetch values for a parameter.
+
+  The source of values could be:
+  - static-list: user defined values list
+  - card: values is result of running a card"
+  ([card param-key]
+   (param-values card param-key nil))
+
+  ([card      :- su/Map
+    param-key :- su/NonBlankString
+    query     :- (s/maybe su/NonBlankString)]
+   (let [param       (get (m/index-by :id (:parameters card)) param-key)
+         source-type (:values_source_type param)]
+     (when-not param
+       (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
+                       {:status-code 400})))
+     (case source-type
+       "static-list" (params.static-values/param->values param query)
+       "card"        (params.card-values/param->values param query)
+       (throw (ex-info (tru "Invalid values-source-type: {0}" (pr-str source-type))
+                       {:values-source-type source-type
+                        :status-code        400}))))))
+
+(api/defendpoint GET "/:card-id/params/:param-key/values"
+  "Fetch possible values of the parameter whose ID is `:param-key`.
+
+    ;; fetch values for Card 1 parameter 'abc' that are possible when parameter 'def' is set to 100
+    GET /api/card/1/params/abc/values"
+  [card-id param-key]
+  (let [card (api/read-check Card card-id)]
+    (param-values card param-key)))
+
+(api/defendpoint GET "/:card-id/params/:param-key/search/:query"
+  "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
+
+    ;; fetch values for Card 1 parameter 'abc' that contain 'Orange';
+     GET /api/card/1/params/abc/search/Orange
+
+  Currently limited to first 1000 results."
+  [card-id param-key query]
+  (let [card (api/read-check Card card-id)]
+    (param-values card param-key query)))
 
 (api/define-routes)
