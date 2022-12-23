@@ -1,4 +1,4 @@
-import React, { memo, SyntheticEvent, useCallback } from "react";
+import React, { memo, ChangeEvent, SyntheticEvent, useCallback } from "react";
 import { t } from "ttag";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import Settings from "metabase/lib/settings";
@@ -23,33 +23,27 @@ import {
 export interface EventCardProps {
   event: TimelineEvent;
   timeline: Timeline;
-  isTimelineVisible?: boolean;
   isSelected?: boolean;
   isVisible: boolean;
   onEdit?: (event: TimelineEvent) => void;
   onMove?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
   onToggleSelected?: (event: TimelineEvent, isSelected: boolean) => void;
-  onToggleEventVisibility: (event: TimelineEvent, isSelected: boolean) => void;
-  onToggleTimeline?: (
-    timeline: Timeline,
-    isVisible: boolean,
-    areAllEventsVisible: boolean,
-  ) => void;
+  onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
+  onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
 }
 
 const EventCard = ({
   event,
   timeline,
-  isTimelineVisible,
   isSelected,
   isVisible,
   onEdit,
   onMove,
   onArchive,
   onToggleSelected,
-  onToggleEventVisibility,
-  onToggleTimeline,
+  onShowTimelineEvents,
+  onHideTimelineEvents,
 }: EventCardProps): JSX.Element => {
   const selectedRef = useScrollOnMount();
   const menuItems = getMenuItems(event, timeline, onEdit, onMove, onArchive);
@@ -63,22 +57,14 @@ const EventCard = ({
   }, [event, isVisible, isSelected, onToggleSelected]);
 
   const handleChangeVisibility = useCallback(
-    (e: SyntheticEvent) => {
-      e.stopPropagation();
-      onToggleEventVisibility(event, isVisible);
-
-      if (!isVisible && !isTimelineVisible) {
-        onToggleTimeline?.(timeline, true, false);
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (e.target.checked) {
+        onShowTimelineEvents([event]);
+      } else {
+        onHideTimelineEvents([event]);
       }
     },
-    [
-      event,
-      isVisible,
-      timeline,
-      isTimelineVisible,
-      onToggleTimeline,
-      onToggleEventVisibility,
-    ],
+    [event, onShowTimelineEvents, onHideTimelineEvents],
   );
 
   const handleAsideClick = useCallback((event: SyntheticEvent) => {
@@ -94,8 +80,9 @@ const EventCard = ({
     >
       <CardCheckboxContainer>
         <Checkbox
-          checked={isTimelineVisible && isVisible}
-          onClick={handleChangeVisibility}
+          checked={isVisible}
+          onChange={handleChangeVisibility}
+          onClick={handleAsideClick}
         />
       </CardCheckboxContainer>
       <CardBody>

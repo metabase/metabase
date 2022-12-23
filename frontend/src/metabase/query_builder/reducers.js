@@ -57,8 +57,6 @@ import {
   onCloseQuestionInfo,
   onOpenTimelines,
   onCloseTimelines,
-  SHOW_TIMELINES,
-  HIDE_TIMELINES,
   HIDE_TIMELINE_EVENTS,
   SHOW_TIMELINE_EVENTS,
   SELECT_TIMELINE_EVENTS,
@@ -544,24 +542,6 @@ export const currentState = handleActions(
   null,
 );
 
-export const visibleTimelineIds = handleActions(
-  {
-    [INITIALIZE_QB]: { next: () => [] },
-    [SHOW_TIMELINES]: {
-      next: (state, { payload: timelines }) => [
-        ...state,
-        ...timelines.map(t => t.id),
-      ],
-    },
-    [HIDE_TIMELINES]: {
-      next: (state, { payload: timelines }) =>
-        _.without(state, ...timelines.map(t => t.id)),
-    },
-    [RESET_QB]: { next: () => [] },
-  },
-  [],
-);
-
 export const visibleTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
@@ -591,10 +571,6 @@ export const selectedTimelineEventIds = handleActions(
     },
     [DESELECT_TIMELINE_EVENTS]: {
       next: () => [],
-    },
-    [HIDE_TIMELINES]: {
-      next: (state, { payload: timelines }) =>
-        _.without(state, ...timelines.flatMap(t => t.events.map(e => e.id))),
     },
     [onCloseTimelines]: { next: () => [] },
     [RESET_QB]: { next: () => [] },

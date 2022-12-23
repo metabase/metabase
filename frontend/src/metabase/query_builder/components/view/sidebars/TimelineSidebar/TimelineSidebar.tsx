@@ -10,12 +10,9 @@ import Question from "metabase-lib/Question";
 export interface TimelineSidebarProps {
   question: Question;
   timelines: Timeline[];
-  visibleTimelineIds: number[];
   visibleTimelineEventIds: number[];
   selectedTimelineEventIds: number[];
   xDomain?: [Moment, Moment];
-  onShowTimelines?: (timelines: Timeline[]) => void;
-  onHideTimelines?: (timelines: Timeline[]) => void;
   onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
@@ -27,13 +24,10 @@ export interface TimelineSidebarProps {
 const TimelineSidebar = ({
   question,
   timelines,
-  visibleTimelineIds,
   visibleTimelineEventIds,
   selectedTimelineEventIds,
   xDomain,
   onOpenModal,
-  onShowTimelines,
-  onHideTimelines,
   onShowTimelineEvents,
   onHideTimelineEvents,
   onSelectTimelineEvents,
@@ -69,60 +63,19 @@ const TimelineSidebar = ({
     [onSelectTimelineEvents, onDeselectTimelineEvents],
   );
 
-  const handleToggleEventVisibility = useCallback(
-    (event: TimelineEvent, isVisible: boolean) => {
-      if (isVisible) {
-        onHideTimelineEvents([event]);
-      } else {
-        onShowTimelineEvents([event]);
-      }
-    },
-    [onShowTimelineEvents, onHideTimelineEvents],
-  );
-
-  const handleToggleTimeline = useCallback(
-    (
-      timeline: Timeline,
-      isVisible: boolean = true,
-      areAllEventsVisible: boolean = false,
-    ) => {
-      if (isVisible) {
-        onShowTimelines?.([timeline]);
-        // Making the timeline visible directly
-        // should make all its events visible
-        // The alternative is when a timeline is hidden
-        // and we make one of its events visible, in which case
-        // we also make its timeline visible, but no other event in it
-        if (areAllEventsVisible) {
-          timeline.events && onShowTimelineEvents(timeline.events);
-        }
-      } else {
-        onHideTimelines?.([timeline]);
-        timeline.events && onHideTimelineEvents(timeline.events);
-      }
-    },
-    [
-      onShowTimelines,
-      onHideTimelines,
-      onHideTimelineEvents,
-      onShowTimelineEvents,
-    ],
-  );
-
   return (
     <SidebarContent title={formatTitle(xDomain)} onClose={onClose}>
       <TimelinePanel
         timelines={timelines}
         collectionId={question.collectionId()}
-        visibleTimelineIds={visibleTimelineIds}
         visibleEventIds={visibleTimelineEventIds}
         selectedEventIds={selectedTimelineEventIds}
         onNewEvent={handleNewEvent}
         onEditEvent={handleEditEvent}
         onMoveEvent={handleMoveEvent}
         onToggleEventSelected={handleToggleEventSelected}
-        onToggleEventVisibility={handleToggleEventVisibility}
-        onToggleTimeline={handleToggleTimeline}
+        onShowTimelineEvents={onShowTimelineEvents}
+        onHideTimelineEvents={onHideTimelineEvents}
       />
     </SidebarContent>
   );

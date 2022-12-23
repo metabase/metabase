@@ -153,12 +153,9 @@ class View extends React.Component {
       isShowingQuestionInfoSidebar,
       runQuestionQuery,
       updateQuestion,
-      visibleTimelineIds,
       visibleTimelineEventIds,
       selectedTimelineEventIds,
       xDomain,
-      showTimelines,
-      hideTimelines,
       showTimelineEvents,
       hideTimelineEvents,
       selectTimelineEvents,
@@ -188,12 +185,9 @@ class View extends React.Component {
         <TimelineSidebar
           question={question}
           timelines={timelines}
-          visibleTimelineIds={visibleTimelineIds}
           visibleTimelineEventIds={visibleTimelineEventIds}
           selectedTimelineEventIds={selectedTimelineEventIds}
           xDomain={xDomain}
-          onShowTimelines={showTimelines}
-          onHideTimelines={hideTimelines}
           onShowTimelineEvents={showTimelineEvents}
           onHideTimelineEvents={hideTimelineEvents}
           onSelectTimelineEvents={selectTimelineEvents}
@@ -221,8 +215,6 @@ class View extends React.Component {
       toggleTemplateTagsEditor,
       toggleDataReference,
       toggleSnippetSidebar,
-      showTimelines,
-      hideTimelines,
       showTimelineEvent,
       showTimelineEvents,
       hideTimelineEvents,
@@ -251,8 +243,6 @@ class View extends React.Component {
       return (
         <TimelineSidebar
           {...this.props}
-          onShowTimelines={showTimelines}
-          onHideTimelines={hideTimelines}
           onShowTimelineEvent={showTimelineEvent}
           onShowTimelineEvents={showTimelineEvents}
           onHideTimelineEvents={hideTimelineEvents}
