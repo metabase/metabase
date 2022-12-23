@@ -1,11 +1,13 @@
-import React, { useCallback } from "react";
+import React, { ChangeEvent, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button/Button";
+import Input from "metabase/core/components/Input";
 import ModalContent from "metabase/components/ModalContent";
-import DataPickerContainer, {
+import DataPicker, {
   DataPickerValue,
+  useDataPicker,
   useDataPickerValue,
 } from "metabase/containers/DataPicker";
 import Questions from "metabase/entities/questions";
@@ -19,7 +21,10 @@ import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
-import { ModalBody } from "./CardStepModal.styled";
+import {
+  DataPickerContainer,
+  SearchInputContainer,
+} from "./CardStepModal.styled";
 
 interface CardStepModalOwnProps {
   cardId: CardId | undefined;
@@ -75,10 +80,37 @@ const CardStepModal = ({
       ]}
       onClose={onClose}
     >
-      <ModalBody>
-        <DataPickerContainer value={value} onChange={setValue} />
-      </ModalBody>
+      <DataPicker.Provider>
+        <DataPickerSearchInput />
+        <DataPickerContainer>
+          <DataPicker value={value} onChange={setValue} />
+        </DataPickerContainer>
+      </DataPicker.Provider>
     </ModalContent>
+  );
+};
+
+const DataPickerSearchInput = () => {
+  const { search } = useDataPicker();
+  const { query, setQuery } = search;
+
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setQuery(event.target.value);
+    },
+    [setQuery],
+  );
+
+  return (
+    <SearchInputContainer>
+      <Input
+        value={query}
+        placeholder={t`Search for a question or model`}
+        leftIcon="search"
+        fullWidth
+        onChange={handleChange}
+      />
+    </SearchInputContainer>
   );
 };
 
