@@ -14,23 +14,14 @@ import type { User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { createMockUser } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockEmbedState,
-} from "metabase-types/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { getStore } from "./entities-store";
-
-type DeepPartial<T> = T extends object
-  ? {
-      [P in keyof T]?: DeepPartial<T[P]>;
-    }
-  : T;
 
 export interface RenderWithProvidersOptions {
   currentUser?: User;
   reducers?: Record<string, (state: any) => any>;
-  storeInitialState?: DeepPartial<State>;
+  storeInitialState?: Partial<State>;
   withSampleDatabase?: boolean;
   withRouter?: boolean;
   withDND?: boolean;
@@ -53,7 +44,7 @@ export function renderWithProviders(
   ui: React.ReactElement,
   {
     currentUser = DEFAULT_USER,
-    reducers,
+    reducers = {},
     storeInitialState = {},
     withSampleDatabase,
     withRouter = false,
@@ -61,15 +52,24 @@ export function renderWithProviders(
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  const initialReduxState = withSampleDatabase
-    ? merge(sampleDatabaseReduxState, storeInitialState)
-    : storeInitialState;
+  let customStateParams = merge({ currentUser }, storeInitialState);
+
+  customStateParams = withSampleDatabase
+    ? merge(sampleDatabaseReduxState, customStateParams)
+    : customStateParams;
+
+  const initialReduxState = createMockState(customStateParams);
 
   const store = getStore(
     {
-      currentUser: () => currentUser,
-      settings: () => createMockSettingsState(),
-      embed: () => createMockEmbedState(),
+      admin: (state = initialReduxState.admin) => state,
+      app: (state = initialReduxState.app) => state,
+      currentUser: (state = initialReduxState.currentUser) => state,
+      dashboard: (state = initialReduxState.dashboard) => state,
+      embed: (state = initialReduxState.embed) => state,
+      settings: (state = initialReduxState.settings) => state,
+      setup: (state = initialReduxState.setup) => state,
+      qb: (state = initialReduxState.qb) => state,
       ...reducers,
     },
     initialReduxState,
