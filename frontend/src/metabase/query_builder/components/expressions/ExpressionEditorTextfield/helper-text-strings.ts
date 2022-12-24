@@ -3,41 +3,41 @@ import moment from "moment-timezone";
 
 import { formatTime } from "metabase/lib/formatting";
 import type { Database } from "metabase-types/types/Database";
-import { HelpText } from "metabase-lib/expressions/types";
+import { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
 
-const helperTextStrings: HelpText[] = [
+const helperTextStrings: HelpTextConfig[] = [
   {
     name: "count",
     structure: "Count",
-    description: t`Returns the count of rows in the selected data.`,
+    description: () => t`Returns the count of rows in the selected data.`,
     example: "Count",
     args: [],
   },
   {
     name: "cum-count",
     structure: "CumulativeCount",
-    description: t`The additive total of rows across a breakout.`,
+    description: () => t`The additive total of rows across a breakout.`,
     example: "CumulativeCount",
     args: [],
   },
   {
     name: "sum",
     structure: "Sum(" + t`column` + ")",
-    description: t`Adds up all the values of the column.`,
+    description: () => t`Adds up all the values of the column.`,
     example: "Sum([" + t`Subtotal` + "])",
     args: [{ name: t`column`, description: t`The column or number to sum.` }],
   },
   {
     name: "cum-sum",
     structure: "CumulativeSum(" + t`column` + ")",
-    description: t`The rolling sum of a column across a breakout.`,
+    description: () => t`The rolling sum of a column across a breakout.`,
     example: "CumulativeSum([" + t`Subtotal` + "])",
     args: [{ name: t`column`, description: t`The column or number to sum.` }],
   },
   {
     name: "distinct",
     structure: "Distinct(" + t`column` + ")",
-    description: t`The number of distinct values in this column.`,
+    description: () => t`The number of distinct values in this column.`,
     example: "Distinct([" + t`Last Name` + "])",
     args: [
       {
@@ -49,7 +49,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "stddev",
     structure: "StandardDeviation(" + t`column` + ")",
-    description: t`Calculates the standard deviation of the column.`,
+    description: () => t`Calculates the standard deviation of the column.`,
     example: "StandardDeviation([" + t`Population` + "])",
     args: [
       {
@@ -61,7 +61,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "avg",
     structure: "Average(" + t`column` + ")",
-    description: t`Returns the average of the values in the column.`,
+    description: () => t`Returns the average of the values in the column.`,
     example: "Average([" + t`Quantity` + "])",
     args: [
       {
@@ -73,7 +73,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "min",
     structure: "Min(" + t`column` + ")",
-    description: t`Returns the smallest value found in the column`,
+    description: () => t`Returns the smallest value found in the column`,
     example: "Min([" + t`Salary` + "])",
     args: [
       {
@@ -85,7 +85,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "max",
     structure: "Max(" + t`column` + ")",
-    description: t`Returns the largest value found in the column.`,
+    description: () => t`Returns the largest value found in the column.`,
     example: "Max([" + t`Age` + "])",
     args: [
       {
@@ -97,7 +97,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "share",
     structure: "Share(" + t`condition` + ")",
-    description: t`Returns the percent of rows in the data that match the condition, as a decimal.`,
+    description: () =>
+      t`Returns the percent of rows in the data that match the condition, as a decimal.`,
     example: "Share([" + t`Source` + '] = "' + t`Google` + '")',
     args: [
       {
@@ -109,7 +110,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "count-where",
     structure: "CountIf(" + t`condition` + ")",
-    description: t`Only counts rows where the condition is true.`,
+    description: () => t`Only counts rows where the condition is true.`,
     example: "CountIf([" + t`Subtotal` + "] > 100)",
     args: [
       {
@@ -121,7 +122,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "sum-where",
     structure: "SumIf(" + t`column` + ", " + t`condition` + ")",
-    description: t`Sums up the specified column only for rows where the condition is true.`,
+    description: () =>
+      t`Sums up the specified column only for rows where the condition is true.`,
     example:
       "SumIf([" +
       t`Subtotal` +
@@ -141,7 +143,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "var",
     structure: "Variance(" + t`column` + ")",
-    description: t`Returns the numeric variance for a given column.`,
+    description: () => t`Returns the numeric variance for a given column.`,
     example: "Variance([" + t`Temperature` + "])",
     args: [
       {
@@ -153,7 +155,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "median",
     structure: "Median(" + t`column` + ")",
-    description: t`Returns the median value of the specified column.`,
+    description: () => t`Returns the median value of the specified column.`,
     example: "Median([" + t`Age` + "])",
     args: [
       {
@@ -165,7 +167,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "percentile",
     structure: "Percentile(" + t`column` + ", " + t`percentile-value` + ")",
-    description: t`Returns the value of the column at the percentile value.`,
+    description: () =>
+      t`Returns the value of the column at the percentile value.`,
     example: "Percentile([" + t`Score` + "], 0.9)",
     args: [
       {
@@ -181,7 +184,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "lower",
     structure: "lower(" + t`text` + ")",
-    description: t`Returns the string of text in all lower case.`,
+    description: () => t`Returns the string of text in all lower case.`,
     example: "lower([" + t`Status` + "])",
     args: [
       {
@@ -193,7 +196,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "upper",
     structure: "upper(" + t`text` + ")",
-    description: t`Returns the text in all upper case.`,
+    description: () => t`Returns the text in all upper case.`,
     example: "upper([" + t`Status` + "])",
     args: [
       {
@@ -206,7 +209,7 @@ const helperTextStrings: HelpText[] = [
     name: "substring",
     structure:
       "substring(" + t`text` + ", " + t`position` + ", " + t`length` + ")",
-    description: t`Returns a portion of the supplied text.`,
+    description: () => t`Returns a portion of the supplied text.`,
     example: "substring([" + t`Title` + "], 0, 10)",
     args: [
       {
@@ -224,7 +227,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "regex-match-first",
     structure: "regexextract(" + t`text` + ", " + t`regular_expression` + ")",
-    description: t`Extracts matching substrings according to a regular expression.`,
+    description: () =>
+      t`Extracts matching substrings according to a regular expression.`,
     example: "regexextract([" + t`Address` + '], "[0-9]+")',
     args: [
       { name: t`text`, description: t`The column or text to search through.` },
@@ -238,7 +242,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "concat",
     structure: "concat(" + t`value1` + ", " + t`value2` + ", …)",
-    description: t`Combine two or more strings of text together.`,
+    description: () => t`Combine two or more strings of text together.`,
     example: "concat([" + t`Last Name` + '], ", ", [' + t`First Name` + "])",
     args: [
       { name: t`value1`, description: t`The column or text to begin with.` },
@@ -252,7 +256,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "replace",
     structure: "replace(" + t`text` + ", " + t`find` + ", " + t`replace` + ")",
-    description: t`Replaces a part of the input text with new text.`,
+    description: () => t`Replaces a part of the input text with new text.`,
     example:
       "replace([" +
       t`Title` +
@@ -270,7 +274,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "length",
     structure: "length(" + t`text` + ")",
-    description: t`Returns the number of characters in text.`,
+    description: () => t`Returns the number of characters in text.`,
     example: "length([" + t`Comment` + "])",
     args: [
       {
@@ -282,7 +286,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "trim",
     structure: "trim(" + t`text` + ")",
-    description: t`Removes leading and trailing whitespace from a string of text.`,
+    description: () =>
+      t`Removes leading and trailing whitespace from a string of text.`,
     example: "trim([" + t`Comment` + "])",
     args: [
       { name: t`text`, description: t`The column or text you want to trim.` },
@@ -291,7 +296,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "rtrim",
     structure: "rtrim(" + t`text` + ")",
-    description: t`Removes trailing whitespace from a string of text.`,
+    description: () => t`Removes trailing whitespace from a string of text.`,
     example: "rtrim([" + t`Comment` + "])",
     args: [
       { name: t`text`, description: t`The column or text you want to trim.` },
@@ -300,7 +305,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "ltrim",
     structure: "ltrim(" + t`text` + ")",
-    description: t`Removes leading whitespace from a string of text.`,
+    description: () => t`Removes leading whitespace from a string of text.`,
     example: "ltrim([" + t`Comment` + "])",
     args: [
       { name: t`text`, description: t`The column or text you want to trim.` },
@@ -309,7 +314,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "abs",
     structure: "abs(" + t`column` + ")",
-    description: t`Returns the absolute (positive) value of the specified column.`,
+    description: () =>
+      t`Returns the absolute (positive) value of the specified column.`,
     example: "abs([" + t`Debt` + "])",
     args: [
       {
@@ -321,7 +327,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "floor",
     structure: "floor(" + t`column` + ")",
-    description: t`Rounds a decimal number down.`,
+    description: () => t`Rounds a decimal number down.`,
     example: "floor([" + t`Price` + "])",
     args: [
       { name: t`column`, description: t`The column or number to round down.` },
@@ -330,7 +336,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "ceil",
     structure: "ceil(" + t`column` + ")",
-    description: t`Rounds a decimal number up.`,
+    description: () => t`Rounds a decimal number up.`,
     example: "ceil([" + t`Price` + "])",
     args: [
       { name: t`column`, description: t`The column or number to round up.` },
@@ -339,7 +345,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "round",
     structure: "round(" + t`column` + ")",
-    description: t`Rounds a decimal number either up or down to the nearest integer value.`,
+    description: () =>
+      t`Rounds a decimal number either up or down to the nearest integer value.`,
     example: "round([" + t`Temperature` + "])",
     args: [
       {
@@ -351,7 +358,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "sqrt",
     structure: "sqrt(" + t`column` + ")",
-    description: t`Returns the square root.`,
+    description: () => t`Returns the square root.`,
     example: "sqrt([" + t`Hypotenuse` + "])",
     args: [
       {
@@ -363,7 +370,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "power",
     structure: "power(" + t`column` + ", " + t`exponent` + ")",
-    description: t`Raises a number to the power of the exponent value.`,
+    description: () => t`Raises a number to the power of the exponent value.`,
     example: "power([" + t`Length` + "], 2)",
     args: [
       {
@@ -376,7 +383,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "log",
     structure: "log(" + t`column` + ")",
-    description: t`Returns the base 10 log of the number.`,
+    description: () => t`Returns the base 10 log of the number.`,
     example: "log([" + t`Value` + "])",
     args: [
       {
@@ -395,7 +402,8 @@ const helperTextStrings: HelpText[] = [
       ", " +
       t`unit` +
       ")",
-    description: t`Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.`,
+    description: () =>
+      t`Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.`,
     example:
       "datetimeDiff([" +
       t`created_at` +
@@ -419,7 +427,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "exp",
     structure: "exp(" + t`column` + ")",
-    description: t`Returns Euler's number, e, raised to the power of the supplied number.`,
+    description: () =>
+      t`Returns Euler's number, e, raised to the power of the supplied number.`,
     example: "exp([" + t`Interest Months` + "])",
     args: [
       {
@@ -431,7 +440,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "contains",
     structure: "contains(" + t`string1` + ", " + t`string2` + ")",
-    description: t`Checks to see if string1 contains string2 within it.`,
+    description: () => t`Checks to see if string1 contains string2 within it.`,
     example: "contains([" + t`Status` + '], "' + t`Pass` + '")',
     args: [
       { name: t`string1`, description: t`The column or text to check.` },
@@ -441,7 +450,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "starts-with",
     structure: "startsWith(" + t`text` + ", " + t`comparison` + ")",
-    description: t`Returns true if the beginning of the text matches the comparison text.`,
+    description: () =>
+      t`Returns true if the beginning of the text matches the comparison text.`,
     example:
       "startsWith([" + t`Course Name` + '], "' + t`Computer Science` + '")',
     args: [
@@ -455,7 +465,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "ends-with",
     structure: "endsWith(" + t`text` + ", " + t`comparison` + ")",
-    description: t`Returns true if the end of the text matches the comparison text.`,
+    description: () =>
+      t`Returns true if the end of the text matches the comparison text.`,
     example: "endsWith([" + t`Appetite` + '], "' + t`hungry` + '")',
     args: [
       { name: t`text`, description: t`The column or text to check.` },
@@ -468,7 +479,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "between",
     structure: "between(" + t`column` + ", " + t`start` + ", " + t`end` + ")",
-    description: t`Checks a date or number column's values to see if they're within the specified range.`,
+    description: () =>
+      t`Checks a date or number column's values to see if they're within the specified range.`,
     example: "between([" + t`Created At` + '], "2019-01-01", "2020-12-31")',
     args: [
       {
@@ -482,7 +494,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "interval",
     structure: "timeSpan(" + t`number` + ", " + t`text` + ")",
-    description: t`Gets a time interval of specified length`,
+    description: () => t`Gets a time interval of specified length`,
     example: 'timeSpan(7, "day")',
     args: [
       {
@@ -499,7 +511,8 @@ const helperTextStrings: HelpText[] = [
     name: "time-interval",
     structure:
       "interval(" + t`column` + ", " + t`number` + ", " + t`text` + ")",
-    description: t`Checks a date column's values to see if they're within the relative range.`,
+    description: () =>
+      t`Checks a date column's values to see if they're within the relative range.`,
     example: "interval([" + t`Created At` + '], -1, "month")',
     args: [
       {
@@ -519,7 +532,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "relative-datetime",
     structure: "relativeDateTime(" + t`number` + ", " + t`text` + ")",
-    description: t`Gets a timestamp relative to the current time`,
+    description: () => t`Gets a timestamp relative to the current time`,
     example: 'relativeDateTime(-30, "day")',
     args: [
       {
@@ -535,7 +548,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "is-null",
     structure: "isnull(" + t`column` + ")",
-    description: t`Checks if a column is null`,
+    description: () => t`Checks if a column is null`,
     example: "isnull([" + t`Discount` + "])",
     args: [
       {
@@ -548,7 +561,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "is-empty",
     structure: "isempty(" + t`column` + ")",
-    description: t`Checks if a column is empty`,
+    description: () => t`Checks if a column is empty`,
     example: "isempty([" + t`Name` + "])",
     args: [
       {
@@ -561,7 +574,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "coalesce",
     structure: "coalesce(" + t`value1` + ", " + t`value2` + ", …)",
-    description: t`Looks at the values in each argument in order and returns the first non-null value for each row.`,
+    description: () =>
+      t`Looks at the values in each argument in order and returns the first non-null value for each row.`,
     example:
       "coalesce([" +
       t`Comments` +
@@ -582,7 +596,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "case",
     structure: "case(" + t`condition` + ", " + t`output` + ", …)",
-    description: t`Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
+    description: () =>
+      t`Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
     example:
       "case([" +
       t`Weight` +
@@ -610,7 +625,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "get-year",
     structure: "year(" + t`column` + ")",
-    description: t`Takes a datetime and returns an integer with the number of the year.`,
+    description: () =>
+      t`Takes a datetime and returns an integer with the number of the year.`,
     example: "year([" + t`Created At` + "])",
     args: [
       {
@@ -622,7 +638,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "get-quarter",
     structure: "quarter(" + t`column` + ")",
-    description: t`Takes a datetime and returns an integer (1-4) with the number of the quarter in the year.`,
+    description: () =>
+      t`Takes a datetime and returns an integer (1-4) with the number of the quarter in the year.`,
     example: "quarter([" + t`Created At` + "])",
     args: [
       {
@@ -634,7 +651,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "get-month",
     structure: "month(" + t`column` + ")",
-    description: t`Takes a datetime and returns an integer (1-12) with the number of the month in the year.`,
+    description: () =>
+      t`Takes a datetime and returns an integer (1-12) with the number of the month in the year.`,
     example: "month([" + t`Created At` + "])",
     args: [
       {
@@ -646,7 +664,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "get-week",
     structure: "week(" + t`column` + ", " + t`mode` + ")",
-    description: t`Extracts the week of the year as an integer.`,
+    description: () => t`Extracts the week of the year as an integer.`,
     example: "week([" + t`Created At` + '], "iso")',
     args: [
       {
@@ -666,7 +684,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "get-day",
     structure: "day(" + t`column` + ")",
-    description: t`Takes a datetime and returns an integer (1-31) with the number of the day of the month.`,
+    description: () =>
+      t`Takes a datetime and returns an integer (1-31) with the number of the day of the month.`,
     example: "day([" + t`Created At` + "])",
     args: [
       {
@@ -678,7 +697,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "get-day-of-week",
     structure: "weekday(" + t`column` + ")",
-    description: t`Takes a datetime and returns an integer (1-7) with the number of the day of the week.`,
+    description: () =>
+      t`Takes a datetime and returns an integer (1-7) with the number of the day of the week.`,
     example: "weekday([" + t`Created At` + "])",
     args: [
       {
@@ -690,7 +710,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "get-hour",
     structure: "hour(" + t`column` + ")",
-    description: t`Takes a datetime and returns an integer (0-23) with the number of the hour. No AM/PM.`,
+    description: () =>
+      t`Takes a datetime and returns an integer (0-23) with the number of the hour. No AM/PM.`,
     example: "hour([" + t`Created At` + "])",
     args: [
       {
@@ -702,7 +723,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "get-minute",
     structure: "minute(" + t`column` + ")",
-    description: t`Takes a datetime and returns an integer (0-59) with the number of the minute in the hour.`,
+    description: () =>
+      t`Takes a datetime and returns an integer (0-59) with the number of the minute in the hour.`,
     example: "minute([" + t`Created At` + "])",
     args: [
       {
@@ -714,7 +736,8 @@ const helperTextStrings: HelpText[] = [
   {
     name: "get-second",
     structure: "second(" + t`column` + ")",
-    description: t`Takes a datetime and returns an integer (0-59) with the number of the seconds in the minute.`,
+    description: () =>
+      t`Takes a datetime and returns an integer (0-59) with the number of the seconds in the minute.`,
     example: "second([" + t`Created At` + "])",
     args: [
       {
@@ -727,7 +750,7 @@ const helperTextStrings: HelpText[] = [
     name: "datetime-add",
     structure:
       "datetimeAdd(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
-    description: t`Adds some units of time to a date or timestamp value.`,
+    description: () => t`Adds some units of time to a date or timestamp value.`,
     example: "datetimeAdd([" + t`Created At` + '], 1, "' + t`month` + '")',
     args: [
       {
@@ -749,7 +772,8 @@ const helperTextStrings: HelpText[] = [
     name: "datetime-subtract",
     structure:
       "datetimeSubtract(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
-    description: t`Subtracts some units of time to a date or timestamp value.`,
+    description: () =>
+      t`Subtracts some units of time to a date or timestamp value.`,
     example: "datetimeSubtract([" + t`Created At` + '], 1, "' + t`month` + '")',
     args: [
       {
@@ -770,7 +794,13 @@ const helperTextStrings: HelpText[] = [
   {
     name: "now",
     structure: "now",
-    description: t`Returns the current timestamp.`,
+    description: (database: Database, reportTimezone: string) => {
+      const hasTimezoneFeatureFlag = database.features.includes("set-timezone");
+      const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
+      const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
+
+      return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
+    },
     example: "now",
     args: [],
   },
@@ -784,7 +814,7 @@ const helperTextStrings: HelpText[] = [
       ", [" +
       t`source` +
       "])",
-    description: t`Convert timezone of a date or timestamp column.
+    description: () => t`Convert timezone of a date or timestamp column.
 We support tz database time zone names.
 See the full list here: https://w.wiki/4Jx`,
     example:
@@ -812,25 +842,18 @@ export const getHelpText = (
   database: Database,
   reportTimezone: string,
 ): HelpText | undefined => {
-  const helperText = helperTextStrings.find(h => h.name === name);
+  const helperTextConfig = helperTextStrings.find(h => h.name === name);
 
-  if (helperText && name === "now") {
-    helperText.description = getDescriptionForNow(database, reportTimezone);
-  }
-
-  return helperText;
+  return (
+    helperTextConfig && {
+      ...helperTextConfig,
+      description: helperTextConfig.description(database, reportTimezone),
+    }
+  );
 };
 
 const getNowAtTimezone = (timezone: string, reportTimezone: string) =>
   timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");
-
-const getDescriptionForNow = (database: Database, reportTimezone: string) => {
-  const hasTimezoneFeatureFlag = database.features.includes("set-timezone");
-  const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
-  const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
-
-  return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
-};
 
 export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
   return docsPage

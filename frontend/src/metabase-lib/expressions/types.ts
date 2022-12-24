@@ -1,7 +1,18 @@
+import type { Database } from "metabase-types/types/Database";
+
 export interface HelpText {
   name: string;
   args: HelpTextArg[];
   description: string;
+  example: string;
+  structure: string;
+  docsPage?: string;
+}
+
+export interface HelpTextConfig {
+  name: string;
+  args: HelpTextArg[];
+  description: (database: Database, reportTimezone: string) => string;
   example: string;
   structure: string;
   docsPage?: string;
