@@ -260,8 +260,7 @@
     "ansi-regex": "5.0.1",
     "nth-check": "2.0.1",
     "set-value": "4.0.1",
-    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
-    "minimist": "1.2.6"
+    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",
