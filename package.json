@@ -263,7 +263,6 @@
     "immer": "9.0.6",
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
     "prismjs": "1.27.0",
-    "nanoid": "3.1.31",
     "minimist": "1.2.6"
   },
   "scripts": {
