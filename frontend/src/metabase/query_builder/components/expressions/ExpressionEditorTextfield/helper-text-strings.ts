@@ -5,6 +5,18 @@ import { formatTime } from "metabase/lib/formatting";
 import type { Database } from "metabase-types/types/Database";
 import { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
 
+const getDescriptionForNow = (database: Database, reportTimezone: string) => {
+  const hasTimezoneFeatureFlag = database.features.includes("set-timezone");
+  const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
+  const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
+
+  if (database.engine === "h2") {
+    return t`Returns the current timestamp (in milliseconds).`;
+  } else {
+    return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
+  }
+};
+
 const helperTextStrings: HelpTextConfig[] = [
   {
     name: "count",
@@ -794,13 +806,7 @@ const helperTextStrings: HelpTextConfig[] = [
   {
     name: "now",
     structure: "now",
-    description: (database: Database, reportTimezone: string) => {
-      const hasTimezoneFeatureFlag = database.features.includes("set-timezone");
-      const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
-      const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
-
-      return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
-    },
+    description: getDescriptionForNow,
     example: "now",
     args: [],
   },
