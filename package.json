@@ -202,7 +202,7 @@
     "babel-loader": "9.1.0",
     "babel-plugin-ttag": "^1.7.26",
     "chromatic": "^6.3.3",
-    "concurrently": "^3.1.0",
+    "concurrently": "^7.6.0",
     "css-loader": "1.0.1",
     "cypress": "^10.9.0",
     "cypress-real-events": "^1.7.1",
