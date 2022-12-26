@@ -105,7 +105,7 @@ jobs:
       name: Run Eastwood linter
 
   be-tests:
-    if: (matrix.edition == 'ee' && matrix.java-version == '11') || github.event.pull_request.draft == false
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 25
