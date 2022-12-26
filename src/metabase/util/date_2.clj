@@ -297,7 +297,12 @@
       :hours   t
       :days    t)))
 
-(def truncate-units  "Valid date trucation units"
+;;; See https://github.com/dm3/clojure.java-time/issues/95. We need to update the `java-time/truncate-to` copy of the
+;;; actual underlying method since `extend-protocol` mutates the var
+(alter-var-root #'t/truncate-to (constantly t.core/truncate-to))
+
+(def truncate-units
+  "Valid date trucation units"
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})
 
 (s/defn truncate :- Temporal
