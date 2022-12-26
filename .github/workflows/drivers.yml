@@ -400,17 +400,18 @@ jobs:
       CI: 'true'
       DRIVERS: oracle
       MB_ORACLE_TEST_HOST: localhost
+      MB_ORACLE_TEST_PORT: 2484
       MB_ORACLE_TEST_SERVICE_NAME: XEPDB1
+      MB_ORACLE_TEST_SSL: true
+      MB_ORACLE_TEST_SSL_USE_TRUSTSTORE: true
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_PATH: './test_resources/ssl/oracle/truststore.p12'
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_OPTIONS: local
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE: 'PassworD_#1234'
+      MB_ORACLE_TEST_SSL_USE_KEYSTORE: true
+      MB_ORACLE_TEST_SSL_KEYSTORE_PATH: './test_resources/ssl/oracle/keystore.p12'
+      MB_ORACLE_TEST_SSL_KEYSTORE_OPTIONS: local
+      MB_ORACLE_TEST_SSL_KEYSTORE_PASSWORD_VALUE: 'PassworD_#1234'
       MB_ORACLE_SSL_TEST_SSL: true
-      MB_ORACLE_SSL_TEST_PORT: 2484
-      MB_ORACLE_SSL_TEST_SSL_USE_TRUSTSTORE: true
-      MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH: './test_resources/ssl/oracle/truststore.p12'
-      MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_OPTIONS: local
-      MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE: 'PassworD_#1234'
-      MB_ORACLE_SSL_TEST_SSL_USE_KEYSTORE: true
-      MB_ORACLE_SSL_TEST_SSL_KEYSTORE_PATH: './test_resources/ssl/oracle/keystore.p12'
-      MB_ORACLE_SSL_TEST_SSL_KEYSTORE_OPTIONS: local
-      MB_ORACLE_SSL_TEST_SSL_KEYSTORE_PASSWORD_VALUE: 'PassworD_#1234'
     services:
       oracle:
         image: metabase/qa-databases:oracle-xe-21.3
