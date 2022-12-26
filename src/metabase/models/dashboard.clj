@@ -513,3 +513,5 @@
      (when (seq parameters-card-id)
         (set (for [card-id parameters-card-id]
                ["Card" card-id]))))))
+
+(serdes.base/register-ingestion-path! "Dashboard" (serdes.base/ingestion-matcher-collected "collections" "Dashboard"))

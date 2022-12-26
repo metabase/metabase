@@ -410,6 +410,26 @@
                     {:model "Field",    :id "Some Field"}]]}
                 (set (serdes.base/serdes-dependencies ser))))))
 
+     (testing "Cards with parameters where the source is a card"
+       (let [ser (serdes.base/extract-one "Dashboard" {} (db/select-one 'Dashboard :id param-dash-id))]
+         (is (schema= {:parameters
+                       (s/eq [{:id                   "abc"
+                               :name                 "CATEGORY"
+                               :type                 :category
+                               :values_source_config {:card_id     c1-eid
+                                                      :value_field [:field
+                                                                    ["My Database" nil "Schemaless Table" "Some Field"]
+                                                                    nil]},
+                               :values_source_type "card"}])
+                       s/Keyword s/Any}
+                      ser))
+         (is (= #{[{:model "Collection" :id dave-coll-eid}]
+                  [{:model "Card"       :id c1-eid}
+                   [{:model "Database", :id "My Database"}
+                    {:model "Table",    :id "Schemaless Table"}
+                    {:model "Field",    :id "Some Field"}]]}
+                (set (serdes.base/serdes-dependencies ser))))))
+
      (testing "collection filtering based on :user option"
        (testing "only unowned collections are returned with no user"
          (is (= ["Some Collection"]
@@ -925,6 +945,57 @@
                      [{:model "Card"  :id card1-eid}]
                      [{:model "Dashboard" :id dash-eid}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest cards-test
+ (ts/with-empty-h2-app-db
+   (ts/with-temp-dpc
+     [User       [{mark-id :id}              {:first_name "Mark"
+                                              :last_name  "Knopfler"
+                                              :email      "mark@direstrai.ts"}]
+      Database   [{db-id    :id}             {:name "My Database"}]
+      Table      [{table-id :id}             {:name "Schemaless Table" :db_id db-id}]
+      Field      [{field-id :id}             {:name "A Field" :table_id table-id}]
+      Collection [{coll-id-1  :id}           {:name "1st collection"}]
+      Collection [{coll-id-2  :id
+                   coll-eid-2 :entity_id}    {:name "2nd collection"}]
+
+      Card       [{card-id-1  :id
+                   card-eid-1 :entity_id}    {:name          "Source question"
+                                              :database_id   db-id
+                                              :table_id      table-id
+                                              :collection_id coll-id-1
+                                              :creator_id    mark-id}]
+      Card       [{card-id-2  :id
+                   card-eid-2 :entity_id}    {:name          "Card 2"
+                                              :database_id   db-id
+                                              :table_id      table-id
+                                              :collection_id coll-id-2
+                                              :creator_id    mark-id
+                                              :parameters    [{:id                   "abc"
+                                                               :type                 "category"
+                                                               :name                 "CATEGORY"
+                                                               :values_source_type   "card"
+                                                               ;; card_id is in a different collection with dashboard's collection
+                                                               :values_source_config {:card_id     card-id-1
+                                                                                      :value_field [:field field-id nil]}}]}]]
+     (testing "Cards with parameter's source is another question"
+       (let [ser (serdes.base/extract-one "Card" {} (db/select-one Card :id card-id-2))]
+         (is (= [{:id                   "abc",
+                  :type                 :category,
+                  :name                 "CATEGORY",
+                  :values_source_type   "card",
+                  :values_source_config {:card_id card-eid-1,
+                                         :value_field [:field ["My Database" nil "Schemaless Table" "A Field"] nil]}}]
+                (:parameters ser)))
+         (is (= #{[{:model "Database", :id "My Database"}]
+                  [{:model "Collection", :id coll-eid-2}]
+                  [{:model "Database", :id "My Database"}
+                   {:model "Table", :id "Schemaless Table"}]
+                  [{:model "Card", :id card-eid-1}
+                   [{:model "Database", :id "My Database"}
+                    {:model "Table", :id "Schemaless Table"}
+                    {:model "Field", :id "A Field"}]]}
+                (set (serdes.base/serdes-dependencies ser)))))))))
 
 (deftest selective-serialization-basic-test
   (ts/with-empty-h2-app-db
