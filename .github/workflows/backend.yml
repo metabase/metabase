@@ -111,7 +111,7 @@ jobs:
   be-tests-java-11-ee-pre-check:
     if: github.event.pull_request.draft == true
     runs-on: ubuntu-20.04
-    name: be-tests-java-11-ee
+    name: be-tests-java-11-ee-pre-check
     timeout-minutes: 25
     steps:
     - uses: actions/checkout@v3
@@ -132,7 +132,7 @@ jobs:
       if: always()
       with:
         path: 'target/junit/**/*_test.xml'
-        name: JUnit Test Report be-tests-java-11-ee
+        name: JUnit Test Report be-tests-java-11-ee-pre-check
         reporter: java-junit
 
   be-tests:
