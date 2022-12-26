@@ -112,29 +112,34 @@
 (defn- handle-keystore-options [details]
   (let [keystore (-> (secret/db-details-prop->secret-map details "ssl-keystore")
                      (secret/value->file! :oracle))
-        password (-> (secret/db-details-prop->secret-map details "ssl-keystore-password")
-                     secret/value->string)]
+        password (or (-> (secret/db-details-prop->secret-map details "ssl-keystore-password")
+                         secret/value->string)
+                     (secret/get-secret-string details "ssl-keystore-password"))]
     (-> details
         (assoc :javax.net.ssl.keyStoreType (guess-keystore-type keystore password)
                :javax.net.ssl.keyStore keystore
                :javax.net.ssl.keyStorePassword password)
-        (dissoc :ssl-use-keystore :ssl-keystore-value :ssl-keystore-path :ssl-keystore-password-value))))
+        (dissoc :ssl-use-keystore :ssl-keystore-value :ssl-keystore-path :ssl-keystore-password-value
+                :ssl-keystore-created-at :ssl-keystore-password-created-at))))
 
 (defn- handle-truststore-options [details]
   (let [truststore (-> (secret/db-details-prop->secret-map details "ssl-truststore")
                        (secret/value->file! :oracle))
-        password (-> (secret/db-details-prop->secret-map details "ssl-truststore-password")
-                     secret/value->string)]
+        password (or (-> (secret/db-details-prop->secret-map details "ssl-truststore-password")
+                         secret/value->string)
+                     (secret/get-secret-string details "ssl-truststore-password"))]
     (-> details
         (assoc :javax.net.ssl.trustStoreType (guess-keystore-type truststore password)
                :javax.net.ssl.trustStore truststore
                :javax.net.ssl.trustStorePassword password)
-        (dissoc :ssl-use-truststore :ssl-truststore-value :ssl-truststore-path :ssl-truststore-password-value))))
+        (dissoc :ssl-use-truststore :ssl-truststore-value :ssl-truststore-path :ssl-truststore-password-value
+                :ssl-truststore-created-at :ssl-truststore-password-created-at))))
 
-(defn- handle-ssl-options [{:keys [ssl ssl-use-keystore ssl-use-truststore] :as details}]
+(defn- handle-ssl-options [{:keys [password ssl ssl-use-keystore ssl-use-truststore] :as details}]
   (if ssl
     (cond-> details
       ssl-use-keystore handle-keystore-options
+      (and ssl-use-keystore (nil? password)) (assoc :oracle.net.authentication_services "(TCPS)")
       ssl-use-truststore handle-truststore-options
       true (dissoc :ssl))
     details))
