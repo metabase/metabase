@@ -34,8 +34,8 @@ on:
       - "frontend/test/__runner__/*cypress*"
 
 concurrency:
-  group: ${{ github.workflow}}-${{ github.head_ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/master' && true || false }}
+  group: ${{ github.head_ref && github.workflow || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   fe-linter-prettier:
