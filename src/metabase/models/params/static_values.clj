@@ -26,4 +26,3 @@
                         (query-matches query values)
                         values)
      :has_more_values false}))
-

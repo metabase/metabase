@@ -10,7 +10,7 @@
 
 (def ^:dynamic *max-rows*
   "Maximum number of rows returned when running a card.
-  It's 1000 because it matches with how many values we're returning for chain-filters.
+  It's 1000 because it matches with the limit for chain-filter.
   Maybe we should lower it for the sake of display a parameter dropdown."
   1000)
 
