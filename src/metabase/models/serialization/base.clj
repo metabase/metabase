@@ -258,6 +258,39 @@
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))
 
+(defmulti serdes-descendants
+  "Captures the notion that eg. a dashboard \"contains\" its cards.
+  Returns a set, possibly empty or nil, of `[model-name database-id]` pairs for all entities that this entity contains
+  or requires to be executed.
+  Dispatches on the model name.
+
+  For example:
+  - a `Collection` contains 0 or more other `Collection`s plus many `Card`s and `Dashboard`s;
+  - a `Dashboard` contains its `DashboardCard`s;
+  - each `DashboardCard` contains its `Card`;
+  - a `Card` might stand alone, or it might require `NativeQuerySnippet`s or other `Card`s as inputs; and
+  - a `NativeQuerySnippet` similarly might derive from others;
+
+  A transitive closure over [[serdes-descendants]] should thus give a complete \"subtree\", such as a complete
+  `Collection` and all its contents.
+
+  A typical implementation will run a query or two to collect eg. all `DashboardCard`s that are part of this
+  `Dashboard`, and return them as pairs like `[\"DashboardCard\" 17]`.
+
+  What about [[serdes-dependencies]]?
+  Despite the similar-sounding names, this differs crucially from [[serdes-dependencies]]. [[serdes-descendants]] finds
+  all entities that are \"part\" of the given entity.
+
+  [[serdes-dependencies]] finds all entities that need to be loaded into appdb before this one can be, generally because
+  this has a foreign key to them. The arrow \"points the other way\": [[serdes-dependencies]] points *up* -- from a
+  `Dashboard` to its containing `Collection`, `Collection` to its parent, from a `DashboardCard` to its `Dashboard` and
+  `Card`. [[serdes-descendants]] points *down* to contents, children, and components."
+  {:arglists '([model-name db-id])}
+  (fn [model-name _] model-name))
+
+(defmethod serdes-descendants :default [_ _]
+  nil)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Deserialization Process                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -439,38 +472,6 @@
         (load-insert! model adjusted)
         (load-update! model adjusted maybe-local)))))
 
-(defmulti serdes-descendants
-  "Captures the notion that eg. a dashboard \"contains\" its cards.
-  Returns a set, possibly empty or nil, of `[model-name database-id]` pairs for all entities that this entity contains
-  or requires to be executed.
-  Dispatches on the model name.
-
-  For example:
-  - a `Collection` contains 0 or more other `Collection`s plus many `Card`s and `Dashboard`s;
-  - a `Dashboard` contains its `DashboardCard`s;
-  - each `DashboardCard` contains its `Card`;
-  - a `Card` might stand alone, or it might require `NativeQuerySnippet`s or other `Card`s as inputs; and
-  - a `NativeQuerySnippet` similarly might derive from others;
-
-  A transitive closure over [[serdes-descendants]] should thus give a complete \"subtree\", such as a complete
-  `Collection` and all its contents.
-
-  A typical implementation will run a query or two to collect eg. all `DashboardCard`s that are part of this
-  `Dashboard`, and return them as pairs like `[\"DashboardCard\" 17]`.
-
-  What about [[serdes-dependencies]]?
-  Despite the similar-sounding names, this differs crucially from [[serdes-dependencies]]. [[serdes-descendants]] finds
-  all entities that are \"part\" of the given entity.
-
-  [[serdes-dependencies]] finds all entities that need to be loaded into appdb before this one can be, generally because
-  this has a foreign key to them. The arrow \"points the other way\": [[serdes-dependencies]] points *up* -- from a
-  `Dashboard` to its containing `Collection`, `Collection` to its parent, from a `DashboardCard` to its `Dashboard` and
-  `Card`. [[serdes-descendants]] points *down* to contents, children, and components."
-  {:arglists '([model-name db-id])}
-  (fn [model-name _] model-name))
-
-(defmethod serdes-descendants :default [_ _]
-  nil)
 
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."
