@@ -19,6 +19,7 @@ on:
       - "frontend/test/__support__/e2e/**"
       - "frontend/test/__runner__/*cypress*"
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       # documentation
       - "docs/**"
