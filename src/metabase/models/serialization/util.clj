@@ -422,12 +422,12 @@
   "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.
   Always returns an empty set even if the input is nil."
   [parameters]
-  (into #{}
-        (for [parameter parameters
-              :when (= "card" (:values_source_type parameter))
-              :let  [config (:values_source_config parameter)]]
-          (concat [{:model "Card" :id (:card_id config)}]
-                  (mbql-deps-vector (:value_field config))))))
+  (reduce set/union #{}
+          (for [parameter parameters
+                :when (= "card" (:values_source_type parameter))
+                :let  [config (:values_source_config parameter)]]
+            (set/union #{[{:model "Card" :id (:card_id config)}]}
+                       (mbql-deps-vector (:value_field config))))))
 
 (defn- export-visualizations [entity]
   (mbql.u/replace
