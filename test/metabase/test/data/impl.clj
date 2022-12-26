@@ -303,14 +303,18 @@
             (keys (secret/conn-props->secret-props-by-name conn-props))))))
 
 (defn- copy-secrets [database]
-  (assoc database
-         :details
-         (reduce (fn [details [id-prop id]]
-                   (let [orig-secret (db/select-one [Secret :name :kind :source :value] :id id)
-                         {new-id :id} (db/insert! Secret orig-secret)]
-                     (assoc details id-prop new-id)))
+  (let [prop->old-id (get-linked-secrets database)]
+    (if (seq prop->old-id)
+      (let [secrets (db/select [Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
+            new-ids (db/insert-many! Secret (map #(dissoc % :id) secrets))
+            old-id->new-id (zipmap (map :id secrets) new-ids)]
+        (assoc database
+               :details
+               (reduce (fn [details [id-prop old-id]]
+                         (assoc details id-prop (get old-id->new-id old-id)))
                  (:details database)
-                 (get-linked-secrets database))))
+                 prop->old-id)))
+      database)))
 
 (def ^:dynamic *db-is-temp-copy?*
   "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
@@ -321,9 +325,8 @@
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*get-db*)
-        original-db (select-keys old-db [:details :engine :name])
-        original-db' (copy-secrets original-db)
-        {new-db-id :id, :as new-db} (db/insert! Database original-db')]
+        original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
+        {new-db-id :id, :as new-db} (db/insert! Database original-db)]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
       (binding [*db-is-temp-copy?* true]
