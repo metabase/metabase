@@ -2,10 +2,6 @@ name: "CodeQL"
 
 on: [push, pull_request]
 
-concurrency:
-  group: ${{ github.head_ref && github.workflow || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   analyze:
     runs-on: ubuntu-20.04
