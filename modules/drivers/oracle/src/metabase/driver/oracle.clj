@@ -1,6 +1,5 @@
 (ns metabase.driver.oracle
   (:require
-   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
