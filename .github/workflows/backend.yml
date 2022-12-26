@@ -104,6 +104,36 @@ jobs:
     - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
       name: Run Eastwood linter
 
+  # Because it's not possible to conditionally run only `java-11-ee` test in the draft mode,
+  # we have to extract that job manually here. Backend developers have requested that this
+  # test runs at all times to give them an early warning sign is something is broken.
+  be-tests-java-11-ee-pre-check:
+    if: github.event.pull_request.draft == true
+    runs-on: ubuntu-20.04
+    name: be-tests-java-11-ee
+    timeout-minutes: 25
+    steps:
+    - uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+
+    - run: yarn install --frozen-lockfile --prefer-offline
+    - name: Build static viz frontend
+      run: yarn build-static-viz
+
+    - name: Run tests
+      run: clojure -X:dev:ci:test:ee:ee-dev
+
+    - name: Publish Test Report (JUnit)
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        path: 'target/junit/**/*_test.xml'
+        name: JUnit Test Report be-tests-java-11-ee
+        reporter: java-junit
+
   be-tests:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
