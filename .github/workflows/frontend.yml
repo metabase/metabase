@@ -33,6 +33,10 @@ on:
       - "frontend/test/__support__/e2e/**"
       - "frontend/test/__runner__/*cypress*"
 
+concurrency:
+  group: ${{ github.head_ref && github.workflow || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   fe-linter-prettier:
     runs-on: ubuntu-20.04
