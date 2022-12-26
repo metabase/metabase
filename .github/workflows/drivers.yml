@@ -25,7 +25,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   be-tests-athena-ee:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
