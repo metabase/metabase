@@ -456,6 +456,7 @@
                (hydrate dash :ordered_cards))]
     (-> (serdes.base/extract-one-basics "Dashboard" dash)
         (update :ordered_cards     #(mapv extract-dashcard %))
+        (update :parameters        serdes.util/export-parameters)
         (update :collection_id     serdes.util/export-fk Collection)
         (update :creator_id        serdes.util/export-user)
         (update :made_public_by_id serdes.util/export-user))))
@@ -466,6 +467,7 @@
       serdes.base/load-xform-basics
       ;; Deliberately not doing anything to :ordered_cards - they get handled by load-insert! and load-update! below.
       (update :collection_id     serdes.util/import-fk Collection)
+      (update :parameters        serdes.util/import-parameters)
       (update :creator_id        serdes.util/import-user)
       (update :made_public_by_id serdes.util/import-user)))
 
@@ -490,19 +492,24 @@
        set))
 
 (defmethod serdes.base/serdes-dependencies "Dashboard"
-  [{:keys [collection_id ordered_cards]}]
-  (->> ordered_cards
-       (map serdes-deps-dashcard)
-       (reduce set/union #{[{:model "Collection" :id collection_id}]})))
+  [{:keys [collection_id ordered_cards parameters]}]
+  (->> (map serdes-deps-dashcard ordered_cards)
+       (reduce set/union)
+       (set/union #{[{:model "Collection" :id collection_id}]})
+       (set/union (serdes.util/parameters-deps parameters))))
 
 (defmethod serdes.base/serdes-descendants "Dashboard" [_model-name id]
   ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
   ;; here. So their cards, both direct and mentioned in their parameters.
-  (set (for [{:keys [card_id parameter_mappings]} (db/select ['DashboardCard :card_id :parameter_mappings]
-                                                             :dashboard_id id)
-             ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
-             card-id  (cond-> (set (keep :card_id parameter_mappings))
-                        card_id (conj card_id))]
-         ["Card" card-id])))
-
-(serdes.base/register-ingestion-path! "Dashboard" (serdes.base/ingestion-matcher-collected "collections" "Dashboard"))
+  (let [dashboard          (db/select-one Dashboard :id id)
+        parameters-card-id (some->> dashboard :parameters vals (keep (comp :card_id :values_source_config)))]
+   (set/union
+     (set (for [{:keys [card_id parameter_mappings]} (db/select ['DashboardCard :card_id :parameter_mappings]
+                                                                :dashboard_id id)
+                ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
+                 card-id  (cond-> (set (keep :card_id parameter_mappings))
+                            card_id (conj card_id))]
+            ["Card" card-id]))
+     (when (seq parameters-card-id)
+        (set (for [card-id parameters-card-id]
+               ["Card" card-id]))))))
