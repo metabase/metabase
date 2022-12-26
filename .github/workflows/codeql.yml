@@ -3,8 +3,8 @@ name: "CodeQL"
 on: [push, pull_request]
 
 concurrency:
-  group: ${{ github.head_ref || github.run_id}}
-  cancel-in-progress: true
+  group: ${{ github.workflow}}-${{ github.head_ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' && true || false }}
 
 jobs:
   analyze:
