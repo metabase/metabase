@@ -502,7 +502,7 @@
   ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
   ;; here. So their cards, both direct and mentioned in their parameters.
   (let [dashboard          (db/select-one Dashboard :id id)
-        parameters-card-id (some->> dashboard :parameters vals (keep (comp :card_id :values_source_config)))]
+        parameters-card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
    (set/union
      (set (for [{:keys [card_id parameter_mappings]} (db/select ['DashboardCard :card_id :parameter_mappings]
                                                                 :dashboard_id id)

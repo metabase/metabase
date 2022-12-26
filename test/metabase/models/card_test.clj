@@ -1,7 +1,7 @@
 (ns metabase.models.card-test
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [metabase.models :refer [Action Card Collection Dashboard DashboardCard QueryAction]]
+            [metabase.models :refer [Action Card Collection Dashboard DashboardCard NativeQuerySnippet QueryAction]]
             [metabase.models.card :as card]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
@@ -375,6 +375,28 @@
                     Card [card2 {:name "derived card"
                                  :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
       (is (empty? (serdes.base/serdes-descendants "Card" (:id card1))))
+      (is (= #{["Card" (:id card1)]}
+             (serdes.base/serdes-descendants "Card" (:id card2))))))
+
+  (testing "cards that has a native tempatlate tag"
+    (mt/with-temp* [NativeQuerySnippet [snippet {:name "category" :content "category = 'Gizmo'"}]
+                    Card               [card {:name          "Business Card"
+                                              :dataset_query {:native
+                                                              {:template-tags {:snippet {:name         "snippet"
+                                                                                         :type         :snippet
+                                                                                         :snippet-name "snippet"
+                                                                                         :snippet-id   (:id snippet)}}
+                                                               :query "select * from products where {{snippet}}"}}}]]
+      (is (= #{["NativeQuerySnippet" (:id snippet)]}
+             (serdes.base/serdes-descendants "Card" (:id card))))))
+
+  (testing "cards which have parameter's source is another card"
+    (mt/with-temp* [Card [card1 {:name "base card"}]
+                    Card [card2 {:name       "derived card"
+                                 :parameters [{:id                   "valid-id"
+                                               :type                 "id"
+                                               :values_source_type   "card"
+                                               :values_source_config {:card_id (:id card1)}}]}]]
       (is (= #{["Card" (:id card1)]}
              (serdes.base/serdes-descendants "Card" (:id card2)))))))
 
