@@ -1,14 +1,15 @@
 (ns metabase.sync.analyze.classifiers.name
   "Classifier that infers the semantic type of a Field based on its name and base type."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.models.database :refer [Database]]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.config :as config]
+   [metabase.models.database :refer [Database]]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})

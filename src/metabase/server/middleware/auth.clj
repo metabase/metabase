@@ -1,8 +1,9 @@
 (ns metabase.server.middleware.auth
   "Middleware related to enforcing authentication/API keys (when applicable). Unlike most other middleware most of this
   is not used as part of the normal `app`; it is instead added selectively to appropriate routes."
-  (:require [metabase.models.setting :refer [defsetting]]
-            [metabase.server.middleware.util :as mw.util]))
+  (:require
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.server.middleware.util :as mw.util]))
 
 (def ^:private ^:const ^String metabase-api-key-header "x-metabase-apikey")
 

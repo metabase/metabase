@@ -1,10 +1,11 @@
 (ns metabase.api.transform
-  (:require [compojure.core :refer [GET]]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.models.permissions :as perms]
-            [metabase.transforms.core :as tf]
-            [metabase.transforms.specs :as tf.specs]))
+  (:require
+   [compojure.core :refer [GET]]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.models.permissions :as perms]
+   [metabase.transforms.core :as tf]
+   [metabase.transforms.specs :as tf.specs]))
 
 (api/defendpoint GET "/:db-id/:schema/:transform-name"
   "Look up a database schema transform"

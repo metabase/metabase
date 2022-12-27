@@ -15,15 +15,16 @@
   You can see what commands are available by running the command `help`. This command uses the docstrings and arglists
   associated with each command's entrypoint function to generate descriptions for each command."
   (:refer-clojure :exclude [load import])
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [environ.core :as env]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]))
 
 (defn- system-exit!
   "Proxy function to System/exit to enable the use of `with-redefs`."

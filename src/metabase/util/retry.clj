@@ -1,8 +1,9 @@
 (ns metabase.util.retry
   "Support for in-memory, thread-blocking retrying."
-  (:import io.github.resilience4j.core.IntervalFunction
-           [io.github.resilience4j.retry Retry RetryConfig]
-           java.util.function.Predicate))
+  (:import
+   (io.github.resilience4j.core IntervalFunction)
+   (io.github.resilience4j.retry Retry RetryConfig)
+   (java.util.function Predicate)))
 
 (defn- make-predicate [f]
   (reify Predicate (test [_ x] (f x))))

@@ -1,31 +1,39 @@
 (ns metabase.server.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [honeysql.helpers :as hh]
-            [java-time :as t]
-            [metabase.api.common :as api
-             :refer
-             [*current-user* *current-user-id* *current-user-permissions-set*
-              *is-group-manager?* *is-superuser?*]]
-            [metabase.config :as config]
-            [metabase.core.initialization-status :as init-status]
-            [metabase.db :as mdb]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.session :refer [Session]]
-            [metabase.models.setting :as setting :refer [*user-local-values* defsetting]]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.server.request.util :as request.u]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru tru]]
-            [ring.util.response :as response]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.tools.logging :as log]
+   [honeysql.core :as hsql]
+   [honeysql.helpers :as hh]
+   [java-time :as t]
+   [metabase.api.common
+    :as api
+    :refer [*current-user*
+            *current-user-id*
+            *current-user-permissions-set*
+            *is-group-manager?*
+            *is-superuser?*]]
+   [metabase.config :as config]
+   [metabase.core.initialization-status :as init-status]
+   [metabase.db :as mdb]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.permissions-group-membership
+    :refer [PermissionsGroupMembership]]
+   [metabase.models.session :refer [Session]]
+   [metabase.models.setting
+    :as setting
+    :refer [*user-local-values* defsetting]]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.server.request.util :as request.u]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru tru]]
+   [ring.util.response :as response]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
 
 ;; How do authenticated API requests work? Metabase first looks for a cookie called `metabase.SESSION`. This is the
 ;; normal way of doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly

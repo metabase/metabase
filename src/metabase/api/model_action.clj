@@ -1,13 +1,13 @@
 (ns metabase.api.model-action
   (:require
-    [compojure.core :refer [DELETE GET POST PUT]]
-    [honeysql.core :as hsql]
-    [metabase.actions :as actions]
-    [metabase.api.common :as api]
-    [metabase.models :refer [Action Card HTTPAction ModelAction QueryAction]]
-    [metabase.util.schema :as su]
-    [schema.core :as s]
-    [toucan.db :as db]))
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [honeysql.core :as hsql]
+   [metabase.actions :as actions]
+   [metabase.api.common :as api]
+   [metabase.models :refer [Action Card HTTPAction ModelAction QueryAction]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (api/defendpoint GET "/"
   "Endpoint to fetch actions for a model, must filter with card-id="

@@ -1,18 +1,20 @@
 (ns metabase.query-processor.streaming
-  (:require [clojure.core.async :as a]
-            [metabase.async.streaming-response :as streaming-response]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.context.default :as context.default]
-            [metabase.query-processor.streaming.csv :as qp.csv]
-            [metabase.query-processor.streaming.interface :as qp.si]
-            [metabase.query-processor.streaming.json :as qp.json]
-            [metabase.query-processor.streaming.xlsx :as qp.xlsx]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.util :as u])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel
-           java.io.OutputStream
-           metabase.async.streaming_response.StreamingResponse))
+  (:require
+   [clojure.core.async :as a]
+   [metabase.async.streaming-response :as streaming-response]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.streaming.csv :as qp.csv]
+   [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.query-processor.streaming.json :as qp.json]
+   [metabase.query-processor.streaming.xlsx :as qp.xlsx]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.util :as u])
+  (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)
+   (java.io OutputStream)
+   (metabase.async.streaming_response StreamingResponse)))
 
 ;; these are loaded for side-effects so their impls of `qp.si/results-writer` will be available
 ;; TODO - consider whether we should lazy-load these!

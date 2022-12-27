@@ -1,13 +1,14 @@
 (ns metabase.domain-entities.core
-  (:require [clojure.string :as str]
-            [medley.core :as m]
-            [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.util :as u]
-            [schema.core :as s]))
+  (:require
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.util :as u]
+   [schema.core :as s]))
 
 (def ^:private ^{:arglists '([field])} field-type
   "Return the most specific type of a given field."

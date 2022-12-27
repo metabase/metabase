@@ -1,15 +1,16 @@
 (ns metabase.api.util
   "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
   page tasks."
-  (:require [compojure.core :refer [GET POST]]
-            [crypto.random :as crypto-random]
-            [metabase.analytics.stats :as stats]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.logger :as logger]
-            [metabase.troubleshooting :as troubleshooting]
-            [metabase.util.schema :as su]
-            [ring.util.response :as response]))
+  (:require
+   [compojure.core :refer [GET POST]]
+   [crypto.random :as crypto-random]
+   [metabase.analytics.stats :as stats]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.logger :as logger]
+   [metabase.troubleshooting :as troubleshooting]
+   [metabase.util.schema :as su]
+   [ring.util.response :as response]))
 
 (api/defendpoint POST "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."

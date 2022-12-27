@@ -2,60 +2,63 @@
   "Shared lower-level implementation of the `dump-to-h2` and `load-from-h2` commands. The `copy!` function implemented
   here supports loading data from an application database to any empty application database for all combinations of
   supported application database types."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.format :as hformat]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.data-migrations :refer [DataMigrations]]
-            [metabase.db.setup :as mdb.setup]
-            [metabase.models :refer [Activity
-                                     App
-                                     ApplicationPermissionsRevision
-                                     BookmarkOrdering
-                                     Card
-                                     CardBookmark
-                                     Collection
-                                     CollectionBookmark
-                                     CollectionPermissionGraphRevision
-                                     Dashboard
-                                     DashboardBookmark
-                                     DashboardCard
-                                     DashboardCardSeries
-                                     Database
-                                     Dimension
-                                     Field
-                                     FieldValues
-                                     LoginHistory
-                                     Metric
-                                     MetricImportantField
-                                     ModelAction
-                                     ModerationReview
-                                     NativeQuerySnippet
-                                     ParameterCard
-                                     Permissions
-                                     PermissionsGroup
-                                     PermissionsGroupMembership
-                                     PermissionsRevision
-                                     PersistedInfo
-                                     Pulse
-                                     PulseCard
-                                     PulseChannel
-                                     PulseChannelRecipient
-                                     Revision
-                                     Secret
-                                     Segment
-                                     Session
-                                     Setting
-                                     Table
-                                     Timeline
-                                     TimelineEvent
-                                     User
-                                     ViewLog]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s])
-  (:import java.sql.SQLException))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [honeysql.format :as hformat]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.data-migrations :refer [DataMigrations]]
+   [metabase.db.setup :as mdb.setup]
+   [metabase.models
+    :refer [Activity
+            App
+            ApplicationPermissionsRevision
+            BookmarkOrdering
+            Card
+            CardBookmark
+            Collection
+            CollectionBookmark
+            CollectionPermissionGraphRevision
+            Dashboard
+            DashboardBookmark
+            DashboardCard
+            DashboardCardSeries
+            Database
+            Dimension
+            Field
+            FieldValues
+            LoginHistory
+            Metric
+            MetricImportantField
+            ModelAction
+            ModerationReview
+            NativeQuerySnippet
+            ParameterCard
+            Permissions
+            PermissionsGroup
+            PermissionsGroupMembership
+            PermissionsRevision
+            PersistedInfo
+            Pulse
+            PulseCard
+            PulseChannel
+            PulseChannelRecipient
+            Revision
+            Secret
+            Segment
+            Session
+            Setting
+            Table
+            Timeline
+            TimelineEvent
+            User
+            ViewLog]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [schema.core :as s])
+  (:import
+   (java.sql SQLException)))
 
 (defn- log-ok []
   (log/info (u/colorize 'green "[OK]")))

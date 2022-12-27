@@ -1,13 +1,14 @@
 (ns metabase.query-processor.util
   "Utility functions used by the global query processor and middleware functions."
-  (:require [buddy.core.codecs :as codecs]
-            [buddy.core.hash :as buddy-hash]
-            [cheshire.core :as json]
-            [clojure.string :as str]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.mbql.util]]
 

@@ -1,8 +1,9 @@
 (ns metabase.api.routes.common
   "Shared helpers used by [[metabase.api.routes/routes]] as well as premium-only routes
   like [[metabase-enterprise.sandbox.api.routes/routes]]."
-  (:require [metabase.server.middleware.auth :as mw.auth]
-            [metabase.server.middleware.exceptions :as mw.exceptions]))
+  (:require
+   [metabase.server.middleware.auth :as mw.auth]
+   [metabase.server.middleware.exceptions :as mw.exceptions]))
 
 (def +generic-exceptions
   "Wrap `routes` so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public

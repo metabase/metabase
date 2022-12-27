@@ -2,19 +2,20 @@
   "Functions used to calculate the permissions needed to run a query based on old-style DATA ACCESS PERMISSIONS. The
   only thing that is subject to these sorts of checks are *ad-hoc* queries, i.e. queries that have not yet been saved
   as a Card. Saved Cards are subject to the permissions of the Collection to which they belong."
-  (:require [clojure.tools.logging :as log]
-            [metabase.api.common :as api]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.tools.logging :as log]
+   [metabase.api.common :as api]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 

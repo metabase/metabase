@@ -1,22 +1,24 @@
 (ns metabase.api.activity
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [compojure.core :refer [GET]]
-            [medley.core :as m]
-            [metabase.api.common :refer [*current-user-id* defendpoint define-routes]]
-            [metabase.models.activity :refer [Activity]]
-            [metabase.models.app :refer [App]]
-            [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as mi]
-            [metabase.models.query-execution :refer [QueryExecution]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.view-log :refer [ViewLog]]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [compojure.core :refer [GET]]
+   [medley.core :as m]
+   [metabase.api.common
+    :refer [*current-user-id* defendpoint define-routes]]
+   [metabase.models.activity :refer [Activity]]
+   [metabase.models.app :refer [App]]
+   [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
+   [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.view-log :refer [ViewLog]]
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (defn- dashcard-activity? [activity]
   (#{:dashboard-add-cards :dashboard-remove-cards}

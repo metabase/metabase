@@ -1,20 +1,25 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [clojure.spec.alpha :as s]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :as compojure]
-            [honeysql.types :as htypes]
-            [medley.core :as m]
-            [metabase.api.common.internal
-             :refer
-             [add-route-param-regexes auto-parse route-dox route-fn-name validate-params wrap-response-if-needed]]
-            [metabase.models.interface :as mi]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as schema]
-            [toucan.db :as db]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :as compojure]
+   [honeysql.types :as htypes]
+   [medley.core :as m]
+   [metabase.api.common.internal
+    :refer [add-route-param-regexes
+            auto-parse
+            route-dox
+            route-fn-name
+            validate-params
+            wrap-response-if-needed]]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as schema]
+   [toucan.db :as db]))
 
 (declare check-403 check-404)
 

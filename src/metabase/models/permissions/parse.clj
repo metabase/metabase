@@ -4,12 +4,13 @@
   - Convert strings to parse tree
   - Convert parse tree to path, e.g. ['3' :all] or ['3' :schemas :all]
   - Convert set of paths to a map, the permission graph"
-  (:require [clojure.core.match :refer [match]]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [instaparse.core :as insta]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojure.core.match :refer [match]]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [instaparse.core :as insta]
+   [metabase.util.i18n :refer [trs]]))
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
