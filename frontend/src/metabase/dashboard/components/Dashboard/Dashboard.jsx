@@ -115,8 +115,8 @@ class Dashboard extends Component {
   );
 
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
-  componentDidMount() {
-    this.loadDashboard(this.props.dashboardId);
+  async componentDidMount() {
+    await this.loadDashboard(this.props.dashboardId);
 
     const main = getMainElement();
     main.addEventListener("scroll", this.throttleParameterWidgetStickiness, {
