@@ -124,7 +124,7 @@
        message-body (stencil/render-file "metabase/email/new_user_invite"
                                          (merge (common-context)
                                                 {:emailType     "new_user_invite"
-                                                 :invitedName   (or (:first_name nvited) (:email invited))
+                                                 :invitedName   (or (:first_name invited) (:email invited))
                                                  :invitorName   (or (:first_name invitor) (:email invitor))
                                                  :invitorEmail  (:email invitor)
                                                  :company       company
