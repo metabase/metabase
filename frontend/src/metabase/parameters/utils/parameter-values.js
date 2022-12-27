@@ -29,10 +29,27 @@ export function parseParameterValue(value, parameter) {
 
   const type = getParameterType(parameter);
   if (type === "number") {
-    return parseFloat(value);
+    return parseParameterValueForNumber(value);
   }
 
   return value;
+}
+
+function parseParameterValueForNumber(value) {
+  // something like "1,2,3" or even "1, 2,  3"
+  const isCommaSeparatedListOfIntegers = value
+    .split(",")
+    .every(item => Number.isInteger(parseFloat(item)));
+
+  if (isCommaSeparatedListOfIntegers) {
+    // "1, 2,    3" will be tranformed into "1,2,3" for later use
+    return value
+      .split(",")
+      .map(item => parseFloat(item))
+      .join(",");
+  }
+
+  return parseFloat(value);
 }
 
 function parseParameterValueForFields(value, fields) {

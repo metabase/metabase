@@ -39,7 +39,7 @@ const dashboardDetails = {
   parameters: [filterDetails],
 };
 
-describe.skip("issue 25374", () => {
+describe("issue 25374", () => {
   beforeEach(() => {
     cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
 
