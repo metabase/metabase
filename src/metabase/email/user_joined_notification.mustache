@@ -3,8 +3,8 @@
     <div style="padding-bottom: 1em;">
       <h2 style="font-weight: normal; color: #4C545B;line-height: 1.65rem;">
         {{joinedUserName}}
-        {{#joinedViaSSO}}created a {{applicationName}} account.{{/joinedViaSSO}}
-        {{^joinedViaSSO}}accepted their {{applicationName}} invitation.{{/joinedViaSSO}}
+        {{#joinedViaSSO}}created an account.{{/joinedViaSSO}}
+        {{^joinedViaSSO}}accepted their invitation.{{/joinedViaSSO}}
       </h2>
       <h4 style="font-weight: normal;">
         <a style="color: #4A90E2; text-decoration: none;" href="mailto:{{adminEmail}}">
@@ -12,15 +12,6 @@
         </a>
         joined {{#joinedViaSSO}}via Single Sign-On{{/joinedViaSSO}} on {{joinedDate}}
       </h4>
-    </div>
-    <div style="padding: 1em;">
-      <a style="{{buttonStyle}}" href="{{joinedUserEditUrl}}">
-        Edit {{joinedUserName}}'s settings
-      </a>
-    </div>
-    <div style="padding-bottom: 2em; font-size: x-small;">
-      Button not working? Paste this link into your browser:<br/>
-      {{joinedUserEditUrl}}
     </div>
   </div>
 {{> metabase/email/_footer }}
