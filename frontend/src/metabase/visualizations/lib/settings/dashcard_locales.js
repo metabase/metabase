@@ -53,8 +53,8 @@ const TITLE_LOCALES_BN = {
       'bn': 'শিক্ষাগত ডিগ্রীর পরিসংখ্যান'
   },
   'admin.dashboard.teacher.gender': {
-      'en': 'Statistics of Gender',
-      'bn': 'জেন্ডার পরিসংখ্যান'
+    'en': 'Statistics of Teacher Gender',
+    'bn': 'শিক্ষকের জেন্ডার পরিসংখ্যান'
   },
   'admin.dashboard.teacher.job.post': {
       'en': 'Statistics of Job Post',
@@ -193,8 +193,8 @@ const TITLE_LOCALES_BN = {
     'bn': 'মোট ছাত্রছাত্রী'
   },
   'admin.dashboard.student.gender': {
-    'en': 'Statistics of Gender',
-    'bn': 'জেন্ডার পরিসংখ্যান'
+    'en': 'Statistics of Student Gender',
+    'bn': 'ছাত্রছাত্রীর জেন্ডার পরিসংখ্যান'
   },
   'admin.dashboard.student.ethnicity': {
     'en': 'Statistics of Ethnicity',
@@ -419,6 +419,10 @@ const TITLE_LOCALES_BN = {
   'school.dashboard.shift.wise.count': {
     'en' : 'School shift',
     'bn' : 'বিদ্যালয়ের শিফট'
+  },
+  'admin.dashboard.teacher.education.except.low.grade': {
+    'en': 'Statistics of Education Degree',
+    'bn': 'শিক্ষাগত ডিগ্রীর পরিসংখ্যান'
   }
 }
 
