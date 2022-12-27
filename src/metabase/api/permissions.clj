@@ -36,9 +36,11 @@
   (perms/data-perms-graph))
 
 (defenterprise upsert-sandboxes!
-  "OSS no-op implementation of `upsert-sandboxes!`."
+  "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
   metabase-enterprise.sandbox.models.group-table-access-policy
-  [_sandboxes])
+  [_sandboxes]
+  (throw (ex-info (tru "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature.")
+                  {:status-code 402})))
 
 (api/defendpoint-schema PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
@@ -64,11 +66,11 @@
                       {:status-code 400
                        :error       (s/explain-data ::api.permission-graph/data-permissions-graph body)})))
     (db/transaction
-      (when-let [sandboxes (-> body :sandboxes not-empty)]
-        (def sandboxes sandboxes)
-        (upsert-sandboxes! sandboxes))
-      (perms/update-data-perms-graph! (dissoc graph :sandboxes))))
-  (perms/data-perms-graph))
+      (perms/update-data-perms-graph! (dissoc graph :sandboxes))
+      (if-let [sandboxes (:sandboxes body)]
+       (let [new-sandboxes (upsert-sandboxes! sandboxes)]
+         (assoc (perms/data-perms-graph) :sandboxes new-sandboxes))
+       (perms/data-perms-graph)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -128,7 +128,7 @@
   created."
   :feature :sandboxes
   [sandboxes]
-  (doseq [sandbox sandboxes]
+  (for [sandbox sandboxes]
     (if-let [id (:id sandbox)]
       (do
         ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
@@ -136,7 +136,8 @@
         (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
           (db/update! GroupTableAccessPolicy
                       id
-                      (u/select-keys-when sandbox :present #{:card_id :attribute_remappings}))))
+                      (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
+        (db/select-one GroupTableAccessPolicy :id id))
       (db/insert! GroupTableAccessPolicy sandbox))))
 
 (defn- pre-insert [gtap]
