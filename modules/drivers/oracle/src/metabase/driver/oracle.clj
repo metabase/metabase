@@ -106,6 +106,8 @@
   (try
     (.getType (KeyStore/getInstance keystore-file (.toCharArray password)))
     (catch Exception _
+      ;; Before the introduction of type recognition we always used "JKS",
+      ;; so this ensures backwards compatibility.
       "JKS")))
 
 (defn- handle-keystore-options [details]
