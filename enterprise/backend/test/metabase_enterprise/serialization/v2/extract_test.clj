@@ -965,8 +965,7 @@
                                               :table_id      table-id
                                               :collection_id coll-id-1
                                               :creator_id    mark-id}]
-      Card       [{card-id-2  :id
-                   card-eid-2 :entity_id}    {:name          "Card 2"
+      Card       [{card-id-2  :id}           {:name          "Card 2"
                                               :database_id   db-id
                                               :table_id      table-id
                                               :collection_id coll-id-2
