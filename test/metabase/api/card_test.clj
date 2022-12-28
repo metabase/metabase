@@ -2433,7 +2433,9 @@
                               (u/the-id parchived)))
               "Scheduled refresh of archived model"))))))
 
-(defn- param-values-url
+(defn param-values-url
+  "Returns an URL used to get values for parameter of a card.
+  Use search end point if a `query` is provided."
   ([card-or-id param-key]
    (param-values-url card-or-id param-key nil))
   ([card-or-id param-key query]
