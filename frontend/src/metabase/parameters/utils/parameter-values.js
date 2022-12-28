@@ -37,11 +37,12 @@ export function parseParameterValue(value, parameter) {
 
 function parseParameterValueForNumber(value) {
   // something like "1,2,3" or even "1, 2,  3"
-  const isCommaSeparatedListOfIntegers = value
-    .split(",")
-    .every(item => Number.isInteger(parseFloat(item)));
+  const valueSplitByCommas = value.split(",");
+  const isCommaSeparatedListOfNumbers =
+    valueSplitByCommas.length > 1 &&
+    valueSplitByCommas.every(item => !isNaN(parseFloat(item)));
 
-  if (isCommaSeparatedListOfIntegers) {
+  if (isCommaSeparatedListOfNumbers) {
     // "1, 2,    3" will be tranformed into "1,2,3" for later use
     return value
       .split(",")

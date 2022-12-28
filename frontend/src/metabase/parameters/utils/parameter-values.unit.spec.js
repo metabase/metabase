@@ -186,7 +186,7 @@ describe("parameters/utils/parameter-values", () => {
       ).toEqual([123.456]);
     });
 
-    it("should parse parameter value that is a comma-separated string of integers", () => {
+    it("should parse parameter value that is a comma-separated list of numbers", () => {
       const numberParameter = {
         id: 111,
         slug: "numberParameter",
