@@ -186,6 +186,23 @@ describe("parameters/utils/parameter-values", () => {
       ).toEqual([123.456]);
     });
 
+    it("should parse parameter value that is a comma-separated string of integers", () => {
+      const numberParameter = {
+        id: 111,
+        slug: "numberParameter",
+        type: "number/=",
+      };
+      expect(
+        getParameterValueFromQueryParams(
+          numberParameter,
+          {
+            [numberParameter.slug]: "1, 2,   3",
+          },
+          metadata,
+        ),
+      ).toEqual(["1,2,3"]);
+    });
+
     it("should not parse numeric values that are dates as floats", () => {
       field1.isNumeric = () => true;
       field1.isDate = () => true;
