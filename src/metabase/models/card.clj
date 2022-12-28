@@ -9,6 +9,7 @@
             [metabase.models.collection :as collection]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as mi]
+            [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
             [metabase.models.query :as query]
@@ -217,15 +218,15 @@
   (let [defaults {:parameters         []
                   :parameter_mappings []}
         card     (merge defaults card)]
-   (u/prog1 card
-     ;; make sure this Card doesn't have circular source query references
-     (check-for-circular-source-query-references card)
-     (check-field-filter-fields-are-from-correct-database card)
-     ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
-     (assert-valid-model card)
-     (params/assert-valid-parameters card)
-     (params/assert-valid-parameter-mappings card)
-     (collection/check-collection-namespace Card (:collection_id card)))))
+    (u/prog1 card
+      ;; make sure this Card doesn't have circular source query references
+      (check-for-circular-source-query-references card)
+      (check-field-filter-fields-are-from-correct-database card)
+      ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
+      (assert-valid-model card)
+      (params/assert-valid-parameters card)
+      (params/assert-valid-parameter-mappings card)
+      (collection/check-collection-namespace Card (:collection_id card)))))
 
 (defn- post-insert [card]
   ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
@@ -234,7 +235,8 @@
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (create-actions-when-is-writable! card)))
+    (create-actions-when-is-writable! card)
+    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
@@ -280,6 +282,7 @@
       (collection/check-collection-namespace Card (:collection_id changes))
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
+      (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)
       ;; create Action and QueryAction when is_write is set true
@@ -290,6 +293,10 @@
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
+  ;; delete any ParameterCard that the parameters on this card linked to
+  (parameter-card/delete-all-for-parameterized-object! "card" id)
+  ;; delete any ParameterCard linked to this card
+  (db/delete! ParameterCard :card_id id)
   (db/delete! 'QueryAction :card_id id)
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (db/delete! 'Revision :model "Card", :model_id id))

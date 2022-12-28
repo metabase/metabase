@@ -365,6 +365,63 @@
                (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll) now])
                (serdes.hash/identity-hash card)))))))
 
+(deftest parameter-card-test
+  (let [default-params {:name       "Category Name"
+                        :slug       "category_name"
+                        :id         "_CATEGORY_NAME_"
+                        :type       "category"}]
+    (testing "parameter with source is card create ParameterCard"
+      (tt/with-temp* [Card  [{source-card-id-1 :id}]
+                      Card  [{source-card-id-2 :id}]
+                      Card  [{card-id :id}
+                             {:parameters [(merge default-params
+                                                  {:values_source_type    "card"
+                                                   :values_source_config {:card_id source-card-id-1}})]}]]
+        (is (=? [{:card_id                   source-card-id-1
+                  :parameterized_object_type :card
+                  :parameterized_object_id   card-id
+                  :parameter_id              "_CATEGORY_NAME_"}]
+                (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
+
+        (testing "update values_source_config.card_id will update ParameterCard"
+          (db/update! Card card-id {:parameters [(merge default-params
+                                                        {:values_source_type    "card"
+                                                         :values_source_config {:card_id source-card-id-2}})]})
+          (is (=? [{:card_id                   source-card-id-2
+                    :parameterized_object_type :card
+                    :parameterized_object_id   card-id
+                    :parameter_id              "_CATEGORY_NAME_"}]
+                  (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
+
+        (testing "delete the card will delete ParameterCard"
+          (db/delete! Card :id card-id)
+          (is (= []
+                 (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))
+
+    (testing "Delete a card will delete any ParameterCard that linked to it"
+      (tt/with-temp* [Card  [{source-card-id :id}]
+                      Card  [{card-id-1 :id}
+                             {:parameters [(merge default-params
+                                                  {:values_source_type    "card"
+                                                   :values_source_config {:card_id source-card-id}})]}]
+                      Card  [{card-id-2 :id}
+                             {:parameters [(merge default-params
+                                                  {:values_source_type    "card"
+                                                   :values_source_config {:card_id source-card-id}})]}]]
+        ;; makes sure we have ParameterCard to start with
+        (is (=? [{:card_id                   source-card-id
+                  :parameterized_object_type :card
+                  :parameterized_object_id   card-id-1
+                  :parameter_id              "_CATEGORY_NAME_"}
+                 {:card_id                   source-card-id
+                  :parameterized_object_type :card
+                  :parameterized_object_id   card-id-2
+                  :parameter_id              "_CATEGORY_NAME_"}]
+                (db/select 'ParameterCard :card_id source-card-id)))
+        (db/delete! Card :id source-card-id)
+        (is (= []
+               (db/select 'ParameterCard :card_id source-card-id)))))))
+
 (deftest serdes-descendants-test
   (testing "regular cards don't depend on anything"
     (mt/with-temp* [Card [card {:name "some card"}]]
