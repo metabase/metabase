@@ -28,4 +28,3 @@
         (is (= 4
                (db/count Table)))))))
         ;; TODO -- better/more complete validation
-
