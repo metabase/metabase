@@ -403,10 +403,10 @@
                         s/Keyword s/Any}
                ser))
          (is (= #{[{:model "Collection" :id dave-coll-eid}]
-                  [{:model "Card"       :id c1-eid}
-                   [{:model "Database", :id "My Database"}
-                    {:model "Table",    :id "Schemaless Table"}
-                    {:model "Field",    :id "Some Field"}]]}
+                  [{:model "Card"       :id c1-eid}]
+                  [{:model "Database", :id "My Database"}
+                   {:model "Table",    :id "Schemaless Table"}
+                   {:model "Field",    :id "Some Field"}]}
                 (set (serdes.base/serdes-dependencies ser))))))
 
      (testing "Cards with parameters where the source is a card"
@@ -423,10 +423,10 @@
                        s/Keyword s/Any}
                       ser))
          (is (= #{[{:model "Collection" :id dave-coll-eid}]
-                  [{:model "Card"       :id c1-eid}
-                   [{:model "Database", :id "My Database"}
-                    {:model "Table",    :id "Schemaless Table"}
-                    {:model "Field",    :id "Some Field"}]]}
+                  [{:model "Card"       :id c1-eid}]
+                  [{:model "Database", :id "My Database"}
+                   {:model "Table",    :id "Schemaless Table"}
+                   {:model "Field",    :id "Some Field"}]}
                 (set (serdes.base/serdes-dependencies ser))))))
 
      (testing "collection filtering based on :user option"
@@ -986,14 +986,14 @@
                   :values_source_config {:card_id card-eid-1,
                                          :value_field [:field ["My Database" nil "Schemaless Table" "A Field"] nil]}}]
                 (:parameters ser)))
-         (is (= #{[{:model "Database", :id "My Database"}]
-                  [{:model "Collection", :id coll-eid-2}]
-                  [{:model "Database", :id "My Database"}
-                   {:model "Table", :id "Schemaless Table"}]
-                  [{:model "Card", :id card-eid-1}
-                   [{:model "Database", :id "My Database"}
-                    {:model "Table", :id "Schemaless Table"}
-                    {:model "Field", :id "A Field"}]]}
+         (is (= #{[{:model "Database"   :id "My Database"}]
+                  [{:model "Collection" :id coll-eid-2}]
+                  [{:model "Database"   :id "My Database"}
+                   {:model "Table"      :id "Schemaless Table"}]
+                  [{:model "Card"       :id card-eid-1}]
+                  [{:model "Database"   :id "My Database"}
+                   {:model "Table"      :id "Schemaless Table"}
+                   {:model "Field"      :id "A Field"}]}
                 (set (serdes.base/serdes-dependencies ser)))))))))
 
 (deftest selective-serialization-basic-test
