@@ -371,4 +371,21 @@
                                                         :values_source_config {:card_id     (:id card)
                                                                                :value_field [:field (:id field) nil]}}]}]]
       (is (= #{["Card" (:id card)]}
+             (serdes.base/serdes-descendants "Dashboard" (:id dashboard))))))
+
+  (testing "dashboard in which its dashcards has parameter_mappings to a card"
+    (mt/with-temp* [Card          [card1    {:name "Card attached to dashcard"}]
+                    Card          [card2    {:name "Card attached to parameters"}]
+                    Dashboard     [dashboard {:parameters [{:name "Category Name"
+                                                            :slug "category_name"
+                                                            :id   "_CATEGORY_NAME_"
+                                                            :type "category"}]}]
+                    DashboardCard [dashcard {:card_id            (:id card1)
+                                             :dashboard_id       (:id dashboard)
+                                             :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                                   :card_id      (:id card2)
+                                                                   :target       [:dimension (mt/$ids $categories.name)]}]}]]
+      (is (= #{["Card" (:id card1)]
+               ["Card" (:id card2)]}
              (serdes.base/serdes-descendants "Dashboard" (:id dashboard)))))))
+
