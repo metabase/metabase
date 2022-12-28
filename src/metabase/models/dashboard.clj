@@ -86,12 +86,12 @@
 (defn- post-insert
   [dashboard]
   (u/prog1 dashboard
-    (parameter-card/upsert-or-delete-for-dashboard! dashboard)))
+    (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))
 
 (defn- pre-update [dashboard]
   (u/prog1 dashboard
     (params/assert-valid-parameters dashboard)
-    (parameter-card/upsert-or-delete-for-dashboard! dashboard)
+    (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
 (defn- update-dashboard-subscription-pulses!
