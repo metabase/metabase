@@ -22,7 +22,7 @@ describe.skip("issue 27427", () => {
     cy.signInAsAdmin();
   });
 
-  it("divide by zero (metabase#27427)", () => {
+  it("static-viz should not fail if there is unused returned column: 'divide by zero' (metabase#27427)", () => {
     assertStaticVizRender(questionDetails, ({ status, body }) => {
       expect(status).to.eq(200);
       expect(body).to.not.include(
