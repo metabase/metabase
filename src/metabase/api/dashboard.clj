@@ -757,7 +757,9 @@
                         :status-code     400})))
      (case (:values_source_type param)
        "static-list" (params.static-values/param->values param query)
-       "card"        (params.card-values/param->values param query)
+       "card"        (do
+                       (api/read-check Card (get-in param [:values_source_config :card_id]))
+                       (params.card-values/param->values param query))
        nil           (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"

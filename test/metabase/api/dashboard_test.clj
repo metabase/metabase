@@ -2060,35 +2060,71 @@
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
 (deftest parameter-values-from-card-test
-  ;; TODO add permissions tests
-  (mt/with-temp*
-    [Card      [{card-id         :id}
-                (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues {:limit 5}))
-                       {:database_id     (mt/id)
-                        :table_id        (mt/id :venues)})]
-     Dashboard [{dashboard-id :id}
-                {:parameters [{:id                   "abc"
-                               :type                 "category"
-                               :name                 "CATEGORY"
-                               :values_source_type   "card"
-                               :values_source_config {:card_id     card-id
-                                                      :value_field (mt/$ids $venues.name)}}]}]]
+  (testing "getting values"
+    (mt/with-temp*
+      [Card      [{card-id         :id}
+                  (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues {:limit 5}))
+                         {:database_id     (mt/id)
+                          :table_id        (mt/id :venues)})]
+       Dashboard [{dashboard-id :id}
+                  {:parameters [{:id                   "abc"
+                                 :type                 "category"
+                                 :name                 "CATEGORY"
+                                 :values_source_type   "card"
+                                 :values_source_config {:card_id     card-id
+                                                        :value_field (mt/$ids $venues.name)}}]}]]
 
-    (testing "It uses the results of the card's query execution"
-      (let-url [url (chain-filter-values-url dashboard-id "abc")]
-        (is (= {:values          ["Red Medicine"
-                                  "Stout Burgers & Beers"
-                                  "The Apple Pan"
-                                  "Wurstküche"
-                                  "Brite Spot Family Restaurant"]
-                :has_more_values false}
-               (mt/user-http-request :rasta :get 200 url)))))
+      (testing "It uses the results of the card's query execution"
+        (let-url [url (chain-filter-values-url dashboard-id "abc")]
+          (is (= {:values          ["Red Medicine"
+                                    "Stout Burgers & Beers"
+                                    "The Apple Pan"
+                                    "Wurstküche"
+                                    "Brite Spot Family Restaurant"]
+                  :has_more_values false}
+                 (mt/user-http-request :rasta :get 200 url)))))
 
-    (testing "it only returns search matches"
-      (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
-        (is (= {:values          ["Red Medicine"]
-                :has_more_values false}
-               (mt/user-http-request :rasta :get 200 url)))))))
+      (testing "it only returns search matches"
+        (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
+          (is (= {:values          ["Red Medicine"]
+                  :has_more_values false}
+                 (mt/user-http-request :rasta :get 200 url)))))))
+
+  (testing "users must have permissions to read the collection that source card is in"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp*
+        [Collection [coll1 {:name "Source card collection"}]
+         Card       [{source-card-id :id}
+                     {:collection_id (:id coll1)
+                      :database_id   (mt/id)
+                      :table_id      (mt/id :venues)
+                      :dataset_query (mt/mbql-query venues {:limit 5})}]
+         Collection [coll2 {:name "Dashboard collections"}]
+         Dashboard [{dashboard-id :id}
+                    {:collection_id (:id coll2)
+                     :parameters    [{:id                   "abc"
+                                      :type                 "category"
+                                      :name                 "CATEGORY"
+                                      :values_source_type   "card"
+                                      :values_source_config {:card_id     source-card-id
+                                                             :value_field (mt/$ids $venues.name)}}]}]]
+        (testing "Fail because user doesn't have read permissions to coll1"
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (chain-filter-values-url dashboard-id "abc"))))
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (chain-filter-search-url dashboard-id "abc" "red")))))
+        ;; grant permission to read the collection contains the card
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll2)
+        (testing "having read permissions to the card collection is not enough"
+          (is (=? "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (chain-filter-values-url dashboard-id "abc"))))
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (chain-filter-search-url dashboard-id "abc" "red")))))
+        ;; grant permission to read the collection contains the source card
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll1)
+        (testing "success if has read permission to the source card's collection"
+          (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-values-url dashboard-id "abc"))))
+          (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red")))))))))
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
