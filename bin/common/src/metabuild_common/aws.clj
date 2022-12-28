@@ -1,9 +1,9 @@
 (ns metabuild-common.aws
-  (:require [metabuild-common
-             [env :as env]
-             [output :as out]
-             [shell :as sh]
-             [steps :as steps]]))
+  (:require
+   [metabuild-common.env :as env]
+   [metabuild-common.output :as out]
+   [metabuild-common.shell :as sh]
+   [metabuild-common.steps :as steps]))
 
 (defn aws-profile []
   (env/env-or-throw :aws-default-profile))

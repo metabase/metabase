@@ -24,15 +24,16 @@
   At the moment assumes a leiningen classpath which is primarily jars and your own source paths, so only detects
   license information from jars. In the future a strategy and heuristics could be determined for when source is
   available from local roots and git dependencies."
-  (:require [clojure.data.xml :as xml]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.build.api :as b])
-  (:import (java.nio.file Files FileSystem FileSystems FileVisitOption LinkOption OpenOption Path Paths)
-           (org.apache.maven.model License Model)
-           (org.apache.maven.model.io.xpp3 MavenXpp3Reader)
-           (java.io FileReader)))
+  (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.build.api :as b])
+  (:import
+   (java.io FileReader)
+   (java.nio.file Files FileSystem FileSystems FileVisitOption LinkOption OpenOption Path Paths)
+   (org.apache.maven.model License)
+   (org.apache.maven.model.io.xpp3 MavenXpp3Reader)))
 
 (set! *warn-on-reflection* true)
 
@@ -242,5 +243,5 @@
        (map first))
 
   (def libs-no-overrides (process* {:libs (jar-entries basis)}))
-  (->> libs-no-overrides :without-license (map first))
-  )
+  (->> libs-no-overrides :without-license (map first)))
+

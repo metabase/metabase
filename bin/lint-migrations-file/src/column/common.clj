@@ -1,5 +1,6 @@
 (ns column.common
-  (:require [clojure.spec.alpha :as s]))
+  (:require
+   [clojure.spec.alpha :as s]))
 
 (s/def ::name string?)
 (s/def ::type string?)
