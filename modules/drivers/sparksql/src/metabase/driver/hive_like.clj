@@ -48,7 +48,7 @@
 
 (defmethod sql-jdbc.sync/database-type->base-type :hive-like
   [_ database-type]
-  (condp re-matches (name database-type)
+  (condp re-matches (str/lower-case (name database-type))
     #"boolean"          :type/Boolean
     #"tinyint"          :type/Integer
     #"smallint"         :type/Integer
