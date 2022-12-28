@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
-   [metabase.test-runner.assert-exprs.approximately-equal
-    :as approximately-equal]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.test-runner.assert-exprs.approximately-equal :as approximately-equal]
+   [metabase.util.date-2 :as u.date]
+   [schema.core :as s]))
 
 (comment test-runner.assert-exprs/keep-me)
 
