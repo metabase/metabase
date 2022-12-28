@@ -169,40 +169,6 @@ describe("parameters/utils/parameter-values", () => {
       ).toBe("");
     });
 
-    it("should parse the parameter value as a float when it is a number parameter without fields", () => {
-      const numberParameter = {
-        id: 111,
-        slug: "numberParameter",
-        type: "number/=",
-      };
-      expect(
-        getParameterValueFromQueryParams(
-          numberParameter,
-          {
-            [numberParameter.slug]: "123.456",
-          },
-          metadata,
-        ),
-      ).toEqual([123.456]);
-    });
-
-    it("should parse parameter value that is a comma-separated list of numbers", () => {
-      const numberParameter = {
-        id: 111,
-        slug: "numberParameter",
-        type: "number/=",
-      };
-      expect(
-        getParameterValueFromQueryParams(
-          numberParameter,
-          {
-            [numberParameter.slug]: "1, 2,   3",
-          },
-          metadata,
-        ),
-      ).toEqual(["1,2,3"]);
-    });
-
     it("should not parse numeric values that are dates as floats", () => {
       field1.isNumeric = () => true;
       field1.isDate = () => true;
@@ -379,6 +345,52 @@ describe("parameters/utils/parameter-values", () => {
       expect(getParameterValueFromQueryParams(parameter2, {}, metadata)).toBe(
         "parameter2 default value",
       );
+    });
+
+    describe("for number filter type", () => {
+      const numberParameter = {
+        id: 111,
+        slug: "numberParameter",
+        type: "number/=",
+      };
+
+      const runGetParameterValueFromQueryParams = value =>
+        getParameterValueFromQueryParams(
+          numberParameter,
+          {
+            [numberParameter.slug]: value,
+          },
+          metadata,
+        );
+
+      it("should parse the parameter value as a float when it is a number parameter without fields", () => {
+        expect(runGetParameterValueFromQueryParams("123.456")).toEqual([
+          123.456,
+        ]);
+      });
+
+      describe("when parsing parameter value that is a comma-separated list of numbers", () => {
+        it("should return list when every item is a number", () => {
+          expect(runGetParameterValueFromQueryParams("1, 2 ,   3")).toEqual([
+            "1,2,3",
+          ]);
+          expect(runGetParameterValueFromQueryParams("1,2.5,3.4")).toEqual([
+            "1,2.5,3.4",
+          ]);
+          expect(runGetParameterValueFromQueryParams("1,0,0000,2")).toEqual([
+            "1,0,0,2",
+          ]);
+        });
+
+        it("should return first float or NaN when list is not formatted properly", () => {
+          expect(runGetParameterValueFromQueryParams("1,,2,3,4")).toEqual([1]);
+          expect(runGetParameterValueFromQueryParams("1, ,2,3,4")).toEqual([1]);
+          expect(runGetParameterValueFromQueryParams("1,2,3,")).toEqual([1]);
+          expect(runGetParameterValueFromQueryParams(",,,")).toEqual([NaN]);
+          expect(runGetParameterValueFromQueryParams(" ")).toEqual([NaN]);
+          expect(runGetParameterValueFromQueryParams(",1,2,3")).toEqual([NaN]);
+        });
+      });
     });
   });
 
