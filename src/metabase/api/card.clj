@@ -189,7 +189,8 @@
                           :can_write
                           :average_query_time
                           :last_query_start
-                          :collection [:moderation_reviews :moderator_details])
+                          :collection [:moderation_reviews :moderator_details]
+                          :parameter_card_count)
                  (cond-> ;; card
                    (:dataset raw-card) (hydrate :persisted))
                  api/read-check
