@@ -1,7 +1,8 @@
 (ns metabase.mbql.normalize-test
-  (:require [clojure.set :as set]
-            [clojure.test :as t]
-            [metabase.mbql.normalize :as mbql.normalize]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :as t]
+   [metabase.mbql.normalize :as mbql.normalize]))
 
 (defn- tests {:style/indent 2} [f-symb f group->input->expected]
   (doseq [[group input->expected] group->input->expected]

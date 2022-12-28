@@ -1,7 +1,7 @@
 (ns metabase.shared.util-test
   (:require
-    [clojure.test :refer [deftest is testing]]
-    [metabase.shared.util :as shared.u]))
+   [clojure.test :refer [deftest is testing]]
+   [metabase.shared.util :as shared.u]))
 
 (deftest normalize-map-test
   (testing "nil and empty maps return empty maps"
