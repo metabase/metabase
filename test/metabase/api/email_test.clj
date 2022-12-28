@@ -1,12 +1,13 @@
 (ns metabase.api.email-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.api.email :as api.email]
-            [metabase.email :as email]
-            [metabase.models.setting :as setting]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.api.email :as api.email]
+   [metabase.email :as email]
+   [metabase.models.setting :as setting]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]))
 
 (deftest humanize-error-messages-test
   (is (= {:errors {:email-smtp-host "Wrong host or port", :email-smtp-port "Wrong host or port"}}

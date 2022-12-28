@@ -1,11 +1,12 @@
 (ns metabase.query-processor-test.failure-test
   "Tests for how the query processor as a whole handles failures."
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.test :as mt]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.test :as mt]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (use-fixtures :each (fn [thunk]
                       (mt/with-log-level :fatal

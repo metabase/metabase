@@ -1,9 +1,11 @@
 (ns metabase.query-processor.middleware.resolve-database-and-driver-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Database]]
-            [metabase.models.setting :as setting]
-            [metabase.query-processor.middleware.resolve-database-and-driver :as qp.resolve-database-and-driver]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Database]]
+   [metabase.models.setting :as setting]
+   [metabase.query-processor.middleware.resolve-database-and-driver
+    :as qp.resolve-database-and-driver]
+   [metabase.test :as mt]))
 
 (setting/defsetting resolve-db-test-database-only-setting
   "test Setting"

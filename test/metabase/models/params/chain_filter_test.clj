@@ -1,13 +1,14 @@
 (ns metabase.models.params.chain-filter-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [metabase.models :refer [Field FieldValues]]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.params.chain-filter :as chain-filter]
-            [metabase.models.params.field-values :as params.field-values]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.models :refer [Field FieldValues]]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.params.chain-filter :as chain-filter]
+   [metabase.models.params.field-values :as params.field-values]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defmacro ^:private chain-filter [field field->value & options]
   `(chain-filter/chain-filter

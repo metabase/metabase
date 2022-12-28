@@ -1,9 +1,11 @@
 (ns metabase.test.util.timezone
-  (:require [clojure.test :as t]
-            [metabase.driver :as driver]
-            [metabase.test-runner.parallel :as test-runner.parallel]
-            [metabase.test.initialize :as initialize])
-  (:import java.util.TimeZone))
+  (:require
+   [clojure.test :as t]
+   [metabase.driver :as driver]
+   [metabase.test-runner.parallel :as test-runner.parallel]
+   [metabase.test.initialize :as initialize])
+  (:import
+   (java.util TimeZone)))
 
 (defn do-with-system-timezone-id [^String timezone-id thunk]
   ;; skip all the property changes if the system timezone doesn't need to be changed.

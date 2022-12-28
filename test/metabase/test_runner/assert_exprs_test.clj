@@ -1,6 +1,7 @@
 (ns metabase.test-runner.assert-exprs-test
-  (:require [clojure.test :refer :all]
-            [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]))
 
 (deftest partial=-test
   (testing "Partial map"

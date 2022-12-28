@@ -1,18 +1,20 @@
 (ns metabase.async.streaming-response-test
-  (:require [clj-http.client :as http]
-            [clojure.core.async :as a]
-            [clojure.test :refer :all]
-            [metabase.async.streaming-response :as streaming-response]
-            [metabase.async.streaming-response.thread-pool :as thread-pool]
-            [metabase.driver :as driver]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Database]]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.server.protocols :as server.protocols]
-            [metabase.test :as mt]
-            [metabase.util :as u])
-  (:import java.util.concurrent.Executors
-           org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
+  (:require
+   [clj-http.client :as http]
+   [clojure.core.async :as a]
+   [clojure.test :refer :all]
+   [metabase.async.streaming-response :as streaming-response]
+   [metabase.async.streaming-response.thread-pool :as thread-pool]
+   [metabase.driver :as driver]
+   [metabase.http-client :as client]
+   [metabase.models :refer [Database]]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.server.protocols :as server.protocols]
+   [metabase.test :as mt]
+   [metabase.util :as u])
+  (:import
+   (java.util.concurrent Executors)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
 (driver/register! ::test-driver)
 

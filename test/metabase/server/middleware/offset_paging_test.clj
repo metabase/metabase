@@ -1,11 +1,12 @@
 (ns metabase.server.middleware.offset-paging-test
-  (:require [clojure.test :refer :all]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [ring.middleware.keyword-params :refer [wrap-keyword-params]]
-            [ring.middleware.params :refer [wrap-params]]
-            [ring.mock.request :as ring.mock]
-            [ring.util.response :as response]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [ring.middleware.keyword-params :refer [wrap-keyword-params]]
+   [ring.middleware.params :refer [wrap-params]]
+   [ring.mock.request :as ring.mock]
+   [ring.util.response :as response]
+   [schema.core :as s]))
 
 (defn- handler [request]
   (let [handler* (-> (fn [request respond _]

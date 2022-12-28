@@ -1,12 +1,13 @@
 (ns metabase.api.tiles-test
   "Tests for `/api/tiles` endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.set :as set]
-            [clojure.test :refer :all]
-            [metabase.api.tiles :as api.tiles]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [schema.core :as s]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [metabase.api.tiles :as api.tiles]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [schema.core :as s]))
 
 (defn- png? [s]
   (= [\P \N \G]

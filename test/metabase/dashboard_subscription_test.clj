@@ -1,13 +1,22 @@
 (ns metabase.dashboard-subscription-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
-            [metabase.models.pulse :as pulse]
-            metabase.pulse
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.test-util :as pulse.test-util]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models
+    :refer [Card
+            Dashboard
+            DashboardCard
+            Pulse
+            PulseCard
+            PulseChannel
+            PulseChannelRecipient
+            User]]
+   [metabase.models.pulse :as pulse]
+   [metabase.pulse]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]))
 
 (defn- do-with-dashboard-sub-for-card
   "Creates a Pulse, Dashboard, and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if

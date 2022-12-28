@@ -1,26 +1,43 @@
 (ns metabase.api.collection-test
   "Tests for /api/collection endpoints."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [metabase.api.collection :as api.collection]
-            [metabase.models :refer [App Card Collection Dashboard DashboardCard ModerationReview NativeQuerySnippet
-                                     PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel
-                                     PulseChannelRecipient Revision Timeline TimelineEvent User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.collection-test :as collection-test]
-            [metabase.models.collection.graph :as graph]
-            [metabase.models.collection.graph-test :as graph.test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.revision :as revision]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import [java.time ZonedDateTime ZoneId]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [honeysql.core :as hsql]
+   [metabase.api.collection :as api.collection]
+   [metabase.models
+    :refer [App
+            Card
+            Collection
+            Dashboard
+            DashboardCard
+            ModerationReview
+            NativeQuerySnippet
+            PermissionsGroup
+            PermissionsGroupMembership
+            Pulse
+            PulseCard
+            PulseChannel
+            PulseChannelRecipient
+            Revision
+            Timeline
+            TimelineEvent
+            User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.collection-test :as collection-test]
+   [metabase.models.collection.graph :as graph]
+   [metabase.models.collection.graph-test :as graph.test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.revision :as revision]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.time ZonedDateTime ZoneId)))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 

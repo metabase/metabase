@@ -1,12 +1,13 @@
 (ns metabase.domain-entities.core-test
-  (:require [clojure.test :refer :all]
-            [metabase.domain-entities.core :as de]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.test.data :as data]
-            [metabase.test.domain-entities :as test.de]
-            [toucan.db :as db]
-            [toucan.hydrate :as hydrate]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.domain-entities.core :as de]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.test.data :as data]
+   [metabase.test.domain-entities :as test.de]
+   [toucan.db :as db]
+   [toucan.hydrate :as hydrate]))
 
 (deftest mbql-reference-test
   (is (= [:field (data/id :venues :price) nil]

@@ -1,9 +1,10 @@
 (ns metabase.task.follow-up-emails-test
-  (:require [clojure.test :refer :all]
-            [metabase.email-test :refer [inbox with-fake-inbox]]
-            [metabase.task.follow-up-emails :as follow-up-emails]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.email-test :refer [inbox with-fake-inbox]]
+   [metabase.task.follow-up-emails :as follow-up-emails]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
