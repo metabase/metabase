@@ -1,7 +1,8 @@
 (ns metabase-enterprise.pulse
   "TODO -- this should be moved to `metabase-enterprise.<feature>.pulse` once we figure out which feature this belongs
   to."
-  (:require [metabase.public-settings.premium-features :refer [defenterprise]]))
+  (:require
+   [metabase.public-settings.premium-features :refer [defenterprise]]))
 
 (defenterprise the-parameters
   "Enterprise way of getting dashboard filter parameters. Blends parameters from dashboard subscription and the

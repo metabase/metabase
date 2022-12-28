@@ -1,7 +1,8 @@
 (ns metabase-enterprise.sandbox.api.util-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.sandbox.api.util :as mt.api.u]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.api.util :as mt.api.u]
+   [metabase.test :as mt]))
 
 (defn- has-segmented-perms-when-segmented-db-exists? [user-kw]
   (mt/with-gtaps-for-user user-kw {:gtaps {:venues {}}}

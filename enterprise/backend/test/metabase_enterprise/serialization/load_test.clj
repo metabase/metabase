@@ -1,28 +1,45 @@
 (ns metabase-enterprise.serialization.load-test
   (:refer-clojure :exclude [load])
-  (:require [clojure.data :as data]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.test :refer [deftest is testing use-fixtures]]
-            [metabase-enterprise.serialization.cmd :refer [dump load]]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
-                                     Dimension Field FieldValues Metric NativeQuerySnippet Pulse PulseCard PulseChannel
-                                     Segment Table User]]
-            [metabase.models.interface :as mi]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.shared.models.visualization-settings-test :as mb.viz-test]
-            [metabase.shared.util.log :as log]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
-  (:import org.apache.commons.io.FileUtils))
+  (:require
+   [clojure.data :as data]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.serialization.cmd :refer [dump load]]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCard
+            DashboardCardSeries
+            Database
+            Dimension
+            Field
+            FieldValues
+            Metric
+            NativeQuerySnippet
+            Pulse
+            PulseCard
+            PulseChannel
+            Segment
+            Table
+            User]]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.shared.models.visualization-settings-test :as mb.viz-test]
+   [metabase.shared.util.log :as log]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db])
+  (:import
+   (org.apache.commons.io FileUtils)))
 
 (use-fixtures :once
               mb.viz-test/with-spec-instrumentation-fixture
@@ -292,8 +309,8 @@
                                :sqlite    ; foreign-keys is not supported by this driver
                                :sparksql  ; foreign-keys is not supported by this driver
                                ;; foreign-keys is not supported by the below driver even though it has joins
-                               :bigquery-cloud-sdk
-                               ))
+                               :bigquery-cloud-sdk))
+
 
       (let [fingerprint (ts/with-world
                           (qp.store/fetch-and-store-database! db-id)

@@ -1,14 +1,15 @@
 (ns metabase-enterprise.sandbox.models.params.field-values-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase-enterprise.sandbox.models.params.field-values :as ee-params.field-values]
-            [metabase.models :refer [Card Field FieldValues PermissionsGroup PermissionsGroupMembership User]]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.params.field-values :as params.field-values]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.models.params.field-values :as ee-params.field-values]
+   [metabase.models :refer [Card Field FieldValues PermissionsGroup PermissionsGroupMembership User]]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.params.field-values :as params.field-values]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (deftest get-or-create-advanced-field-values!
   (doseq [fv-type [:sandbox :linked-filter]]
