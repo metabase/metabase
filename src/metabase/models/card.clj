@@ -40,6 +40,12 @@
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
+(defn parameter-card-count
+  "Return the number of Parameters that this Card is in."
+  {:hydrate :parameter_card_count}
+  [{:keys [id]}]
+  (db/count ParameterCard :card_id id))
+
 (defn average-query-time
   "Average query time of card, taken by query executions which didn't hit cache.
   If it's nil we don't have any query executions on file"

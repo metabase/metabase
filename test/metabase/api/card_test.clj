@@ -724,6 +724,7 @@
                   card-defaults
                   (select-keys card [:id :name :entity_id :created_at :updated_at])
                   {:dashboard_count        0
+                   :parameter_card_count   0
                    :creator_id             (mt/user->id :rasta)
                    :creator                (merge
                                             (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
@@ -2471,7 +2472,11 @@
     (testing "GET /api/card/:card-id/params/:param-key/search/:query"
       (is (= {:values          ["Red Medicine"]
               :has_more_values false}
-             (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "red")))))))
+             (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "red")))))
+
+    (testing "get card should have parameter_card_count"
+      (is (= 1
+             (:parameter_card_count (mt/user-http-request :crowberto :get 200 (str "card/" source-card-id))))))))
 
 (deftest parameters-with-source-is-static-list-test
   (mt/with-temp*
