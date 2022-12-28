@@ -244,4 +244,3 @@
 
   (def libs-no-overrides (process* {:libs (jar-entries basis)}))
   (->> libs-no-overrides :without-license (map first)))
-
