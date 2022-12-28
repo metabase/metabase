@@ -52,8 +52,8 @@
   ;; localhost:<prometheus-server-port>/metrics. Nothing we need to do but shutdown.
   PrometheusActions
   (stop-web-server [_this]
-                   (when-let [^Server web-server web-server]
-                     (.stop web-server))))
+    (when-let [^Server web-server web-server]
+      (.stop web-server))))
 
 (declare setup-metrics! start-web-server!)
 

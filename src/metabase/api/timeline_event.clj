@@ -38,7 +38,7 @@
     ;; todo: revision system
     (let [parsed   (if (nil? timestamp)
                      (throw (ex-info (tru "Timestamp cannot be null") {:status-code 400}))
-                    (u.date/parse timestamp))
+                     (u.date/parse timestamp))
           tl-event (merge (dissoc body :source :question_id)
                           {:creator_id api/*current-user-id*
                            :timestamp  parsed}
