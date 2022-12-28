@@ -2,6 +2,11 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 
+export const GoogleButtonContainer = styled.div`
+  display: flex;
+  justify-content: center;
+`;
+
 export const AuthError = styled.div`
   color: ${color("error")};
   text-align: center;
