@@ -961,7 +961,7 @@
           (is (not (str/includes? sql-query name-with-spaces))
               (format "Query `%s' should not contain `%s'" sql-query name-with-spaces)))))))
 
-(deftest parse-bigquery-bignumeric-correctly-test
+(deftest ^:parallel parse-bigquery-bignumeric-correctly-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [query (mt/native-query {:query (str/join \newline
                                                    ["select"
