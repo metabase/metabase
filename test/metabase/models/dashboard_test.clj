@@ -438,4 +438,3 @@
       (is (= #{["Card" (:id card1)]
                ["Card" (:id card2)]}
              (serdes.base/serdes-descendants "Dashboard" (:id dashboard)))))))
-
