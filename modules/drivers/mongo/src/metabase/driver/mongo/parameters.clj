@@ -18,7 +18,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]])
   (:import java.time.temporal.Temporal
-           [metabase.driver.common.parameters CommaSeparatedNumbers Date]))
+           [metabase.driver.common.parameters CommaSeparatedNumbers Date MultipleValues]))
 
 (defn- ->utc-instant [t]
   (t/instant
@@ -34,10 +34,14 @@
     (sequential? x)
     (format "{$in: [%s]}" (str/join ", " (map (partial param-value->str field) x)))
 
+    ;; MultipleValues get converted as sequences
+    (instance? MultipleValues x)
+    (recur field (:values x))
+
     ;; Date = the Parameters Date type, not an java.util.Date or java.sql.Date type
     ;; convert to a `Temporal` instance and recur
     (instance? Date x)
-    (param-value->str field (u.date/parse (:s x)))
+    (recur field (u.date/parse (:s x)))
 
     (and (instance? Temporal x)
          (isa? coercion :Coercion/UNIXSeconds->DateTime))
@@ -53,7 +57,7 @@
 
     ;; there's a special record type for sequences of numbers; pull the sequence it wraps out and recur
     (instance? CommaSeparatedNumbers x)
-    (param-value->str field (:numbers x))
+    (recur field (:numbers x))
 
     ;; for everything else, splice it in as its string representation
     :else
