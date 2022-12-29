@@ -896,7 +896,10 @@
 (def GroupPermissionsGraph
   "Map describing permissions for a (Group x Collection)"
   [:map-of
-   [:or [:and keyword? [:= :root]]
+   [:or
+    ;; We need the [:and keyword ...] piece to make decoding "root" work. There's a merged fix for this, but it hasn't
+    ;; been released as of malli 0.9.2. When the malli version gets bumped, we should remove this.
+    [:and keyword? [:= :root]]
     CollectionID]
    CollectionPermissions])
 
@@ -908,7 +911,11 @@
    [:groups [:map-of GroupID GroupPermissionsGraph]]])
 
 (def ^:private graph-decoder
+  "Building it this way is a lot faster then calling mc/decode <value> <schema> <transformer>"
   (mc/decoder PermissionsGraph (mtx/string-transformer)))
+
+(defn- decode-graph [permission-graph]
+  (graph-decoder permission-graph))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
@@ -918,7 +925,7 @@
    namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
   (->> (dissoc body :namespace)
-       graph-decoder
+       decode-graph
        (graph/update-graph! namespace))
   (graph/graph namespace))
 
