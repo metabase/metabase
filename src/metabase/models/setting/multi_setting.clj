@@ -7,8 +7,9 @@
   implementations.
 
   See PR #16365 for more context."
-  (:require [metabase.models.setting :as setting]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [metabase.models.setting :as setting]
+   [metabase.util.i18n :refer [tru]]))
 
 (defmulti dispatch-multi-setting
   "Determine the dispatch value for a multi-Setting defined by `define-multi-setting`."

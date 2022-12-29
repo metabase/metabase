@@ -2,24 +2,25 @@
   "Helper functions for various query processor tests. The tests themselves can be found in various
   `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.driver :as driver]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
-            [metabase.test-runner.init :as test-runner.init]
-            [metabase.test.data :as data]
-            [metabase.test.data.env :as tx.env]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.driver :as driver]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
+   [metabase.test-runner.init :as test-runner.init]
+   [metabase.test.data :as data]
+   [metabase.test.data.env :as tx.env]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 

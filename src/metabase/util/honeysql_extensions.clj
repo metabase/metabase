@@ -1,17 +1,21 @@
 (ns metabase.util.honeysql-extensions
-  (:refer-clojure :exclude [+ - / * abs mod inc dec cast concat format second])
-  (:require [clojure.pprint :as pprint]
-            [clojure.string :as str]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            honeysql.types
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [potemkin.types :as p.types]
-            [pretty.core :as pretty]
-            [schema.core :as s])
-  (:import honeysql.format.ToSql
-           java.util.Locale))
+  (:refer-clojure
+   :exclude
+   [+ - / * abs mod inc dec cast concat format second])
+  (:require
+   [clojure.pprint :as pprint]
+   [clojure.string :as str]
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [honeysql.types]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [potemkin.types :as p.types]
+   [pretty.core :as pretty]
+   [schema.core :as s])
+  (:import
+   (honeysql.format ToSql)
+   (java.util Locale)))
 
 (comment honeysql.types/keep-me)
 

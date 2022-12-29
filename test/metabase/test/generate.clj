@@ -1,16 +1,17 @@
 (ns metabase.test.generate
-  (:require [clojure.spec.alpha :as s]
-            [clojure.test.check.generators :as gen]
-            [java-time :as t]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
-                                     Dimension Field Metric NativeQuerySnippet PermissionsGroup
-                                     PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
-                                     Segment Table Timeline TimelineEvent User]]
-            [reifyhealth.specmonstah.core :as rs]
-            [reifyhealth.specmonstah.spec-gen :as rsg]
-            [talltale.core :as tt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [clojure.test.check.generators :as gen]
+   [java-time :as t]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
+                            Dimension Field Metric NativeQuerySnippet PermissionsGroup
+                            PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
+                            Segment Table Timeline TimelineEvent User]]
+   [reifyhealth.specmonstah.core :as rs]
+   [reifyhealth.specmonstah.spec-gen :as rsg]
+   [talltale.core :as tt]
+   [toucan.db :as db]))
 
 (def ^:private ^:const product-names
   {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome,
@@ -43,7 +44,7 @@
 (s/def ::password ::not-empty-string)
 (s/def ::str? (s/or :nil nil? :string string?))
 (s/def ::topic ::not-empty-string)
-(s/def ::details #{ "{}"})
+(s/def ::details #{"{}"})
 
 ;(s/def ::timestamp #{(t/instant)})
 (s/def ::timestamp
@@ -110,7 +111,7 @@
 (s/def ::base_type #{:type/Text})
 
 ;; * metric
-(s/def ::definition #{ {} })
+(s/def ::definition #{{}})
 
 ;; * table
 (s/def ::active boolean?)
@@ -132,7 +133,7 @@
 (s/def ::parameter_mappings #{[{}]})
 
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
-(s/def ::collection (s/keys :req-un [::id ::name ::color ]))
+(s/def ::collection (s/keys :req-un [::id ::name ::color]))
 (s/def ::activity (s/keys :req-un [::id ::topic ::details ::timestamp]))
 (s/def ::pulse (s/keys :req-un [::id ::name]))
 (s/def ::permissions-group (s/keys :req-un [::id ::name]))
@@ -149,9 +150,8 @@
 (s/def ::native-query-snippet (s/keys :req-un [::id ::name ::description ::content]))
 (s/def ::dashboard (s/keys :req-un [::id ::name ::description ::parameters]))
 
-(s/def ::dashboard-card (s/keys :req-un [::id ::size_x ::size_y ::row ::col ::parameter_mappings ::visualization_settings ]))
+(s/def ::dashboard-card (s/keys :req-un [::id ::size_x ::size_y ::row ::col ::parameter_mappings ::visualization_settings]))
 (s/def ::pulse-card (s/keys :req-un [::id ::position]))
-
 
 (s/def ::channel_type ::not-empty-string)
 (s/def ::schedule_type ::not-empty-string)
@@ -169,8 +169,7 @@
 
 ;; * schema
 (def schema
-  {
-   :permissions-group            {:prefix  :perm-g
+  {:permissions-group            {:prefix  :perm-g
                                   :spec    ::permissions-group
                                   :insert! {:model PermissionsGroup}}
    :permissions-group-membership {:prefix    :perm-g-m
@@ -269,10 +268,9 @@
                                   :spec      ::segment
                                   :insert!   {:model Segment}
                                   :relations {:creator_id [:core-user :id]
-                                              :table_id   [:table :id]}}
+                                              :table_id   [:table :id]}}})
    ;; :revision {}
    ;; :task-history {}
-   })
 
 ;; * inserters
 (defn- spec-gen
@@ -346,9 +344,9 @@
        :insert! (fn [sm-db {:keys [schema-opts attrs] :as visit-opts}]
                   (try
                     (db/insert! (:model schema-opts)
-                      (rsg/spec-gen-assoc-relations
-                       sm-db
-                       (assoc visit-opts :visit-val (:spec-gen attrs))))
+                                (rsg/spec-gen-assoc-relations
+                                 sm-db
+                                 (assoc visit-opts :visit-val (:spec-gen attrs))))
                     (catch Throwable e
                       (println e)))))
       (rs/attr-map :insert!)))

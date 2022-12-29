@@ -1,16 +1,18 @@
 (ns metabase.server.middleware.auth-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.models.session :refer [Session]]
-            [metabase.server.middleware.auth :as mw.auth]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.fixtures :as fixtures]
-            [ring.mock.request :as ring.mock]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.models.session :refer [Session]]
+   [metabase.server.middleware.auth :as mw.auth]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
+   [ring.mock.request :as ring.mock]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 

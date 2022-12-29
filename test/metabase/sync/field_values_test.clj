@@ -1,17 +1,18 @@
 (ns metabase.sync.field-values-test
   "Tests around the way Metabase syncs FieldValues, and sets the values of `field.has_field_values`."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.models :refer [Field FieldValues Table]]
-            [metabase.models.field-values :as field-values]
-            [metabase.sync :as sync]
-            [metabase.sync.util-test :as sync.util-test]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.models :refer [Field FieldValues Table]]
+   [metabase.models.field-values :as field-values]
+   [metabase.sync :as sync]
+   [metabase.sync.util-test :as sync.util-test]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [toucan.db :as db]))
 
 (defn- venues-price-field-values []
   (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price), :type :full))

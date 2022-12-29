@@ -30,8 +30,6 @@ function getSelectedItems({
   const isQuestionPath = pathname.startsWith("/question");
   const isModelPath = pathname.startsWith("/model");
   const isModelDetailPath = isModelPath && pathname.endsWith("/detail");
-  const isDataAppPath = Urls.isDataAppPath(pathname);
-  const isDataAppPagePath = Urls.isDataAppPagePath(pathname);
   const isDashboardPath = pathname.startsWith("/dashboard");
 
   if (isCollectionPath) {
@@ -39,22 +37,6 @@ function getSelectedItems({
       {
         id: isUsersCollectionPath ? "users" : Urls.extractCollectionId(slug),
         type: "collection",
-      },
-    ];
-  }
-  if (isDataAppPagePath) {
-    return [
-      {
-        id: parseInt(params.pageId as string),
-        type: "data-app-page",
-      },
-    ];
-  }
-  if (isDataAppPath) {
-    return [
-      {
-        id: Urls.extractEntityId(slug),
-        type: "data-app",
       },
     ];
   }

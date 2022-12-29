@@ -1,14 +1,15 @@
 (ns metabase.api.preview-embed-test
-  (:require [clojure.test :refer :all]
-            [metabase.api.embed-test :as embed-test]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.api.preview-embed :as api.preview-embed]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.embed-test :as embed-test]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.api.preview-embed :as api.preview-embed]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]))
 
 ;;; --------------------------------------- GET /api/preview_embed/card/:token ---------------------------------------
 

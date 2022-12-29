@@ -1,14 +1,15 @@
 (ns metabase.driver.postgres.ddl
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql.ddl :as sql.ddl]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.tools.logging :as log]
+   [honeysql.core :as hsql]
+   [java-time :as t]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.ddl :as sql.ddl]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
+   [metabase.util.i18n :refer [trs]]))
 
 (defn- set-statement-timeout!
   "Must be called within a transaction.
@@ -71,7 +72,7 @@
                      [:persist.check/read-table
                       (fn read-table [conn]
                         (sql.ddl/jdbc-query conn [(format "select * from %s.%s"
-                                             schema-name table-name)]))]
+                                                   schema-name table-name)]))]
                      [:persist.check/delete-table
                       (fn delete-table [conn]
                         (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))]]]

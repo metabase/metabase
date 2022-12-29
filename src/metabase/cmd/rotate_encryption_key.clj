@@ -1,15 +1,16 @@
 (ns metabase.cmd.rotate-encryption-key
-  (:require [cheshire.core :as json]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [metabase.db :as mdb]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.env :as mdb.env]
-            [metabase.models :refer [Database Secret Setting]]
-            [metabase.models.setting.cache :as setting.cache]
-            [metabase.util.encryption :as encryption]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.tools.logging :as log]
+   [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.env :as mdb.env]
+   [metabase.models :refer [Database Secret Setting]]
+   [metabase.models.setting.cache :as setting.cache]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db]))
 
 (defn rotate-encryption-key!
   "Rotate the current configured db using the current MB_ENCRYPTION_SECRET_KEY env var and `to-key` argument."

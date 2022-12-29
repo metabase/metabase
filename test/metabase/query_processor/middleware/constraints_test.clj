@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.constraints-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.test :as mt]))
 
 (defn- add-default-userland-constraints [query]
   (:pre (mt/test-qp-middleware qp.constraints/add-default-userland-constraints query)))

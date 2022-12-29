@@ -1,12 +1,14 @@
 (ns metabase-enterprise.serialization.v2.storage.yaml
-  (:require [clojure.java.io :as io]
-            [metabase-enterprise.serialization.v2.storage :as storage]
-            [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.util.date-2 :as u.date]
-            [yaml.core :as yaml]
-            [yaml.writer :as y.writer])
-  (:import java.time.temporal.Temporal))
+  (:require
+   [clojure.java.io :as io]
+   [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.util.date-2 :as u.date]
+   [yaml.core :as yaml]
+   [yaml.writer :as y.writer])
+  (:import
+   (java.time.temporal Temporal)))
 
 (extend-type Temporal y.writer/YAMLWriter
   (encode [data]

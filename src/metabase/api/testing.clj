@@ -1,14 +1,16 @@
 (ns metabase.api.testing
   "Endpoints for testing."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [POST]]
-            [metabase.api.common :as api]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.util.files :as u.files])
-  (:import com.mchange.v2.c3p0.PoolBackedDataSource
-           java.util.concurrent.locks.ReentrantReadWriteLock))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [POST]]
+   [metabase.api.common :as api]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.util.files :as u.files])
+  (:import
+   (com.mchange.v2.c3p0 PoolBackedDataSource)
+   (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 ;; EVERYTHING BELOW IS FOR H2 ONLY.
 

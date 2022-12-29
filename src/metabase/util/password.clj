@@ -1,10 +1,12 @@
 (ns metabase.util.password
   "Utility functions for checking passwords against hashes and for making sure passwords match complexity requirements."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [metabase.config :as config]
-            [metabase.util :as u])
-  (:import org.mindrot.jbcrypt.BCrypt))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabase.config :as config]
+   [metabase.util :as u])
+  (:import
+   (org.mindrot.jbcrypt BCrypt)))
 
 (defn- count-occurrences
   "Return a map of the counts of each class of character for `password`.

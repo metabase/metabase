@@ -20,7 +20,7 @@
    [malli.error :as me]
    [malli.generator :as mg]
    [malli.util :as mu])
-(:import clojure.lang.ExceptionInfo))
+  (:import clojure.lang.ExceptionInfo))
 
 (def TestAddress
   [:map

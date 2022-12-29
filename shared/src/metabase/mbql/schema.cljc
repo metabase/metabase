@@ -2,24 +2,25 @@
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
   #?@
-  (:clj
-   [(:require
-     [clojure.core :as core]
-     [clojure.set :as set]
-     [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-     [metabase.mbql.schema.macros :refer [defclause one-of]]
-     [schema.core :as s])
-    (:import java.time.format.DateTimeFormatter
-             java.time.ZoneId)]
-   :cljs
-   [(:require
-     ["moment" :as moment]
-     ["moment-timezone" :as mtz]
-     [clojure.core :as core]
-     [clojure.set :as set]
-     [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-     [metabase.mbql.schema.macros :refer [defclause one-of]]
-     [schema.core :as s])]))
+   (:clj
+    [(:require
+      [clojure.core :as core]
+      [clojure.set :as set]
+      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+      [metabase.mbql.schema.macros :refer [defclause one-of]]
+      [schema.core :as s])
+     (:import
+      (java.time ZoneId)
+      (java.time.format DateTimeFormatter))]
+    :cljs
+    [(:require
+      ["moment" :as moment]
+      ["moment-timezone" :as mtz]
+      [clojure.core :as core]
+      [clojure.set :as set]
+      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+      [metabase.mbql.schema.macros :refer [defclause one-of]]
+      [schema.core :as s])]))
 
 #?(:cljs
    (comment
@@ -300,7 +301,7 @@
 ;; `wrap-value-literals` middleware. This is done to make it easier to implement query processors, because most driver
 ;; implementations dispatch off of Object type, which is often not enough to make informed decisions about how to
 ;; treat certain objects. For example, a string compared against a Postgres UUID Field needs to be parsed into a UUID
-;; object, since text <-> UUID comparision doesn't work in Postgres. For this reason, raw literals in `:filter`
+;; object, since text <-> UUID comparison doesn't work in Postgres. For this reason, raw literals in `:filter`
 ;; clauses are wrapped in `:value` clauses and given information about the type of the Field they will be compared to.
 (defclause ^:internal value
   value    s/Any

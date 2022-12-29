@@ -49,15 +49,16 @@
   ### Entity Types -- keys starting with `:entity/`
 
   These are used to record the semantic purpose of a Table."
-  #?@(:clj
-      [(:require
-        [clojure.set :as set]
-        [metabase.types.coercion-hierarchies :as coercion-hierarchies])]
-      :cljs
-      [(:require
-        [clojure.set :as set]
-        [metabase.shared.util :as shared.u]
-        [metabase.types.coercion-hierarchies :as coercion-hierarchies])]))
+  #?@
+   (:clj
+    [(:require
+      [clojure.set :as set]
+      [metabase.types.coercion-hierarchies :as coercion-hierarchies])]
+    :cljs
+    [(:require
+      [clojure.set :as set]
+      [metabase.shared.util :as shared.u]
+      [metabase.types.coercion-hierarchies :as coercion-hierarchies])]))
 
 ;;; Table (entity) Types
 

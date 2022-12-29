@@ -20,17 +20,19 @@
   will be prefixed with either `db->norm` or `norm->db`, depending on which direction they implement.
   "
   #?@
-      (:clj
-       [(:require [cheshire.core :as json]
-                  [clojure.set :as set]
-                  [clojure.spec.alpha :as s]
-                  [medley.core :as m]
-                  [metabase.mbql.normalize :as mbql.normalize])]
-       :cljs
-       [(:require [clojure.set :as set]
-                  [clojure.spec.alpha :as s]
-                  [medley.core :as m]
-                  [metabase.mbql.normalize :as mbql.normalize])]))
+   (:clj
+    [(:require
+      [cheshire.core :as json]
+      [clojure.set :as set]
+      [clojure.spec.alpha :as s]
+      [medley.core :as m]
+      [metabase.mbql.normalize :as mbql.normalize])]
+    :cljs
+    [(:require
+      [clojure.set :as set]
+      [clojure.spec.alpha :as s]
+      [medley.core :as m]
+      [metabase.mbql.normalize :as mbql.normalize])]))
 
 ;;; -------------------------------------------------- Main API --------------------------------------------------
 

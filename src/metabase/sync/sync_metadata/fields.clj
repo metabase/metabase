@@ -38,15 +38,16 @@
 
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
-  (:require [metabase.models.table :as table]
-            [metabase.sync.interface :as i]
-            [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
-            [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
-            [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
-            [metabase.sync.util :as sync-util]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.models.table :as table]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
+   [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
+   [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
+   [metabase.sync.util :as sync-util]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |

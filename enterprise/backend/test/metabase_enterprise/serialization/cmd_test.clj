@@ -1,17 +1,19 @@
 (ns metabase-enterprise.serialization.cmd-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [metabase-enterprise.serialization.load :as load]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase.cmd :as cmd]
-            [metabase.models :refer [Card Dashboard DashboardCard Database User]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [yaml.core :as yaml])
-  (:import java.util.UUID))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [clojure.tools.logging :as log]
+   [metabase-enterprise.serialization.load :as load]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase.cmd :as cmd]
+   [metabase.models :refer [Card Dashboard DashboardCard Database User]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [yaml.core :as yaml])
+  (:import
+   (java.util UUID)))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 

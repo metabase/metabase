@@ -5,15 +5,17 @@
 
   the svg png renderer does not understand nested html elements so we ensure that there are no divs, spans, etc in the
   resulting svg."
-  (:require [cheshire.core :as json]
-            [clojure.set :as set]
-            [clojure.spec.alpha :as s]
-            [clojure.test :refer :all]
-            [metabase.pulse.render.js-engine :as js]
-            [metabase.pulse.render.js-svg :as js-svg])
-  (:import org.apache.batik.anim.dom.SVGOMDocument
-           [org.graalvm.polyglot Context Value]
-           [org.w3c.dom Element Node]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [clojure.spec.alpha :as s]
+   [clojure.test :refer :all]
+   [metabase.pulse.render.js-engine :as js]
+   [metabase.pulse.render.js-svg :as js-svg])
+  (:import
+   (org.apache.batik.anim.dom SVGOMDocument)
+   (org.graalvm.polyglot Context Value)
+   (org.w3c.dom Element Node)))
 
 (def parse-svg #'js-svg/parse-svg-string)
 
@@ -163,7 +165,10 @@
                                               :format {:date_style "YYYY/MM/DD"}}
                      :y                      {:type   "linear"
                                               :format {:prefix   "prefix"
-                                                       :decimals 4}}
+                                                       :decimals 4
+                                                       :minimum-fraction-digits 4
+                                                       :maximum-fraction-digits 4}}
+
                      :labels                 {:bottom ""
                                               :left   ""
                                               :right  ""}

@@ -1,6 +1,8 @@
-import _ from "underscore";
-import { Parameter } from "metabase-types/types/Parameter";
-import { SINGLE_OR_MULTI_SELECTABLE_TYPES } from "metabase-lib/parameters/constants";
+import { Parameter } from "metabase-types/api";
+import {
+  CUSTOM_SOURCE_PARAMETER_TYPES,
+  SINGLE_OR_MULTI_SELECTABLE_TYPES,
+} from "metabase-lib/parameters/constants";
 import {
   getParameterType,
   getParameterSubType,
@@ -18,3 +20,13 @@ export function isSingleOrMultiSelectable(parameter: Parameter): boolean {
   }
   return SINGLE_OR_MULTI_SELECTABLE_TYPES[type].includes(subType);
 }
+
+export const canUseCustomSource = (parameter: Parameter) => {
+  const type = getParameterType(parameter);
+  const subType = getParameterSubType(parameter);
+
+  return (
+    CUSTOM_SOURCE_PARAMETER_TYPES[type] != null &&
+    CUSTOM_SOURCE_PARAMETER_TYPES[type].includes(subType)
+  );
+};

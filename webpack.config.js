@@ -1,5 +1,6 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
+/* eslint-disable import/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 
 const webpack = require("webpack");
@@ -250,7 +251,7 @@ if (WEBPACK_BUNDLE === "hot") {
     allowedHosts: "auto",
     hot: true,
     client: {
-      progress: true,
+      progress: false,
       overlay: false,
     },
     headers: {

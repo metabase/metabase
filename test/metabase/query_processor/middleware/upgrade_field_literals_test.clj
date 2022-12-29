@@ -1,10 +1,13 @@
 (ns metabase.query-processor.middleware.upgrade-field-literals-test
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
-            [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.add-source-metadata
+    :as add-source-metadata]
+   [metabase.query-processor.middleware.upgrade-field-literals
+    :as upgrade-field-literals]
+   [metabase.test :as mt]))
 
 (defn- upgrade-field-literals [query]
   (mt/with-everything-store

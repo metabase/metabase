@@ -1,14 +1,15 @@
 (ns metabuild-common.core
-  (:require [metabuild-common.aws :as aws]
-            [metabuild-common.entrypoint :as entrypoint]
-            [metabuild-common.env :as build.env]
-            [metabuild-common.files :as files]
-            [metabuild-common.input :as input]
-            [metabuild-common.misc :as misc]
-            [metabuild-common.output :as out]
-            [metabuild-common.shell :as shell]
-            [metabuild-common.steps :as steps]
-            [potemkin :as p]))
+  (:require
+   [metabuild-common.aws :as aws]
+   [metabuild-common.entrypoint :as entrypoint]
+   [metabuild-common.env :as build.env]
+   [metabuild-common.files :as files]
+   [metabuild-common.input :as input]
+   [metabuild-common.misc :as misc]
+   [metabuild-common.output :as out]
+   [metabuild-common.shell :as shell]
+   [metabuild-common.steps :as steps]
+   [potemkin :as p]))
 
 ;; since this file is used pretty much everywhere, this seemed like a good place to put this.
 (set! *warn-on-reflection* true)

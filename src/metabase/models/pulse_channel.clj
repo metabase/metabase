@@ -1,19 +1,20 @@
 (ns metabase.models.pulse-channel
-  (:require [cheshire.generate :refer [add-encoder encode-map]]
-            [clojure.set :as set]
-            [medley.core :as m]
-            [metabase.models.interface :as mi]
-            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.generate :refer [add-encoder encode-map]]
+   [clojure.set :as set]
+   [medley.core :as m]
+   [metabase.models.interface :as mi]
+   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;; ## Static Definitions
 

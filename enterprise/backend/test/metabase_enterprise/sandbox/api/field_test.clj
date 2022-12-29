@@ -1,11 +1,12 @@
 (ns metabase-enterprise.sandbox.api.field-test
   "Tests for special behavior of `/api/metabase/field` endpoints in the Metabase Enterprise Edition."
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.sandbox.test-util :as mt.tu]
-            [metabase.models :refer [Field FieldValues User]]
-            [metabase.models.field-values :as field-values]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.test-util :as mt.tu]
+   [metabase.models :refer [Field FieldValues User]]
+   [metabase.models.field-values :as field-values]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (deftest fetch-field-test
   (testing "GET /api/field/:id"

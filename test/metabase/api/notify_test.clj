@@ -1,15 +1,16 @@
 (ns metabase.api.notify-test
-  (:require [clj-http.client :as http]
-            [clojure.test :refer :all]
-            [metabase.api.notify :as api.notify]
-            [metabase.http-client :as client]
-            [metabase.models.database :as database]
-            [metabase.server.middleware.util :as mw.util]
-            metabase.sync
-            metabase.sync.sync-metadata
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]))
+  (:require
+   [clj-http.client :as http]
+   [clojure.test :refer :all]
+   [metabase.api.notify :as api.notify]
+   [metabase.http-client :as client]
+   [metabase.models.database :as database]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.sync]
+   [metabase.sync.sync-metadata]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server))
 

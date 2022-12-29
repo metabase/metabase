@@ -1,26 +1,29 @@
 (ns metabase.api.persist
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [GET POST]]
-            [honeysql.helpers :as hh]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.task.persist-refresh :as task.persist-refresh]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [GET POST]]
+   [honeysql.helpers :as hh]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.models.persisted-info
+    :as persisted-info
+    :refer [PersistedInfo]]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."

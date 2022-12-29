@@ -1,16 +1,19 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses-test
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
-            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.add-implicit-clauses
+    :as qp.add-implicit-clauses]
+   [metabase.query-processor.middleware.add-source-metadata
+    :as add-source-metadata]
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (deftest ordering-test
   (testing "check we fetch Fields in the right order"

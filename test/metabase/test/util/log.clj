@@ -1,11 +1,12 @@
 (ns metabase.test.util.log
   "Utils for controlling the logging that goes on when running tests."
-  (:require [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [clojure.tools.logging.impl :as log.impl]
-            [metabase.test-runner.parallel :as test-runner.parallel]
-            [potemkin :as p]
-            [schema.core :as s])
+  (:require
+   [clojure.test :refer :all]
+   [clojure.tools.logging :as log]
+   [clojure.tools.logging.impl :as log.impl]
+   [metabase.test-runner.parallel :as test-runner.parallel]
+   [potemkin :as p]
+   [schema.core :as s])
   (:import [org.apache.logging.log4j Level LogManager]
            [org.apache.logging.log4j.core Appender LifeCycle LogEvent Logger LoggerContext]
            [org.apache.logging.log4j.core.config Configuration LoggerConfig]))

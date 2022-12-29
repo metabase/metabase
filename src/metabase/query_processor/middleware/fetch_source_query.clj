@@ -21,25 +21,28 @@
     {:database 1, :type :query, :query {:source-query {...}, :source-metadata {...}, :source-card-id 1}}
 
   TODO - consider renaming this namespace to `metabase.query-processor.middleware.resolve-card-id-source-tables`"
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.util.persisted-cache :as qp.persisted]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [weavejester.dependency :as dep]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.persisted-info
+    :as persisted-info
+    :refer [PersistedInfo]]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.util.persisted-cache :as qp.persisted]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [weavejester.dependency :as dep]))
 
 ;; These next two schemas are for validating the intermediate stages of the middleware. We don't need to validate the
 ;; entire query
@@ -115,7 +118,7 @@
    (let [;; todo: we need to cache this. We are running this in preprocess, compile, and then again
          card           (or (db/select-one Card :id card-id)
                             (throw (ex-info (tru "Card {0} does not exist." card-id)
-                             {:card-id card-id})))
+                                    {:card-id card-id})))
          persisted-info (db/select-one PersistedInfo :card_id card-id)
 
          {{mbql-query                   :query

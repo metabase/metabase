@@ -1,7 +1,8 @@
 (ns metabase.driver.ddl.interface
-  (:require [clojure.string :as str]
-            [metabase.driver :as driver]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [clojure.string :as str]
+   [metabase.driver :as driver]
+   [metabase.util.i18n :refer [tru]]))
 
 (defn schema-name
   "Returns a schema name for persisting models. Needs the database to use the db id and the site-uuid to ensure that

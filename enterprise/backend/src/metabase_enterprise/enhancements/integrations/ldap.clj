@@ -1,17 +1,21 @@
 (ns metabase-enterprise.enhancements.integrations.ldap
   "The Enterprise version of the LDAP integration is basically the same but also supports syncing user attributes."
-  (:require [metabase.integrations.common :as integrations.common]
-            [metabase.integrations.ldap.default-implementation :as default-impl]
-            [metabase.integrations.ldap.interface :as i]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise-schema]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import com.unboundid.ldap.sdk.LDAPConnectionPool))
+  (:require
+   [metabase.integrations.common :as integrations.common]
+   [metabase.integrations.ldap.default-implementation :as default-impl]
+   [metabase.integrations.ldap.interface :as i]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise-schema]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (com.unboundid.ldap.sdk LDAPConnectionPool)))
 
 (def ^:private EEUserInfo
   (assoc i/UserInfo :attributes (s/maybe {s/Keyword s/Any})))
@@ -46,9 +50,9 @@
                                 (when-not (= syncable-attributes (:login_attributes user))
                                           {:login_attributes syncable-attributes})
                                 (when (not= first-name old-first-name)
-                                          {:first_name first-name})
+                                      {:first_name first-name})
                                 (when (not= last-name old-last-name)
-                                          {:last_name last-name}))]
+                                      {:last_name last-name}))]
               (if (seq user-changes)
                 (do
                   (db/update! User (:id user) user-changes)

@@ -1,15 +1,18 @@
 (ns metabase-enterprise.advanced-permissions.api.setting-test
   "Permisisons tests for API that needs to be enforced by Application Permissions to access Admin/Setting pages."
-  (:require [clojure.test :refer :all]
-            [metabase.api.geojson-test :as geojson-test]
-            [metabase.email :as email]
-            [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Card Dashboard]]
-            [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures])
-  (:import java.util.UUID))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.geojson-test :as geojson-test]
+   [metabase.email :as email]
+   [metabase.integrations.slack :as slack]
+   [metabase.models :refer [Card Dashboard]]
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures])
+  (:import
+   (java.util UUID)))
 
 (use-fixtures :once (fixtures/initialize :db))
 

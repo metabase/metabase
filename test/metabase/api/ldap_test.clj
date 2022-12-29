@@ -1,11 +1,12 @@
 (ns metabase.api.ldap-test
-  (:require [clojure.set :as set]
-            [clojure.test :refer :all]
-            [metabase.api.ldap :as api.ldap]
-            [metabase.integrations.ldap :as ldap]
-            [metabase.models.setting :as setting]
-            [metabase.test :as mt]
-            [metabase.test.integrations.ldap :as ldap.test]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [metabase.api.ldap :as api.ldap]
+   [metabase.integrations.ldap :as ldap]
+   [metabase.models.setting :as setting]
+   [metabase.test :as mt]
+   [metabase.test.integrations.ldap :as ldap.test]))
 
 (defn ldap-test-details
   ([] (ldap-test-details true))

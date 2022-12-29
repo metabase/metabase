@@ -1,19 +1,20 @@
 (ns metabase.api.automagic-dashboards-test
-  (:require [clojure.test :refer :all]
-            [metabase.automagic-dashboards.core :as magic]
-            [metabase.models :refer [Card Collection Metric Segment]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
-            [metabase.test.domain-entities :as test.de]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.transforms :as transforms.test]
-            [metabase.transforms.core :as tf]
-            [metabase.transforms.materialize :as tf.materialize]
-            [metabase.transforms.specs :as tf.specs]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.automagic-dashboards.core :as magic]
+   [metabase.models :refer [Card Collection Metric Segment]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
+   [metabase.test.domain-entities :as test.de]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.transforms :as transforms.test]
+   [metabase.transforms.core :as tf]
+   [metabase.transforms.materialize :as tf.materialize]
+   [metabase.transforms.specs :as tf.specs]
+   [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
 
@@ -151,7 +152,7 @@
   (testing "Ad-hoc X-Rays should work for queries have Card source queries (#15655)"
     (mt/dataset sample-dataset
       (let [card-query      (mt/native-query {:query "select * from people"})
-            result-metadata (get-in (qp/process-query card-query) [:data :results_metadata :columns]) ]
+            result-metadata (get-in (qp/process-query card-query) [:data :results_metadata :columns])]
         (mt/with-temp* [Collection [{collection-id :id}]
                         Card       [{card-id :id} {:name            "15655_Q1"
                                                    :collection_id   collection-id

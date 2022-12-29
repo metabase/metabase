@@ -1,42 +1,45 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [java-time :as t]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.postgres.actions :as postgres.actions]
-            [metabase.driver.postgres.ddl :as postgres.ddl]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.field :as field]
-            [metabase.models.secret :as secret]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
-            [potemkin :as p]
-            [pretty.core :refer [PrettyPrintable]])
-  (:import [java.sql ResultSet ResultSetMetaData Time Types]
-           [java.time LocalDateTime OffsetDateTime OffsetTime]
-           [java.util Date UUID]
-           metabase.util.honeysql_extensions.Identifier))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [java-time :as t]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.postgres.actions :as postgres.actions]
+   [metabase.driver.postgres.ddl :as postgres.ddl]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-table
+    :as sql-jdbc.describe-table]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.models.field :as field]
+   [metabase.models.secret :as secret]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]]
+   [potemkin :as p]
+   [pretty.core :refer [PrettyPrintable]])
+  (:import
+   (java.sql ResultSet ResultSetMetaData Time Types)
+   (java.time LocalDateTime OffsetDateTime OffsetTime)
+   (java.util Date UUID)
+   (metabase.util.honeysql_extensions Identifier)))
 
 (comment
   ;; method impls live in these namespaces.
@@ -70,6 +73,10 @@
   (-> db :options :persist-models-enabled))
 
 (defmethod driver/database-supports? [:postgres :convert-timezone]
+  [_driver _feat _db]
+  true)
+
+(defmethod driver/database-supports? [:postgres :now]
   [_driver _feat _db]
   true)
 
