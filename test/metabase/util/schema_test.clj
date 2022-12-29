@@ -32,7 +32,7 @@
                  {:a {:b {:c {:d {:key                           (s/maybe s/Bool)
                                   (s/optional-key :optional-key) s/Int}}}}}))))))
 
-(api/defendpoint POST "/:id/dimension"
+(api/defendpoint-schema POST "/:id/dimension"
   "Sets the dimension for the given object with ID."
   #_{:clj-kondo/ignore [:unused-binding]}
   [id :as {{dimension-type :type, dimension-name :name} :body}]

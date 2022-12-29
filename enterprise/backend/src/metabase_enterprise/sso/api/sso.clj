@@ -24,7 +24,7 @@
     (throw (ex-info (str (tru "SSO requires a valid token"))
              {:status-code 403}))))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [:as req]
   (throw-if-no-premium-features-token)
@@ -44,7 +44,7 @@
                  :exceptionClass (.getName Exception)
                  :additionalData data}))})
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Route the SSO backends call with successful login details"
   [:as req]
   (throw-if-no-premium-features-token)

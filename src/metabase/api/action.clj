@@ -38,7 +38,7 @@
    (s/optional-key :parameters) (s/maybe [su/Map])
    (s/optional-key :parameter_mappings) (s/maybe su/Map)})
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Returns cards that can be used for QueryActions"
   [model-id]
   {model-id su/IntGreaterThanZero}
@@ -47,7 +47,7 @@
     ;; readable if the model is readable.
     (action/actions-with-implicit-params [model] :model_id model-id)))
 
-(api/defendpoint GET "/:action-id"
+(api/defendpoint-schema GET "/:action-id"
   [action-id]
   (api/read-check (first (action/actions-with-implicit-params nil :id action-id))))
 
@@ -57,13 +57,13 @@
                           :implicit ImplicitAction
                           :query QueryAction))
 
-(api/defendpoint DELETE "/:action-id"
+(api/defendpoint-schema DELETE "/:action-id"
   [action-id]
   (let [{existing-action-type :type} (api/write-check Action action-id)]
     (db/delete! (type->model existing-action-type) :action_id action-id))
   api/generic-204-no-content)
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new action."
   [:as {{:keys [type name description model_id parameters parameter_mappings visualization_settings
                 kind
@@ -90,7 +90,7 @@
       ;; so we return the most recently updated http action.
       (last (action/actions-with-implicit-params nil :type type)))))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   [id :as {{:keys [type name description model_id parameters parameter_mappings visualization_settings
                    kind
                    database_id dataset_query

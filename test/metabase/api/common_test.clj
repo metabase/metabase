@@ -104,6 +104,6 @@
                  (metabase.api.common.internal/wrap-response-if-needed
                   (do
                     (select-one Card :id id))))))
-           (macroexpand '(metabase.api.common/defendpoint compojure.core/GET "/:id" [id]
+           (macroexpand '(metabase.api.common/defendpoint-schema compojure.core/GET "/:id" [id]
                            {id metabase.util.schema/IntGreaterThanZero}
                            (select-one Card :id id)))))))
