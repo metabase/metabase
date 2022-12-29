@@ -1,12 +1,13 @@
 (ns metabase-enterprise.audit-app.pages.downloads
   "Audit queries returning info about query downloads. Query downloads are any query executions whose results are returned
   as CSV/JSON/XLS."
-  (:require [honeysql.core :as hsql]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.db :as mdb]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx]))
+  (:require
+   [honeysql.core :as hsql]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.db :as mdb]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.util.honeysql-extensions :as hx]))
 
 ;; Pairs of count of rows downloaded and date downloaded for the 1000 largest (in terms of row count) queries over the
 ;; past 30 days. Intended to power scatter plot.

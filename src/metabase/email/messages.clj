@@ -1,43 +1,45 @@
 (ns metabase.email.messages
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
-  (:require [clojure.core.cache :as cache]
-            [clojure.java.io :as io]
-            [clojure.tools.logging :as log]
-            [hiccup.core :refer [html]]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.email :as email]
-            [metabase.models.collection :as collection]
-            [metabase.models.permissions :as perms]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.pulse.markdown :as markdown]
-            [metabase.pulse.parameters :as params]
-            [metabase.pulse.render :as render]
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.render.image-bundle :as image-bundle]
-            [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.pulse.render.style :as style]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.streaming.interface :as qp.si]
-            [metabase.query-processor.streaming.xlsx :as qp.xlsx]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as i18n :refer [trs tru]]
-            [metabase.util.urls :as urls]
-            [stencil.core :as stencil]
-            [stencil.loader :as stencil-loader]
-            [toucan.db :as db])
-  (:import [java.io File IOException OutputStream]
-           java.time.format.DateTimeFormatter
-           java.time.LocalTime))
+  (:require
+   [clojure.core.cache :as cache]
+   [clojure.java.io :as io]
+   [clojure.tools.logging :as log]
+   [hiccup.core :refer [html]]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.email :as email]
+   [metabase.models.collection :as collection]
+   [metabase.models.permissions :as perms]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.pulse.markdown :as markdown]
+   [metabase.pulse.parameters :as params]
+   [metabase.pulse.render :as render]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.render.image-bundle :as image-bundle]
+   [metabase.pulse.render.js-svg :as js-svg]
+   [metabase.pulse.render.style :as style]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.query-processor.streaming.xlsx :as qp.xlsx]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.urls :as urls]
+   [stencil.core :as stencil]
+   [stencil.loader :as stencil-loader]
+   [toucan.db :as db])
+  (:import
+   (java.io File IOException OutputStream)
+   (java.time LocalTime)
+   (java.time.format DateTimeFormatter)))
 
 (defn- app-name-trs
   "Return the user configured application name, or Metabase translated

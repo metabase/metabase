@@ -1,23 +1,25 @@
 (ns metabase.pulse.render.body
-  (:require [clojure.string :as str]
-            [hiccup.core :refer [h]]
-            [medley.core :as m]
-            [metabase.public-settings :as public-settings]
-            [metabase.pulse.render.color :as color]
-            [metabase.pulse.render.common :as common]
-            [metabase.pulse.render.datetime :as datetime]
-            [metabase.pulse.render.image-bundle :as image-bundle]
-            [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.pulse.render.style :as style]
-            [metabase.pulse.render.table :as table]
-            [metabase.pulse.util :as pu]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.types :as types]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.ui-logic :as ui-logic]
-            [schema.core :as s])
-  (:import [java.text DecimalFormat DecimalFormatSymbols]))
+  (:require
+   [clojure.string :as str]
+   [hiccup.core :refer [h]]
+   [medley.core :as m]
+   [metabase.public-settings :as public-settings]
+   [metabase.pulse.render.color :as color]
+   [metabase.pulse.render.common :as common]
+   [metabase.pulse.render.datetime :as datetime]
+   [metabase.pulse.render.image-bundle :as image-bundle]
+   [metabase.pulse.render.js-svg :as js-svg]
+   [metabase.pulse.render.style :as style]
+   [metabase.pulse.render.table :as table]
+   [metabase.pulse.util :as pu]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.types :as types]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.ui-logic :as ui-logic]
+   [schema.core :as s])
+  (:import
+   (java.text DecimalFormat DecimalFormatSymbols)))
 
 (def ^:private card-error-rendered-info
   "Default rendered-info map when there is an error running a card on the card run.
@@ -551,7 +553,7 @@
                                     (or (<= min-a min-b max-a)
                                         (<= min-a max-b max-a)))]
     (if
-    overlapping-and-valid?
+     overlapping-and-valid?
       (let [[a b c d]     (sort [min-a min-b max-a max-b])
             max-width     (- d a)
             overlap-width (- c b)]

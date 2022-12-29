@@ -1,21 +1,24 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  (:require [clojure.test :as t]
-            [medley.core :as m]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.http-client :as client]
-            [metabase.models.permissions-group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.user :refer [User]]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test.initialize :as initialize]
-            [metabase.util :as u]
-            [metabase.util.password :as u.password]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
-  (:import clojure.lang.ExceptionInfo
-           metabase.models.user.UserInstance))
+  (:require
+   [clojure.test :as t]
+   [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.http-client :as client]
+   [metabase.models.permissions-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group-membership
+    :refer [PermissionsGroupMembership]]
+   [metabase.models.user :refer [User]]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test.initialize :as initialize]
+   [metabase.util :as u]
+   [metabase.util.password :as u.password]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.util.test :as tt])
+  (:import
+   (clojure.lang ExceptionInfo)
+   (metabase.models.user UserInstance)))
 
 ;;; ------------------------------------------------ User Definitions ------------------------------------------------
 

@@ -1,12 +1,14 @@
 (ns metabase.query-processor.middleware.cache.impl
-  (:require [clojure.tools.logging :as log]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [taoensso.nippy :as nippy])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream
-            EOFException FilterOutputStream InputStream OutputStream]
-           [java.util.zip GZIPInputStream GZIPOutputStream]))
+  (:require
+   [clojure.tools.logging :as log]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [taoensso.nippy :as nippy])
+  (:import
+   (java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream
+            EOFException FilterOutputStream InputStream OutputStream)
+   (java.util.zip GZIPInputStream GZIPOutputStream)))
 
 (defn- max-bytes-output-stream ^OutputStream
   [max-bytes ^OutputStream os]

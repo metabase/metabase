@@ -1,14 +1,15 @@
 (ns metabase.api.notify
   "/api/notify/* endpoints which receive inbound etl server notifications."
-  (:require [compojure.core :refer [POST]]
-            [metabase.api.common :as api]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync :as sync]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [POST]]
+   [metabase.api.common :as api]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync :as sync]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private ^:dynamic *execute-asynchronously* true)
 

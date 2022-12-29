@@ -1,13 +1,14 @@
 (ns metabase.api.geojson-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [metabase.api.geojson :as api.geojson]
-            [metabase.http-client :as client]
-            [metabase.models.setting :as setting]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.api.geojson :as api.geojson]
+   [metabase.http-client :as client]
+   [metabase.models.setting :as setting]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ^String test-geojson-url
   "URL of a GeoJSON file used for test purposes."

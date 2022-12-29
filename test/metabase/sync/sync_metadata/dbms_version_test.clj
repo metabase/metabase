@@ -1,11 +1,12 @@
 (ns metabase.sync.sync-metadata.dbms-version-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn- db-dbms-version [db-or-id]
   (db/select-one-field :dbms_version Database :id (u/the-id db-or-id)))

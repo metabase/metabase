@@ -1,11 +1,12 @@
 (ns metabase.query-processor.util.persisted-cache
-  (:require    [clojure.string :as str]
-               [metabase.driver :as driver]
-               [metabase.driver.ddl.interface :as ddl.i]
-               [metabase.driver.sql.util :as sql.u]
-               [metabase.driver.util :as driver.u]
-               [metabase.models.persisted-info :as persisted-info]
-               [metabase.public-settings :as public-settings]))
+  (:require
+   [clojure.string :as str]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.persisted-info :as persisted-info]
+   [metabase.public-settings :as public-settings]))
 
 (defn- segmented-user?
   []

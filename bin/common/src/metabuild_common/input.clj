@@ -1,7 +1,8 @@
 (ns metabuild-common.input
-  (:require [clojure.string :as str]
-            [environ.core :as env]
-            [metabuild-common.output :as out]))
+  (:require
+   [clojure.string :as str]
+   [environ.core :as env]
+   [metabuild-common.output :as out]))
 
 (defn interactive?
   "Whether we're running these scripts interactively, and can prompt the user for input. By default, this is

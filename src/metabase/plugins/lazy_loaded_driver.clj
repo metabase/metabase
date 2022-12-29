@@ -6,13 +6,15 @@
 
   See https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference for all the options allowed for a
   plugin manifest."
-  (:require [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.plugins.init-steps :as init-steps]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]])
-  (:import clojure.lang.MultiFn))
+  (:require
+   [clojure.tools.logging :as log]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.plugins.init-steps :as init-steps]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]])
+  (:import
+   (clojure.lang MultiFn)))
 
 (defn- parse-connection-property [prop]
   (cond

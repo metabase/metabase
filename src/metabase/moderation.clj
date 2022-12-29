@@ -1,9 +1,10 @@
 (ns metabase.moderation
-  (:require [clojure.string :as str]
-            [medley.core :as m]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def moderated-item-types
   "Schema enum of the acceptable values for the `moderated_item_type` column"

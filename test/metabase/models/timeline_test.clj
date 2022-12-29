@@ -1,11 +1,12 @@
 (ns metabase.models.timeline-test
   "Tests for the Timeline model."
-  (:require [clojure.test :refer :all]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.timeline :as timeline :refer [Timeline]]
-            [metabase.models.timeline-event :refer [TimelineEvent]]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.models.timeline-event :refer [TimelineEvent]]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest timelines-for-collection-test
   (mt/with-temp Collection [collection {:name "Rasta's Collection"}]

@@ -1,24 +1,32 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.api.card-test :as api.card-test]
-            [metabase.api.pulse :as api.pulse]
-            [metabase.http-client :as client]
-            [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel
-                                     PulseChannelRecipient]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.pulse-channel :as pulse-channel]
-            [metabase.models.pulse-test :as pulse-test]
-            [metabase.pulse.render.style :as style]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.test.mock.util :refer [pulse-channel-defaults]]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.api.card-test :as api.card-test]
+   [metabase.api.pulse :as api.pulse]
+   [metabase.http-client :as client]
+   [metabase.integrations.slack :as slack]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCard
+            Pulse
+            PulseCard
+            PulseChannel
+            PulseChannelRecipient]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.pulse-channel :as pulse-channel]
+   [metabase.models.pulse-test :as pulse-test]
+   [metabase.pulse.render.style :as style]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.test.mock.util :refer [pulse-channel-defaults]]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -1030,9 +1038,9 @@
 
         (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
           (with-redefs [style/register-fonts-if-needed! (fn []
-                                                        (throw (ex-info "Can't register fonts!"
-                                                                        {}
-                                                                        (NullPointerException.))))]
+                                                         (throw (ex-info "Can't register fonts!"
+                                                                         {}
+                                                                         (NullPointerException.))))]
             (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
               (is (= "application/json;charset=utf-8"
                      Content-Type))

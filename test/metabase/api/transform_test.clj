@@ -1,14 +1,15 @@
 (ns metabase.api.transform-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.domain-entities :refer [with-test-domain-entity-specs]]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.transforms :refer [with-test-transform-specs]]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.test.domain-entities :refer [with-test-domain-entity-specs]]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.transforms :refer [with-test-transform-specs]]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

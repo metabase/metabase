@@ -1,8 +1,9 @@
 (ns metabase.test-runner.init
   "Code related to [[metabase.test-runner]] initialization and utils for enforcing that code isn't allowed to run while
   loading namespaces."
-  (:require [clojure.pprint :as pprint]
-            [metabase.config :as config]))
+  (:require
+   [clojure.pprint :as pprint]
+   [metabase.config :as config]))
 
 (def ^:dynamic *test-namespace-being-loaded*
   "Bound to the test namespace symbol that's currently getting loaded, if any."

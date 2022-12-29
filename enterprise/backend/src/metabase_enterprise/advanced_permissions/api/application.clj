@@ -2,9 +2,10 @@
   "`/advanced-permisisons/application` Routes.
   Implements the Permissions routes needed for application permission - a class of permissions that control access to features
   like access Setting pages, access monitoring tools ... etc"
-  (:require [compojure.core :refer [GET PUT]]
-            [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
-            [metabase.api.common :as api]))
+  (:require
+   [compojure.core :refer [GET PUT]]
+   [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
+   [metabase.api.common :as api]))
 
 (api/defendpoint GET "/graph"
   "Fetch a graph of Application Permissions."

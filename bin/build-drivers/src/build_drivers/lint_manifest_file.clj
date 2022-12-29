@@ -1,6 +1,7 @@
 (ns build-drivers.lint-manifest-file
-  (:require [clojure.spec.alpha :as s]
-            [spell-spec.alpha :as spell]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [spell-spec.alpha :as spell]))
 
 (s/def ::init-step (spell/keys :req-un [::step]))
 

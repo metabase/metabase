@@ -1,15 +1,16 @@
 (ns metabase.query-processor-test.explicit-joins-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-            [metabase.models :refer [Card]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test.timezones-test :as timezones-test]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models :refer [Card]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
 
 (deftest explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"

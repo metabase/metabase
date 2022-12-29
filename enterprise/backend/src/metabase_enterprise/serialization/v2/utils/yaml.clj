@@ -1,9 +1,11 @@
 (ns metabase-enterprise.serialization.v2.utils.yaml
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [metabase.models.serialization.base :as serdes.base])
-  (:import java.io.File
-           java.nio.file.Path))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabase.models.serialization.base :as serdes.base])
+  (:import
+   (java.io File)
+   (java.nio.file Path)))
 
 (defn- escape-segment
   "Given a path segment, which is supposed to be the name of a single file or directory, escape any slashes inside it.

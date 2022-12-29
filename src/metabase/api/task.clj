@@ -1,12 +1,13 @@
 (ns metabase.api.task
   "/api/task endpoints"
-  (:require [compojure.core :refer [GET]]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.models.task-history :as task-history :refer [TaskHistory]]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.task :as task]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [GET]]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.models.task-history :as task-history :refer [TaskHistory]]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.task :as task]
+   [toucan.db :as db]))
 
 
 (api/defendpoint GET "/"

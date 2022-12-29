@@ -1,16 +1,19 @@
 (ns metabase.api.timeline
   "/api/timeline endpoints."
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.api.common :as api]
-            [metabase.models.collection :as collection]
-            [metabase.models.timeline :as timeline :refer [Timeline]]
-            [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [metabase.api.common :as api]
+   [metabase.models.collection :as collection]
+   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.models.timeline-event
+    :as timeline-event
+    :refer [TimelineEvent]]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (def Include
   "Events Query Parameters Schema"

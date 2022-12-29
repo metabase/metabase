@@ -3,16 +3,17 @@
 
   Implements the SSO routes needed for SAML and JWT. This namespace primarily provides hooks for those two backends so
   we can have a uniform interface both via the API and code"
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET POST]]
-            [metabase-enterprise.sso.api.interface :as sso.i]
-            metabase-enterprise.sso.integrations.jwt
-            metabase-enterprise.sso.integrations.saml
-            [metabase.api.common :as api]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [stencil.core :as stencil]))
+  (:require
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [GET POST]]
+   [metabase-enterprise.sso.api.interface :as sso.i]
+   [metabase-enterprise.sso.integrations.jwt]
+   [metabase-enterprise.sso.integrations.saml]
+   [metabase.api.common :as api]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [stencil.core :as stencil]))
 
 ;; load the SSO integrations so their implementations for the multimethods below are available.
 (comment metabase-enterprise.sso.integrations.jwt/keep-me

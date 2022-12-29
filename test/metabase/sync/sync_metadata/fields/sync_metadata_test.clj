@@ -1,9 +1,10 @@
 (ns metabase.sync.sync-metadata.fields.sync-metadata-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (defn- updates-that-will-be-performed [new-metadata-from-sync metadata-in-application-db]
   (tt/with-temp Table [table]

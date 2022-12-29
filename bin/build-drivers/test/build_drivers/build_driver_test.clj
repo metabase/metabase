@@ -1,8 +1,9 @@
 (ns build-drivers.build-driver-test
-  (:require [build-drivers.build-driver :as build-driver]
-            [build-drivers.common :as c]
-            [build-drivers.verify :as verify]
-            [clojure.test :refer :all]))
+  (:require
+   [build-drivers.build-driver :as build-driver]
+   [build-drivers.common :as c]
+   [build-drivers.verify :as verify]
+   [clojure.test :refer :all]))
 
 (defn- jar-path ^String []
   (c/driver-jar-destination-path :oracle))

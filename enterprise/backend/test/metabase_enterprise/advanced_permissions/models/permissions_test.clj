@@ -1,16 +1,17 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.advanced-permissions.models.permissions :as ee-perms]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Database Permissions PermissionsGroup]]
-            [metabase.models.database :as database]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.sync.sync-metadata.tables :as sync-tables]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.advanced-permissions.models.permissions :as ee-perms]
+   [metabase.driver :as driver]
+   [metabase.models :refer [Database Permissions PermissionsGroup]]
+   [metabase.models.database :as database]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Download permissions                                                  |
