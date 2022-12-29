@@ -228,13 +228,13 @@
 
 ;;; ------------------------------------------- Execution Endpoints -------------------------------------------
 
-(api/defendpoint GET "/execution/graph"
+(api/defendpoint-schema GET "/execution/graph"
   "Fetch a graph of execution permissions."
   []
   (api/check-superuser)
   (perms/execution-perms-graph))
 
-(api/defendpoint PUT "/execution/graph"
+(api/defendpoint-schema PUT "/execution/graph"
   "Do a batch update of execution permissions by passing in a modified graph. The modified graph of the same
   form as returned by the corresponding GET endpoint.
 
