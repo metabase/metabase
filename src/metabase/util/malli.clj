@@ -24,6 +24,7 @@
      (str "https://malli.io?schema=" url-schema "&value=" url-value))))
 
 (core/defn- explain-fn-fail!
+  "Used as reporting function to minst/instrument!"
   [type data]
   (let [{:keys [input args output value]} data]
     (throw (ex-info
@@ -35,6 +36,10 @@
                       :humanized
                       (cond input (me/humanize (mc/explain input args))
                             output (me/humanize (mc/explain output value)))}))))))
+
+;; since a reference to the private var is used in the macro, this will trip the eastwood :unused-private-vars linter,
+;; so just harmlessly "use" the var here.
+explain-fn-fail!
 
 (core/defn- -defn [schema args]
   (let [{:keys [name return doc meta arities] :as parsed} (mc/parse schema args)
