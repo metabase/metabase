@@ -241,7 +241,7 @@
     (s/maybe (s/eq "tables"))
     (deferred-tru "include must be either empty or the value 'tables'")))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Fetch all `Databases`.
 
   * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.
@@ -324,7 +324,7 @@
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
   belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
   (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the
@@ -357,7 +357,7 @@
 ;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
 ;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
 ;; match the virtual ID (and nothing else).
-(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+(api/defendpoint-schema GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
@@ -392,7 +392,7 @@
                                 (update :segments (partial filter mi/can-read?))
                                 (update :metrics  (partial filter mi/can-read?)))))))))
 
-(api/defendpoint GET "/:id/metadata"
+(api/defendpoint-schema GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
 
@@ -511,7 +511,7 @@
                                     {:option v
                                      :valid-options autocomplete-matching-options}))))))
 
-(api/defendpoint GET "/:id/autocomplete_suggestions"
+(api/defendpoint-schema GET "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
   `substring` will have priority if both are present.
 
@@ -537,7 +537,7 @@
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
-(api/defendpoint GET "/:id/card_autocomplete_suggestions"
+(api/defendpoint-schema GET "/:id/card_autocomplete_suggestions"
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
@@ -555,7 +555,7 @@
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 
-(api/defendpoint GET "/:id/fields"
+(api/defendpoint-schema GET "/:id/fields"
   "Get a list of all `Fields` in `Database`."
   [id]
   (api/read-check Database id)
@@ -574,7 +574,7 @@
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
 
-(api/defendpoint GET "/:id/idfields"
+(api/defendpoint-schema GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
   [id include_editable_data_model]
   (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
@@ -655,7 +655,7 @@
               (assoc :valid false))
       details)))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl]} :body}]
   {name             su/NonBlankString
@@ -701,7 +701,7 @@
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
-(api/defendpoint POST "/validate"
+(api/defendpoint-schema POST "/validate"
   "Validate that we can connect to a database given a set of details."
   ;; TODO - why do we pass the DB in under the key `details`?
   [:as {{{:keys [engine details]} :details} :body}]
@@ -714,7 +714,7 @@
 
 ;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 
-(api/defendpoint POST "/sample_database"
+(api/defendpoint-schema POST "/sample_database"
   "Add the sample database as a new `Database`."
   []
   (api/check-superuser)
@@ -737,7 +737,7 @@
             details
             (database/sensitive-fields-for-db database)))))
 
-(api/defendpoint POST "/:id/persist"
+(api/defendpoint-schema POST "/:id/persist"
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
@@ -763,7 +763,7 @@
                           {:error error
                            :database (:name database)})))))))
 
-(api/defendpoint POST "/:id/unpersist"
+(api/defendpoint-schema POST "/:id/unpersist"
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
@@ -778,7 +778,7 @@
       ;; todo: a response saying this was a no-op? an error? same on the post to persist
       api/generic-204-no-content)))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
                    auto_run_queries refingerprint cache_ttl settings]} :body}]
@@ -857,7 +857,7 @@
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
-(api/defendpoint DELETE "/:id"
+(api/defendpoint-schema DELETE "/:id"
   "Delete a `Database`."
   [id]
   (api/check-superuser)
@@ -871,7 +871,7 @@
 
 ;; TODO - Shouldn't we just check for superuser status instead of write checking?
 ;; NOTE Atte: This becomes maybe obsolete
-(api/defendpoint POST "/:id/sync"
+(api/defendpoint-schema POST "/:id/sync"
   "Update the metadata for this `Database`. This happens asynchronously."
   [id]
   ;; just publish a message and let someone else deal with the logistics
@@ -884,7 +884,7 @@
 ;; Currently these match the titles of the admin UI buttons that call these endpoints
 
 ;; Should somehow trigger sync-database/sync-database!
-(api/defendpoint POST "/:id/sync_schema"
+(api/defendpoint-schema POST "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
   ;; just wrap this in a future so it happens async
@@ -894,7 +894,7 @@
       (analyze/analyze-db! db)))
   {:status :ok})
 
-(api/defendpoint POST "/:id/dismiss_spinner"
+(api/defendpoint-schema POST "/:id/dismiss_spinner"
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
   [id]
@@ -914,7 +914,7 @@
   true)
 
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
-(api/defendpoint POST "/:id/rescan_values"
+(api/defendpoint-schema POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
   ;; just wrap this is a future so it happens async
@@ -943,7 +943,7 @@
 
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
-(api/defendpoint POST "/:id/discard_values"
+(api/defendpoint-schema POST "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [id]
   (delete-all-field-values-for-database! (api/write-check (db/select-one Database :id id)))
@@ -962,7 +962,7 @@
    (perms/set-has-full-permissions? @api/*current-user-permissions-set*
                                     (perms/data-model-write-perms-path database-id schema-name))))
 
-(api/defendpoint GET "/:id/schemas"
+(api/defendpoint-schema GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
   [id]
   (api/read-check Database id)
@@ -977,7 +977,7 @@
        distinct
        sort))
 
-(api/defendpoint GET ["/:virtual-db/schemas"
+(api/defendpoint-schema GET ["/:virtual-db/schemas"
                       :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
@@ -987,7 +987,7 @@
          distinct
          (sort-by str/lower-case))))
 
-(api/defendpoint GET ["/:virtual-db/datasets"
+(api/defendpoint-schema GET ["/:virtual-db/datasets"
                       :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
@@ -1011,18 +1011,18 @@
                          :visibility_type nil
                          {:order-by [[:display_name :asc]]})))
 
-(api/defendpoint GET "/:id/schema/:schema"
+(api/defendpoint-schema GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
   [id schema]
   (api/check-404 (seq (schema-tables-list id schema))))
 
-(api/defendpoint GET "/:id/schema/"
+(api/defendpoint-schema GET "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
   [id]
   (api/check-404 (seq (concat (schema-tables-list id nil)
                               (schema-tables-list id "")))))
 
-(api/defendpoint GET ["/:virtual-db/schema/:schema"
+(api/defendpoint-schema GET ["/:virtual-db/schema/:schema"
                       :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
   [schema]
@@ -1034,7 +1034,7 @@
                                       [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
-(api/defendpoint GET ["/:virtual-db/datasets/:schema"
+(api/defendpoint-schema GET ["/:virtual-db/datasets/:schema"
                       :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
   [schema]
@@ -1046,7 +1046,7 @@
                                       [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
-(api/defendpoint GET "/db-ids-with-deprecated-drivers"
+(api/defendpoint-schema GET "/db-ids-with-deprecated-drivers"
   "Return a list of database IDs using currently deprecated drivers."
   []
   (map

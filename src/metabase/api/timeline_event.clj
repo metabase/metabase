@@ -16,7 +16,7 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new [[TimelineEvent]]."
   [:as {{:keys [name description timestamp time_matters timezone icon timeline_id source question_id archived] :as body} :body}]
   {name         su/NonBlankString
@@ -52,12 +52,12 @@
                                (boolean question_id) (assoc :question_id question_id)))
       (db/insert! TimelineEvent tl-event))))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
   [id]
   (api/read-check TimelineEvent id))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update a [[TimelineEvent]]."
   [id :as {{:keys [name description timestamp time_matters timezone icon timeline_id archived]
             :as   timeline-event-updates} :body}]
@@ -80,7 +80,7 @@
         :non-nil #{:name}))
     (db/select-one TimelineEvent :id id)))
 
-(api/defendpoint DELETE "/:id"
+(api/defendpoint-schema DELETE "/:id"
   "Delete a [[TimelineEvent]]."
   [id]
   (api/write-check TimelineEvent id)

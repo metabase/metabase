@@ -96,7 +96,7 @@
       current-password
       new-password)))
 
-(api/defendpoint PUT "/settings"
+(api/defendpoint-schema PUT "/settings"
   "Update LDAP related settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
   {settings su/Map}

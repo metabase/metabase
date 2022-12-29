@@ -69,7 +69,7 @@
       (qp.streaming/streaming-response [context export-format]
         (qp-runner query info context)))))
 
-(api/defendpoint ^:streaming POST "/"
+(api/defendpoint-schema ^:streaming POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database (s/maybe s/Int)}
@@ -94,7 +94,7 @@
   "Regex for matching valid export formats (e.g., `json`) for queries.
    Inteneded for use in an endpoint definition:
 
-     (api/defendpoint POST [\"/:export-format\", :export-format export-format-regex]"
+     (api/defendpoint-schema POST [\"/:export-format\", :export-format export-format-regex]"
   (re-pattern (str "(" (str/join "|" (map u/qualified-name (qp.streaming/export-formats))) ")")))
 
 (def ^:private column-ref-regex #"^\[.+\]$")
@@ -107,7 +107,7 @@
      json-key
      (keyword json-key)))
 
-(api/defendpoint ^:streaming POST ["/:export-format", :export-format export-format-regex]
+(api/defendpoint-schema ^:streaming POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
   [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
   {query                  su/JSONString
@@ -136,7 +136,7 @@
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
 ;; TODO - this is no longer used. Should we remove it?
-(api/defendpoint POST "/duration"
+(api/defendpoint-schema POST "/duration"
   "Get historical query execution duration."
   [:as {{:keys [database], :as query} :body}]
   (api/read-check Database database)
@@ -148,14 +148,14 @@
                     (assoc query :constraints (qp.constraints/default-query-constraints))])
              0)})
 
-(api/defendpoint POST "/native"
+(api/defendpoint-schema POST "/native"
   "Fetch a native version of an MBQL query."
   [:as {query :body}]
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (qp/compile-and-splice-parameters query)))
 
-(api/defendpoint ^:streaming POST "/pivot"
+(api/defendpoint-schema ^:streaming POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
   [:as {{:keys [database] :as query} :body}]
   {database (s/maybe s/Int)}

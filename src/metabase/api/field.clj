@@ -49,7 +49,7 @@
                 (has-segmented-query-permissions? (field/table field)))
     (api/throw-403)))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Get `Field` with ID."
   [id]
   (let [field (-> (api/check-404 (db/select-one Field :id id))
@@ -94,7 +94,7 @@
     (db/delete! Dimension :id old-dim-id))
   true)
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
                    coercion_strategy visibility_type has_field_values settings nfc_path]
@@ -151,7 +151,7 @@
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 
-(api/defendpoint GET "/:id/summary"
+(api/defendpoint-schema GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
   [id]
   (let [field (api/read-check Field id)]
@@ -161,7 +161,7 @@
 
 ;;; --------------------------------------------------- Dimensions ---------------------------------------------------
 
-(api/defendpoint POST "/:id/dimension"
+(api/defendpoint-schema POST "/:id/dimension"
   "Sets the dimension for the given field at ID"
   [id :as {{dimension-type :type, dimension-name :name, human_readable_field_id :human_readable_field_id} :body}]
   {dimension-type          (su/api-param "type" (s/enum "internal" "external"))
@@ -184,7 +184,7 @@
                  :human_readable_field_id human_readable_field_id}))
   (db/select-one Dimension :field_id id))
 
-(api/defendpoint DELETE "/:id/dimension"
+(api/defendpoint-schema DELETE "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [id]
   (api/write-check Field id)
@@ -223,7 +223,7 @@
     (field->values field)))
 
 ;; TODO -- not sure `has_field_values` actually has to be `:list` -- see code above.
-(api/defendpoint GET "/:id/values"
+(api/defendpoint-schema GET "/:id/values"
   "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field, and (if
   defined by a User) a map of human-readable remapped values."
   [id]
@@ -231,7 +231,7 @@
 
 ;; match things like GET /field%2Ccreated_at%2options
 ;; (this is how things like [field,created_at,{:base-type,:type/Datetime}] look when URL-encoded)
-(api/defendpoint GET "/field%2C:field-name%2C:options/values"
+(api/defendpoint-schema GET "/field%2C:field-name%2C:options/values"
   "Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB. This endpoint is just a
   convenience to simplify the frontend code. It just returns the standard 'empty' field values response."
   ;; we don't actually care what field-name or field-type are, so they're ignored
@@ -266,7 +266,7 @@
       :human_readable_values (when human-readable-values?
                                (map second value-pairs)))))
 
-(api/defendpoint POST "/:id/values"
+(api/defendpoint-schema POST "/:id/values"
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
@@ -280,7 +280,7 @@
       (create-field-values! field value-pairs)))
   {:status :success})
 
-(api/defendpoint POST "/:id/rescan_values"
+(api/defendpoint-schema POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [id]
@@ -292,7 +292,7 @@
       (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
-(api/defendpoint POST "/:id/discard_values"
+(api/defendpoint-schema POST "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
@@ -376,7 +376,7 @@
        nil))))
 
 
-(api/defendpoint GET "/:id/search/:search-id"
+(api/defendpoint-schema GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value]
@@ -424,7 +424,7 @@
     (.parse (NumberFormat/getInstance) value)
     value))
 
-(api/defendpoint GET "/:id/remapping/:remapped-id"
+(api/defendpoint-schema GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
   [id remapped-id, ^String value]
   (let [field          (api/read-check Field id)
@@ -432,7 +432,7 @@
         value          (parse-query-param-value-for-field field value)]
     (remapped-value field remapped-field value)))
 
-(api/defendpoint GET "/:id/related"
+(api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Field :id id) api/read-check related/related))
