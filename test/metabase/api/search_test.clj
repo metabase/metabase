@@ -106,7 +106,7 @@
                    #(assoc % :collection {:id true, :name true :authority_level nil})
                    (default-search-results)))
 
-(defn- do-with-search-items [search-string {:keys [in-root-collection?]} f]
+(defn- do-with-search-items [search-string in-root-collection? f]
   (let [data-map      (fn [instance-name]
                         {:name (format instance-name search-string)})
         coll-data-map (fn [instance-name collection]
@@ -130,10 +130,10 @@
           :segment    segment}))))
 
 (defmacro ^:private with-search-items-in-root-collection [search-string & body]
-  `(do-with-search-items ~search-string {:in-root-collection? true} (fn [~'_] ~@body)))
+  `(do-with-search-items ~search-string true (fn [~'_] ~@body)))
 
 (defmacro ^:private with-search-items-in-collection [created-items-sym search-string & body]
-  `(do-with-search-items ~search-string nil (fn [~created-items-sym] ~@body)))
+  `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
 (def ^:private ^:dynamic *search-request-results-database-id*
   "Filter out all results from `search-request` that don't have this Database ID. Default: the default H2 `test-data`

@@ -241,7 +241,7 @@
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
-    (let [ ;; Fetch old card data if necessary, and share the data between multiple checks.
+    (let [;; Fetch old card data if necessary, and share the data between multiple checks.
           old-card-info (when (or (contains? changes :dataset)
                                   (get-in changes [:dataset_query :native]))
                           (db/select-one [Card :dataset_query :dataset] :id id))]

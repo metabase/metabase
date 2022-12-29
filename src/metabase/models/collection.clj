@@ -879,7 +879,7 @@
     ;;
     ;; TODO -- Pretty sure snippet perms should be feature flagged by `advanced-permissions` instead
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-           (not (premium-features/enable-enhancements?)))
+             (not (premium-features/enable-enhancements?)))
       #{}
       ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
