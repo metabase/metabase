@@ -3,24 +3,15 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.test :refer :all]
-   [clojure.test :refer :all]
-   [clout.core :as clout]
    [compojure.core :refer [POST]]
+   [malli.util :as mu]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.internal :as internal]
-   [metabase.api.common.internal :as api.internal]
    [metabase.config :as config]
    [metabase.server.middleware.exceptions :as mw.exceptions]
-   [metabase.server.middleware.json :as mw.json]
-   [metabase.server.middleware.misc :as mw.misc]
-   [metabase.server.middleware.security :as mw.security]
    [metabase.util :as u]
-   [ring.adapter.jetty :as jetty]
-   [malli.error :as me]
-   [malli.generator :as mg]
-   [malli.util :as mu])
-  (:import clojure.lang.ExceptionInfo))
+   [ring.adapter.jetty :as jetty]))
 
 (def TestAddress
   [:map

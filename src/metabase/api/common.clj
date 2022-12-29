@@ -244,7 +244,7 @@
                                   (ns-name *ns*) fn-name)))
       (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
 
-(defn malli-parse-defendpoint-args [args]
+(defn- malli-parse-defendpoint-args [args]
   (let [parsed (s/conform ::defendpoint-args args)]
     (when (= parsed ::s/invalid)
       (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))

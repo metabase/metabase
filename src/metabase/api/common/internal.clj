@@ -69,6 +69,20 @@
                             (not= arg 'body))]
              {arg nil})))
 
+(defn- dox-for-plumatic
+  "Look up the docstring for `schema` for use in auto-generated API documentation. In most cases this is defined by
+  wrapping the schema with `with-api-error-message`."
+  [schema route-str]
+  (if-not schema
+    ""
+    (or (su/api-error-message schema)
+        ;; Don't try to i18n this stuff! It's developer-facing only.
+        (when config/is-dev?
+          (log/warn
+           (u/format-color 'red (str "We don't have a nice error message for schema: %s defined at %s\n"
+                                     "Consider wrapping it in `su/with-api-error-message`.")
+                           (u/pprint-to-str schema) (u/add-period route-str)))))))
+
 (defn- malli-dox-for-schema
   "Look up the docstring for `schema` for use in auto-generated API documentation. In most cases this is defined by
   wrapping the schema with `with-api-error-message`."
@@ -113,7 +127,7 @@
   (when (seq param-symb->schema)
     (str "\n\n### PARAMS:\n\n"
          (str/join "\n\n" (for [[param-symb schema] param-symb->schema]
-                            (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-schema schema route-str)))))))
+                            (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-plumatic schema route-str)))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
@@ -139,6 +153,7 @@
         (contains? body '(api/check-superuser)))))
 
 (defn malli-route-dox
+  "Prints a markdown route doc for defendpoint"
   [method route docstr args param->schema body]
   (malli-format-route-dox (endpoint-name method route)
                           (str (u/add-period docstr) (when (contains-superuser-check? body)
