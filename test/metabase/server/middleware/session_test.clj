@@ -1,24 +1,27 @@
 (ns metabase.server.middleware.session-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [environ.core :as env]
-            [java-time :as t]
-            [metabase.api.common :refer [*current-user* *current-user-id*]]
-            [metabase.config :as config]
-            [metabase.core.initialization-status :as init-status]
-            [metabase.db :as mdb]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models :refer [PermissionsGroupMembership Session User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test :as mt]
-            [metabase.util.i18n :as i18n]
-            [ring.mock.request :as ring.mock]
-            [toucan.db :as db])
-  (:import clojure.lang.ExceptionInfo
-           java.util.UUID))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [environ.core :as env]
+   [java-time :as t]
+   [metabase.api.common :refer [*current-user* *current-user-id*]]
+   [metabase.config :as config]
+   [metabase.core.initialization-status :as init-status]
+   [metabase.db :as mdb]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models :refer [PermissionsGroupMembership Session User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test :as mt]
+   [metabase.util.i18n :as i18n]
+   [ring.mock.request :as ring.mock]
+   [toucan.db :as db])
+  (:import
+   (clojure.lang ExceptionInfo)
+   (java.util UUID)))
 
 (use-fixtures :once (fn [thunk]
                       (init-status/set-complete!)

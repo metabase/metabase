@@ -42,6 +42,9 @@
 (defn- comma-separated-numbers [nums]
   (params/->CommaSeparatedNumbers nums))
 
+(defn- multiple-values [& values]
+  (params/->MultipleValues values))
+
 (deftest substitute-test
   (testing "non-parameterized strings should not be substituted"
     (is (= "wow"
@@ -93,6 +96,14 @@
   (testing "comma-separated numbers"
     (is (= "{$in: [1, 2, 3]}"
            (substitute {:id (comma-separated-numbers [1 2 3])}
+                       [(param :id)]))))
+  (testing "multiple-values single (#22486)"
+    (is (= "{$in: [\"33 Taps\"]}"
+           (substitute {:id (multiple-values "33 Taps")}
+                       [(param :id)]))))
+  (testing "multiple-values multi (#22486)"
+    (is (= "{$in: [\"33 Taps\", \"Cha Cha Chicken\"]}"
+           (substitute {:id (multiple-values "33 Taps" "Cha Cha Chicken")}
                        [(param :id)])))))
 
 (defprotocol ^:private ToBSON

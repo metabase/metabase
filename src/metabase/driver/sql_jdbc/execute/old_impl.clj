@@ -4,9 +4,11 @@
 
   All methods and functions in this namespace should be considered deprecated with the exception of `set-parameter`,
   which will be moved to `metabase.driver.sql-jdbc.execute` when this namespace is removed."
-  (:require [metabase.driver :as driver])
-  (:import [java.sql ResultSet ResultSetMetaData Types]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime]))
+  (:require
+   [metabase.driver :as driver])
+  (:import
+   (java.sql ResultSet ResultSetMetaData Types)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime)))
 
 (defmulti set-timezone-sql
   "Return a format string containing a SQL statement to be used to set the timezone for the current transaction.

@@ -14,28 +14,31 @@
   functions for fetching a specific Pulse). At some point in the future, we can clean this namespace up and bring the
   code in line with the rest of the codebase, but for the time being, it probably makes sense to follow the existing
   patterns in this namespace rather than further confuse things."
-  (:require [clojure.string :as str]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.events :as events]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection]
-            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
-            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.events :as events]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard-card
+    :as dashboard-card
+    :refer [DashboardCard]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
+   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 

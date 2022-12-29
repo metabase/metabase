@@ -1,14 +1,15 @@
 (ns metabase.sync.sync-dynamic-test
   "Tests for databases with a so-called 'dynamic' schema, i.e. one that is not hard-coded somewhere.
    A Mongo database is an example of such a DB. "
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Database Table]]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.mock.toucanery :as toucanery]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Database Table]]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.mock.toucanery :as toucanery]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (defn- remove-nonsense
   "Remove fields that aren't really relevant in the output for `tables` and their `fields`. Done for the sake of making

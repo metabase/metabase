@@ -1,22 +1,25 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
-  (:require [clojure.spec.alpha :as s]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [honeysql.helpers :as hh]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.permission-graph :as api.permission-graph]
-            [metabase.models :refer [PermissionsGroupMembership User]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            schema.core
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [honeysql.helpers :as hh]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.permission-graph :as api.permission-graph]
+   [metabase.models :refer [PermissionsGroupMembership User]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group
+    :as perms-group
+    :refer [PermissionsGroup]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |

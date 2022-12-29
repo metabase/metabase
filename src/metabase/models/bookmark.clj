@@ -1,15 +1,16 @@
 (ns metabase.models.bookmark
-  (:require [clojure.string :as str]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.models.app :refer [App]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.string :as str]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.models.app :refer [App]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel CardBookmark :card_bookmark)
 (models/defmodel DashboardBookmark :dashboard_bookmark)

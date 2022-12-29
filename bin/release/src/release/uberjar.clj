@@ -1,11 +1,12 @@
 (ns release.uberjar
   "Code related to building, pushing, and validating metabase.jar"
-  (:require [build :as build]
-            [metabuild-common.core :as u]
-            [release.common :as c]
-            [release.common.hash :as hash]
-            [release.common.http :as common.http]
-            [release.common.upload :as upload]))
+  (:require
+   [build :as build]
+   [metabuild-common.core :as u]
+   [release.common :as c]
+   [release.common.hash :as hash]
+   [release.common.http :as common.http]
+   [release.common.upload :as upload]))
 
 (defn build-uberjar! []
   (u/step "Run bin/build to build uberjar"

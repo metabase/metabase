@@ -1,26 +1,27 @@
 (ns metabase.query-processor-test.nested-queries-test
   "Tests for handling queries with nested expressions."
-  (:require [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Dimension Field Metric Segment Table]]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.query.permissions :as query-perms]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [honeysql.core :as hsql]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models :refer [Dimension Field Metric Segment Table]]
+   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)

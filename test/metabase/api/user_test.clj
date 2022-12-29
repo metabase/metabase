@@ -1,21 +1,28 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
-  (:require [clojure.test :refer :all]
-            [metabase.api.user :as api.user]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card Collection Dashboard LoginHistory
-                                     PermissionsGroup PermissionsGroupMembership User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.user-test :as user-test]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :as hydrate :refer [hydrate]]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.user :as api.user]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            LoginHistory
+            PermissionsGroup
+            PermissionsGroupMembership
+            User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.user-test :as user-test]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :as hydrate :refer [hydrate]]))
 
 (use-fixtures
   :once

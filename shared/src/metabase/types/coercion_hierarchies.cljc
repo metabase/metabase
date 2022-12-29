@@ -1,5 +1,6 @@
 (ns metabase.types.coercion-hierarchies
-  (:require [clojure.set :as set]))
+  (:require
+   [clojure.set :as set]))
 
 ;; these need to be defonce so we don't drop our hierarchies, but defonce doesn't support docstrings:
 ;; https://clojure.atlassian.net/browse/CLJ-1148

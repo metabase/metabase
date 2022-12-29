@@ -1,6 +1,7 @@
 (ns metabase.test-runner.junit
-  (:require [clojure.test :as t]
-            [metabase.test-runner.junit.write :as write]))
+  (:require
+   [clojure.test :as t]
+   [metabase.test-runner.junit.write :as write]))
 
 (defmulti ^:private handle-event!*
   {:arglists '([event])}

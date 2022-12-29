@@ -1,13 +1,16 @@
 (ns metabase.integrations.common
   "Shared functionality used by different integrations."
-  (:require [clojure.data :as data]
-            [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.permissions-group-membership :as perms-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]))
+  (:require
+   [clojure.data :as data]
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.permissions-group-membership
+    :as perms-group-membership
+    :refer [PermissionsGroupMembership]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db]))
 
 (defn sync-group-memberships!
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is

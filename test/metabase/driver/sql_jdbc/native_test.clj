@@ -1,11 +1,12 @@
 (ns metabase.driver.sql-jdbc.native-test
   "Tests for running native queries against SQL databases."
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.query-processor :as qp]
-            [metabase.test.data :as data]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.query-processor :as qp]
+   [metabase.test.data :as data]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (deftest basic-query-test
   (testing "Check that a basic query works"

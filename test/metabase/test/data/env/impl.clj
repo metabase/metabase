@@ -1,7 +1,8 @@
 (ns metabase.test.data.env.impl
-  (:require [clojure.string :as str]
-            [environ.core :refer [env]]
-            [metabase.util :as u]))
+  (:require
+   [clojure.string :as str]
+   [environ.core :refer [env]]
+   [metabase.util :as u]))
 
 (defn- get-drivers-from-env []
   (when (seq (env :engines))

@@ -1,14 +1,17 @@
 (ns metabase.models.permissions-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
-            [metabase.models.table :refer [Table]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.permissions-group
+    :as perms-group
+    :refer [PermissionsGroup]]
+   [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 

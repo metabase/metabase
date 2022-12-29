@@ -6,23 +6,25 @@
   subsequent code simplification and cleanup by @camsaul
 
   CSSBox JavaDoc is here: http://cssbox.sourceforge.net/api/index.html"
-  (:require [clojure.tools.logging :as log]
-            [hiccup.core :refer [html]]
-            [metabase.pulse.render.common :as common]
-            [metabase.pulse.render.style :as style]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s])
-  (:import cz.vutbr.web.css.MediaSpec
-           [java.awt Graphics2D RenderingHints]
-           java.awt.image.BufferedImage
-           [java.io ByteArrayInputStream ByteArrayOutputStream]
-           java.nio.charset.StandardCharsets
-           javax.imageio.ImageIO
-           org.fit.cssbox.awt.GraphicsEngine
-           [org.fit.cssbox.css CSSNorm DOMAnalyzer DOMAnalyzer$Origin]
-           [org.fit.cssbox.io DefaultDOMSource StreamDocumentSource]
-           org.fit.cssbox.layout.Dimension
-           org.w3c.dom.Document))
+  (:require
+   [clojure.tools.logging :as log]
+   [hiccup.core :refer [html]]
+   [metabase.pulse.render.common :as common]
+   [metabase.pulse.render.style :as style]
+   [metabase.util.i18n :refer [trs]]
+   [schema.core :as s])
+  (:import
+   (cz.vutbr.web.css MediaSpec)
+   (java.awt Graphics2D RenderingHints)
+   (java.awt.image BufferedImage)
+   (java.io ByteArrayInputStream ByteArrayOutputStream)
+   (java.nio.charset StandardCharsets)
+   (javax.imageio ImageIO)
+   (org.fit.cssbox.awt GraphicsEngine)
+   (org.fit.cssbox.css CSSNorm DOMAnalyzer DOMAnalyzer$Origin)
+   (org.fit.cssbox.io DefaultDOMSource StreamDocumentSource)
+   (org.fit.cssbox.layout Dimension)
+   (org.w3c.dom Document)))
 
 (defn- write-image!
   [^BufferedImage image, ^String format-name, ^ByteArrayOutputStream output-stream]

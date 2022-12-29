@@ -1,16 +1,17 @@
 (ns metabase.models.action
-  (:require [cheshire.core :as json]
-            [clojure.set :as set]
-            [medley.core :as m]
-            [metabase.models.interface :as mi]
-            [metabase.models.query :as query]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.shared.util.i18n :as i18n]
-            [metabase.util :as u]
-            [metabase.util.encryption :as encryption]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [medley.core :as m]
+   [metabase.models.interface :as mi]
+   [metabase.models.query :as query]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 (def ^:private ^:dynamic *data-apps-enabled*
   "Should only be rebound from tests."

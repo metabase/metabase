@@ -1,11 +1,13 @@
 (ns i18n.create-artifacts.frontend
-  (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [i18n.common :as i18n]
-            [metabuild-common.core :as u])
-  (:import [java.io FileOutputStream OutputStreamWriter]
-           java.nio.charset.StandardCharsets))
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [i18n.common :as i18n]
+   [metabuild-common.core :as u])
+  (:import
+   (java.io FileOutputStream OutputStreamWriter)
+   (java.nio.charset StandardCharsets)))
 
 (defn- frontend-message?
   "Whether this i18n `message` comes from a frontend source file."

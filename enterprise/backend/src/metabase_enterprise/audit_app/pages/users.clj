@@ -1,10 +1,11 @@
 (ns metabase-enterprise.audit-app.pages.users
-  (:require [honeysql.core :as hsql]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.util.honeysql-extensions :as hx]
-            [ring.util.codec :as codec]
-            [schema.core :as s]))
+  (:require
+   [honeysql.core :as hsql]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.util.honeysql-extensions :as hx]
+   [ring.util.codec :as codec]
+   [schema.core :as s]))
 
 ;; DEPRECATED Query that returns data for a two-series timeseries: the number of DAU (a User is considered active for
 ;; purposes of this query if they ran at least one query that day), and total number of queries ran. Broken out by

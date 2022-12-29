@@ -3,10 +3,11 @@
 
   The strategy here is to use s/conform to tag every value that needs to be converted with the conversion strategy,
   then postwalk to actually perform the conversion."
-  (:require [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as gen]
-            [clojure.walk :as walk]
-            [metabase.util :as u]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [clojure.spec.gen.alpha :as gen]
+   [clojure.walk :as walk]
+   [metabase.util :as u]))
 
 (defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"

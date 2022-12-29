@@ -1,12 +1,14 @@
 (ns metabase.util.date-2-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.test :as mt]
-            [metabase.test.util.timezone :as test.tz]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.date-2.common :as u.date.common])
-  (:import java.time.temporal.ChronoField))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.test :as mt]
+   [metabase.test.util.timezone :as test.tz]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.date-2.common :as u.date.common])
+  (:import
+   (java.time.temporal ChronoField)))
 
 (deftest parse-test
   ;; system timezone should not affect the way strings are parsed

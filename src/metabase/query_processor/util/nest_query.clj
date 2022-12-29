@@ -5,15 +5,16 @@
 
    (This namespace is here rather than in the shared MBQL lib because it relies on other QP-land utils like the QP
   refs stuff.)"
-  (:require [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.util :as u]))
+  (:require
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.util :as u]))
 
 (defn- joined-fields [inner-query]
   (m/distinct-by

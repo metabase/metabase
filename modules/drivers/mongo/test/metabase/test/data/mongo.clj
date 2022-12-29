@@ -6,7 +6,7 @@
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
             [metabase.test.data.interface :as tx]
-            [monger.collection :as mc]
+            [monger.collection :as mcoll]
             [monger.core :as mg])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
@@ -62,7 +62,7 @@
         (doseq [[i row] (map-indexed vector rows)]
           (try
             ;; Insert each row
-            (mc/insert mongo-db (name table-name) (into {:_id (inc i)}
+            (mcoll/insert mongo-db (name table-name) (into {:_id (inc i)}
                                                         (zipmap field-names row)))
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))

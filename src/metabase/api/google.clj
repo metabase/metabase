@@ -1,11 +1,12 @@
 (ns metabase.api.google
   "/api/google endpoints"
-  (:require [compojure.core :refer [PUT]]
-            [metabase.api.common :as api]
-            [metabase.integrations.google :as google]
-            [metabase.models.setting :as setting]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [PUT]]
+   [metabase.api.common :as api]
+   [metabase.integrations.google :as google]
+   [metabase.models.setting :as setting]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (api/defendpoint PUT "/settings"
   "Update Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."

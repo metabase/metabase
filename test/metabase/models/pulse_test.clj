@@ -1,21 +1,33 @@
 (ns metabase.models.pulse-test
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Pulse PulseCard PulseChannel
-                                     PulseChannelRecipient Table User]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.pulse :as pulse]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.test :as mt]
-            [metabase.test.mock.util :refer [pulse-channel-defaults]]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt])
-  (:import java.time.LocalDateTime))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCard
+            Database
+            Pulse
+            PulseCard
+            PulseChannel
+            PulseChannelRecipient
+            Table
+            User]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.pulse :as pulse]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.test :as mt]
+   [metabase.test.mock.util :refer [pulse-channel-defaults]]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.util.test :as tt])
+  (:import
+   (java.time LocalDateTime)))
 
 (defn- user-details
   [username]

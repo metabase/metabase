@@ -1,18 +1,19 @@
 (ns metabase.models.setting-test
-  (:require [clojure.test :refer :all]
-            [environ.core :as env]
-            [medley.core :as m]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.setting :as setting :refer [defsetting Setting]]
-            [metabase.models.setting.cache :as setting.cache]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [metabase.util.encryption-test :as encryption-test]
-            [metabase.util.i18n :as i18n :refer [deferred-tru]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [environ.core :as env]
+   [medley.core :as m]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.setting :as setting :refer [defsetting Setting]]
+   [metabase.models.setting.cache :as setting.cache]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [metabase.util.encryption-test :as encryption-test]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -855,8 +856,9 @@
     (let [current-ns (ns-name *ns*)]
       (try
         (ns nested-setting-test
-          (:require [metabase.models.setting :refer [defsetting]]
-                    [metabase.util.i18n :as i18n :refer [deferred-tru]]))
+          (:require
+           [metabase.models.setting :refer [defsetting]]
+           [metabase.util.i18n :as i18n :refer [deferred-tru]]))
         (defsetting foo (deferred-tru "A testing setting") :visibility :public)
         (catch Exception e
           (is (schema= {:existing-setting

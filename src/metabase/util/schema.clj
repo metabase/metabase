@@ -1,20 +1,21 @@
 (ns metabase.util.schema
   "Various schemas that are useful throughout the app."
   (:refer-clojure :exclude [distinct])
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.types :as types]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as i18n :refer [deferred-tru]]
-            [metabase.util.password :as u.password]
-            [schema.core :as s]
-            [schema.macros :as s.macros]
-            [schema.utils :as s.utils]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.types :as types]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.password :as u.password]
+   [schema.core :as s]
+   [schema.macros :as s.macros]
+   [schema.utils :as s.utils]))
 
 ;; So the `:type/` hierarchy is loaded.
 (comment types/keep-me)

@@ -1,17 +1,19 @@
 (ns metabase.models.pulse-channel-test
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
-            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.user :refer [User]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import java.time.LocalDateTime))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
+   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.user :refer [User]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (java.time LocalDateTime)))
 
 ;; Test out our predicate functions
 

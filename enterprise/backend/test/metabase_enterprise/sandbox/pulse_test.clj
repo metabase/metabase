@@ -1,16 +1,18 @@
 (ns metabase-enterprise.sandbox.pulse-test
-  (:require [clojure.data.csv :as csv]
-            [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.email.messages :as messages]
-            [metabase.models :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
-            [metabase.models.pulse :as pulse]
-            metabase.pulse
-            [metabase.pulse.test-util :as pulse.tu]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.email.messages :as messages]
+   [metabase.models
+    :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models.pulse :as pulse]
+   [metabase.pulse]
+   [metabase.pulse.test-util :as pulse.tu]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest sandboxed-pulse-test
   (testing "Pulses should get sent with the row-level restrictions of the User that created them."

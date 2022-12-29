@@ -1,7 +1,8 @@
 (ns metabase.server-test
-  (:require [clojure.test :refer :all]
-            [metabase.config :as config]
-            [metabase.server :as server]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.config :as config]
+   [metabase.server :as server]))
 
 (deftest config-test
   (testing "Make sure our Jetty config functions work as expected/we don't accidentally break things (#9333)"

@@ -1,17 +1,18 @@
 (ns metabase.driver.h2-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver :as driver]
-            [metabase.driver.h2 :as h2]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models :refer [Database]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [honeysql.core :as hsql]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models :refer [Database]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]))
 
 (deftest parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
