@@ -1,14 +1,15 @@
 (ns metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail
   "Common queries used by both Card (Question) and Dashboard detail pages."
-  (:require [honeysql.core :as hsql]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as mi]
-            [metabase.models.revision :as revision]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [honeysql.core :as hsql]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
+   [metabase.models.revision :as revision]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ^:private ModelName
   (s/enum "card" "dashboard"))
@@ -74,7 +75,7 @@
                      :where    [:= :card_id card-id]
                      :group-by [grouped-timestamp]
                      :order-by [[grouped-timestamp :asc]]}
-                    (common/add-45-days-clause :started_at)) ))})
+                    (common/add-45-days-clause :started_at))))})
 
 (s/defn revision-history
   "Get a revision history table for a Card or Dashboard."

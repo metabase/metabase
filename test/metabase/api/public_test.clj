@@ -1,31 +1,34 @@
 (ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase.api.dashboard-test :as api.dashboard-test]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.api.public :as api.public]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card
-                                     Collection
-                                     Dashboard
-                                     DashboardCard
-                                     DashboardCardSeries
-                                     Dimension
-                                     Field
-                                     FieldValues]]
-            [metabase.models.interface :as mi]
-            [metabase.models.params.chain-filter-test :as chain-filter-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.io.ByteArrayInputStream
-           java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.api.public :as api.public]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCard
+            DashboardCardSeries
+            Dimension
+            Field
+            FieldValues]]
+   [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.io ByteArrayInputStream)
+   (java.util UUID)))
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
@@ -1012,7 +1015,13 @@
              (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
                             :value "10"))))))
 
-;;; --------------------------------------------- Chain filter endpoints ---------------------------------------------
+;;; --------------------------------------------- Param values endpoints ---------------------------------------------
+
+(defn- chain-filter-values-url [uuid param-key]
+  (format "public/dashboard/%s/params/%s/values" uuid param-key))
+
+(defn- chain-filter-search-url [uuid param-key query]
+  (format "public/dashboard/%s/params/%s/search/%s" uuid param-key query))
 
 (deftest chain-filter-test
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -1021,15 +1030,15 @@
         (is (= true
                (db/update! Dashboard (u/the-id dashboard) :public_uuid uuid)))
         (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
-          (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
-            (is (= {:values          [2 3 4 5 6]
-                    :has_more_values false}
-                   (chain-filter-test/take-n-values 5 (client/client :get 200 url))))))
+          (is (= {:values          [2 3 4 5 6]
+                  :has_more_values false}
+                 (->> (client/client :get 200 (chain-filter-values-url uuid (:category-id param-keys)))
+                      (chain-filter-test/take-n-values 5)))))
         (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
-          (let [url (format "public/dashboard/%s/params/%s/search/food" uuid (:category-name param-keys))]
-            (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
-                    :has_more_values false}
-                   (chain-filter-test/take-n-values 3 (client/client :get 200 url))))))))))
+          (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                  :has_more_values false}
+                 (->> (client/client :get 200 (chain-filter-search-url uuid (:category-name param-keys) "food"))
+                      (chain-filter-test/take-n-values 3)))))))))
 
 (deftest chain-filter-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
@@ -1041,17 +1050,34 @@
             (is (= true
                    (db/update! Dashboard (u/the-id dashboard) :public_uuid uuid)))
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
-              (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
-                (is (= {:values          [2 3 4 5 6]
-                        :has_more_values false}
-                       (chain-filter-test/take-n-values 5 (mt/user-http-request :rasta :get 200 url))))))
+              (is (= {:values          [2 3 4 5 6]
+                      :has_more_values false}
+                     (->> (mt/user-http-request :rasta :get 200 (chain-filter-values-url uuid (:category-id param-keys)))
+                          (chain-filter-test/take-n-values 5)))))
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix"
-              (let [url (format "public/dashboard/%s/params/%s/search/food" uuid (:category-name param-keys))]
-                (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
-                        :has_more_values false}
-                       (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))))))
+              (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                      :has_more_values false}
+                     (->> (mt/user-http-request :rasta :get 200 (chain-filter-search-url uuid (:category-name param-keys) "food"))
+                          (chain-filter-test/take-n-values 3)))))))))))
 
-;; Pivot tables
+(deftest params-with-static-list-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+      (let [uuid (str (UUID/randomUUID))]
+        (is (= true
+               (db/update! Dashboard (u/the-id dashboard) :public_uuid uuid)))
+        (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
+          (is (= {:values          ["African" "American" "Asian"]
+                  :has_more_values false}
+                 (->> (client/client :get 200 (chain-filter-values-url uuid (:static-category param-keys)))
+                      (chain-filter-test/take-n-values 5)))))
+        (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
+          (is (= {:values          [["African" "Af"]]
+                  :has_more_values false}
+                 (->> (client/client :get 200 (chain-filter-search-url uuid (:static-category-label param-keys) "af"))
+                      (chain-filter-test/take-n-values 3)))))))))
+
+;;; --------------------------------------------- Pivot tables ---------------------------------------------
 
 (deftest pivot-public-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)

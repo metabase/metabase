@@ -1,20 +1,23 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.query.permissions :as query-perms]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [metabase.api.common
+    :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.resolve-referenced
+    :as qp.resolve-referenced]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:dynamic *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use

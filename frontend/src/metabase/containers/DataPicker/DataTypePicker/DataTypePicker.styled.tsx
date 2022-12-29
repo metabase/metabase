@@ -7,8 +7,6 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const List = styled(SelectList)`
-  padding: ${space(0)} ${space(1)} 12px ${space(1)};
-
   ${SelectList.BaseItem.Root} {
     &:hover {
       background-color: ${color("brand")};

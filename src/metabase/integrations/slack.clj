@@ -1,18 +1,19 @@
 (ns metabase.integrations.slack
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.email.messages :as messages]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.email.messages :as messages]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (defsetting slack-token
   (deferred-tru

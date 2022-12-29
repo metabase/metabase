@@ -3,6 +3,7 @@ import {
   Card,
   UnsavedCard,
   VisualizationSettings,
+  SeriesOrderSetting,
 } from "metabase-types/api";
 import { createMockStructuredDatasetQuery } from "./query";
 
@@ -34,6 +35,18 @@ export const createMockUnsavedCard = (
 export const createMockVisualizationSettings = (
   opts?: Partial<VisualizationSettings>,
 ): VisualizationSettings => ({
+  ...opts,
+});
+
+export const createMockSeriesOrderSetting = ({
+  name = "",
+  key,
+  enabled = true,
+  ...opts
+}: Partial<SeriesOrderSetting>): SeriesOrderSetting => ({
+  name,
+  key: key || name,
+  enabled,
   ...opts,
 });
 

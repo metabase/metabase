@@ -1,6 +1,7 @@
 (ns metabase.linters.common
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.string :as str]))
+  (:require
+   [clojure.java.classpath :as classpath]
+   [clojure.string :as str]))
 
 (defn source-paths
   "Find all the Metabase Clojure source and test paths to lint."

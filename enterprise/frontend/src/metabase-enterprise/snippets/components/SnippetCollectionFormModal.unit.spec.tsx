@@ -1,6 +1,6 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 
 import {
   act,
@@ -26,27 +26,35 @@ type SetupOpts = {
 };
 
 async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
-  xhrMock.get("/api/collection/root?namespace=snippets", {
-    body: JSON.stringify(TOP_SNIPPETS_FOLDER),
-  });
-
-  xhrMock.get("/api/collection?namespace=snippets", {
-    body: JSON.stringify([TOP_SNIPPETS_FOLDER]),
-  });
-
-  xhrMock.post("/api/collection", (req, res) =>
-    res.status(200).body(createMockCollection(req.body())),
-  );
-
   if (folder.id) {
-    xhrMock.get(`/api/collection/${folder.id}?namespace=snippets`, (req, res) =>
-      res.status(200).body(folder),
-    );
+    nock(location.origin)
+      .get(`/api/collection/${folder.id}?namespace=snippets`)
+      .reply(200, folder);
 
-    xhrMock.put(`/api/collection/${folder.id}`, (req, res) =>
-      res.status(200).body(createMockCollection(req.body())),
-    );
+    nock(location.origin)
+      .put(`/api/collection/${folder.id}`)
+      .reply(200, (uri, body) => {
+        if (typeof body === "object") {
+          return createMockCollection(body);
+        }
+      });
   }
+
+  nock(/./)
+    .get("/api/collection/root?namespace=snippets")
+    .reply(200, TOP_SNIPPETS_FOLDER);
+
+  nock(location.origin)
+    .get("/api/collection?namespace=snippets")
+    .reply(200, [TOP_SNIPPETS_FOLDER]);
+
+  nock(location.origin)
+    .post("/api/collection")
+    .reply(200, (uri, body) => {
+      if (typeof body === "object") {
+        return createMockCollection(body);
+      }
+    });
 
   renderWithProviders(
     <SnippetCollectionFormModal
@@ -76,12 +84,8 @@ const LABEL = {
 };
 
 describe("SnippetCollectionFormModal", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
   });
 
   describe("new folder", () => {

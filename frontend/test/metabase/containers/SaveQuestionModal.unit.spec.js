@@ -1,6 +1,6 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import mock from "xhr-mock";
+import nock from "nock";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
@@ -150,17 +150,14 @@ describe("SaveQuestionModal", () => {
   ];
 
   beforeEach(() => {
-    mock.setup();
-    mock.get("/api/collection", {
-      body: JSON.stringify(TEST_COLLECTIONS),
-    });
-    mock.get("/api/collection/root", {
-      body: JSON.stringify(TEST_COLLECTIONS)[0],
-    });
+    nock(location.origin).get("/api/collection").reply(200, TEST_COLLECTIONS);
+    nock(location.origin)
+      .get("/api/collection/root")
+      .reply(200, TEST_COLLECTIONS);
   });
 
   afterEach(() => {
-    mock.teardown();
+    nock.cleanAll();
   });
 
   describe("new question", () => {

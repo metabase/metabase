@@ -1,46 +1,53 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [medley.core :as m]
-            [metabase.actions.execution :as actions.execution]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.card :as api.card]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.dataset :as api.dataset]
-            [metabase.automagic-dashboards.populate :as populate]
-            [metabase.events :as events]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.action :as action]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection]
-            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.params :as params]
-            [metabase.models.params.chain-filter :as chain-filter]
-            [metabase.models.query :as query :refer [Query]]
-            [metabase.models.query.permissions :as query-perms]
-            [metabase.models.revision :as revision]
-            [metabase.models.revision.last-edit :as last-edit]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor.dashboard :as qp.dashboard]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.related :as related]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [medley.core :as m]
+   [metabase.actions.execution :as actions.execution]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.card :as api.card]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.automagic-dashboards.populate :as populate]
+   [metabase.events :as events]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card
+    :as dashboard-card
+    :refer [DashboardCard]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.params :as params]
+   [metabase.models.params.card-values :as params.card-values]
+   [metabase.models.params.chain-filter :as chain-filter]
+   [metabase.models.query :as query :refer [Query]]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.models.revision :as revision]
+   [metabase.models.revision.last-edit :as last-edit]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.related :as related]
+   [metabase.search.util :as search]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (java.util UUID)))
 
 (defn- dashboards-list [filter-option]
   (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
@@ -707,45 +714,91 @@
     param-key                   :- su/NonBlankString
     constraint-param-key->value :- su/Map
     query                       :- (s/maybe su/NonBlankString)]
-   (let [dashboard (hydrate dashboard :resolved-params)]
-     (when-not (get (:resolved-params dashboard) param-key)
+   (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
+         field-ids   (param-key->field-ids dashboard param-key)]
+     (when (empty? field-ids)
+       (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                       {:param       (get (:resolved-params dashboard) param-key)
+                        :status-code 400})))
+     ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
+     ;; separate query for each Field (for parameters that are mapped to more than one Field)
+     (try
+       (let [results (map (if (seq query)
+                            #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                            #(chain-filter/chain-filter % constraints :limit result-limit))
+                          field-ids)
+             values (distinct (mapcat :values results))
+             has_more_values (boolean (some true? (map :has_more_values results)))]
+         ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+         {:values          (if (sequential? (first values))
+                             (sort-by second values)
+                             (sort values))
+          :has_more_values has_more_values})
+       (catch clojure.lang.ExceptionInfo e
+         (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+           (api/throw-403 e)
+           (throw e)))))))
+
+(defn- query-matches
+  "Filter the values according to the `search-term`.
+
+  Values could have 2 shapes
+  - [value1, value2]
+  - [[value1, label1], [value2, label2]] - we search using label in this case"
+  [query values]
+  (let [normalized-query (search/normalize query)]
+    (filter #(str/includes? (search/normalize (if (string? %)
+                                                %
+                                                ;; search by label
+                                                (second %)))
+                            normalized-query) values)))
+
+(defn- static-parameter-values
+  [{values-source-options :values_source_config :as _param} query]
+  (when-let [values (:values values-source-options)]
+    {:values          (if query
+                        (query-matches query values)
+                        values)
+     :has_more_values false}))
+
+(defn- card-parameter-values
+  [{config :values_source_config :as _param} query]
+  (params.card-values/values-from-card (:card_id config) (:value_field config) query))
+
+(s/defn param-values
+  "Fetch values for a parameter.
+
+  The source of values could be:
+  - static-list: user defined values list
+  - card: values is result of running a card
+  - nil: chain-filter"
+  ([dashboard param-key query-params]
+   (param-values dashboard param-key query-params nil))
+
+  ([dashboard                   :- su/Map
+    param-key                   :- su/NonBlankString
+    constraint-param-key->value :- su/Map
+    query                       :- (s/maybe su/NonBlankString)]
+   (let [dashboard (hydrate dashboard :resolved-params)
+         param     (get (:resolved-params dashboard) param-key)]
+     (when-not param
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
-     (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
-           field-ids   (param-key->field-ids dashboard param-key)]
-      (when (empty? field-ids)
-        (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                        {:param       (get (:resolved-params dashboard) param-key)
-                         :status-code 400})))
-       ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
-       ;; separate query for each Field (for parameters that are mapped to more than one Field)
-      (try
-        (let [results (map (if (seq query)
-                               #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                               #(chain-filter/chain-filter % constraints :limit result-limit))
-                           field-ids)
-              values (distinct (mapcat :values results))
-              has_more_values (boolean (some true? (map :has_more_values results)))]
-          ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-          {:values          (if (sequential? (first values))
-                              (sort-by second values)
-                              (sort values))
-           :has_more_values has_more_values})
-        (catch clojure.lang.ExceptionInfo e
-          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-            (api/throw-403 e)
-            (throw e))))))))
+     (case (:values_source_type param)
+       "static-list" (static-parameter-values param query)
+       "card"        (card-parameter-values param query)
+       nil           (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
-  "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
-  parameters like `other-parameter=value` e.g.
+  "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
+  restrict these values by passing query parameters like `other-parameter=value` e.g.
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
   [id param-key :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (chain-filter dashboard param-key query-params)))
+    (param-values dashboard param-key query-params)))
 
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
@@ -758,7 +811,7 @@
   Currently limited to first 1000 results."
   [id param-key query :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (chain-filter dashboard param-key query-params query)))
+    (param-values dashboard param-key query-params query)))
 
 (api/defendpoint GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in

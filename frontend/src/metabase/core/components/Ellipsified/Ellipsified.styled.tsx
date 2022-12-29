@@ -16,7 +16,7 @@ const clampCss = (props: EllipsifiedRootProps) => css`
 
 interface EllipsifiedRootProps {
   lines?: number;
-  "data-testId"?: string;
+  "data-testid"?: string;
 }
 
 export const EllipsifiedRoot = styled.div<EllipsifiedRootProps>`

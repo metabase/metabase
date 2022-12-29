@@ -1,16 +1,19 @@
 (ns metabase.integrations.ldap.default-implementation
   "Default LDAP integration. This integration is used by OSS or for EE if enterprise features are not enabled."
-  (:require [clj-ldap.client :as ldap]
-            [clojure.string :as str]
-            [metabase.integrations.common :as integrations.common]
-            [metabase.integrations.ldap.interface :as i]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.premium-features :refer [defenterprise-schema]]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import [com.unboundid.ldap.sdk DN Filter LDAPConnectionPool]))
+  (:require
+   [clj-ldap.client :as ldap]
+   [clojure.string :as str]
+   [metabase.integrations.common :as integrations.common]
+   [metabase.integrations.ldap.interface :as i]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings.premium-features
+    :refer [defenterprise-schema]]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (com.unboundid.ldap.sdk DN Filter LDAPConnectionPool)))
 
 ;;; --------------------------------------------------- find-user ----------------------------------------------------
 

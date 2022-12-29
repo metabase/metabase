@@ -1,16 +1,17 @@
 (ns metabase.automagic-dashboards.populate
   "Create and save models that make up automagic dashboards."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.automagic-dashboards.filters :as filters]
-            [metabase.models.card :as card]
-            [metabase.models.collection :as collection]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.automagic-dashboards.filters :as filters]
+   [metabase.models.card :as card]
+   [metabase.models.collection :as collection]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db]))
 
 (def ^Long grid-width
   "Total grid width."

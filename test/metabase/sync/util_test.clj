@@ -1,20 +1,21 @@
 (ns metabase.sync.util-test
   "Tests for the utility functions shared by all parts of sync, such as the duplicate ops guard."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.models.database :as database :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.task-history :refer [TaskHistory]]
-            [metabase.sync :as sync]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.sync.util :as sync-util]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.task-history :refer [TaskHistory]]
+   [metabase.sync :as sync]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.util :as sync-util]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Duplicate Sync Prevention                                            |

@@ -1,19 +1,20 @@
 (ns metabase.api.action
   "`/api/action/` endpoints."
-  (:require [compojure.core :as compojure :refer [POST]]
-            [metabase.actions :as actions]
-            [metabase.actions.http-action :as http-action]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.models :refer [HTTPAction]]
-            [metabase.models.action :as action]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.setting :as setting]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :as compojure :refer [POST]]
+   [metabase.actions :as actions]
+   [metabase.actions.http-action :as http-action]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.models :refer [HTTPAction]]
+   [metabase.models.action :as action]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.setting :as setting]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private JsonQuerySchema
   (su/with-api-error-message

@@ -1,8 +1,10 @@
 (ns metabase.util.i18n.impl-test
-  (:require [clojure.test :refer :all]
-            [metabase.test :as mt]
-            [metabase.util.i18n.impl :as i18n.impl])
-  (:import java.util.Locale))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.test :as mt]
+   [metabase.util.i18n.impl :as i18n.impl])
+  (:import
+   (java.util Locale)))
 
 (deftest ^:parallel normalized-locale-string-test
   (doseq [[s expected] {"en"      "en"

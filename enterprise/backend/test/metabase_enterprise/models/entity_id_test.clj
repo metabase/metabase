@@ -6,9 +6,9 @@
   explicitly excluded, or has the :entity_id property."
   (:require
    [clojure.test :refer :all]
-   metabase.db.data-migrations
-   metabase.models
-   metabase.models.revision-test
+   [metabase.db.data-migrations]
+   [metabase.models]
+   [metabase.models.revision-test]
    [metabase.models.serialization.hash :as serdes.hash]
    [toucan.models :refer [IModel]]))
 
@@ -47,6 +47,7 @@
     metabase.models.login_history.LoginHistoryInstance
     metabase.models.metric_important_field.MetricImportantFieldInstance
     metabase.models.moderation_review.ModerationReviewInstance
+    metabase.models.parameter_card.ParameterCardInstance
     metabase.models.permissions.PermissionsInstance
     metabase.models.permissions_group.PermissionsGroupInstance
     metabase.models.permissions_group_membership.PermissionsGroupMembershipInstance

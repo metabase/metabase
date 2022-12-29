@@ -27,7 +27,7 @@ export const CodeText = styled.code`
   font-size: 0.75rem;
   line-height: 1.125rem;
   white-space: pre;
-  word-break: break-all;
+  overflow-wrap: break-word;
 `;
 
 interface CodeCopyButtonProps {

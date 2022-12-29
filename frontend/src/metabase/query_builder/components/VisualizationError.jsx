@@ -16,6 +16,7 @@ import {
   QueryErrorTitle,
   QueryErrorLink,
   QueryErrorMessage,
+  QueryErrorContent,
 } from "./VisualizationError.styled";
 
 const EmailAdmin = () => {
@@ -146,16 +147,18 @@ class VisualizationError extends Component {
       }
       return (
         <QueryError className={className}>
-          <QueryErrorHeader>
-            <QueryErrorIcon name="warning" />
-            <QueryErrorTitle>{t`An error occurred in your query`}</QueryErrorTitle>
-          </QueryErrorHeader>
-          <QueryErrorMessage>{processedError}</QueryErrorMessage>
-          <QueryErrorLink
-            href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
-          >
-            {t`Learn how to debug SQL errors`}
-          </QueryErrorLink>
+          <QueryErrorContent>
+            <QueryErrorHeader>
+              <QueryErrorIcon name="warning" />
+              <QueryErrorTitle>{t`An error occurred in your query`}</QueryErrorTitle>
+            </QueryErrorHeader>
+            <QueryErrorMessage>{processedError}</QueryErrorMessage>
+            <QueryErrorLink
+              href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
+            >
+              {t`Learn how to debug SQL errors`}
+            </QueryErrorLink>
+          </QueryErrorContent>
         </QueryError>
       );
     } else {

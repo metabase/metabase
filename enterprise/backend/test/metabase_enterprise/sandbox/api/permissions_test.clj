@@ -1,18 +1,19 @@
 (ns metabase-enterprise.sandbox.api.permissions-test
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.models :refer [Card Database PermissionsGroup
-                                     PersistedInfo Table]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.persisted-info :as persisted-info]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase.models :refer [Card Database PermissionsGroup
+                            PersistedInfo Table]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.persisted-info :as persisted-info]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn- db-graph-keypath [group]
   [:groups (u/the-id group) (mt/id) :data])

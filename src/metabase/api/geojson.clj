@@ -1,18 +1,20 @@
 (ns metabase.api.geojson
-  (:require [clj-http.client :as http]
-            [clojure.java.io :as io]
-            [compojure.core :refer [GET]]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [ring.util.response :as response]
-            [schema.core :as s])
-  (:import java.io.BufferedReader
-           [java.net InetAddress URL]
-           org.apache.commons.io.input.ReaderInputStream))
+  (:require
+   [clj-http.client :as http]
+   [clojure.java.io :as io]
+   [compojure.core :refer [GET]]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [ring.util.response :as response]
+   [schema.core :as s])
+  (:import
+   (java.io BufferedReader)
+   (java.net InetAddress URL)
+   (org.apache.commons.io.input ReaderInputStream)))
 
 (defsetting custom-geojson-enabled
   (deferred-tru "Whether or not the use of custom GeoJSON is enabled.")

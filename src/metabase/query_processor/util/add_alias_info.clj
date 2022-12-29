@@ -44,13 +44,14 @@
 
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
-  (:require [clojure.string :as str]
-            [clojure.walk :as walk]
-            [metabase.driver :as driver]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util.i18n :refer [trs tru]]))
+  (:require
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [metabase.driver :as driver]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.i18n :refer [trs tru]]))
 
 (defn prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for

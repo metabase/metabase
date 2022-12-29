@@ -66,12 +66,8 @@ export const HeaderContainer = styled.header`
   position: relative;
   z-index: 2;
 
-  ${({ isDataApp }) =>
-    !isDataApp &&
-    css`
-      background-color: ${color("bg-white")};
-      border-bottom: 1px solid ${color("border")};
-    `}
+  background-color: ${color("bg-white")};
+  border-bottom: 1px solid ${color("border")};
 
   ${({ isFullscreen }) =>
     isFullscreen &&

@@ -954,7 +954,7 @@ export class UnconnectedDataSelector extends Component {
     });
 
   handleCollectionDatasetSelect = async dataset => {
-    const tableId = getQuestionVirtualTableId(dataset);
+    const tableId = getQuestionVirtualTableId(dataset.id);
     await this.props.fetchFields(tableId);
     if (this.props.setSourceTableFn) {
       this.props.setSourceTableFn(tableId);

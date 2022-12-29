@@ -1,18 +1,20 @@
 (ns metabase.plugins
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.java.classpath :as classpath]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [metabase.config :as config]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.plugins.initialize :as plugins.init]
-            [metabase.util.files :as u.files]
-            [metabase.util.i18n :refer [trs]]
-            [yaml.core :as yaml])
-  (:import java.io.File
-           [java.nio.file Files Path]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.java.classpath :as classpath]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [environ.core :as env]
+   [metabase.config :as config]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.plugins.initialize :as plugins.init]
+   [metabase.util.files :as u.files]
+   [metabase.util.i18n :refer [trs]]
+   [yaml.core :as yaml])
+  (:import
+   (java.io File)
+   (java.nio.file Files Path)))
 
 (defn- plugins-dir-filename ^String []
   (or (env/env :mb-plugins-dir)

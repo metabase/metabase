@@ -1,21 +1,22 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.table :as api.table]
-            [metabase.driver.util :as driver.u]
-            [metabase.http-client :as client]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Card Database Field FieldValues Table]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.table :as table]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.table :as api.table]
+   [metabase.driver.util :as driver.u]
+   [metabase.http-client :as client]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Card Database Field FieldValues Table]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.table :as table]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 ;; ## /api/org/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same

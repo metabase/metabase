@@ -4,7 +4,7 @@ import Toggle from "metabase/core/components/Toggle";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { Field, Table } from "metabase-types/api";
+import { Field, FieldId, ParameterId, Table } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
 import useFilterFields from "./use-filter-fields";
@@ -27,10 +27,7 @@ import {
 export interface ParameterLinkedFiltersProps {
   parameter: UiParameter;
   otherParameters: UiParameter[];
-  onChangeFilteringParameters: (
-    parameterId: string,
-    filteringParameters: string[],
-  ) => void;
+  onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
   onShowAddParameterPopover: () => void;
 }
 
@@ -40,8 +37,7 @@ const ParameterLinkedFilters = ({
   onChangeFilteringParameters,
   onShowAddParameterPopover,
 }: ParameterLinkedFiltersProps): JSX.Element => {
-  const currentParameterId = parameter.id;
-  const [expandedParameterId, setExpandedParameterId] = useState<string>();
+  const [expandedParameterId, setExpandedParameterId] = useState<ParameterId>();
 
   const filteringParameters = useMemo(
     () => parameter.filteringParameters ?? [],
@@ -59,9 +55,9 @@ const ParameterLinkedFilters = ({
         ? filteringParameters.concat(otherParameter.id)
         : filteringParameters.filter(id => id !== otherParameter.id);
 
-      onChangeFilteringParameters(currentParameterId, newParameters);
+      onChangeFilteringParameters(newParameters);
     },
-    [currentParameterId, filteringParameters, onChangeFilteringParameters],
+    [filteringParameters, onChangeFilteringParameters],
   );
 
   const handleExpandedChange = useCallback(
@@ -192,7 +188,7 @@ const LinkedFieldList = ({
 };
 
 interface LinkedFieldProps {
-  fieldId: string;
+  fieldId: FieldId;
 }
 
 const LinkedField = ({ fieldId }: LinkedFieldProps) => {

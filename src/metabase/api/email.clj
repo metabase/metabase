@@ -1,17 +1,18 @@
 (ns metabase.api.email
   "/api/email endpoints"
-  (:require [clojure.data :as data]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE POST PUT]]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.email :as email]
-            [metabase.models.setting :as setting]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]))
+  (:require
+   [clojure.data :as data]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [DELETE POST PUT]]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.email :as email]
+   [metabase.models.setting :as setting]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]))
 
 (def ^:private mb-to-smtp-settings
   {:email-smtp-host     :host

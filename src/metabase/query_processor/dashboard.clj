@@ -1,22 +1,23 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.driver.common.parameters.operators :as params.ops]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.query-processor.card :as qp.card]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn- check-card-and-dashcard-are-in-dashboard
   "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in the DashboardCard with

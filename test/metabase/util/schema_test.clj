@@ -1,12 +1,13 @@
 (ns metabase.util.schema-test
   "Tests for utility schemas and various API helper functions."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [compojure.core :refer [POST]]
-            [metabase.api.common :as api]
-            [metabase.test :as mt]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [compojure.core :refer [POST]]
+   [metabase.api.common :as api]
+   [metabase.test :as mt]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (deftest ^:parallel generate-api-error-message-test
   (testing "check that the API error message generation is working as intended"

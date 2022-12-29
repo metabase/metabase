@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.limit
   "Middleware that handles limiting the maximum number of rows returned by a query."
-  (:require [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.query-processor.util :as qp.util]))
+  (:require
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.util :as qp.util]))
 
 ;;;; Pre-processing
 

@@ -1,28 +1,32 @@
 (ns metabase.models.dashboard-test
-  (:require [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.automagic-dashboards.core :as magic]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.revision :as revision]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :as user]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
-  (:import java.time.LocalDateTime))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.automagic-dashboards.core :as magic]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card
+    :as dashboard-card
+    :refer [DashboardCard]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.revision :as revision]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :as user]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt])
+  (:import
+   (java.time LocalDateTime)))
 
 ;; ## Dashboard Revisions
 
@@ -209,6 +213,46 @@
         (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
         (is (not (nil? (db/select-one PulseCard :card_id new-card-id))))))))
 
+(deftest parameter-card-test
+  (let [default-params {:name       "Category Name"
+                        :slug       "category_name"
+                        :id         "_CATEGORY_NAME_"
+                        :type       "category"}]
+    (testing "A new dashboard creates a new ParameterCard"
+      (tt/with-temp* [Card      [{card-id :id}]
+                      Dashboard [{dashboard-id :id}
+                                 {:parameters [(merge default-params
+                                                      {:values_source_type    "card"
+                                                       :values_source_config {:card_id card-id}})]}]]
+        (is (=? {:card_id                   card-id
+                 :parameterized_object_type :dashboard
+                 :parameterized_object_id   dashboard-id
+                 :parameter_id              "_CATEGORY_NAME_"}
+                (db/select-one 'ParameterCard :card_id card-id)))))
+
+    (testing "Adding a card_id creates a new ParameterCard"
+      (tt/with-temp* [Card      [{card-id :id}]
+                      Dashboard [{dashboard-id :id}
+                                 {:parameters [default-params]}]]
+        (is (nil? (db/select-one 'ParameterCard :card_id card-id)))
+        (db/update! Dashboard dashboard-id :parameters [(merge default-params
+                                                               {:values_source_type    "card"
+                                                                :values_source_config {:card_id card-id}})])
+        (is (=? {:card_id                   card-id
+                 :parameterized_object_type :dashboard
+                 :parameterized_object_id   dashboard-id
+                 :parameter_id              "_CATEGORY_NAME_"}
+                (db/select-one 'ParameterCard :card_id card-id)))))
+
+    (testing "Removing a card_id deletes old ParameterCards"
+      (tt/with-temp* [Card      [{card-id :id}]
+                      Dashboard [{dashboard-id :id}
+                                 {:parameters [(merge default-params
+                                                      {:values_source_type    "card"
+                                                       :values_source_config {:card_id card-id}})]}]]
+        ;; same setup as earlier test, we know the ParameterCard exists right now
+        (db/delete! Dashboard :id dashboard-id)
+        (is (nil? (db/select-one 'ParameterCard :card_id card-id)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |

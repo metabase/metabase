@@ -1,12 +1,13 @@
 (ns metabase.models.pulse-card
-  (:require [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel PulseCard :pulse_card)
 
@@ -77,5 +78,5 @@
   (let [base [[{:model "Card" :id card_id}]
               [{:model "Pulse" :id pulse_id}]]]
     (if-let [[dash-id _] dashboard_card_id]
-      (conj base [{:model "Dashboard" :id dash-id} ])
+      (conj base [{:model "Dashboard" :id dash-id}])
       base)))

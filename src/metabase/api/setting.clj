@@ -1,10 +1,11 @@
 (ns metabase.api.setting
   "/api/setting endpoints"
-  (:require [compojure.core :refer [GET PUT]]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.models.setting :as setting]
-            [metabase.util.schema :as su]))
+  (:require
+   [compojure.core :refer [GET PUT]]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.models.setting :as setting]
+   [metabase.util.schema :as su]))
 
 (defn- do-with-setting-access-control
   [thunk]

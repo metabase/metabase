@@ -1,17 +1,20 @@
 (ns metabase.api.timeline-event
   "/api/timeline-event endpoints."
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.common :as api]
-            [metabase.models.collection :as collection]
-            [metabase.models.timeline :as timeline :refer [Timeline]]
-            [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
+   [metabase.models.collection :as collection]
+   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.models.timeline-event
+    :as timeline-event
+    :refer [TimelineEvent]]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (api/defendpoint POST "/"
   "Create a new [[TimelineEvent]]."
@@ -35,7 +38,7 @@
     ;; todo: revision system
     (let [parsed   (if (nil? timestamp)
                      (throw (ex-info (tru "Timestamp cannot be null") {:status-code 400}))
-                   (u.date/parse timestamp))
+                     (u.date/parse timestamp))
           tl-event (merge (dissoc body :source :question_id)
                           {:creator_id api/*current-user-id*
                            :timestamp  parsed}

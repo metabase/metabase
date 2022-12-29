@@ -1,6 +1,6 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 import {
   renderWithProviders,
   screen,
@@ -86,42 +86,41 @@ const DASHBOARD = {
 
 function mockCollectionEndpoint({ extraCollections = [] } = {}) {
   const collections = [...Object.values(COLLECTION), ...extraCollections];
-  xhrMock.get("/api/collection", {
-    body: JSON.stringify(collections),
-  });
+  nock(location.origin).get("/api/collection").reply(200, collections);
 }
 
 function mockCollectionItemsEndpoint() {
-  xhrMock.get(/\/api\/collection\/(root|[1-9]\d*)\/items.*/, (req, res) => {
-    const collectionIdParam = req.url().path.split("/")[3];
-    const collectionId =
-      collectionIdParam === "root" ? null : parseInt(collectionIdParam, 10);
-    const dashboards = Object.values(DASHBOARD).filter(
-      dashboard => dashboard.collection_id === collectionId,
-    );
-    return res.status(200).body(
-      JSON.stringify({
+  nock(location.origin)
+    .persist()
+    .get(/\/api\/collection\/(root|[1-9]\d*)\/items.*/)
+    .reply(200, url => {
+      const collectionIdParam = url.split("/")[3];
+      const collectionId =
+        collectionIdParam === "root" ? null : parseInt(collectionIdParam, 10);
+      const dashboards = Object.values(DASHBOARD).filter(
+        dashboard => dashboard.collection_id === collectionId,
+      );
+      return {
         total: dashboards.length,
         data: dashboards,
-      }),
-    );
-  });
+      };
+    });
 
-  xhrMock.get("/api/collection/root/items", (req, res) => {
-    const dashboards = Object.values(DASHBOARD).filter(
-      dashboard => dashboard.collection_id === null,
-    );
-    const collections = Object.values(COLLECTION).filter(
-      collection => collection.location !== "/",
-    );
-    const data = [...dashboards, ...collections];
-    return res.status(200).body(
-      JSON.stringify({
+  nock(location.origin)
+    .get("/api/collection/root/items")
+    .reply(200, () => {
+      const dashboards = Object.values(DASHBOARD).filter(
+        dashboard => dashboard.collection_id === null,
+      );
+      const collections = Object.values(COLLECTION).filter(
+        collection => collection.location !== "/",
+      );
+      const data = [...dashboards, ...collections];
+      return {
         total: data.length,
         data,
-      }),
-    );
-  });
+      };
+    });
 }
 
 async function setup({
@@ -168,12 +167,8 @@ async function openCollection(itemName) {
 }
 
 describe("ItemPicker", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
   });
 
   it("displays items from the root collection by default", async () => {
@@ -257,11 +252,11 @@ describe("ItemPicker", () => {
   it("groups personal collections into single folder if there are more than one", async () => {
     await setup({ extraCollections: [COLLECTION_OTHER_USERS] });
 
-    userEvent.click(screen.queryByText(/All personal collections/i));
+    userEvent.click(screen.getByText(/All personal collections/i));
 
     const list = getItemPickerList();
-    expect(list.queryByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();
-    expect(list.queryByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
-    expect(list.queryAllByTestId("item-picker-item")).toHaveLength(2);
+    expect(list.getByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();
+    expect(list.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
+    expect(list.getAllByTestId("item-picker-item")).toHaveLength(2);
   });
 });

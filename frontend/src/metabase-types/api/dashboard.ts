@@ -1,8 +1,8 @@
+import { Parameter } from "metabase-types/api/parameters";
 import type { EntityId } from "metabase-types/types";
 import type {
   ParameterTarget,
   ParameterId,
-  Parameter,
 } from "metabase-types/types/Parameter";
 
 import type { Card, CardId } from "./card";
@@ -20,11 +20,13 @@ export interface Dashboard {
   parameters?: Parameter[] | null;
   can_write: boolean;
   cache_ttl: number | null;
-
-  // Indicates if a dashboard is a special "app page" type
-  // Pages have features like custom action buttons to write back to the database
-  // And lack features like dashboard subscriptions, auto-refresh, night-mode
-  is_app_page?: boolean;
+  "last-edit-info": {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+    timestamp: string;
+  };
 }
 
 export type DashCardId = EntityId;

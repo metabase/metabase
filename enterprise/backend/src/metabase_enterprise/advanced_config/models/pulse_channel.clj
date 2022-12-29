@@ -1,9 +1,10 @@
 (ns metabase-enterprise.advanced-config.models.pulse-channel
-  (:require [clojure.string :as str]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]))
+  (:require
+   [clojure.string :as str]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (defsetting subscription-allowed-domains
   (deferred-tru "Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To specify multiple domains, separate each domain with a comma, with no space in between (e.g., \"domain1,domain2\"). To allow all domains, leave the field empty. This setting doesn't affect existing subscriptions.")

@@ -1,25 +1,27 @@
 (ns metabase.analytics.snowplow
   "Functions for sending Snowplow analytics events"
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.models.setting :as setting :refer [defsetting Setting]]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
-            [toucan.db :as db])
-  (:import [com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder]
-           [com.snowplowanalytics.snowplow.tracker.emitter BatchEmitter BatchEmitter$Builder Emitter]
-           [com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder]
-           [com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter ApacheHttpClientAdapter$Builder]
-           com.snowplowanalytics.snowplow.tracker.payload.SelfDescribingJson
-           [org.apache.http.client.config CookieSpecs RequestConfig]
-           org.apache.http.impl.client.HttpClients
-           org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.models.setting :as setting :refer [defsetting Setting]]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [toucan.db :as db])
+  (:import
+   (com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder)
+   (com.snowplowanalytics.snowplow.tracker.emitter BatchEmitter BatchEmitter$Builder Emitter)
+   (com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder)
+   (com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter ApacheHttpClientAdapter$Builder)
+   (com.snowplowanalytics.snowplow.tracker.payload SelfDescribingJson)
+   (org.apache.http.client.config CookieSpecs RequestConfig)
+   (org.apache.http.impl.client HttpClients)
+   (org.apache.http.impl.conn PoolingHttpClientConnectionManager)))
 
 (defsetting analytics-uuid
   (deferred-tru

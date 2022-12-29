@@ -1,11 +1,13 @@
 (ns release.version-info-test
-  (:require [clojure.data.json :as json]
-            [clojure.test :refer :all]
-            [release.common :as c]
-            [release.common.github :as github]
-            [release.version-info :as v-info])
-  (:import (java.time.format DateTimeFormatter)
-           (java.time LocalDate)))
+  (:require
+   [clojure.data.json :as json]
+   [clojure.test :refer :all]
+   [release.common :as c]
+   [release.common.github :as github]
+   [release.version-info :as v-info])
+  (:import
+   (java.time LocalDate)
+   (java.time.format DateTimeFormatter)))
 
 (defn- make-version-map [version released patch highlights enterprise?]
   {:version    (format "v%d.%s" (if enterprise? 1 0) version)

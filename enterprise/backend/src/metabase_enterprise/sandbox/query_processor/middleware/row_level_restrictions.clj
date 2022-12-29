@@ -2,30 +2,31 @@
   "Apply segmented a.k.a. sandboxing anti-permissions to the query, i.e. replace sandboxed Tables with the
   appropriate [[metabase-enterprise.sandbox.models.group-table-access-policy]]s (GTAPs). See dox
   for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
-            [metabase.api.common :as api :refer [*current-user* *current-user-id* *current-user-permissions-set*]]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.query.permissions :as query-perms]
-            [metabase.models.table :refer [Table]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
+   [metabase.api.common :as api :refer [*current-user* *current-user-id* *current-user-permissions-set*]]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.models.table :refer [Table]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
@@ -121,9 +122,9 @@
       attr-value)))
 
 (defn- attr-remapping->parameter [login-attributes [attr-name target]]
-  (let [attr-value      (get login-attributes attr-name ::not-found)
+  (let [attr-value      (get login-attributes attr-name)
         field-base-type (target-field->base-type target)]
-    (when (= attr-value ::not-found)
+    (when (not attr-value)
       (throw (ex-info (tru "Query requires user attribute `{0}`" (name attr-name))
                       {:type qp.error-type/missing-required-parameter})))
     {:type   :category

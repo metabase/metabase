@@ -1,8 +1,10 @@
 (ns metabase.query-processor.middleware.cache.impl-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.cache.impl :as impl]
-            [potemkin.types :as p.types])
-  (:import java.io.ByteArrayInputStream))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.middleware.cache.impl :as impl]
+   [potemkin.types :as p.types])
+  (:import
+   (java.io ByteArrayInputStream)))
 
 ;; `defrecord+` because if this gets redefined it confuses the test runner
 (p.types/defrecord+ ^:private Z [n])

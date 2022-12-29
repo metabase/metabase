@@ -4,16 +4,18 @@
   necessarily support request bodies. The POST is therefore shaped in this same manner. Since there are three
   underlying tables the id on the actual bookmark itself is not unique among \"bookmarks\" and is not a good
   identifier for using in the API."
-  (:require [compojure.core :refer [DELETE GET POST]]
-            [metabase.api.common :as api]
-            [metabase.models.bookmark :as bookmark
-             :refer [CardBookmark CollectionBookmark DashboardBookmark]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [DELETE GET POST]]
+   [metabase.api.common :as api]
+   [metabase.models.bookmark
+    :as bookmark
+    :refer [CardBookmark CollectionBookmark DashboardBookmark]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def Models
   "Schema enumerating bookmarkable models."
