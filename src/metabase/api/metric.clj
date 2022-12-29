@@ -20,7 +20,7 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new `Metric`."
   [:as {{:keys [name description table_id definition], :as body} :body}]
   {name        su/NonBlankString
@@ -52,7 +52,7 @@
                :query_description
                (api.qd/generate-query-description table (:definition metric)))))))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Fetch `Metric` with ID."
   [id]
   (first (add-query-descriptions [(hydrated-metric id)])))
@@ -65,7 +65,7 @@
       (for [metric metrics]
         (assoc metric :database_id (table-id->db-id (:table_id metric)))))))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Fetch *all* `Metrics`."
   []
   (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
@@ -95,7 +95,7 @@
       (events/publish-event! (if archive? :metric-delete :metric-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update a `Metric` with ID."
   [id :as {{:keys [name definition revision_message archived caveats description how_is_this_calculated
                    points_of_interest show_in_getting_started]
@@ -111,7 +111,7 @@
    show_in_getting_started (s/maybe s/Bool)}
   (write-check-and-update-metric! id body))
 
-(api/defendpoint PUT "/:id/important_fields"
+(api/defendpoint-schema PUT "/:id/important_fields"
   "Update the important `Fields` for a `Metric` with ID.
    (This is used for the Getting Started guide)."
   [id :as {{:keys [important_field_ids]} :body}]
@@ -132,7 +132,7 @@
     {:success true}))
 
 
-(api/defendpoint DELETE "/:id"
+(api/defendpoint-schema DELETE "/:id"
   "Archive a Metric. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [id revision_message]
   {revision_message su/NonBlankString}
@@ -142,14 +142,14 @@
   api/generic-204-no-content)
 
 
-(api/defendpoint GET "/:id/revisions"
+(api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for `Metric` with ID."
   [id]
   (api/read-check Metric id)
   (revision/revisions+details Metric id))
 
 
-(api/defendpoint POST "/:id/revert"
+(api/defendpoint-schema POST "/:id/revert"
   "Revert a `Metric` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
   {revision_id su/IntGreaterThanZero}
@@ -160,7 +160,7 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id))
 
-(api/defendpoint GET "/:id/related"
+(api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Metric :id id) api/read-check related/related))

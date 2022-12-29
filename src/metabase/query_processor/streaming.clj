@@ -178,7 +178,7 @@
 
   Typical example:
 
-    (api/defendpoint GET \"/whatever\" []
+    (api/defendpoint-schema GET \"/whatever\" []
       (qp.streaming/streaming-response [context :json]
         (qp/process-query-and-save-with-max-results-constraints! (assoc query :async true) context)))
 

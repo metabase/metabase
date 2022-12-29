@@ -135,7 +135,7 @@
   "Schema for a valid card filter option."
   (apply s/enum (map name (keys (methods cards-for-filter-option*)))))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, and `archived`. See
   corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
@@ -158,7 +158,7 @@
                      card)))
             cards))))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
   (let [raw-card (db/select-one Card :id id)
@@ -179,7 +179,7 @@
       (when-not (Boolean/parseBoolean ignore_view)
         (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
 
-(api/defendpoint GET "/:id/timelines"
+(api/defendpoint-schema GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
   [id include start end]
   {include (s/maybe api.timeline/Include)
@@ -396,7 +396,7 @@ saved later when it is ready."
        (when timed-out?
          (schedule-metadata-saving result-metadata-chan <>))))))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl is_write], :as body} :body}]
@@ -420,7 +420,7 @@ saved later when it is ready."
   (check-allowed-to-set-is-write body)
   (create-card! body))
 
-(api/defendpoint POST "/:id/copy"
+(api/defendpoint-schema POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
   [id]
   {id (s/maybe su/IntGreaterThanZero)}
@@ -630,7 +630,7 @@ saved later when it is ready."
           (:is_write card) (hydrate :card/action-id))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
                    collection_position enable_embedding embedding_params result_metadata parameters
@@ -686,7 +686,7 @@ saved later when it is ready."
 
 ;; TODO - Pretty sure this endpoint is not actually used any more, since Cards are supposed to get archived (via PUT
 ;;        /api/card/:id) instead of deleted.  Should we remove this?
-(api/defendpoint DELETE "/:id"
+(api/defendpoint-schema DELETE "/:id"
   "Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.)"
   [id]
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
@@ -763,7 +763,7 @@ saved later when it is ready."
           (db/update-where! Card {:id [:in (set cards-without-position)]}
             :collection_id new-collection-id-or-nil))))))
 
-(api/defendpoint POST "/collections"
+(api/defendpoint-schema POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with
   COLLECTION_ID, or remove them from any Collections by passing a `null` COLLECTION_ID."
   [:as {{:keys [card_ids collection_id]} :body}]
@@ -775,7 +775,7 @@ saved later when it is ready."
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
 
-(api/defendpoint ^:streaming POST "/:card-id/query"
+(api/defendpoint-schema ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
   {ignore_cache (s/maybe s/Bool)
@@ -794,7 +794,7 @@ saved later when it is ready."
    :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
-(api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
+(api/defendpoint-schema ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
@@ -815,7 +815,7 @@ saved later when it is ready."
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
-(api/defendpoint POST "/:card-id/public_link"
+(api/defendpoint-schema POST "/:card-id/public_link"
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
@@ -835,7 +835,7 @@ saved later when it is ready."
                    :public_uuid       <>
                    :made_public_by_id api/*current-user-id*)))}))
 
-(api/defendpoint DELETE "/:card-id/public_link"
+(api/defendpoint-schema DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
   [card-id]
   (validation/check-has-application-permission :setting)
@@ -846,14 +846,14 @@ saved later when it is ready."
     :made_public_by_id nil)
   {:status 204, :body nil})
 
-(api/defendpoint GET "/public"
+(api/defendpoint-schema GET "/public"
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
-(api/defendpoint GET "/embeddable"
+(api/defendpoint-schema GET "/embeddable"
   "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
   and a signed JWT."
   []
@@ -861,17 +861,17 @@ saved later when it is ready."
   (validation/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
-(api/defendpoint GET "/:id/related"
+(api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Card :id id) api/read-check related/related))
 
-(api/defendpoint POST "/related"
+(api/defendpoint-schema POST "/related"
   "Return related entities for an ad-hoc query."
   [:as {query :body}]
   (related/related (query/adhoc-query query)))
 
-(api/defendpoint ^:streaming POST "/pivot/:card-id/query"
+(api/defendpoint-schema ^:streaming POST "/pivot/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache]
                  :or   {ignore_cache false}} :body}]
@@ -881,7 +881,7 @@ saved later when it is ready."
                             :qp-runner qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))
 
-(api/defendpoint POST "/:card-id/persist"
+(api/defendpoint-schema POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query."
   [card-id]
@@ -905,7 +905,7 @@ saved later when it is ready."
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
       api/generic-204-no-content)))
 
-(api/defendpoint POST "/:card-id/refresh"
+(api/defendpoint-schema POST "/:card-id/refresh"
   "Refresh the persisted model caching `card-id`."
   [card-id]
   {card-id su/IntGreaterThanZero}
@@ -919,7 +919,7 @@ saved later when it is ready."
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
-(api/defendpoint POST "/:card-id/unpersist"
+(api/defendpoint-schema POST "/:card-id/unpersist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
   [card-id]

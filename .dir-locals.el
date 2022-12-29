@@ -19,11 +19,11 @@
  (clojure-mode
   ;; Specify which arg is the docstring for certain macros
   ;; (Add more as needed)
-  (eval . (put 'defendpoint 'clojure-doc-string-elt 3))
+  (eval . (put 'defendpoint-schema 'clojure-doc-string-elt 3))
   (eval . (put 'defendpoint-malli 'clojure-doc-string-elt 3))
   (eval . (put 'defendpoint-async 'clojure-doc-string-elt 3))
   (eval . (put 'define-premium-feature 'clojure-doc-string-elt 2))
-  (eval . (put 'api/defendpoint 'clojure-doc-string-elt 3))
+  (eval . (put 'api/defendpoint-schema 'clojure-doc-string-elt 3))
   (eval . (put 'api/defendpoint-malli 'clojure-doc-string-elt 3))
   (eval . (put 'api/defendpoint-async 'clojure-doc-string-elt 3))
   (eval . (put 'defsetting 'clojure-doc-string-elt 2))

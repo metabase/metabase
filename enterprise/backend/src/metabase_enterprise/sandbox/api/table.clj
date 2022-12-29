@@ -53,7 +53,7 @@
     (update query-metadata-response :fields #(filter (comp (set gtap-field-ids) u/the-id) %))
     query-metadata-response))
 
-(api/defendpoint GET "/:id/query_metadata"
+(api/defendpoint-schema GET "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has segmented permissions
   that only gives them access to a subset of columns for a given table, those inaccessable columns should also be
   excluded from what is show in the query builder. When the user has full permissions (or no permissions) this route

@@ -37,7 +37,7 @@
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
                                           'metabase-enterprise.advanced-permissions.common))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
   associated with that dashboard. If `user_id` is specified, restricts results to pulses or subscriptions
   created by the user, or for which the user is a known recipient."
@@ -59,7 +59,7 @@
     (assert (integer? card-id))
     (api/read-check Card card-id)))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id parameters]} :body}]
   {name                su/NonBlankString
@@ -95,13 +95,13 @@
       (api/check-500
        (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
   (-> (api/read-check (pulse/retrieve-pulse id))
       (hydrate :can_write)))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update a Pulse with `id`."
   [id :as {{:keys [name cards channels skip_if_empty collection_id archived parameters], :as pulse-updates} :body}]
   {name          (s/maybe su/NonBlankString)
@@ -149,7 +149,7 @@
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
-(api/defendpoint GET "/form_input"
+(api/defendpoint-schema GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
   (validation/check-has-application-permission :subscription false)
@@ -190,7 +190,7 @@
       :context     :pulse
       :card-id     card-id})))
 
-(api/defendpoint GET "/preview_card/:id"
+(api/defendpoint-schema GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [id]
   (let [card   (api/read-check Card id)
@@ -203,7 +203,7 @@
                           render/*include-buttons* true]
                   (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result))]])}))
 
-(api/defendpoint GET "/preview_card_info/:id"
+(api/defendpoint-schema GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
   [id]
   (let [card      (api/read-check Card id)
@@ -222,7 +222,7 @@
 
 (def ^:private preview-card-width 400)
 
-(api/defendpoint GET "/preview_card_png/:id"
+(api/defendpoint-schema GET "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`."
   [id]
   (let [card   (api/read-check Card id)
@@ -231,7 +231,7 @@
                  (render/render-pulse-card-to-png (metabase.pulse/defaulted-timezone card) card result preview-card-width))]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
-(api/defendpoint POST "/test"
+(api/defendpoint-schema POST "/test"
   "Test send an unsaved pulse."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id] :as body} :body}]
   {name                su/NonBlankString
@@ -248,7 +248,7 @@
   (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
-(api/defendpoint DELETE "/:id/subscription"
+(api/defendpoint-schema DELETE "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [id]
   (api/let-404 [pulse-id (db/select-one-id Pulse :id id)

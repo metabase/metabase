@@ -17,7 +17,7 @@
               :user_id (u/the-id user-or-id)
               {:order-by [[:timestamp :desc]]})))
 
-(api/defendpoint GET "/current"
+(api/defendpoint-schema GET "/current"
   "Fetch recent logins for the current user."
   []
   (login-history api/*current-user-id*))

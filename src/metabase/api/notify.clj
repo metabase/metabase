@@ -13,7 +13,7 @@
 
 (def ^:private ^:dynamic *execute-asynchronously* true)
 
-(api/defendpoint POST "/db/:id"
+(api/defendpoint-schema POST "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single
   `Table`. Optional Parameter `:scan` can be `\"full\"` or `\"schema\"` for a full sync or a schema sync, available

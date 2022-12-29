@@ -10,10 +10,10 @@
    [metabase.api.common.internal
     :refer [add-route-param-regexes
             auto-parse
-            route-dox
             malli-route-dox
-            route-fn-name
             malli-validate-params
+            route-dox
+            route-fn-name
             validate-params
             wrap-response-if-needed]]
    [metabase.models.interface :as mi]
@@ -274,7 +274,7 @@
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`
-(defmacro defendpoint
+(defmacro defendpoint-schema
   "Define an API function.
    This automatically does several things:
 
