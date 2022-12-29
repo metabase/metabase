@@ -69,7 +69,7 @@
                             (not= arg 'body))]
              {arg nil})))
 
-(defn- dox-for-plumatic
+(defn- dox-for-schema
   "Look up the docstring for `schema` for use in auto-generated API documentation. In most cases this is defined by
   wrapping the schema with `with-api-error-message`."
   [schema route-str]
@@ -127,7 +127,7 @@
   (when (seq param-symb->schema)
     (str "\n\n### PARAMS:\n\n"
          (str/join "\n\n" (for [[param-symb schema] param-symb->schema]
-                            (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-plumatic schema route-str)))))))
+                            (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-schema schema route-str)))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
