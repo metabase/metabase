@@ -4,7 +4,8 @@
    [goog.string.format :as gstring.format]
    [lambdaisland.glogi :as log]
    [lambdaisland.glogi.console :as glogi-console])
-  (:require-macros [metabase.shared.util.log]))
+  (:require-macros
+   [metabase.shared.util.log]))
 
 (comment metabase.shared.util.log/keep-me
          gstring.format/keep-me)

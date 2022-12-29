@@ -10,7 +10,8 @@
       [metabase.util.date-2 :as u.date]
       [metabase.util.date-2.parse.builder :as b]
       [metabase.util.i18n.impl :as i18n.impl])
-     (:import (java.time.format DateTimeFormatter))]
+     (:import
+      (java.time.format DateTimeFormatter))]
     :cljs
     [(:require
       ["moment" :as moment]

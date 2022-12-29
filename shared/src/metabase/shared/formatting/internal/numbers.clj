@@ -5,9 +5,9 @@
    [metabase.shared.formatting.internal.numbers-core :as core]
    [metabase.shared.util.currency :as currency])
   (:import
-   [java.math BigDecimal MathContext RoundingMode]
-   [java.text DecimalFormat NumberFormat]
-   [java.util Currency Locale]))
+   (java.math BigDecimal MathContext RoundingMode)
+   (java.text DecimalFormat NumberFormat)
+   (java.util Currency Locale)))
 
 ;; Clojure helpers ================================================================================================
 (defn- sig-figs [number figures]
