@@ -10,6 +10,7 @@
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.describe :as umd]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [schema.core :as s])
@@ -89,9 +90,7 @@
   [schema route-str]
   (if-not schema
     ""
-    ;; TODO print schema defn here
-    (u/prog1 "~ malli schema definition coming soon ~"
-
+    (u/prog1 (umd/describe schema)
      ;; Don't try to i18n this stuff! It's developer-facing only.
      (when config/is-dev?
        (log/warn

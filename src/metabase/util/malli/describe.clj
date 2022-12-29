@@ -128,9 +128,9 @@
 (defmethod accept 'double? [_ schema _ _] (str "double" (min-max-suffix schema)))
 (defmethod accept :double [_ schema _ _] (str "double" (min-max-suffix schema)))
 
-(defmethod accept :merge [_ schema _ {::keys [describe] :as options}] (describe (mc/deref schema) options))
-(defmethod accept :union [_ schema _ {::keys [describe] :as options}] (describe (mc/deref schema) options))
-(defmethod accept :select-keys [_ schema _ {::keys [describe] :as options}] (describe (mc/deref schema) options))
+(defmethod accept :merge [_ schema _ options] ((::describe options) (mc/deref schema) options))
+(defmethod accept :union [_ schema _ options] ((::describe options) (mc/deref schema) options))
+(defmethod accept :select-keys [_ schema _ options] ((::describe options) (mc/deref schema) options))
 
 (defmethod accept :and [_ s children _] (str (str/join ", and " children) (titled s)))
 (defmethod accept :enum [_ s children _options] (str "an enum" (titled s) " of " (str/join ", " children)))
