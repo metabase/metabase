@@ -371,24 +371,27 @@ describe("parameters/utils/parameter-values", () => {
 
       describe("when parsing parameter value that is a comma-separated list of numbers", () => {
         it("should return list when every item is a number", () => {
-          expect(runGetParameterValueFromQueryParams("1, 2 ,   3")).toEqual([
+          expect(runGetParameterValueFromQueryParams("1,,2,3,4")).toEqual([
+            "1,2,3,4",
+          ]);
+          expect(runGetParameterValueFromQueryParams("1, ,2,3,4")).toEqual([
+            "1,2,3,4",
+          ]);
+          expect(runGetParameterValueFromQueryParams(",1,2,3,")).toEqual([
             "1,2,3",
-          ]);
-          expect(runGetParameterValueFromQueryParams("1,2.5,3.4")).toEqual([
-            "1,2.5,3.4",
-          ]);
-          expect(runGetParameterValueFromQueryParams("1,0,0000,2")).toEqual([
-            "1,0,0,2",
           ]);
         });
 
-        it("should return first float or NaN when list is not formatted properly", () => {
-          expect(runGetParameterValueFromQueryParams("1,,2,3,4")).toEqual([1]);
-          expect(runGetParameterValueFromQueryParams("1, ,2,3,4")).toEqual([1]);
-          expect(runGetParameterValueFromQueryParams("1,2,3,")).toEqual([1]);
-          expect(runGetParameterValueFromQueryParams(",,,")).toEqual([NaN]);
-          expect(runGetParameterValueFromQueryParams(" ")).toEqual([NaN]);
-          expect(runGetParameterValueFromQueryParams(",1,2,3")).toEqual([NaN]);
+        it("should return undefined when list is not formatted properly", () => {
+          expect(runGetParameterValueFromQueryParams(",,,")).toEqual([
+            undefined,
+          ]);
+          expect(runGetParameterValueFromQueryParams(" ")).toEqual([undefined]);
+        });
+
+        it("should return first parseable float if value includes non-numeric characters", () => {
+          expect(runGetParameterValueFromQueryParams("1,a,3,")).toEqual([1]);
+          expect(runGetParameterValueFromQueryParams("1a,b,3,")).toEqual([1]);
         });
       });
     });

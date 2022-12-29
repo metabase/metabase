@@ -36,18 +36,22 @@ export function parseParameterValue(value, parameter) {
 }
 
 function parseParameterValueForNumber(value) {
-  // something like "1,2,3" or even "1, 2,  3"
-  const valueSplitByCommas = value.split(",");
+  // something like "1,2,3",  "1, 2,  3", ",,,1,2, 3"
+  const valueSplitByCommas = value
+    .split(",")
+    .filter(item => item.trim() !== "");
+
+  if (valueSplitByCommas.length === 0) {
+    return;
+  }
+
   const isCommaSeparatedListOfNumbers =
     valueSplitByCommas.length > 1 &&
     valueSplitByCommas.every(item => !isNaN(parseFloat(item)));
 
   if (isCommaSeparatedListOfNumbers) {
     // "1, 2,    3" will be tranformed into "1,2,3" for later use
-    return value
-      .split(",")
-      .map(item => parseFloat(item))
-      .join(",");
+    return valueSplitByCommas.map(item => parseFloat(item)).join(",");
   }
 
   return parseFloat(value);
