@@ -21,7 +21,7 @@
     "card"      [Card (db/select-one Card :id id)]
     "dashboard" [Dashboard (db/select-one Dashboard :id id)]))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Get revisions of an object."
   [entity id]
   {entity Entity, id s/Int}
@@ -29,7 +29,7 @@
     (when (api/read-check instance)
       (revision/revisions+details model id))))
 
-(api/defendpoint POST "/revert"
+(api/defendpoint-schema POST "/revert"
   "Revert an object to a prior revision."
   [:as {{:keys [entity id revision_id]} :body}]
   {entity Entity, id s/Int, revision_id s/Int}

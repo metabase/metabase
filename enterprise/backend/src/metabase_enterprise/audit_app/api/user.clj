@@ -8,7 +8,7 @@
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [toucan.db :as db]))
 
-(api/defendpoint DELETE "/:id/subscriptions"
+(api/defendpoint-schema DELETE "/:id/subscriptions"
   "Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).
   Archive all Alerts and DashboardSubscriptions created by the User. Only allowed for admins or for the current user."
   [id]

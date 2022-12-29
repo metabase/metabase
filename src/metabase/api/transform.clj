@@ -7,7 +7,7 @@
    [metabase.transforms.core :as tf]
    [metabase.transforms.specs :as tf.specs]))
 
-(api/defendpoint GET "/:db-id/:schema/:transform-name"
+(api/defendpoint-schema GET "/:db-id/:schema/:transform-name"
   "Look up a database schema transform"
   [db-id schema transform-name]
   (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
