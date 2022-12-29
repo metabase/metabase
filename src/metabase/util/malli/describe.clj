@@ -4,16 +4,16 @@
 
   If malli is > 0.9.2 we can remove this, and use link^ instead."
   (:require [clojure.string :as str]
-            [malli.core :as m]))
+            [malli.core :as mc]))
 
 (declare -describe describe)
 
 (defprotocol Descriptor (-accept [this children options] "transforms schema to a text descriptor"))
 
 (defn- diamond [s] (str "<" s ">"))
-(defn- titled [schema] (if-let [t (-> schema m/properties :title)] (str "(titled: ‘" t "’) ") ""))
+(defn- titled [schema] (if-let [t (-> schema mc/properties :title)] (str "(titled: ‘" t "’) ") ""))
 (defn- min-max-suffix [schema]
-  (let [{:keys [min max]} (-> schema m/properties)]
+  (let [{:keys [min max]} (-> schema mc/properties)]
     (cond
       (and min max) (str " with length between " min " and " max)
       min (str " with length longer than " min)
@@ -26,22 +26,22 @@
 
 (defmethod accept ::default [name schema children {:keys [missing-fn]}] (if missing-fn (missing-fn name schema children) ""))
 
-(defn- -schema [schema children options]
+(defn- -schema [schema children _options]
   ;;(def -sin [schema children options])
-  (let [just-one (= 1 (count (:registry (m/properties schema))))]
+  (let [just-one (= 1 (count (:registry (mc/properties schema))))]
     (str (last children)
-         (when (:registry (m/properties schema))
+         (when (:registry (mc/properties schema))
            (str " "
                 (when-not just-one "which is: ")
                 (diamond
                   (str/join ", "
-                            (for [[name schema] (:registry (m/properties schema))]
+                            (for [[name schema] (:registry (mc/properties schema))]
                               (str (when-not just-one (str name " is "))
                                    (describe schema))))))))))
 
 (defmethod accept :schema [_ schema children options] (-schema schema children options))
-(defmethod accept ::m/schema [_ schema children options] (-schema schema children options))
-(defmethod accept :ref [_ schema children _] (pr-str (first children)))
+(defmethod accept ::mc/schema [_ schema children options] (-schema schema children options))
+(defmethod accept :ref [_ _schema children _] (pr-str (first children)))
 
 (defmethod accept 'ident? [_ _ _ _] "ident")
 (defmethod accept 'simple-ident? [_ _ _ _] "simple-ident")
@@ -79,8 +79,8 @@
 (defmethod accept :not [_ _ children _] {:not (last children)})
 
 (defmethod accept :multi [_ s children _]
-  (let [dispatcher (or (-> s m/properties :dispatch-description)
-                       (-> s m/properties :dispatch))]
+  (let [dispatcher (or (-> s mc/properties :dispatch-description)
+                       (-> s mc/properties :dispatch))]
     (str "one of "
          (diamond
            (str/join " | " (map (fn [[title _ shape]] (str title " = " shape)) children)))
@@ -129,15 +129,15 @@
 (defmethod accept 'double? [_ schema _ _] (str "double" (min-max-suffix schema)))
 (defmethod accept :double [_ schema _ _] (str "double" (min-max-suffix schema)))
 
-(defmethod accept :merge [_ schema _ {::keys [describe] :as options}] (describe (m/deref schema) options))
-(defmethod accept :union [_ schema _ {::keys [describe] :as options}] (describe (m/deref schema) options))
-(defmethod accept :select-keys [_ schema _ {::keys [describe] :as options}] (describe (m/deref schema) options))
+(defmethod accept :merge [_ schema _ {::keys [describe] :as options}] (describe (mc/deref schema) options))
+(defmethod accept :union [_ schema _ {::keys [describe] :as options}] (describe (mc/deref schema) options))
+(defmethod accept :select-keys [_ schema _ {::keys [describe] :as options}] (describe (mc/deref schema) options))
 
 (defmethod accept :and [_ s children _] (str (str/join ", and " children) (titled s)))
 (defmethod accept :enum [_ s children _options] (str "an enum" (titled s) " of " (str/join ", " children)))
 (defmethod accept :maybe [_ s children _] (str "a nullable " (titled s) (first children)))
 (defmethod accept :tuple [_ s children _] (str "a vector " (titled s) "with exactly " (count children) " items of type: " (str/join ", " children)))
-(defmethod accept :re [_ s _ options] (str "a regex pattern " (titled s) "matching " (pr-str (first (m/children s options)))))
+(defmethod accept :re [_ s _ options] (str "a regex pattern " (titled s) "matching " (pr-str (first (mc/children s options)))))
 
 (defmethod accept 'any? [_ s _ _] (str "anything" (titled s)))
 (defmethod accept :any [_ s _ _] (str "anything" (titled s)))
@@ -168,7 +168,7 @@
 (defmethod accept :uuid [_ _ _ _] "uuid")
 
 (defmethod accept :=> [_ s _ _]
-  (let [{:keys [input output]} (m/-function-info s)]
+  (let [{:keys [input output]} (mc/-function-info s)]
     (str "a function that takes input: [" (describe input) "] and returns " (describe output))))
 
 (defmethod accept :function [_ _ _children _] "a function")
@@ -191,37 +191,38 @@
 (defmethod accept :int [_ _ _ _] "integer")
 
 (defn- -map [_n schema children _o]
-  (let [optional (set (->> children (filter (m/-comp :optional second)) (mapv first)))
-        additional-properties (:closed (m/properties schema))
+  (let [optional (set (->> children (filter (mc/-comp :optional second)) (mapv first)))
+        additional-properties (:closed (mc/properties schema))
         kv-description (str/join ", " (map (fn [[k _ s]] (str k (when (contains? optional  k) " (optional)") " -> " (diamond s))) children))]
     (cond-> (str "a map where {" kv-description "}")
       additional-properties (str " with no other keys"))))
 
-(defmethod accept ::m/val [_ _ children _] (first children))
+(defmethod accept ::mc/val [_ _ children _] (first children))
 (defmethod accept 'map? [n schema children o] (-map n schema children o))
 (defmethod accept :map [n schema children o] (-map n schema children o))
 
 (defn- -descriptor-walker [schema _ children options]
-  (let [p (merge (m/type-properties schema) (m/properties schema))]
+  (let [p (merge (mc/type-properties schema) (mc/properties schema))]
     (or (get p :description)
         (if (satisfies? Descriptor schema)
           (-accept schema children options)
-          (accept (m/type schema) schema children options)))))
+          (accept (mc/type schema) schema children options)))))
 
 (defn- -describe [?schema options]
-  (m/walk ?schema -descriptor-walker options))
+  (mc/walk ?schema -descriptor-walker options))
 
 ;;
 ;; public api
 ;;
 
 (defn describe
+  "Given a schema, returns a string explaiaing the required shape in English"
   ([?schema]
    (describe ?schema nil))
   ([?schema options]
    (let [definitions (atom {})
          options (merge options
-                        {::m/walk-entry-vals true,
+                        {::mc/walk-entry-vals true,
                          ::definitions definitions,
                          ::describe -describe})]
      (cond-> (-describe ?schema options)
