@@ -48,7 +48,3 @@ EXPOSE 3000
 
 # run it
 ENTRYPOINT ["/app/run_metabase.sh"]
-
-FROM scratch as export-stage
-
-COPY --from=builder /home/node/target/uberjar/metabase.jar /
