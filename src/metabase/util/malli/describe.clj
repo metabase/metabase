@@ -27,7 +27,6 @@
 (defmethod accept ::default [name schema children {:keys [missing-fn]}] (if missing-fn (missing-fn name schema children) ""))
 
 (defn- -schema [schema children _options]
-  ;;(def -sin [schema children options])
   (let [just-one (= 1 (count (:registry (mc/properties schema))))]
     (str (last children)
          (when (:registry (mc/properties schema))
@@ -225,7 +224,4 @@
                         {::mc/walk-entry-vals true,
                          ::definitions definitions,
                          ::describe -describe})]
-     (cond-> (-describe ?schema options)
-       ;; consider using an index for refs?
-       #_(seq @definitions)
-       #_(str @definitions)))))
+     (-describe ?schema options))))
