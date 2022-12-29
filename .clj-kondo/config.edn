@@ -119,6 +119,10 @@
     honeysql.helpers                                                hh
     honeysql.types                                                  htypes
     java-time                                                       t
+    malli.core                                                      mc
+    malli.experimental                                              mx
+    malli.transform                                                 mtx
+    medley.core                                                     m
     metabase-enterprise.audit-app.pages.common                      common
     metabase-enterprise.sandbox.api.table                           table
     metabase.analytics.stats                                        stats
@@ -333,6 +337,7 @@
     metabase.util.files                                             u.files
     metabase.util.i18n                                              i18n
     metabase.util.i18n.impl                                         i18n.impl
+    metabase.util.malli                                             mu
     metabase.util.password                                          u.password
     metabase.util.schema                                            su
     metabase.util.ui-logic                                          ui-logic
@@ -340,6 +345,7 @@
     metabuild-common.core                                           u
     metabuild-common.output                                         out
     metabuild-common.shell                                          shell
+    monger.collection                                               mcoll
     ring.mock.request                                               ring.mock
     ring.util.codec                                                 codec
     ring.util.response                                              response
@@ -397,6 +403,7 @@
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
+  metabase.util.malli/defn                                                             schema.core/defn
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   monger.operators/defoperator                                                         clojure.core/def
   potemkin.types/defprotocol+                                                          clojure.core/defprotocol
