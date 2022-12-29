@@ -39,21 +39,21 @@
 (def ClosedTestAddress
   (mu/closed-schema TestAddress))
 
-(api/defendpoint POST "/post/any" [:as {body :body :as request}]
+(api/defendpoint POST "/post/any" [:as {body :body :as _request}]
   {:status 200 :body body})
 
 (api/defendpoint POST "/post/id-int"
-  [:as {{:keys [id] :as body} :body :as request}]
+  [:as {{:keys [id] :as body} :body :as _request}]
   {id int?}
   {:status 200 :body body})
 
 (api/defendpoint POST "/post/test-address"
-  [:as {address :body :as request}]
+  [:as {address :body :as _request}]
   {address TestAddress}
   {:status 200 :body address})
 
 (api/defendpoint POST "/post/closed-test-address"
-  [:as {address :body :as request}]
+  [:as {address :body :as _request}]
   {address ClosedTestAddress}
   {:status 200 :body address})
 

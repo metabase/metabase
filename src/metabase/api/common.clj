@@ -224,13 +224,13 @@
    :route       (some-fn string? sequential?)
    :docstr      (s/? string?)
    :args        vector?
-   :arg->schema (s/? (s/map-of symbol? any?))
+   :arg->schema (s/? (s/map-of symbol? any?)) ;; any? is either a plumatic or malli schema
    :body        (s/* any?)))
 
 (defn- parse-defendpoint-args [args]
   (let [parsed (s/conform ::defendpoint-args args)]
     (when (= parsed ::s/invalid)
-      (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
+      (throw (ex-info (str "Invalid defendpoint-schema args: " (s/explain-str ::defendpoint-args args))
                       (s/explain-data ::defendpoint-args args))))
     (let [{:keys [method route docstr args arg->schema body]} parsed
           fn-name                                             (route-fn-name method route)
@@ -247,7 +247,7 @@
 (defn malli-parse-defendpoint-args [args]
   (let [parsed (s/conform ::defendpoint-args args)]
     (when (= parsed ::s/invalid)
-      (throw (ex-info (str "Invalid malli defendpoint args: " (s/explain-str ::defendpoint-args args))
+      (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
                       (s/explain-data ::defendpoint-args args))))
     (let [{:keys [method route docstr args arg->schema body]} parsed
           fn-name                                             (route-fn-name method route)
