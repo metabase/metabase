@@ -2,10 +2,10 @@
   "ClojureScript implementation of number formatting.
   Implements the [[NumberFormatter]] protocol from numbers_core, plus some helpers."
   (:require
-    [clojure.string :as str]
-    [metabase.shared.formatting.internal.numbers-core :as core]
-    [metabase.shared.util :as shared.u]
-    [metabase.shared.util.currency :as currency]))
+   [clojure.string :as str]
+   [metabase.shared.formatting.internal.numbers-core :as core]
+   [metabase.shared.util :as shared.u]
+   [metabase.shared.util.currency :as currency]))
 
 (def ^:private default-number-separators ".,")
 

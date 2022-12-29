@@ -1,34 +1,38 @@
 (ns metabase.api.pulse
   "/api/pulse endpoints."
-  (:require [clojure.set :refer [difference]]
-            [compojure.core :refer [GET POST PUT]]
-            [hiccup.core :refer [html]]
-            [metabase.api.alert :as api.alert]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.email :as email]
-            [metabase.integrations.slack :as slack]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as mi]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.models.pulse-channel :as pulse-channel :refer [channel-types PulseChannel]]
-            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
-            metabase.pulse
-            [metabase.pulse.render :as render]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [metabase.util.urls :as urls]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import java.io.ByteArrayInputStream))
+  (:require
+   [clojure.set :refer [difference]]
+   [compojure.core :refer [GET POST PUT]]
+   [hiccup.core :refer [html]]
+   [metabase.api.alert :as api.alert]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.email :as email]
+   [metabase.integrations.slack :as slack]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
+   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.pulse-channel
+    :as pulse-channel
+    :refer [channel-types PulseChannel]]
+   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.pulse]
+   [metabase.pulse.render :as render]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [metabase.util.urls :as urls]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (java.io ByteArrayInputStream)))
 
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
                                           'metabase-enterprise.advanced-permissions.common))

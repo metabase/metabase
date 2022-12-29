@@ -1,10 +1,11 @@
 (ns metabase-enterprise.audit-app.pages.dashboards
   "Dashboards overview page."
-  (:require [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]))
+  (:require
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
+   [metabase.util.honeysql-extensions :as hx]
+   [schema.core :as s]))
 
 ;; Two-series timeseries that includes total number of Dashboard views and saves broken out by a `datetime-unit`.
 (s/defmethod audit.i/internal-query ::views-and-saves-by-time

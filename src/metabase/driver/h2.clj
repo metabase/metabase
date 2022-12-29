@@ -1,29 +1,31 @@
 (ns metabase.driver.h2
-  (:require [clojure.math.combinatorics :as math.combo]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.h2.actions :as h2.actions]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.ssh :as ssh])
-  (:import [java.sql Clob ResultSet ResultSetMetaData]
-           java.time.OffsetTime
-           [org.h2.command Parser CommandInterface]
-           [org.h2.engine SessionLocal]))
+  (:require
+   [clojure.math.combinatorics :as math.combo]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [honeysql.core :as hsql]
+   [java-time :as t]
+   [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.h2.actions :as h2.actions]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.ssh :as ssh])
+  (:import
+   (java.sql Clob ResultSet ResultSetMetaData)
+   (java.time OffsetTime)
+   (org.h2.command CommandInterface Parser)
+   (org.h2.engine SessionLocal)))
 
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)

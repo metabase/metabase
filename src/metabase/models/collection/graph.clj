@@ -1,17 +1,19 @@
 (ns metabase.models.collection.graph
   "Code for generating and updating the Collection permissions graph. See [[metabase.models.permissions]] for more
   details and for the code for generating and updating the *data* permissions graph."
-  (:require [clojure.data :as data]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.collection-permission-graph-revision :as c-perm-revision
-             :refer [CollectionPermissionGraphRevision]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :refer [PermissionsGroup]]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.data :as data]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection-permission-graph-revision
+    :as c-perm-revision
+    :refer [CollectionPermissionGraphRevision]]
+   [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.permissions-group :refer [PermissionsGroup]]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PERMISSIONS GRAPH                                                |

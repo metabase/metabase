@@ -1,12 +1,14 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
-  (:require [clojure.core.async :as a]
-            [clojure.test :refer :all]
-            [metabase.events :as events]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.test :refer :all]
+   [metabase.events :as events]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.process-userland-query
+    :as process-userland-query]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.test :as mt]))
 
 (defn- do-with-query-execution [query run]
   (mt/with-open-channels [save-chan (a/promise-chan)]

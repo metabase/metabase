@@ -14,29 +14,30 @@
       {:resource {:question  <card-id>
                   :dashboard <dashboard-id>}
        :params   <params>}"
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [GET]]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.dashboard :as api.dashboard]
-            [metabase.api.dataset :as api.dataset]
-            [metabase.api.public :as api.public]
-            [metabase.driver.common.parameters.operators :as params.ops]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.pulse.parameters :as params]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.util :as u]
-            [metabase.util.embed :as embed]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [GET]]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.dashboard :as api.dashboard]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.api.public :as api.public]
+   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.pulse.parameters :as params]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.util :as u]
+   [metabase.util.embed :as embed]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; ------------------------------------------------- Param Checking -------------------------------------------------
 

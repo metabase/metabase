@@ -1,26 +1,27 @@
 (ns metabase.api.alert
   "/api/alert endpoints"
-  (:require [clojure.data :as data]
-            [clojure.set :refer [difference]]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.email :as email]
-            [metabase.email.messages :as messages]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.models.pulse :as pulse]
-            [metabase.models.pulse-channel :refer [PulseChannel]]
-            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.data :as data]
+   [clojure.set :refer [difference]]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.email :as email]
+   [metabase.email.messages :as messages]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse-channel :refer [PulseChannel]]
+   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (u/ignore-exceptions
  (classloader/require 'metabase-enterprise.advanced-permissions.common))

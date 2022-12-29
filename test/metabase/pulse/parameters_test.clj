@@ -1,8 +1,9 @@
 (ns metabase.pulse.parameters-test
-  (:require [clojure.test :refer :all]
-            [metabase.pulse.parameters :as params]
-            [metabase.pulse.test-util :refer [test-dashboard]]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.pulse.parameters :as params]
+   [metabase.pulse.test-util :refer [test-dashboard]]
+   [metabase.test :as mt]))
 
 (deftest value-string-test
   (testing "If a filter has multiple values, they are concatenated into a comma-separated string"

@@ -1,18 +1,19 @@
 (ns metabase-enterprise.advanced-permissions.common-test
-  (:require [cheshire.core :as json]
-            [clojure.core.memoize :as memoize]
-            [clojure.test :refer :all]
-            [metabase.api.database :as api.database]
-            [metabase.models :refer [Database Field FieldValues Permissions Table]]
-            [metabase.models.database :as database]
-            [metabase.models.field :as field]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.memoize :as memoize]
+   [clojure.test :refer :all]
+   [metabase.api.database :as api.database]
+   [metabase.models :refer [Database Field FieldValues Permissions Table]]
+   [metabase.models.database :as database]
+   [metabase.models.field :as field]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn- do-with-all-user-data-perms
   [graph f]

@@ -1,16 +1,19 @@
 (ns metabase.api.native-query-snippet
   "Native query snippet (/api/native-query-snippet) endpoints."
-  (:require [clojure.data :as data]
-            [compojure.core :refer [GET POST PUT]]
-            [metabase.api.common :as api]
-            [metabase.models.interface :as mi]
-            [metabase.models.native-query-snippet :as native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.data :as data]
+   [compojure.core :refer [GET POST PUT]]
+   [metabase.api.common :as api]
+   [metabase.models.interface :as mi]
+   [metabase.models.native-query-snippet
+    :as native-query-snippet
+    :refer [NativeQuerySnippet]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (s/defn ^:private hydrated-native-query-snippet :- (s/maybe (mi/InstanceOf NativeQuerySnippet))
   [id :- su/IntGreaterThanZero]

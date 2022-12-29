@@ -1,8 +1,8 @@
 (ns metabase.shared.formatting.numbers
   (:require
-    [metabase.shared.formatting.internal.numbers :as internal]
-    [metabase.shared.formatting.internal.numbers-core :as core]
-    [metabase.shared.util :as shared.u]))
+   [metabase.shared.formatting.internal.numbers :as internal]
+   [metabase.shared.formatting.internal.numbers-core :as core]
+   [metabase.shared.util :as shared.u]))
 
 (declare format-number)
 

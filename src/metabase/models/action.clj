@@ -1,13 +1,14 @@
 (ns metabase.models.action
-  (:require [cheshire.core :as json]
-            [medley.core :as m]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.models.query :as query]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.core :as json]
+   [medley.core :as m]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.models.query :as query]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 (models/defmodel QueryAction :query_action)
 (models/defmodel HTTPAction :http_action)

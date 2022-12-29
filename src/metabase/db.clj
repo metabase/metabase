@@ -27,10 +27,11 @@
     details maps
 
   * [[metabase.db.util]] - general util functions for Toucan/HoneySQL queries against the application DB"
-  (:require [metabase.config :as config]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.setup :as mdb.setup]
-            [potemkin :as p]))
+  (:require
+   [metabase.config :as config]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.setup :as mdb.setup]
+   [potemkin :as p]))
 
 ;; TODO - determine if we *actually* need to import any of these
 ;;

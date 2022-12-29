@@ -1,30 +1,32 @@
 (ns metabase.api.search
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [GET]]
-            [flatland.ordered.map :as ordered-map]
-            [honeysql.core :as hsql]
-            [honeysql.helpers :as hh]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.db :as mdb]
-            [metabase.models :refer [Database]]
-            [metabase.models.bookmark :refer [CardBookmark CollectionBookmark DashboardBookmark]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.interface :as mi]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.search.config :as search-config]
-            [metabase.search.scoring :as scoring]
-            [metabase.search.util :as search-util]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [GET]]
+   [flatland.ordered.map :as ordered-map]
+   [honeysql.core :as hsql]
+   [honeysql.helpers :as hh]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.db :as mdb]
+   [metabase.models :refer [Database]]
+   [metabase.models.bookmark
+    :refer [CardBookmark CollectionBookmark DashboardBookmark]]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.search.config :as search-config]
+   [metabase.search.scoring :as scoring]
+   [metabase.search.util :as search-util]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
@@ -297,7 +299,7 @@
   (-> (base-query-for-model model search-ctx)
       (hh/left-join [DashboardBookmark :bookmark]
                     [:and
-                     [:= :bookmark.dashboard_id :dashboard.id ]
+                     [:= :bookmark.dashboard_id :dashboard.id]
                      [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 

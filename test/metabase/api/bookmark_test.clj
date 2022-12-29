@@ -1,16 +1,16 @@
 (ns metabase.api.bookmark-test
   "Tests for /api/bookmark endpoints."
-  (:require [clojure.test :refer :all]
-            [metabase.models.bookmark :refer [BookmarkOrdering CardBookmark
-                                              CollectionBookmark
-                                              DashboardBookmark]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as mi]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.bookmark
+    :refer [BookmarkOrdering CardBookmark CollectionBookmark DashboardBookmark]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (deftest bookmarks-test
   (mt/initialize-if-needed! :db)

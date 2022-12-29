@@ -1,14 +1,15 @@
 (ns metabase.api.ldap
   "/api/ldap endpoints"
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [PUT]]
-            [metabase.api.common :as api]
-            [metabase.integrations.ldap :as ldap]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [PUT]]
+   [metabase.api.common :as api]
+   [metabase.integrations.ldap :as ldap]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [toucan.db :as db]))
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."

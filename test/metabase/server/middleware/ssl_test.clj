@@ -1,9 +1,10 @@
 (ns metabase.server.middleware.ssl-test
-  (:require [clojure.test :refer :all]
-            [metabase.server.middleware.ssl :as mw.ssl]
-            [metabase.test.util :as tu]
-            [ring.mock.request :as ring.mock]
-            [ring.util.response :as response]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.server.middleware.ssl :as mw.ssl]
+   [metabase.test.util :as tu]
+   [ring.mock.request :as ring.mock]
+   [ring.util.response :as response]))
 
 (defn- handler [request]
   ((mw.ssl/redirect-to-https-middleware

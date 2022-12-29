@@ -1,33 +1,36 @@
 (ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase.actions.test-util :as actions.test-util]
-            [metabase.api.dashboard-test :as api.dashboard-test]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.api.public :as api.public]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card
-                                     Collection
-                                     Dashboard
-                                     DashboardCard
-                                     DashboardCardSeries
-                                     Dimension
-                                     Field
-                                     FieldValues]]
-            [metabase.models.interface :as mi]
-            [metabase.models.params.chain-filter-test :as chain-filter-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [throttle.core :as throttle]
-            [toucan.db :as db])
-  (:import java.io.ByteArrayInputStream
-           java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.actions.test-util :as actions.test-util]
+   [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.api.public :as api.public]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCard
+            DashboardCardSeries
+            Dimension
+            Field
+            FieldValues]]
+   [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [throttle.core :as throttle]
+   [toucan.db :as db])
+  (:import
+   (java.io ByteArrayInputStream)
+   (java.util UUID)))
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 

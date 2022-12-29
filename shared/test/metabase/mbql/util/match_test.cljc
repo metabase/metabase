@@ -1,6 +1,7 @@
 (ns metabase.mbql.util.match-test
-  (:require [clojure.test :as t]
-            [metabase.mbql.util.match :as mbql.match]))
+  (:require
+   [clojure.test :as t]
+   [metabase.mbql.util.match :as mbql.match]))
 
 (t/deftest ^:parallel basic-match-test
   (t/testing "can we use `match` to find the instances of a clause?"

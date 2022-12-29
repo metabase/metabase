@@ -1,13 +1,14 @@
 (ns metabase.query-processor.middleware.binning-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.binning :as binning]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.binning :as binning]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest filter->field-map-test
   (is (= {}

@@ -1,12 +1,13 @@
 (ns metabase.api.revision
-  (:require [compojure.core :refer [GET POST]]
-            [metabase.api.card :as api.card]
-            [metabase.api.common :as api]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.revision :as revision :refer [Revision]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [GET POST]]
+   [metabase.api.card :as api.card]
+   [metabase.api.common :as api]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.revision :as revision :refer [Revision]]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private ^:const valid-entity-names
   #{"card" "dashboard"})

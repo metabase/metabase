@@ -1,24 +1,24 @@
 (ns metabase.actions.execution
   (:require
-    [clojure.set :as set]
-    [clojure.tools.logging :as log]
-    [medley.core :as m]
-    [metabase.actions :as actions]
-    [metabase.actions.http-action :as http-action]
-    [metabase.api.common :as api]
-    [metabase.models :refer [Card DashboardCard Table]]
-    [metabase.models.action :as action]
-    [metabase.models.persisted-info :as persisted-info]
-    [metabase.models.query :as query]
-    [metabase.query-processor :as qp]
-    [metabase.query-processor.card :as qp.card]
-    [metabase.query-processor.error-type :as qp.error-type]
-    [metabase.query-processor.middleware.permissions :as qp.perms]
-    [metabase.query-processor.writeback :as qp.writeback]
-    [metabase.util :as u]
-    [metabase.util.i18n :refer [tru]]
-    [toucan.db :as db]
-    [toucan.hydrate :refer [hydrate]]))
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.actions :as actions]
+   [metabase.actions.http-action :as http-action]
+   [metabase.api.common :as api]
+   [metabase.models :refer [Card DashboardCard Table]]
+   [metabase.models.action :as action]
+   [metabase.models.persisted-info :as persisted-info]
+   [metabase.models.query :as query]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.writeback :as qp.writeback]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an

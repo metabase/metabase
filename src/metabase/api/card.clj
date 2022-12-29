@@ -1,47 +1,57 @@
 (ns metabase.api.card
   "/api/card endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.core.async :as a]
-            [clojure.data :as data]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.dataset :as api.dataset]
-            [metabase.api.timeline :as api.timeline]
-            [metabase.driver :as driver]
-            [metabase.email.messages :as messages]
-            [metabase.events :as events]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table ViewLog]]
-            [metabase.models.collection :as collection]
-            [metabase.models.interface :as mi]
-            [metabase.models.moderation-review :as moderation-review]
-            [metabase.models.persisted-info :as persisted-info]
-            [metabase.models.pulse :as pulse]
-            [metabase.models.query :as query]
-            [metabase.models.query.permissions :as query-perms]
-            [metabase.models.revision.last-edit :as last-edit]
-            [metabase.models.timeline :as timeline]
-            [metabase.query-processor.async :as qp.async]
-            [metabase.query-processor.card :as qp.card]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.related :as related]
-            [metabase.sync.analyze.query-results :as qr]
-            [metabase.task.persist-refresh :as task.persist-refresh]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel
-           java.util.UUID
-           metabase.models.card.CardInstance))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.async :as a]
+   [clojure.data :as data]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.api.timeline :as api.timeline]
+   [metabase.driver :as driver]
+   [metabase.email.messages :as messages]
+   [metabase.events :as events]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models
+    :refer [Card
+            CardBookmark
+            Collection
+            Database
+            PersistedInfo
+            Pulse
+            Table
+            ViewLog]]
+   [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
+   [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.persisted-info :as persisted-info]
+   [metabase.models.pulse :as pulse]
+   [metabase.models.query :as query]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.models.revision.last-edit :as last-edit]
+   [metabase.models.timeline :as timeline]
+   [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.related :as related]
+   [metabase.sync.analyze.query-results :as qr]
+   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)
+   (java.util UUID)
+   (metabase.models.card CardInstance)))
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 

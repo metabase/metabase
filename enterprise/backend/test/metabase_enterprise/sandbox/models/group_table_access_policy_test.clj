@@ -1,12 +1,13 @@
 (ns metabase-enterprise.sandbox.models.group-table-access-policy-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.models :refer [Card]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase.models :refer [Card]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (deftest normalize-attribute-remappings-test
   (testing "make sure attribute-remappings come back from the DB normalized the way we'd expect"

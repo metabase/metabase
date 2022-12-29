@@ -1,9 +1,10 @@
 (ns metabase.cmd.copy-test
-  (:require [clojure.test :refer :all]
-            [metabase.cmd.copy :as copy]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [toucan.models :as models]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.cmd.copy :as copy]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [toucan.models :as models]))
 
 (deftest all-models-accounted-for-test
   ;; This fetches the `metabase.cmd.load-from-h2/entities` and compares it all existing entities

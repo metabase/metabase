@@ -1,22 +1,33 @@
 (ns metabase.api.search-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [metabase.api.search :as api.search]
-            [metabase.models
-             :refer
-             [Card CardBookmark Collection Dashboard DashboardBookmark DashboardCard
-              Database Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard
-              Segment Table]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.search.config :as search-config]
-            [metabase.search.scoring :as scoring]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [honeysql.core :as hsql]
+   [metabase.api.search :as api.search]
+   [metabase.models
+    :refer [Card
+            CardBookmark
+            Collection
+            Dashboard
+            DashboardBookmark
+            DashboardCard
+            Database
+            Metric
+            PermissionsGroup
+            PermissionsGroupMembership
+            Pulse
+            PulseCard
+            Segment
+            Table]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.search.config :as search-config]
+   [metabase.search.scoring :as scoring]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private default-search-row
   {:id                         true

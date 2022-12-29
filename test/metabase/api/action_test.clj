@@ -1,12 +1,13 @@
 (ns metabase.api.action-test
-  (:require [clojure.test :refer :all]
-            [metabase.actions.test-util :as actions.test-util]
-            [metabase.api.action :as api.action]
-            [metabase.models :refer [Card]]
-            [metabase.models.action :refer [Action]]
-            [metabase.test :as mt]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.actions.test-util :as actions.test-util]
+   [metabase.api.action :as api.action]
+   [metabase.models :refer [Card]]
+   [metabase.models.action :refer [Action]]
+   [metabase.test :as mt]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (comment api.action/keep-me)
 

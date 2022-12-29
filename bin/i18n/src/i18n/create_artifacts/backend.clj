@@ -1,10 +1,12 @@
 (ns i18n.create-artifacts.backend
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [i18n.common :as i18n]
-            [metabuild-common.core :as u])
-  (:import [java.io FileOutputStream OutputStreamWriter]
-           java.nio.charset.StandardCharsets))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [i18n.common :as i18n]
+   [metabuild-common.core :as u])
+  (:import
+   (java.io FileOutputStream OutputStreamWriter)
+   (java.nio.charset StandardCharsets)))
 
 (defn- backend-message? [{:keys [source-references]}]
   (boolean

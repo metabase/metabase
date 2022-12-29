@@ -1,21 +1,22 @@
 (ns metabase.models.dashboard-card
-  (:require [clojure.set :as set]
-            [metabase.db.util :as mdb.u]
-            [metabase.events :as events]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.interface :as mi]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [clojure.set :as set]
+   [metabase.db.util :as mdb.u]
+   [metabase.events :as events]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.models.interface :as mi]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 (models/defmodel DashboardCard :report_dashboardcard)
 

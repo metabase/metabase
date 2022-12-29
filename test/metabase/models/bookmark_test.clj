@@ -1,6 +1,7 @@
 (ns metabase.models.bookmark-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.bookmark :as bookmark]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.bookmark :as bookmark]))
 
 (deftest normalize-bookmark-result-test
   (testing "collection properties don't shadow other properties"

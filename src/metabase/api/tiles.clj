@@ -1,21 +1,23 @@
 (ns metabase.api.tiles
   "`/api/tiles` endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.set :as set]
-            [compojure.core :refer [GET]]
-            [metabase.api.common :as api]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import java.awt.Color
-           java.awt.image.BufferedImage
-           java.io.ByteArrayOutputStream
-           javax.imageio.ImageIO))
+  (:require
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [compojure.core :refer [GET]]
+   [metabase.api.common :as api]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (java.awt Color)
+   (java.awt.image BufferedImage)
+   (java.io ByteArrayOutputStream)
+   (javax.imageio ImageIO)))
 
 ;;; --------------------------------------------------- CONSTANTS ----------------------------------------------------
 

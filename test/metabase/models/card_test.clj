@@ -1,17 +1,20 @@
 (ns metabase.models.card-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard]]
-            [metabase.models.card :as card]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
-  (:import java.time.LocalDateTime))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.models
+    :refer [Card Collection Dashboard DashboardCard]]
+   [metabase.models.card :as card]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt])
+  (:import
+   (java.time LocalDateTime)))
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"

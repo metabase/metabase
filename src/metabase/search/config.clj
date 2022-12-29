@@ -1,9 +1,11 @@
 (ns metabase.search.config
-  (:require [cheshire.core :as json]
-            [honeysql.core :as hsql]
-            [metabase.models :refer [Card Collection Dashboard Database Metric Pulse Segment Table]]
-            [metabase.models.setting :refer [defsetting]]
-            [metabase.util.i18n :refer [deferred-tru]]))
+  (:require
+   [cheshire.core :as json]
+   [honeysql.core :as hsql]
+   [metabase.models
+    :refer [Card Collection Dashboard Database Metric Pulse Segment Table]]
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting search-typeahead-enabled
   (deferred-tru "Enable typeahead search in the Metabase navbar?")

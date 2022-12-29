@@ -1,10 +1,12 @@
 (ns metabase.events.revision-test
-  (:require [clojure.test :refer :all]
-            [metabase.events.revision :as revision]
-            [metabase.models :refer [Card Dashboard DashboardCard Database Metric Revision Segment Table]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.events.revision :as revision]
+   [metabase.models
+    :refer [Card Dashboard DashboardCard Database Metric Revision Segment Table]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."

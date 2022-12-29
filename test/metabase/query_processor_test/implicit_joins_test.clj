@@ -1,10 +1,11 @@
 (ns metabase.query-processor-test.implicit-joins-test
   "Tests for joins that are created automatically when an `:fk->` column is present."
-  (:require [clj-time.core :as time]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]))
+  (:require
+   [clj-time.core :as time]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]))
 
 (deftest breakout-on-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)

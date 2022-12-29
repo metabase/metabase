@@ -1,11 +1,12 @@
 (ns metabase.sync.sync-metadata.fields.common
   "Schemas and functions shared by different `metabase.sync.sync-metadata.fields.*` namespaces."
-  (:require [clojure.string :as str]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.string :as str]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ParentID
   "Schema for the `parent-id` of a Field, i.e. an optional ID."

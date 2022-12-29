@@ -1,11 +1,12 @@
 (ns metabase.models.query-execution
   "QueryExecution is a log of very time a query is executed, and other information such as the User who executed it, run
   time, context it was executed in, etc."
-  (:require [metabase.mbql.schema :as mbql.s]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]
-            [toucan.models :as models]))
+  (:require
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [schema.core :as s]
+   [toucan.models :as models]))
 
 (models/defmodel QueryExecution :query_execution)
 

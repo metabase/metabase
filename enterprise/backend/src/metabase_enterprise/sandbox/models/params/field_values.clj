@@ -1,16 +1,17 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
-  (:require [metabase-enterprise.sandbox.api.table :as table]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
-            [metabase.api.common :as api]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Field PermissionsGroupMembership]]
-            [metabase.models.field :as field]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.params.field-values :as params.field-values]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [metabase-enterprise.sandbox.api.table :as table]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
+   [metabase.api.common :as api]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Field PermissionsGroupMembership]]
+   [metabase.models.field :as field]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.params.field-values :as params.field-values]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (comment api/keep-me)
 

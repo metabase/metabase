@@ -1,28 +1,29 @@
 (ns metabase.api.table
   "/api/table endpoints."
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET POST PUT]]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.related :as related]
-            [metabase.sync :as sync]
-            [metabase.sync.concurrent :as sync.concurrent]
-            #_:clj-kondo/ignore
-            [metabase.sync.field-values :as sync.field-values]
-            [metabase.types :as types]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [GET POST PUT]]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.related :as related]
+   [metabase.sync :as sync]
+   [metabase.sync.concurrent :as sync.concurrent]
+   #_:clj-kondo/ignore
+   [metabase.sync.field-values :as sync.field-values]
+   [metabase.types :as types]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."

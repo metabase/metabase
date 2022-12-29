@@ -1,12 +1,12 @@
 (ns metabase.models.params.card-values
   "Code related to getting values for a parameter where its source values is a card."
   (:require
-    [clojure.string :as str]
-    [metabase.models :refer [Card]]
-    [metabase.query-processor :as qp]
-    [metabase.util.schema :as su]
-    [schema.core :as s]
-    [toucan.db :as db]))
+   [clojure.string :as str]
+   [metabase.models :refer [Card]]
+   [metabase.query-processor :as qp]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:dynamic *max-rows*
   "Maximum number of rows returned when running a card.

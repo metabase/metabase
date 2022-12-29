@@ -1,31 +1,32 @@
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.database :as api.database]
-            [metabase.api.table :as api.table]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Card Collection Database Field
-                                     FieldValues Table]]
-            [metabase.models.database :as database :refer [protected-password]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.sync.analyze :as analyze]
-            [metabase.sync.field-values :as field-values]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [metabase.util.cron :as u.cron]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :as hydrate]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.database :as api.database]
+   [metabase.api.table :as api.table]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models
+    :refer [Card Collection Database Field FieldValues Table]]
+   [metabase.models.database :as database :refer [protected-password]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.field-values :as field-values]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :as hydrate]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
