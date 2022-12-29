@@ -2,25 +2,25 @@
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
   #?@
-  (:clj
-   [(:require
-     [clojure.core :as core]
-     [clojure.set :as set]
-     [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-     [metabase.mbql.schema.macros :refer [defclause one-of]]
-     [schema.core :as s])
-    (:import
-     (java.time ZoneId)
-     (java.time.format DateTimeFormatter))]
-   :cljs
-   [(:require
-     ["moment" :as moment]
-     ["moment-timezone" :as mtz]
-     [clojure.core :as core]
-     [clojure.set :as set]
-     [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-     [metabase.mbql.schema.macros :refer [defclause one-of]]
-     [schema.core :as s])]))
+   (:clj
+    [(:require
+      [clojure.core :as core]
+      [clojure.set :as set]
+      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+      [metabase.mbql.schema.macros :refer [defclause one-of]]
+      [schema.core :as s])
+     (:import
+      (java.time ZoneId)
+      (java.time.format DateTimeFormatter))]
+    :cljs
+    [(:require
+      ["moment" :as moment]
+      ["moment-timezone" :as mtz]
+      [clojure.core :as core]
+      [clojure.set :as set]
+      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+      [metabase.mbql.schema.macros :refer [defclause one-of]]
+      [schema.core :as s])]))
 
 #?(:cljs
    (comment
