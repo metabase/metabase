@@ -890,7 +890,7 @@
   [pos-int? {:title "Group ID"}])
 
 (def CollectionPermissions
-  "Malli enum for what sort of colleciton permissions we have. (:write :read or :none)"
+  "Malli enum for what sort of collection permissions we have. (:write :read or :none)"
   [:and keyword? [:enum :write :read :none]])
 
 (def GroupPermissionsGraph
