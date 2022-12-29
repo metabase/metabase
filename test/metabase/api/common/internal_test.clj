@@ -39,20 +39,20 @@
 (def ClosedTestAddress
   (mu/closed-schema TestAddress))
 
-(api/defendpoint-malli POST "/post/any" [:as {body :body :as request}]
+(api/defendpoint POST "/post/any" [:as {body :body :as request}]
   {:status 200 :body body})
 
-(api/defendpoint-malli POST "/post/id-int"
+(api/defendpoint POST "/post/id-int"
   [:as {{:keys [id] :as body} :body :as request}]
   {id int?}
   {:status 200 :body body})
 
-(api/defendpoint-malli POST "/post/test-address"
+(api/defendpoint POST "/post/test-address"
   [:as {address :body :as request}]
   {address TestAddress}
   {:status 200 :body address})
 
-(api/defendpoint-malli POST "/post/closed-test-address"
+(api/defendpoint POST "/post/closed-test-address"
   [:as {address :body :as request}]
   {address ClosedTestAddress}
   {:status 200 :body address})
@@ -71,7 +71,7 @@
               (handler req)
               (catch Exception e (mw.exceptions/api-exception-response e)))))
 
-(deftest defendpoint-malli-test
+(deftest defendpoint-test
   (let [server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})
         port (.. server getURI getPort)
         post! (fn [route body]
