@@ -1,14 +1,15 @@
 (ns metabase.api.slack
   "/api/slack endpoints"
-  (:require [clojure.java.io :as io]
-            [compojure.core :refer [PUT]]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.config :as config]
-            [metabase.integrations.slack :as slack]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.java.io :as io]
+   [compojure.core :refer [PUT]]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.config :as config]
+   [metabase.integrations.slack :as slack]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (api/defendpoint PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this. Also updates the slack-cache.

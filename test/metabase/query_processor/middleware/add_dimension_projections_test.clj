@@ -1,12 +1,14 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor.context.default :as context.default]
-            [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.middleware.add-dimension-projections
+    :as qp.add-dimension-projections]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

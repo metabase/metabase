@@ -1,10 +1,11 @@
 (ns metabase.api.slack-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.integrations.slack :as slack]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.integrations.slack :as slack]
+   [metabase.test :as mt]))
 
 (deftest update-slack-settings-test
   (testing "PUT /api/slack/settings"

@@ -12,11 +12,13 @@
 
   <3 Cam"
   (:refer-clojure :exclude [require])
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [dynapath.util :as dynapath])
-  (:import [clojure.lang DynamicClassLoader RT]
-           java.net.URL))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [dynapath.util :as dynapath])
+  (:import
+   (clojure.lang DynamicClassLoader RT)
+   (java.net URL)))
 
 (defonce ^:private ^{:doc "The context classloader we'll use for *all threads*, once we figure out what that is.
   Guaranteed to be an instance of `DynamicClassLoader`."} shared-context-classloader

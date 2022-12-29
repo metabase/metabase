@@ -1,10 +1,11 @@
 (ns metabase.test.data.postgres
   "Postgres driver test extensions."
-  (:require [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql.ddl :as ddl]))
+  (:require
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql.ddl :as ddl]))
 
 (sql-jdbc.tx/add-test-extensions! :postgres)
 

@@ -1,18 +1,19 @@
 (ns metabase.task.follow-up-emails
   "Tasks which follow up with Metabase users."
-  (:require [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite.jobs :as jobs]
-            [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            [java-time :as t]
-            [metabase.email :as email]
-            [metabase.email.messages :as messages]
-            [metabase.models.setting :as setting]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.task :as task]
-            [metabase.util.date-2 :as u.date]
-            [toucan.db :as db]))
+  (:require
+   [clojure.tools.logging :as log]
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.cron :as cron]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time :as t]
+   [metabase.email :as email]
+   [metabase.email.messages :as messages]
+   [metabase.models.setting :as setting]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.task :as task]
+   [metabase.util.date-2 :as u.date]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             send follow-up emails                                              |

@@ -1,6 +1,8 @@
 (ns metabase.driver.sql-jdbc.sync.common
-  (:require [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute])
-  (:import [java.sql Connection PreparedStatement ResultSet]))
+  (:require
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute])
+  (:import
+   (java.sql Connection PreparedStatement ResultSet)))
 
 (defn prepare-statement
   "Create a PreparedStatement for metadata queries; set `TYPE_FORWARD_ONLY`/`CONCUR_READ_ONLY`/`FETCH_FORWARD` options

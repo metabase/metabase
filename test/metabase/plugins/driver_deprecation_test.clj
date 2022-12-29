@@ -1,8 +1,9 @@
 (ns metabase.plugins.driver-deprecation-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.setting :as setting]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.setting :as setting]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 

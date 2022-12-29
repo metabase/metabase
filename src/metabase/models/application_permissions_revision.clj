@@ -1,8 +1,9 @@
 (ns metabase.models.application-permissions-revision
-  (:require [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel ApplicationPermissionsRevision :application_permissions_revision)
 

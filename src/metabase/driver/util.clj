@@ -1,24 +1,26 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.driver :as driver]
-            [metabase.models.setting :refer [defsetting]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs]]
-            [toucan.db :as db])
-  (:import java.io.ByteArrayInputStream
-           [java.security KeyFactory KeyStore PrivateKey]
-           [java.security.cert Certificate CertificateFactory X509Certificate]
-           java.security.spec.PKCS8EncodedKeySpec
-           javax.net.SocketFactory
-           [javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.config :as config]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.driver :as driver]
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs]]
+   [toucan.db :as db])
+  (:import
+   (java.io ByteArrayInputStream)
+   (java.security KeyFactory KeyStore PrivateKey)
+   (java.security.cert Certificate CertificateFactory X509Certificate)
+   (java.security.spec PKCS8EncodedKeySpec)
+   (javax.net SocketFactory)
+   (javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager)))
 
 (def ^:private connection-error-messages
   "Generic error messages that drivers should return in their implementation

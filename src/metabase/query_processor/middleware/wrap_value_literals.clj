@@ -1,14 +1,16 @@
 (ns metabase.query-processor.middleware.wrap-value-literals
   "Middleware that wraps value literals in `value`/`absolute-datetime`/etc. clauses containing relevant type
   information; parses datetime string literals when appropriate."
-  (:require [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.types :as types]
-            [metabase.util.date-2 :as u.date])
-  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
+  (:require
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.types :as types]
+   [metabase.util.date-2 :as u.date])
+  (:import
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
 ;;; --------------------------------------------------- Type Info ----------------------------------------------------
 

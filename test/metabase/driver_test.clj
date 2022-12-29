@@ -1,9 +1,10 @@
 (ns metabase.driver-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.impl :as driver.impl]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.test.data.env :as tx.env]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.test.data.env :as tx.env]))
 
 (driver/register! ::test-driver, :abstract? true)
 

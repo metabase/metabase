@@ -1,13 +1,15 @@
 (ns metabase.email
-  (:require [clojure.tools.logging :as log]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [postal.core :as postal]
-            [postal.support :refer [make-props]]
-            [schema.core :as s])
-  (:import javax.mail.Session))
+  (:require
+   [clojure.tools.logging :as log]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.schema :as su]
+   [postal.core :as postal]
+   [postal.support :refer [make-props]]
+   [schema.core :as s])
+  (:import
+   (javax.mail Session)))
 
 ;; https://github.com/metabase/metabase/issues/11879#issuecomment-713816386
 (when-not *compile-files*

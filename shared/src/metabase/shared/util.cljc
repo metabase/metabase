@@ -1,7 +1,7 @@
 (ns metabase.shared.util
   (:require
-    [camel-snake-kebab.core :as csk]
-    [medley.core :as m]))
+   [camel-snake-kebab.core :as csk]
+   [medley.core :as m]))
 
 (defn qualified-name
   "Return `k` as a string, qualified by its namespace, if any (unlike `name`). Handles `nil` values gracefully as well

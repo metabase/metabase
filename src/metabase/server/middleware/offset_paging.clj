@@ -1,7 +1,8 @@
 (ns metabase.server.middleware.offset-paging
-  (:require [medley.core :as m]
-            [metabase.server.middleware.security :as mw.security]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [medley.core :as m]
+   [metabase.server.middleware.security :as mw.security]
+   [metabase.util.i18n :refer [tru]]))
 
 (def ^:dynamic *limit* "Limit for offset-limit paging." nil)
 (def ^:private default-limit 50)

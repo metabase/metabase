@@ -1,6 +1,7 @@
 (ns metabase.pulse.render.js-engine-test
-  (:require [clojure.test :refer :all]
-            [metabase.pulse.render.js-engine :as js]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.pulse.render.js-engine :as js]))
 
 (deftest make-context-test
   (testing "can make a context that evaluates javascript"

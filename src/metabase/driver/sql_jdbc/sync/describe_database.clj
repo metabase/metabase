@@ -1,21 +1,23 @@
 (ns metabase.driver.sql-jdbc.sync.describe-database
   "SQL JDBC impl for `describe-database`."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
-            [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sync :as driver.s]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db])
-  (:import [java.sql Connection DatabaseMetaData ResultSet]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan.db :as db])
+  (:import
+   (java.sql Connection DatabaseMetaData ResultSet)))
 
 
 (defmethod sql-jdbc.sync.interface/excluded-schemas :sql-jdbc [_] nil)

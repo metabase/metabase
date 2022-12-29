@@ -1,9 +1,10 @@
 (ns metabase.api.login-history
-  (:require [compojure.core :refer [GET]]
-            [metabase.api.common :as api]
-            [metabase.models.login-history :as login-history :refer [LoginHistory]]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [GET]]
+   [metabase.api.common :as api]
+   [metabase.models.login-history :as login-history :refer [LoginHistory]]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn login-history
   "Return complete login history (sorted by most-recent -> least-recent) for `user-or-id`"

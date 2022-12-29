@@ -1,14 +1,15 @@
 (ns metabase-enterprise.sandbox.api.gtap
   "`/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies)."
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.api.common :as api]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase.api.common :as api]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (api/defendpoint GET "/"
   "Fetch a list of all the GTAPs currently in use."

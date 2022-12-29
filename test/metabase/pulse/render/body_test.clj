@@ -1,11 +1,12 @@
 (ns metabase.pulse.render.body-test
-  (:require [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [hiccup.core :refer [html]]
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.render.common :as common]
-            [metabase.pulse.render.test-util :as render.tu]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [hiccup.core :refer [html]]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.render.common :as common]
+   [metabase.pulse.render.test-util :as render.tu]
+   [schema.core :as s]))
 
 (use-fixtures :each
   (fn warn-possible-rebuild
@@ -631,7 +632,7 @@
   (let [rows        [["Category" "Series A" "Series B"]
                      ["A"        1          1.3]
                      ["B"        2          1.9]
-                     ["C"        3          4  ]]
+                     ["C"        3          4]]
         axes-split? (fn [rows]
                       (let [text (-> rows first last)]
                         ;; there is always 1 node with the series name in the legend

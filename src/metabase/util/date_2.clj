@@ -2,20 +2,21 @@
   "Replacement for `metabase.util.date` that consistently uses `java.time` instead of a mix of `java.util.Date`,
   `java.sql.*`, and Joda-Time."
   (:refer-clojure :exclude [format range])
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [java-time.core :as t.core]
-            [metabase.util.date-2.common :as u.date.common]
-            [metabase.util.date-2.parse :as u.date.parse]
-            [metabase.util.i18n :as i18n :refer [tru]]
-            [potemkin.types :as p.types]
-            [schema.core :as s])
-  (:import [java.time DayOfWeek Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period
-            ZonedDateTime]
-           [java.time.format DateTimeFormatter DateTimeFormatterBuilder FormatStyle TextStyle]
-           [java.time.temporal Temporal TemporalAdjuster WeekFields]
-           org.threeten.extra.PeriodDuration))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [java-time.core :as t.core]
+   [metabase.util.date-2.common :as u.date.common]
+   [metabase.util.date-2.parse :as u.date.parse]
+   [metabase.util.i18n :as i18n :refer [tru]]
+   [potemkin.types :as p.types]
+   [schema.core :as s])
+  (:import
+   (java.time DayOfWeek Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period ZonedDateTime)
+   (java.time.format DateTimeFormatter DateTimeFormatterBuilder FormatStyle TextStyle)
+   (java.time.temporal Temporal TemporalAdjuster WeekFields)
+   (org.threeten.extra PeriodDuration)))
 
 (defn- add-zone-to-local
   "Converts a temporal type without timezone info to one with zone info (i.e., a `ZonedDateTime`)."

@@ -1,15 +1,17 @@
 (ns metabase.query-processor.middleware.catch-exceptions-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.data.users :as test.users]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.catch-exceptions
+    :as catch-exceptions]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.data.users :as test.users]
+   [schema.core :as s]))
 
 (deftest exception-chain-test
   (testing "Should be able to get a sequence of exceptions by following causes, with the top-level Exception first"

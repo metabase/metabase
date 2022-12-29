@@ -1,8 +1,9 @@
 (ns metabase.pulse.render.style-test
-  (:require [clojure.test :refer :all]
-            [metabase.pulse.render.style :as style]
-            [metabase.test :as mt]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.pulse.render.style :as style]
+   [metabase.test :as mt]
+   [schema.core :as s]))
 
 (deftest filter-out-nil-test
   (testing "`style` should filter out nil values"
@@ -19,7 +20,7 @@
 
   (testing "If font registration fails, we should an Exception with a useful error message"
     (with-redefs [style/register-font! (fn [& _]
-                                       (throw (ex-info "Oops!" {})))]
+                                        (throw (ex-info "Oops!" {})))]
       (let [messages (mt/with-log-messages-for-level :error
                        (is (thrown-with-msg?
                             clojure.lang.ExceptionInfo

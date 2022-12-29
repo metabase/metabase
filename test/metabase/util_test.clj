@@ -1,12 +1,13 @@
 (ns metabase.util-test
   "Tests for functions in `metabase.util`."
-  (:require [clojure.test :refer :all]
-            [clojure.test.check.clojure-test :refer [defspec]]
-            [clojure.test.check.generators :as gen]
-            [clojure.test.check.properties :as prop]
-            [flatland.ordered.map :refer [ordered-map]]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.test.check.clojure-test :refer [defspec]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [flatland.ordered.map :refer [ordered-map]]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
@@ -112,7 +113,7 @@
 
            "check that diactrics get removed"
            {"Cam Saul's Toucannery"      "cam_saul_s_toucannery"
-            "toucans dislike piñatas :(" "toucans_dislike_pinatas___" }
+            "toucans dislike piñatas :(" "toucans_dislike_pinatas___"}
 
            "check that non-ASCII characters get URL-encoded (so we can support non-Latin alphabet languages; see #3818)"
            {"勇士" "%E5%8B%87%E5%A3%AB"}}]
@@ -131,7 +132,7 @@
 
            "check that diactrics get removed"
            {"Cam Saul's Toucannery"      "cam_saul_s_toucannery"
-            "toucans dislike piñatas :(" "toucans_dislike_pinatas___" }
+            "toucans dislike piñatas :(" "toucans_dislike_pinatas___"}
 
            "check that non-ASCII characters are preserved"
            {"勇士" "勇士"}}]

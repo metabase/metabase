@@ -1,33 +1,35 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST]]
-            [java-time :as t]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.common :as api]
-            [metabase.api.ldap :as api.ldap]
-            [metabase.config :as config]
-            [metabase.email.messages :as messages]
-            [metabase.events :as events]
-            [metabase.integrations.google :as google]
-            [metabase.integrations.ldap :as ldap]
-            [metabase.models.login-history :refer [LoginHistory]]
-            [metabase.models.session :refer [Session]]
-            [metabase.models.setting :as setting]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.server.request.util :as request.u]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.password :as u.password]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [throttle.core :as throttle]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import com.unboundid.util.LDAPSDKException
-           java.util.UUID))
+  (:require
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [DELETE GET POST]]
+   [java-time :as t]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
+   [metabase.api.ldap :as api.ldap]
+   [metabase.config :as config]
+   [metabase.email.messages :as messages]
+   [metabase.events :as events]
+   [metabase.integrations.google :as google]
+   [metabase.integrations.ldap :as ldap]
+   [metabase.models.login-history :refer [LoginHistory]]
+   [metabase.models.session :refer [Session]]
+   [metabase.models.setting :as setting]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.server.request.util :as request.u]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.password :as u.password]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [throttle.core :as throttle]
+   [toucan.db :as db]
+   [toucan.models :as models])
+  (:import
+   (com.unboundid.util LDAPSDKException)
+   (java.util UUID)))
 
 (s/defn ^:private record-login-history!
   [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]

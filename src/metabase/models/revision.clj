@@ -1,13 +1,14 @@
 (ns metabase.models.revision
-  (:require [clojure.data :as data]
-            [metabase.models.interface :as mi]
-            [metabase.models.revision.diff :refer [diff-string]]
-            [metabase.models.user :refer [User]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [clojure.data :as data]
+   [metabase.models.interface :as mi]
+   [metabase.models.revision.diff :refer [diff-string]]
+   [metabase.models.user :refer [User]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions

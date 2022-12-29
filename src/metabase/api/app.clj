@@ -1,23 +1,23 @@
 (ns metabase.api.app
   (:require
-    [clojure.string :as str]
-    [clojure.walk :as walk]
-    [compojure.core :refer [POST PUT]]
-    [medley.core :as m]
-    [metabase.actions :as actions]
-    [metabase.api.card :as api.card]
-    [metabase.api.collection :as api.collection]
-    [metabase.api.common :as api]
-    [metabase.mbql.schema :as mbql.s]
-    [metabase.models :refer [App Collection Dashboard ModelAction Table]]
-    [metabase.models.collection :as collection]
-    [metabase.models.dashboard :as dashboard]
-    [metabase.util :as u]
-    [metabase.util.i18n :as i18n]
-    [metabase.util.schema :as su]
-    [schema.core :as s]
-    [toucan.db :as db]
-    [toucan.hydrate :refer [hydrate]]))
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [compojure.core :refer [POST PUT]]
+   [medley.core :as m]
+   [metabase.actions :as actions]
+   [metabase.api.card :as api.card]
+   [metabase.api.collection :as api.collection]
+   [metabase.api.common :as api]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models :refer [App Collection Dashboard ModelAction Table]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard :as dashboard]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (defn- hydrate-details
   [apps & additional-features]
@@ -261,12 +261,12 @@
                                    :visualization_settings {"virtual_card" {"display" "action"}
                                                             "button.label" (i18n/tru "Edit"),
                                                             "action_slug" "update"}}])}
-                (= "detail" page-type) (assoc :parameters [{:name "ID",
-                                                            :slug "id",
-                                                            :id (str "scaffold_" table-id),
-                                                            :type "id",
-                                                            :hidden true
-                                                            :sectionId "id"}])))}))
+               (= "detail" page-type) (assoc :parameters [{:name "ID",
+                                                           :slug "id",
+                                                           :id (str "scaffold_" table-id),
+                                                           :type "id",
+                                                           :hidden true
+                                                           :sectionId "id"}])))}))
 
 (api/defendpoint POST "/scaffold"
   "Endpoint to scaffold a fully working data-app"

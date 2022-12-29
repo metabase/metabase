@@ -7,16 +7,17 @@
   them; they are created automatically. You can, however, set permissions for them.
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
-  (:require [clojure.string :as str]
-            [honeysql.helpers :as hh]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.models.setting :as setting]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.string :as str]
+   [honeysql.helpers :as hh]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.models.setting :as setting]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel PermissionsGroup :permissions_group)
 

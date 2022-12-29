@@ -1,24 +1,25 @@
 (ns metabase.query-processor.middleware.annotate
   "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.mbql.predicates :as mbql.preds]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.mbql.util.match :as mbql.match]
-            [metabase.models.humanization :as humanization]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.mbql.predicates :as mbql.preds]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.mbql.util.match :as mbql.match]
+   [metabase.models.humanization :as humanization]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."

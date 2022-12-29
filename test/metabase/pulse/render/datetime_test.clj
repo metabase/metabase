@@ -1,8 +1,9 @@
 (ns metabase.pulse.render.datetime-test
-  (:require [clojure.test :refer :all]
-            [metabase.pulse.render.datetime :as datetime]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.pulse.render.datetime :as datetime]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.test :as mt]))
 
 (def ^:private now "2020-07-16T18:04:00Z[UTC]")
 

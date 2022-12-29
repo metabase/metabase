@@ -1,8 +1,9 @@
 (ns metabase.models.action-test
-  (:require [clojure.test :refer :all]
-            [metabase.actions.test-util :as actions.test-util]
-            [metabase.models.action :as action]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.actions.test-util :as actions.test-util]
+   [metabase.models.action :as action]
+   [metabase.test :as mt]))
 
 (deftest hydrate-query-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)

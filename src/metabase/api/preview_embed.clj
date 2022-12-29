@@ -8,12 +8,13 @@
        the JWT token itself.
 
    Refer to the documentation for those endpoints for further details."
-  (:require [compojure.core :refer [GET]]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.embed :as api.embed]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.util.embed :as embed]))
+  (:require
+   [compojure.core :refer [GET]]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.embed :as api.embed]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.util.embed :as embed]))
 
 (defn- check-and-unsign [token]
   (api/check-superuser)

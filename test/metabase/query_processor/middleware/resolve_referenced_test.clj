@@ -1,13 +1,17 @@
 (ns metabase.query-processor.middleware.resolve-referenced-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.database :refer [Database]]
-            [metabase.query-processor.middleware.parameters-test :refer [card-template-tags]]
-            [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.test :as mt]
-            [toucan.db :as db])
-  (:import clojure.lang.ExceptionInfo))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.database :refer [Database]]
+   [metabase.query-processor.middleware.parameters-test
+    :refer [card-template-tags]]
+   [metabase.query-processor.middleware.resolve-referenced
+    :as qp.resolve-referenced]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.test :as mt]
+   [toucan.db :as db])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (deftest tags-referenced-cards-lookup-test
   (testing "returns Card instances from raw query"

@@ -1,5 +1,6 @@
 (ns metabase.cmd.test-util
-  (:require [metabase.util.files :as u.files]))
+  (:require
+   [metabase.util.files :as u.files]))
 
 (def fixture-db-file-path
   (delay

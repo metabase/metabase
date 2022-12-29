@@ -1,9 +1,10 @@
 (ns metabase.models.permissions-group-membership
-  (:require [metabase.models.permissions-group :as perms-group]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel PermissionsGroupMembership :permissions_group_membership)
 
