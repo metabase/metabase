@@ -22,7 +22,7 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
   (:import [com.google.cloud.bigquery Field$Mode FieldValue]
@@ -88,7 +88,8 @@
     (parse-fn v)))
 
 (defmethod parse-result-of-type :default
-  [_ column-mode _ v]
+  [column-type column-mode _ v]
+  (log/warn (trs "Warning: missing type mapping for parsing BigQuery results of type {0}." column-type))
   (parse-value column-mode v identity))
 
 (defmethod parse-result-of-type "BOOLEAN"
@@ -105,6 +106,10 @@
 
 (defmethod parse-result-of-type "NUMERIC"
   [_ column-mode _ v]
+  (parse-value column-mode v bigdec))
+
+(defmethod parse-result-of-type "BIGNUMERIC"
+  [_column-type column-mode _timezone-id v]
   (parse-value column-mode v bigdec))
 
 (defn- parse-timestamp-str [timezone-id s]
