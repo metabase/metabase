@@ -300,7 +300,7 @@
                                      (wrap-response-if-needed
                                       (do ~@body))))))))
 
-(defmacro malli-defendpoint
+(defmacro defendpoint-malli
   "Define an API function.
    This automatically does several things:
 
