@@ -28,13 +28,14 @@
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
-  (:require [clojure.set :as set]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.mbql.util.match :as mbql.match]
-            [metabase.shared.util.i18n :as i18n]
-            [metabase.shared.util.log :as log]))
+  (:require
+   [clojure.set :as set]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.mbql.util.match :as mbql.match]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.log :as log]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation

@@ -1,12 +1,13 @@
 (ns metabase.transforms.dashboard
-  (:require [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.automagic-dashboards.populate :as populate]
-            [metabase.models.table :refer [Table]]
-            [metabase.transforms.materialize :as tf.materialize]
-            [metabase.transforms.specs :refer [transform-specs]]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.automagic-dashboards.populate :as populate]
+   [metabase.models.table :refer [Table]]
+   [metabase.transforms.materialize :as tf.materialize]
+   [metabase.transforms.specs :refer [transform-specs]]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (def ^:private ^:const ^Long width 12)
 (def ^:private ^:const ^Long total-width 18)

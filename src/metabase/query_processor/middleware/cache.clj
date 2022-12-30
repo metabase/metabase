@@ -10,19 +10,21 @@
   The default backend is `db`, which uses the application database; this value can be changed by setting the env var
   `MB_QP_CACHE_BACKEND`. Refer to [[metabase.query-processor.middleware.cache-backend.interface]] for more details
   about how the cache backends themselves."
-  (:require [clojure.tools.logging :as log]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.middleware.cache-backend.db :as backend.db]
-            [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.query-processor.middleware.cache.impl :as impl]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]])
-  (:import org.eclipse.jetty.io.EofException))
+  (:require
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.middleware.cache-backend.db :as backend.db]
+   [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.query-processor.middleware.cache.impl :as impl]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]])
+  (:import
+   (org.eclipse.jetty.io EofException)))
 
 (comment backend.db/keep-me)
 

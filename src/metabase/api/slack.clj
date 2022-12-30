@@ -1,16 +1,17 @@
 (ns metabase.api.slack
   "/api/slack endpoints"
-  (:require [clojure.java.io :as io]
-            [compojure.core :refer [PUT]]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.config :as config]
-            [metabase.integrations.slack :as slack]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.java.io :as io]
+   [compojure.core :refer [PUT]]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.config :as config]
+   [metabase.integrations.slack :as slack]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
-(api/defendpoint PUT "/settings"
+(api/defendpoint-schema PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this. Also updates the slack-cache.
   There are 3 cases where we alter the slack channel/user cache:
   1. falsy token           -> clear
@@ -48,7 +49,7 @@
 (def ^:private slack-manifest
   (delay (slurp (io/resource "slack-manifest.yaml"))))
 
-(api/defendpoint GET "/manifest"
+(api/defendpoint-schema GET "/manifest"
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
   []
   (validation/check-has-application-permission :setting)

@@ -1,21 +1,22 @@
 (ns metabase-enterprise.serialization.test-util
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [metabase-enterprise.serialization.names :as names]
-            [metabase.db :as mdb]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
-                                     Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [metabase-enterprise.serialization.names :as names]
+   [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.data-source :as mdb.data-source]
+   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
+                            Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (def root-card-name "My Root Card \\ with a/nasty: (*) //n`me ' * ? \" < > | ŠĐž")
 (def temp-db-name "Fingerprint test-data copy")

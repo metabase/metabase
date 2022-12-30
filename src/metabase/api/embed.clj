@@ -14,29 +14,30 @@
       {:resource {:question  <card-id>
                   :dashboard <dashboard-id>}
        :params   <params>}"
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [GET]]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.dashboard :as api.dashboard]
-            [metabase.api.dataset :as api.dataset]
-            [metabase.api.public :as api.public]
-            [metabase.driver.common.parameters.operators :as params.ops]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.pulse.parameters :as params]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.util :as u]
-            [metabase.util.embed :as embed]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [GET]]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.dashboard :as api.dashboard]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.api.public :as api.public]
+   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.pulse.parameters :as params]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.util :as u]
+   [metabase.util.embed :as embed]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; ------------------------------------------------- Param Checking -------------------------------------------------
 
@@ -326,7 +327,7 @@
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
 
-(api/defendpoint GET "/card/:token"
+(api/defendpoint-schema GET "/card/:token"
   "Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -356,7 +357,7 @@
       :constraints       constraints
       :options           options)))
 
-(api/defendpoint ^:streaming GET "/card/:token/query"
+(api/defendpoint-schema ^:streaming GET "/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -366,7 +367,7 @@
   [token & query-params]
   (run-query-for-unsigned-token-async (embed/unsign token) :api query-params))
 
-(api/defendpoint ^:streaming GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
+(api/defendpoint-schema ^:streaming GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [token export-format :as {:keys [query-params]}]
   {export-format api.dataset/ExportFormat}
@@ -382,7 +383,7 @@
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
 
-(api/defendpoint GET "/dashboard/:token"
+(api/defendpoint-schema GET "/dashboard/:token"
   "Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -424,7 +425,7 @@
       :constraints      constraints
       :qp-runner        qp-runner)))
 
-(api/defendpoint ^:streaming GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint-schema ^:streaming GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
@@ -437,7 +438,7 @@
 
 ;;; -------------------------------------------------- Field Values --------------------------------------------------
 
-(api/defendpoint GET "/card/:token/field/:field-id/values"
+(api/defendpoint-schema GET "/card/:token/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by an embedded Card."
   [token field-id]
   (let [unsigned-token (embed/unsign token)
@@ -445,7 +446,7 @@
     (check-embedding-enabled-for-card card-id)
     (api.public/card-and-field-id->values card-id field-id)))
 
-(api/defendpoint GET "/dashboard/:token/field/:field-id/values"
+(api/defendpoint-schema GET "/dashboard/:token/field/:field-id/values"
   "Fetch FieldValues for a Field that is used as a param in an embedded Dashboard."
   [token field-id]
   (let [unsigned-token (embed/unsign token)
@@ -456,7 +457,7 @@
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
-(api/defendpoint GET "/card/:token/field/:field-id/search/:search-field-id"
+(api/defendpoint-schema GET "/card/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by an embedded Card."
   [token field-id search-field-id value limit]
   {value su/NonBlankString
@@ -466,7 +467,7 @@
     (check-embedding-enabled-for-card card-id)
     (api.public/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
-(api/defendpoint GET "/dashboard/:token/field/:field-id/search/:search-field-id"
+(api/defendpoint-schema GET "/dashboard/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in an embedded Dashboard."
   [token field-id search-field-id value limit]
   {value su/NonBlankString
@@ -480,7 +481,7 @@
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
-(api/defendpoint GET "/card/:token/field/:field-id/remapping/:remapped-id"
+(api/defendpoint-schema GET "/card/:token/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Cards."
   [token field-id remapped-id value]
@@ -490,7 +491,7 @@
     (check-embedding-enabled-for-card card-id)
     (api.public/card-field-remapped-values card-id field-id remapped-id value)))
 
-(api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
+(api/defendpoint-schema GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Dashboards."
   [token field-id remapped-id value]
@@ -500,7 +501,7 @@
     (check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
-(api/defendpoint ^:streaming GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
+(api/defendpoint-schema ^:streaming GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
                                   :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
@@ -582,17 +583,17 @@
           (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
-(api/defendpoint GET "/dashboard/:token/params/:param-key/values"
+(api/defendpoint-schema GET "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [token param-key :as {:keys [query-params]}]
   (param-values token param-key nil query-params))
 
-(api/defendpoint GET "/dashboard/:token/params/:param-key/search/:prefix"
+(api/defendpoint-schema GET "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [token param-key prefix :as {:keys [query-params]}]
   (param-values token param-key prefix query-params))
 
-(api/defendpoint ^:streaming GET "/pivot/card/:token/query"
+(api/defendpoint-schema ^:streaming GET "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -602,7 +603,7 @@
   [token & query-params]
   (run-query-for-unsigned-token-async (embed/unsign token) :api query-params :qp-runner qp.pivot/run-pivot-query))
 
-(api/defendpoint ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint-schema ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]

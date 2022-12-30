@@ -2,12 +2,13 @@
   "Dimensions are used to define remappings for Fields handled automatically when those Fields are encountered by the
   Query Processor. For a more detailed explanation, refer to the documentation in
   `metabase.query-processor.middleware.add-dimension-projections`."
-  (:require [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [toucan.models :as models]))
 
 ;;; Possible values for Dimension.type :
 ;;;

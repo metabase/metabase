@@ -1,17 +1,18 @@
 (ns metabase.sync.field-values
   "Logic for updating FieldValues for fields in a database."
-  (:require [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.db :as mdb]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.db :as mdb]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (s/defn ^:private clear-field-values-for-field! [field :- i/FieldInstance]
   (when (db/exists? FieldValues :field_id (u/the-id field))

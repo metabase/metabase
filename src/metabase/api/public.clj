@@ -1,37 +1,38 @@
 (ns metabase.api.public
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
-  (:require [cheshire.core :as json]
-            [clojure.core.async :as a]
-            [compojure.core :refer [GET]]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.dashboard :as api.dashboard]
-            [metabase.api.dataset :as api.dataset]
-            [metabase.api.field :as api.field]
-            [metabase.async.util :as async.u]
-            [metabase.db.util :as mdb.u]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.params :as params]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.card :as qp.card]
-            [metabase.query-processor.dashboard :as qp.dashboard]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.util :as u]
-            [metabase.util.embed :as embed]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.async :as a]
+   [compojure.core :refer [GET]]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.dashboard :as api.dashboard]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.api.field :as api.field]
+   [metabase.async.util :as async.u]
+   [metabase.db.util :as mdb.u]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.params :as params]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.util :as u]
+   [metabase.util.embed :as embed]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
@@ -58,7 +59,7 @@
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
-(api/defendpoint GET "/card/:uuid"
+(api/defendpoint-schema GET "/card/:uuid"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid]
@@ -137,14 +138,14 @@
   (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
     (apply run-query-for-card-with-id-async card-id export-format parameters options)))
 
-(api/defendpoint ^:streaming GET "/card/:uuid/query"
+(api/defendpoint-schema ^:streaming GET "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword)))
 
-(api/defendpoint ^:streaming GET "/card/:uuid/query/:export-format"
+(api/defendpoint-schema ^:streaming GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid export-format :as {{:keys [parameters]} :params}]
@@ -180,7 +181,7 @@
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
-(api/defendpoint GET "/dashboard/:uuid"
+(api/defendpoint-schema GET "/dashboard/:uuid"
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
   (validation/check-public-sharing-enabled)
@@ -219,7 +220,7 @@
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
 
-(api/defendpoint ^:streaming GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint-schema ^:streaming GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [uuid card-id dashcard-id parameters]
@@ -233,7 +234,7 @@
      :export-format :api
      :parameters    parameters)))
 
-(api/defendpoint GET "/oembed"
+(api/defendpoint-schema GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
   [url format maxheight maxwidth]
   ;; the format param is not used by the API, but is required as part of the oEmbed spec: http://oembed.com/#section2
@@ -311,7 +312,7 @@
   (check-field-is-referenced-by-card field-id card-id)
   (api.field/field->values (db/select-one Field :id field-id)))
 
-(api/defendpoint GET "/card/:uuid/field/:field-id/values"
+(api/defendpoint-schema GET "/card/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a public Card."
   [uuid field-id]
   (validation/check-public-sharing-enabled)
@@ -325,7 +326,7 @@
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (api.field/field->values (db/select-one Field :id field-id)))
 
-(api/defendpoint GET "/dashboard/:uuid/field/:field-id/values"
+(api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id]
   (validation/check-public-sharing-enabled)
@@ -351,7 +352,7 @@
   (check-search-field-is-allowed field-id search-id)
   (api.field/search-values (db/select-one Field :id field-id) (db/select-one Field :id search-id) value limit))
 
-(api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
+(api/defendpoint-schema GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
   [uuid field-id search-field-id value limit]
   {value su/NonBlankString
@@ -360,7 +361,7 @@
   (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
-(api/defendpoint GET "/dashboard/:uuid/field/:field-id/search/:search-field-id"
+(api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id search-field-id value limit]
   {value su/NonBlankString
@@ -392,7 +393,7 @@
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (field-remapped-values field-id remapped-field-id value-str))
 
-(api/defendpoint GET "/card/:uuid/field/:field-id/remapping/:remapped-id"
+(api/defendpoint-schema GET "/card/:uuid/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Cards."
   [uuid field-id remapped-id value]
@@ -401,7 +402,7 @@
   (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
     (card-field-remapped-values card-id field-id remapped-id value)))
 
-(api/defendpoint GET "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
+(api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Dashboards."
   [uuid field-id remapped-id value]
@@ -412,14 +413,14 @@
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
 
-(api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
+(api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
   [uuid param-key :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (api.dashboard/param-values dashboard param-key query-params))))
 
-(api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
+(api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
   [uuid param-key query :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
@@ -429,14 +430,14 @@
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
 ;; TODO -- why do these endpoints START with `/pivot/` whereas the version in Dash
-(api/defendpoint ^:streaming GET "/pivot/card/:uuid/query"
+(api/defendpoint-schema ^:streaming GET "/pivot/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) :qp-runner qp.pivot/run-pivot-query))
 
-(api/defendpoint ^:streaming GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint-schema ^:streaming GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [uuid card-id dashcard-id parameters]

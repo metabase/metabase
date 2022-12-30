@@ -1,6 +1,7 @@
 (ns metabase.models.permissions.parse-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.permissions.parse :as perms-parse]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.permissions.parse :as perms-parse]))
 
 (deftest permissions->graph
   (testing "Parses each permission string to the correct graph"

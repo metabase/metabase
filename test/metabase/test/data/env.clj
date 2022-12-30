@@ -9,10 +9,11 @@
 
     # just test against :h2 (default)
     DRIVERS=h2"
-  (:require [clojure.tools.logging :as log]
-            [colorize.core :as colorize]
-            [metabase.test.data.env.impl :as tx.env.impl]
-            [metabase.test.initialize :as initialize]))
+  (:require
+   [clojure.tools.logging :as log]
+   [colorize.core :as colorize]
+   [metabase.test.data.env.impl :as tx.env.impl]
+   [metabase.test.initialize :as initialize]))
 
 (defonce ^:private env-test-drivers
   (delay

@@ -207,16 +207,16 @@ export const setParameterSourceType = createThunkAction(
   },
 );
 
-export const SET_PARAMETER_SOURCE_OPTIONS =
-  "metabase/dashboard/SET_PARAMETER_SOURCE_OPTIONS";
-export const setParameterSourceOptions = createThunkAction(
-  SET_PARAMETER_SOURCE_OPTIONS,
-  (parameterId, sourceOptions) => (dispatch, getState) => {
+export const SET_PARAMETER_SOURCE_CONFIG =
+  "metabase/dashboard/SET_PARAMETER_SOURCE_CONFIG";
+export const setParameterSourceConfig = createThunkAction(
+  SET_PARAMETER_SOURCE_CONFIG,
+  (parameterId, sourceConfig) => (dispatch, getState) => {
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
-      values_source_config: sourceOptions,
+      values_source_config: sourceConfig,
     }));
-    return { id: parameterId, sourceOptions };
+    return { id: parameterId, sourceConfig };
   },
 );
 

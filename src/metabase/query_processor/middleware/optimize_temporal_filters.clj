@@ -1,13 +1,14 @@
 (ns metabase.query-processor.middleware.optimize-temporal-filters
   "Middlware that optimizes equality filter clauses against bucketed temporal fields. See docstring for
   `optimize-temporal-filters` for more details."
-  (:require [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]))
+  (:require
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs]]
+   [schema.core :as s]))
 
 (def ^:private optimizable-units
   #{:second :minute :hour :day :week :month :quarter :year})

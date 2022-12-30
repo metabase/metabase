@@ -1,22 +1,22 @@
 (ns metabase.api.app-test
   (:require
-    [cheshire.core :as json]
-    [clojure.test :refer [deftest is testing]]
-    [medley.core :as m]
-    [metabase.models :refer [App
-                             Card
-                             Collection
-                             Dashboard
-                             DashboardCard
-                             ModelAction]]
-    [metabase.models.collection.graph :as graph]
-    [metabase.models.permissions :as perms]
-    [metabase.models.permissions-group :as perms-group]
-    [metabase.test :as mt]
-    [metabase.test.data :as data]
-    [metabase.test.initialize :as initialize]
-    [toucan.db :as db]
-    [toucan.hydrate :refer [hydrate]]))
+   [cheshire.core :as json]
+   [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
+   [metabase.models :refer [App
+                            Card
+                            Collection
+                            Dashboard
+                            DashboardCard
+                            ModelAction]]
+   [metabase.models.collection.graph :as graph]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.initialize :as initialize]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (deftest create-test
   (mt/with-model-cleanup [Collection]
@@ -226,8 +226,8 @@
                                                                     :targetId (:id detail-page)}}}
                                          {}]}
                         list-page))
-        (is (= (scaffolded-models app)
-               (api-models app)))))
+         (is (= (scaffolded-models app)
+                (api-models app)))))
       (testing "With existing pages"
         (mt/with-temp* [Dashboard [{dashboard-id :id} {:collection_id collection-id}]
                         Card [{card-id :id :as added-model} {:dataset true}]

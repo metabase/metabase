@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.escape-join-aliases
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.util :as u]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.driver :as driver]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.util :as u]))
 
 (defn- rename-join-aliases
   "Rename joins in `query` by replacing aliases whose keys appear in `original->new` with their corresponding values."

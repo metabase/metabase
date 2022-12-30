@@ -1,29 +1,30 @@
 (ns metabase.sync.analyze.fingerprint
   "Analysis sub-step that takes a sample of values for a Field and saving a non-identifying fingerprint
    used for classification. This fingerprint is saved as a column on the Field it belongs to."
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [honeysql.helpers :as hh]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.db.util :as mdb.u]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.table :as table]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [redux.core :as redux]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [honeysql.helpers :as hh]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.db.util :as mdb.u]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.table :as table]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [redux.core :as redux]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (comment
-  metadata-queries/keep-me-for-default-table-row-sample
-  )
+  metadata-queries/keep-me-for-default-table-row-sample)
+
 
 (s/defn ^:private save-fingerprint!
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]

@@ -1,18 +1,22 @@
 (ns metabase.models.dashboard-card-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.card-test :as card-test]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.interface-test :as i.test]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db])
-  (:import java.time.LocalDateTime))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.card-test :as card-test]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card
+    :as dashboard-card
+    :refer [DashboardCard]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.models.interface-test :as i.test]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db])
+  (:import
+   (java.time LocalDateTime)))
 
 (defn remove-ids-and-timestamps [m]
   (let [f (fn [v]

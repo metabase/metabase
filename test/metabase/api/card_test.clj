@@ -1,56 +1,59 @@
 (ns metabase.api.card-test
   "Tests for /api/card endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.tools.macro :as tools.macro]
-            [clojurewerkz.quartzite.scheduler :as qs]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.api.card :as api.card]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card
-                                     CardBookmark
-                                     Collection
-                                     Dashboard
-                                     Database
-                                     ModerationReview
-                                     PersistedInfo
-                                     Pulse
-                                     PulseCard
-                                     PulseChannel
-                                     PulseChannelRecipient
-                                     Table
-                                     Timeline
-                                     TimelineEvent
-                                     ViewLog]]
-            [metabase.models.moderation-review :as moderation-review]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.revision :as revision :refer [Revision]]
-            [metabase.models.user :refer [User]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.async :as qp.async]
-            [metabase.query-processor.card :as qp.card]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.task :as task]
-            [metabase.task.persist-refresh :as task.persist-refresh]
-            [metabase.task.sync-databases :as task.sync-databases]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import java.io.ByteArrayInputStream
-           java.util.UUID
-           org.quartz.impl.StdSchedulerFactory))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.tools.macro :as tools.macro]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.api.card :as api.card]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card
+            CardBookmark
+            Collection
+            Dashboard
+            Database
+            ModerationReview
+            PersistedInfo
+            Pulse
+            PulseCard
+            PulseChannel
+            PulseChannelRecipient
+            Table
+            Timeline
+            TimelineEvent
+            ViewLog]]
+   [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.revision :as revision :refer [Revision]]
+   [metabase.models.user :refer [User]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.task :as task]
+   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (java.io ByteArrayInputStream)
+   (java.util UUID)
+   (org.quartz.impl StdSchedulerFactory)))
 
 (comment api.card/keep-me)
 

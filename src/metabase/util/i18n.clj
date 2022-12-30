@@ -1,15 +1,17 @@
 (ns metabase.util.i18n
   "i18n functionality."
-  (:require [cheshire.generate :as json.generate]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [metabase.util.i18n.impl :as i18n.impl]
-            [potemkin :as p]
-            [potemkin.types :as p.types]
-            [schema.core :as s])
-  (:import java.text.MessageFormat
-           java.util.Locale))
+  (:require
+   [cheshire.generate :as json.generate]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [metabase.util.i18n.impl :as i18n.impl]
+   [potemkin :as p]
+   [potemkin.types :as p.types]
+   [schema.core :as s])
+  (:import
+   (java.text MessageFormat)
+   (java.util Locale)))
 
 (p/import-vars
  [i18n.impl

@@ -1,11 +1,12 @@
 (ns metabase.sync.analyze.classifiers.name-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.sync.analyze.classifiers.name :as classifiers.name]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.sync.analyze.classifiers.name :as classifiers.name]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (deftest semantic-type-for-name-and-base-type-test
   (doseq [[input expected] {["id"      :type/Integer] :type/PK

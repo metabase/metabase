@@ -1,12 +1,14 @@
 (ns metabase.troubleshooting
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.java.jmx :as jmx]
-            [metabase.analytics.stats :as stats]
-            [metabase.config :as config]
-            [metabase.db :as mdb]
-            [metabase.driver :as driver]
-            [toucan.db :as db])
-  (:import javax.management.ObjectName))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.java.jmx :as jmx]
+   [metabase.analytics.stats :as stats]
+   [metabase.config :as config]
+   [metabase.db :as mdb]
+   [metabase.driver :as driver]
+   [toucan.db :as db])
+  (:import
+   (javax.management ObjectName)))
 
 (defn system-info
   "System info we ask for for bug reports"

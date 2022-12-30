@@ -1,22 +1,23 @@
 (ns metabase.sync.sync-metadata.tables
   "Logic for updating Metabase Table models from metadata fetched from a physical DB."
-  (:require [clojure.data :as data]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.humanization :as humanization]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.sync.fetch-metadata :as fetch-metadata]
-            [metabase.sync.interface :as i]
-            [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.data :as data]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.humanization :as humanization]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; ------------------------------------------------ "Crufty" Tables -------------------------------------------------
 

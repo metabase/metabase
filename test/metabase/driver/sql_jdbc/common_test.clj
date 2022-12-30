@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.common-test
-  (:require [clojure.test :as t]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]))
+  (:require
+   [clojure.test :as t]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]))
 
 (t/deftest conn-str-with-additional-opts-testc
   (t/testing "conn-str-with-additional-opts combined with additional-opts->string works as expected"

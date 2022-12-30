@@ -1,17 +1,18 @@
 (ns metabase-enterprise.advanced-permissions.api.subscription-test
   "Permisisons tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
-  (:require [clojure.test :refer :all]
-            [metabase.api.alert :as api.alert]
-            [metabase.api.alert-test :as alert-test]
-            [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.pulse :as pulse]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.pulse-test :as pulse-test]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.alert :as api.alert]
+   [metabase.api.alert-test :as alert-test]
+   [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.pulse :as pulse]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.pulse-test :as pulse-test]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defmacro ^:private with-subscription-disabled-for-all-users
   "Temporarily remove `subscription` permission for group `All Users`, execute `body` then re-grant it.

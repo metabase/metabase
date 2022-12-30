@@ -56,7 +56,7 @@ describeEE(
 
       cy.findByText("Sample Database").click();
 
-      cy.get(".Actions")
+      cy.findByTestId("database-actions-panel")
         .should("contain", "Sync database schema now")
         .and("contain", "Re-scan field values now")
         .and("contain", "Discard saved field values")

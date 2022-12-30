@@ -1,21 +1,22 @@
 (ns metabase.public-settings.premium-features
   "Settings related to checking premium token validity and which premium features it allows."
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.core.memoize :as memoize]
-            #_:clj-kondo/ignore
-            [clojure.spec.alpha :as spec]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :refer [env]]
-            [metabase.config :as config]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as schema]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
+   #_:clj-kondo/ignore
+   [clojure.spec.alpha :as spec]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [environ.core :refer [env]]
+   [metabase.config :as config]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as schema]
+   [toucan.db :as db]))
 
 (def ^:private ValidToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
