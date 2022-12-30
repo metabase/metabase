@@ -4,10 +4,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.core :refer [POST]]
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.schema :as su]
-   [malli.core :as mc]
    [schema.core :as s]))
 
 (deftest ^:parallel generate-api-error-message-test
@@ -123,11 +124,13 @@
 
 (defn- plumatic-validate
   [schema x]
-  (try
-    (s/validate schema x)
-    true
-    (catch Throwable _
-      false)))
+  (boolean (u/ignore-exceptions
+             (s/validate schema x))))
+
+(defn- malli-validate
+  [schema x]
+  (boolean (u/ignore-exceptions
+             (mc/validate schema x))))
 
 (deftest malli-and-plumatic-compatibility
   (doseq [{:keys [plumatic malli failed-cases success-cases]}
@@ -135,21 +138,137 @@
             :malli         su/NonBlankStringMalli
             :failed-cases  ["" 1]
             :success-cases ["a thing"]}
-           {:plumatic      su/NonBlankString
-            :malli         su/NonBlankStringMalli
-            :failed-cases  ["" 1]
-            :success-cases ["a thing"]}]]
+           {:plumatic      su/IntGreaterThanOrEqualToZero
+            :malli         su/IntGreaterThanOrEqualToZeroMalli
+            :failed-cases  ["1" -1 1.5]
+            :success-cases [0 1]}
+           {:plumatic      su/IntGreaterThanZero
+            :malli         su/IntGreaterThanZeroMalli
+            :failed-cases  ["1" 0 1.5]
+            :success-cases [1 2]}
+           {:plumatic      su/PositiveNum
+            :malli         su/PositiveNumMalli
+            :failed-cases  [0 "1"]
+            :success-cases [1.5 2]}
+           {:plumatic      su/KeywordOrString
+            :malli         su/KeywordOrStringMalli
+            :failed-cases  [1 [1] {:a 1}]
+            :success-cases [:a "a"]}
+           {:plumatic      su/FieldType
+            :malli         su/FieldTypeMalli
+            :failed-cases  [:type/invalid :Semantic/*]
+            :success-cases [:type/Float]}
+           {:plumatic      su/FieldSemanticType
+            :malli         su/FieldSemanticTypeMalli
+            :failed-cases  [:Semantic/invalid :type/Float]
+            :success-cases [:type/Category]}
+           {:plumatic      su/FieldRelationType
+            :malli         su/FieldRelationTypeMalli
+            :failed-cases  [:Relation/invalid :type/Category :type/Float]
+            :success-cases [:type/FK]}
+           {:plumatic      su/FieldSemanticOrRelationType
+            :malli         su/FieldSemanticOrRelationTypeMalli
+            :failed-cases  [:Relation/invalid :type/Float]
+            :success-cases [:type/FK :type/Category]}
+           {:plumatic      su/CoercionStrategy
+            :malli         su/CoercionStrategyMalli
+            :failed-cases  [:type/Category :type/Float]
+            :success-cases [:Coercion/ISO8601->Date]}
+           {:plumatic      su/FieldTypeKeywordOrString
+            :malli         su/FieldTypeKeywordOrStringMalli
+            :failed-cases  [1 :type/FK]
+            :success-cases [:type/Float "type/Float"]}
+           {:plumatic      su/FieldSemanticTypeKeywordOrString
+            :malli         su/FieldSemanticTypeKeywordOrStringMalli
+            :failed-cases  [1 :type/FK]
+            :success-cases [:type/Category "type/Category"]}
+           {:plumatic      su/Field
+            :malli         su/FieldMalli
+            :failed-cases  [[:aggregation 0] [:field "name" {}]]
+            :success-cases [[:field 3 nil] ["field" "name" {:base-type :type/Float}]]}
+           {:plumatic      su/Map
+            :malli         su/MapMalli
+            :failed-cases  [[] 1 "a"]
+            :success-cases [{} {:a :b}]}
+           {:plumatic      su/Email
+            :malli         su/EmailMalli
+            :failed-cases  ["abc.com" 1]
+            :success-cases ["ngoc@metabase.com"]}
+           {:plumatic      su/ValidPassword
+            :malli         su/ValidPasswordMalli
+            :failed-cases  ["abc.com" 1 "PASSW0RD"]
+            :success-cases ["unc0mmonpw"]}
+           {:plumatic      su/IntString
+            :malli         su/IntStringMalli
+            :failed-cases  [:a "a" "1.5"]
+            :success-cases ["1"]}
+           {:plumatic      su/BooleanString
+            :malli         su/BooleanStringMalli
+            :failed-cases  [:false :true true "f"]
+            :success-cases ["true" "false"]}
+           {:plumatic      su/TemporalString
+            :malli         su/TemporalStringMalli
+            :failed-cases  ["random string"]
+            :success-cases ["2019-10-28T13:14:15" "2019-10-28"]}
+           {:plumatic      su/JSONString
+            :malli         su/JSONStringMalli
+            :failed-cases  ["string"]
+            :success-cases ["{\"a\": 1}"]}
+           {:plumatic      su/EmbeddingParams
+            :malli         su/EmbeddingParamsMalli
+            :failed-cases  [{:key "value"}]
+            :success-cases [{:key "disabled"}]}
+           {:plumatic      su/ValidLocale
+            :malli         su/ValidLocaleMalli
+            :failed-cases  ["locale"]
+            :success-cases ["en" "es"]}
+           {:plumatic      su/NanoIdString
+            :malli         su/NanoIdStringMalli
+            :failed-cases  ["random"]
+            :success-cases ["FReCLx5hSWTBU7kjCWfuu"]}
+           {:plumatic      su/Parameter
+            :malli         su/ParameterMalli
+            :failed-cases  [{:id   "param-id"
+                             :name "param-name"}
+                            {:id                   "param-id"
+                             :type                 "number"
+                             :values_source_type   "invalid-type"
+                             :values_source_config {:values [[1 2 3]]}}
+                            {:id                   "param-id"
+                             :type                 "number"
+                             :values_source_type   "card"
+                             :values_source_config {:card_id     3
+                                                    :value_field [:aggregation 0]}}]
+            :success-cases [{:id                   "param-id"
+                             :type                 "number"
+                             :values_source_type   "card"
+                             :values_source_config {:card_id     3
+                                                    :value_field [:field 3 nil]
+                                                    :label_field [:field "name" {:base-type :type/Float}]}}
+                            {:id                   "param-id"
+                             :type                 "number"
+                             :values_source_type   "static-list"
+                             :values_source_config {:values [[1 2 3]]}}]}
+           {:plumatic      su/ParameterMapping
+            :malli         su/ParameterMappingMalli
+            :failed-cases  [{:parameter_id "param-id"}
+                            {:parameter_id "param-id"
+                             :target        [:field 3 nil]
+                             :card_id       "a"}]
+            :success-cases [{:parameter_id "param-id"
+                             :target        [:field 3 nil]
+                             :card_id       3}]}]]
 
     (doseq [case failed-cases]
       (testing (format "case: %s should fail" (pr-str case))
         (testing (format "with malli Schema: %s" (pr-str malli))
-          (is (false? (mc/validate malli case))))
+          (is (false? (malli-validate malli case))))
         (testing (format "with Plumatic Schema: %s" (pr-str plumatic))
          (is (false? (plumatic-validate plumatic case))))))
 
     (doseq [case success-cases]
       (testing (format "case: %s should success" (pr-str case))
         (testing (format "with malli Schema: %s" (pr-str malli))
-          (is (true? (mc/validate malli case))))
-        (testing (format "with Plumatic Schema: %s" (pr-str plumatic))
+          (is (true? (malli-validate malli case))))
+        (testing (format "with Plumatic Schema: %s"  (pr-str plumatic))
          (is (true? (plumatic-validate plumatic case))))))))
