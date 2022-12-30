@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.test :as mt]
    [metabase.util.schema :as su]
+   [malli.core :as mc]
    [schema.core :as s]))
 
 (deftest ^:parallel generate-api-error-message-test
@@ -119,3 +120,36 @@
             schema {(s/optional-key :thing) s/Int
                     validator               s/Any}]
         (is (nil? (s/check (su/open-schema schema) (assoc value :random-thing :whatever))))))))
+
+(defn- plumatic-validate
+  [schema x]
+  (try
+    (s/validate schema x)
+    true
+    (catch Throwable _
+      false)))
+
+(deftest malli-and-plumatic-compatibility
+  (doseq [{:keys [plumatic malli failed-cases success-cases]}
+          [{:plumatic      su/NonBlankString
+            :malli         su/NonBlankStringMalli
+            :failed-cases  ["" 1]
+            :success-cases ["a thing"]}
+           {:plumatic      su/NonBlankString
+            :malli         su/NonBlankStringMalli
+            :failed-cases  ["" 1]
+            :success-cases ["a thing"]}]]
+
+    (doseq [case failed-cases]
+      (testing (format "case: %s should fail" (pr-str case))
+        (testing (format "with malli Schema: %s" (pr-str malli))
+          (is (false? (mc/validate malli case))))
+        (testing (format "with Plumatic Schema: %s" (pr-str plumatic))
+         (is (false? (plumatic-validate plumatic case))))))
+
+    (doseq [case success-cases]
+      (testing (format "case: %s should success" (pr-str case))
+        (testing (format "with malli Schema: %s" (pr-str malli))
+          (is (true? (mc/validate malli case))))
+        (testing (format "with Plumatic Schema: %s" (pr-str plumatic))
+         (is (true? (plumatic-validate plumatic case))))))))
