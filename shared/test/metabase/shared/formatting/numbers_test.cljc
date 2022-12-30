@@ -1,7 +1,7 @@
 (ns metabase.shared.formatting.numbers-test
   (:require
-    [clojure.test :refer [are deftest is testing]]
-    [metabase.shared.formatting.numbers :as numbers]))
+   [clojure.test :refer [are deftest is testing]]
+   [metabase.shared.formatting.numbers :as numbers]))
 
 (deftest basics-test
   (testing "format-number basics"
@@ -190,7 +190,7 @@
                            "CNY" "Chinese yuan"
                            "JPY" "Japanese yen"})]
       (are [s n c] (= (str s " " (get labels c))
-                            (numbers/format-number n {:number-style "currency" :currency c :currency-style "name"}))
+                      (numbers/format-number n {:number-style "currency" :currency c :currency-style "name"}))
            "1.23"           1.23        "USD"
            "-1.23"          -1.23       "USD"
            "0.00"           0           "USD"

@@ -1,11 +1,13 @@
 (ns metabase.pulse.render.table
-  (:require [clojure.string :as str]
-            [hiccup.core :refer [h]]
-            [medley.core :as m]
-            [metabase.pulse.render.color :as color]
-            metabase.pulse.render.common
-            [metabase.pulse.render.style :as style])
-  (:import metabase.pulse.render.common.NumericWrapper))
+  (:require
+   [clojure.string :as str]
+   [hiccup.core :refer [h]]
+   [medley.core :as m]
+   [metabase.pulse.render.color :as color]
+   [metabase.pulse.render.common]
+   [metabase.pulse.render.style :as style])
+  (:import
+   (metabase.pulse.render.common NumericWrapper)))
 
 (comment metabase.pulse.render.common/keep-me)
 

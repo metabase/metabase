@@ -1,10 +1,11 @@
 (ns metabase.pulse.render.style
   "CSS styles and related helper code for Pulse rendering."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.public-settings :as public-settings]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.public-settings :as public-settings]
+   [metabase.util.i18n :refer [trs]]))
 
 ;; TODO - we should move other CSS definitions from `metabase.pulse.render` namespaces into this one, so they're all
 ;; in one place.

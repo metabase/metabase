@@ -1,8 +1,9 @@
 (ns metabase-enterprise.sandbox.api.table-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase-enterprise.sandbox.test-util :as mt.tu]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.test-util :as mt.tu]
+   [metabase.test :as mt]))
 
 (def ^:private all-columns
   #{"CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"})

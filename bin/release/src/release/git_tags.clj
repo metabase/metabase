@@ -1,8 +1,9 @@
 (ns release.git-tags
   "Code related to updating Git tags."
-  (:require [metabuild-common.core :as u]
-            [release.common :as c]
-            [release.common.git :as git]))
+  (:require
+   [metabuild-common.core :as u]
+   [release.common :as c]
+   [release.common.git :as git]))
 
 (defn- validate-git-tag []
   (let [tag (str \v (c/version))]

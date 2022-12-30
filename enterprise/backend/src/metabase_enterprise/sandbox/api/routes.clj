@@ -1,11 +1,12 @@
 (ns metabase-enterprise.sandbox.api.routes
   "API routes that are only enabled if we have a premium token with the `:sandboxes` feature."
-  (:require [compojure.core :as compojure]
-            [metabase-enterprise.api.routes.common :as ee.api.common]
-            [metabase-enterprise.sandbox.api.gtap :as gtap]
-            [metabase-enterprise.sandbox.api.table :as table]
-            [metabase-enterprise.sandbox.api.user :as user]
-            [metabase.api.routes.common :refer [+auth]]))
+  (:require
+   [compojure.core :as compojure]
+   [metabase-enterprise.api.routes.common :as ee.api.common]
+   [metabase-enterprise.sandbox.api.gtap :as gtap]
+   [metabase-enterprise.sandbox.api.table :as table]
+   [metabase-enterprise.sandbox.api.user :as user]
+   [metabase.api.routes.common :refer [+auth]]))
 
 (compojure/defroutes ^{:doc "Ring routes for mt API endpoints."} routes
   ;; EE-only sandboxing routes live under `/mt` for historical reasons. `/mt` is for multi-tenant.

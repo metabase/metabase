@@ -1,14 +1,16 @@
 (ns metabase.query-processor.middleware.upgrade-field-literals
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.middleware.resolve-fields
+    :as qp.resolve-fields]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]))
 
 (defn- has-a-native-source-query-at-some-level? [{:keys [source-query]}]
   (or (:native source-query)

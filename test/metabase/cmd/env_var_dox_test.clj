@@ -1,6 +1,7 @@
 (ns metabase.cmd.env-var-dox-test
-  (:require [clojure.test :refer :all]
-            [metabase.cmd.env-var-dox :as sut]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.cmd.env-var-dox :as sut]))
 
 (def settings '({:description "Have we sent a follow up email to the instance admin?",
                  :database-local :never,

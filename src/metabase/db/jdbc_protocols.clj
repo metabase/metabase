@@ -2,16 +2,18 @@
   "Implementations of `clojure.java.jdbc` protocols for the Metabase application database. These handle type mappings
   for setting parameters and for reading results from the DB — mainly by automatically converting CLOBs to Strings and
   using new `java.time` classes."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date])
-  (:import java.io.BufferedReader
-           [java.sql PreparedStatement ResultSet ResultSetMetaData Types]
-           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date])
+  (:import
+   (java.io BufferedReader)
+   (java.sql PreparedStatement ResultSet ResultSetMetaData Types)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
 (defn- set-object
   [^PreparedStatement stmt ^Integer index object ^Integer target-sql-type]

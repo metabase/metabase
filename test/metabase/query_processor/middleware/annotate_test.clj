@@ -1,15 +1,16 @@
 (ns metabase.query-processor.middleware.annotate-test
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Card Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.models :refer [Card Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (defn- add-column-info [query metadata]
   (mt/with-everything-store

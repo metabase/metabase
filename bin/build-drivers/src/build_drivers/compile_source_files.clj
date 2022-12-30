@@ -1,10 +1,11 @@
 (ns build-drivers.compile-source-files
-  (:require [build-drivers.common :as c]
-            [clojure.java.io :as io]
-            [clojure.tools.namespace.dependency :as ns.deps]
-            [clojure.tools.namespace.find :as ns.find]
-            [clojure.tools.namespace.parse :as ns.parse]
-            [metabuild-common.core :as u]))
+  (:require
+   [build-drivers.common :as c]
+   [clojure.java.io :as io]
+   [clojure.tools.namespace.dependency :as ns.deps]
+   [clojure.tools.namespace.find :as ns.find]
+   [clojure.tools.namespace.parse :as ns.parse]
+   [metabuild-common.core :as u]))
 
 (defn driver-source-paths [driver edition]
   (let [dirs (:paths (c/driver-edn driver edition))]

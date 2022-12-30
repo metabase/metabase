@@ -1,26 +1,28 @@
 (ns metabase.async.streaming-response
-  (:require [cheshire.core :as json]
-            [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
-            compojure.response
-            [metabase.async.streaming-response.thread-pool :as thread-pool]
-            [metabase.async.util :as async.u]
-            [metabase.server.protocols :as server.protocols]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [potemkin.types :as p.types]
-            [pretty.core :as pretty]
-            [ring.util.response :as response]
-            [ring.util.servlet :as servlet])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
-           java.nio.ByteBuffer
-           [java.nio.channels ClosedChannelException SocketChannel]
-           java.nio.charset.StandardCharsets
-           java.util.zip.GZIPOutputStream
-           javax.servlet.AsyncContext
-           javax.servlet.http.HttpServletResponse
-           org.eclipse.jetty.io.EofException
-           org.eclipse.jetty.server.Request))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.async :as a]
+   [clojure.tools.logging :as log]
+   [compojure.response]
+   [metabase.async.streaming-response.thread-pool :as thread-pool]
+   [metabase.async.util :as async.u]
+   [metabase.server.protocols :as server.protocols]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [potemkin.types :as p.types]
+   [pretty.core :as pretty]
+   [ring.util.response :as response]
+   [ring.util.servlet :as servlet])
+  (:import
+   (java.io BufferedWriter OutputStream OutputStreamWriter)
+   (java.nio ByteBuffer)
+   (java.nio.channels ClosedChannelException SocketChannel)
+   (java.nio.charset StandardCharsets)
+   (java.util.zip GZIPOutputStream)
+   (javax.servlet AsyncContext)
+   (javax.servlet.http HttpServletResponse)
+   (org.eclipse.jetty.io EofException)
+   (org.eclipse.jetty.server Request)))
 
 (defn- write-to-output-stream!
   ([^OutputStream os x]

@@ -1,15 +1,17 @@
 (ns metabase-enterprise.serialization.v2.ingest.yaml
   "Note that throughout the YAML file handling, the `:serdes/meta` abstract path is referred to as the \"hierarchy\",
   to avoid confusion with filesystem paths."
-  (:require [clojure.java.io :as io]
-            [medley.core :as m]
-            [metabase-enterprise.serialization.v2.ingest :as ingest]
-            [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
-            [metabase.util.date-2 :as u.date]
-            [yaml.core :as yaml]
-            [yaml.reader :as y.reader])
-  (:import java.io.File
-           java.time.temporal.Temporal))
+  (:require
+   [clojure.java.io :as io]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
+   [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
+   [metabase.util.date-2 :as u.date]
+   [yaml.core :as yaml]
+   [yaml.reader :as y.reader])
+  (:import
+   (java.io File)
+   (java.time.temporal Temporal)))
 
 (extend-type Temporal y.reader/YAMLReader
   (decode [data]

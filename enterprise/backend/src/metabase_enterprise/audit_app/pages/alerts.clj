@@ -1,8 +1,9 @@
 (ns metabase-enterprise.audit-app.pages.alerts
-  (:require [clojure.string :as str]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase-enterprise.audit-app.pages.common.pulses :as common.pulses]))
+  (:require
+   [clojure.string :as str]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase-enterprise.audit-app.pages.common.pulses :as common.pulses]))
 
 (def ^:private table-metadata
   (into

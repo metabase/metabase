@@ -108,7 +108,13 @@ jobs:
       - run: |
           echo "Didn't run due to conditional filtering"
 
-  be-tests-oracle-ee:
+  be-tests-oracle-18-4-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-oracle-21-3-ee:
     runs-on: ubuntu-20.04
     steps:
       - run: |

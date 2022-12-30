@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.add-default-temporal-unit
-  (:require [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.store :as qp.store]))
+  (:require
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.store :as qp.store]))
 
 (defn add-default-temporal-unit
   "Add `:temporal-unit` `:default` to any temporal `:field` clauses that don't already have a `:temporal-unit`. This

@@ -1,9 +1,10 @@
 (ns metabase.db.util
   "Utility functions for querying the application database."
-  (:require [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.

@@ -21,6 +21,7 @@
             [metabase.sync :as sync]
             metabase.sync.util
             [metabase.test :as mt]
+            [metabase.test.data.env :as te]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.oracle :as oracle.tx]
             [metabase.test.data.sql :as sql.tx]
@@ -355,7 +356,10 @@
                                   ;; database, and the logic within metabase.test.data.interface/metabase-instance would
                                   ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
                                   ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
-                                  tx/*database-name-override* "test-data"]
+                                  tx/*database-name-override* "test-data"
+                                  ;; Only run the embedded test with the :oracle driver. For example, run it with :h2
+                                  ;; results in errors because of column name formatting.
+                                  te/*test-drivers* (constantly #{:oracle})]
                           (testing " and execute a query correctly"
                             (qp-test.order-by-test/order-by-test))))))))))))
       (println (u/format-color 'yellow

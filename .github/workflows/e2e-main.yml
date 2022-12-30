@@ -30,12 +30,9 @@ jobs:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
 
-    - run: ./bin/build version
-    - run: ./bin/build translations
-    - run: ./bin/build frontend
-    - run: ./bin/build licenses
-    - run: ./bin/build drivers
-    - run: ./bin/build uberjar
+    - name: Build uberjar with ./bin/build
+      run: >-
+        ./bin/build version translations frontend licenses drivers uberjar
 
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact

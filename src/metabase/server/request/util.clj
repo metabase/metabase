@@ -1,17 +1,18 @@
 (ns metabase.server.request.util
   "Utility functions for Ring requests."
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [user-agent :as user-agent]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [user-agent :as user-agent]))
 
 (defn api-call?
   "Is this ring request an API call (does path start with `/api`)?"

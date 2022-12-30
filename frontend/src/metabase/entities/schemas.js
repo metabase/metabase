@@ -63,7 +63,7 @@ export default createEntity({
         if (!state[schema]) {
           return state;
         }
-        const virtualQuestionId = getQuestionVirtualTableId(question);
+        const virtualQuestionId = getQuestionVirtualTableId(question.id);
         return updateIn(state, [schema, "tables"], tables =>
           addTableAvoidingDuplicates(tables, virtualQuestionId),
         );
@@ -82,7 +82,7 @@ export default createEntity({
         isDatasets: question.dataset,
       });
 
-      const virtualQuestionId = getQuestionVirtualTableId(question);
+      const virtualQuestionId = getQuestionVirtualTableId(question.id);
       const previousSchemaContainingTheQuestion =
         getPreviousSchemaContainingTheQuestion(
           state,

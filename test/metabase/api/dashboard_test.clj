@@ -1,46 +1,49 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.actions.test-util :as actions.test-util]
-            [metabase.api.card-test :as api.card-test]
-            [metabase.api.common :as api]
-            [metabase.api.dashboard :as api.dashboard]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card
-                                     Collection
-                                     Dashboard
-                                     DashboardCard
-                                     DashboardCardSeries
-                                     Database
-                                     Field
-                                     FieldValues
-                                     ModelAction
-                                     Pulse
-                                     Revision
-                                     Table
-                                     User]]
-            [metabase.models.dashboard-card :as dashboard-card]
-            [metabase.models.dashboard-test :as dashboard-test]
-            [metabase.models.dispatch :as models.dispatch]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as mi]
-            [metabase.models.params.chain-filter-test :as chain-filter-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.revision :as revision]
-            [metabase.query-processor.streaming.test-util :as streaming.test-util]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [ring.util.codec :as codec]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.actions.test-util :as actions.test-util]
+   [metabase.api.card-test :as api.card-test]
+   [metabase.api.common :as api]
+   [metabase.api.dashboard :as api.dashboard]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCard
+            DashboardCardSeries
+            Database
+            Field
+            FieldValues
+            ModelAction
+            Pulse
+            Revision
+            Table
+            User]]
+   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.models.dashboard-test :as dashboard-test]
+   [metabase.models.dispatch :as models.dispatch]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.revision :as revision]
+   [metabase.query-processor.streaming.test-util :as streaming.test-util]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [ring.util.codec :as codec]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |

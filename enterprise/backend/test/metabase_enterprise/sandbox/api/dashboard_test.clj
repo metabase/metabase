@@ -1,15 +1,16 @@
 (ns metabase-enterprise.sandbox.api.dashboard-test
   "Tests for special behavior of `/api/metabase/dashboard` endpoints in the Metabase Enterprise Edition."
-  (:require [clojure.test :refer :all]
-            [metabase.api.dashboard-test :as api.dashboard-test]
-            [metabase.models :refer [Card Dashboard DashboardCard FieldValues]]
-            [metabase.models.params.chain-filter-test :as chain-filter-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.models :refer [Card Dashboard DashboardCard FieldValues]]
+   [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain filter endpoints would normally return cached FieldValues (#13832), make sure sandboxing is respected"

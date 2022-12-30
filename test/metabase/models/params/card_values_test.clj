@@ -1,9 +1,9 @@
 (ns metabase.models.params.card-values-test
   (:require
-    [clojure.test :refer :all]
-    [metabase.models :refer [Card]]
-    [metabase.models.params.card-values :as params.card-values]
-    [metabase.test :as mt]))
+   [clojure.test :refer :all]
+   [metabase.models :refer [Card]]
+   [metabase.models.params.card-values :as params.card-values]
+   [metabase.test :as mt]))
 
 (deftest with-mbql-card-test
   (doseq [dataset? [true false]]

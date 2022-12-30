@@ -1,24 +1,25 @@
 (ns metabase.api.segment
   "/api/segment endpoints."
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.api.common :as api]
-            [metabase.api.query-description :as api.qd]
-            [metabase.events :as events]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.interface :as mi]
-            [metabase.models.revision :as revision]
-            [metabase.models.segment :as segment :refer [Segment]]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.related :as related]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [metabase.api.common :as api]
+   [metabase.api.query-description :as api.qd]
+   [metabase.events :as events]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.interface :as mi]
+   [metabase.models.revision :as revision]
+   [metabase.models.segment :as segment :refer [Segment]]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.related :as related]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new `Segment`."
   [:as {{:keys [name description table_id definition], :as body} :body}]
   {name       su/NonBlankString
@@ -50,12 +51,12 @@
                :query_description
                (api.qd/generate-query-description table (:definition segment)))))))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Fetch `Segment` with ID."
   [id]
   (first (add-query-descriptions [(hydrated-segment id)])))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Fetch *all* `Segments`."
   []
   (as-> (db/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
@@ -84,7 +85,7 @@
       (events/publish-event! (if archive? :segment-delete :segment-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update a `Segment` with ID."
   [id :as {{:keys [name definition revision_message archived caveats description points_of_interest
                    show_in_getting_started]
@@ -99,7 +100,7 @@
    show_in_getting_started (s/maybe s/Bool)}
   (write-check-and-update-segment! id body))
 
-(api/defendpoint DELETE "/:id"
+(api/defendpoint-schema DELETE "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [id revision_message]
   {revision_message su/NonBlankString}
@@ -109,14 +110,14 @@
   api/generic-204-no-content)
 
 
-(api/defendpoint GET "/:id/revisions"
+(api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for `Segment` with ID."
   [id]
   (api/read-check Segment id)
   (revision/revisions+details Segment id))
 
 
-(api/defendpoint POST "/:id/revert"
+(api/defendpoint-schema POST "/:id/revert"
   "Revert a `Segement` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
   {revision_id su/IntGreaterThanZero}
@@ -127,7 +128,7 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id))
 
-(api/defendpoint GET "/:id/related"
+(api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Segment :id id) api/read-check related/related))

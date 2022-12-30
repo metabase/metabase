@@ -21,6 +21,7 @@
                                              :exclusions  [commons-codec/commons-codec
                                                            commons-io/commons-io
                                                            slingshot/slingshot]}
+  clojure.java-time/clojure.java-time       {:mvn/version "1.1.0"}              ; java.time utilities
   clojurewerkz/quartzite                    {:mvn/version "2.1.0"               ; scheduling library
                                              :exclusions  [c3p0/c3p0
                                                            org.quartz-scheduler/quartz]}
@@ -143,7 +144,6 @@
   ring/ring-core                            {:mvn/version "1.9.6"}              ; web server (Jetty wrapper)
   ring/ring-jetty-adapter                   {:mvn/version "1.9.6"}              ; Ring adapter using Jetty webserver
   ring/ring-json                            {:mvn/version "0.5.1"}              ; Ring middleware for reading/writing JSON automatically
-  robdaemon/clojure.java-time               {:mvn/version "0.3.3-SNAPSHOT"}     ; Java 8 java.time wrapper. Use this fork until https://github.com/dm3/clojure.java-time/issues/77 is fixed upstream
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   toucan/toucan                             {:mvn/version "1.18.0"              ; Model layer, hydration, and DB utilities

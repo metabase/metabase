@@ -1,15 +1,16 @@
 (ns metabase.test.data.sql.ddl
   "Methods for creating DDL statements for things like creating/dropping databases and loading data."
-  (:require [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [honeysql.helpers :as hh]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+  (:require
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [honeysql.helpers :as hh]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]))
 
 (defmulti drop-db-ddl-statements
   "Return a sequence of DDL statements for dropping a DB using the multimethods in the SQL test extensons namespace, if

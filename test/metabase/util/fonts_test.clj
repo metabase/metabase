@@ -1,6 +1,7 @@
 (ns metabase.util.fonts-test
-  (:require [clojure.test :refer :all]
-            [metabase.util.fonts :as u.fonts]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.util.fonts :as u.fonts]))
 
 (deftest normalize-font-dirname-test
   (doseq [[s expected] {"Roboto"           "Roboto"

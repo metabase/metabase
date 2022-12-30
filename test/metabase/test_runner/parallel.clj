@@ -1,7 +1,8 @@
 (ns metabase.test-runner.parallel
   "Code related to running parallel tests, and utilities for disallowing dangerous stuff inside them."
-  (:require [clojure.test :as t]
-            eftest.runner))
+  (:require
+   [clojure.test :as t]
+   [eftest.runner]))
 
 (defn parallel?
   "Whether `test-var` can be ran in parallel with other parallel tests."

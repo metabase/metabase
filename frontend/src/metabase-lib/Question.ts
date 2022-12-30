@@ -580,7 +580,7 @@ class QuestionInner {
           type: "query",
           database: this.databaseId(),
           query: {
-            "source-table": getQuestionVirtualTableId(this.card()),
+            "source-table": getQuestionVirtualTableId(this.id()),
           },
         },
       };
@@ -597,7 +597,7 @@ class QuestionInner {
       type: "query",
       database: this.databaseId(),
       query: {
-        "source-table": getQuestionVirtualTableId(this.card()),
+        "source-table": getQuestionVirtualTableId(this.id()),
       },
     });
   }
@@ -1005,7 +1005,7 @@ class QuestionInner {
     if (this.isDataset() && this.isSaved()) {
       dependencies.push({
         type: "table",
-        id: getQuestionVirtualTableId(this.card()),
+        id: getQuestionVirtualTableId(this.id()),
       });
     }
 

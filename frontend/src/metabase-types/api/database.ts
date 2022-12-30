@@ -7,18 +7,33 @@ export type InitialSyncStatus = "incomplete" | "complete" | "aborted";
 
 export type DatabaseSettings = {
   [key: string]: any;
+  "database-enable-actions"?: boolean;
 };
+
+export type DatabaseFeature =
+  | "actions"
+  | "basic-aggregations"
+  | "binning"
+  | "case-sensitivity-string-filter-options"
+  | "expression-aggregations"
+  | "expressions"
+  | "foreign-keys"
+  | "native-parameters"
+  | "nested-queries"
+  | "standard-deviation-aggregations"
+  | "persist-models"
+  | "persist-models-enabled";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
   is_saved_questions: boolean;
+  features: DatabaseFeature[];
   creator_id?: number;
   created_at: string;
   timezone?: string;
   native_permissions: NativePermissions;
   initial_sync_status: InitialSyncStatus;
 
-  // appears in frontend/src/metabase/writeback/utils.ts
   settings?: DatabaseSettings | null;
 
   // Only appears in  GET /api/database/:id

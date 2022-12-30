@@ -1,6 +1,7 @@
 (ns metabase.util.regex
   "Regex-related utility functions"
-  (:require [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]))
 
 (defn non-capturing-group
   "Wrap regex `pattern` in a non-capturing group."

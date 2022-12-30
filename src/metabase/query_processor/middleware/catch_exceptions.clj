@@ -1,15 +1,17 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:require [clojure.tools.logging :as log]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            schema.utils)
-  (:import clojure.lang.ExceptionInfo
-           java.sql.SQLException
-           [schema.utils NamedError ValidationError]))
+  (:require
+   [clojure.tools.logging :as log]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [schema.utils])
+  (:import
+   (clojure.lang ExceptionInfo)
+   (java.sql SQLException)
+   (schema.utils NamedError ValidationError)))
 
 (defmulti ^:private format-exception
   "Format an Exception thrown by the Query Processor into a userland error response map."

@@ -1,30 +1,33 @@
 (ns metabase.api.embed-test
   "Tests for /api/embed endpoints."
-  (:require [buddy.sign.jwt :as jwt]
-            [buddy.sign.util :as buddy-util]
-            [clj-time.core :as time]
-            [clojure.data.csv :as csv]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [crypto.random :as crypto-random]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase.api.dashboard-test :as api.dashboard-test]
-            [metabase.api.embed :as api.embed]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.api.public-test :as public-test]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
-            [metabase.models.interface :as mi]
-            [metabase.models.params.chain-filter-test :as chain-filer-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.io.ByteArrayInputStream))
+  (:require
+   [buddy.sign.jwt :as jwt]
+   [buddy.sign.util :as buddy-util]
+   [clj-time.core :as time]
+   [clojure.data.csv :as csv]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [crypto.random :as crypto-random]
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.api.embed :as api.embed]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.api.public-test :as public-test]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+   [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter-test :as chain-filer-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.io ByteArrayInputStream)))
 
 (defn random-embedding-secret-key [] (crypto-random/hex 32))
 

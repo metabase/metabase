@@ -1,14 +1,15 @@
 (ns metabase.models.task-history-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.analytics.snowplow-test :as snowplow-test]
-            [metabase.api.common :refer [*current-user-id*]]
-            [metabase.models :refer [Database TaskHistory]]
-            [metabase.models.task-history :as task-history]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.api.common :refer [*current-user-id*]]
+   [metabase.models :refer [Database TaskHistory]]
+   [metabase.models.task-history :as task-history]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn add-second
   "Adds one second to `t`"

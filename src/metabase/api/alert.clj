@@ -1,31 +1,32 @@
 (ns metabase.api.alert
   "/api/alert endpoints"
-  (:require [clojure.data :as data]
-            [clojure.set :refer [difference]]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.email :as email]
-            [metabase.email.messages :as messages]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.models.pulse :as pulse]
-            [metabase.models.pulse-channel :refer [PulseChannel]]
-            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.data :as data]
+   [clojure.set :refer [difference]]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.email :as email]
+   [metabase.email.messages :as messages]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse-channel :refer [PulseChannel]]
+   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (u/ignore-exceptions
  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Fetch all alerts"
   [archived user_id]
   {archived (s/maybe su/BooleanString)
@@ -35,13 +36,13 @@
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Fetch an alert by ID"
   [id]
   (-> (api/read-check (pulse/retrieve-alert id))
       (hydrate :can_write)))
 
-(api/defendpoint GET "/question/:id"
+(api/defendpoint-schema GET "/question/:id"
   "Fetch all questions for the given question (`Card`) id"
   [id archived]
   {id       (s/maybe su/IntGreaterThanZero)
@@ -127,7 +128,7 @@
     (assoc card :include_csv true)
     card))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new Alert."
   [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal]
          :as new-alert-request-body} :body}]
@@ -161,7 +162,7 @@
     (doseq [recipient (collect-alert-recipients alert)]
       (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update a `Alert` with ID."
   [id :as {{:keys [alert_condition alert_first_only alert_above_goal card channels archived]
             :as alert-updates} :body}]
@@ -240,7 +241,7 @@
       ;; Finally, return the updated Alert
       updated-alert)))
 
-(api/defendpoint DELETE "/:id/subscription"
+(api/defendpoint-schema DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]
   (validation/check-has-application-permission :subscription false)

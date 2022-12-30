@@ -1,12 +1,13 @@
 (ns metabase-enterprise.audit-app.pages.dashboard-detail
   "Detail page for a single dashboard."
-  (:require [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail :as card-and-dash-detail]
-            [metabase-enterprise.audit-app.pages.common.cards :as cards]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail :as card-and-dash-detail]
+   [metabase-enterprise.audit-app.pages.common.cards :as cards]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 ;; Get views of a Dashboard broken out by a time `unit`, e.g. `day` or `day-of-week`.
 (s/defmethod audit.i/internal-query ::views-by-time
