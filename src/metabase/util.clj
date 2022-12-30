@@ -349,30 +349,6 @@
        (not (Double/isNaN x))
        (not (Double/isInfinite x))))
 
-(defn- check-protocol-impl-method-map
-  "Check that the methods expected for `protocol` are all implemented by `method-map`, and that no extra methods are
-   provided. Used internally by `strict-extend`."
-  [protocol method-map]
-  (let [[missing-methods extra-methods] (data/diff (set (keys (:method-map protocol))) (set (keys method-map)))]
-    (when missing-methods
-      (throw (Exception. (format "Missing implementations for methods in %s: %s" (:var protocol) missing-methods))))
-    (when extra-methods
-      (throw (Exception. (format "Methods implemented that are not in %s: %s " (:var protocol) extra-methods))))))
-
-(defn strict-extend
-  "A strict version of `extend` that throws an exception if any methods declared in the protocol are missing or any
-  methods not declared in the protocol are provided.
-
-  Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and
-  to `extend-protocol`/ `extend-type` going forward."
-  ;; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
-  {:style/indent :defn}
-  [atype protocol method-map & more]
-  (check-protocol-impl-method-map protocol method-map)
-  (extend atype protocol method-map)
-  (when (seq more)
-    (apply strict-extend atype more)))
-
 (defn remove-diacritical-marks
   "Return a version of `s` with diacritical marks removed."
   ^String [^String s]

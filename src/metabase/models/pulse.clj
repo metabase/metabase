@@ -127,16 +127,14 @@
     (= api/*current-user-id* (:creator_id notification))
     (mi/current-user-has-full-permissions? :write notification)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Pulse)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:hydration-keys (constantly [:pulse])
-    :properties     (constantly {:timestamped? true
-                                 :entity_id    true})
-    :pre-insert     pre-insert
-    :pre-update     pre-update
-    :types          (constantly {:parameters :json})}))
+(mi/define-methods
+ Pulse
+ {:hydration-keys (constantly [:pulse])
+  :properties     (constantly {::mi/timestamped? true
+                               ::mi/entity-id    true})
+  :pre-insert     pre-insert
+  :pre-update     pre-update
+  :types          (constantly {:parameters :json})})
 
 (defmethod serdes.hash/identity-hash-fields Pulse
   [_pulse]

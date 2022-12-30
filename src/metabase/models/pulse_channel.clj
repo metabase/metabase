@@ -185,17 +185,18 @@
               (throw (ex-info (tru "Wrong email address for User {0}." id)
                               {:status-code 403})))))))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PulseChannel)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:hydration-keys (constantly [:pulse_channel])
-    :types          (constantly {:details :json, :channel_type :keyword, :schedule_type :keyword, :schedule_frame :keyword})
-    :properties     (constantly {:timestamped? true
-                                 :entity_id    true})
-    :pre-delete     pre-delete
-    :pre-insert     validate-email-domains
-    :pre-update     validate-email-domains}))
+(mi/define-methods
+ PulseChannel
+ {:hydration-keys (constantly [:pulse_channel])
+  :types          (constantly {:details        :json
+                               :channel_type   :keyword
+                               :schedule_type  :keyword
+                               :schedule_frame :keyword})
+  :properties     (constantly {::mi/timestamped? true
+                               ::mi/entity-id    true})
+  :pre-delete     pre-delete
+  :pre-insert     validate-email-domains
+  :pre-update     validate-email-domains})
 
 (defmethod serdes.hash/identity-hash-fields PulseChannel
   [_pulse-channel]

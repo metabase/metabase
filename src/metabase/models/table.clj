@@ -70,16 +70,15 @@
       :read  (perms/table-read-path table)
       :write (perms/data-model-write-perms-path db-id schema table-id))})
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Table)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:table])
-          :types          (constantly {:entity_type     :keyword
-                                       :visibility_type :keyword
-                                       :field_order     :keyword})
-          :properties     (constantly {:timestamped? true})
-          :pre-insert     pre-insert
-          :pre-delete     pre-delete}))
+(mi/define-methods
+ Table
+ {:hydration-keys (constantly [:table])
+  :types          (constantly {:entity_type     :keyword
+                               :visibility_type :keyword
+                               :field_order     :keyword})
+  :properties     (constantly {::mi/timestamped? true})
+  :pre-insert     pre-insert
+  :pre-delete     pre-delete})
 
 (defmethod serdes.hash/identity-hash-fields Table
   [_table]

@@ -43,14 +43,13 @@
                   :visualization_settings {}}]
     (merge defaults dashcard)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class DashboardCard)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties (constantly {:timestamped? true
-                                   :entity_id    true})
-          :types      (constantly {:parameter_mappings     :parameters-list
-                                   :visualization_settings :visualization-settings})
-          :pre-insert pre-insert}))
+(mi/define-methods
+ DashboardCard
+ {:properties (constantly {::mi/timestamped? true
+                           ::mi/entity-id    true})
+  :types      (constantly {:parameter_mappings     :parameters-list
+                           :visualization_settings :visualization-settings})
+  :pre-insert pre-insert})
 
 (defmethod serdes.hash/identity-hash-fields DashboardCard
   [_dashboard-card]

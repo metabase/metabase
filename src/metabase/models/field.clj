@@ -181,21 +181,20 @@
   :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
 
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Field)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
-          :types          (constantly {:base_type         ::base-type
-                                       :effective_type    ::effective-type
-                                       :coercion_strategy ::coercion-strategy
-                                       :semantic_type     ::semantic-type
-                                       :visibility_type   :keyword
-                                       :has_field_values  :keyword
-                                       :fingerprint       :json-for-fingerprints
-                                       :settings          :json
-                                       :nfc_path          :json})
-          :properties     (constantly {:timestamped? true})
-          :pre-insert     pre-insert}))
+(mi/define-methods
+ Field
+ {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
+  :types          (constantly {:base_type         ::base-type
+                               :effective_type    ::effective-type
+                               :coercion_strategy ::coercion-strategy
+                               :semantic_type     ::semantic-type
+                               :visibility_type   :keyword
+                               :has_field_values  :keyword
+                               :fingerprint       :json-for-fingerprints
+                               :settings          :json
+                               :nfc_path          :json})
+  :properties     (constantly {::mi/timestamped? true})
+  :pre-insert     pre-insert})
 
 (defmethod serdes.hash/identity-hash-fields Field
   [_field]

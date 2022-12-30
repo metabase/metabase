@@ -93,12 +93,9 @@
 
 ;;;; model
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TimelineEvent)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   ;; todo: add hydration keys??
-   {:properties (constantly {:timestamped? true})}))
+(mi/define-methods
+ TimelineEvent
+ {:properties (constantly {::mi/timestamped? true})})
 
 (defmethod serdes.hash/identity-hash-fields TimelineEvent
   [_timeline-event]

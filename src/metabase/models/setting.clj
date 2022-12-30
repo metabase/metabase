@@ -82,6 +82,7 @@
    [environ.core :as env]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.setting.cache :as setting.cache]
@@ -141,11 +142,10 @@
   "The model that underlies [[defsetting]]."
   :setting)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Setting)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types       (constantly {:value :encrypted-text})
-          :primary-key (constantly :key)}))
+(mi/define-methods
+ Setting
+ {:types       (constantly {:value :encrypted-text})
+  :primary-key (constantly :key)})
 
 (defmethod serdes.hash/identity-hash-fields Setting
   [_setting]

@@ -33,14 +33,12 @@
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
     (collection/check-collection-namespace NativeQuerySnippet (:collection_id updates))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class NativeQuerySnippet)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:properties (constantly {:timestamped? true
-                             :entity_id    true})
-    :pre-insert pre-insert
-    :pre-update pre-update}))
+(mi/define-methods
+ NativeQuerySnippet
+ {:properties (constantly {::mi/timestamped? true
+                           ::mi/entity-id    true})
+  :pre-insert pre-insert
+  :pre-update pre-update})
 
 (defmethod serdes.hash/identity-hash-fields NativeQuerySnippet
   [_snippet]

@@ -899,17 +899,16 @@
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Collection)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:collection])
-          :types          (constantly {:namespace       :keyword
-                                       :authority_level :keyword})
-          :properties     (constantly {:entity_id true})
-          :pre-insert     pre-insert
-          :post-insert    post-insert
-          :pre-update     pre-update
-          :pre-delete     pre-delete}))
+(mi/define-methods
+ Collection
+ {:hydration-keys (constantly [:collection])
+  :types          (constantly {:namespace       :keyword
+                               :authority_level :keyword})
+  :properties     (constantly {::mi/entity-id true})
+  :pre-insert     pre-insert
+  :post-insert    post-insert
+  :pre-update     pre-update
+  :pre-delete     pre-delete})
 
 (defmethod serdes.base/extract-query "Collection" [_ {:keys [collection-set]}]
   (if (seq collection-set)

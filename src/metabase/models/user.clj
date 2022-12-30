@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-group-membership
@@ -144,18 +145,17 @@
   "Sequence of columns Group Managers can see when fetching a list of Users.."
   (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class User)
-  models/IModel
-  (merge models/IModelDefaults
-         {:default-fields (constantly default-user-columns)
-          :hydration-keys (constantly [:author :creator :user])
-          :properties     (constantly {:updated-at-timestamped? true})
-          :pre-insert     pre-insert
-          :post-insert    post-insert
-          :pre-update     pre-update
-          :post-select    post-select
-          :types          (constantly {:login_attributes :json-no-keywordization
-                                       :settings         :encrypted-json})}))
+(mi/define-methods
+ User
+ {:default-fields (constantly default-user-columns)
+  :hydration-keys (constantly [:author :creator :user])
+  :properties     (constantly {::mi/updated-at-timestamped? true})
+  :pre-insert     pre-insert
+  :post-insert    post-insert
+  :pre-update     pre-update
+  :post-select    post-select
+  :types          (constantly {:login_attributes :json-no-keywordization
+                               :settings         :encrypted-json})})
 
 (defmethod serdes.hash/identity-hash-fields User
   [_user]
