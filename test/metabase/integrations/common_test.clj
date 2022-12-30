@@ -1,13 +1,18 @@
 (ns metabase.integrations.common-test
-  (:require [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [metabase.integrations.common :as integrations.common]
-            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :as perms-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.test :as mt :refer [with-user-in-groups]]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.tools.logging :as log]
+   [metabase.integrations.common :as integrations.common]
+   [metabase.models.permissions-group
+    :as perms-group
+    :refer [PermissionsGroup]]
+   [metabase.models.permissions-group-membership
+    :as perms-group-membership
+    :refer [PermissionsGroupMembership]]
+   [metabase.test :as mt :refer [with-user-in-groups]]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

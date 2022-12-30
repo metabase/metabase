@@ -1,5 +1,6 @@
 (ns metabase.api.pivots
-  (:require [metabase.test :as mt]))
+  (:require
+   [metabase.test :as mt]))
 
 (defn applicable-drivers
   "Drivers that these pivot table tests should run on"

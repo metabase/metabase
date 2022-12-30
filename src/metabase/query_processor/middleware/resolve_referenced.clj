@@ -1,12 +1,16 @@
 (ns metabase.query-processor.middleware.resolve-referenced
-  (:require [metabase.models.card :refer [Card]]
-            [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
-            [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
-            [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [weavejester.dependency :as dep])
-  (:import clojure.lang.ExceptionInfo))
+  (:require
+   [metabase.models.card :refer [Card]]
+   [metabase.query-processor.middleware.resolve-fields
+    :as qp.resolve-fields]
+   [metabase.query-processor.middleware.resolve-source-table
+    :as qp.resolve-source-table]
+   [metabase.util.i18n :refer [tru]]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [weavejester.dependency :as dep])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (defn- query->template-tags
   [query]

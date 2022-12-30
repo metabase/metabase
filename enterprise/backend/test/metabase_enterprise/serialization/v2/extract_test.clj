@@ -1,14 +1,15 @@
 (ns metabase-enterprise.serialization.v2.extract-test
-  (:require [clojure.set :as set]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field FieldValues Metric
-                                     NativeQuerySnippet Pulse PulseCard Segment Table Timeline TimelineEvent User]]
-            [metabase.models.serialization.base :as serdes.base]
-            [schema.core :as s]
-            [toucan.db :as db])
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field FieldValues Metric
+                            NativeQuerySnippet Pulse PulseCard Segment Table Timeline TimelineEvent User]]
+   [metabase.models.serialization.base :as serdes.base]
+   [schema.core :as s]
+   [toucan.db :as db])
   (:import [java.time LocalDateTime OffsetDateTime]))
 
 (defn- by-model [model-name extraction]

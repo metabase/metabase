@@ -1,7 +1,8 @@
 (ns metabase.query-processor-test.case-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Metric Segment]]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Metric Segment]]
+   [metabase.test :as mt]))
 
 (defn- test-case
   [expr]

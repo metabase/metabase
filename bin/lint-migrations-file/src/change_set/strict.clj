@@ -1,8 +1,9 @@
 (ns change-set.strict
-  (:require change-set.common
-            change.strict
-            [clojure.spec.alpha :as s]
-            [clojure.string :as str]))
+  (:require
+   [change-set.common]
+   [change.strict]
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]))
 
 (comment change-set.common/keep-me
          change.strict/keep-me)

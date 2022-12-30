@@ -2,27 +2,25 @@ import React, { ChangeEvent, useCallback, useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
-import { getSourceOptions } from "metabase/parameters/utils/dashboards";
-import { ParameterSourceConfig, ParameterSourceType } from "metabase-types/api";
-import { UiParameter } from "metabase-lib/parameters/types";
-import { ModalMessage, ModalTextArea } from "./ParameterListSourceModal.styled";
+import { ValuesSourceConfig } from "metabase-types/api";
+import { ModalMessage, ModalTextArea } from "./ListValuesSourceModal.styled";
 
 const NEW_LINE = "\n";
 const PLACEHOLDER = [t`banana`, t`orange`].join(NEW_LINE);
 
-export interface ParameterListSourceModalProps {
-  parameter: UiParameter;
-  onChangeSourceOptions: (sourceOptions: ParameterSourceConfig) => void;
-  onClose?: () => void;
+export interface ListValuesSourceModalProps {
+  sourceConfig: ValuesSourceConfig;
+  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+  onClose: () => void;
 }
 
-const ParameterListSourceModal = ({
-  parameter,
-  onChangeSourceOptions,
+const ListValuesSourceModal = ({
+  sourceConfig,
+  onChangeSourceConfig,
   onClose,
-}: ParameterListSourceModalProps): JSX.Element => {
-  const options = getSourceOptions(parameter);
-  const [value, setValue] = useState(getInputValue(options.values));
+}: ListValuesSourceModalProps): JSX.Element => {
+  const [value, setValue] = useState(getInputValue(sourceConfig.values));
+  const isEmpty = !value.trim().length;
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -32,16 +30,21 @@ const ParameterListSourceModal = ({
   );
 
   const handleSubmit = useCallback(() => {
-    onChangeSourceOptions({ values: getSourceValues(value) });
-    onClose?.();
-  }, [value, onChangeSourceOptions, onClose]);
+    onChangeSourceConfig({ values: getSourceValues(value) });
+    onClose();
+  }, [value, onChangeSourceConfig, onClose]);
 
   return (
     <ModalContent
       title={t`Create a custom list`}
       footer={[
         <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-        <Button key="submit" primary onClick={handleSubmit}>{t`Done`}</Button>,
+        <Button
+          key="submit"
+          primary
+          disabled={isEmpty}
+          onClick={handleSubmit}
+        >{t`Done`}</Button>,
       ]}
       onClose={onClose}
     >
@@ -70,4 +73,4 @@ const getSourceValues = (value: string) => {
     .filter(line => line.length > 0);
 };
 
-export default ParameterListSourceModal;
+export default ListValuesSourceModal;

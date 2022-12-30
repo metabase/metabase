@@ -1,7 +1,8 @@
 (ns metabase.sync.concurrent
   "Namespace with helpers for concurrent tasks in sync. Intended for quick, one-off tasks like re-syncing a table,
   fingerprinting a field, etc."
-  (:import [java.util.concurrent Callable Executors ExecutorService Future ThreadFactory]))
+  (:import
+   (java.util.concurrent Callable Executors ExecutorService Future ThreadFactory)))
 
 (defonce ^:private thread-factory
   (reify ThreadFactory

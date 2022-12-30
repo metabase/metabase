@@ -33,15 +33,16 @@
       ;; -> {:source-table (data/id :venues), :fields [(data/id :venues :name)]}
 
      (There are several variations of this macro; see documentation below for more details.)"
-  (:require [clojure.test :as t]
-            [colorize.core :as colorize]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.query-processor :as qp]
-            [metabase.test-runner.init :as test-runner.init]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :as t]
+   [colorize.core :as colorize]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.query-processor :as qp]
+   [metabase.test-runner.init :as test-runner.init]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.mbql-query-impl :as mbql-query-impl]
+   [metabase.util :as u]))
 
 ;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------
 

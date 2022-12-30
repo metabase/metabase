@@ -1,22 +1,25 @@
 (ns metabase.server.middleware.log
   "Ring middleware for logging API requests/responses."
-  (:require [clojure.core.async :as a]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.async.streaming-response :as streaming-response]
-            [metabase.async.streaming-response.thread-pool :as thread-pool]
-            [metabase.async.util :as async.u]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
-            [metabase.server :as server]
-            [metabase.server.request.util :as request.u]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel
-           com.mchange.v2.c3p0.PoolBackedDataSource
-           metabase.async.streaming_response.StreamingResponse
-           org.eclipse.jetty.util.thread.QueuedThreadPool))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.async.streaming-response :as streaming-response]
+   [metabase.async.streaming-response.thread-pool :as thread-pool]
+   [metabase.async.util :as async.u]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.driver.sql-jdbc.execute.diagnostic
+    :as sql-jdbc.execute.diagnostic]
+   [metabase.server :as server]
+   [metabase.server.request.util :as request.u]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db])
+  (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)
+   (com.mchange.v2.c3p0 PoolBackedDataSource)
+   (metabase.async.streaming_response StreamingResponse)
+   (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
 ;; To simplify passing large amounts of arguments around most functions in this namespace take an "info" map that
 ;; looks like

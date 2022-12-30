@@ -1,20 +1,21 @@
 (ns metabase.test.data.h2
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
-  (:require [clojure.string :as str]
-            [metabase.db :as mdb]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.execute :as execute]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql-jdbc.spec :as spec]
-            [metabase.test.data.sql.ddl :as ddl]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [metabase.db :as mdb]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.models.database :refer [Database]]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql-jdbc.spec :as spec]
+   [metabase.test.data.sql.ddl :as ddl]
+   [toucan.db :as db]))
 
 (sql-jdbc.tx/add-test-extensions! :h2)
 

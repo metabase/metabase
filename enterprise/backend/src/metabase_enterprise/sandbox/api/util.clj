@@ -1,8 +1,9 @@
 (ns metabase-enterprise.sandbox.api.util
   "Enterprise specific API utility functions"
-  (:require [metabase.api.common :refer [*current-user-permissions-set* *is-superuser?*]]
-            [metabase.models.permissions :as perms]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [metabase.api.common :refer [*current-user-permissions-set* *is-superuser?*]]
+   [metabase.models.permissions :as perms]
+   [metabase.util.i18n :refer [tru]]))
 
 (defn segmented-user?
   "Returns true if the currently logged in user has segmented permissions"

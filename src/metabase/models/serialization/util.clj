@@ -2,19 +2,20 @@
   "Helpers intended to be shared by various models.
   Most of these are common operations done while (de)serializing several models, like handling a foreign key on a Table
   or user."
-  (:require [cheshire.core :as json]
-            [clojure.core.match :refer [match]]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [medley.core :as m]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.match :refer [match]]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;; -------------------------------------------- General Foreign Keys -------------------------------------------------
 (defn export-fk

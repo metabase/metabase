@@ -1,20 +1,24 @@
 (ns metabase.public-settings
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.core.memoize :as memoize]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.fonts :as u.fonts]
-            [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
-            [metabase.util.password :as u.password]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.fonts :as u.fonts]
+   [metabase.util.i18n
+    :as i18n
+    :refer [available-locales-with-names deferred-tru trs tru]]
+   [metabase.util.password :as u.password]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
 
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.premium-features/keep-me)

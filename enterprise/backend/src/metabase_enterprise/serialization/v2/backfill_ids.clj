@@ -5,14 +5,13 @@
   Note that cross-JVM portability is required - but that's specified for [[java.util.Random]],
   so this should produce identical IDs on all platforms and JVM implementations."
   (:require
-    [clojure.tools.logging :as log]
-    [metabase-enterprise.serialization.v2.models :as serdes.models]
-    [metabase.logger]
-    [metabase.models.serialization.hash :as serdes.hash]
-    [metabase.util :as u]
-    [metabase.util.i18n :refer [trs]]
-    [toucan.db :as db]
-    [toucan.models :as models]))
+   [clojure.tools.logging :as log]
+   [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (defn backfill-ids-for
   "Updates all rows of a particular model to have `:entity_id` set, based on the [[serdes.hash/identity-hash]]."

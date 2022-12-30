@@ -1,5 +1,6 @@
 (ns metabase.shared.util.i18n
-  (:require [net.cgrand.macrovich :as macros]))
+  (:require
+   [net.cgrand.macrovich :as macros]))
 
 (defmacro tru
   "i18n a string with the user's locale. Format string will be translated to the user's locale when the form is eval'ed.

@@ -1,17 +1,19 @@
 (ns metabase.api.permissions-test
   "Tests for `/api/permissions` endpoints."
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.permissions :as api.permissions]
-            [metabase.models :refer [Database PermissionsGroup PermissionsGroupMembership Table User]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.permissions :as api.permissions]
+   [metabase.models
+    :refer [Database PermissionsGroup PermissionsGroupMembership Table User]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;; there are some issues where it doesn't look like the hydrate function for `member_count` is being added (?)
 (comment api.permissions/keep-me)

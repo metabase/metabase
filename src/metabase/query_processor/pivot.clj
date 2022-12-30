@@ -1,17 +1,18 @@
 (ns metabase.query-processor.pivot
   "Pivot table actions for the query processor"
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.context.default :as context.default]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]))
 
 (defn powerset
   "Generate a powerset while maintaining the original ordering as much as possible"

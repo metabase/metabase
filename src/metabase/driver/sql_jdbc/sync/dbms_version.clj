@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc.sync.dbms-version
-  (:require [clojure.java.jdbc :as jdbc]))
+  (:require
+   [clojure.java.jdbc :as jdbc]))
 
 (defn dbms-version
   "Default implementation of `driver/dbms-version` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

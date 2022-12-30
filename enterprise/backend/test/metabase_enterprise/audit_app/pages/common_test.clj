@@ -1,13 +1,14 @@
 (ns metabase-enterprise.audit-app.pages.common-test
-  (:require [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+  (:require
+   [clojure.test :refer :all]
+   [honeysql.core :as hsql]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]))
 
 (defn- run-query
   [query-type & {:as additional-query-params}]
@@ -129,7 +130,7 @@
                                          :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]}]
                          [:card_running_time {:select [:qe.card_id]
                                               :from   [[:query_execution :qe]]}]
-                         [:dash_avg_running_time {:select    [[:d.id :dashboard_id] ]
+                         [:dash_avg_running_time {:select    [[:d.id :dashboard_id]]
                                                   :from      [[:report_dashboardcard :dc]]
                                                   :left-join [[:card_running_time :rt] [:= :dc.card_id :rt.card_id]
                                                               [:report_dashboard :d]   [:= :dc.dashboard_id :d.id]]

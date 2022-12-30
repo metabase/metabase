@@ -1,7 +1,8 @@
 (ns build-drivers.copy-source-files
-  (:require [build-drivers.common :as c]
-            [clojure.tools.build.api :as b]
-            [metabuild-common.core :as u]))
+  (:require
+   [build-drivers.common :as c]
+   [clojure.tools.build.api :as b]
+   [metabuild-common.core :as u]))
 
 (defn copy-source-files! [driver edition]
   (u/step (format "Copy %s source files" driver)

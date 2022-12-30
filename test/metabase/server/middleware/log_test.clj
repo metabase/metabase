@@ -1,7 +1,8 @@
 (ns metabase.server.middleware.log-test
-  (:require [clojure.test :refer :all]
-            [metabase.server.middleware.log :as mw.log]
-            [metabase.test.fixtures :as fixtures]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.server.middleware.log :as mw.log]
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

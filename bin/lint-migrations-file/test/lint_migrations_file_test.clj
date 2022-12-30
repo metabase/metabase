@@ -1,6 +1,7 @@
 (ns lint-migrations-file-test
-  (:require [clojure.test :refer :all]
-            [lint-migrations-file :as lint-migrations-file]))
+  (:require
+   [clojure.test :refer :all]
+   [lint-migrations-file :as lint-migrations-file]))
 
 (defn mock-change-set [& keyvals]
   {:changeSet

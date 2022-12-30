@@ -1,19 +1,20 @@
 (ns metabase.task.persist-refresh-test
-  (:require [clojure.test :refer :all]
-            [clojurewerkz.quartzite.conversion :as qc]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.task.persist-refresh :as task.persist-refresh]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [potemkin.types :as p]
-            [toucan.db :as db])
+  (:require
+   [clojure.test :refer :all]
+   [clojurewerkz.quartzite.conversion :as qc]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [potemkin.types :as p]
+   [toucan.db :as db])
   (:import [org.quartz CronScheduleBuilder CronTrigger]))
 
 (p/defprotocol+ GetSchedule

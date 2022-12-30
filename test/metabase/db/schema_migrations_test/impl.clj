@@ -8,21 +8,23 @@
   5. verify that data looks like what we'd expect after running migration(s)
 
   Actual tests using this code live in `metabase.db.schema-migrations-test`."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.db.liquibase :as liquibase]
-            [metabase.db.test-util :as mdb.test-util]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.initialize :as initialize]
-            [metabase.util :as u])
-  (:import [liquibase Contexts Liquibase]
-           [liquibase.changelog ChangeSet DatabaseChangeLog]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [clojure.tools.logging :as log]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.data-source :as mdb.data-source]
+   [metabase.db.liquibase :as liquibase]
+   [metabase.db.test-util :as mdb.test-util]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.initialize :as initialize]
+   [metabase.util :as u])
+  (:import
+   (liquibase Contexts Liquibase)
+   (liquibase.changelog ChangeSet DatabaseChangeLog)))
 
 (defmulti do-with-temp-empty-app-db*
   "Create a new completely empty app DB for `driver`, then call `(f jdbc-spec)` with a spec for that DB. Should clean up

@@ -1,7 +1,6 @@
 (ns metabuild-common.entrypoint
-  (:require [clojure.pprint :as pprint]
-            [colorize.core :as colorize]
-            [metabuild-common.output :as out]))
+  (:require
+   [metabuild-common.output :as out]))
 
 (defn do-exit-when-finished-nonzero-on-exception [thunk]
   (try

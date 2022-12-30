@@ -1,14 +1,15 @@
 (ns metabase.types-test
-  #?@(:clj
-      [(:require
-        [clojure.test :as t]
-        [metabase.types :as types]
-        [metabase.types.coercion-hierarchies :as coercion-hierarchies])]
-      :cljs
-      [(:require
-        [cljs.test :as t :include-macros true]
-        [metabase.types :as types]
-        [metabase.types.coercion-hierarchies :as coercion-hierarchies])]))
+  #?@
+   (:clj
+    [(:require
+      [clojure.test :as t]
+      [metabase.types :as types]
+      [metabase.types.coercion-hierarchies :as coercion-hierarchies])]
+    :cljs
+    [(:require
+      [cljs.test :as t :include-macros true]
+      [metabase.types :as types]
+      [metabase.types.coercion-hierarchies :as coercion-hierarchies])]))
 
 (comment types/keep-me)
 

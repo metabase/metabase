@@ -1,17 +1,19 @@
 (ns metabase.shared.models.visualization-settings-test
   "Tests for the shared visualization-settings namespace functions"
   #?@
-      (:clj
-       [(:require [clojure.spec.test.alpha :as stest]
-                  [clojure.test :as t]
-                  [clojure.walk :as walk]
-                  [metabase.shared.models.visualization-settings :as mb.viz])]
-       :cljs
-       [(:require [clojure.spec.test.alpha :as stest]
-                  [clojure.test :as t]
-                  [clojure.walk :as walk]
-                  [goog.string :as gstring]
-                  [metabase.shared.models.visualization-settings :as mb.viz])]))
+   (:clj
+    [(:require
+      [clojure.spec.test.alpha :as stest]
+      [clojure.test :as t]
+      [clojure.walk :as walk]
+      [metabase.shared.models.visualization-settings :as mb.viz])]
+    :cljs
+    [(:require
+      [clojure.spec.test.alpha :as stest]
+      [clojure.test :as t]
+      [clojure.walk :as walk]
+      [goog.string :as gstring]
+      [metabase.shared.models.visualization-settings :as mb.viz])]))
 
 (def all-instrument-fns
   [`mb.viz/field-id->column-ref

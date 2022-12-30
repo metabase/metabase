@@ -1,14 +1,15 @@
 (ns metabase-enterprise.audit-app.pages.user-detail
-  (:require [honeysql.core :as hsql]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase-enterprise.audit-app.pages.common.cards :as cards]
-            [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [metabase.util.urls :as urls]
-            [ring.util.codec :as codec]
-            [schema.core :as s]))
+  (:require
+   [honeysql.core :as hsql]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase-enterprise.audit-app.pages.common.cards :as cards]
+   [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [metabase.util.urls :as urls]
+   [ring.util.codec :as codec]
+   [schema.core :as s]))
 
 ;; Query that probides a single row of information about a given User, similar to the `users/table` query but
 ;; restricted to a single result.

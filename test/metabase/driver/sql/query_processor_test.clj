@@ -223,10 +223,10 @@
                (hx/with-database-type-info
                  (hsql/call :cast
                    (hsql/call :week (hsql/call :dateadd (hx/literal "day")
-                                    (hx/with-database-type-info (hsql/call :cast 1 #sql/raw "long") "long")
-                                    (hx/with-database-type-info (hsql/call :cast :created_at #sql/raw "datetime") "datetime")))
+                                     (hx/with-database-type-info (hsql/call :cast 1 #sql/raw "long") "long")
+                                     (hx/with-database-type-info (hsql/call :cast :created_at #sql/raw "datetime") "datetime")))
                    #sql/raw "datetime")
-                   "datetime"))
+                 "datetime"))
              (sql.qp/adjust-start-of-week :h2 (partial hsql/call :week) :created_at))))
     (testing "Do we skip the adjustment if offset = 0"
       (with-redefs [driver/db-start-of-week   (constantly :monday)

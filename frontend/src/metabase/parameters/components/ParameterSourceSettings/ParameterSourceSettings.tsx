@@ -3,13 +3,13 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio/Radio";
 import Modal from "metabase/components/Modal";
 import {
-  getSourceOptions,
+  getSourceConfig,
   getSourceType,
-  hasValidSourceOptions,
 } from "metabase/parameters/utils/dashboards";
-import { ParameterSourceConfig, ParameterSourceType } from "metabase-types/api";
+import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
-import ParameterListSourceModal from "../ParameterListSourceModal";
+import CardValuesSourceModal from "../CardValuesSourceModal";
+import ListValuesSourceModal from "../ListValuesSourceModal";
 import {
   RadioLabelButton,
   RadioLabelRoot,
@@ -18,18 +18,18 @@ import {
 
 export interface ParameterSourceSettingsProps {
   parameter: UiParameter;
-  onChangeSourceType: (sourceType: ParameterSourceType) => void;
-  onChangeSourceOptions: (sourceOptions: ParameterSourceConfig) => void;
+  onChangeSourceType: (sourceType: ValuesSourceType) => void;
+  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
 }
 
 const ParameterSourceSettings = ({
   parameter,
   onChangeSourceType,
-  onChangeSourceOptions,
+  onChangeSourceConfig,
 }: ParameterSourceSettingsProps): JSX.Element => {
   const sourceType = getSourceType(parameter);
-  const sourceOptions = getSourceOptions(parameter);
-  const [editingType, setEditingType] = useState<ParameterSourceType>();
+  const sourceConfig = getSourceConfig(parameter);
+  const [editingType, setEditingType] = useState<ValuesSourceType>();
 
   const radioOptions = useMemo(
     () => getRadioOptions(sourceType, setEditingType),
@@ -37,26 +37,25 @@ const ParameterSourceSettings = ({
   );
 
   const handleSourceTypeChange = useCallback(
-    (sourceType: ParameterSourceType) => {
-      if (hasValidSourceOptions(sourceType, sourceOptions)) {
+    (sourceType: ValuesSourceType) => {
+      if (sourceType == null) {
         onChangeSourceType(sourceType);
+        onChangeSourceConfig({});
       } else {
         setEditingType(sourceType);
       }
     },
-    [sourceOptions, onChangeSourceType],
+    [onChangeSourceType, onChangeSourceConfig],
   );
 
-  const handleSourceOptionsChange = useCallback(
-    (sourceOptions: ParameterSourceConfig) => {
-      if (editingType && hasValidSourceOptions(editingType, sourceOptions)) {
+  const handleSourceConfigChange = useCallback(
+    (sourceConfig: ValuesSourceConfig) => {
+      if (editingType) {
         onChangeSourceType(editingType);
-      } else {
-        onChangeSourceType(null);
+        onChangeSourceConfig(sourceConfig);
       }
-      onChangeSourceOptions(sourceOptions);
     },
-    [editingType, onChangeSourceType, onChangeSourceOptions],
+    [editingType, onChangeSourceType, onChangeSourceConfig],
   );
 
   const handleClose = useCallback(() => {
@@ -71,11 +70,20 @@ const ParameterSourceSettings = ({
         vertical
         onChange={handleSourceTypeChange}
       />
+      {editingType === "card" && (
+        <Modal medium onClose={handleClose}>
+          <CardValuesSourceModal
+            sourceConfig={sourceConfig}
+            onChangeSourceConfig={handleSourceConfigChange}
+            onClose={handleClose}
+          />
+        </Modal>
+      )}
       {editingType === "static-list" && (
         <Modal onClose={handleClose}>
-          <ParameterListSourceModal
-            parameter={parameter}
-            onChangeSourceOptions={handleSourceOptionsChange}
+          <ListValuesSourceModal
+            sourceConfig={sourceConfig}
+            onChangeSourceConfig={handleSourceConfigChange}
             onClose={handleClose}
           />
         </Modal>
@@ -106,8 +114,8 @@ const RadioLabel = ({
 };
 
 const getRadioOptions = (
-  sourceType: ParameterSourceType,
-  onEdit: (sourceType: ParameterSourceType) => void,
+  sourceType: ValuesSourceType,
+  onEdit: (sourceType: ValuesSourceType) => void,
 ) => {
   return [
     {
@@ -118,6 +126,16 @@ const getRadioOptions = (
         />
       ),
       value: null,
+    },
+    {
+      name: (
+        <RadioLabel
+          title={t`Values from a model or question`}
+          isSelected={sourceType === "card"}
+          onEditClick={() => onEdit("card")}
+        />
+      ),
+      value: "card",
     },
     {
       name: (

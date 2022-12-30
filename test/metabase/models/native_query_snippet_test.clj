@@ -1,10 +1,12 @@
 (ns metabase.models.native-query-snippet-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Collection NativeQuerySnippet]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.test :as mt]
-            [toucan.db :as db])
-  (:import java.time.LocalDateTime))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Collection NativeQuerySnippet]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.test :as mt]
+   [toucan.db :as db])
+  (:import
+   (java.time LocalDateTime)))
 
 (deftest disallow-updating-creator-id-test
   (testing "You shouldn't be allowed to update the creator_id of a NativeQuerySnippet"

@@ -1,22 +1,25 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
-  (:require [clojure.spec.alpha :as s]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [honeysql.helpers :as hh]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.permission-graph :as api.permission-graph]
-            [metabase.models :refer [PermissionsGroupMembership User]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            schema.core
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [honeysql.helpers :as hh]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.permission-graph :as api.permission-graph]
+   [metabase.models :refer [PermissionsGroupMembership User]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group
+    :as perms-group
+    :refer [PermissionsGroup]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |
@@ -24,13 +27,13 @@
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
-(api/defendpoint GET "/graph"
+(api/defendpoint-schema GET "/graph"
   "Fetch a graph of all Permissions."
   []
   (api/check-superuser)
   (perms/data-perms-graph))
 
-(api/defendpoint PUT "/graph"
+(api/defendpoint-schema PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
   format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
   modified graph must correspond to the `PermissionsGraph` schema. If successful, this endpoint returns the updated
@@ -87,7 +90,7 @@
     (for [group groups]
       (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
 
-(api/defendpoint GET "/group"
+(api/defendpoint-schema GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
   This API requires superuser or group manager of more than one group.
   Group manager is only available if `advanced-permissions` is enabled and returns only groups that user
@@ -108,14 +111,14 @@
     (-> (ordered-groups mw.offset-paging/*limit* mw.offset-paging/*offset* query)
         (hydrate :member_count))))
 
-(api/defendpoint GET "/group/:id"
+(api/defendpoint-schema GET "/group/:id"
   "Fetch the details for a certain permissions group."
   [id]
   (validation/check-group-manager id)
   (-> (db/select-one PermissionsGroup :id id)
       (hydrate :members)))
 
-(api/defendpoint POST "/group"
+(api/defendpoint-schema POST "/group"
   "Create a new `PermissionsGroup`."
   [:as {{:keys [name]} :body}]
   {name su/NonBlankString}
@@ -123,7 +126,7 @@
   (db/insert! PermissionsGroup
     :name name))
 
-(api/defendpoint PUT "/group/:group-id"
+(api/defendpoint-schema PUT "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
   [group-id :as {{:keys [name]} :body}]
   {name su/NonBlankString}
@@ -134,7 +137,7 @@
   ;; return the updated group
   (db/select-one PermissionsGroup :id group-id))
 
-(api/defendpoint DELETE "/group/:group-id"
+(api/defendpoint-schema DELETE "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
   [group-id]
   (validation/check-manager-of-group group-id)
@@ -144,7 +147,7 @@
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
 
-(api/defendpoint GET "/membership"
+(api/defendpoint-schema GET "/membership"
   "Fetch a map describing the group memberships of various users.
    This map's format is:
 
@@ -165,7 +168,7 @@
                                                             [:= :user_id api/*current-user-id*]
                                                             [:= :is_group_manager true]]}])))))
 
-(api/defendpoint POST "/membership"
+(api/defendpoint-schema POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [:as {{:keys [group_id user_id is_group_manager]} :body}]
   {group_id         su/IntGreaterThanZero
@@ -187,7 +190,7 @@
     ;; let the frontend add it as appropriate
     (perms-group/members {:id group_id})))
 
-(api/defendpoint PUT "/membership/:id"
+(api/defendpoint-schema PUT "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
   [id :as {{:keys [is_group_manager]} :body}]
   {is_group_manager schema.core/Bool}
@@ -205,7 +208,7 @@
                 :is_group_manager is_group_manager)
     (db/select-one PermissionsGroupMembership :id (:id old))))
 
-(api/defendpoint PUT "/membership/:group-id/clear"
+(api/defendpoint-schema PUT "/membership/:group-id/clear"
   "Remove all members from a `PermissionsGroup`."
   [group-id]
   (validation/check-manager-of-group group-id)
@@ -213,7 +216,7 @@
   (db/delete! PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
-(api/defendpoint DELETE "/membership/:id"
+(api/defendpoint-schema DELETE "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
   [id]
   (let [membership (db/select-one PermissionsGroupMembership :id id)]

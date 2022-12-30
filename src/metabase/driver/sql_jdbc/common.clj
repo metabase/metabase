@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc.common
-  (:require [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]))
 
 (def ^:private valid-separator-styles #{:url :comma :semicolon})
 

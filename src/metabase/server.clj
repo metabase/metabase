@@ -1,19 +1,21 @@
 (ns metabase.server
   "Code related to configuring, starting, and stopping the Metabase Jetty web server."
-  (:require [clojure.core :as core]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.server.protocols :as server.protocols]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [ring.adapter.jetty :as ring-jetty]
-            [ring.util.servlet :as servlet])
-  (:import javax.servlet.AsyncContext
-           [javax.servlet.http HttpServletRequest HttpServletResponse]
-           [org.eclipse.jetty.server Request Server]
-           [org.eclipse.jetty.server.handler AbstractHandler StatisticsHandler]))
+  (:require
+   [clojure.core :as core]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.server.protocols :as server.protocols]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [ring.adapter.jetty :as ring-jetty]
+   [ring.util.servlet :as servlet])
+  (:import
+   (javax.servlet AsyncContext)
+   (javax.servlet.http HttpServletRequest HttpServletResponse)
+   (org.eclipse.jetty.server Request Server)
+   (org.eclipse.jetty.server.handler AbstractHandler StatisticsHandler)))
 
 (defn- jetty-ssl-config []
   (m/filter-vals
