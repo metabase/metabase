@@ -8,6 +8,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.models :refer [PermissionsGroupMembership User]]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group
     :as perms-group
@@ -19,8 +20,7 @@
    [metabase.util.schema :as su]
    [schema.core]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
-   [metabase.models.interface :as mi]))
+   [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |

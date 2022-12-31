@@ -13,6 +13,7 @@
             PermissionsGroupMembership
             User]]
    [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user-test :as user-test]
    [metabase.server.middleware.util :as mw.util]
@@ -22,16 +23,11 @@
    [metabase.util.i18n :as i18n]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :as hydrate :refer [hydrate]]
-   [metabase.models.interface :as mi]))
+   [toucan.hydrate :as hydrate :refer [hydrate]]))
 
 (use-fixtures
   :once
-  (fixtures/initialize :test-users-personal-collections)
-  ;; reset Toucan hydrate keys because we define some custom ones in this namespace, need to make sure they get loaded
-  (fn [thunk]
-    (hydrate/flush-hydration-key-caches!)
-    (thunk)))
+  (fixtures/initialize :test-users-personal-collections))
 
 (def ^:private user-defaults
   (delay
