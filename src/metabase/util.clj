@@ -1,7 +1,6 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
   (:require
-   [clojure.data :as data]
    [clojure.java.classpath :as classpath]
    [clojure.math.numeric-tower :as math]
    [clojure.pprint :refer [pprint]]
