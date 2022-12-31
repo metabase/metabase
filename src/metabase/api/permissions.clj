@@ -19,7 +19,8 @@
    [metabase.util.schema :as su]
    [schema.core]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [metabase.models.interface :as mi]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |
@@ -82,9 +83,9 @@
                (some? offset) (hh/offset offset)
                (some? query)  (hh/where query))))
 
-(defn add-member-counts
+(mi/define-batched-hydration-method add-member-counts
+  :member_count
   "Efficiently add `:member_count` to PermissionGroups."
-  {:batched-hydrate :member_count}
   [groups]
   (let [group-id->num-members (group-id->num-members)]
     (for [group groups]

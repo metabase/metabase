@@ -70,7 +70,8 @@
   {:pre [(integer? dashboard_id)]}
   (db/select-one 'Dashboard, :id dashboard_id))
 
-(defn ^:hydrate series
+(mi/define-simple-hydration-method series
+  :series
   "Return the `Cards` associated as additional series on this DashboardCard."
   [{:keys [id]}]
   (db/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
