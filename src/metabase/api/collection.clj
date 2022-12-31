@@ -10,6 +10,8 @@
    [compojure.core :refer [GET POST PUT]]
    [honeysql.core :as hsql]
    [honeysql.helpers :as hh]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
@@ -41,7 +43,7 @@
 
 (declare root-collection)
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
 
@@ -74,7 +76,7 @@
             (dissoc ::collection.root/is-root?)
             collection/personal-collection-with-ui-details)))))
 
-(api/defendpoint GET "/tree"
+(api/defendpoint-schema GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
   ```
@@ -128,7 +130,7 @@
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
 
-; This is basically a union type. defendpoint splits the string if it only gets one
+; This is basically a union type. defendpoint-schema splits the string if it only gets one
 (def ^:private models-schema (s/conditional vector? [ModelString] :else ModelString))
 
 (def ^:private valid-pinned-state-values
@@ -643,12 +645,12 @@
       collection/personal-collection-with-ui-details
       (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :app_id)))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Fetch a specific Collection with standard details added"
   [id]
   (collection-detail (api/read-check Collection id)))
 
-(api/defendpoint GET "/root/timelines"
+(api/defendpoint-schema GET "/root/timelines"
   "Fetch the root Collection's timelines."
   [include archived]
   {include  (s/maybe api.timeline/Include)
@@ -657,7 +659,7 @@
     (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                             :timeline/archived? archived?})))
 
-(api/defendpoint GET "/:id/timelines"
+(api/defendpoint-schema GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   [id include archived]
   {include  (s/maybe api.timeline/Include)
@@ -666,7 +668,7 @@
     (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                            :timeline/archived? archived?})))
 
-(api/defendpoint GET "/:id/items"
+(api/defendpoint-schema GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
   *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
@@ -694,7 +696,7 @@
 (defn- root-collection [collection-namespace]
   (collection-detail (collection/root-collection-with-ui-details collection-namespace)))
 
-(api/defendpoint GET "/root"
+(api/defendpoint-schema GET "/root"
   "Return the 'Root' Collection object with standard details added"
   [namespace]
   {namespace (s/maybe su/NonBlankString)}
@@ -714,7 +716,7 @@
       #{:collection}
       #{:no_models})))
 
-(api/defendpoint GET "/root/items"
+(api/defendpoint-schema GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
   `collection_id` exist. It does, however, have its own set of Permissions.
@@ -777,7 +779,7 @@
      (when parent_id
        {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new Collection."
   [:as {{:keys [name color description parent_id namespace authority_level] :as body} :body}]
   {name            su/NonBlankString
@@ -839,7 +841,7 @@
                             {:card-ids (db/select-ids Card :collection_id (u/the-id collection-before-update))}))]
       (api.card/delete-alert-and-notify-archived! alerts))))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
   {name                                   (s/maybe su/NonBlankString)
@@ -874,40 +876,56 @@
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
-(api/defendpoint GET "/graph"
+(api/defendpoint-schema GET "/graph"
   "Fetch a graph of all Collection Permissions."
   [namespace]
   {namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
   (graph/graph namespace))
 
-(defn- ->int [id] (Integer/parseInt (name id)))
+(def CollectionID "an id for a [[Collection]]."
+  [pos-int? {:title "Collection ID"}])
 
-(defn- dejsonify-collections [collections]
-  (into {} (for [[collection-id perms] collections]
-             [(if (= (keyword collection-id) :root)
-                :root
-                (->int collection-id))
-              (keyword perms)])))
+(def GroupID "an id for a [[PermissionsGroup]]."
+  [pos-int? {:title "Group ID"}])
 
-(defn- dejsonify-groups [groups]
-  (into {} (for [[group-id collections] groups]
-             {(->int group-id) (dejsonify-collections collections)})))
+(def CollectionPermissions
+  "Malli enum for what sort of collection permissions we have. (:write :read or :none)"
+  [:and keyword? [:enum :write :read :none]])
 
-(defn- dejsonify-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
-  parsing object keys as integers."
-  [graph]
-  (update graph :groups dejsonify-groups))
+(def GroupPermissionsGraph
+  "Map describing permissions for a (Group x Collection)"
+  [:map-of
+   [:or
+    ;; We need the [:and keyword ...] piece to make decoding "root" work. There's a merged fix for this, but it hasn't
+    ;; been released as of malli 0.9.2. When the malli version gets bumped, we should remove this.
+    [:and keyword? [:= :root]]
+    CollectionID]
+   CollectionPermissions])
 
-(api/defendpoint PUT "/graph"
-  "Do a batch update of Collections Permissions by passing in a modified graph."
+(def PermissionsGraph
+  "Map describing permissions for 1 or more groups.
+  Revision # is used for consistency"
+  [:map
+   [:revision int?]
+   [:groups [:map-of GroupID GroupPermissionsGraph]]])
+
+(def ^:private graph-decoder
+  "Building it this way is a lot faster then calling mc/decode <value> <schema> <transformer>"
+  (mc/decoder PermissionsGraph (mtx/string-transformer)))
+
+(defn- decode-graph [permission-graph]
+  (graph-decoder permission-graph))
+
+(api/defendpoint-schema PUT "/graph"
+  "Do a batch update of Collections Permissions by passing in a modified graph.
+  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
   [:as {{:keys [namespace], :as body} :body}]
   {body      su/Map
    namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
   (->> (dissoc body :namespace)
-       dejsonify-graph
+       decode-graph
        (graph/update-graph! namespace))
   (graph/graph namespace))
 

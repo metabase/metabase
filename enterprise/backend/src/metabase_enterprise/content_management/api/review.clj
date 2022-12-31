@@ -7,7 +7,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new `ModerationReview`."
   [:as {{:keys [text moderated_item_id moderated_item_type status]} :body}]
   {text                (s/maybe s/Str)

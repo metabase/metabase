@@ -24,28 +24,28 @@
   `(do-with-setting-access-control (fn [] ~@body)))
 
 ;; TODO: deprecate /api/session/properties and have a single endpoint for listing settings
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Get all `Settings` and their values. You must be a superuser or have `setting` permission to do this.
   For non-superusers, a list of visible settings and values can be retrieved using the /api/session/properties endpoint."
   []
   (validation/check-has-application-permission :setting)
   (setting/admin-writable-settings))
 
-(api/defendpoint PUT "/"
+(api/defendpoint-schema PUT "/"
   "Update multiple `Settings` values. If called by a non-superuser, only user-local settings can be updated."
   [:as {settings :body}]
   (with-setting-access-control
     (setting/set-many! settings))
   api/generic-204-no-content)
 
-(api/defendpoint GET "/:key"
+(api/defendpoint-schema GET "/:key"
   "Fetch a single `Setting`."
   [key]
   {key su/NonBlankString}
   (with-setting-access-control
     (setting/user-facing-value key)))
 
-(api/defendpoint PUT "/:key"
+(api/defendpoint-schema PUT "/:key"
   "Create/update a `Setting`. If called by a non-admin, only user-local settings can be updated.
    This endpoint can also be used to delete Settings by passing `nil` for `:value`."
   [key :as {{:keys [value]} :body}]

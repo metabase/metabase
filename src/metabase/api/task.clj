@@ -10,7 +10,7 @@
    [toucan.db :as db]))
 
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Fetch a list of recent tasks stored as Task History"
   []
   (validation/check-has-application-permission :monitoring)
@@ -19,12 +19,12 @@
    :offset mw.offset-paging/*offset*
    :data   (task-history/all mw.offset-paging/*limit* mw.offset-paging/*offset*)})
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Get `TaskHistory` entry with ID."
   [id]
   (api/check-404 (api/read-check TaskHistory id)))
 
-(api/defendpoint GET "/info"
+(api/defendpoint-schema GET "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
   []
   (validation/check-has-application-permission :monitoring)

@@ -163,7 +163,7 @@
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Login."
   [:as {{:keys [username password]} :body, :as request}]
   {username su/NonBlankString
@@ -181,7 +181,7 @@
                                   (login-throttlers :username)   username]
            (do-login))))))
 
-(api/defendpoint DELETE "/"
+(api/defendpoint-schema DELETE "/"
   "Logout."
   [:as {:keys [metabase-session-id]}]
   (api/check-exists? Session metabase-session-id)
@@ -218,7 +218,7 @@
           (log/info password-reset-url)
           (messages/send-password-reset-email! email false false password-reset-url is-active?))))))
 
-(api/defendpoint POST "/forgot_password"
+(api/defendpoint-schema POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [:as {{:keys [email]} :body, :as request}]
   {email su/Email}
@@ -249,7 +249,7 @@
             (when (< token-age reset-token-ttl-ms)
               user)))))))
 
-(api/defendpoint POST "/reset_password"
+(api/defendpoint-schema POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body, :as request}]
   {token    su/NonBlankString
@@ -267,13 +267,13 @@
           (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
-(api/defendpoint GET "/password_reset_token_valid"
+(api/defendpoint-schema GET "/password_reset_token_valid"
   "Check is a password reset token is valid and isn't expired."
   [token]
   {token s/Str}
   {:valid (boolean (valid-reset-token->user token))})
 
-(api/defendpoint GET "/properties"
+(api/defendpoint-schema GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
   (merge
@@ -283,7 +283,7 @@
    (when api/*is-superuser?*
      (setting/user-readable-values-map :admin))))
 
-(api/defendpoint POST "/google_auth"
+(api/defendpoint-schema POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, :as request}]
   {token su/NonBlankString}
