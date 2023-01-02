@@ -57,12 +57,10 @@ const DatabaseForm = ({
     );
   }, [initialData, engineKey, validationSchema]);
 
-  const handleSubmit = useCallback(
-    (values: DatabaseData) => {
-      return onSubmit?.(getSubmitValues(engine, values, isAdvanced));
-    },
-    [engine, isAdvanced, onSubmit],
-  );
+  const handleSubmit = useCallback((values: DatabaseData) => {
+    // console.log(values);
+    // return onSubmit?.(getSubmitValues(engine, values, isAdvanced));
+  }, []);
 
   const handleEngineChange = useCallback(
     (engineKey: string | undefined) => {
@@ -117,7 +115,11 @@ const DatabaseFormBody = ({
   const { values } = useFormikContext<DatabaseData>();
 
   const fields = useMemo(() => {
-    return engine ? getVisibleFields(engine, values, isAdvanced) : [];
+    return engine
+      ? getVisibleFields(engine, values, isAdvanced).filter(
+          m => m.type !== "section",
+        )
+      : [];
   }, [engine, values, isAdvanced]);
 
   return (
@@ -139,7 +141,7 @@ const DatabaseFormBody = ({
         <DatabaseDetailField key={field.name} field={field} />
       ))}
       {isCachingEnabled && <PLUGIN_CACHING.DatabaseCacheTimeField />}
-      <DatabaseFormFooter isAdvanced={isAdvanced} onCancel={onCancel} />
+      {/* <DatabaseFormFooter isAdvanced={isAdvanced} onCancel={onCancel} /> */}
     </Form>
   );
 };
