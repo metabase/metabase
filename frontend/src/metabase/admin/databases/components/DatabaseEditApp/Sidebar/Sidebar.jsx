@@ -1,12 +1,12 @@
-import React, { useRef } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { isSyncCompleted } from "metabase/lib/syncing";
-import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModal.jsx";
+// import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModal.jsx";
 import ActionButton from "metabase/components/ActionButton";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import ConfirmContent from "metabase/components/ConfirmContent";
+// import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+// import ConfirmContent from "metabase/components/ConfirmContent";
 import Button from "metabase/core/components/Button";
 
 import ModelCachingControl from "./ModelCachingControl";
@@ -36,8 +36,8 @@ const DatabaseEditAppSidebar = ({
   isWritebackEnabled,
   isModelPersistenceEnabled,
 }) => {
-  const discardSavedFieldValuesModal = useRef();
-  const deleteDatabaseModal = useRef();
+  // const discardSavedFieldValuesModal = useRef();
+  // const deleteDatabaseModal = useRef();
 
   return (
     <SidebarRoot>
@@ -90,7 +90,7 @@ const DatabaseEditAppSidebar = ({
           </ol>
         </div>
 
-        <div className="Actions-group">
+        {/* <div className="Actions-group">
           <label className="Actions-groupLabel block text-bold">{t`Danger Zone`}</label>
           <ol>
             {isSyncCompleted(database) && (
@@ -127,7 +127,7 @@ const DatabaseEditAppSidebar = ({
               </li>
             )}
           </ol>
-        </div>
+        </div> */}
       </div>
     </SidebarRoot>
   );
