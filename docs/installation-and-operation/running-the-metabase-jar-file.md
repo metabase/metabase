@@ -33,7 +33,7 @@ The below instructions are the same as the quick start above, just with a little
 
 ### 1. Install pre-requisites
 
-Metabase needs ttf-dejavu, fontconfig and java-cacerts packages to run correctly. Please ensure those are installed before continuing.
+Metabase needs DejaVu fonts, Fontconfig and the CA Java certificates packages to run correctly. Please ensure those are installed before continuing.
 
 ### 2. Install Java JRE
 
