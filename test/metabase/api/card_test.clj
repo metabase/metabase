@@ -778,26 +778,27 @@
           (is (= (merge
                   card-defaults
                   (select-keys card [:id :name :entity_id :created_at :updated_at])
-                  {:dashboard_count        0
-                   :creator_id             (mt/user->id :rasta)
-                   :creator                (merge
-                                            (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
-                                            {:common_name  "Rasta Toucan"
-                                             :is_superuser false
-                                             :is_qbnewb    true
-                                             :last_name    "Toucan"
-                                             :first_name   "Rasta"
-                                             :email        "rasta@metabase.com"})
-                   :dataset_query          (mt/obj->json->obj (:dataset_query card))
-                   :display                "table"
-                   :query_type             "query"
-                   :visualization_settings {}
-                   :can_write              false
-                   :database_id            (mt/id) ; these should be inferred from the dataset_query
-                   :table_id               (mt/id :venues)
-                   :collection_id          (u/the-id collection)
-                   :collection             (into {} collection)
-                   :result_metadata        (mt/obj->json->obj (:result_metadata card))})
+                  {:dashboard_count           0
+                   :filter_values_usage_count 0
+                   :creator_id                (mt/user->id :rasta)
+                   :creator                   (merge
+                                               (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
+                                               {:common_name  "Rasta Toucan"
+                                                :is_superuser false
+                                                :is_qbnewb    true
+                                                :last_name    "Toucan"
+                                                :first_name   "Rasta"
+                                                :email        "rasta@metabase.com"})
+                   :dataset_query             (mt/obj->json->obj (:dataset_query card))
+                   :display                   "table"
+                   :query_type                "query"
+                   :visualization_settings    {}
+                   :can_write                 false
+                   :database_id               (mt/id) ; these should be inferred from the dataset_query
+                   :table_id                  (mt/id :venues)
+                   :collection_id             (u/the-id collection)
+                   :collection                (into {} collection)
+                   :result_metadata           (mt/obj->json->obj (:result_metadata card))})
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
           (mt/with-temp* [User     [{user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}]

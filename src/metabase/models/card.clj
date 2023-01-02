@@ -39,6 +39,13 @@
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
+(mi/define-simple-hydration-method filter-values-usage-count
+  :filter_values_usage_count
+  "Return the number of dashboard/card filters that use this card to populate their available values (via
+  ParameterCards)"
+  [{:keys [id]}]
+  (db/count 'ParameterCard, :card_id id))
+
 (mi/define-simple-hydration-method average-query-time
   :average_query_time
   "Average query time of card, taken by query executions which didn't hit cache. If it's nil we don't have any query

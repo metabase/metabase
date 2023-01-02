@@ -444,6 +444,13 @@ class QuestionInner {
   }
 
   /**
+   * How many filters are this question's values used for?
+   */
+  getFilterCountForValues(): number {
+    return this.card().filter_values_usage_count || 0;
+  }
+
+  /**
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
