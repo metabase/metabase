@@ -1,24 +1,27 @@
 (ns metabase.driver.mongo.parameters
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [java-time :as t]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters.dates :as params.dates]
-            [metabase.driver.common.parameters.operators :as params.ops]
-            [metabase.driver.common.parameters.parse :as params.parse]
-            [metabase.driver.common.parameters.values :as params.values]
-            [metabase.driver.mongo.query-processor :as mongo.qp]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]])
-  (:import java.time.temporal.Temporal
-           [metabase.driver.common.parameters CommaSeparatedNumbers Date MultipleValues]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [java-time :as t]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]])
+  (:import
+   (java.time ZoneOffset)
+   (java.time.temporal Temporal)
+   (metabase.driver.common.parameters CommaSeparatedNumbers Date MultipleValues)))
 
 (defn- ->utc-instant [t]
   (t/instant
@@ -79,9 +82,14 @@
 (defn- substitute-one-field-filter-date-range [{field :field, {value :value} :value}]
   (let [{:keys [start end]} (params.dates/date-string->range value {:inclusive-end? false})
         start-condition     (when start
-                              (format "{%s: {$gte: %s}}" (field->name field) (param-value->str field (u.date/parse start))))
+                              (format "{%s: {$gte: %s}}"
+                                      (field->name field)
+                                      (param-value->str field (u.date/parse start ZoneOffset/UTC))))
         end-condition       (when end
-                              (format "{%s: {$lt: %s}}" (field->name field) (param-value->str field (u.date/parse end))))]
+                              (format "{%s: {$lt: %s}}"
+                                      (field->name field)
+                                      (param-value->str field (u.date/parse end ZoneOffset/UTC))))]
+    #_(dev.portal/log [start end])
     (if (and start-condition end-condition)
       (format "{$and: [%s, %s]}" start-condition end-condition)
       (or start-condition
