@@ -84,14 +84,30 @@
       ;; so we return the most recently updated http action.
       (last (action/select-actions :type "http")))))
 
-(api/defendpoint-schema PUT "/:id"
+(def ^:private json-query-schema
+  [:and
+   string?
+   [:fn {:error/message "must be a valid json-query"
+         :description "must be a valid json-query"}
+    #(http-action/apply-json-query {} %)]])
+
+(def ^:private http-action-template
+  [:map {:closed true}
+   [:method                              [:enum "GET" "POST" "PUT" "DELETE" "PATCH"]]
+   [:url                                 [string? {:min 1}]]
+   [:body               {:optional true} [:maybe string?]]
+   [:headers            {:optional true} [:maybe string?]]
+   [:parameters         {:optional true} [:maybe [:sequential map?]]]
+   [:parameter_mappings {:optional true} [:maybe map?]]])
+
+(api/defendpoint PUT "/:id"
   [id :as {{:keys [type name template response_handle error_handle] :as action} :body}]
-  {id su/IntGreaterThanZero
-   type SupportedActionType
-   name (s/maybe s/Str)
-   template (s/maybe HTTPActionTemplate)
-   response_handle (s/maybe JsonQuerySchema)
-   error_handle (s/maybe JsonQuerySchema)}
+  {id              pos-int?
+   type            [:enum {:description "Only http actions are supported at this time."} "http"]
+   name            [:maybe :string]
+   template        [:maybe http-action-template]
+   response_handle [:maybe json-query-schema]
+   error_handle    [:maybe json-query-schema]}
   (db/update! HTTPAction id action)
   (first (action/select-actions :id id)))
 

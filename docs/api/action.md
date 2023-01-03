@@ -57,24 +57,17 @@ Create a new HTTP action.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+*  **`id`** integer greater than 0
 
 *  **`type`** Only http actions are supported at this time.
 
-*  **`name`** value may be nil, or if non-nil, value must be a string.
+*  **`name`** a nullable string
 
-*  **`template`** value may be nil, or if non-nil, value must be a map with schema: (
-  body (optional) : value may be nil, or if non-nil, value must be a string.
-  headers (optional) : value may be nil, or if non-nil, value must be a string.
-  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.
-  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.
-  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.
-  url : value must be a string.
-)
+*  **`template`** a nullable a map where {:method -> <an enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length longer than 1>, :body (optional) -> <a nullable string>, :headers (optional) -> <a nullable string>, :parameters (optional) -> <a nullable sequence of a map >, :parameter_mappings (optional) -> <a nullable a map >} with no other keys
 
-*  **`response_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`response_handle`** a nullable string, and must be a valid json-query
 
-*  **`error_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`error_handle`** a nullable string, and must be a valid json-query
 
 *  **`action`**
 
