@@ -46,7 +46,7 @@
                             :dataset_query (api.card-test/mbql-count-query db table)}))))))))))
 
 (deftest parameters-with-source-is-card-test
-  (testing "card with a parameter that has source is a card, it should respects sandboxing"
+  (testing "a card with a parameter whose source is a card should respect sandboxing"
     (mt/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp*
         [Card [{source-card-id :id}
