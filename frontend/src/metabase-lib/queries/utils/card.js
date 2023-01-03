@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { updateIn, assoc } from "icepick";
+import { updateIn } from "icepick";
 
 import Utils from "metabase/lib/utils";
 import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
@@ -117,34 +117,24 @@ export function applyParameters(
     const options =
       deriveFieldOperatorFromParameter(parameter)?.optionsDefaults;
 
+    const queryParameter = {
+      type,
+      value: normalizeParameterValue(type, value),
+      id: parameter.id,
+    };
+
+    if (options) {
+      queryParameter.options = options;
+    }
+
     if (mapping) {
       // mapped target, e.x. on a dashboard
-      const parameter = {
-        type,
-        value: normalizeParameterValue(type, value),
-        target: mapping.target,
-        id: parameter.id,
-      };
-
-      if (options) {
-        parameter.options = options;
-      }
-
-      datasetQuery.parameters.push(parameter);
+      queryParameter.target = mapping.target;
+      datasetQuery.parameters.push(queryParameter);
     } else if (parameter.target) {
       // inline target, e.x. on a card
-      const parameter = {
-        type,
-        value: normalizeParameterValue(type, value),
-        target: parameter.target,
-        id: parameter.id,
-      };
-
-      if (options) {
-        parameter.options = options;
-      }
-
-      datasetQuery.parameters.push(parameter);
+      queryParameter.target = parameter.target;
+      datasetQuery.parameters.push(queryParameter);
     }
   }
 
