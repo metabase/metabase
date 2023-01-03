@@ -34,9 +34,9 @@
                  {:a {:b {:c {:d {:key                           (s/maybe s/Bool)
                                   (s/optional-key :optional-key) s/Int}}}}}))))))
 
+#_{:clj-kondo/ignore [:unused-binding :deprecated-var]}
 (api/defendpoint-schema POST "/:id/dimension"
   "Sets the dimension for the given object with ID."
-  #_{:clj-kondo/ignore [:unused-binding :deprecated-var]}
   [id :as {{dimension-type :type, dimension-name :name} :body}]
   {dimension-type (su/api-param "type" (s/enum "internal" "external"))
    dimension-name su/NonBlankStringPlumatic})
