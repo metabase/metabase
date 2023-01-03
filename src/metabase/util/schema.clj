@@ -3,7 +3,6 @@
   (:refer-clojure :exclude [distinct])
   (:require
    [cheshire.core :as json]
-   [clojure.spec.alpha :as spec]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
@@ -53,17 +52,6 @@
     ;; since this only works for record types, if `schema` isn't already one just wrap it in `s/named` to make it one
     (recur (s/named schema api-error-message) api-error-message)
     (assoc schema :api-error-message api-error-message)))
-
-(defn with-error-message-malli
-  "Return `schema` with an additional `{:error/fn}` that will be used to explain the error if a parameter fails
-  validation."
-  [schema api-error-message]
-  {:pre [(or (vector? schema)
-             ((complement coll?) schema))]}
-  ;; TODO we're using :error/fn instead of error/message here because we wants
-  ;; malli.error/humanize to works with `deferred-tru`.
-  ;; I haven't really checked if it really works the way we want it to be though.
-  (mu/update-properties schema assoc :error/fn (fn [_ _] api-error-message)))
 
 (defn api-param
   "Return `schema` with an additional `api-param-name` key that will be used in the auto-generate documentation and in
@@ -212,16 +200,16 @@
 ;;; |                                                 USEFUL SCHEMAS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(spec/def ::defschema-args
-  (spec/cat
-   :name   symbol?
-   :docstr (spec/? string?)
-   :body   (spec/* any?)))
+(def ^{:private true :arglists '([[name ?docstring & body]])} defschema-arg-parser
+  (mc/parser [:catn
+              [:name symbol?]
+              [:doc-string [:? string?]]
+              [:body [:* any?]]]))
 
 (defmacro defschema
-  "Define a Malli schema"
+  "Define a Malli schema."
   [& args]
-  (let [{:keys [name docstr body]} (spec/conform ::defschema-args args)]
+  (let [{:keys [name docstr body]} (defschema-arg-parser args)]
     `(def ~(vary-meta name assoc :doc docstr) (mc/schema ~@body))))
 
 (def NonBlankString
@@ -252,9 +240,8 @@
 
 (defschema IntGreaterThanZeroMalli
   "Schema representing an integer than must also be greater than zero."
-  (with-error-message-malli
-    [:int {:min 1}]
-    (deferred-tru "value must be an integer greater than zero.")))
+  [:int {:min      1
+         :error/fn (constantly (deferred-tru "value must be an integer greater than zero."))}])
 
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
@@ -264,9 +251,7 @@
 
 (defschema PositiveNumMalli
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
-  (with-error-message-malli
-    pos?
-    (deferred-tru "value must be a number greater than zero.")))
+  [pos? {:error/fn (constantly (deferred-tru "value must be a number greater than zero."))}])
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
@@ -275,9 +260,8 @@
 
 (defschema KeywordOrStringMalli
   "Schema for something that can be either a `Keyword` or a `String`."
-  (with-error-message-malli
-    [:or :string :keyword]
-    (deferred-tru "value must be a keyword or string.")))
+  [:or {:error/fn (constantly (deferred-tru "value must be a keyword or string."))}
+   :string :keyword])
 
 (def FieldType
   "Schema for a valid Field base or effective (data) type (does it derive from `:type/*`)?"
@@ -286,9 +270,8 @@
 
 (defschema FieldTypeMalli
   "Schema for a valid Field base or effective (data) type (does it derive from `:type/*`)?"
-  (with-error-message-malli
-    [:fn #(isa? % :type/*)]
-    (deferred-tru "value must be a valid field type.")))
+  [:fn {:error/fn (constantly (deferred-tru "value must be a valid field type."))}
+   #(isa? % :type/*)])
 
 (def FieldSemanticType
   "Schema for a valid Field semantic type deriving from `:Semantic/*`."
@@ -298,9 +281,8 @@
 
 (defschema FieldSemanticTypeMalli
   "Schema for a valid Field semantic type deriving from `:Semantic/*`."
-  (with-error-message-malli
-    [:fn #(isa? % :Semantic/*)]
-    (deferred-tru "value must be a valid field semantic type.")))
+  [:fn {:error/fn (constantly (deferred-tru "value must be a valid field semantic type."))}
+   #(isa? % :Semantic/*)])
 
 (def FieldRelationType
   "Schema for a valid Field relation type deriving from `:Relation/*`"
@@ -310,9 +292,8 @@
 
 (defschema FieldRelationTypeMalli
   "Schema for a valid Field relation type deriving from `:Relation/*`"
-  (with-error-message-malli
-    [:fn #(isa? % :Relation/*)]
-    (deferred-tru "value must be a valid field relation type.")))
+  [:fn {:error/fn (constantly (deferred-tru "value must be a valid field relation type."))}
+   #(isa? % :Relation/*)])
 
 (def FieldSemanticOrRelationType
   "Schema for a valid Field semantic *or* Relation type. This is currently needed because the `semantic_column` is used
@@ -328,9 +309,8 @@
   "Schema for a valid Field semantic *or* Relation type. This is currently needed because the `semantic_column` is used
   to store either the semantic type or relation type info. When this is changed in the future we can get rid of this
   schema. See #15486."
-  (with-error-message-malli
-    [:fn (fn [k] (or (isa? k :Semantic/*) (isa? k :Relation/*)))]
-    (deferred-tru "value must be a valid field semantic or relation type.")))
+  [:fn {:error/fn (constantly (deferred-tru "value must be a valid field semantic or relation type."))}
+   (fn [k] (or (isa? k :Semantic/*) (isa? k :Relation/*)))])
 
 (def CoercionStrategy
   "Schema for a valid Field coercion strategy (does it derive from `:Coercion/*`)?"
@@ -339,9 +319,8 @@
 
 (defschema CoercionStrategyMalli
   "Schema for a valid Field coercion strategy (does it derive from `:Coercion/*`)?"
-  (with-error-message-malli
-    [:fn #(isa? % :Coercion/*)]
-    (deferred-tru "value must be a valid coercion strategy.")))
+  [:fn {:error/fn (constantly (deferred-tru "value must be a valid coercion strategy."))}
+   #(isa? % :Coercion/*)])
 
 (def FieldTypeKeywordOrString
   "Like `FieldType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
@@ -354,9 +333,8 @@
   "Like `FieldType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
    This is useful especially for validating API input or objects coming out of the DB as it is unlikely
    those values will be encoded as keywords at that point."
-  (with-error-message-malli
-    [:fn #(isa? (keyword %) :type/*)]
-    (deferred-tru "value must be a valid field data type (keyword or string).")))
+  [:fn {:error/fn (constantly (deferred-tru "value must be a valid field data type (keyword or string)."))}
+   #(isa? (keyword %) :type/*)])
 
 (def FieldSemanticTypeKeywordOrString
   "Like `FieldSemanticType` but accepts either a keyword or string."
@@ -365,9 +343,8 @@
 
 (defschema FieldSemanticTypeKeywordOrStringMalli
   "Like `FieldSemanticType` but accepts either a keyword or string."
-  (with-error-message-malli
-    [:fn #(isa? (keyword %) :Semantic/*)]
-    (deferred-tru "value must be a valid field semantic type (keyword or string).")))
+  [:fn {:error/fn (constantly (deferred-tru "value must be a valid field semantic type (keyword or string)."))}
+   #(isa? (keyword %) :Semantic/*)])
 
 (def FieldRelationTypeKeywordOrString
   "Like `FieldRelationType` but accepts either a keyword or string."
@@ -376,9 +353,8 @@
 
 (defschema FieldRelationTypeKeywordOrStringMalli
   "Like `FieldRelationType` but accepts either a keyword or string."
-  (with-error-message-malli
-    [:fn #(isa? (keyword %) :Relation/*)]
-    (deferred-tru "value must be a valid field relation type (keyword or string).")))
+  [:fn {:error/fn (constantly (deferred-tru "value must be a valid field relation type (keyword or string)."))}
+   #(isa? (keyword %) :Relation/*)])
 
 (def FieldSemanticOrRelationTypeKeywordOrString
   "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
@@ -391,12 +367,11 @@
 
 (defschema FieldSemanticOrRelationTypeKeywordOrStringMalli
   "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
-  (with-error-message-malli
-    [:fn (fn [k]
-           (let [k (keyword k)]
-             (or (isa? k :Semantic/*)
-                 (isa? k :Relation/*))))]
-    (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
+  [:fn {:error/fn (constantly (deferred-tru "value must be a valid field semantic or relation type (keyword or string)."))}
+   (fn [k]
+      (let [k (keyword k)]
+        (or (isa? k :Semantic/*)
+            (isa? k :Relation/*))))])
 
 (def Field
   "Schema for a valid Field for API usage."
@@ -407,11 +382,10 @@
 
 (defschema FieldMalli
   "Schema for a valid Field for API usage."
-  (with-error-message-malli
-    [:fn (fn [k]
-           ((comp (complement (s/checker mbql.s/Field))
-                  mbql.normalize/normalize-tokens) k))]
-    (deferred-tru "value must an array with :field id-or-name and an options map")))
+  [:fn {:error/fn (constantly (deferred-tru "value must an array with :field id-or-name and an options map"))}
+   (fn [k]
+      ((comp (complement (s/checker mbql.s/Field))
+             mbql.normalize/normalize-tokens) k))])
 
 (def CoercionStrategyKeywordOrString
   "Like `CoercionStrategy` but accepts either a keyword or string."
@@ -420,9 +394,8 @@
 
 (defschema CoercionStrategyKeywordOrStringMalli
   "Like `CoercionStrategy` but accepts either a keyword or string."
-  (with-error-message-malli
-    [:fn #(isa? (keyword %) :Coercion/*)]
-    (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
+  [:fn {:error/fn (constantly (deferred-tru "value must be a valid coercion strategy (keyword or string)."))}
+   #(isa? (keyword %) :Coercion/*)])
 
 (def EntityTypeKeywordOrString
   "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
@@ -431,9 +404,8 @@
 
 (defschema EntityTypeKeywordOrStringMalli
   "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
-  (with-error-message-malli
-    [:fn #(isa? (keyword %) :entity/*)]
-    (deferred-tru "value must be a valid entity type (keyword or string).")))
+  [:fn {:error/fn (constantly (deferred-tru "value must be a valid entity type (keyword or string)."))}
+   #(isa? (keyword %) :entity/*)])
 
 (def Map
   "Schema for a valid map."
@@ -442,9 +414,7 @@
 
 (defschema MapMalli
   "Schema for a valid map."
-  (with-error-message-malli
-    :map
-    (deferred-tru "Value must be a map.")))
+  [:map {:error/fn (constantly (deferred-tru "Value must be a map."))}])
 
 (def Email
   "Schema for a valid email string."
@@ -453,9 +423,8 @@
 
 (defschema EmailMalli
   "Schema for a valid email string."
-  (with-error-message-malli
-    [:and :string [:fn u/email?]]
-    (deferred-tru "value must be a valid email address.")))
+  [:and {:error/fn (constantly (deferred-tru "value must be a valid email address."))}
+   :string [:fn u/email?]])
 
 (def ValidPassword
   "Schema for a valid password of sufficient complexity which is not found on a common password list."
@@ -464,11 +433,9 @@
 
 (defschema ValidPasswordMalli
   "Schema for a valid password of sufficient complexity which is not found on a common password list."
-  (with-error-message-malli
-    [:and
-     :string
-     [:fn u.password/is-valid?]]
-    (fn [_ _] (deferred-tru "password is too common."))))
+  [:and {:error/fn (constantly (fn [_ _] (deferred-tru "password is too common.")))}
+   :string
+   [:fn u.password/is-valid?]])
 
 (def IntString
   "Schema for a string that can be parsed as an integer.
@@ -479,11 +446,9 @@
 (defschema IntStringMalli
   "Schema for a string that can be parsed as an integer.
   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
-  (with-error-message-malli
-    [:and
-     :string
-     [:fn #(u/ignore-exceptions (Integer/parseInt %))]]
-    (deferred-tru "value must be a valid integer.")))
+  [:and {:error/fn (constantly (deferred-tru "value must be a valid integer."))}
+   :string
+   [:fn #(u/ignore-exceptions (Integer/parseInt %))]])
 
 (def IntStringGreaterThanZero
   "Schema for a string that can be parsed as an integer, and is greater than zero.
@@ -494,11 +459,9 @@
 (defschema IntStringGreaterThanZeroMalli
   "Schema for a string that can be parsed as an integer, and is greater than zero.
   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
-  (with-error-message-malli
-    [:and
-     :string
-     [:fn #(u/ignore-exceptions (< 0 (Integer/parseInt %)))]]
-    (deferred-tru "value must be a valid integer greater than zero.")))
+  [:and {:error/fn (constantly (deferred-tru "value must be a valid integer greater than zero."))}
+   :string
+   [:fn #(u/ignore-exceptions (< 0 (Integer/parseInt %)))]])
 
 (def IntStringGreaterThanOrEqualToZero
   "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
@@ -509,11 +472,9 @@
 (defschema IntStringGreaterThanOrEqualToZeroMalli
   "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
-  (with-error-message-malli
-    [:and
-     :string
-     [:fn #(u/ignore-exceptions (<= 0 (Integer/parseInt %)))]]
-    (deferred-tru "value must be a valid integer greater than or equal to zero.")))
+  [:and {:error/fn (constantly (deferred-tru "value must be a valid integer greater than or equal to zero."))}
+   :string
+   [:fn #(u/ignore-exceptions (<= 0 (Integer/parseInt %)))]])
 
 (defn- boolean-string? ^Boolean [s]
   (boolean (when (string? s)
@@ -529,9 +490,9 @@
 (defschema BooleanStringMalli
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
   Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
-  (with-error-message-malli
-    [:and :string [:fn boolean-string?]]
-    (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
+  [:and {:error/fn (constantly (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))}
+   :string
+   [:fn boolean-string?]])
 
 (def TemporalString
   "Schema for a string that can be parsed by date2/parse."
@@ -540,9 +501,9 @@
 
 (defschema TemporalStringMalli
   "Schema for a string that can be parsed by date2/parse."
-  (with-error-message-malli
-    [:and :string [:fn #(u/ignore-exceptions (boolean (u.date/parse %)))]]
-    (deferred-tru "value must be a valid date string")))
+  [:and {:error/fn (constantly (deferred-tru "value must be a valid date string"))}
+   :string
+   [:fn #(u/ignore-exceptions (boolean (u.date/parse %)))]])
 
 (def JSONString
   "Schema for a string that is valid serialized JSON."
@@ -555,15 +516,13 @@
 
 (defschema JSONStringMalli
   "Schema for a string that is valid serialized JSON."
-  (with-error-message-malli
-    [:and
-     :string
-     [:fn #(try
-             (json/parse-string %)
-             true
-             (catch Throwable _
-               false))]]
-    (deferred-tru "value must be a valid JSON string.")))
+  [:and {:error/fn (constantly (deferred-tru "value must be a valid JSON string."))}
+   :string
+   [:fn #(try
+           (json/parse-string %)
+           true
+           (catch Throwable _
+             false))]])
 
 (def ^:private keyword-or-non-blank-str
   (s/conditional
@@ -629,18 +588,16 @@
   We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
-  (with-error-message-malli
-    [:map
-     [:id NonBlankStringMalli]
-     [:type keyword-or-non-blank-str-malli]
-     ;; TODO how to merge this with ParameterSourceMalli above?
-     [:values_source_type {:optional true} [:enum "static-list" "card" nil]]
-     [:values_source_config {:optional true} ValuesSourceConfigMalli]
-     [:slug {:optional true} :string]
-     [:name {:optional true} :string]
-     [:default {:optional true} :any]
-     [:sectionId {:optional true} NonBlankStringMalli]]
-    (deferred-tru "parameter must be a map with :id and :type keys")))
+  [:map {:error/fn (constantly (deferred-tru "parameter must be a map with :id and :type keys"))}
+   [:id NonBlankStringMalli]
+   [:type keyword-or-non-blank-str-malli]
+   ;; TODO how to merge this with ParameterSourceMalli above?
+   [:values_source_type {:optional true} [:enum "static-list" "card" nil]]
+   [:values_source_config {:optional true} ValuesSourceConfigMalli]
+   [:slug {:optional true} :string]
+   [:name {:optional true} :string]
+   [:default {:optional true} :any]
+   [:sectionId {:optional true} NonBlankStringMalli]])
 
 (def ParameterMapping
   "Schema for a valid Parameter Mapping"
@@ -652,12 +609,10 @@
 
 (defschema ParameterMappingMalli
   "Schema for a valid Parameter Mapping"
-  (with-error-message-malli
-    [:map
-     [:parameter_id NonBlankStringMalli]
-     [:target :any]
-     [:card_id {:optional true} IntGreaterThanZeroMalli]]
-    (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
+  [:map {:error/fn (constantly (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys"))}
+   [:parameter_id NonBlankStringMalli]
+   [:target :any]
+   [:card_id {:optional true} IntGreaterThanZeroMalli]])
 
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
@@ -666,9 +621,9 @@
 
 (defschema EmbeddingParamsMalli
   "Schema for a valid map of embedding params."
-  (with-error-message-malli
-    [:map-of :keyword [:enum "disabled" "enabled" "locked"]]
-    (deferred-tru "value must be a valid embedding params map.")))
+  [:map-of {:error/fn (constantly (deferred-tru "value must be a valid embedding params map."))}
+   :keyword
+   [:enum "disabled" "enabled" "locked"]])
 
 (def ValidLocale
   "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
@@ -677,9 +632,9 @@
 
 (defschema ValidLocaleMalli
   "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
-  (with-error-message-malli
-    [:and NonBlankStringMalli [:fn i18n/available-locale?]]
-    (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))
+  [:and {:error/fn (constantly (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'."))}
+   NonBlankStringMalli
+   [:fn i18n/available-locale?]])
 
 (def NanoIdString
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
@@ -688,6 +643,5 @@
 
 (defschema NanoIdStringMalli
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
-  (with-error-message-malli
-    [:re #"^[A-Za-z0-9_\-]{21}$"]
-    (deferred-tru "String must be a valid 21-character NanoID string.")))
+  [:re {:error/fn (constantly (deferred-tru "String must be a valid 21-character NanoID string."))}
+   #"^[A-Za-z0-9_\-]{21}$"])
