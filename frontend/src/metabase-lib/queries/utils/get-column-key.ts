@@ -35,10 +35,6 @@ export const getColumnKey = (
     fieldRef = getBaseDimensionReference(fieldRef);
   }
 
-  if (isFieldReference(fieldRef)) {
-    fieldRef = getDimensionReferenceWithoutOptions(fieldRef, ["join-alias"]);
-  }
-
   const isLegacyRef =
     (isFieldReference(fieldRef) && hasStringFieldName(fieldRef)) ||
     isAggregationReference(fieldRef);
