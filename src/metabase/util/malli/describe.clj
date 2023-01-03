@@ -88,14 +88,16 @@
 (defmethod accept :map-of [_ schema children _]
   (str "map " (titled schema) "from " (diamond (first children)) " to " (diamond (second children)) (min-max-suffix schema)))
 
-(defmethod accept 'vector? [_ schema children _] (str "vector" (titled schema) (min-max-suffix schema) " of " (first children)))
-(defmethod accept :vector [_ schema children _] (str "vector" (titled schema) (min-max-suffix schema) " of " (first children)))
+(defn- of-clause [children] (when children (str " of " (first children))))
 
-(defmethod accept 'sequential? [_ schema children _] (str "sequence" (titled schema) (min-max-suffix schema) " of " (first children)))
-(defmethod accept :sequential [_ schema children _] (str "sequence" (titled schema) (min-max-suffix schema) " of " (first children)))
+(defmethod accept 'vector? [_ schema children _] (str "vector" (titled schema) (min-max-suffix schema) (of-clause children)))
+(defmethod accept :vector [_ schema children _] (str "vector" (titled schema) (min-max-suffix schema) (of-clause children)))
 
-(defmethod accept 'set? [_ schema children _] (str "set" (titled schema) (min-max-suffix schema) " of " (first children)))
-(defmethod accept :set [_ schema children _] (str "set" (titled schema) (min-max-suffix schema) " of " (first children)))
+(defmethod accept 'sequential? [_ schema children _] (str "sequence" (titled schema) (min-max-suffix schema) (of-clause children)))
+(defmethod accept :sequential [_ schema children _] (str "sequence" (titled schema) (min-max-suffix schema) (of-clause children)))
+
+(defmethod accept 'set? [_ schema children _] (str "set" (titled schema) (min-max-suffix schema) (of-clause children)))
+(defmethod accept :set [_ schema children _] (str "set" (titled schema) (min-max-suffix schema) (of-clause children)))
 
 (defmethod accept 'string? [_ schema _ _] (str "string" (min-max-suffix schema)))
 (defmethod accept :string [_ schema _ _] (str "string" (min-max-suffix schema)))

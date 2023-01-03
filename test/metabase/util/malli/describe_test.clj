@@ -4,6 +4,12 @@
 
 (deftest descriptor-test
 
+  (is (= "vector" (umd/describe vector?)))
+
+  (is (= "vector of integer" (umd/describe [:vector :int])))
+
+  (is (= "map" (umd/describe map?)))
+
   (is (= "map where {:x -> <integer>}"
          (umd/describe [:map [:x int?]])))
 
