@@ -4,7 +4,6 @@
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
    [schema.core :as s]
@@ -93,12 +92,9 @@
 
 ;;;; model
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TimelineEvent)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   ;; todo: add hydration keys??
-   {:properties (constantly {:timestamped? true})}))
+(mi/define-methods
+ TimelineEvent
+ {:properties (constantly {::mi/timestamped? true})})
 
 (defmethod serdes.hash/identity-hash-fields TimelineEvent
   [_timeline-event]

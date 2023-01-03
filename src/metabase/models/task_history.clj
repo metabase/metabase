@@ -64,11 +64,10 @@
   (u/prog1 task
     (snowplow/track-event! ::snowplow/new-task-history *current-user-id* (task->snowplow-event <>))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TaskHistory)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types      (constantly {:task_details :json})
-          :post-insert post-insert}))
+(mi/define-methods
+ TaskHistory
+ {:types      (constantly {:task_details :json})
+  :post-insert post-insert})
 
 (s/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"

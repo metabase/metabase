@@ -65,10 +65,9 @@
 
 (models/defmodel PersistedInfo :persisted_info)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PersistedInfo)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types (constantly {:definition ::definition})}))
+(mi/define-methods
+ PersistedInfo
+ {:types (constantly {:definition ::definition})})
 
 (defn persisted?
   "Hydrate a card :is_persisted for the frontend."

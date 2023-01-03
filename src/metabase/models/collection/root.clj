@@ -38,11 +38,11 @@
          :read  perms/collection-read-path
          :write perms/collection-readwrite-path) collection)}))
 
-(u/strict-extend RootCollection
+(extend RootCollection
   models/IModel
   (merge
    models/IModelDefaults
-   {:types {:type :keyword}}))
+    {:types {:type :keyword}}))
 
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."
