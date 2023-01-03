@@ -25,8 +25,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  prepare-deps:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+    - name: Check out
+      uses: actions/checkout@v3
+    - name: Prepare dependencies
+      run: clojure -P
+    - name: Get M2 cache
+      uses: actions/cache@v3
+      if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
+      with:
+        path: |
+          ~/.m2
+          ~/.gitlibs
+        key: ${{ runner.os }}-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ inputs.m2-cache-key }}-
 
   be-tests-athena-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -45,6 +65,7 @@ jobs:
         junit-name: 'be-tests-athena-ee'
 
   be-tests-bigquery-cloud-sdk-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -65,6 +86,7 @@ jobs:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
 
   be-tests-druid-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 60
@@ -86,6 +108,7 @@ jobs:
         junit-name: 'be-tests-druid-ee'
 
   be-tests-googleanalytics-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -100,6 +123,7 @@ jobs:
         junit-name: 'be-tests-googleanalytics-ee'
 
   be-tests-google-related-classpath-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -124,6 +148,7 @@ jobs:
         test-args: ':only "[metabase.query-processor-test.expressions-test metabase.driver.google-test metabase.driver.googleanalytics-test]"'
 
   be-tests-mariadb-10-2-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -149,6 +174,7 @@ jobs:
         junit-name: 'be-tests-mariadb-10-2-ee'
 
   be-tests-mariadb-latest-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -174,6 +200,7 @@ jobs:
         junit-name: 'be-tests-mariadb-latest-ee'
 
   be-tests-mongo-4-0-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -195,6 +222,7 @@ jobs:
         junit-name: 'be-tests-mongo-4-0-ee'
 
   be-tests-mongo-4-0-ssl-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -228,6 +256,7 @@ jobs:
           junit-name: 'be-tests-mongo-4-0-ee'
 
   be-tests-mongo-5-0-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -249,6 +278,7 @@ jobs:
         junit-name: 'be-tests-mongo-5-0-ee'
 
   be-tests-mongo-5-0-ssl-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -282,6 +312,7 @@ jobs:
         junit-name: 'be-tests-mongo-5-0-ee'
 
   be-tests-mongo-latest-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -306,6 +337,7 @@ jobs:
         junit-name: 'be-tests-mongo-latest-ee'
 
   be-tests-mysql-5-7-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -331,6 +363,7 @@ jobs:
         junit-name: 'be-tests-mysql-5-7-ee'
 
   be-tests-mysql-latest-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -368,6 +401,7 @@ jobs:
         junit-name: 'be-tests-mysql-latest-ee'
 
   be-tests-oracle-18-4-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -393,6 +427,7 @@ jobs:
         junit-name: 'be-tests-oracle-18-4-ee'
 
   be-tests-oracle-21-3-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -427,6 +462,7 @@ jobs:
         junit-name: 'be-tests-oracle-21-3-ee'
 
   be-tests-postgres-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -455,6 +491,7 @@ jobs:
         junit-name: 'be-tests-postgres-ee'
 
   be-tests-postgres-latest-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -487,6 +524,7 @@ jobs:
         junit-name: 'be-tests-postgres-latest-ee'
 
   be-tests-presto-186-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -508,6 +546,7 @@ jobs:
         junit-name: 'be-tests-presto-186-ee'
 
   be-tests-presto-jdbc-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -558,6 +597,7 @@ jobs:
       run: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
 
   be-tests-redshift-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -576,6 +616,7 @@ jobs:
         junit-name: 'be-tests-redshift-ee'
 
   be-tests-snowflake-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -596,6 +637,7 @@ jobs:
         junit-name: 'be-tests-snowflake-ee'
 
   be-tests-sparksql-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 60
@@ -615,6 +657,7 @@ jobs:
         junit-name: 'be-tests-sparksql-ee'
 
   be-tests-sqlite-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -629,6 +672,7 @@ jobs:
         junit-name: 'be-tests-sqlite-ee'
 
   be-tests-sqlserver-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -655,6 +699,7 @@ jobs:
         junit-name: 'be-tests-sqlserver-ee'
 
   be-tests-vertica-ee:
+    needs: prepare-deps
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
