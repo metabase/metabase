@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { updateIn } from "icepick";
+import { updateIn, assoc } from "icepick";
 
 import Utils from "metabase/lib/utils";
 import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
@@ -119,22 +119,32 @@ export function applyParameters(
 
     if (mapping) {
       // mapped target, e.x. on a dashboard
-      datasetQuery.parameters.push({
+      const parameter = {
         type,
         value: normalizeParameterValue(type, value),
         target: mapping.target,
-        options,
         id: parameter.id,
-      });
+      };
+
+      if (options) {
+        parameter.options = options;
+      }
+
+      datasetQuery.parameters.push(parameter);
     } else if (parameter.target) {
       // inline target, e.x. on a card
-      datasetQuery.parameters.push({
+      const parameter = {
         type,
         value: normalizeParameterValue(type, value),
         target: parameter.target,
-        options,
         id: parameter.id,
-      });
+      };
+
+      if (options) {
+        parameter.options = options;
+      }
+
+      datasetQuery.parameters.push(parameter);
     }
   }
 
