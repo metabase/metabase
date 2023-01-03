@@ -38,10 +38,10 @@
     (setting/set-many! settings))
   api/generic-204-no-content)
 
-(api/defendpoint-schema GET "/:key"
+(api/defendpoint GET "/:key"
   "Fetch a single `Setting`."
   [key]
-  {key su/NonBlankString}
+  {key [:string {:min 1}]}
   (with-setting-access-control
     (setting/user-facing-value key)))
 
