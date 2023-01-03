@@ -130,6 +130,21 @@
    :width         (str (* 2 (- (* dashgrid-x (or size_x 5)) 21)) "px")
    :height        (str (* 2 (- (* dashgrid-y (or size_y 4)) 21)) "px")})
 
+(defn- render-one-dashcard
+  [{:keys [card dashcard result] :as dashboard-result}]
+  [:div {:style (style/style (dashcard-style dashcard))}
+   (if card
+     (-> (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil #_dashcard result)
+         :content
+         #_(render.tu/nodes-with-tag :img))
+     [:div {:style (style/style {:font-family             "Lato"
+                                 :font-size               "13px" #_ "0.875em"
+                                 :font-weight             "400"
+                                 :font-style              "normal"
+                                 :color                   "#4c5773"
+                                 :-moz-osx-font-smoothing "grayscale"})}
+      (markdown/process-markdown (:text dashboard-result) :html)])])
+
 (defn render-dashboard-to-png
   "Given a dashboard ID, renders all of the dashcards to a single png, attempting to replicate (roughly) the grid layout of the dashboard."
   [dashboard-id]
@@ -137,19 +152,7 @@
         dashboard         (db/select-one dashboard/Dashboard :id dashboard-id)
         dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)
         [width height]    (dashboard-dims dashboard-results)
-        render            (->> (for [{:keys [card dashcard result] :as dashboard-result} dashboard-results]
-                                 [:div {:style (style/style (dashcard-style dashcard))}
-                                  (if card
-                                    (-> (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
-                                        :content
-                                        (render.tu/nodes-with-tag :img))
-                                    [:div {:style (style/style {:font-family             "Lato"
-                                                                :font-size               "13px" #_ "0.875em"
-                                                                :font-weight             "400"
-                                                                :font-style              "normal"
-                                                                :color                   "#4c5773"
-                                                                :-moz-osx-font-smoothing "grayscale"})}
-                                     (markdown/process-markdown (:text dashboard-result) :html)])])
+        render            (->> (map render-one-dashcard dashboard-results)
                                (into [:div {:style (style/style {:width            (str (* 2 width) "px")
                                                                  :height           (str (* 2 height) "px")
                                                                  :background-color "#f9fbfc"})}]))
