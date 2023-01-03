@@ -33,7 +33,7 @@ jobs:
     - name: Check out
       uses: actions/checkout@v3
     - name: Prepare dependencies
-      run: clojure -P
+      run: clj -P
     - name: Get M2 cache
       uses: actions/cache@v3
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
