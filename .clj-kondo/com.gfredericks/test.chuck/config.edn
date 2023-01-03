@@ -1,0 +1,4 @@
+{:hooks
+ {:analyze-call
+  {com.gfredericks.test.chuck.clojure-test/checking
+   clj-kondo.com.gfredericks.test.chuck.checking/checking}}}

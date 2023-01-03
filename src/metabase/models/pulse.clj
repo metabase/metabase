@@ -199,13 +199,13 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(defn ^:hydrate channels
+(mi/define-simple-hydration-method channels
+  :channels
   "Return the PulseChannels associated with this `notification`."
   [notification-or-id]
   (db/select PulseChannel, :pulse_id (u/the-id notification-or-id)))
 
-(s/defn ^:hydrate cards :- [HybridPulseCard]
-  "Return the Cards associated with this `notification`."
+(s/defn ^:private cards* :- [HybridPulseCard]
   [notification-or-id]
   (map (partial models/do-post-select Card)
        (db/query
@@ -219,6 +219,12 @@
                      [:= :p.id (u/the-id notification-or-id)]
                      [:= :c.archived false]]
          :order-by [[:pc.position :asc]]})))
+
+(mi/define-simple-hydration-method cards
+  :cards
+  "Return the Cards associated with this `notification`."
+  [notification-or-id]
+  (cards* notification-or-id))
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 

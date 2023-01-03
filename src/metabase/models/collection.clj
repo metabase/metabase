@@ -324,40 +324,59 @@
             [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
 
-(s/defn effective-location-path :- (s/maybe LocationPath)
-  "Given a `location-path` and a set of Collection IDs one is allowed to view (obtained from
-  `permissions-set->visible-collection-ids` above), calculate the 'effective' location path (excluding IDs of
-  Collections for which we do not have read perms) we should show to the User.
-
-  When called with a single argument, `collection`, this is used as a hydration function to hydrate
-  `:effective_location`."
-  {:hydrate :effective_location}
+(s/defn ^:private effective-location-path* :- (s/maybe LocationPath)
   ([collection :- CollectionWithLocationOrRoot]
    (if (collection.root/is-root-collection? collection)
      nil
-     (effective-location-path (:location collection)
-                              (permissions-set->visible-collection-ids @*current-user-permissions-set*))))
+     (effective-location-path* (:location collection)
+                               (permissions-set->visible-collection-ids @*current-user-permissions-set*))))
 
-  ([real-location-path :- LocationPath, allowed-collection-ids :- VisibleCollections]
+  ([real-location-path     :- LocationPath
+    allowed-collection-ids :- VisibleCollections]
    (if (= allowed-collection-ids :all)
      real-location-path
      (apply location-path (for [id    (location-path->ids real-location-path)
                                 :when (contains? allowed-collection-ids id)]
                             id)))))
 
+(mi/define-simple-hydration-method effective-location-path
+  :effective_location
+  "Given a `location-path` and a set of Collection IDs one is allowed to view (obtained from
+  `permissions-set->visible-collection-ids` above), calculate the 'effective' location path (excluding IDs of
+  Collections for which we do not have read perms) we should show to the User.
+
+  When called with a single argument, `collection`, this is used as a hydration function to hydrate
+  `:effective_location`."
+  ([collection]
+   (effective-location-path* collection))
+  ([real-location-path allowed-collection-ids]
+   (effective-location-path* real-location-path allowed-collection-ids)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:hydrate ancestors :- [(mi/InstanceOf Collection)]
-  "Fetch ancestors (parent, grandparent, etc.) of a `collection`. These are returned in order starting with the
-  highest-level (e.g. most distant) ancestor."
+(s/defn ^:private ancestors* :- [(mi/InstanceOf Collection)]
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
     (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:location]})))
 
-(s/defn effective-ancestors :- [(s/cond-pre RootCollection (mi/InstanceOf Collection))]
+(mi/define-simple-hydration-method ^:private ancestors
+  :ancestors
+  "Fetch ancestors (parent, grandparent, etc.) of a `collection`. These are returned in order starting with the
+  highest-level (e.g. most distant) ancestor."
+  [collection]
+  (ancestors* collection))
+
+(s/defn ^:private effective-ancestors* :- [(s/cond-pre RootCollection (mi/InstanceOf Collection))]
+  [collection :- CollectionWithLocationAndIDOrRoot]
+  (if (collection.root/is-root-collection? collection)
+    []
+    (filter mi/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
+
+(mi/define-simple-hydration-method effective-ancestors
+  :effective_ancestors
   "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
   in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we have four
   Collections, nested like:
@@ -374,17 +393,18 @@
 
   Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
   can effectively treat A as the parent of C."
-  {:hydrate :effective_ancestors}
-  [collection :- CollectionWithLocationAndIDOrRoot]
-  (if (collection.root/is-root-collection? collection)
-    []
-    (filter mi/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
+  [collection]
+  (effective-ancestors* collection))
 
-(s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
-  "Get the immediate parent `collection` id, if set."
-  {:hydrate :parent_id}
+(s/defn ^:private parent-id* :- (s/maybe su/IntGreaterThanZero)
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))
+
+(mi/define-simple-hydration-method parent-id
+  :parent_id
+  "Get the immediate parent `collection` id, if set."
+  [collection]
+  (parent-id* collection))
 
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
@@ -500,13 +520,17 @@
    :from   [[Collection :col]]
    :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
 
-(s/defn effective-children :- #{(mi/InstanceOf Collection)}
-  "Get the descendant Collections of `collection` that should be presented to the current User as direct children of
-  this Collection. See documentation for [[metabase.models.collection/effective-children-query]] for more details."
-  {:hydrate :effective_children}
+(s/defn ^:private effective-children* :- #{(mi/InstanceOf Collection)}
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
   (set (db/select [Collection :id :name :description]
                   {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
+
+(mi/define-simple-hydration-method effective-children
+  :effective_children
+  "Get the descendant Collections of `collection` that should be presented to the current User as direct children of
+  this Collection. See documentation for [[metabase.models.collection/effective-children-query]] for more details."
+  [collection & additional-honeysql-where-clauses]
+  (apply effective-children* collection additional-honeysql-where-clauses))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1114,10 +1138,10 @@
           ;; in Root, so we can pass it what it needs without actually having to fetch an entire CollectionInstance
           (descendant-ids {:location "/", :id personal-collection-id}))))
 
-(defn include-personal-collection-ids
+(mi/define-batched-hydration-method include-personal-collection-ids
+  :personal_collection_id
   "Efficiently hydrate the `:personal_collection_id` property of a sequence of Users. (This is, predictably, the ID of
   their Personal Collection.)"
-  {:batched-hydrate :personal_collection_id}
   [users]
   (when (seq users)
     ;; efficiently create a map of user ID -> personal collection ID

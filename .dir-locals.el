@@ -31,6 +31,8 @@
   (eval . (put 's/defn 'clojure-doc-string-elt 2))
   (eval . (put 'p.types/defprotocol+ 'clojure-doc-string-elt 2))
   (eval . (put 'methodical/defmulti 'clojure-doc-string-elt 2))
+  (eval . (put 'mi/define-simple-hydration-method 'clojure-doc-string-elt 3))
+  (eval . (put 'mi/define-batched-hydration-method 'clojure-doc-string-elt 3))
   ;; Define custom indentation for functions inside metabase.
   ;; This list isn't complete; add more forms as we come across them.
   ;;
