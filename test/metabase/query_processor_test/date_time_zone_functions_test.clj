@@ -856,27 +856,26 @@
 
 (def diff-time-zones-athena-cases-query
   ;; This query recreates [[diff-time-zones-cases]] for Athena from [[diff-time-zones-athena-cases]].
-  (str/join "\n"
-            ["with x as ("
-             "select"
-             "  with_timezone(dt, 'UTC') as dt"
-             "  , concat(dt_text, 'Z') as dt_text" ; e.g. `2022-10-02T00:00:00Z`
-             "  , 'UTC' as time_zone"
-             "from diff_time_zones_athena_cases.times"
-             "union"
-             "select"
-             "  with_timezone(dt, 'Africa/Lagos') as dt"
-             "  , concat(dt_text, '+01:00') as dt_text" ; e.g. `2022-10-02T00:00:00+01:00`
-             "  , 'Africa/Lagos' as time_zone"
-             "from diff_time_zones_athena_cases.times"
-             ")"
-             "select"
-             "  a.dt as a_dt_tz"
-             "  , a.dt_text as a_dt_tz_text"
-             "  , b.dt as b_dt_tz"
-             "  , b.dt_text as b_dt_tz_text"
-             "from x a"
-             "join x b on a.dt < b.dt and a.time_zone <> b.time_zone"]))
+  "with x as (
+     select
+     with_timezone(dt, 'UTC') as dt
+     , concat(dt_text, 'Z') as dt_text -- e.g. 2022-10-02T00:00:00Z
+     , 'UTC' as time_zone
+   from diff_time_zones_athena_cases.times
+   union
+   select
+     with_timezone(dt, 'Africa/Lagos') as dt
+     , concat(dt_text, '+01:00') as dt_text -- e.g. 2022-10-02T00:00:00+01:00
+     , 'Africa/Lagos' as time_zone
+   from diff_time_zones_athena_cases.times
+   )
+   select
+     a.dt as a_dt_tz
+     , a.dt_text as a_dt_tz_text
+     , b.dt as b_dt_tz
+     , b.dt_text as b_dt_tz_text
+   from x a
+   join x b on a.dt < b.dt and a.time_zone <> b.time_zone")
 
 (defn run-datetime-diff-time-zone-tests
   "Runs all the test cases for datetime-diff clauses with :type/DateTimeWithTZ types.
