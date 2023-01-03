@@ -583,28 +583,28 @@
                            s/Keyword                              s/Any}
     (deferred-tru "parameter must be a map with :id and :type keys")))
 
-(def ParameterSource
-  (mc/schema
-    [:multi {:dispatch :values_source_type}
-     ["card"        [:map
-                     [:values_source_type :string]
-                     [:values_source_config
-                      [:map {:closed true}
-                       [:card_id {:optional true} IntGreaterThanZero]
-                       [:value_field {:optional true} Field]
-                       [:label_field {:optional true} Field]]]]]
-     ["static-list" [:map
-                     [:values_source_type :string]
-                     [:values_source_config
-                      [:map {:closed true}
-                       [:values {:optional true} [:* :any]]]]]]]))
+#_(def ParameterSource
+    (mc/schema
+      [:multi {:dispatch :values_source_type}
+       ["card"        [:map
+                       [:values_source_type :string]
+                       [:values_source_config
+                        [:map {:closed true}
+                         [:card_id {:optional true} IntGreaterThanZero]
+                         [:value_field {:optional true} Field]
+                         [:label_field {:optional true} Field]]]]]
+       ["static-list" [:map
+                       [:values_source_type :string]
+                       [:values_source_config
+                        [:map {:closed true}
+                         [:values {:optional true} [:* :any]]]]]]]))
 
 (def Parameter
   "Schema for a valid Parameter.
   We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
-  (mc/scheam
+  (mc/schema
     [:map {:error/fn (constantly (deferred-tru "parameter must be a map with :id and :type keys"))}
      [:id NonBlankString]
      [:type keyword-or-non-blank-str-malli]
