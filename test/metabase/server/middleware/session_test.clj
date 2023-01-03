@@ -400,20 +400,20 @@
 (deftest session-timeout-validation-test
   (testing "Setting the session timeout should fail if the timeout isn't positive"
     (is (thrown-with-msg?
-         java.lang.AssertionError
+         java.lang.Exception
          #"Session timeout amount must be positive"
          (mw.session/session-timeout! {:unit "hours", :amount 0})))
     (is (thrown-with-msg?
-         java.lang.AssertionError
+         java.lang.Exception
          #"Session timeout amount must be positive"
          (mw.session/session-timeout! {:unit "minutes", :amount -1}))))
   (testing "Setting the session timeout should fail if the timeout is too large"
     (is (thrown-with-msg?
-         java.lang.AssertionError
+         java.lang.Exception
          #"Session timeout must be less than 100 years"
          (mw.session/session-timeout! {:unit "hours", :amount (* 100 365.25 24)})))
     (is (thrown-with-msg?
-         java.lang.AssertionError
+         java.lang.Exception
          #"Session timeout must be less than 100 years"
          (mw.session/session-timeout! {:unit "minutes", :amount (* 100 365.25 24 60)}))))
   (testing "Setting the session timeout shouldn't fail if the timeout is between 0 and 100 years exclusive"
@@ -426,27 +426,23 @@
   (let [set-and-get (fn [timeout]
                       (mt/with-temp-env-var-value [mb-session-timeout (json/generate-string timeout)]
                         (mw.session/session-timeout)))]
-    (testing "Setting the session timeout via the env var should fail if the timeout isn't positive"
-      (is (thrown-with-msg?
-           java.lang.AssertionError
-           #"Session timeout amount must be positive"
-           (set-and-get {:unit "hours", :amount 0})))
-      (is (thrown-with-msg?
-           java.lang.AssertionError
-           #"Session timeout amount must be positive"
-           (set-and-get {:unit "hours", :amount -1}))))
     (testing "Setting the session timeout with env var should work with valid timeouts"
-      (is (= {:unit "hours", :amount 1}
-             (set-and-get {:unit "hours", :amount 1}))))
+      (doseq [timeout [{:unit "hours", :amount 1}
+                       {:unit "hours", :amount (dec (* 100 365.25 24))}]]
+        (is (= timeout
+               (set-and-get timeout)))))
+    (testing "Setting the session timeout via the env var should fail if the timeout isn't positive"
+      (doseq [amount [0 -1]
+              :let [timeout {:unit "hours", :amount amount}]]
+        (is (nil? (set-and-get timeout)))
+        (is (= (println-str "WARNING: Session timeout amount must be positive.")
+               (with-out-str (set-and-get timeout))))))
     (testing "Setting the session timeout via env var should fail if the timeout is too large"
-      (is (thrown-with-msg?
-           java.lang.AssertionError
-           #"Session timeout must be less than 100 years"
-           (set-and-get {:unit "hours", :amount (* 100 365.25 24)})))
-      (is (thrown-with-msg?
-           java.lang.AssertionError
-           #"Session timeout must be less than 100 years"
-           (set-and-get {:unit "minutes", :amount (* 100 365.25 24 60)}))))))
+      (doseq [timeout [{:unit "hours", :amount (* 100 365.25 24)}
+                       {:unit "minutes", :amount (* 100 365.25 24 60)}]]
+        (is (nil? (set-and-get timeout)))
+        (is (= (println-str "WARNING: Session timeout must be less than 100 years.")
+               (with-out-str (set-and-get timeout))))))))
 
 (deftest session-timeout-test
   (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")

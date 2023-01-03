@@ -352,17 +352,20 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- check-session-timeout
-  "Asserts the [[session-timeout]] value is valid."
+  "Returns nil if the [[session-timeout]] value is valid. Otherwise returns an exception."
   [timeout]
   (when (some? timeout)
     (let [{:keys [unit amount]} timeout
-          days (/ amount (case unit
-                           "seconds" (* 60 60 24)
-                           "minutes" (* 60 24)
-                           "hours"   24))
-          years (/ days 365.25)]
-      (assert (pos? amount) (tru "Session timeout amount must be positive."))
-      (assert (< years 100) (tru "Session timeout must be less than 100 years.")))))
+          units-in-24-hours (case unit
+                              "seconds" (* 60 60 24)
+                              "minutes" (* 60 24)
+                              "hours"   24)
+          units-in-100-years (* units-in-24-hours 365.25 100)]
+      (cond
+        (not (pos? amount))
+        (Exception. (tru "Session timeout amount must be positive."))
+        (>= amount units-in-100-years)
+        (Exception. (tru "Session timeout must be less than 100 years."))))))
 
 (defsetting session-timeout
   ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours".
@@ -372,11 +375,13 @@
   :default nil
   :getter  (fn []
              (let [value (setting/get-value-of-type :json :session-timeout)]
-               (check-session-timeout value)
-               value))
+               (if-let [exception (check-session-timeout value)]
+                 (println (str "WARNING: " (ex-message exception)))
+                 value)))
   :setter  (fn [new-value]
-             (check-session-timeout new-value)
-             (setting/set-value-of-type! :json :session-timeout new-value)))
+             (if-let [exception (check-session-timeout new-value)]
+               (throw exception)
+               (setting/set-value-of-type! :json :session-timeout new-value))))
 
 (defn session-timeout->seconds
   "Convert the session-timeout setting value to seconds."
