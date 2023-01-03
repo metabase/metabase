@@ -34,9 +34,9 @@
 
 ;;;; hydration
 
-(defn timeline
+(mi/define-simple-hydration-method timeline
+  :timeline
   "Attach the parent `:timeline` to this [[TimelineEvent]]."
-  {:hydrate :timeline}
   [{:keys [timeline_id]}]
   (db/select-one 'Timeline :id timeline_id))
 

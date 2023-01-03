@@ -8,6 +8,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.models :refer [PermissionsGroupMembership User]]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group
     :as perms-group
@@ -82,9 +83,9 @@
                (some? offset) (hh/offset offset)
                (some? query)  (hh/where query))))
 
-(defn add-member-counts
+(mi/define-batched-hydration-method add-member-counts
+  :member_count
   "Efficiently add `:member_count` to PermissionGroups."
-  {:batched-hydrate :member_count}
   [groups]
   (let [group-id->num-members (group-id->num-members)]
     (for [group groups]

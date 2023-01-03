@@ -40,9 +40,9 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(defn ordered-cards
+(mi/define-simple-hydration-method ordered-cards
+  :ordered_cards
   "Return the DashboardCards associated with `dashboard`, in the order they were created."
-  {:hydrate :ordered_cards}
   [dashboard-or-id]
   (db/do-post-select DashboardCard
     (db/query {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
@@ -56,9 +56,9 @@
                             [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                :order-by  [[:dashcard.created_at :asc]]})))
 
-(defn collections-authority-level
+(mi/define-batched-hydration-method collections-authority-level
+  :collection_authority_level
   "Efficiently hydrate the `:collection_authority_level` of a sequence of dashboards."
-  {:batched-hydrate :collection_authority_level}
   [dashboards]
   (let [coll-id->level (into {}
                              (map (juxt :id :authority_level))
@@ -406,8 +406,21 @@
    :mappings (s/maybe #{dashboard-card/ParamMapping})
    s/Keyword s/Any})
 
-(s/defn ^{:hydrate :resolved-params} dashboard->resolved-params :- (let [param-id su/NonBlankString]
-                                                                     {param-id ParamWithMapping})
+(s/defn ^:private dashboard->resolved-params* :- (let [param-id su/NonBlankString]
+                                                   {param-id ParamWithMapping})
+  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/Map])
+                 s/Keyword                    s/Any}]
+  (let [dashboard           (hydrate dashboard [:ordered_cards :card])
+        param-key->mappings (apply
+                             merge-with set/union
+                             (for [dashcard (:ordered_cards dashboard)
+                                   param    (:parameter_mappings dashcard)]
+                               {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
+    (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
+               [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
+
+(mi/define-simple-hydration-method dashboard->resolved-params
+  :resolved-params
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
 
     (dashboard->resolved-params (db/select-one Dashboard :id 62))
@@ -428,16 +441,9 @@
                                 :card_id      66
                                 :dashcard     ...
                                 :target       [:dimension [:field-id 264]]}}}}"
-  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/Map])
-                 s/Keyword                    s/Any}]
-  (let [dashboard           (hydrate dashboard [:ordered_cards :card])
-        param-key->mappings (apply
-                             merge-with set/union
-                             (for [dashcard (:ordered_cards dashboard)
-                                   param    (:parameter_mappings dashcard)]
-                               {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
-    (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
-               [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
+  [dashboard]
+  (dashboard->resolved-params* dashboard))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |

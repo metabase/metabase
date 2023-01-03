@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -22,10 +23,10 @@
   [moderated-item]
   (str/lower-case (name moderated-item)))
 
-(defn moderation-reviews-for-items
+(mi/define-batched-hydration-method moderation-reviews-for-items
+  :moderation_reviews
   "Hydrate moderation reviews onto a seq of items. All are cards or the nils that end up here on text dashboard
   cards. In the future could have dashboards here as well."
-  {:batched-hydrate :moderation_reviews}
   [items]
   ;; no need to do work on empty items. Also, can have nil here due to text cards. I think this is a bug in toucan. To
   ;; get here we are `(hydrate dashboard [:ordered_cards [:card :moderation_reviews] :series] ...)` But ordered_cards
@@ -46,9 +47,9 @@
           (let [k ((juxt (comp keyword object->type) u/the-id) item)]
             (assoc item :moderation_reviews (get all-reviews k ()))))))))
 
-(defn moderation-user-details
+(mi/define-batched-hydration-method moderation-user-details
+  :moderator_details
   "User details on moderation reviews"
-  {:batched-hydrate :moderator_details}
   [moderation-reviews]
   (when (seq moderation-reviews)
     (let [id->user (m/index-by :id
@@ -56,9 +57,9 @@
       (for [mr moderation-reviews]
         (assoc mr :user (get id->user (:moderator_id mr)))))))
 
-(defn moderated-item
+(mi/define-simple-hydration-method moderated-item
+  :moderated_item
   "The moderated item for a given request or review"
-  {:hydrate :moderated_item}
   [{:keys [moderated_item_id moderated_item_type]}]
   (when (and moderated_item_type moderated_item_id)
     (db/select-one (moderated-item-type->model moderated_item_type) :id moderated_item_id)))

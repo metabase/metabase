@@ -221,7 +221,8 @@
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
-(defn ^:hydrate tables
+(mi/define-simple-hydration-method tables
+  :tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?

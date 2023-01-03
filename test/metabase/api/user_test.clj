@@ -13,6 +13,7 @@
             PermissionsGroupMembership
             User]]
    [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user-test :as user-test]
    [metabase.server.middleware.util :as mw.util]
@@ -26,11 +27,7 @@
 
 (use-fixtures
   :once
-  (fixtures/initialize :test-users-personal-collections)
-  ;; reset Toucan hydrate keys because we define some custom ones in this namespace, need to make sure they get loaded
-  (fn [thunk]
-    (hydrate/flush-hydration-key-caches!)
-    (thunk)))
+  (fixtures/initialize :test-users-personal-collections))
 
 (def ^:private user-defaults
   (delay
@@ -495,8 +492,9 @@
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn include-personal-collection-name
-  {:hydrate :personal_collection_name}
+(mi/define-simple-hydration-method include-personal-collection-name
+  ::personal-collection-name
+  "Hydrate `::personal-collection-name`. This is just for tests."
   [user]
   (db/select-one-field :name Collection :id (:personal_collection_id user)))
 
@@ -509,14 +507,14 @@
                                            :is_superuser true}]
                       Collection [_]]
         (letfn [(user [] (into {} (-> (db/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
-                                      (hydrate :personal_collection_id :personal_collection_name)
+                                      (hydrate :personal_collection_id ::personal-collection-name)
                                       (dissoc :id :personal_collection_id :common_name))))]
           (testing "before API call"
-            (is (= {:first_name               "Cam"
-                    :last_name                "Era"
-                    :is_superuser             true
-                    :email                    "cam.era@metabase.com"
-                    :personal_collection_name "Cam Era's Personal Collection"}
+            (is (= {:first_name                "Cam"
+                    :last_name                 "Era"
+                    :is_superuser              true
+                    :email                     "cam.era@metabase.com"
+                    ::personal-collection-name "Cam Era's Personal Collection"}
                    (user))))
           (testing "response"
             (let [resp (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
@@ -527,22 +525,22 @@
                      (:user_group_memberships resp)))
               (is (= (merge
                       @user-defaults
-                      {:common_name            "Cam Eron"
-                       :email                  "cam.eron@metabase.com"
-                       :first_name             "Cam"
-                       :last_name              "Eron"
-                       :is_superuser           true})
+                      {:common_name  "Cam Eron"
+                       :email        "cam.eron@metabase.com"
+                       :first_name   "Cam"
+                       :last_name    "Eron"
+                       :is_superuser true})
                      (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
                                                {:last_name "Eron"
                                                 :email     "cam.eron@metabase.com"})
                          (dissoc :user_group_memberships)
                          mt/boolean-ids-and-timestamps)))))
           (testing "after API call"
-            (is (= {:first_name               "Cam"
-                    :last_name                "Eron"
-                    :is_superuser             true
-                    :email                    "cam.eron@metabase.com"
-                    :personal_collection_name "Cam Eron's Personal Collection"}
+            (is (= {:first_name                "Cam"
+                    :last_name                 "Eron"
+                    :is_superuser              true
+                    :email                     "cam.eron@metabase.com"
+                    ::personal-collection-name "Cam Eron's Personal Collection"}
                    (user)))))))))
 
 (deftest update-login-attributes-test
@@ -603,49 +601,49 @@
                                          :is_superuser true}]
         (letfn [(change-user-via-api! [m]
                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
-                      (hydrate :personal_collection_id :personal_collection_name)
+                      (hydrate :personal_collection_id ::personal-collection-name)
                       (dissoc :user_group_memberships :personal_collection_id :email :is_superuser)
                       (#(apply (partial dissoc %) (keys @user-defaults)))
                       mt/boolean-ids-and-timestamps))]
           (testing "Name keys ommitted does not update the user"
-            (is (= {:first_name               "Blue Ape"
-                    :last_name                "Ron"
-                    :common_name              "Blue Ape Ron"
-                    :personal_collection_name "Blue Ape Ron's Personal Collection"}
+            (is (= {:first_name                "Blue Ape"
+                    :last_name                 "Ron"
+                    :common_name               "Blue Ape Ron"
+                    ::personal-collection-name "Blue Ape Ron's Personal Collection"}
                    (change-user-via-api! {}))))
           (testing "Name keys having the same values does not update the user"
-            (is (= {:first_name               "Blue Ape"
-                    :last_name                "Ron"
-                    :common_name              "Blue Ape Ron"
-                    :personal_collection_name "Blue Ape Ron's Personal Collection"}
+            (is (= {:first_name                "Blue Ape"
+                    :last_name                 "Ron"
+                    :common_name               "Blue Ape Ron"
+                    ::personal-collection-name "Blue Ape Ron's Personal Collection"}
                    (change-user-via-api! {:first_name "Blue Ape"
                                           :last_name  "Ron"}))))
           (testing "Name keys explicitly set to `nil` updates the user"
-            (is (= {:first_name               nil
-                    :last_name                nil
-                    :common_name              "blueronny@metabase.com"
-                    :personal_collection_name "blueronny@metabase.com's Personal Collection"}
+            (is (= {:first_name                nil
+                    :last_name                 nil
+                    :common_name               "blueronny@metabase.com"
+                    ::personal-collection-name "blueronny@metabase.com's Personal Collection"}
                    (change-user-via-api! {:first_name nil
                                           :last_name  nil}))))
           (testing "Nil keys compare correctly with nil names and cause no change."
-            (is (= {:first_name               nil
-                    :last_name                nil
-                    :common_name              "blueronny@metabase.com"
-                    :personal_collection_name "blueronny@metabase.com's Personal Collection"}
+            (is (= {:first_name                nil
+                    :last_name                 nil
+                    :common_name               "blueronny@metabase.com"
+                    ::personal-collection-name "blueronny@metabase.com's Personal Collection"}
                    (change-user-via-api! {:first_name nil
                                           :last_name  nil}))))
           (testing "First/last_name keys are sent but one is unchanged, updates only the altered key for the user"
-            (is (= {:first_name               nil
-                    :last_name                "Apron"
-                    :common_name              "Apron"
-                    :personal_collection_name "Apron's Personal Collection"}
+            (is (= {:first_name                nil
+                    :last_name                 "Apron"
+                    :common_name               "Apron"
+                    ::personal-collection-name "Apron's Personal Collection"}
                    (change-user-via-api! {:first_name nil
                                           :last_name  "Apron"}))))
           (testing "Both new name keys update the user"
-            (is (= {:first_name               "Blue"
-                    :last_name                nil
-                    :common_name              "Blue"
-                    :personal_collection_name "Blue's Personal Collection"}
+            (is (= {:first_name                "Blue"
+                    :last_name                 nil
+                    :common_name               "Blue"
+                    ::personal-collection-name "Blue's Personal Collection"}
                    (change-user-via-api! {:first_name "Blue"
                                           :last_name  nil})))))))))
 

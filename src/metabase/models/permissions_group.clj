@@ -110,8 +110,9 @@
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
 
-(defn ^:hydrate members
-  "Return `Users` that belong to GROUP-OR-ID, ordered by their name (case-insensitive)."
+(mi/define-simple-hydration-method members
+  :members
+  "Return `Users` that belong to `group-or-id`, ordered by their name (case-insensitive)."
   [group-or-id]
   (db/query (cond-> {:select    [:user.first_name
                                  :user.last_name

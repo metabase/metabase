@@ -27,9 +27,9 @@
   [_app]
   [:entity_id])
 
-(defn add-app-id
+(mi/define-batched-hydration-method add-app-id
+  :app_id
   "Add `app_id` to Collections that are linked with an App."
-  {:batched-hydrate :app_id}
   [collections]
   (if-let [coll-ids (seq (into #{}
                                (comp (map :id)
@@ -69,9 +69,9 @@
                               [:in :id model-ids]
                               :dataset]})))
 
-(defn add-models
+(mi/define-simple-hydration-method add-models
+  :models
   "Add the fully hydrated models used by the app."
-  {:hydrate :models}
   [app]
   (let [used-cards (app-cards app)
         contained-models (into #{} (filter :dataset) used-cards)]
