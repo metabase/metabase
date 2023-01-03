@@ -1,29 +1,32 @@
 (ns metabase.api.search
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [GET]]
-            [flatland.ordered.map :as ordered-map]
-            [honeysql.core :as hsql]
-            [honeysql.helpers :as hh]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.db :as mdb]
-            [metabase.models :refer [App Database]]
-            [metabase.models.bookmark :refer [CardBookmark CollectionBookmark DashboardBookmark]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.interface :as mi]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.search.config :as search-config]
-            [metabase.search.scoring :as scoring]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [GET]]
+   [flatland.ordered.map :as ordered-map]
+   [honeysql.core :as hsql]
+   [honeysql.helpers :as hh]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.db :as mdb]
+   [metabase.models :refer [App Database]]
+   [metabase.models.bookmark
+    :refer [CardBookmark CollectionBookmark DashboardBookmark]]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.search.config :as search-config]
+   [metabase.search.scoring :as scoring]
+   [metabase.search.util :as search-util]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
@@ -190,7 +193,7 @@
   (when query
     (into [:or]
           (for [column searchable-columns
-                token (scoring/tokenize (scoring/normalize query))]
+                token (search-util/tokenize (search-util/normalize query))]
             (if (and (= model "card") (= column (hsql/qualify (model->alias model) :dataset_query)))
               [:and
                [:= (hsql/qualify (model->alias model) :query_type) "native"]
@@ -315,7 +318,7 @@
       (update :where (fn [where] [:and [:= :dashboard.is_app_page (= model "page")] where]))
       (hh/left-join [DashboardBookmark :bookmark]
                     [:and
-                     [:= :bookmark.dashboard_id :dashboard.id ]
+                     [:= :bookmark.dashboard_id :dashboard.id]
                      [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 
@@ -380,7 +383,7 @@
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
   [query]
-  (let [match             (wildcard-match (scoring/normalize query))
+  (let [match             (wildcard-match (search-util/normalize query))
         columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
@@ -490,11 +493,11 @@
     (some? limit)       (assoc :limit-int limit)
     (some? offset)      (assoc :offset-int offset)))
 
-(api/defendpoint GET "/models"
+(api/defendpoint-schema GET "/models"
   "Get the set of models that a search query will return"
   [q archived-string table-db-id] (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Search within a bunch of models for the substring `q`.
   For the list of models, check `metabase.search.config/all-models.
 

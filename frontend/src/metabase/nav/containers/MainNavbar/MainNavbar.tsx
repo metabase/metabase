@@ -3,7 +3,6 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { LocationDescriptor } from "history";
 
-import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 
 import { getQuestion } from "metabase/query_builder/selectors";
@@ -13,7 +12,6 @@ import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
-import DataAppNavbarContainer from "./DataAppNavbar";
 import MainNavbarContainer from "./MainNavbarContainer";
 
 import {
@@ -91,29 +89,16 @@ function MainNavbar({
   return (
     <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
       <NavRoot isOpen={isOpen}>
-        {Urls.isLaunchedDataAppPath(location.pathname) ? (
-          <DataAppNavbarContainer
-            isOpen={isOpen}
-            location={location}
-            params={params}
-            selectedItems={selectedItems}
-            openNavbar={openNavbar}
-            closeNavbar={closeNavbar}
-            onChangeLocation={onChangeLocation}
-            {...props}
-          />
-        ) : (
-          <MainNavbarContainer
-            isOpen={isOpen}
-            location={location}
-            params={params}
-            selectedItems={selectedItems}
-            openNavbar={openNavbar}
-            closeNavbar={closeNavbar}
-            onChangeLocation={onChangeLocation}
-            {...props}
-          />
-        )}
+        <MainNavbarContainer
+          isOpen={isOpen}
+          location={location}
+          params={params}
+          selectedItems={selectedItems}
+          openNavbar={openNavbar}
+          closeNavbar={closeNavbar}
+          onChangeLocation={onChangeLocation}
+          {...props}
+        />
       </NavRoot>
     </Sidebar>
   );

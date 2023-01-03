@@ -1,7 +1,8 @@
 (ns metabase.driver.sql.util-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.util.honeysql-extensions :as hx]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.util.honeysql-extensions :as hx]))
 
 (deftest select-clause-deduplicate-aliases
   (testing 'select-clause-deduplicate-aliases

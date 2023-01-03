@@ -1,11 +1,12 @@
 (ns metabase.pulse.render.body-test
-  (:require [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [hiccup.core :refer [html]]
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.render.common :as common]
-            [metabase.pulse.render.test-util :as render.tu]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [hiccup.core :refer [html]]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.render.common :as common]
+   [metabase.pulse.render.test-util :as render.tu]
+   [schema.core :as s]))
 
 (use-fixtures :each
   (fn warn-possible-rebuild
@@ -157,16 +158,16 @@
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2") (number "34.04") "December 5, 2014" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3") (number "34.05") "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
-  (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
-          {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.1") "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "December 5, 2014" "The Apple Pan"]}
+          {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data}
                                                {:bar-column second, :min-value 0, :max-value 40})))))
 
@@ -207,9 +208,9 @@
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1") (number "34.1") "Bad" "Apr 1, 2014" "Stout Burgers & Beers"]
-          [(number "2") (number "34.04") "Ok" "Dec 5, 2014" "The Apple Pan"]
-          [(number "3") (number "34.05") "Good" "Aug 1, 2014" "The Gorbals"]]
+  (is (= [[(number "1") (number "34.1") "Bad" "April 1, 2014" "Stout Burgers & Beers"]
+          [(number "2") (number "34.04") "Ok" "December 5, 2014" "The Apple Pan"]
+          [(number "3") (number "34.05") "Good" "August 1, 2014" "The Gorbals"]]
          (map :row (rest (#'body/prep-for-html-rendering  pacific-tz
                                                           {}
                                                           {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
@@ -231,9 +232,9 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2") (number "34.04") "December 5, 2014" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3") (number "34.05") "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
                                                {:cols test-columns-with-date-semantic-type :rows test-data})))))
@@ -274,7 +275,7 @@
                                          :semantic_type nil}]
                                  :rows [["foo"]]}))))
   (testing "renders date"
-    (is (= "Apr 1, 2014"
+    (is (= "April 1, 2014"
            (render-scalar-value {:cols [{:name         "date",
                                          :display_name "DATE",
                                          :base_type    :type/DateTime
@@ -631,7 +632,7 @@
   (let [rows        [["Category" "Series A" "Series B"]
                      ["A"        1          1.3]
                      ["B"        2          1.9]
-                     ["C"        3          4  ]]
+                     ["C"        3          4]]
         axes-split? (fn [rows]
                       (let [text (-> rows first last)]
                         ;; there is always 1 node with the series name in the legend

@@ -1,23 +1,23 @@
 (ns metabase.api.app
   (:require
-    [clojure.string :as str]
-    [clojure.walk :as walk]
-    [compojure.core :refer [POST PUT]]
-    [medley.core :as m]
-    [metabase.actions :as actions]
-    [metabase.api.card :as api.card]
-    [metabase.api.collection :as api.collection]
-    [metabase.api.common :as api]
-    [metabase.mbql.schema :as mbql.s]
-    [metabase.models :refer [App Collection Dashboard ModelAction Table]]
-    [metabase.models.collection :as collection]
-    [metabase.models.dashboard :as dashboard]
-    [metabase.util :as u]
-    [metabase.util.i18n :as i18n]
-    [metabase.util.schema :as su]
-    [schema.core :as s]
-    [toucan.db :as db]
-    [toucan.hydrate :refer [hydrate]]))
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [compojure.core :refer [POST PUT]]
+   [medley.core :as m]
+   [metabase.actions :as actions]
+   [metabase.api.card :as api.card]
+   [metabase.api.collection :as api.collection]
+   [metabase.api.common :as api]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models :refer [App Collection Dashboard ModelAction Table]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard :as dashboard]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (defn- hydrate-details
   [apps & additional-features]
@@ -33,7 +33,7 @@
          app (db/insert! App app-params)]
      (hydrate-details app))))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Endpoint to create an app"
   [:as {{:keys [dashboard_id options nav_items]
          {:keys [name color description namespace authority_level]} :collection
@@ -48,7 +48,7 @@
    authority_level collection/AuthorityLevel}
   (create-app! app))
 
-(api/defendpoint PUT "/:app-id"
+(api/defendpoint-schema PUT "/:app-id"
   "Endpoint to change an app"
   [app-id :as {{:keys [dashboard_id options nav_items] :as body} :body}]
   {app-id su/IntGreaterThanOrEqualToZero
@@ -59,7 +59,7 @@
   (db/update! App app-id (select-keys body [:dashboard_id :options :nav_items]))
   (hydrate-details (db/select-one App :id app-id)))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Fetch a list of all Apps that the current user has read permissions for.
 
   By default, this returns Apps with non-archived Collections, but instead you can show archived ones by passing
@@ -76,7 +76,7 @@
                     (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
         :order-by [[:%lower.collection.name :asc]]}))))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Fetch a specific App"
   [id]
   (hydrate-details (api/read-check App id) :models))
@@ -261,14 +261,14 @@
                                    :visualization_settings {"virtual_card" {"display" "action"}
                                                             "button.label" (i18n/tru "Edit"),
                                                             "action_slug" "update"}}])}
-                (= "detail" page-type) (assoc :parameters [{:name "ID",
-                                                            :slug "id",
-                                                            :id (str "scaffold_" table-id),
-                                                            :type "id",
-                                                            :hidden true
-                                                            :sectionId "id"}])))}))
+               (= "detail" page-type) (assoc :parameters [{:name "ID",
+                                                           :slug "id",
+                                                           :id (str "scaffold_" table-id),
+                                                           :type "id",
+                                                           :hidden true
+                                                           :sectionId "id"}])))}))
 
-(api/defendpoint POST "/scaffold"
+(api/defendpoint-schema POST "/scaffold"
   "Endpoint to scaffold a fully working data-app"
   [:as {{:keys [table-ids app-name]} :body}]
   (db/transaction
@@ -282,7 +282,7 @@
       (create-scaffold-dashcards! scaffold-target->id pages)
       (hydrate-details (db/select-one App :id app-id)))))
 
-(api/defendpoint POST "/:app-id/scaffold"
+(api/defendpoint-schema POST "/:app-id/scaffold"
   "Endpoint to scaffold a new table onto an existing data-app"
   [app-id :as {{:keys [table-ids]} :body}]
   (db/transaction

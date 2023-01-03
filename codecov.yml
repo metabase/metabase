@@ -1,6 +1,6 @@
 codecov:
     bot: "codecov-io"
-    require_ci_to_pass: no
+    require_ci_to_pass: false
 
 coverage:
   status:

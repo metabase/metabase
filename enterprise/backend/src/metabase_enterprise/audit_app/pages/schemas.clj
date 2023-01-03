@@ -1,8 +1,9 @@
 (ns metabase-enterprise.audit-app.pages.schemas
-  (:require [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]))
+  (:require
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.util.honeysql-extensions :as hx]
+   [schema.core :as s]))
 
 ;; WITH counts AS (
 ;;     SELECT db."name" AS db_name, t."schema" AS db_schema

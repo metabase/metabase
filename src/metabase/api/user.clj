@@ -1,29 +1,30 @@
 (ns metabase.api.user
   "/api/user endpoints"
-  (:require [clojure.string :as str]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [honeysql.helpers :as hh]
-            [java-time :as t]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.ldap :as api.ldap]
-            [metabase.email.messages :as messages]
-            [metabase.integrations.google :as google]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.login-history :refer [LoginHistory]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.password :as u.password]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.string :as str]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [honeysql.helpers :as hh]
+   [java-time :as t]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.ldap :as api.ldap]
+   [metabase.email.messages :as messages]
+   [metabase.integrations.google :as google]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.login-history :refer [LoginHistory]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.password :as u.password]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
                                           'metabase-enterprise.advanced-permissions.common
@@ -134,7 +135,7 @@
                                               [:= :core_user.id :permissions_group_membership.user_id])
         (some? group_id) (hh/merge-where [:= :permissions_group_membership.group_id group_id])))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Fetch a list of `Users`. By default returns every active user but only active users.
 
    - If `status` is `deactivated`, include deactivated users only.
@@ -212,7 +213,7 @@
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
-(api/defendpoint GET "/current"
+(api/defendpoint-schema GET "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
@@ -222,7 +223,7 @@
       maybe-add-advanced-permissions
       maybe-add-sso-source))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [id]
   (try
@@ -237,7 +238,7 @@
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
   [:as {{:keys [first_name last_name email user_group_memberships login_attributes] :as body} :body}]
   {first_name             (s/maybe su/NonBlankString)
@@ -289,7 +290,7 @@
     (not google_auth)
     (not ldap_auth))))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
@@ -355,7 +356,7 @@
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
-(api/defendpoint PUT "/:id/reactivate"
+(api/defendpoint-schema PUT "/:id/reactivate"
   "Reactivate user at `:id`"
   [id]
   (api/check-superuser)
@@ -371,7 +372,7 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(api/defendpoint PUT "/:id/password"
+(api/defendpoint-schema PUT "/:id/password"
   "Update a user's password."
   [id :as {{:keys [password old_password]} :body}]
   {password su/ValidPassword}
@@ -392,7 +393,7 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(api/defendpoint DELETE "/:id"
+(api/defendpoint-schema DELETE "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
   (api/check-superuser)
@@ -404,7 +405,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
-(api/defendpoint PUT "/:id/modal/:modal"
+(api/defendpoint-schema PUT "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [id modal]
   (check-self-or-superuser id)
@@ -417,7 +418,7 @@
     (api/check-500 (db/update! User id, k false)))
   {:success true})
 
-(api/defendpoint POST "/:id/send_invite"
+(api/defendpoint-schema POST "/:id/send_invite"
   "Resend the user invite email for a given user."
   [id]
   (api/check-superuser)

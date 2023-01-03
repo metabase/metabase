@@ -1,12 +1,14 @@
 (ns metabase.util.yaml
   (:refer-clojure :exclude [load])
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.util :as u]
-            [metabase.util.files :as u.files]
-            [metabase.util.i18n :refer [trs]]
-            [yaml.core :as yaml])
-  (:import [java.nio.file Files Path]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.util :as u]
+   [metabase.util.files :as u.files]
+   [metabase.util.i18n :refer [trs]]
+   [yaml.core :as yaml])
+  (:import
+   (java.nio.file Files Path)))
 
 (defn load
   "Load YAML at path `f`, parse it, and (optionally) pass the result to `constructor`."

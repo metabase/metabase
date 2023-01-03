@@ -1,46 +1,53 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [medley.core :as m]
-            [metabase.actions.execution :as actions.execution]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.card :as api.card]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.dataset :as api.dataset]
-            [metabase.automagic-dashboards.populate :as populate]
-            [metabase.events :as events]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.action :as action]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection]
-            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.params :as params]
-            [metabase.models.params.chain-filter :as chain-filter]
-            [metabase.models.query :as query :refer [Query]]
-            [metabase.models.query.permissions :as query-perms]
-            [metabase.models.revision :as revision]
-            [metabase.models.revision.last-edit :as last-edit]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor.dashboard :as qp.dashboard]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.related :as related]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [medley.core :as m]
+   [metabase.actions.execution :as actions.execution]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.card :as api.card]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.automagic-dashboards.populate :as populate]
+   [metabase.events :as events]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card
+    :as dashboard-card
+    :refer [DashboardCard]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.params :as params]
+   [metabase.models.params.card-values :as params.card-values]
+   [metabase.models.params.chain-filter :as chain-filter]
+   [metabase.models.query :as query :refer [Query]]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.models.revision :as revision]
+   [metabase.models.revision.last-edit :as last-edit]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.related :as related]
+   [metabase.search.util :as search]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (java.util UUID)))
 
 (defn- dashboards-list [filter-option]
   (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
@@ -51,7 +58,7 @@
     (hydrate <> :creator)
     (filter mi/can-read? <>)))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
 
   *  `all`      - Return all Dashboards.
@@ -68,7 +75,7 @@
                    dashboard)))
           dashboards)))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new Dashboard."
   [:as {{:keys [name description parameters cache_ttl collection_id collection_position is_app_page], :as _dashboard} :body}]
   {name                su/NonBlankString
@@ -308,7 +315,7 @@
                                                series)))))))
           ordered-cards)))
 
-(api/defendpoint POST "/:from-dashboard-id/copy"
+(api/defendpoint-schema POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
   [from-dashboard-id :as {{:keys [name description collection_id collection_position
                                   is_deep_copy], :as _dashboard} :body}]
@@ -356,7 +363,7 @@
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Get Dashboard with ID."
   [id]
   (let [dashboard (get-dashboard id)]
@@ -372,7 +379,7 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update a Dashboard.
 
   Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate
@@ -421,7 +428,7 @@
 
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
 ;; be setting `:archived` to `true` via the `PUT` endpoint instead
-(api/defendpoint DELETE "/:id"
+(api/defendpoint-schema DELETE "/:id"
   "Delete a Dashboard."
   [id]
   (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
@@ -476,7 +483,7 @@
                                :actual-permissions @api/*current-user-permissions-set*})))))))))
 
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
-(api/defendpoint POST "/:id/cards"
+(api/defendpoint-schema POST "/:id/cards"
   "Add a `Card` to a Dashboard."
   [id :as {{:keys [cardId parameter_mappings], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
@@ -543,7 +550,7 @@
     "value must be a valid DashboardCard map."))
 
 ;; TODO - we should use schema to validate the format of the Cards :D
-(api/defendpoint PUT "/:id/cards"
+(api/defendpoint-schema PUT "/:id/cards"
   "Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id                 ... ; DashboardCard ID
@@ -563,7 +570,7 @@
   (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
   {:status :ok})
 
-(api/defendpoint DELETE "/:id/cards"
+(api/defendpoint-schema DELETE "/:id/cards"
   "Remove a `DashboardCard` from a Dashboard."
   [id dashcardId]
   {dashcardId su/IntStringGreaterThanZero}
@@ -572,13 +579,13 @@
     (api/check-500 (dashboard-card/delete-dashboard-card! dashboard-card api/*current-user-id*))
     api/generic-204-no-content))
 
-(api/defendpoint GET "/:id/revisions"
+(api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."
   [id]
   (api/read-check Dashboard id)
   (revision/revisions+details Dashboard id))
 
-(api/defendpoint POST "/:id/revert"
+(api/defendpoint-schema POST "/:id/revert"
   "Revert a Dashboard to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
   {revision_id su/IntGreaterThanZero}
@@ -591,7 +598,7 @@
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
-(api/defendpoint POST "/:dashboard-id/public_link"
+(api/defendpoint-schema POST "/:dashboard-id/public_link"
   "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
@@ -605,7 +612,7 @@
                  :public_uuid       <>
                  :made_public_by_id api/*current-user-id*)))})
 
-(api/defendpoint DELETE "/:dashboard-id/public_link"
+(api/defendpoint-schema DELETE "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [dashboard-id]
   (validation/check-has-application-permission :setting)
@@ -616,7 +623,7 @@
     :made_public_by_id nil)
   {:status 204, :body nil})
 
-(api/defendpoint GET "/public"
+(api/defendpoint-schema GET "/public"
   "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
   enabled."
   []
@@ -624,7 +631,7 @@
   (validation/check-public-sharing-enabled)
   (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
-(api/defendpoint GET "/embeddable"
+(api/defendpoint-schema GET "/embeddable"
   "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
   endpoints and a signed JWT."
   []
@@ -632,21 +639,21 @@
   (validation/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
-(api/defendpoint GET "/:id/related"
+(api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Dashboard :id id) api/read-check related/related))
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
-(api/defendpoint POST "/save/collection/:parent-collection-id"
+(api/defendpoint-schema POST "/save/collection/:parent-collection-id"
   "Save a denormalized description of dashboard into collection with ID `:parent-collection-id`."
   [parent-collection-id :as {dashboard :body}]
   (collection/check-write-perms-for-collection parent-collection-id)
   (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
        (events/publish-event! :dashboard-create)))
 
-(api/defendpoint POST "/save"
+(api/defendpoint-schema POST "/save"
   "Save a denormalized description of dashboard."
   [:as {dashboard :body}]
   (let [parent-collection-id (if api/*is-superuser?*
@@ -707,47 +714,93 @@
     param-key                   :- su/NonBlankString
     constraint-param-key->value :- su/Map
     query                       :- (s/maybe su/NonBlankString)]
-   (let [dashboard (hydrate dashboard :resolved-params)]
-     (when-not (get (:resolved-params dashboard) param-key)
+   (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
+         field-ids   (param-key->field-ids dashboard param-key)]
+     (when (empty? field-ids)
+       (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                       {:param       (get (:resolved-params dashboard) param-key)
+                        :status-code 400})))
+     ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
+     ;; separate query for each Field (for parameters that are mapped to more than one Field)
+     (try
+       (let [results (map (if (seq query)
+                            #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                            #(chain-filter/chain-filter % constraints :limit result-limit))
+                          field-ids)
+             values (distinct (mapcat :values results))
+             has_more_values (boolean (some true? (map :has_more_values results)))]
+         ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+         {:values          (if (sequential? (first values))
+                             (sort-by second values)
+                             (sort values))
+          :has_more_values has_more_values})
+       (catch clojure.lang.ExceptionInfo e
+         (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+           (api/throw-403 e)
+           (throw e)))))))
+
+(defn- query-matches
+  "Filter the values according to the `search-term`.
+
+  Values could have 2 shapes
+  - [value1, value2]
+  - [[value1, label1], [value2, label2]] - we search using label in this case"
+  [query values]
+  (let [normalized-query (search/normalize query)]
+    (filter #(str/includes? (search/normalize (if (string? %)
+                                                %
+                                                ;; search by label
+                                                (second %)))
+                            normalized-query) values)))
+
+(defn- static-parameter-values
+  [{values-source-options :values_source_config :as _param} query]
+  (when-let [values (:values values-source-options)]
+    {:values          (if query
+                        (query-matches query values)
+                        values)
+     :has_more_values false}))
+
+(defn- card-parameter-values
+  [{config :values_source_config :as _param} query]
+  (params.card-values/values-from-card (:card_id config) (:value_field config) query))
+
+(s/defn param-values
+  "Fetch values for a parameter.
+
+  The source of values could be:
+  - static-list: user defined values list
+  - card: values is result of running a card
+  - nil: chain-filter"
+  ([dashboard param-key query-params]
+   (param-values dashboard param-key query-params nil))
+
+  ([dashboard                   :- su/Map
+    param-key                   :- su/NonBlankString
+    constraint-param-key->value :- su/Map
+    query                       :- (s/maybe su/NonBlankString)]
+   (let [dashboard (hydrate dashboard :resolved-params)
+         param     (get (:resolved-params dashboard) param-key)]
+     (when-not param
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
-     (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
-           field-ids   (param-key->field-ids dashboard param-key)]
-      (when (empty? field-ids)
-        (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                        {:param       (get (:resolved-params dashboard) param-key)
-                         :status-code 400})))
-       ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
-       ;; separate query for each Field (for parameters that are mapped to more than one Field)
-      (try
-        (let [results (map (if (seq query)
-                               #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                               #(chain-filter/chain-filter % constraints :limit result-limit))
-                           field-ids)
-              values (distinct (mapcat :values results))
-              has_more_values (boolean (some true? (map :has_more_values results)))]
-          ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-          {:values          (if (sequential? (first values))
-                              (sort-by second values)
-                              (sort values))
-           :has_more_values has_more_values})
-        (catch clojure.lang.ExceptionInfo e
-          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-            (api/throw-403 e)
-            (throw e))))))))
+     (case (:values_source_type param)
+       "static-list" (static-parameter-values param query)
+       "card"        (card-parameter-values param query)
+       nil           (chain-filter dashboard param-key constraint-param-key->value query)))))
 
-(api/defendpoint GET "/:id/params/:param-key/values"
-  "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
-  parameters like `other-parameter=value` e.g.
+(api/defendpoint-schema GET "/:id/params/:param-key/values"
+  "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
+  restrict these values by passing query parameters like `other-parameter=value` e.g.
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
   [id param-key :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (chain-filter dashboard param-key query-params)))
+    (param-values dashboard param-key query-params)))
 
-(api/defendpoint GET "/:id/params/:param-key/search/:query"
+(api/defendpoint-schema GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
   these values by passing query parameters like `other-parameter=value` e.g.
 
@@ -758,9 +811,9 @@
   Currently limited to first 1000 results."
   [id param-key query :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (chain-filter dashboard param-key query-params query)))
+    (param-values dashboard param-key query-params query)))
 
-(api/defendpoint GET "/params/valid-filter-fields"
+(api/defendpoint-schema GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
   parameters) and a set of `filtering` Field IDs that will be used to restrict values of `filtered` Fields, for each
   `filtered` Field ID return the subset of `filtering` Field IDs that would actually be used in a chain filter query
@@ -807,7 +860,7 @@
 
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
-(api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
+(api/defendpoint-schema GET "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
   "Fetches the values for filling in execution parameters."
   [dashboard-id dashcard-id slug]
   {dashboard-id su/IntGreaterThanZero
@@ -816,7 +869,7 @@
   (action/check-data-apps-enabled)
   (throw (UnsupportedOperationException. "Not implemented")))
 
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
+(api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
@@ -832,7 +885,7 @@
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
+(api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
   {parameters (s/maybe [ParameterWithID])}
@@ -843,7 +896,7 @@
               :card-id      card-id
               :dashcard-id  dashcard-id})))
 
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
+(api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
 
@@ -870,7 +923,7 @@
                               :format-rows?           false
                               :js-int-to-string?      false}})))
 
-(api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
+(api/defendpoint-schema POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
   {parameters (s/maybe [ParameterWithID])}

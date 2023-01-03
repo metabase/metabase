@@ -1,16 +1,19 @@
 (ns metabase.api.revision-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.revision :as revision :refer [push-revision! Revision revisions]]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.revision
+    :as revision
+    :refer [push-revision! Revision revisions]]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 

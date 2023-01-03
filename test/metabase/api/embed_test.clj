@@ -1,30 +1,33 @@
 (ns metabase.api.embed-test
   "Tests for /api/embed endpoints."
-  (:require [buddy.sign.jwt :as jwt]
-            [buddy.sign.util :as buddy-util]
-            [clj-time.core :as time]
-            [clojure.data.csv :as csv]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [crypto.random :as crypto-random]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase.api.dashboard-test :as api.dashboard-test]
-            [metabase.api.embed :as api.embed]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.api.public-test :as public-test]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
-            [metabase.models.interface :as mi]
-            [metabase.models.params.chain-filter-test :as chain-filer-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.io.ByteArrayInputStream))
+  (:require
+   [buddy.sign.jwt :as jwt]
+   [buddy.sign.util :as buddy-util]
+   [clj-time.core :as time]
+   [clojure.data.csv :as csv]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [crypto.random :as crypto-random]
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.api.embed :as api.embed]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.api.public-test :as public-test]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+   [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter-test :as chain-filer-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.io ByteArrayInputStream)))
 
 (defn random-embedding-secret-key [] (crypto-random/hex 32))
 
@@ -797,10 +800,12 @@
       (db/update! Dashboard (u/the-id dashboard) :enable_embedding true)
       (letfn [(token [params]
                 (dash-token dashboard (when params {:params params})))
-              (values-url [& [params]]
-                (format "embed/dashboard/%s/params/_CATEGORY_ID_/values" (token params)))
-              (search-url [& [params]]
-                (format "embed/dashboard/%s/params/_CATEGORY_NAME_/search/food" (token params)))]
+              (values-url [& [params param-key]]
+                (format "embed/dashboard/%s/params/%s/values"
+                        (token params) (or param-key "_CATEGORY_ID_")))
+              (search-url [& [params param-key query]]
+                (format "embed/dashboard/%s/params/%s/search/%s"
+                        (token params) (or param-key "_CATEGORY_NAME_") (or query "food")))]
         (f (assoc m
                   :token token
                   :values-url values-url
@@ -829,6 +834,21 @@
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
         (is (= "Cannot search for values: \"category_name\" is not an enabled parameter."
                (client/client :get 400 (search-url))))))))
+
+(deftest params-with-static-list-test
+  (testing "embedding with parameter that has source is a static list"
+    (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+      (db/update! Dashboard (:id dashboard)
+        :embedding_params {"static_category" "enabled", "static_category_label" "enabled"})
+      (testing "Should work if the param we're fetching values for is enabled"
+        (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
+          (is (= {:values          ["African" "American" "Asian"]
+                  :has_more_values false}
+                 (client/client :get 200 (values-url {} "_STATIC_CATEGORY_")))))
+        (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
+          (is (= {:values          [["African" "Af"]]
+                  :has_more_values false}
+                 (client/client :get 200 (search-url {} "_STATIC_CATEGORY_LABEL_" "AF")))))))))
 
 (deftest chain-filter-enabled-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]

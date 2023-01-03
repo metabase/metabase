@@ -1,14 +1,15 @@
 (ns metabase.models.persisted-info
-  (:require [buddy.core.codecs :as codecs]
-            [clojure.string :as str]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (defn- field-metadata->field-defintion
   "Map containing the type and name of fields for dll. The type is :base-type and uses the effective_type else base_type

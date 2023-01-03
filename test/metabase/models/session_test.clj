@@ -1,10 +1,11 @@
 (ns metabase.models.session-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.session :as session :refer [Session]]
-            [metabase.server.middleware.misc :as mw.misc]
-            [metabase.test :as mt]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.session :as session :refer [Session]]
+   [metabase.server.middleware.misc :as mw.misc]
+   [metabase.test :as mt]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
 

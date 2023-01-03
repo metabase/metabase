@@ -1,5 +1,6 @@
 (ns metabase.shared.util.log
-  (:require [net.cgrand.macrovich :as macros]))
+  (:require
+   [net.cgrand.macrovich :as macros]))
 
 (defmacro js-logp
   "Cljs impl for `logp`."

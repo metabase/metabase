@@ -8,13 +8,17 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Full-app embedding" %}
 
-Metabase offers several [types of embedding](./introduction.md) with different levels of customization and security.
+**Full-app embedding** is what you want if you want to offer [multi-tenant, self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics). 
 
-**Full-app embedding** is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/questions/drill-through) into your data.
+Full-app embedding is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/questions/drill-through) into your data.
 
-If you only want to set up a fixed number of filters and drill-down views into your data (i.e., prevent people from creating their own [questions](https://www.metabase.com/glossary/question)), you might prefer [Signed embedding](./signed-embedding.md).
+## Full-app embedding demo
 
-## Prerequisites
+To get a feel for what you can do with full-app embedding, check out our [full-app embedding demo](https://www.metabase.com/embedding-demo). 
+
+To see the query builder in action, click on **Reports** > **+ New** > **Question**.
+
+## Prerequisites for full-app embedding
 
 1. Make sure you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid plan](https://store.metabase.com/checkout/login-details).
 2. Organize people into Metabase [groups](../people-and-groups/start.md).

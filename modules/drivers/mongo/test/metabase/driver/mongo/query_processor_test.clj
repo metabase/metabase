@@ -136,6 +136,33 @@
                                 s/Keyword s/Any}
                                (qp/process-query (mt/native-query query)))))))))))))
 
+(deftest field-filter-relative-time-native-test
+  (mt/test-driver :mongo
+    (testing "Field filters with relative temporal constraints should work with native queries (#15945)"
+      (mt/with-clock #t "2014-10-03T18:08:00Z"
+        (let [query {:database (mt/id)
+                     :native
+                     {:collection "users"
+                      :template-tags
+                      {:date
+                       {:id "2d7ce56a-2a66-5845-e9b9-e243c16965b8"
+                        :name "last_login"
+                        :display-name "Last Login"
+                        :type "dimension"
+                        :dimension ["field" (mt/id :users :last_login) nil]
+                        :required true}}
+                      :query "[{\"$match\": {{date}} },
+                               {\"$project\": {\"name\": 1, \"last_login\": 1, \"_id\": 0} }]"}
+                     :type "native"
+                     :parameters
+                     [{:type "date/all-options"
+                       :value "past2hours"
+                       :target ["dimension" ["template-tag" "date"]]
+                       :id "2d7ce56a-2a66-5845-e9b9-e243c16965b8"}]
+                     :middleware {:js-int-to-string? true}}]
+          (is (= [["Quentin Sören" "2014-10-03T17:30:00Z"]]
+                 (mt/rows (qp/process-query query)))))))))
+
 (deftest grouping-with-timezone-test
   (mt/test-driver :mongo
     (testing "Result timezone is respected when grouping by hour (#11149)"

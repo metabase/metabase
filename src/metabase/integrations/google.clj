@@ -1,18 +1,20 @@
 (ns metabase.integrations.google
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.api.common :as api]
-            [metabase.integrations.google.interface :as google.i]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.api.common :as api]
+   [metabase.integrations.google.interface :as google.i]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting.multi-setting
+    :refer [define-multi-setting-impl]]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;; Load EE implementation if available
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.enhancements.integrations.google))

@@ -1,27 +1,29 @@
 (ns metabase.models.interface
-  (:require [buddy.core.codecs :as codecs]
-            [cheshire.core :as json]
-            [clojure.core.memoize :as memoize]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models.dispatch :as models.dispatch]
-            [metabase.models.json-migration :as jm]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.cron :as u.cron]
-            [metabase.util.encryption :as encryption]
-            [metabase.util.i18n :refer [trs tru]]
-            [potemkin :as p]
-            [schema.core :as s]
-            [taoensso.nippy :as nippy]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
-           java.sql.Blob
-           java.util.zip.GZIPInputStream))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
+   [clojure.core.memoize :as memoize]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.dispatch :as models.dispatch]
+   [metabase.models.json-migration :as jm]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.i18n :refer [trs tru]]
+   [potemkin :as p]
+   [schema.core :as s]
+   [taoensso.nippy :as nippy]
+   [toucan.db :as db]
+   [toucan.models :as models])
+  (:import
+   (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
+   (java.sql Blob)
+   (java.util.zip GZIPInputStream)))
 
 (p/import-vars
  [models.dispatch

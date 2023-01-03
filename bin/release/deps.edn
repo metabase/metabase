@@ -14,7 +14,9 @@
  ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
  :mvn/repos
  {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
-  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
+  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}
+  ;; for metabase/saml20-clj
+  "opensaml" {:url "https://build.shibboleth.net/nexus/content/repositories/releases/"}}
 
  :aliases
  {:test {:extra-paths ["test"]

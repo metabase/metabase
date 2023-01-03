@@ -6,19 +6,20 @@
   All nested Fields recursion is handled in one place, by the main entrypoint (`sync-instances!`) and helper
   functions `sync-nested-field-instances!` and `sync-nested-fields-of-one-field!`. All other functions in this
   namespace should ignore nested fields entirely; the will be invoked with those Fields as appropriate."
-  (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.humanization :as humanization]
-            [metabase.sync.interface :as i]
-            [metabase.sync.sync-metadata.fields.common :as common]
-            [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.humanization :as humanization]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.fields.common :as common]
+   [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |

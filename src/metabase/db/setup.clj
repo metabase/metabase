@@ -6,19 +6,21 @@
 
   Because functions here don't know where the JDBC spec came from, you can use them to perform the usual application
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
-  (:require [clojure.tools.logging :as log]
-            [honeysql.format :as hformat]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
-            [metabase.db.liquibase :as liquibase]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models.setting :as setting]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import liquibase.exception.LockException))
+  (:require
+   [clojure.tools.logging :as log]
+   [honeysql.format :as hformat]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
+   [metabase.db.liquibase :as liquibase]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.models.setting :as setting]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (liquibase.exception LockException)))
 
 (defn- print-migrations-and-quit-if-needed!
   "If we are not doing auto migrations then print out migration SQL for user to run manually. Then throw an exception to

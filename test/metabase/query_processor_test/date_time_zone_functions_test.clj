@@ -1,12 +1,13 @@
 (ns metabase.query-processor-test.date-time-zone-functions-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Card]]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test :as mt]
-            [metabase.util.date-2 :as u.date]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.models :refer [Card]]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.test :as mt]
+   [metabase.util.date-2 :as u.date]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Date extract tests                                              |
@@ -959,8 +960,7 @@
                       first))))))))
 
 (deftest datetime-diff-type-test
-  (mt/test-drivers (->> (disj (mt/normal-drivers-with-feature :datetime-diff) :snowflake)
-                        (filter mt/supports-time-type?))
+  (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-with-feature :datetime-diff))
     (testing "Cannot datetime-diff against time column"
       (mt/dataset test-data-with-time
         (is (thrown-with-msg?

@@ -1,8 +1,11 @@
 (ns metabase.query-processor.middleware.escape-join-aliases-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.impl :as driver.impl]
-            [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.query-processor.middleware.escape-join-aliases
+    :as
+    escape-join-aliases]))
 
 (deftest deduplicate-alias-names-test
   (testing "Should ensure all join aliases are unique, ignoring case"

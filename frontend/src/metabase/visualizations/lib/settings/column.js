@@ -13,7 +13,6 @@ function getVisualizationRaw(...args) {
 
 import {
   formatColumn,
-  numberFormatterForOptions,
   getCurrencySymbol,
   getDateFormatFromStyle,
 } from "metabase/lib/formatting";
@@ -403,17 +402,6 @@ export const NUMBER_COLUMN_SETTINGS = {
     props: {
       placeholder: t`dollars`,
     },
-  },
-  // Optimization: build a single NumberFormat object that is used by formatting.js
-  _numberFormatter: {
-    getValue: (column, settings) => numberFormatterForOptions(settings),
-    // NOTE: make sure to include every setting that affects the number formatter here
-    readDependencies: [
-      "number_style",
-      "currency_style",
-      "currency",
-      "decimals",
-    ],
   },
   _header_unit: {
     getValue: (column, settings) => {

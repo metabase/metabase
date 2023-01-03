@@ -1,15 +1,17 @@
 (ns metabase.email-test
   "Various helper functions for testing email functionality."
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.email :as email]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.util :as tu]
-            [metabase.util :refer [prog1]]
-            [postal.message :as message])
-  (:import java.io.File
-           javax.activation.MimeType))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.email :as email]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.util :as tu]
+   [metabase.util :refer [prog1]]
+   [postal.message :as message])
+  (:import
+   (java.io File)
+   (javax.activation MimeType)))
 
 ;; TODO - this should be made dynamic so it's (at least theoretically) possible to use this in parallel
 (def inbox

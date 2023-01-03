@@ -1,8 +1,9 @@
 (ns metabase-enterprise.audit-app.pages.tables
-  (:require [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]))
+  (:require
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.util.honeysql-extensions :as hx]
+   [schema.core :as s]))
 
 ;; WITH table_executions AS (
 ;;     SELECT t.id AS table_id, count(*) AS executions

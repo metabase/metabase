@@ -1,10 +1,10 @@
 (ns metabase.api.model-action-test
   (:require
-    [clojure.test :refer [deftest is testing]]
-    [metabase.actions.test-util :as actions.test-util]
-    [metabase.models :refer [Card ModelAction]]
-    [metabase.test :as mt]
-    [toucan.db :as db]))
+   [clojure.test :refer [deftest is testing]]
+   [metabase.actions.test-util :as actions.test-util]
+   [metabase.models :refer [Card ModelAction]]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (deftest get-test
   (actions.test-util/with-actions-enabled

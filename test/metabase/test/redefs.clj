@@ -1,11 +1,12 @@
 (ns metabase.test.redefs
   "Redefinitions of vars from 3rd-party namespaces to make sure they do extra stuff we want (like initialize things if
   needed when running)."
-  (:require [metabase.plugins.classloader :as classloader]
-            [metabase.test-runner.parallel :as test-runner.parallel]
-            [toucan.db :as db]
-            [toucan.models :as models]
-            [toucan.util.test :as tt]))
+  (:require
+   [metabase.plugins.classloader :as classloader]
+   [metabase.test-runner.parallel :as test-runner.parallel]
+   [toucan.db :as db]
+   [toucan.models :as models]
+   [toucan.util.test :as tt]))
 
 ;; replace [[toucan.util.test/do-with-temp]] so it initializes the DB before doing the other stuff it usually does
 

@@ -1,26 +1,29 @@
 (ns metabase.api.persist
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [GET POST]]
-            [honeysql.helpers :as hh]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.task.persist-refresh :as task.persist-refresh]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [GET POST]]
+   [honeysql.helpers :as hh]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.models.persisted-info
+    :as persisted-info
+    :refer [PersistedInfo]]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
@@ -55,7 +58,7 @@
                            :schema_name (ddl.i/schema-name {:id database_id} site-uuid-str)
                            :next-fire-time (get-in db-id->fire-time [database_id :next-fire-time]))))))))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
   (validation/check-has-application-permission :monitoring)
@@ -73,7 +76,7 @@
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
-(api/defendpoint GET "/:persisted-info-id"
+(api/defendpoint-schema GET "/:persisted-info-id"
   "Fetch a particular [[PersistedInfo]] by id."
   [persisted-info-id]
   {persisted-info-id (s/maybe su/IntGreaterThanZero)}
@@ -81,7 +84,7 @@
     (api/write-check (db/select-one Database :id (:database_id persisted-info)))
     persisted-info))
 
-(api/defendpoint GET "/card/:card-id"
+(api/defendpoint-schema GET "/card/:card-id"
   "Fetch a particular [[PersistedInfo]] by card-id."
   [card-id]
   {card-id (s/maybe su/IntGreaterThanZero)}
@@ -98,7 +101,7 @@
                    (deferred-tru "String representing a cron schedule"))
     (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
 
-(api/defendpoint POST "/set-refresh-schedule"
+(api/defendpoint-schema POST "/set-refresh-schedule"
   "Set the cron schedule to refresh persisted models.
    Shape should be JSON like {cron: \"0 30 1/8 * * ? *\"}."
   [:as {{:keys [cron], :as _body} :body}]
@@ -114,7 +117,7 @@
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
-(api/defendpoint POST "/enable"
+(api/defendpoint-schema POST "/enable"
   "Enable global setting to allow databases to persist models."
   []
   (validation/check-has-application-permission :setting)
@@ -137,7 +140,7 @@
         :options (not-empty (dissoc (:options db) :persist-models-enabled))))
     (task.persist-refresh/disable-persisting!)))
 
-(api/defendpoint POST "/disable"
+(api/defendpoint-schema POST "/disable"
   "Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
   that option from databases which might have it enabled, and delete all cached tables."
   []

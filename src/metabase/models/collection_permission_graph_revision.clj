@@ -1,8 +1,9 @@
 (ns metabase.models.collection-permission-graph-revision
-  (:require [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel CollectionPermissionGraphRevision :collection_permission_graph_revision)
 

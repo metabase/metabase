@@ -1,6 +1,6 @@
 import React from "react";
 import moment from "moment-timezone";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 
 import PersistedModels from "metabase/entities/persisted-models";
 import { ModelCacheRefreshStatus } from "metabase-types/api";
@@ -42,9 +42,9 @@ async function setup({
     .spyOn(PersistedModels.objectActions, "refreshCache")
     .mockReturnValue({ type: "__MOCK__" });
 
-  xhrMock.get(`/api/persist/card/${model.id()}`, {
-    body: JSON.stringify(modelCacheInfo),
-  });
+  nock(location.origin)
+    .get(`/api/persist/card/${model.id()}`)
+    .reply(200, modelCacheInfo);
 
   if (!waitForSectionAppearance) {
     jest.spyOn(PersistedModels, "Loader").mockImplementation(props => {
@@ -69,12 +69,8 @@ async function setup({
 }
 
 describe("ModelCacheManagementSection", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
     jest.resetAllMocks();
   });
 
@@ -91,14 +87,16 @@ describe("ModelCacheManagementSection", () => {
   it("displays 'creating' state correctly", async () => {
     await setup({ state: "creating" });
     expect(
-      screen.getByText("Waiting to create the first model cache"),
+      await screen.findByText("Waiting to create the first model cache"),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("refresh icon")).not.toBeInTheDocument();
   });
 
   it("displays 'refreshing' state correctly", async () => {
     await setup({ state: "refreshing" });
-    expect(screen.getByText("Refreshing model cache")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Refreshing model cache"),
+    ).toBeInTheDocument();
     expect(screen.queryByLabelText("refresh icon")).not.toBeInTheDocument();
   });
 
@@ -106,7 +104,7 @@ describe("ModelCacheManagementSection", () => {
     const { modelCacheInfo } = await setup({ state: "persisted" });
     const expectedTimestamp = moment(modelCacheInfo.refresh_end).fromNow();
     expect(
-      screen.getByText(`Model last cached ${expectedTimestamp}`),
+      await screen.findByText(`Model last cached ${expectedTimestamp}`),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
   });
@@ -115,7 +113,7 @@ describe("ModelCacheManagementSection", () => {
     const { modelCacheInfo, onRefreshMock } = await setup({
       state: "persisted",
     });
-    fireEvent.click(screen.getByLabelText("refresh icon"));
+    fireEvent.click(await screen.findByLabelText("refresh icon"));
     expect(onRefreshMock).toHaveBeenCalledWith(modelCacheInfo);
   });
 
@@ -124,7 +122,7 @@ describe("ModelCacheManagementSection", () => {
     const expectedTimestamp = moment(modelCacheInfo.refresh_end).fromNow();
 
     expect(
-      screen.getByText("Failed to update model cache"),
+      await screen.findByText("Failed to update model cache"),
     ).toBeInTheDocument();
     expect(
       screen.getByText(`Last attempt ${expectedTimestamp}`),
@@ -134,7 +132,7 @@ describe("ModelCacheManagementSection", () => {
 
   it("triggers refresh from 'error' state", async () => {
     const { modelCacheInfo, onRefreshMock } = await setup({ state: "error" });
-    fireEvent.click(screen.getByLabelText("refresh icon"));
+    fireEvent.click(await screen.findByLabelText("refresh icon"));
     expect(onRefreshMock).toHaveBeenCalledWith(modelCacheInfo);
   });
 });

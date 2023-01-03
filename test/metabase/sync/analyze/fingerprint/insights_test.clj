@@ -136,8 +136,8 @@
            :unit           :day}]
          (-> (transduce identity
                         (insights/insights [{:base_type :type/DateTime}
-                                   {:base_type :type/Number}
-                                   {:base_type :type/Number}])
+                                            {:base_type :type/Number}
+                                            {:base_type :type/Number}])
                         ts)
                                         ; This value varies between machines (M1 Macs? JVMs?) so round it to avoid test failures.
              (update-in [0 :best-fit 1] #(round-to-precision 6 %)))))

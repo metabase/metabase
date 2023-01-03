@@ -1,22 +1,24 @@
 (ns metabase.api.activity
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [compojure.core :refer [GET]]
-            [medley.core :as m]
-            [metabase.api.common :refer [*current-user-id* defendpoint define-routes]]
-            [metabase.models.activity :refer [Activity]]
-            [metabase.models.app :refer [App]]
-            [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as mi]
-            [metabase.models.query-execution :refer [QueryExecution]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.view-log :refer [ViewLog]]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [compojure.core :refer [GET]]
+   [medley.core :as m]
+   [metabase.api.common
+    :refer [*current-user-id* defendpoint-schema define-routes]]
+   [metabase.models.activity :refer [Activity]]
+   [metabase.models.app :refer [App]]
+   [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
+   [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.view-log :refer [ViewLog]]
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (defn- dashcard-activity? [activity]
   (#{:dashboard-add-cards :dashboard-remove-cards}
@@ -96,7 +98,7 @@
                                 (or (existing-dataset? (:card_id dashcard))
                                     (existing-card? (:card_id dashcard))))))))))))
 
-(defendpoint GET "/"
+(defendpoint-schema GET "/"
   "Get recent activity."
   []
   (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
@@ -195,7 +197,7 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-(defendpoint GET "/recent_views"
+(defendpoint-schema GET "/recent_views"
   "Get the list of 5 things the current user has been viewing most recently."
   []
   (let [views (views-and-runs views-limit card-runs-limit false)
@@ -258,7 +260,7 @@
       (let [groups (group-by :model items)]
         (mapcat #(get groups %) model-precedence))))
 
-(defendpoint GET "/popular_items"
+(defendpoint-schema GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
   finds anything archived, deleted, etc it can hopefully still get 5."
   []

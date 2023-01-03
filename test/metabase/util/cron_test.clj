@@ -2,8 +2,9 @@
   "Tests for the util fns that convert things to and from frontend-friendly schedule map and cron strings.
    These don't test every possible combination but hopefully cover enough that we can be reasonably sure the
    logic is right."
-  (:require [clojure.test :refer :all]
-            [metabase.util.cron :as u.cron]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.util.cron :as u.cron]))
 
 (deftest ^:parallel schedule-map->cron-string-test
   (testing "basic schedule"

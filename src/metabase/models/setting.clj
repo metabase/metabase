@@ -72,28 +72,30 @@
 
   See #14055 and #19399 for more information about and motivation behind User- and Database-local Settings."
   (:refer-clojure :exclude [get])
-  (:require [cheshire.core :as json]
-            [clojure.core :as core]
-            [clojure.data :as data]
-            [clojure.data.csv :as csv]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.setting.cache :as setting.cache]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import [clojure.lang Keyword Symbol]
-           java.io.StringWriter
-           java.time.temporal.Temporal))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core :as core]
+   [clojure.data :as data]
+   [clojure.data.csv :as csv]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [environ.core :as env]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.setting.cache :as setting.cache]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models])
+  (:import
+   (clojure.lang Keyword Symbol)
+   (java.io StringWriter)
+   (java.time.temporal Temporal)))
 
 ;; TODO -- a way to SET Database-local values.
 (def ^:dynamic *database-local-values*

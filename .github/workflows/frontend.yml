@@ -19,6 +19,7 @@ on:
       - "frontend/test/__support__/e2e/**"
       - "frontend/test/__runner__/*cypress*"
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       # documentation
       - "docs/**"
@@ -67,6 +68,7 @@ jobs:
       name: Check types
 
   fe-tests-unit:
+    if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 20
     steps:
@@ -82,6 +84,7 @@ jobs:
         flags: front-end
 
   fe-tests-timezones:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 14
     steps:
@@ -92,6 +95,7 @@ jobs:
       name: Run frontend timezones tests
 
   fe-chromatic:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository

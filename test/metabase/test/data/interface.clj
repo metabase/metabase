@@ -5,28 +5,29 @@
   functionality allows us to easily test with multiple datasets.
 
   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.tools.reader.edn :as edn]
-            [environ.core :refer [env]]
-            [medley.core :as m]
-            [metabase.db :as mdb]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor :as qp]
-            [metabase.test-runner.init :as test-runner.init]
-            [metabase.test.initialize :as initialize]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.schema :as su]
-            [potemkin.types :as p.types]
-            [pretty.core :as pretty]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.tools.reader.edn :as edn]
+   [environ.core :refer [env]]
+   [medley.core :as m]
+   [metabase.db :as mdb]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor :as qp]
+   [metabase.test-runner.init :as test-runner.init]
+   [metabase.test.initialize :as initialize]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.schema :as su]
+   [potemkin.types :as p.types]
+   [pretty.core :as pretty]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |

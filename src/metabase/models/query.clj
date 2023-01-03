@@ -1,14 +1,15 @@
 (ns metabase.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
-  (:require [cheshire.core :as json]
-            [clojure.walk :as walk]
-            [metabase.db :as mdb]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.interface :as mi]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.walk :as walk]
+   [metabase.db :as mdb]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel Query :query)
 

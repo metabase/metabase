@@ -1,9 +1,10 @@
 (ns metabase.api.login-history-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [LoginHistory Session User]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [LoginHistory Session User]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]))
 
 ;; don't run these tests when running driver tests (i.e., `DRIVERS` is set) because they tend to flake
 (use-fixtures :each (fn [thunk]

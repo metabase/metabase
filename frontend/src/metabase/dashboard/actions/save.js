@@ -112,7 +112,6 @@ export const saveDashboardAndCards = createThunkAction(
           ({
             id,
             card_id,
-            action,
             row,
             col,
             size_x,
@@ -123,7 +122,6 @@ export const saveDashboardAndCards = createThunkAction(
           }) => ({
             id,
             card_id,
-            action,
             row,
             col,
             size_x,
@@ -140,7 +138,6 @@ export const saveDashboardAndCards = createThunkAction(
                   }) &&
                   // filter out mappings for deleted series
                   (!card_id ||
-                    action ||
                     card_id === mapping.card_id ||
                     _.findWhere(series, { id: mapping.card_id })),
               ),

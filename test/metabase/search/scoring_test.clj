@@ -1,9 +1,10 @@
 (ns metabase.search.scoring-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.search.config :as search-config]
-            [metabase.search.scoring :as scoring]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.search.config :as search-config]
+   [metabase.search.scoring :as scoring]))
 
 (defn- result-row
   ([name]
@@ -11,19 +12,6 @@
   ([name model]
    {:model model
     :name name}))
-
-(deftest ^:parallel tokenize-test
-  (testing "basic tokenization"
-    (is (= ["Rasta" "the" "Toucan's" "search"]
-           (scoring/tokenize "Rasta the Toucan's search")))
-    (is (= ["Rasta" "the" "Toucan"]
-           (scoring/tokenize "                Rasta\tthe    \tToucan     ")))
-    (is (= []
-           (scoring/tokenize " \t\n\t ")))
-    (is (= []
-           (scoring/tokenize "")))
-    (is (thrown-with-msg? Exception #"does not match schema"
-                          (scoring/tokenize nil)))))
 
 (defn- scorer->score
   [scorer]
@@ -194,25 +182,6 @@
                         alpha beta
                         some other noise
                         the end))))))))
-
-(deftest ^:parallel test-largest-common-subseq-length
-  (let [subseq-length (partial #'scoring/largest-common-subseq-length =)]
-    (testing "greedy choice can't be taken"
-      (is (= 3
-             (subseq-length ["garden" "path" "this" "is" "not" "a" "garden" "path"]
-                            ["a" "garden" "path"]))))
-    (testing "no match"
-      (is (= 0
-             (subseq-length ["can" "not" "be" "found"]
-                            ["The" "toucan" "is" "a" "South" "American" "bird"]))))
-    (testing "long matches"
-      (is (= 28
-             (subseq-length (map str '(this social bird lives in small flocks in lowland rainforests in countries such as costa rica
-                                       it flies short distances between trees toucans rest in holes in trees))
-                            (map str '(here is some filler
-                                       this social bird lives in small flocks in lowland rainforests in countries such as costa rica
-                                       it flies short distances between trees toucans rest in holes in trees
-                                       here is some more filler))))))))
 
 (deftest ^:parallel pinned-score-test
   (let [score #'scoring/pinned-score

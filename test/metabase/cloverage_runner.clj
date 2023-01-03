@@ -1,5 +1,6 @@
 (ns metabase.cloverage-runner
-  (:require cloverage.coverage))
+  (:require
+   [cloverage.coverage]))
 
 (defn run-project
   "Shim for running tests using Cloverage to get code coverage metrics. See comments in `deps.edn` for more

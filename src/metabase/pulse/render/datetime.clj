@@ -67,45 +67,57 @@
   ([timezone-id s col] (format-temporal-str timezone-id s col {}))
   ([timezone-id s col viz-settings]
    (Locale/setDefault (Locale. (public-settings/site-locale)))
-   (let [col-viz-settings (viz-settings-for-col col viz-settings)
-         {date-style     :date-style
-          abbreviate     :date-abbreviate
-          date-separator :date-separator
-          time-style     :time-style} (if (seq col-viz-settings)
-                                        (-> col-viz-settings
-                                            (update-keys (comp keyword name)))
-                                        (-> (:type/Temporal (public-settings/custom-formatting))
-                                            (update-keys (fn [k] (-> k name (str/replace #"_" "-") keyword)))))
-         date-style (cond-> date-style
-                      date-separator (str/replace #"/" date-separator)
-                      abbreviate (-> (str/replace #"MMMM" "MMM") (str/replace #"DDD" "D")))]
-     (cond (str/blank? s) ""
+   (cond
+     (str/blank? s) ""
 
-           (isa? (or (:effective_type col) (:base_type col)) :type/Time)
-           (t/format DateTimeFormatter/ISO_LOCAL_TIME (u.date/parse s timezone-id))
+     (isa? (or (:effective_type col) (:base_type col)) :type/Time)
+     (t/format DateTimeFormatter/ISO_LOCAL_TIME (u.date/parse s timezone-id))
 
-           :else
-           (case (:unit col)
-             ;; these types have special formatting
-             :minute  (reformat-temporal-str timezone-id s
-                                             (str (or date-style "MMMM, yyyy") ", "
-                                                  (str/replace (or time-style "h:mm a") #"A" "a")))
-             :hour    (reformat-temporal-str timezone-id s
-                                             (str (or date-style "MMMM, yyyy") ", "
-                                                  (str/replace (or time-style "h a") #"A" "a")))
-             :day     (reformat-temporal-str timezone-id s (or date-style "EEEE, MMMM d, YYYY"))
-             :week    (str (tru "Week ") (reformat-temporal-str timezone-id s "w - YYYY"))
-             :month   (reformat-temporal-str timezone-id s (or date-style "MMMM, yyyy"))
-             :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
-             :year    (reformat-temporal-str timezone-id s "YYYY")
+     :else
+     (let [col-viz-settings             (viz-settings-for-col col viz-settings)
+           {date-style     :date-style
+            abbreviate     :date-abbreviate
+            date-separator :date-separator
+            time-style     :time-style} (if (seq col-viz-settings)
+                                          (-> col-viz-settings
+                                              (update-keys (comp keyword name)))
+                                          (-> (:type/Temporal (public-settings/custom-formatting))
+                                              (update-keys (fn [k] (-> k name (str/replace #"_" "-") keyword)))))
+           post-process-date-style      (fn [date-style]
+                                          (cond-> (-> date-style (str/replace #"dddd" "EEEE"))
+                                            date-separator (str/replace #"/" date-separator)
+                                            abbreviate     (-> (str/replace #"MMMM" "MMM")
+                                                               (str/replace #"EEEE" "EEE")
+                                                               (str/replace #"DDD" "D"))))]
+       (case (:unit col)
+         ;; these types have special formatting
+         :minute  (reformat-temporal-str timezone-id s
+                                         (-> (or date-style "MMMM, yyyy")
+                                             (str ", " (str/replace (or time-style "h:mm a") #"A" "a"))
+                                             post-process-date-style))
+         :hour    (reformat-temporal-str timezone-id s
+                                         (-> (or date-style "MMMM, yyyy")
+                                             (str ", " (str/replace (or time-style "h a") #"A" "a"))
+                                             post-process-date-style))
+         :day     (reformat-temporal-str timezone-id s
+                                         (-> (or date-style "EEEE, MMMM d, YYYY")
+                                             post-process-date-style))
+         :week    (str (tru "Week ") (reformat-temporal-str timezone-id s "w - YYYY"))
+         :month   (reformat-temporal-str timezone-id s
+                                         (-> (or date-style "MMMM, yyyy")
+                                             post-process-date-style))
+         :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
+         :year    (reformat-temporal-str timezone-id s "YYYY")
 
-             ;; s is just a number as a string here
-             :day-of-week     (day-of-week (parse-long s) abbreviate)
-             :month-of-year   (month-of-year (parse-long s) abbreviate)
-             :quarter-of-year (format "Q%s" s)
-             :hour-of-day     (hour-of-day s (str/replace (or time-style "h a") #"A" "a"))
+         ;; s is just a number as a string here
+         :day-of-week     (day-of-week (parse-long s) abbreviate)
+         :month-of-year   (month-of-year (parse-long s) abbreviate)
+         :quarter-of-year (format "Q%s" s)
+         :hour-of-day     (hour-of-day s (str/replace (or time-style "h a") #"A" "a"))
 
-             (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y (parse-long s))
+         (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y (parse-long s))
 
-             ;; for everything else return in this format
-             (reformat-temporal-str timezone-id s (str/replace (or date-style "MMM d, yyyy") #"D" "d")))))))
+         ;; for everything else return in this format
+         (reformat-temporal-str timezone-id s (-> (or date-style "MMMM d, yyyy")
+                                                  (str/replace #"D" "d")
+                                                  post-process-date-style)))))))

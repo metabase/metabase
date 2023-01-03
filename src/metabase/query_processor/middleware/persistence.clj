@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.persistence
-  (:require [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.middleware.permissions :as qp.perms]))
+  (:require
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.middleware.permissions :as qp.perms]))
 
 (defn substitute-persisted-query
   "Replaces source-query with the native query to the cache table.
