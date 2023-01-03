@@ -1,10 +1,11 @@
 (ns metabase.query-processor.middleware.resolve-source-table
   "Fetches Tables corresponding to any `:source-table` IDs anywhere in the query."
-  (:require [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (defn- check-all-source-table-ids-are-valid
   "Sanity check: Any non-positive-integer value of `:source-table` should have been resolved by now. The

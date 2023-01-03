@@ -7,16 +7,18 @@
   them; they are created automatically. You can, however, set permissions for them.
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
-  (:require [clojure.string :as str]
-            [honeysql.helpers :as hh]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.models.setting :as setting]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.string :as str]
+   [honeysql.helpers :as hh]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel PermissionsGroup :permissions_group)
 
@@ -99,11 +101,11 @@
     (when group-name
       (check-name-not-already-taken group-name))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PermissionsGroup)
-  models/IModel (merge models/IModelDefaults
-                   {:pre-delete  pre-delete
-                    :pre-insert  pre-insert
-                    :pre-update  pre-update}))
+(mi/define-methods
+ PermissionsGroup
+ {:pre-delete  pre-delete
+  :pre-insert  pre-insert
+  :pre-update  pre-update})
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 

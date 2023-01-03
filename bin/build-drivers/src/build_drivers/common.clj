@@ -1,7 +1,7 @@
 (ns build-drivers.common
-  (:require [clojure.java.io :as io]
-            [clojure.tools.deps.alpha :as deps]
-            [metabuild-common.core :as u]))
+  (:require
+   [clojure.tools.deps.alpha :as deps]
+   [metabuild-common.core :as u]))
 
 (def ^:dynamic *driver-project-dir* nil)
 

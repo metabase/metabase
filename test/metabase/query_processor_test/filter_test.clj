@@ -1,12 +1,13 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
-  (:require [clojure.set :as set]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor-test.timezones-test :as timezones-test]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.test :as mt]))
 
 (deftest and-test
   (mt/test-drivers (mt/normal-drivers)

@@ -1,13 +1,14 @@
 (ns metabase.models.login-history
-  (:require [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.email.messages :as messages]
-            [metabase.models.setting :refer [defsetting]]
-            [metabase.server.request.util :as request.u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as i18n :refer [trs tru]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.email.messages :as messages]
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.server.request.util :as request.u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n :refer [trs tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (defn- timezone-display-name [^java.time.ZoneId zone-id]
   (when zone-id

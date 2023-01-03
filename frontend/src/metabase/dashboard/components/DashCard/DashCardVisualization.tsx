@@ -56,7 +56,6 @@ interface DashCardVisualizationProps {
   expectedDuration: number;
   isSlow: CardSlownessStatus;
 
-  isAction: boolean;
   isPreviewing: boolean;
   isEmbed: boolean;
   isClickBehaviorSidebarOpen: boolean;
@@ -102,7 +101,6 @@ function DashCardVisualization({
   error,
   headerIcon,
   isSlow,
-  isAction,
   isPreviewing,
   isEmbed,
   isEditingDashboardLayout,
@@ -141,7 +139,7 @@ function DashCardVisualization({
       );
     }
 
-    if (isEditingParameter && !isAction) {
+    if (isEditingParameter) {
       return (
         <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
       );
@@ -151,7 +149,6 @@ function DashCardVisualization({
   }, [
     dashcard,
     gridItemWidth,
-    isAction,
     isMobile,
     isEditingParameter,
     isClickBehaviorSidebarOpen,
@@ -204,7 +201,6 @@ function DashCardVisualization({
       errorIcon={error?.icon}
       showTitle
       isDashboard
-      isDataApp={false}
       isSlow={isSlow}
       isFullscreen={isFullscreen}
       isNightMode={isNightMode}

@@ -11,7 +11,7 @@ export default {
 const Template: ComponentStory<typeof TextWidget> = args => {
   const [{ value }, updateArgs] = useArgs();
 
-  const setValue = (value: string | null) => {
+  const setValue = (value: string | number | null) => {
     updateArgs({ value });
   };
 

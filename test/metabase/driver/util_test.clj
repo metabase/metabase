@@ -1,14 +1,16 @@
 (ns metabase.driver.util-test
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver.util :as driver.u]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures])
-  (:import java.nio.charset.StandardCharsets
-           java.util.Base64
-           javax.net.ssl.SSLSocketFactory))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.driver.util :as driver.u]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures])
+  (:import
+   (java.nio.charset StandardCharsets)
+   (java.util Base64)
+   (javax.net.ssl SSLSocketFactory)))
 
 (use-fixtures :once (fixtures/initialize :plugins :test-drivers))
 

@@ -1,18 +1,19 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.advanced-permissions.models.permissions.block-permissions :as block-perms]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.api.common :as api]
-            [metabase.models :refer [Card Collection Database Permissions PermissionsGroup PermissionsGroupMembership User]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.advanced-permissions.models.permissions.block-permissions :as block-perms]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase.api.common :as api]
+   [metabase.models :refer [Card Collection Database Permissions PermissionsGroup PermissionsGroupMembership User]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;;; Graph-related stuff
 

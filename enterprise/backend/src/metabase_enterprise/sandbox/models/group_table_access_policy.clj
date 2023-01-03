@@ -4,21 +4,22 @@
   specified by the GTAP is instead used as the source of the query.
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
-  (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :as table]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :as table]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel GroupTableAccessPolicy :group_table_access_policy)
 
@@ -136,10 +137,8 @@
       (when (:card_id updates)
         (check-columns-match-table updated)))))
 
-(u/strict-extend (class GroupTableAccessPolicy)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:types      (constantly {:attribute_remappings ::attribute-remappings})
-    :pre-insert pre-insert
-    :pre-update pre-update}))
+(mi/define-methods
+ GroupTableAccessPolicy
+ {:types      (constantly {:attribute_remappings ::attribute-remappings})
+  :pre-insert pre-insert
+  :pre-update pre-update})

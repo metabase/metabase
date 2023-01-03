@@ -1,6 +1,7 @@
 (ns metabase.server.protocols
-  (:require [potemkin.types :as p.types]
-            [ring.util.servlet :as servlet]))
+  (:require
+   [potemkin.types :as p.types]
+   [ring.util.servlet :as servlet]))
 
 (p.types/defprotocol+ Respond
   "Protocol for converting API endpoint responses to something Jetty can handle."

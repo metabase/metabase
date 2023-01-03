@@ -37,7 +37,7 @@ describe("scenarios > question > view", () => {
               "display-name": "CATEGORY",
               type: "dimension",
               dimension: ["field", PRODUCTS.CATEGORY, null],
-              "widget-type": "id",
+              "widget-type": "string/=",
             },
             vendor: {
               id: "6b8b10ef-0104-1047-1e5v-2492d5964545",
@@ -45,7 +45,7 @@ describe("scenarios > question > view", () => {
               "display-name": "VENDOR",
               type: "dimension",
               dimension: ["field", PRODUCTS.VENDOR, null],
-              "widget-type": "id",
+              "widget-type": "string/=",
             },
           },
         },

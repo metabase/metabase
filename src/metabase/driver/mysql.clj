@@ -1,36 +1,39 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.mysql.ddl :as mysql.ddl]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.field :as field]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs]])
-  (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
-           [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
-           metabase.util.honeysql_extensions.Identifier))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.mysql.ddl :as mysql.ddl]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-table
+    :as sql-jdbc.describe-table]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.models.field :as field]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [deferred-tru trs]])
+  (:import
+   (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)
+   (metabase.util.honeysql_extensions Identifier)))
 (comment
   mysql.ddl/keep-me)
 

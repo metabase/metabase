@@ -1,16 +1,17 @@
 (ns metabase.db.data-migrations-test
   "Tests to make sure the data migrations actually work as expected and don't break things. Shamefully, we have way less
   of these than we should... but that doesn't mean we can't write them for our new ones :)"
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [metabase.db.data-migrations :as migrations]
-            [metabase.models :refer [Card Dashboard DashboardCard Setting]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.setting :as setting]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.db.data-migrations :as migrations]
+   [metabase.models :refer [Card Dashboard DashboardCard Setting]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

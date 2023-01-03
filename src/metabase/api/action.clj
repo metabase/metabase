@@ -1,19 +1,20 @@
 (ns metabase.api.action
   "`/api/action/` endpoints."
-  (:require [compojure.core :as compojure :refer [POST]]
-            [metabase.actions :as actions]
-            [metabase.actions.http-action :as http-action]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.models :refer [HTTPAction]]
-            [metabase.models.action :as action]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.setting :as setting]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :as compojure :refer [POST]]
+   [metabase.actions :as actions]
+   [metabase.actions.http-action :as http-action]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.models :refer [HTTPAction]]
+   [metabase.models.action :as action]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.setting :as setting]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private JsonQuerySchema
   (su/with-api-error-message
@@ -53,22 +54,22 @@
         (throw (ex-info (i18n/tru "Actions are not enabled for Database {0}." database-id)
                         {:status-code 400}))))))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Returns cards that can be used for QueryActions"
   [model-id]
   {model-id su/IntGreaterThanZero}
   (action/merged-model-action nil :card_id model-id))
 
-(api/defendpoint GET "/:action-id"
+(api/defendpoint-schema GET "/:action-id"
   [action-id]
   (api/check-404 (first (action/select-actions :id action-id))))
 
-(api/defendpoint DELETE "/:action-id"
+(api/defendpoint-schema DELETE "/:action-id"
   [action-id]
   (db/delete! HTTPAction :action_id action-id)
   api/generic-204-no-content)
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new HTTP action."
   [:as {{:keys [type name template response_handle error_handle] :as action} :body}]
   {type SupportedActionType
@@ -83,7 +84,7 @@
       ;; so we return the most recently updated http action.
       (last (action/select-actions :type "http")))))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   [id :as {{:keys [type name template response_handle error_handle] :as action} :body}]
   {id su/IntGreaterThanZero
    type SupportedActionType

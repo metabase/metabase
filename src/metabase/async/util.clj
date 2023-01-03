@@ -1,11 +1,13 @@
 (ns metabase.async.util
   "Utility functions for core.async-based async logic."
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
-            [schema.core :as s])
-  (:import clojure.core.async.impl.buffers.PromiseBuffer
-           clojure.core.async.impl.channels.ManyToManyChannel
-           java.util.concurrent.ThreadPoolExecutor))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.tools.logging :as log]
+   [schema.core :as s])
+  (:import
+   (clojure.core.async.impl.buffers PromiseBuffer)
+   (clojure.core.async.impl.channels ManyToManyChannel)
+   (java.util.concurrent ThreadPoolExecutor)))
 
 ;; TODO - most of this stuff can be removed now that we have the new-new reducible/async QP implementation of early
 ;; 2020. No longer needed

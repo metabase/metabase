@@ -4,7 +4,8 @@
   The default implementations of all these functions live in [[metabase.query-processor.context.default]]; refer to
   those when overriding individual functions. Some wiring for the [[clojure.core.async]] channels takes place in
   [[metabase.query-processor.reducible]]."
-  (:require [metabase.async.util :as async.u]))
+  (:require
+   [metabase.async.util :as async.u]))
 
 (defn raisef
   "Raise an Exception."

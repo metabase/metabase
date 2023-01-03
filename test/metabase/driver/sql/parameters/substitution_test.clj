@@ -1,12 +1,14 @@
 (ns metabase.driver.sql.parameters.substitution-test
   "Most of the code in `metabase.driver.sql.parameters.substitution` is actually tested by
   `metabase.driver.sql.parameters.substitute-test`."
-  (:require [clojure.test :refer :all]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
-            [metabase.models :refer [Field]]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.sql.parameters.substitution
+    :as sql.params.substitution]
+   [metabase.models :refer [Field]]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (deftest honeysql->replacement-snippet-info-test
   (testing "make sure we handle quotes inside names correctly!"

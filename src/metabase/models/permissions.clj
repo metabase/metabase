@@ -167,26 +167,31 @@
     /db/:id/schema/:name/table/:id/query/segmented/ ; allow ad-hoc MBQL queries. Sandbox all queries against this Table.
     /block/db/:id/                                  ; disallow queries against this DB unless User has data perms.
     /                                               ; full root perms"
-  (:require [clojure.data :as data]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.api.common :refer [*current-user-id*]]
-            [metabase.config :as config]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.permissions-revision :as perms-revision :refer [PermissionsRevision]]
-            [metabase.models.permissions.parse :as perms-parse]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.regex :as u.regex]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.data :as data]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.api.common :refer [*current-user-id*]]
+   [metabase.config :as config]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.permissions-revision
+    :as perms-revision
+    :refer [PermissionsRevision]]
+   [metabase.models.permissions.parse :as perms-parse]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.regex :as u.regex]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |
@@ -605,11 +610,11 @@
                                    (:object permissions))))
   (assert-not-admin-group permissions))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Permissions)
-  models/IModel (merge models/IModelDefaults
-                       {:pre-insert pre-insert
-                        :pre-update pre-update
-                        :pre-delete pre-delete}))
+(mi/define-methods
+ Permissions
+ {:pre-insert pre-insert
+  :pre-update pre-update
+  :pre-delete pre-delete})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

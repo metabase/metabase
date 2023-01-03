@@ -1,30 +1,31 @@
 (ns metabase.models.card
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.action :as action]
-            [metabase.models.collection :as collection]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as mi]
-            [metabase.models.params :as params]
-            [metabase.models.permissions :as perms]
-            [metabase.models.query :as query]
-            [metabase.models.revision :as revision]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.moderation :as moderation]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.action :as action]
+   [metabase.models.collection :as collection]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.interface :as mi]
+   [metabase.models.params :as params]
+   [metabase.models.permissions :as perms]
+   [metabase.models.query :as query]
+   [metabase.models.revision :as revision]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.moderation :as moderation]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel Card :report_card)
 
@@ -304,27 +305,26 @@
   :in mi/json-in
   :out result-metadata-out)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:card])
-          :types          (constantly {:dataset_query          :metabase-query
-                                       :display                :keyword
-                                       :embedding_params       :json
-                                       :query_type             :keyword
-                                       :result_metadata        ::result-metadata
-                                       :visualization_settings :visualization-settings
-                                       :parameters             :parameters-list
-                                       :parameter_mappings     :parameters-list})
-          :properties     (constantly {:timestamped? true
-                                       :entity_id    true})
-          ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
-          ;; functions those fns call assume normalized queries
-          :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
-          :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
-          :post-insert    post-insert
-          :pre-delete     pre-delete
-          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
+(mi/define-methods
+ Card
+ {:hydration-keys (constantly [:card])
+  :types          (constantly {:dataset_query          :metabase-query
+                               :display                :keyword
+                               :embedding_params       :json
+                               :query_type             :keyword
+                               :result_metadata        ::result-metadata
+                               :visualization_settings :visualization-settings
+                               :parameters             :parameters-list
+                               :parameter_mappings     :parameters-list})
+  :properties     (constantly {::mi/timestamped? true
+                               ::mi/entity-id    true})
+  ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
+  ;; functions those fns call assume normalized queries
+  :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
+  :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
+  :post-insert    post-insert
+  :pre-delete     pre-delete
+  :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]

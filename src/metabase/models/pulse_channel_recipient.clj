@@ -1,7 +1,8 @@
 (ns metabase.models.pulse-channel-recipient
-  (:require [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.interface :as mi]
+   [metabase.plugins.classloader :as classloader]
+   [toucan.models :as models]))
 
 (models/defmodel PulseChannelRecipient :pulse_channel_recipient)
 
@@ -11,8 +12,6 @@
   (classloader/require 'metabase.models.pulse-channel)
   ((resolve 'metabase.models.pulse-channel/will-delete-recipient) pcr))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PulseChannelRecipient)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:pre-delete pre-delete}))
+(mi/define-methods
+ PulseChannelRecipient
+ {:pre-delete pre-delete})

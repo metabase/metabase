@@ -1,14 +1,15 @@
 (ns metabase.driver.sql-jdbc-test
-  (:require [clojure.test :refer :all]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (deftest describe-database-test
   (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]

@@ -1,46 +1,49 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.actions.test-util :as actions.test-util]
-            [metabase.api.card-test :as api.card-test]
-            [metabase.api.common :as api]
-            [metabase.api.dashboard :as api.dashboard]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card
-                                     Collection
-                                     Dashboard
-                                     DashboardCard
-                                     DashboardCardSeries
-                                     Database
-                                     Field
-                                     FieldValues
-                                     ModelAction
-                                     Pulse
-                                     Revision
-                                     Table
-                                     User]]
-            [metabase.models.dashboard-card :as dashboard-card]
-            [metabase.models.dashboard-test :as dashboard-test]
-            [metabase.models.dispatch :as models.dispatch]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as mi]
-            [metabase.models.params.chain-filter-test :as chain-filter-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.revision :as revision]
-            [metabase.query-processor.streaming.test-util :as streaming.test-util]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [ring.util.codec :as codec]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.actions.test-util :as actions.test-util]
+   [metabase.api.card-test :as api.card-test]
+   [metabase.api.common :as api]
+   [metabase.api.dashboard :as api.dashboard]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCard
+            DashboardCardSeries
+            Database
+            Field
+            FieldValues
+            ModelAction
+            Pulse
+            Revision
+            Table
+            User]]
+   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.models.dashboard-test :as dashboard-test]
+   [metabase.models.dispatch :as models.dispatch]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.revision :as revision]
+   [metabase.query-processor.streaming.test-util :as streaming.test-util]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [ring.util.codec :as codec]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -193,7 +196,7 @@
               (mt/user-http-request :rasta :post 200 "dashboard" {:name                dashboard-name
                                                                   :collection_id       (u/the-id collection)
                                                                   :collection_position 1000})
-              (is (= #metabase.models.dashboard.DashboardInstance{:collection_id true, :collection_position 1000}
+              (is (= #metabase.models.dashboard.DashboardInstance{:collection_id true, :collection_position 1000, :parameters []}
                      (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
                              (update :collection_id (partial = (u/the-id collection))))))
               (finally
@@ -208,7 +211,6 @@
               (is (= nil
                      (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
                              (update :collection_id (partial = (u/the-id collection)))))))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
@@ -1725,7 +1727,19 @@
                                                                  {:name "ID"
                                                                   :slug "id"
                                                                   :id   "_ID_"
-                                                                  :type "category"}]}
+                                                                  :type "category"}
+                                                                 {:name                  "Static Category",
+                                                                  :slug                  "static_category"
+                                                                  :id                    "_STATIC_CATEGORY_",
+                                                                  :type                  "category",
+                                                                  :values_source_type    "static-list"
+                                                                  :values_source_config {:values ["African" "American" "Asian"]}}
+                                                                 {:name                  "Static Category label",
+                                                                  :slug                  "static_category_label"
+                                                                  :id                    "_STATIC_CATEGORY_LABEL_",
+                                                                  :type                  "category",
+                                                                  :values_source_type    "static-list"
+                                                                  :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}]}
                                                    dashboard-values)]
                    Card          [card {:database_id   (mt/id)
                                         :table_id      (mt/id :venues)
@@ -1743,14 +1757,25 @@
                                                                   :target       [:dimension (mt/$ids venues $price)]}
                                                                  {:parameter_id "_ID_"
                                                                   :card_id      (:id card)
-                                                                  :target       [:dimension (mt/$ids venues $id)]}]}]]
+                                                                  :target       [:dimension (mt/$ids venues $id)]}
+                                                                 {:parameter_id "_ID_"
+                                                                  :card_id      (:id card)
+                                                                  :target       [:dimension (mt/$ids venues $id)]}
+                                                                 {:parameter_id "_STATIC_CATEGORY_"
+                                                                  :card_id      (:id card)
+                                                                  :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                                                 {:parameter_id "_STATIC_CATEGORY_LABEL_"
+                                                                  :card_id      (:id card)
+                                                                  :target       [:dimension (mt/$ids venues $category_id->categories.name)]}]}]]
      (f {:dashboard  dashboard
          :card       card
          :dashcard   dashcard
-         :param-keys {:category-name "_CATEGORY_NAME_"
-                      :category-id   "_CATEGORY_ID_"
-                      :price         "_PRICE_"
-                      :id            "_ID_"}}))))
+         :param-keys {:category-name         "_CATEGORY_NAME_"
+                      :category-id           "_CATEGORY_ID_"
+                      :price                 "_PRICE_"
+                      :id                    "_ID_"
+                      :static-category       "_STATIC_CATEGORY_"
+                      :static-category-label "_STATIC_CATEGORY_LABEL_"}}))))
 
 (defmacro with-chain-filter-fixtures [[binding dashboard-values] & body]
   `(do-with-chain-filter-fixtures ~dashboard-values (fn [~binding] ~@body)))
@@ -1835,6 +1860,68 @@
           (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))))
+
+(deftest dashboard-with-static-list-parameters-test
+  (testing "A dashboard that has parameters that has static values"
+    (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+      (testing "we could get the values"
+        (is (= {:has_more_values false,
+                :values          ["African" "American" "Asian"]}
+               (mt/user-http-request :rasta :get 200
+                                     (chain-filter-values-url (:id dashboard) (:static-category param-keys)))))
+
+        (is (= {:has_more_values false,
+                :values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}
+               (mt/user-http-request :rasta :get 200
+                                     (chain-filter-values-url (:id dashboard) (:static-category-label param-keys))))))
+
+      (testing "we could search the values"
+        (is (= {:has_more_values false,
+                :values          ["African"]}
+               (mt/user-http-request :rasta :get 200
+                                     (chain-filter-search-url (:id dashboard) (:static-category param-keys) "af"))))
+
+        (is (= {:has_more_values false,
+                :values          [["African" "Af"]]}
+               (mt/user-http-request :rasta :get 200
+                                     (chain-filter-search-url (:id dashboard) (:static-category-label param-keys) "f")))))
+
+      (testing "we could edit the values list"
+        ;; TODO add tests for schema check
+        (let [dashboard (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
+                                              {:parameters [{:name                  "Static Category",
+                                                             :slug                  "static_category"
+                                                             :id                    "_STATIC_CATEGORY_",
+                                                             :type                  "category",
+                                                             :values_source_type    "static-list"
+                                                             :values_source_config {"values" ["BBQ" "Bakery" "Bar"]}}]})]
+          (is (= [{:name                  "Static Category",
+                   :slug                  "static_category"
+                   :id                    "_STATIC_CATEGORY_",
+                   :type                  "category",
+                   :values_source_type    "static-list"
+                   :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
+                 (:parameters dashboard))))))
+
+    (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
+      (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+             (get-in (mt/user-http-request :rasta :post 400 "dashboard"
+                                           {:name       "a dashboard"
+                                            :parameters [{:id                    "_value_",
+                                                          :name                  "value",
+                                                          :type                  "category",
+                                                          :values_source_type    "random-type"
+                                                          :values_source_config {"values" [1 2 3]}}]})
+                     [:errors :parameters])))
+      (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+             (get-in (mt/user-http-request :rasta :post 400 "dashboard"
+                                           {:name       "a dashboard"
+                                            :parameters [{:id                    "_value_",
+                                                          :name                  "value",
+                                                          :type                  "category",
+                                                          :values_source_type    "static-list"
+                                                          :values_source_config []}]})
+                     [:errors :parameters]))))))
 
 (deftest chain-filter-search-test
   (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
@@ -1975,6 +2062,37 @@
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
+(deftest parameter-values-from-card-test
+  ;; TODO add permissions tests
+  (mt/with-temp*
+    [Card      [{card-id         :id}
+                (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues {:limit 5}))
+                       {:database_id     (mt/id)
+                        :table_id        (mt/id :venues)})]
+     Dashboard [{dashboard-id :id}
+                {:parameters [{:id                   "abc"
+                               :type                 "category"
+                               :name                 "CATEGORY"
+                               :values_source_type   "card"
+                               :values_source_config {:card_id     card-id
+                                                      :value_field (mt/$ids $venues.name)}}]}]]
+
+    (testing "It uses the results of the card's query execution"
+      (let-url [url (chain-filter-values-url dashboard-id "abc")]
+        (is (= {:values          ["Red Medicine"
+                                  "Stout Burgers & Beers"
+                                  "The Apple Pan"
+                                  "Wurstküche"
+                                  "Brite Spot Family Restaurant"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 url)))))
+
+    (testing "it only returns search matches"
+      (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
+        (is (= {:values          ["Red Medicine"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 url)))))))
+
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
     (letfn [(url [filtered filtering]
@@ -2077,55 +2195,55 @@
                                    :type     :native
                                    :native   {:query "delete from users;"}}}]]
               (is (= "Write queries are only executable via the Actions API."
-                     (:message (mt/user-http-request :rasta :post 405 (url :card-id (:id card))))))))))))
+                     (:message (mt/user-http-request :rasta :post 405 (url :card-id (:id card)))))))))))))
 
-  ;; see also [[metabase.query-processor.dashboard-test]]
-  (deftest dashboard-card-query-parameters-test
-    (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
-      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
-        (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
-          (testing "parameters"
-            (testing "Should respect valid parameters"
+;; see also [[metabase.query-processor.dashboard-test]]
+(deftest dashboard-card-query-parameters-test
+  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
+    (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
+      (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
+        (testing "parameters"
+          (testing "Should respect valid parameters"
+            (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
+                         (mt/user-http-request :rasta :post 202 url
+                                               {:parameters [{:id    "_PRICE_"
+                                                              :value 4}]})))
+            (testing "New parameter types"
+              (testing :number/=
+                (is (schema= (dashboard-card-query-expected-results-schema :row-count 94)
+                             (mt/user-http-request :rasta :post 202 url
+                                                   {:parameters [{:id    "_PRICE_"
+                                                                  :type  :number/=
+                                                                  :value [1 2 3]}]}))))))
+          (testing "Should return error if parameter doesn't exist"
+            (is (= "Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\"."
+                    (mt/user-http-request :rasta :post 400 url
+                                          {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
+                                                         :value 3}]}))))
+          (testing "Should return sensible error message for invalid parameter input"
+            (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
+                                              "Each value must be a parameter map with an 'id' key")}}
+                   (mt/user-http-request :rasta :post 400 url
+                                         {:parameters {"_PRICE_" 3}}))))
+          (testing "Should ignore parameters that are valid for the Dashboard but not part of this Card (no mapping)"
+            (testing "Sanity check"
               (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
                            (mt/user-http-request :rasta :post 202 url
                                                  {:parameters [{:id    "_PRICE_"
-                                                                :value 4}]})))
-              (testing "New parameter types"
-                (testing :number/=
-                  (is (schema= (dashboard-card-query-expected-results-schema :row-count 94)
-                               (mt/user-http-request :rasta :post 202 url
-                                                     {:parameters [{:id    "_PRICE_"
-                                                                    :type  :number/=
-                                                                    :value [1 2 3]}]}))))))
-            (testing "Should return error if parameter doesn't exist"
-              (is (= "Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\"."
-                     (mt/user-http-request :rasta :post 400 url
-                                           {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
-                                                          :value 3}]}))))
-            (testing "Should return sensible error message for invalid parameter input"
-              (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                                "Each value must be a parameter map with an 'id' key")}}
-                     (mt/user-http-request :rasta :post 400 url
-                                           {:parameters {"_PRICE_" 3}}))))
-            (testing "Should ignore parameters that are valid for the Dashboard but not part of this Card (no mapping)"
-              (testing "Sanity check"
-                (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
-                             (mt/user-http-request :rasta :post 202 url
-                                                   {:parameters [{:id    "_PRICE_"
-                                                                  :value 4}]}))))
-              (mt/with-temp-vals-in-db DashboardCard dashcard-id {:parameter_mappings []}
-                (is (schema= (dashboard-card-query-expected-results-schema :row-count 100)
-                             (mt/user-http-request :rasta :post 202 url
-                                                   {:parameters [{:id    "_PRICE_"
-                                                                  :value 4}]})))))
-
-            ;; don't let people try to be sneaky and get around our validation by passing in a different `:target`
-            (testing "Should ignore incorrect `:target` passed in to API endpoint"
-              (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
+                                                                :value 4}]}))))
+            (mt/with-temp-vals-in-db DashboardCard dashcard-id {:parameter_mappings []}
+              (is (schema= (dashboard-card-query-expected-results-schema :row-count 100)
                            (mt/user-http-request :rasta :post 202 url
-                                                 {:parameters [{:id     "_PRICE_"
-                                                                :target [:dimension [:field (mt/id :venues :id) nil]]
-                                                                :value  4}]}))))))))))
+                                                 {:parameters [{:id    "_PRICE_"
+                                                                :value 4}]})))))
+
+          ;; don't let people try to be sneaky and get around our validation by passing in a different `:target`
+          (testing "Should ignore incorrect `:target` passed in to API endpoint"
+            (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
+                         (mt/user-http-request :rasta :post 202 url
+                                               {:parameters [{:id     "_PRICE_"
+                                                              :target [:dimension [:field (mt/id :venues :id) nil]]
+                                                              :value  4}]})))))))))
 
 (defn- parse-export-format-results [^bytes results export-format]
   (with-open [is (java.io.ByteArrayInputStream. results)]

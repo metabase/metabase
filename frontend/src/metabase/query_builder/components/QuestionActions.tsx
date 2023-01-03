@@ -57,8 +57,6 @@ interface Props {
     opt: { datasetEditorTab: string },
   ) => void;
   turnDatasetIntoQuestion: () => void;
-  turnQuestionIntoAction: () => void;
-  turnActionIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
   isModerator: boolean;

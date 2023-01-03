@@ -1,10 +1,10 @@
 (ns metabase-enterprise.serialization.v2.backfill-ids-test
   (:require
-    [clojure.test :refer :all]
-    [metabase-enterprise.serialization.test-util :as ts]
-    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-    [metabase.models :refer [Collection]]
-    [toucan.db :as db]))
+   [clojure.test :refer :all]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase.models :refer [Collection]]
+   [toucan.db :as db]))
 
 (deftest backfill-needed-test
   (ts/with-empty-h2-app-db

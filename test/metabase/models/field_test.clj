@@ -1,14 +1,15 @@
 (ns metabase.models.field-test
   "Tests for specific behavior related to the Field model."
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.table :refer [Table]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan.db :as db]))
 
 (deftest nfc-field->parent-identifier-test
   (testing "It replaces the last identifier member"

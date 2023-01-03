@@ -2,20 +2,22 @@
   "Middleware that creates corresponding `:joins` for Tables referred to by `:field` clauses with `:source-field` info
   in the options and adds `:join-alias` info to those `:field` clauses."
   (:refer-clojure :exclude [alias])
-  (:require [clojure.set :as set]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.db.util :as mdb.u]
-            [metabase.driver :as driver]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.db.util :as mdb.u]
+   [metabase.driver :as driver]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.add-implicit-clauses
+    :as qp.add-implicit-clauses]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]))
 
 (defn- implicitly-joined-fields [x]
   (set (mbql.u/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))] &match)))

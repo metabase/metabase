@@ -1,17 +1,18 @@
 (ns metabase.sample-data-test
   "Tests to make sure the Sample Database syncs the way we would expect."
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.models :refer [Database Field Table]]
-            [metabase.plugins :as plugins]
-            [metabase.sample-data :as sample-data]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.files :as u.files]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.models :refer [Database Field Table]]
+   [metabase.plugins :as plugins]
+   [metabase.sample-data :as sample-data]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.files :as u.files]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
 

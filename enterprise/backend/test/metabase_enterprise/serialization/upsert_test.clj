@@ -1,14 +1,15 @@
 (ns metabase-enterprise.serialization.upsert-test
-  (:require [clojure.data :as data]
-            [clojure.test :refer :all]
-            [metabase-enterprise.serialization.upsert :as upsert]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
-                                     Pulse Segment Table User]]
-            [metabase.models.interface :as mi]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.data :as data]
+   [clojure.test :refer :all]
+   [metabase-enterprise.serialization.upsert :as upsert]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
+                            Pulse Segment Table User]]
+   [metabase.models.interface :as mi]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (def ^:private same? (comp nil? second data/diff))
 

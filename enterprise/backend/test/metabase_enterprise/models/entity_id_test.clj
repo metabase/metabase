@@ -6,11 +6,12 @@
   explicitly excluded, or has the :entity_id property."
   (:require
    [clojure.test :refer :all]
-   metabase.db.data-migrations
-   metabase.models
-   metabase.models.revision-test
+   [metabase.db.data-migrations]
+   [metabase.models]
+   [metabase.models.interface :as mi]
+   [metabase.models.revision-test]
    [metabase.models.serialization.hash :as serdes.hash]
-   [toucan.models :refer [IModel]]))
+   [toucan.models :as models :refer [IModel]]))
 
 (comment metabase.models/keep-me
          metabase.db.data-migrations/keep-me
@@ -47,6 +48,7 @@
     metabase.models.login_history.LoginHistoryInstance
     metabase.models.metric_important_field.MetricImportantFieldInstance
     metabase.models.moderation_review.ModerationReviewInstance
+    metabase.models.parameter_card.ParameterCardInstance
     metabase.models.permissions.PermissionsInstance
     metabase.models.permissions_group.PermissionsGroupInstance
     metabase.models.permissions_group_membership.PermissionsGroupMembershipInstance
@@ -72,11 +74,11 @@
   (doseq [^Class model (->> (extenders IModel)
                             (remove entities-not-exported)
                             (remove entities-external-name))]
-    (testing (format "Model %s should either: have the :entity_id property, or be explicitly listed as having an external name, or explicitly listed as excluded from serialization"
+    (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
+                          "an external name, or explicitly listed as excluded from serialization")
                      (.getSimpleName model))
-      (is (= true (-> (.newInstance model)
-                      toucan.models/properties
-                      :entity_id))))))
+      (is (contains? (set (keys (models/properties (.newInstance model))))
+                     ::mi/entity-id)))))
 
 (deftest comprehensive-identity-hash-test
   (doseq [^Class model (->> (extenders IModel)

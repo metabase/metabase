@@ -3,31 +3,35 @@
   permissions for these objects.
   `metabase.models.collection.graph`. `metabase.models.collection.graph`"
   (:refer-clojure :exclude [ancestors descendants])
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [medley.core :as m]
-            [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.models.collection.root :as collection.root]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [potemkin :as p]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models])
-  (:import metabase.models.collection.root.RootCollection))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [honeysql.core :as hsql]
+   [medley.core :as m]
+   [metabase.api.common
+    :as api
+    :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.models.collection.root :as collection.root]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.schema :as su]
+   [potemkin :as p]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models])
+  (:import
+   (metabase.models.collection.root RootCollection)))
 
 (comment collection.root/keep-me)
 (comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
@@ -895,17 +899,16 @@
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Collection)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:collection])
-          :types          (constantly {:namespace       :keyword
-                                       :authority_level :keyword})
-          :properties     (constantly {:entity_id true})
-          :pre-insert     pre-insert
-          :post-insert    post-insert
-          :pre-update     pre-update
-          :pre-delete     pre-delete}))
+(mi/define-methods
+ Collection
+ {:hydration-keys (constantly [:collection])
+  :types          (constantly {:namespace       :keyword
+                               :authority_level :keyword})
+  :properties     (constantly {::mi/entity-id true})
+  :pre-insert     pre-insert
+  :post-insert    post-insert
+  :pre-update     pre-update
+  :pre-delete     pre-delete})
 
 (defmethod serdes.base/extract-query "Collection" [_ {:keys [collection-set]}]
   (if (seq collection-set)

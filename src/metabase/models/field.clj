@@ -1,24 +1,25 @@
 (ns metabase.models.field
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
-            [metabase.models.humanization :as humanization]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.humanization :as humanization]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs tru]]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 (comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
@@ -180,21 +181,20 @@
   :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
 
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Field)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
-          :types          (constantly {:base_type         ::base-type
-                                       :effective_type    ::effective-type
-                                       :coercion_strategy ::coercion-strategy
-                                       :semantic_type     ::semantic-type
-                                       :visibility_type   :keyword
-                                       :has_field_values  :keyword
-                                       :fingerprint       :json-for-fingerprints
-                                       :settings          :json
-                                       :nfc_path          :json})
-          :properties     (constantly {:timestamped? true})
-          :pre-insert     pre-insert}))
+(mi/define-methods
+ Field
+ {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
+  :types          (constantly {:base_type         ::base-type
+                               :effective_type    ::effective-type
+                               :coercion_strategy ::coercion-strategy
+                               :semantic_type     ::semantic-type
+                               :visibility_type   :keyword
+                               :has_field_values  :keyword
+                               :fingerprint       :json-for-fingerprints
+                               :settings          :json
+                               :nfc_path          :json})
+  :properties     (constantly {::mi/timestamped? true})
+  :pre-insert     pre-insert})
 
 (defmethod serdes.hash/identity-hash-fields Field
   [_field]

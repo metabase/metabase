@@ -1,13 +1,14 @@
 (ns metabase.models.moderation-review
   "TODO -- this should be moved to `metabase-enterprise.content-management.models.moderation-review` since it's a
   premium-only model."
-  (:require [metabase.models.permissions :as perms]
-            [metabase.moderation :as moderation]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.moderation :as moderation]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (def statuses
   "Schema enum of the acceptable values for the `status` column"
@@ -17,6 +18,7 @@
   "Schema of valid statuses"
   (apply s/enum statuses))
 
+;; TODO: Appears to be unused, remove?
 (def ReviewChanges
   "Schema for a ModerationReview that's being updated (so most keys are optional)"
   {(s/optional-key :id)                  su/IntGreaterThanZero
@@ -31,11 +33,10 @@
 ;;; TODO: this is wrong, but what should it be?
 (derive ModerationReview ::perms/use-parent-collection-perms)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ModerationReview)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties (constantly {:timestamped? true})
-          :types      (constantly {:moderated_item_type :keyword})}))
+(mi/define-methods
+ ModerationReview
+ {:properties (constantly {::mi/timestamped? true})
+  :types      (constantly {:moderated_item_type :keyword})})
 
 (def max-moderation-reviews
   "The amount of moderation reviews we will keep on hand."

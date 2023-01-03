@@ -1,7 +1,8 @@
 (ns release.check-prereqs
-  (:require [clojure.string :as str]
-            [environ.core :as env]
-            [metabuild-common.core :as u]))
+  (:require
+   [clojure.string :as str]
+   [environ.core :as env]
+   [metabuild-common.core :as u]))
 
 (def ^:private required-commands
   ["git" "node" "yarn" "aws" "docker" "java" "wget" "zip"])

@@ -1,27 +1,29 @@
 (ns metabase.models.interface
-  (:require [buddy.core.codecs :as codecs]
-            [cheshire.core :as json]
-            [clojure.core.memoize :as memoize]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models.dispatch :as models.dispatch]
-            [metabase.models.json-migration :as jm]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.cron :as u.cron]
-            [metabase.util.encryption :as encryption]
-            [metabase.util.i18n :refer [trs tru]]
-            [potemkin :as p]
-            [schema.core :as s]
-            [taoensso.nippy :as nippy]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
-           java.sql.Blob
-           java.util.zip.GZIPInputStream))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
+   [clojure.core.memoize :as memoize]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.dispatch :as models.dispatch]
+   [metabase.models.json-migration :as jm]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.i18n :refer [trs tru]]
+   [potemkin :as p]
+   [schema.core :as s]
+   [taoensso.nippy :as nippy]
+   [toucan.db :as db]
+   [toucan.models :as models])
+  (:import
+   (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
+   (java.sql Blob)
+   (java.util.zip GZIPInputStream)))
 
 (p/import-vars
  [models.dispatch
@@ -264,16 +266,16 @@
   (cond-> obj
     (not (:updated_at obj)) (assoc :updated_at (now))))
 
-(models/add-property! :timestamped?
+(models/add-property! ::timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
   :update add-updated-at-timestamp)
 
 ;; like `timestamped?`, but for models that only have an `:created_at` column
-(models/add-property! :created-at-timestamped?
+(models/add-property! ::created-at-timestamped?
   :insert add-created-at-timestamp)
 
 ;; like `timestamped?`, but for models that only have an `:updated_at` column
-(models/add-property! :updated-at-timestamped?
+(models/add-property! ::updated-at-timestamped?
   :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
 
@@ -285,7 +287,7 @@
     obj
     (assoc obj :entity_id (u/generate-nano-id))))
 
-(models/add-property! :entity_id
+(models/add-property! ::entity-id
   :insert add-entity-id)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -464,6 +466,28 @@
 (defmethod can-create? ::create-policy.superuser
   [_model _m]
   (superuser?))
+
+;;;; [[define-methods]]
+
+(defn- validate-properties [properties]
+  (doseq [k (keys properties)]
+    (assert (namespace k) "All :properties keys should be namespaced!")
+    (assert (contains? (set (keys @@#'models/property-fns)) k)
+            (str "Invalid property: " k))))
+
+(defn define-methods
+  "Helper for defining [[toucan.models/IModel]] methods for a `model`. Prefer this over using `extend` directly, because
+  it's easier to swap a single function when we make the switch to Toucan 2 in the future than to update all the
+  various model namespaces."
+  {:style/indent [:form]}
+  [model method-map]
+  (when-let [properties-method (:properties method-map)]
+    (validate-properties (properties-method model)))
+  (extend (class model)
+    models/IModel
+    (merge
+     models/IModelDefaults
+     method-map)))
 
 
 ;;;; redefs

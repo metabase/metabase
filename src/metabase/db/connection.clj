@@ -1,10 +1,12 @@
 (ns metabase.db.connection
   "Functions for getting the application database connection type and JDBC spec, or temporarily overriding them.
    TODO - consider renaming this namespace `metabase.db.config`."
-  (:require [metabase.db.connection-pool-setup :as connection-pool-setup]
-            [metabase.db.env :as mdb.env]
-            [potemkin :as p])
-  (:import java.util.concurrent.locks.ReentrantReadWriteLock))
+  (:require
+   [metabase.db.connection-pool-setup :as connection-pool-setup]
+   [metabase.db.env :as mdb.env]
+   [potemkin :as p])
+  (:import
+   (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (defonce ^{:doc "Counter for [[unique-identifier]] -- this is a simple counter rather that [[java.util.UUID/randomUUID]]
   so we don't waste precious entropy on launch generating something that doesn't need to be random (it just needs to be

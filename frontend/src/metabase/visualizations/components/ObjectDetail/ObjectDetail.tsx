@@ -64,12 +64,15 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
 
   const zoomedRow = isZooming ? getZoomRow(state) : getSingleResultsRow(data);
   const canZoomPreviousRow = isZooming ? getCanZoomPreviousRow(state) : false;
-  const canZoomNextRow = isZooming ? getCanZoomNextRow(state) : false;
+  const canZoomNextRow = isZooming ? Boolean(getCanZoomNextRow(state)) : false;
 
   return {
-    question: getQuestion(state),
+    // FIXME: remove the non-null assertion operator
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    question: getQuestion(state)!,
     table: getTableMetadata(state),
-    tableForeignKeys: getTableForeignKeys(state),
+    // FIXME: remove the type cast
+    tableForeignKeys: getTableForeignKeys(state) as ForeignKey[],
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
     zoomedRowID,
     zoomedRow,
@@ -85,8 +88,13 @@ const mapDispatchToProps = (dispatch: any) => ({
     dispatch(Tables.objectActions.fetchForeignKeys({ id })),
   loadObjectDetailFKReferences: (args: any) =>
     dispatch(loadObjectDetailFKReferences(args)),
-  followForeignKey: ({ objectId, fk }: { objectId: number; fk: ForeignKey }) =>
-    dispatch(followForeignKey({ objectId, fk })),
+  followForeignKey: ({
+    objectId,
+    fk,
+  }: {
+    objectId: ObjectId;
+    fk: ForeignKey;
+  }) => dispatch(followForeignKey({ objectId, fk })),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
@@ -106,7 +114,6 @@ export interface ObjectDetailProps {
   canZoom: boolean;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
-  isDataApp?: boolean;
   showActions?: boolean;
   showRelations?: boolean;
   onVisualizationClick: OnVisualizationClickType;
@@ -131,7 +138,6 @@ export function ObjectDetailFn({
   canZoom,
   canZoomPreviousRow,
   canZoomNextRow,
-  isDataApp = false,
   showActions = true,
   showRelations = true,
   onVisualizationClick,
@@ -250,19 +256,17 @@ export function ObjectDetailFn({
         </ErrorWrapper>
       ) : (
         <div className="ObjectDetail" data-testid="object-detail">
-          {!isDataApp && (
-            <ObjectDetailHeader
-              canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
-              objectName={objectName}
-              objectId={displayId}
-              canZoomPreviousRow={canZoomPreviousRow}
-              canZoomNextRow={canZoomNextRow}
-              showActions={showActions}
-              viewPreviousObjectDetail={viewPreviousObjectDetail}
-              viewNextObjectDetail={viewNextObjectDetail}
-              closeObjectDetail={closeObjectDetail}
-            />
-          )}
+          <ObjectDetailHeader
+            canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
+            objectName={objectName}
+            objectId={displayId}
+            canZoomPreviousRow={canZoomPreviousRow}
+            canZoomNextRow={canZoomNextRow}
+            showActions={showActions}
+            viewPreviousObjectDetail={viewPreviousObjectDetail}
+            viewNextObjectDetail={viewNextObjectDetail}
+            closeObjectDetail={closeObjectDetail}
+          />
           <ObjectDetailBodyWrapper>
             <ObjectDetailBody
               data={data}
@@ -285,12 +289,11 @@ export function ObjectDetailFn({
 
 function ObjectDetailWrapper({
   question,
-  isDataApp,
   data,
   closeObjectDetail,
   ...props
-}: ObjectDetailProps & { isDataApp?: boolean }) {
-  if (isDataApp || question.display() === "object") {
+}: ObjectDetailProps) {
+  if (question.display() === "object") {
     if (data.rows.length > 1) {
       return (
         <CenteredLayout>
@@ -307,7 +310,6 @@ function ObjectDetailWrapper({
         showActions={false}
         showRelations={false}
         closeObjectDetail={closeObjectDetail}
-        isDataApp={isDataApp}
       />
     );
   }

@@ -1,17 +1,18 @@
 (ns metabase-enterprise.serialization.v2.e2e.yaml-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
-            [metabase-enterprise.serialization.v2.load :as serdes.load]
-            [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.test.generate :as test-gen]
-            [reifyhealth.specmonstah.core :as rs]
-            [toucan.db :as db]
-            [yaml.core :as yaml]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
+   [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.test.generate :as test-gen]
+   [reifyhealth.specmonstah.core :as rs]
+   [toucan.db :as db]
+   [yaml.core :as yaml]))
 
 (defn- dir->contents-set [p dir]
   (->> dir
@@ -238,7 +239,7 @@
                              (reduce +)))))
 
             (testing "for settings"
-              (is (.exists (io/file dump-dir "settings.yaml"))))))
+              (is (.exists (io/file dump-dir "settings.yaml")))))
 
           (testing "ingest and load"
             (ts/with-dest-db
@@ -344,4 +345,4 @@
               (testing "for settings"
                 (is (= (into {} (for [{:keys [key value]} (get @entities "Setting")]
                                   [key value]))
-                       (yaml/from-file (io/file dump-dir "settings.yaml")))))))))))
+                       (yaml/from-file (io/file dump-dir "settings.yaml"))))))))))))

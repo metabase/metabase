@@ -8,9 +8,14 @@ import React, {
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
+import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { getIsMultiSelect } from "../../utils/dashboards";
-import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
+import {
+  canUseCustomSource,
+  isSingleOrMultiSelectable,
+} from "../../utils/parameter-type";
+import ParameterSourceSettings from "../ParameterSourceSettings";
 import {
   SettingLabel,
   SettingRemoveButton,
@@ -24,57 +29,41 @@ const MULTI_SELECT_OPTIONS = [
   { name: t`A single value`, value: false },
 ];
 
-interface ParameterSettingsProps {
+export interface ParameterSettingsProps {
   parameter: UiParameter;
-  onChangeName: (parameterId: string, name: string) => void;
-  onChangeDefaultValue: (parameterId: string, value: unknown) => void;
-  onChangeIsMultiSelect: (parameterId: string, isMultiSelect: boolean) => void;
-  onRemoveParameter: (parameterId: string) => void;
+  onChangeName: (name: string) => void;
+  onChangeDefaultValue: (value: unknown) => void;
+  onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
+  onChangeSourceType: (sourceType: ValuesSourceType) => void;
+  onChangeSourceConfig: (sourceOptions: ValuesSourceConfig) => void;
+  onRemoveParameter: () => void;
 }
 
 const ParameterSettings = ({
   parameter,
   onChangeName,
+  onChangeSourceType,
+  onChangeSourceConfig,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
-  const parameterId = parameter.id;
-
-  const handleNameChange = useCallback(
-    (name: string) => {
-      onChangeName(parameterId, name);
-    },
-    [parameterId, onChangeName],
-  );
-
-  const handleDefaultValueChange = useCallback(
-    (value: unknown) => {
-      onChangeDefaultValue(parameterId, value);
-    },
-    [parameterId, onChangeDefaultValue],
-  );
-
-  const handleMultiSelectChange = useCallback(
-    (isMultiSelect: boolean) => {
-      onChangeIsMultiSelect(parameterId, isMultiSelect);
-    },
-    [parameterId, onChangeIsMultiSelect],
-  );
-
-  const handleRemove = useCallback(() => {
-    onRemoveParameter(parameterId);
-  }, [parameterId, onRemoveParameter]);
-
   return (
     <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
-        <ParameterInput
-          initialValue={parameter.name}
-          onChange={handleNameChange}
-        />
+        <ParameterInput initialValue={parameter.name} onChange={onChangeName} />
       </SettingSection>
+      {canUseCustomSource(parameter) && (
+        <SettingSection>
+          <SettingLabel>{t`Options to pick from`}</SettingLabel>
+          <ParameterSourceSettings
+            parameter={parameter}
+            onChangeSourceType={onChangeSourceType}
+            onChangeSourceConfig={onChangeSourceConfig}
+          />
+        </SettingSection>
+      )}
       <SettingSection>
         <SettingLabel>{t`Default value`}</SettingLabel>
         <SettingValueWidget
@@ -82,7 +71,7 @@ const ParameterSettings = ({
           name={parameter.name}
           value={parameter.default}
           placeholder={t`No default`}
-          setValue={handleDefaultValueChange}
+          setValue={onChangeDefaultValue}
         />
       </SettingSection>
       {isSingleOrMultiSelectable(parameter) && (
@@ -92,11 +81,11 @@ const ParameterSettings = ({
             value={getIsMultiSelect(parameter)}
             options={MULTI_SELECT_OPTIONS}
             vertical
-            onChange={handleMultiSelectChange}
+            onChange={onChangeIsMultiSelect}
           />
         </SettingSection>
       )}
-      <SettingRemoveButton onClick={handleRemove}>
+      <SettingRemoveButton onClick={onRemoveParameter}>
         {t`Remove`}
       </SettingRemoveButton>
     </SettingsRoot>

@@ -1,22 +1,23 @@
 (ns metabase.api.activity-test
   "Tests for /api/activity endpoints."
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.api.activity :as api.activity]
-            [metabase.models.activity :refer [Activity]]
-            [metabase.models.app :refer [App]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as mi]
-            [metabase.models.query-execution :refer [QueryExecution]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.view-log :refer [ViewLog]]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.api.activity :as api.activity]
+   [metabase.models.activity :refer [Activity]]
+   [metabase.models.app :refer [App]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
+   [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.view-log :refer [ViewLog]]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

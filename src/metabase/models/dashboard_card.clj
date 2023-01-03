@@ -1,22 +1,23 @@
 (ns metabase.models.dashboard-card
-  (:require [clojure.set :as set]
-            [metabase.db.util :as mdb.u]
-            [metabase.events :as events]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.interface :as mi]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [clojure.set :as set]
+   [metabase.db.util :as mdb.u]
+   [metabase.events :as events]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.models.interface :as mi]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 (models/defmodel DashboardCard :report_dashboardcard)
 
@@ -42,14 +43,13 @@
                   :visualization_settings {}}]
     (merge defaults dashcard)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class DashboardCard)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties (constantly {:timestamped? true
-                                   :entity_id    true})
-          :types      (constantly {:parameter_mappings     :parameters-list
-                                   :visualization_settings :visualization-settings})
-          :pre-insert pre-insert}))
+(mi/define-methods
+ DashboardCard
+ {:properties (constantly {::mi/timestamped? true
+                           ::mi/entity-id    true})
+  :types      (constantly {:parameter_mappings     :parameters-list
+                           :visualization_settings :visualization-settings})
+  :pre-insert pre-insert})
 
 (defmethod serdes.hash/identity-hash-fields DashboardCard
   [_dashboard-card]

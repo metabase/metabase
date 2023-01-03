@@ -1,8 +1,9 @@
 (ns metabase.util.password-test
-  (:require [clojure.test :refer :all]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util.password :as u.password]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.password :as u.password]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
