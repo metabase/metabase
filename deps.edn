@@ -364,18 +364,6 @@
                                  "modules/drivers/sqlite/src"
                                  "modules/drivers/sqlserver/src"
                                  "modules/drivers/vertica/src"]
-               :add-linters     [:unused-private-vars
-                                 ;; These linters are pretty useful but give a few false
-                                 ;; positives and can't be selectively disabled (yet)
-                                 ;;
-                                 ;; For example see https://github.com/jonase/eastwood/issues/193
-                                 ;;
-                                 ;; It's still useful to re-enable them and run them every once
-                                 ;; in a while because they catch a lot of actual errors too.
-                                 ;; Keep an eye on the issue above and re-enable them if we can
-                                 ;; get them to work
-                                 #_:unused-fn-args
-                                 #_:unused-locals]
                :exclude-linters [ ;; Turn this off temporarily until we finish removing
                                  ;; self-deprecated functions & macros
                                  :deprecations
