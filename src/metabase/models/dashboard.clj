@@ -401,12 +401,12 @@
     dashboard))
 
 (def ^:private ParamWithMapping
-  {:name     su/NonBlankString
-   :id       su/NonBlankString
+  {:name     su/NonBlankStringPlumatic
+   :id       su/NonBlankStringPlumatic
    :mappings (s/maybe #{dashboard-card/ParamMapping})
    s/Keyword s/Any})
 
-(s/defn ^{:hydrate :resolved-params} dashboard->resolved-params :- (let [param-id su/NonBlankString]
+(s/defn ^{:hydrate :resolved-params} dashboard->resolved-params :- (let [param-id su/NonBlankStringPlumatic]
                                                                      {param-id ParamWithMapping})
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
 
@@ -428,7 +428,7 @@
                                 :card_id      66
                                 :dashcard     ...
                                 :target       [:dimension [:field-id 264]]}}}}"
-  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/Map])
+  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/MapPlumatic])
                  s/Keyword                    s/Any}]
   (let [dashboard           (hydrate dashboard [:ordered_cards :card])
         param-key->mappings (apply

@@ -16,7 +16,7 @@
     (is (= (str "value may be nil, or if non-nil, value must satisfy one of the following requirements: "
                 "1) value must be a boolean. "
                 "2) value must be a valid boolean string ('true' or 'false').")
-           (str (su/api-error-message (s/maybe (s/cond-pre s/Bool su/BooleanString))))))
+           (str (su/api-error-message (s/maybe (s/cond-pre s/Bool su/BooleanStringPlumatic))))))
     (is (= (str/join "\n"
                      ["value must be a map with schema: ("
                       "  a : value must be a map with schema: ("
@@ -39,7 +39,7 @@
   #_{:clj-kondo/ignore [:unused-binding]}
   [id :as {{dimension-type :type, dimension-name :name} :body}]
   {dimension-type (su/api-param "type" (s/enum "internal" "external"))
-   dimension-name su/NonBlankString})
+   dimension-name su/NonBlankStringPlumatic})
 
 (deftest ^:parallel api-param-test
   (testing "check that API error message respects `api-param` when specified"
@@ -66,10 +66,10 @@
 (deftest translate-exception-message-test
   (mt/with-mock-i18n-bundles {"zz" {:messages {"Integer greater than zero" "INTEGER GREATER THAN ZERO"}}}
     (is (re= #".*Integer greater than zero.*"
-             (ex-info-msg #(s/validate su/IntGreaterThanZero -1))))
+             (ex-info-msg #(s/validate su/IntGreaterThanZeroPlumatic -1))))
     (mt/with-user-locale "zz"
       (is (re= #".*INTEGER GREATER THAN ZERO.*"
-               (ex-info-msg #(s/validate su/IntGreaterThanZero -1)))))))
+               (ex-info-msg #(s/validate su/IntGreaterThanZeroPlumatic -1)))))))
 
 (deftest ^:parallel distinct-test
   (is (= nil
@@ -134,100 +134,100 @@
 
 (deftest malli-and-plumatic-compatibility
   (doseq [{:keys [plumatic malli failed-cases success-cases]}
-          [{:plumatic      su/NonBlankString
-            :malli         su/NonBlankStringMalli
+          [{:plumatic      su/NonBlankStringPlumatic
+            :malli         su/NonBlankString
             :failed-cases  ["" 1]
             :success-cases ["a thing"]}
-           {:plumatic      su/IntGreaterThanOrEqualToZero
-            :malli         su/IntGreaterThanOrEqualToZeroMalli
+           {:plumatic      su/IntGreaterThanOrEqualToZeroPlumatic
+            :malli         su/IntGreaterThanOrEqualToZero
             :failed-cases  ["1" -1 1.5]
             :success-cases [0 1]}
-           {:plumatic      su/IntGreaterThanZero
-            :malli         su/IntGreaterThanZeroMalli
+           {:plumatic      su/IntGreaterThanZeroPlumatic
+            :malli         su/IntGreaterThanZero
             :failed-cases  ["1" 0 1.5]
             :success-cases [1 2]}
-           {:plumatic      su/PositiveNum
-            :malli         su/PositiveNumMalli
+           {:plumatic      su/PositiveNumPlumatic
+            :malli         su/PositiveNum
             :failed-cases  [0 "1"]
             :success-cases [1.5 2]}
-           {:plumatic      su/KeywordOrString
-            :malli         su/KeywordOrStringMalli
+           {:plumatic      su/KeywordOrStringPlumatic
+            :malli         su/KeywordOrString
             :failed-cases  [1 [1] {:a 1}]
             :success-cases [:a "a"]}
-           {:plumatic      su/FieldType
-            :malli         su/FieldTypeMalli
+           {:plumatic      su/FieldTypePlumatic
+            :malli         su/FieldType
             :failed-cases  [:type/invalid :Semantic/*]
             :success-cases [:type/Float]}
-           {:plumatic      su/FieldSemanticType
-            :malli         su/FieldSemanticTypeMalli
+           {:plumatic      su/FieldSemanticTypePlumatic
+            :malli         su/FieldSemanticType
             :failed-cases  [:Semantic/invalid :type/Float]
             :success-cases [:type/Category]}
-           {:plumatic      su/FieldRelationType
-            :malli         su/FieldRelationTypeMalli
+           {:plumatic      su/FieldRelationTypePlumatic
+            :malli         su/FieldRelationType
             :failed-cases  [:Relation/invalid :type/Category :type/Float]
             :success-cases [:type/FK]}
-           {:plumatic      su/FieldSemanticOrRelationType
-            :malli         su/FieldSemanticOrRelationTypeMalli
+           {:plumatic      su/FieldSemanticOrRelationTypePlumatic
+            :malli         su/FieldSemanticOrRelationType
             :failed-cases  [:Relation/invalid :type/Float]
             :success-cases [:type/FK :type/Category]}
-           {:plumatic      su/CoercionStrategy
-            :malli         su/CoercionStrategyMalli
+           {:plumatic      su/CoercionStrategyPlumatic
+            :malli         su/CoercionStrategy
             :failed-cases  [:type/Category :type/Float]
             :success-cases [:Coercion/ISO8601->Date]}
-           {:plumatic      su/FieldTypeKeywordOrString
-            :malli         su/FieldTypeKeywordOrStringMalli
+           {:plumatic      su/FieldTypeKeywordOrStringPlumatic
+            :malli         su/FieldTypeKeywordOrString
             :failed-cases  [1 :type/FK]
             :success-cases [:type/Float "type/Float"]}
-           {:plumatic      su/FieldSemanticTypeKeywordOrString
-            :malli         su/FieldSemanticTypeKeywordOrStringMalli
+           {:plumatic      su/FieldSemanticTypeKeywordOrStringPlumatic
+            :malli         su/FieldSemanticTypeKeywordOrString
             :failed-cases  [1 :type/FK]
             :success-cases [:type/Category "type/Category"]}
-           {:plumatic      su/Field
-            :malli         su/FieldMalli
+           {:plumatic      su/FieldPlumatic
+            :malli         su/Field
             :failed-cases  [[:aggregation 0] [:field "name" {}]]
             :success-cases [[:field 3 nil] ["field" "name" {:base-type :type/Float}]]}
-           {:plumatic      su/Map
-            :malli         su/MapMalli
+           {:plumatic      su/MapPlumatic
+            :malli         su/Map
             :failed-cases  [[] 1 "a"]
             :success-cases [{} {:a :b}]}
-           {:plumatic      su/Email
-            :malli         su/EmailMalli
+           {:plumatic      su/EmailPlumatic
+            :malli         su/Email
             :failed-cases  ["abc.com" 1]
             :success-cases ["ngoc@metabase.com"]}
-           {:plumatic      su/ValidPassword
-            :malli         su/ValidPasswordMalli
+           {:plumatic      su/ValidPasswordPlumatic
+            :malli         su/ValidPassword
             :failed-cases  ["abc.com" 1 "PASSW0RD"]
             :success-cases ["unc0mmonpw"]}
-           {:plumatic      su/IntString
-            :malli         su/IntStringMalli
+           {:plumatic      su/IntStringPlumatic
+            :malli         su/IntString
             :failed-cases  [:a "a" "1.5"]
             :success-cases ["1"]}
-           {:plumatic      su/BooleanString
-            :malli         su/BooleanStringMalli
+           {:plumatic      su/BooleanStringPlumatic
+            :malli         su/BooleanString
             :failed-cases  [:false :true true "f"]
             :success-cases ["true" "false"]}
-           {:plumatic      su/TemporalString
-            :malli         su/TemporalStringMalli
+           {:plumatic      su/TemporalStringPlumatic
+            :malli         su/TemporalString
             :failed-cases  ["random string"]
             :success-cases ["2019-10-28T13:14:15" "2019-10-28"]}
-           {:plumatic      su/JSONString
-            :malli         su/JSONStringMalli
+           {:plumatic      su/JSONStringPlumatic
+            :malli         su/JSONString
             :failed-cases  ["string"]
             :success-cases ["{\"a\": 1}"]}
-           {:plumatic      su/EmbeddingParams
-            :malli         su/EmbeddingParamsMalli
+           {:plumatic      su/EmbeddingParamsPlumatic
+            :malli         su/EmbeddingParams
             :failed-cases  [{:key "value"}]
             :success-cases [{:key "disabled"}]}
-           {:plumatic      su/ValidLocale
-            :malli         su/ValidLocaleMalli
+           {:plumatic      su/ValidLocalePlumatic
+            :malli         su/ValidLocale
             :failed-cases  ["locale"]
             :success-cases ["en" "es"]}
-           {:plumatic      su/NanoIdString
-            :malli         su/NanoIdStringMalli
+           {:plumatic      su/NanoIdStringPlumatic
+            :malli         su/NanoIdString
             :failed-cases  ["random"]
             :success-cases ["FReCLx5hSWTBU7kjCWfuu"]}
-           {:plumatic      su/Parameter
-            :malli         su/ParameterMalli
+           {:plumatic      su/ParameterPlumatic
+            :malli         su/Parameter
             :failed-cases  [{:id   "param-id"
                              :name "param-name"}
                             {:id                   "param-id"
@@ -249,8 +249,8 @@
                              :type                 "number"
                              :values_source_type   "static-list"
                              :values_source_config {:values [[1 2 3]]}}]}
-           {:plumatic      su/ParameterMapping
-            :malli         su/ParameterMappingMalli
+           {:plumatic      su/ParameterMappingPlumatic
+            :malli         su/ParameterMapping
             :failed-cases  [{:parameter_id "param-id"}
                             {:parameter_id "param-id"
                              :target        [:field 3 nil]

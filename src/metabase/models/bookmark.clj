@@ -27,13 +27,13 @@
   although the compound key can be inferred from it."
   {:id                               s/Str
    :type                             (s/enum "card" "collection" "dashboard")
-   :item_id                          su/IntGreaterThanZero
-   :name                             su/NonBlankString
+   :item_id                          su/IntGreaterThanZeroPlumatic
+   :name                             su/NonBlankStringPlumatic
    (s/optional-key :dataset)         (s/maybe s/Bool)
    (s/optional-key :display)         (s/maybe s/Str)
    (s/optional-key :authority_level) (s/maybe s/Str)
    (s/optional-key :description)     (s/maybe s/Str)
-   (s/optional-key :app_id)          (s/maybe su/IntGreaterThanOrEqualToZero)
+   (s/optional-key :app_id)          (s/maybe su/IntGreaterThanOrEqualToZeroPlumatic)
    (s/optional-key :is_app_page)     (s/maybe s/Bool)})
 
 (s/defn ^:private normalize-bookmark-result :- BookmarkResult

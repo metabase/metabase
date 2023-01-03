@@ -369,7 +369,7 @@
 ;;; ------------------------------------------------- Path Util Fns --------------------------------------------------
 
 (def ^:private MapOrID
-  (s/cond-pre su/Map su/IntGreaterThanZero))
+  (s/cond-pre su/MapPlumatic su/IntGreaterThanZeroPlumatic))
 
 (s/defn data-perms-path :- Path
   "Return the [readwrite] permissions path for a Database, schema, or Table. (At the time of this writing, DBs and
@@ -566,8 +566,8 @@
   ([this read-or-write]
    (perms-objects-set-for-parent-collection nil this read-or-write))
 
-  ([collection-namespace :- (s/maybe su/KeywordOrString)
-    this                 :- {:collection_id (s/maybe su/IntGreaterThanZero) s/Keyword s/Any}
+  ([collection-namespace :- (s/maybe su/KeywordOrStringPlumatic)
+    this                 :- {:collection_id (s/maybe su/IntGreaterThanZeroPlumatic) s/Keyword s/Any}
     read-or-write        :- (s/enum :read :write)]
    ;; based on value of read-or-write determine the approprite function used to calculate the perms path
    (let [path-fn (case read-or-write
@@ -640,7 +640,7 @@
 (def ^:private SchemaPermissionsGraph
   (s/named
    (s/cond-pre (s/enum :none :all)
-               {su/IntGreaterThanZero TablePermissionsGraph})
+               {su/IntGreaterThanZeroPlumatic TablePermissionsGraph})
    "Valid perms graph for a schema"))
 
 (def ^:private NativePermissionsGraph
@@ -685,7 +685,7 @@
 (def ^:private DownloadSchemaPermissionsGraph
   (s/named
    (s/cond-pre (s/enum :full :limited :none)
-               {su/IntGreaterThanZero DownloadTablePermissionsGraph})
+               {su/IntGreaterThanZeroPlumatic DownloadTablePermissionsGraph})
    "Valid download perms graph for a schema"))
 
 (def ^:private DownloadNativePermissionsGraph
@@ -709,7 +709,7 @@
 (def ^:private DataModelSchemaPermissionsGraph
   (s/named
     (s/cond-pre (s/enum :all :none)
-                {su/IntGreaterThanZero DataModelTablePermissionsGraph})
+                {su/IntGreaterThanZeroPlumatic DataModelTablePermissionsGraph})
    "Valid data model perms graph for a schema"))
 
 (def DataModelPermissionsGraph
@@ -727,14 +727,14 @@
    "Valid details perms graph for a database"))
 
 (def ^:private StrictDBPermissionsGraph
-  {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
+  {su/IntGreaterThanZeroPlumatic {(s/optional-key :data) StrictDataPermissionsGraph
                           (s/optional-key :download) DownloadPermissionsGraph
                           (s/optional-key :data-model) DataModelPermissionsGraph
                           (s/optional-key :details) DetailsPermissions}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
-   :groups   {su/IntGreaterThanZero StrictDBPermissionsGraph}})
+   :groups   {su/IntGreaterThanZeroPlumatic StrictDBPermissionsGraph}})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -804,7 +804,7 @@
   NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
   `revoke-data-perms!` elsewhere instead of calling this directly."
   {:style/indent 2}
-  [group-or-id :- (s/cond-pre su/Map su/IntGreaterThanZero) path :- Path & other-conditions]
+  [group-or-id :- (s/cond-pre su/MapPlumatic su/IntGreaterThanZeroPlumatic) path :- Path & other-conditions]
   (let [where {:where (apply list
                              :and
                              [:= :group_id (u/the-id group-or-id)]
@@ -993,7 +993,7 @@
   This lives in non-EE code because it needs to be called during sync, in case a new table was discovered or a
   table was deleted. This ensures that native download perms are always up to date, even on OSS instances, in case
   they are upgraded to EE."
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero]
+  [group-id :- su/IntGreaterThanZeroPlumatic db-id :- su/IntGreaterThanZeroPlumatic]
   (let [permissions-set (download-permissions-set group-id)
         table-ids-and-schemas (db/select-id->field :schema 'Table :db_id db-id :active [:= true])
         native-perm-level (reduce (fn [lowest-seen-perm-level [table-id table-schema]]
@@ -1022,20 +1022,20 @@
       (grant-permissions! group-id (native-feature-perms-path :download native-perm-level db-id)))))
 
 (s/defn ^:private update-table-read-permissions!
-  [group-id       :- su/IntGreaterThanZero
-   db-id          :- su/IntGreaterThanZero
+  [group-id       :- su/IntGreaterThanZeroPlumatic
+   db-id          :- su/IntGreaterThanZeroPlumatic
    schema         :- s/Str
-   table-id       :- su/IntGreaterThanZero
+   table-id       :- su/IntGreaterThanZeroPlumatic
    new-read-perms :- (s/enum :all :none)]
   ((case new-read-perms
      :all  grant-permissions!
      :none revoke-data-perms!) group-id (table-read-path db-id schema table-id)))
 
 (s/defn ^:private update-table-query-permissions!
-  [group-id        :- su/IntGreaterThanZero
-   db-id           :- su/IntGreaterThanZero
+  [group-id        :- su/IntGreaterThanZeroPlumatic
+   db-id           :- su/IntGreaterThanZeroPlumatic
    schema          :- s/Str
-   table-id        :- su/IntGreaterThanZero
+   table-id        :- su/IntGreaterThanZeroPlumatic
    new-query-perms :- (s/enum :all :segmented :none)]
   (case new-query-perms
     :all       (grant-permissions!  group-id (table-query-path           db-id schema table-id))
@@ -1043,10 +1043,10 @@
     :none      (revoke-data-perms! group-id (table-query-path           db-id schema table-id))))
 
 (s/defn ^:private update-table-data-access-permissions!
-  [group-id        :- su/IntGreaterThanZero
-   db-id           :- su/IntGreaterThanZero
+  [group-id        :- su/IntGreaterThanZeroPlumatic
+   db-id           :- su/IntGreaterThanZeroPlumatic
    schema          :- s/Str
-   table-id        :- su/IntGreaterThanZero
+   table-id        :- su/IntGreaterThanZeroPlumatic
    new-table-perms :- TablePermissionsGraph]
   (cond
     (= new-table-perms :all)
@@ -1066,8 +1066,8 @@
       (when new-query-perms (update-table-query-permissions! group-id db-id schema table-id new-query-perms)))))
 
 (s/defn ^:private update-schema-data-access-permissions!
-  [group-id         :- su/IntGreaterThanZero
-   db-id            :- su/IntGreaterThanZero
+  [group-id         :- su/IntGreaterThanZeroPlumatic
+   db-id            :- su/IntGreaterThanZeroPlumatic
    schema           :- s/Str
    new-schema-perms :- SchemaPermissionsGraph]
   (cond
@@ -1078,7 +1078,7 @@
                                  (update-table-data-access-permissions! group-id db-id schema table-id table-perms))))
 
 (s/defn ^:private update-native-data-access-permissions!
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-native-perms :- NativePermissionsGraph]
+  [group-id :- su/IntGreaterThanZeroPlumatic db-id :- su/IntGreaterThanZeroPlumatic new-native-perms :- NativePermissionsGraph]
   ;; revoke-native-permissions! will delete all entries that would give permissions for native access. Thus if you had
   ;; a root DB entry like `/db/11/` this will delete that too. In that case we want to create a new full schemas entry
   ;; so you don't lose access to all schemas when we modify native access.
@@ -1091,7 +1091,7 @@
     :none  nil))
 
 (s/defn ^:private update-db-data-access-permissions!
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-db-perms :- StrictDataPermissionsGraph]
+  [group-id :- su/IntGreaterThanZeroPlumatic db-id :- su/IntGreaterThanZeroPlumatic new-db-perms :- StrictDataPermissionsGraph]
   (when-let [new-native-perms (:native new-db-perms)]
     (update-native-data-access-permissions! group-id db-id new-native-perms))
   (when-let [schemas (:schemas new-db-perms)]
@@ -1129,7 +1129,7 @@
     (throw (ee-permissions-exception perm-type))))
 
 (s/defn ^:private update-group-permissions!
-  [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
+  [group-id :- su/IntGreaterThanZeroPlumatic new-group-perms :- StrictDBPermissionsGraph]
   (doseq [[db-id new-db-perms] new-group-perms]
     (doseq [[perm-type new-perms] new-db-perms]
       (case perm-type

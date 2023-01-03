@@ -89,9 +89,9 @@
 
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
-  {:device_id          su/NonBlankString
-   :device_description su/NonBlankString
-   :ip_address         su/NonBlankString})
+  {:device_id          su/NonBlankStringPlumatic
+   :device_description su/NonBlankStringPlumatic
+   :ip_address         su/NonBlankStringPlumatic})
 
 (s/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
@@ -137,10 +137,10 @@
   5000)
 
 (def ^:private IPAddress
-  (s/constrained su/NonBlankString u/ip-address? "valid IP address string"))
+  (s/constrained su/NonBlankStringPlumatic u/ip-address? "valid IP address string"))
 
 ;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
-(s/defn geocode-ip-addresses :- (s/maybe {IPAddress {:description su/NonBlankString
+(s/defn geocode-ip-addresses :- (s/maybe {IPAddress {:description su/NonBlankStringPlumatic
                                                      :timezone    (s/maybe java.time.ZoneId)}})
   "Geocode multiple IP addresses, returning a map of IP address -> info, with each info map containing human-friendly
   `:description` of the location and a `java.time.ZoneId` `:timezone`, if that information is available."

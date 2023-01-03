@@ -43,7 +43,7 @@
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
   [:as {body :body}]
-  {body su/Map}
+  {body su/MapPlumatic}
   (api/check-superuser)
   (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/data-permissions-graph body)]
     (when (= graph :clojure.spec.alpha/invalid)
@@ -121,7 +121,7 @@
 (api/defendpoint-schema POST "/group"
   "Create a new `PermissionsGroup`."
   [:as {{:keys [name]} :body}]
-  {name su/NonBlankString}
+  {name su/NonBlankStringPlumatic}
   (api/check-superuser)
   (db/insert! PermissionsGroup
     :name name))
@@ -129,7 +129,7 @@
 (api/defendpoint-schema PUT "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
   [group-id :as {{:keys [name]} :body}]
-  {name su/NonBlankString}
+  {name su/NonBlankStringPlumatic}
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
   (db/update! PermissionsGroup group-id
@@ -171,8 +171,8 @@
 (api/defendpoint-schema POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [:as {{:keys [group_id user_id is_group_manager]} :body}]
-  {group_id         su/IntGreaterThanZero
-   user_id          su/IntGreaterThanZero
+  {group_id         su/IntGreaterThanZeroPlumatic
+   user_id          su/IntGreaterThanZeroPlumatic
    is_group_manager (schema.core/maybe schema.core/Bool)}
   (let [is_group_manager (boolean is_group_manager)]
     (validation/check-manager-of-group group_id)

@@ -12,7 +12,7 @@
 (api/defendpoint-schema GET "/"
   "Endpoint to fetch actions for a model, must filter with card-id="
   [card-id]
-  {card-id su/IntGreaterThanZero}
+  {card-id su/IntGreaterThanZeroPlumatic}
   (db/query {:select [:model_action.*
                       [(hsql/call :coalesce :report_card.name :http_action.name) :name]]
              :from [ModelAction]
@@ -25,22 +25,22 @@
 (api/defendpoint-schema POST "/"
   "Endpoint to associate an action with a model"
   [:as {{:keys [card_id action_id slug requires_pk parameter_mappings visualization_settings] :as body} :body}]
-  {card_id su/IntGreaterThanZero
-   action_id (s/maybe su/IntGreaterThanZero)
-   slug su/NonBlankString
+  {card_id su/IntGreaterThanZeroPlumatic
+   action_id (s/maybe su/IntGreaterThanZeroPlumatic)
+   slug su/NonBlankStringPlumatic
    requires_pk s/Bool
-   parameter_mappings (s/maybe [su/ParameterMapping])
-   visualization_settings (s/maybe su/Map)}
+   parameter_mappings (s/maybe [su/ParameterMappingPlumatic])
+   visualization_settings (s/maybe su/MapPlumatic)}
   (db/insert! ModelAction body))
 
 (api/defendpoint-schema PUT "/:model-action-id"
   "Endpoint to modify an action of a model"
   [model-action-id :as {{:keys [action_id slug requires_pk parameter_mappings visualization_settings] :as body} :body}]
-  {action_id (s/maybe su/IntGreaterThanZero)
-   slug (s/maybe su/NonBlankString)
+  {action_id (s/maybe su/IntGreaterThanZeroPlumatic)
+   slug (s/maybe su/NonBlankStringPlumatic)
    requires_pk (s/maybe s/Bool)
-   parameter_mappings (s/maybe [su/ParameterMapping])
-   visualization_settings (s/maybe su/Map)}
+   parameter_mappings (s/maybe [su/ParameterMappingPlumatic])
+   visualization_settings (s/maybe su/MapPlumatic)}
   (db/update! ModelAction model-action-id (dissoc body :card_id))
   api/generic-204-no-content)
 

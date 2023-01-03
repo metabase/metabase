@@ -74,8 +74,8 @@
   ((writeback-qp) query nil nil))
 
 (def ^:private HydratedQueryEmitter
-  {:id       su/IntGreaterThanZero
-   :action   {:card     {:dataset_query su/Map
+  {:id       su/IntGreaterThanZeroPlumatic
+   :action   {:card     {:dataset_query su/MapPlumatic
                          :is_write      s/Bool
                          s/Keyword      s/Any}
               s/Keyword s/Any}

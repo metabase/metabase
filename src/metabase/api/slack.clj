@@ -18,8 +18,8 @@
   2. invalid token         -> clear
   3. truthy, valid token   -> refresh "
   [:as {{slack-app-token :slack-app-token, slack-files-channel :slack-files-channel} :body}]
-  {slack-app-token     (s/maybe su/NonBlankString)
-   slack-files-channel (s/maybe su/NonBlankString)}
+  {slack-app-token     (s/maybe su/NonBlankStringPlumatic)
+   slack-files-channel (s/maybe su/NonBlankStringPlumatic)}
   (validation/check-has-application-permission :setting)
   (try
     (when (and slack-app-token

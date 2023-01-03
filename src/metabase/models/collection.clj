@@ -118,7 +118,7 @@
   "Build a 'location path' from a sequence of `collections-or-ids`.
 
      (location-path 10 20) ; -> \"/10/20/\""
-  [& collections-or-ids :- [(s/cond-pre su/IntGreaterThanZero su/Map)]]
+  [& collections-or-ids :- [(s/cond-pre su/IntGreaterThanZeroPlumatic su/MapPlumatic)]]
   (if-not (seq collections-or-ids)
     "/"
     (str
@@ -127,14 +127,14 @@
                      (u/the-id collection-or-id)))
      "/")))
 
-(s/defn location-path->ids :- [su/IntGreaterThanZero]
+(s/defn location-path->ids :- [su/IntGreaterThanZeroPlumatic]
   "'Explode' a `location-path` into a sequence of Collection IDs, and parse them as integers.
 
      (location-path->ids \"/10/20/\") ; -> [10 20]"
   [location-path :- LocationPath]
   (unchecked-location-path->ids location-path))
 
-(s/defn location-path->parent-id :- (s/maybe su/IntGreaterThanZero)
+(s/defn location-path->parent-id :- (s/maybe su/IntGreaterThanZeroPlumatic)
   "Given a `location-path` fetch the ID of the direct of a Collection.
 
      (location-path->parent-id \"/10/20/\") ; -> 20"
@@ -212,7 +212,7 @@
   (s/cond-pre
    RootCollection
    {:location LocationPath
-    :id       su/IntGreaterThanZero
+    :id       su/IntGreaterThanZeroPlumatic
     s/Keyword s/Any}))
 
 (s/defn ^:private parent :- CollectionWithLocationAndIDOrRoot
@@ -237,7 +237,7 @@
 (def VisibleCollections
   "Includes the possible values for visible collections, either `:all` or a set of ids, possibly including `\"root\"` to
   represent the root collection."
-  (s/cond-pre (s/eq :all) #{(s/cond-pre (s/eq "root") su/IntGreaterThanZero)}))
+  (s/cond-pre (s/eq :all) #{(s/cond-pre (s/eq "root") su/IntGreaterThanZeroPlumatic)}))
 
 (s/defn permissions-set->visible-collection-ids :- VisibleCollections
   "Given a `permissions-set` (presumably those of the current user), return a set of IDs of Collections that the
@@ -380,7 +380,7 @@
     []
     (filter mi/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
 
-(s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
+(s/defn parent-id :- (s/maybe su/IntGreaterThanZeroPlumatic)
   "Get the immediate parent `collection` id, if set."
   {:hydrate :parent_id}
   [{:keys [location]} :- CollectionWithLocationOrRoot]
@@ -447,7 +447,7 @@
         ;; key
         :children)))
 
-(s/defn descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
+(s/defn descendant-ids :- (s/maybe #{su/IntGreaterThanZeroPlumatic})
   "Return a set of IDs of all descendant Collections of a `collection`."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (db/select-ids Collection :location [:like (str (children-location collection) \%)]))
@@ -589,7 +589,7 @@
         :set    {:location (hsql/call :replace :location orig-children-location new-children-location)}
         :where  [:like :location (str orig-children-location "%")]}))))
 
-(s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
+(s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZeroPlumatic})
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
   (apply db/select-ids Collection
          :location [:like (str (children-location collection) "%")]
@@ -632,7 +632,7 @@
   "Schema for a Collection instance that has a valid `:location`, and a `:personal_owner_id` key *present* (but not
   neccesarily non-nil)."
   {:location          LocationPath
-   :personal_owner_id (s/maybe su/IntGreaterThanZero)
+   :personal_owner_id (s/maybe su/IntGreaterThanZeroPlumatic)
    s/Keyword          s/Any})
 
 (s/defn is-personal-collection-or-descendant-of-one? :- s/Bool
@@ -706,7 +706,7 @@
 (s/defn ^:private check-changes-allowed-for-personal-collection
   "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
   have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
-  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
+  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/MapPlumatic]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (let [unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a Personal Collection.")
@@ -725,7 +725,7 @@
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
-  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
+  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/MapPlumatic]
   ;; If the updates map contains a value for `:archived`, see if it's actually something different than current value
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     ;; check to make sure we're not trying to change location at the same time
@@ -1029,7 +1029,7 @@
 ;;; |                                              Personal Collections                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn format-personal-collection-name :- su/NonBlankString
+(s/defn format-personal-collection-name :- su/NonBlankStringPlumatic
   "Constructs the personal collection name from user name.
   When displaying to users we'll tranlsate it to user's locale,
   but to keeps things consistent in the database, we'll store the name in site's locale.
@@ -1046,7 +1046,7 @@
       (and first-name last-name) (trs "{0} {1}''s Personal Collection" first-name last-name)
       :else                      (trs "{0}''s Personal Collection" (or first-name last-name email)))))
 
-(s/defn user->personal-collection-name :- su/NonBlankString
+(s/defn user->personal-collection-name :- su/NonBlankStringPlumatic
   "Come up with a nice name for the Personal Collection for `user-or-id`."
   [user-or-id user-or-site]
   (let [{first-name :first_name

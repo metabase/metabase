@@ -41,7 +41,7 @@
 (api/defendpoint-schema GET "/:key"
   "Fetch a single `Setting`."
   [key]
-  {key su/NonBlankString}
+  {key su/NonBlankStringPlumatic}
   (with-setting-access-control
     (setting/user-facing-value key)))
 
@@ -49,7 +49,7 @@
   "Create/update a `Setting`. If called by a non-admin, only user-local settings can be updated.
    This endpoint can also be used to delete Settings by passing `nil` for `:value`."
   [key :as {{:keys [value]} :body}]
-  {key su/NonBlankString}
+  {key su/NonBlankStringPlumatic}
   (with-setting-access-control
     (setting/set! key value))
   api/generic-204-no-content)

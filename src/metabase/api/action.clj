@@ -33,8 +33,8 @@
    :url s/Str
    (s/optional-key :body) (s/maybe s/Str)
    (s/optional-key :headers) (s/maybe s/Str)
-   (s/optional-key :parameters) (s/maybe [su/Map])
-   (s/optional-key :parameter_mappings) (s/maybe su/Map)})
+   (s/optional-key :parameters) (s/maybe [su/MapPlumatic])
+   (s/optional-key :parameter_mappings) (s/maybe su/MapPlumatic)})
 
 (defn check-actions-enabled
   "Check whether Actions are enabled and allowed for the [[metabase.models.database]] with `database-id`, or return a
@@ -57,7 +57,7 @@
 (api/defendpoint-schema GET "/"
   "Returns cards that can be used for QueryActions"
   [model-id]
-  {model-id su/IntGreaterThanZero}
+  {model-id su/IntGreaterThanZeroPlumatic}
   (action/merged-model-action nil :card_id model-id))
 
 (api/defendpoint-schema GET "/:action-id"
@@ -86,7 +86,7 @@
 
 (api/defendpoint-schema PUT "/:id"
   [id :as {{:keys [type name template response_handle error_handle] :as action} :body}]
-  {id su/IntGreaterThanZero
+  {id su/IntGreaterThanZeroPlumatic
    type SupportedActionType
    name (s/maybe s/Str)
    template (s/maybe HTTPActionTemplate)

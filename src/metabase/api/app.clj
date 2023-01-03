@@ -38,23 +38,23 @@
   [:as {{:keys [dashboard_id options nav_items]
          {:keys [name color description namespace authority_level]} :collection
          :as app} :body}]
-  {dashboard_id    (s/maybe su/IntGreaterThanOrEqualToZero)
-   options         (s/maybe su/Map)
-   nav_items       (s/maybe [(s/maybe su/Map)])
-   name            su/NonBlankString
+  {dashboard_id    (s/maybe su/IntGreaterThanOrEqualToZeroPlumatic)
+   options         (s/maybe su/MapPlumatic)
+   nav_items       (s/maybe [(s/maybe su/MapPlumatic)])
+   name            su/NonBlankStringPlumatic
    color           collection/hex-color-regex
-   description     (s/maybe su/NonBlankString)
-   namespace       (s/maybe su/NonBlankString)
+   description     (s/maybe su/NonBlankStringPlumatic)
+   namespace       (s/maybe su/NonBlankStringPlumatic)
    authority_level collection/AuthorityLevel}
   (create-app! app))
 
 (api/defendpoint-schema PUT "/:app-id"
   "Endpoint to change an app"
   [app-id :as {{:keys [dashboard_id options nav_items] :as body} :body}]
-  {app-id su/IntGreaterThanOrEqualToZero
-   dashboard_id (s/maybe su/IntGreaterThanOrEqualToZero)
-   options (s/maybe su/Map)
-   nav_items (s/maybe [(s/maybe su/Map)])}
+  {app-id su/IntGreaterThanOrEqualToZeroPlumatic
+   dashboard_id (s/maybe su/IntGreaterThanOrEqualToZeroPlumatic)
+   options (s/maybe su/MapPlumatic)
+   nav_items (s/maybe [(s/maybe su/MapPlumatic)])}
   (api/write-check Collection (db/select-one-field :collection_id App :id app-id))
   (db/update! App app-id (select-keys body [:dashboard_id :options :nav_items]))
   (hydrate-details (db/select-one App :id app-id)))
@@ -65,7 +65,7 @@
   By default, this returns Apps with non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`."
   [archived]
-  {archived (s/maybe su/BooleanString)}
+  {archived (s/maybe su/BooleanStringPlumatic)}
   (let [archived? (Boolean/parseBoolean archived)]
     (hydrate-details
      (db/select [App :app.*]

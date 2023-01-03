@@ -13,16 +13,16 @@
 
 (def ^:private ExpectedGetCardActionAPIResponse
   "Expected schema for a CardAction as it should appear in the response for an API request to one of the GET endpoints."
-  {:id       su/IntGreaterThanOrEqualToZero
-   :card     {:id            su/IntGreaterThanOrEqualToZero
-              :dataset_query {:database su/IntGreaterThanOrEqualToZero
+  {:id       su/IntGreaterThanOrEqualToZeroPlumatic
+   :card     {:id            su/IntGreaterThanOrEqualToZeroPlumatic
+              :dataset_query {:database su/IntGreaterThanOrEqualToZeroPlumatic
                               :type     (s/eq "native")
                               :native   {:query    s/Str
                                          s/Keyword s/Any}
                               s/Keyword s/Any}
               s/Keyword      s/Any}
    :parameters s/Any
-   :visualization_settings su/Map
+   :visualization_settings su/MapPlumatic
    s/Keyword s/Any})
 
 (deftest list-actions-test

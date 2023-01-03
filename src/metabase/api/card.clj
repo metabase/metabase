@@ -95,7 +95,7 @@
 (s/defn ^:private cards-with-ids :- (s/maybe [CardInstance])
   "Return unarchived Cards with `card-ids`.
   Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
-  [card-ids :- [su/IntGreaterThanZero]]
+  [card-ids :- [su/IntGreaterThanZeroPlumatic]]
   (when (seq card-ids)
     (let [card-id->card (m/index-by :id (db/select Card, :id [:in (set card-ids)], :archived false))]
       (filter identity (map card-id->card card-ids)))))
@@ -141,7 +141,7 @@
   corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
   [f model_id]
   {f        (s/maybe CardFilterOption)
-   model_id (s/maybe su/IntGreaterThanZero)}
+   model_id (s/maybe su/IntGreaterThanZeroPlumatic)}
   (let [f (keyword f)]
     (when (contains? #{:database :table} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
@@ -183,8 +183,8 @@
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
   [id include start end]
   {include (s/maybe api.timeline/Include)
-   start   (s/maybe su/TemporalString)
-   end     (s/maybe su/TemporalString)}
+   start   (s/maybe su/TemporalStringPlumatic)
+   end     (s/maybe su/TemporalStringPlumatic)}
   (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
     ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
     ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
@@ -400,17 +400,17 @@ saved later when it is ready."
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl is_write], :as body} :body}]
-  {name                   su/NonBlankString
-   dataset_query          su/Map
-   parameters             (s/maybe [su/Parameter])
-   parameter_mappings     (s/maybe [su/ParameterMapping])
-   description            (s/maybe su/NonBlankString)
-   display                su/NonBlankString
-   visualization_settings su/Map
-   collection_id          (s/maybe su/IntGreaterThanZero)
-   collection_position    (s/maybe su/IntGreaterThanZero)
+  {name                   su/NonBlankStringPlumatic
+   dataset_query          su/MapPlumatic
+   parameters             (s/maybe [su/ParameterPlumatic])
+   parameter_mappings     (s/maybe [su/ParameterMappingPlumatic])
+   description            (s/maybe su/NonBlankStringPlumatic)
+   display                su/NonBlankStringPlumatic
+   visualization_settings su/MapPlumatic
+   collection_id          (s/maybe su/IntGreaterThanZeroPlumatic)
+   collection_position    (s/maybe su/IntGreaterThanZeroPlumatic)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   cache_ttl              (s/maybe su/IntGreaterThanZero)
+   cache_ttl              (s/maybe su/IntGreaterThanZeroPlumatic)
    is_write               (s/maybe s/Bool)}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
@@ -423,7 +423,7 @@ saved later when it is ready."
 (api/defendpoint-schema POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
   [id]
-  {id (s/maybe su/IntGreaterThanZero)}
+  {id (s/maybe su/IntGreaterThanZeroPlumatic)}
   (let [orig-card (api/read-check Card id)
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
@@ -636,20 +636,20 @@ saved later when it is ready."
                    collection_position enable_embedding embedding_params result_metadata parameters
                    cache_ttl dataset collection_preview]
             :as   card-updates} :body}]
-  {name                   (s/maybe su/NonBlankString)
-   parameters             (s/maybe [su/Parameter])
-   dataset_query          (s/maybe su/Map)
+  {name                   (s/maybe su/NonBlankStringPlumatic)
+   parameters             (s/maybe [su/ParameterPlumatic])
+   dataset_query          (s/maybe su/MapPlumatic)
    dataset                (s/maybe s/Bool)
-   display                (s/maybe su/NonBlankString)
+   display                (s/maybe su/NonBlankStringPlumatic)
    description            (s/maybe s/Str)
-   visualization_settings (s/maybe su/Map)
+   visualization_settings (s/maybe su/MapPlumatic)
    archived               (s/maybe s/Bool)
    enable_embedding       (s/maybe s/Bool)
-   embedding_params       (s/maybe su/EmbeddingParams)
-   collection_id          (s/maybe su/IntGreaterThanZero)
-   collection_position    (s/maybe su/IntGreaterThanZero)
+   embedding_params       (s/maybe su/EmbeddingParamsPlumatic)
+   collection_id          (s/maybe su/IntGreaterThanZeroPlumatic)
+   collection_position    (s/maybe su/IntGreaterThanZeroPlumatic)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   cache_ttl              (s/maybe su/IntGreaterThanZero)
+   cache_ttl              (s/maybe su/IntGreaterThanZeroPlumatic)
    collection_preview     (s/maybe s/Bool)}
   (let [card-before-update (hydrate (api/write-check Card id)
                                     [:moderation_reviews :moderator_details])]
@@ -767,7 +767,7 @@ saved later when it is ready."
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with
   COLLECTION_ID, or remove them from any Collections by passing a `null` COLLECTION_ID."
   [:as {{:keys [card_ids collection_id]} :body}]
-  {card_ids [su/IntGreaterThanZero], collection_id (s/maybe su/IntGreaterThanZero)}
+  {card_ids [su/IntGreaterThanZeroPlumatic], collection_id (s/maybe su/IntGreaterThanZeroPlumatic)}
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
@@ -780,7 +780,7 @@ saved later when it is ready."
   [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
   {ignore_cache (s/maybe s/Bool)
    collection_preview (s/maybe s/Bool)
-   dashboard_id (s/maybe su/IntGreaterThanZero)}
+   dashboard_id (s/maybe su/IntGreaterThanZeroPlumatic)}
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
@@ -800,7 +800,7 @@ saved later when it is ready."
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
   [card-id export-format :as {{:keys [parameters]} :params}]
-  {parameters    (s/maybe su/JSONString)
+  {parameters    (s/maybe su/JSONStringPlumatic)
    export-format api.dataset/ExportFormat}
   (qp.card/run-query-for-card-async
    card-id export-format
@@ -885,7 +885,7 @@ saved later when it is ready."
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query."
   [card-id]
-  {card-id su/IntGreaterThanZero}
+  {card-id su/IntGreaterThanZeroPlumatic}
   (api/let-404 [{:keys [dataset database_id] :as card} (db/select-one Card :id card-id)]
     (let [database (db/select-one Database :id database_id)]
       (api/write-check database)
@@ -908,7 +908,7 @@ saved later when it is ready."
 (api/defendpoint-schema POST "/:card-id/refresh"
   "Refresh the persisted model caching `card-id`."
   [card-id]
-  {card-id su/IntGreaterThanZero}
+  {card-id su/IntGreaterThanZeroPlumatic}
   (api/let-404 [card           (db/select-one Card :id card-id)
                 persisted-info (db/select-one PersistedInfo :card_id card-id)]
     (when (not (:dataset card))
@@ -923,7 +923,7 @@ saved later when it is ready."
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
   [card-id]
-  {card-id su/IntGreaterThanZero}
+  {card-id su/IntGreaterThanZeroPlumatic}
   (api/let-404 [_card (db/select-one Card :id card-id)]
     (api/let-404 [persisted-info (db/select-one PersistedInfo :card_id card-id)]
       (api/write-check (db/select-one Database :id (:database_id persisted-info)))

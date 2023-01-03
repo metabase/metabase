@@ -27,11 +27,11 @@
 (def ^:private GroupPermissionsGraph
   "collection-id -> status"
   {(s/optional-key :root) CollectionPermissions   ; when doing a delta between old graph and new graph root won't always
-   su/IntGreaterThanZero  CollectionPermissions}) ; be present, which is why it's *optional*
+   su/IntGreaterThanZeroPlumatic  CollectionPermissions}) ; be present, which is why it's *optional*
 
 (def ^:private PermissionsGraph
   {:revision s/Int
-   :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
+   :groups   {su/IntGreaterThanZeroPlumatic GroupPermissionsGraph}})
 
 
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
@@ -55,10 +55,10 @@
    (for [collection-id collection-ids]
      {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
-(s/defn ^:private non-personal-collection-ids :- #{su/IntGreaterThanZero}
+(s/defn ^:private non-personal-collection-ids :- #{su/IntGreaterThanZeroPlumatic}
   "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
-  [collection-namespace :- (s/maybe su/KeywordOrString)]
+  [collection-namespace :- (s/maybe su/KeywordOrStringPlumatic)]
   (let [personal-collection-ids (db/select-ids Collection :personal_owner_id [:not= nil])
         honeysql-form           {:select [[:id :id]]
                                  :from   [Collection]
@@ -85,7 +85,7 @@
   ([]
    (graph nil))
 
-  ([collection-namespace :- (s/maybe su/KeywordOrString)]
+  ([collection-namespace :- (s/maybe su/KeywordOrStringPlumatic)]
    (let [group-id->perms (group-id->permissions-set)
          collection-ids  (non-personal-collection-ids collection-namespace)]
      {:revision (c-perm-revision/latest-id)
@@ -96,9 +96,9 @@
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
 (s/defn ^:private update-collection-permissions!
-  [collection-namespace :- (s/maybe su/KeywordOrString)
-   group-id             :- su/IntGreaterThanZero
-   collection-id        :- (s/cond-pre (s/eq :root) su/IntGreaterThanZero)
+  [collection-namespace :- (s/maybe su/KeywordOrStringPlumatic)
+   group-id             :- su/IntGreaterThanZeroPlumatic
+   collection-id        :- (s/cond-pre (s/eq :root) su/IntGreaterThanZeroPlumatic)
    new-collection-perms :- CollectionPermissions]
   (let [collection-id (if (= collection-id :root)
                         (assoc collection/root-collection :namespace collection-namespace)
@@ -111,8 +111,8 @@
       :none  nil)))
 
 (s/defn ^:private update-group-permissions!
-  [collection-namespace :- (s/maybe su/KeywordOrString)
-   group-id             :- su/IntGreaterThanZero
+  [collection-namespace :- (s/maybe su/KeywordOrStringPlumatic)
+   group-id             :- su/IntGreaterThanZeroPlumatic
    new-group-perms      :- GroupPermissionsGraph]
   (doseq [[collection-id new-perms] new-group-perms]
     (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
@@ -124,7 +124,7 @@
   ([new-graph]
    (update-graph! nil new-graph))
 
-  ([collection-namespace :- (s/maybe su/KeywordOrString), new-graph :- PermissionsGraph]
+  ([collection-namespace :- (s/maybe su/KeywordOrStringPlumatic), new-graph :- PermissionsGraph]
    (let [old-graph          (graph collection-namespace)
          old-perms          (:groups old-graph)
          new-perms          (:groups new-graph)

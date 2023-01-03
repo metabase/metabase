@@ -32,10 +32,10 @@
       (or 0)))
 
 (def ^:private NewPulseCard
-  {:card_id                      su/IntGreaterThanZero
-   :pulse_id                     su/IntGreaterThanZero
-   :dashboard_card_id            su/IntGreaterThanZero
-   (s/optional-key :position)    (s/maybe su/IntGreaterThanOrEqualToZero)
+  {:card_id                      su/IntGreaterThanZeroPlumatic
+   :pulse_id                     su/IntGreaterThanZeroPlumatic
+   :dashboard_card_id            su/IntGreaterThanZeroPlumatic
+   (s/optional-key :position)    (s/maybe su/IntGreaterThanOrEqualToZeroPlumatic)
    (s/optional-key :include_csv) (s/maybe s/Bool)
    (s/optional-key :include_xls) (s/maybe s/Bool)})
 

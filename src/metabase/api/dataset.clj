@@ -110,8 +110,8 @@
 (api/defendpoint-schema ^:streaming POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
   [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
-  {query                  su/JSONString
-   visualization_settings su/JSONString
+  {query                  su/JSONStringPlumatic
+   visualization_settings su/JSONStringPlumatic
    export-format          ExportFormat}
   (let [query        (json/parse-string query keyword)
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)

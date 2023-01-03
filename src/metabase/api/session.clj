@@ -32,7 +32,7 @@
    (java.util UUID)))
 
 (s/defn ^:private record-login-history!
-  [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
+  [session-id :- UUID user-id :- su/IntGreaterThanZeroPlumatic device-info :- request.u/DeviceInfo]
   (db/insert! LoginHistory (merge {:user_id    user-id
                                    :session_id (str session-id)}
                                   device-info)))
@@ -45,7 +45,7 @@
     session-type))
 
 (def ^:private CreateSessionUserInfo
-  {:id         su/IntGreaterThanZero
+  {:id         su/IntGreaterThanZeroPlumatic
    :last_login s/Any
    s/Keyword   s/Any})
 
@@ -140,7 +140,7 @@
 (s/defn ^:private login :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
-  [username :- su/NonBlankString password :- su/NonBlankString device-info :- request.u/DeviceInfo]
+  [username :- su/NonBlankStringPlumatic password :- su/NonBlankStringPlumatic device-info :- request.u/DeviceInfo]
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
   (or (ldap-login username password device-info)  ; First try LDAP if it's enabled
       (email-login username password device-info) ; Then try local authentication
@@ -166,8 +166,8 @@
 (api/defendpoint-schema POST "/"
   "Login."
   [:as {{:keys [username password]} :body, :as request}]
-  {username su/NonBlankString
-   password su/NonBlankString}
+  {username su/NonBlankStringPlumatic
+   password su/NonBlankStringPlumatic}
   (let [ip-address   (request.u/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
@@ -221,7 +221,7 @@
 (api/defendpoint-schema POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [:as {{:keys [email]} :body, :as request}]
-  {email su/Email}
+  {email su/EmailPlumatic}
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request.u/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
@@ -252,8 +252,8 @@
 (api/defendpoint-schema POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body, :as request}]
-  {token    su/NonBlankString
-   password su/ValidPassword}
+  {token    su/NonBlankStringPlumatic
+   password su/ValidPasswordPlumatic}
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (user/set-password! user-id password)
         ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
@@ -286,7 +286,7 @@
 (api/defendpoint-schema POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, :as request}]
-  {token su/NonBlankString}
+  {token su/NonBlankStringPlumatic}
   (when-not (google/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google

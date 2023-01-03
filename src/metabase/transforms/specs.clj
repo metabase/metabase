@@ -25,7 +25,7 @@
 
 (def ^:private Filter MBQL)
 
-(def ^:private Limit su/IntGreaterThanZero)
+(def ^:private Limit su/IntGreaterThanZeroPlumatic)
 
 (def ^:private Joins [{(s/required-key :source)    Source
                        (s/required-key :condition) MBQL

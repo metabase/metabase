@@ -15,7 +15,7 @@
 (api/defendpoint-schema POST "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
   [:as {{:keys [password]} :body}]
-  {password su/ValidPassword} ;; if we pass the su/ValidPassword test we're g2g
+  {password su/ValidPasswordPlumatic} ;; if we pass the su/ValidPassword test we're g2g
   {:valid true})
 
 (api/defendpoint-schema GET "/logs"

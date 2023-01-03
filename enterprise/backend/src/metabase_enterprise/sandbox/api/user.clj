@@ -10,7 +10,7 @@
    [toucan.db :as db]))
 
 (def ^:private UserAttributes
-  (su/with-api-error-message (s/maybe {su/NonBlankString s/Any})
+  (su/with-api-error-message (s/maybe {su/NonBlankStringPlumatic s/Any})
     "value must be a valid user attributes map (name -> value)"))
 
 ;; TODO - not sure we need this endpoint now that we're just letting you edit from the regular `PUT /api/user/:id

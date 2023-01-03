@@ -24,7 +24,7 @@
 (def BookmarkOrderings
   "Schema for an ordered of boomark orderings"
   [{:type Models
-    :item_id su/IntGreaterThanZero}])
+    :item_id su/IntGreaterThanZeroPlumatic}])
 
 (def ^:private lookup
   "Lookup map from model as a string to [model bookmark-model item-id-key]."
@@ -43,7 +43,7 @@
   "Create a new bookmark for user."
   [model id]
   {model Models
-   id    su/IntGreaterThanZero}
+   id    su/IntGreaterThanZeroPlumatic}
   (let [[item-model bookmark-model item-key] (lookup model)]
     (api/read-check item-model id)
     (api/check (not (db/exists? bookmark-model item-key id
@@ -55,7 +55,7 @@
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."
   [model id]
   {model Models
-   id    su/IntGreaterThanZero}
+   id    su/IntGreaterThanZeroPlumatic}
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
   (let [[_ bookmark-model item-key] (lookup model)]
     (db/delete! bookmark-model

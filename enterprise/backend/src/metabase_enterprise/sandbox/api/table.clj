@@ -60,9 +60,9 @@
   doesn't add/change anything from the OSS version. See the docs on the OSS version of the endpoint for more
   information."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
-  {include_sensitive_fields    (s/maybe su/BooleanString)
-   include_hidden_fields       (s/maybe su/BooleanString)
-   include_editable_data_model (s/maybe su/BooleanString)}
+  {include_sensitive_fields    (s/maybe su/BooleanStringPlumatic)
+   include_hidden_fields       (s/maybe su/BooleanStringPlumatic)
+   include_editable_data_model (s/maybe su/BooleanStringPlumatic)}
   (let [table            (api/check-404 (db/select-one Table :id id))
         segmented-perms? (only-segmented-perms? table)
         thunk            (fn []

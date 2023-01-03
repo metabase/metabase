@@ -53,7 +53,7 @@
 (def DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
   (su/with-api-error-message (s/constrained
-                              su/NonBlankString
+                              su/NonBlankStringPlumatic
                               #(u/ignore-exceptions (driver/the-driver %))
                               "Valid database engine")
     (deferred-tru "value must be a valid database engine.")))
@@ -80,7 +80,7 @@
   permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
-  [dbs :- [su/Map]]
+  [dbs :- [su/MapPlumatic]]
   (for [db dbs]
     (assoc db :native_permissions (if (perms/set-has-full-permissions? @api/*current-user-permissions-set*
                                         (perms/adhoc-native-query-path (u/the-id db)))
@@ -262,12 +262,12 @@
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
   [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details]
-  {include_tables                (s/maybe su/BooleanString)
-   include_cards                 (s/maybe su/BooleanString)
+  {include_tables                (s/maybe su/BooleanStringPlumatic)
+   include_cards                 (s/maybe su/BooleanStringPlumatic)
    include                       FetchAllIncludeValues
-   saved                         (s/maybe su/BooleanString)
-   include_editable_data_model   (s/maybe su/BooleanString)
-   exclude_uneditable_details    (s/maybe su/BooleanString)}
+   saved                         (s/maybe su/BooleanStringPlumatic)
+   include_editable_data_model   (s/maybe su/BooleanStringPlumatic)
+   exclude_uneditable_details    (s/maybe su/BooleanStringPlumatic)}
   (when (and config/is-dev?
              (or include_tables include_cards))
     ;; don't need to i18n since this is dev-facing only
@@ -401,8 +401,8 @@
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
   [id include_hidden include_editable_data_model]
-  {include_hidden              (s/maybe su/BooleanString)
-   include_editable_data_model (s/maybe su/BooleanString)}
+  {include_hidden              (s/maybe su/BooleanStringPlumatic)
+   include_editable_data_model (s/maybe su/BooleanStringPlumatic)}
   (db-metadata id
                (Boolean/parseBoolean include_hidden)
                (Boolean/parseBoolean include_editable_data_model)))
@@ -523,8 +523,8 @@
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
   [id prefix substring]
   {id        s/Int
-   prefix    (s/maybe su/NonBlankString)
-   substring (s/maybe su/NonBlankString)}
+   prefix    (s/maybe su/NonBlankStringPlumatic)
+   substring (s/maybe su/NonBlankStringPlumatic)}
   (api/read-check Database id)
   (when (and (str/blank? prefix) (str/blank? substring))
     (throw (ex-info "Must include prefix or search" {:status-code 400})))
@@ -543,7 +543,7 @@
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
   [id query]
   {id    s/Int
-   query su/NonBlankString}
+   query su/NonBlankStringPlumatic}
   (api/read-check Database id)
   (try
     (->> (autocomplete-cards id query)
@@ -632,14 +632,14 @@
                             (:name field)))]
     (contains? driver-props "ssl")))
 
-(s/defn ^:private test-connection-details :- su/Map
+(s/defn ^:private test-connection-details :- su/MapPlumatic
   "Try a making a connection to database `engine` with `details`.
 
   If the `details` has SSL explicitly enabled, go with that and do not accept plaintext connections. If it is disabled,
   try twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
   the details used to successfully connect. Otherwise returns a map with the connection error message. (This map will
   also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
-  [engine :- DBEngineString, details :- su/Map]
+  [engine :- DBEngineString, details :- su/MapPlumatic]
   (let [;; Try SSL first if SSL is supported and not already enabled
         ;; If not successful or not applicable, details-with-ssl will be nil
         details-with-ssl (assoc details :ssl true)
@@ -658,14 +658,14 @@
 (api/defendpoint-schema POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl]} :body}]
-  {name             su/NonBlankString
+  {name             su/NonBlankStringPlumatic
    engine           DBEngineString
-   details          su/Map
+   details          su/MapPlumatic
    is_full_sync     (s/maybe s/Bool)
    is_on_demand     (s/maybe s/Bool)
    schedules        (s/maybe sync.schedules/ExpandedSchedulesMap)
    auto_run_queries (s/maybe s/Bool)
-   cache_ttl        (s/maybe su/IntGreaterThanZero)}
+   cache_ttl        (s/maybe su/IntGreaterThanZeroPlumatic)}
   (api/check-superuser)
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
@@ -706,7 +706,7 @@
   ;; TODO - why do we pass the DB in under the key `details`?
   [:as {{{:keys [engine details]} :details} :body}]
   {engine  DBEngineString
-   details su/Map}
+   details su/MapPlumatic}
   (api/check-superuser)
   (let [details-or-error (test-connection-details engine details)]
     {:valid (not (false? (:valid details-or-error)))}))
@@ -740,7 +740,7 @@
 (api/defendpoint-schema POST "/:id/persist"
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [id]
-  {:id su/IntGreaterThanZero}
+  {:id su/IntGreaterThanZeroPlumatic}
   (api/check (public-settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
@@ -766,7 +766,7 @@
 (api/defendpoint-schema POST "/:id/unpersist"
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
-  {:id su/IntGreaterThanZero}
+  {:id su/IntGreaterThanZeroPlumatic}
   (api/let-404 [database (db/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :options :persist-models-enabled)
@@ -782,17 +782,17 @@
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
                    auto_run_queries refingerprint cache_ttl settings]} :body}]
-  {name               (s/maybe su/NonBlankString)
+  {name               (s/maybe su/NonBlankStringPlumatic)
    engine             (s/maybe DBEngineString)
    refingerprint      (s/maybe s/Bool)
-   details            (s/maybe su/Map)
+   details            (s/maybe su/MapPlumatic)
    schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
    description        (s/maybe s/Str)   ; s/Str instead of su/NonBlankString because we don't care
    caveats            (s/maybe s/Str)   ; whether someone sets these to blank strings
    points_of_interest (s/maybe s/Str)
    auto_run_queries   (s/maybe s/Bool)
-   cache_ttl          (s/maybe su/IntGreaterThanZero)
-   settings           (s/maybe su/Map)}
+   cache_ttl          (s/maybe su/IntGreaterThanZeroPlumatic)
+   settings           (s/maybe su/MapPlumatic)}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (db/select-one Database :id id))
         details           (driver.u/db-details-client->server engine details)

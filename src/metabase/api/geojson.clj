@@ -24,8 +24,8 @@
   :default    true)
 
 (def ^:private CustomGeoJSON
-  {s/Keyword {:name                     su/NonBlankString
-              :url                      su/NonBlankString
+  {s/Keyword {:name                     su/NonBlankStringPlumatic
+              :url                      su/NonBlankStringPlumatic
               :region_key               (s/maybe s/Str)
               :region_name              (s/maybe s/Str)
               (s/optional-key :builtin) s/Bool}})
@@ -120,7 +120,7 @@
   "Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This just acts as a simple proxy for the
   file specified for `key`)."
   [{{:keys [key]} :params} respond raise]
-  {key su/NonBlankString}
+  {key su/NonBlankStringPlumatic}
   (when-not (or (custom-geojson-enabled) (builtin-geojson (keyword key)))
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
   (if-let [url (get-in (custom-geojson) [(keyword key) :url])]
@@ -134,7 +134,7 @@
   "Load a custom GeoJSON file based on a URL or file path provided as a query parameter.
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
   [{{:keys [url]} :params} respond raise]
-  {url su/NonBlankString}
+  {url su/NonBlankStringPlumatic}
   (validation/check-has-application-permission :setting)
   (when-not (custom-geojson-enabled)
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))

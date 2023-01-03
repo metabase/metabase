@@ -21,8 +21,8 @@
 ;; TODO: Appears to be unused, remove?
 (def ReviewChanges
   "Schema for a ModerationReview that's being updated (so most keys are optional)"
-  {(s/optional-key :id)                  su/IntGreaterThanZero
-   (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
+  {(s/optional-key :id)                  su/IntGreaterThanZeroPlumatic
+   (s/optional-key :moderated_item_id)   su/IntGreaterThanZeroPlumatic
    (s/optional-key :moderated_item_type) moderation/moderated-item-types
    (s/optional-key :status)              Statuses
    (s/optional-key :text)                (s/maybe s/Str)
@@ -65,9 +65,9 @@
 (s/defn create-review!
   "Create a new ModerationReview"
   [params :-
-   {:moderated_item_id       su/IntGreaterThanZero
+   {:moderated_item_id       su/IntGreaterThanZeroPlumatic
     :moderated_item_type     moderation/moderated-item-types
-    :moderator_id            su/IntGreaterThanZero
+    :moderator_id            su/IntGreaterThanZeroPlumatic
     (s/optional-key :status) Statuses
     (s/optional-key :text)   (s/maybe s/Str)}]
   (db/transaction

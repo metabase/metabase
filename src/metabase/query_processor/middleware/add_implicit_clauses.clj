@@ -42,7 +42,7 @@
 (s/defn sorted-implicit-fields-for-table :- mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in [[metabase.query-processor.sort]], for all the Fields in a given Table."
-  [table-id :- su/IntGreaterThanZero]
+  [table-id :- su/IntGreaterThanZeroPlumatic]
   (let [fields (table->sorted-fields table-id)]
     (when (empty? fields)
       (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (qp.store/table table-id))))

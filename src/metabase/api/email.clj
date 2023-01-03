@@ -91,7 +91,7 @@
 (api/defendpoint-schema PUT "/"
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
-  {settings su/Map}
+  {settings su/MapPlumatic}
   (validation/check-has-application-permission :setting)
   (let [;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
         ;; the obfuscated version

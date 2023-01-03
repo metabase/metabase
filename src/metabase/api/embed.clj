@@ -92,7 +92,7 @@
   that ones that are required are specified by checking them against a Card or Dashboard's `object-embedding-params`
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
   returns a *merged* parameters map."
-  [object-embedding-params :- su/EmbeddingParams
+  [object-embedding-params :- su/EmbeddingParamsPlumatic
    token-params            :- {s/Keyword s/Any}
    user-params             :- {s/Keyword s/Any}]
   (check-param-sets object-embedding-params
@@ -115,7 +115,7 @@
   "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
-  [dashboard-or-card embedding-params :- su/EmbeddingParams]
+  [dashboard-or-card embedding-params :- su/EmbeddingParamsPlumatic]
   (let [params-to-remove (set (concat (for [[param status] embedding-params
                                             :when          (not= status "enabled")]
                                         param)
@@ -178,7 +178,7 @@
   [card]
   (update card :parameters concat (template-tag-parameters card)))
 
-(s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
+(s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankStringPlumatic
                                                   :type   s/Keyword
                                                   :target s/Any
                                                   :value  s/Any}])
@@ -209,7 +209,7 @@
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
   [[metabase.api.dashboard/run-query-for-dashcard-async]]."
-  [dashboard-id :- su/IntGreaterThanZero
+  [dashboard-id :- su/IntGreaterThanZeroPlumatic
    slug->value  :- {s/Any s/Any}]
   (let [parameters (db/select-one-field :parameters Dashboard :id dashboard-id)
         slug->id   (into {} (map (juxt :slug :id)) parameters)]
@@ -460,8 +460,8 @@
 (api/defendpoint-schema GET "/card/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by an embedded Card."
   [token field-id search-field-id value limit]
-  {value su/NonBlankString
-   limit (s/maybe su/IntStringGreaterThanZero)}
+  {value su/NonBlankStringPlumatic
+   limit (s/maybe su/IntStringGreaterThanZeroPlumatic)}
   (let [unsigned-token (embed/unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
@@ -470,8 +470,8 @@
 (api/defendpoint-schema GET "/dashboard/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in an embedded Dashboard."
   [token field-id search-field-id value limit]
-  {value su/NonBlankString
-   limit (s/maybe su/IntStringGreaterThanZero)}
+  {value su/NonBlankStringPlumatic
+   limit (s/maybe su/IntStringGreaterThanZeroPlumatic)}
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -485,7 +485,7 @@
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Cards."
   [token field-id remapped-id value]
-  {value su/NonBlankString}
+  {value su/NonBlankStringPlumatic}
   (let [unsigned-token (embed/unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
@@ -495,7 +495,7 @@
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Dashboards."
   [token field-id remapped-id value]
-  {value su/NonBlankString}
+  {value su/NonBlankStringPlumatic}
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -526,7 +526,7 @@
 ;; variables whose name includes `id-` e.g. `id-query-params` below are ones that are keyed by ID; ones whose name
 ;; includes `slug-` are keyed by slug.
 
-(s/defn ^:private param-values-merged-params :- {su/NonBlankString s/Any}
+(s/defn ^:private param-values-merged-params :- {su/NonBlankStringPlumatic s/Any}
   [id->slug slug->id embedding-params token-params id-query-params]
   (let [slug-query-params  (into {}
                                  (for [[id v] id-query-params]

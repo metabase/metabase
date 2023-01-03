@@ -84,7 +84,7 @@
 
 (s/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
-  [id :- su/IntGreaterThanZero]
+  [id :- su/IntGreaterThanZeroPlumatic]
   (-> (db/select-one DashboardCard :id id)
       (hydrate :series)))
 
@@ -119,8 +119,8 @@
    *  If an existing DashboardCardSeries has no corresponding ID in `card-ids`, it will be deleted.
    *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
   {:arglists '([dashboard-card card-ids])}
-  [{:keys [id]} :- {:id su/IntGreaterThanZero, s/Keyword s/Any}
-   card-ids     :- [su/IntGreaterThanZero]]
+  [{:keys [id]} :- {:id su/IntGreaterThanZeroPlumatic, s/Keyword s/Any}
+   card-ids     :- [su/IntGreaterThanZeroPlumatic]]
   ;; first off, just delete all series on the dashboard card (we add them again below)
   (db/delete! DashboardCardSeries :dashboardcard_id id)
   ;; now just insert all of the series that were given to us
@@ -131,12 +131,12 @@
       (db/insert-many! DashboardCardSeries cards))))
 
 (def ^:private DashboardCardUpdates
-  {:id                                      su/IntGreaterThanZero
-   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZero)
-   (s/optional-key :parameter_mappings)     (s/maybe [su/Map])
-   (s/optional-key :visualization_settings) (s/maybe su/Map)
+  {:id                                      su/IntGreaterThanZeroPlumatic
+   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZeroPlumatic)
+   (s/optional-key :parameter_mappings)     (s/maybe [su/MapPlumatic])
+   (s/optional-key :visualization_settings) (s/maybe su/MapPlumatic)
    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
-   (s/optional-key :series)                 (s/maybe [su/IntGreaterThanZero])
+   (s/optional-key :series)                 (s/maybe [su/IntGreaterThanZeroPlumatic])
    s/Keyword                                s/Any})
 
 (s/defn update-dashboard-card!
@@ -169,18 +169,18 @@
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
-  {:parameter_id su/NonBlankString
+  {:parameter_id su/NonBlankStringPlumatic
    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed
    #_:target       #_s/Any
    s/Keyword     s/Any})
 
 (def ^:private NewDashboardCard
-  {:dashboard_id                            su/IntGreaterThanZero
-   (s/optional-key :card_id)                (s/maybe su/IntGreaterThanZero)
-   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZero)
+  {:dashboard_id                            su/IntGreaterThanZeroPlumatic
+   (s/optional-key :card_id)                (s/maybe su/IntGreaterThanZeroPlumatic)
+   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZeroPlumatic)
    ;; TODO - use ParamMapping. Breaks too many tests right now tho
-   (s/optional-key :parameter_mappings)     (s/maybe [#_ParamMapping su/Map])
-   (s/optional-key :visualization_settings) (s/maybe su/Map)
+   (s/optional-key :parameter_mappings)     (s/maybe [#_ParamMapping su/MapPlumatic])
+   (s/optional-key :visualization_settings) (s/maybe su/MapPlumatic)
    ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys
    s/Keyword                                s/Any})
 
