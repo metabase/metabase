@@ -86,7 +86,7 @@
          " dispatched by " dispatcher)))
 
 (defmethod accept :map-of [_ schema children _]
-  (str "a map " (titled schema) "from " (diamond (first children)) " to " (diamond (second children)) (min-max-suffix schema)))
+  (str "map " (titled schema) "from " (diamond (first children)) " to " (diamond (second children)) (min-max-suffix schema)))
 
 (defmethod accept 'vector? [_ schema children _] (str "vector" (titled schema) (min-max-suffix schema) " of " (first children)))
 (defmethod accept :vector [_ schema children _] (str "vector" (titled schema) (min-max-suffix schema) " of " (first children)))
@@ -133,10 +133,10 @@
 (defmethod accept :select-keys [_ schema _ options] ((::describe options) (mc/deref schema) options))
 
 (defmethod accept :and [_ s children _] (str (str/join ", and " children) (titled s)))
-(defmethod accept :enum [_ s children _options] (str "an enum" (titled s) " of " (str/join ", " children)))
-(defmethod accept :maybe [_ s children _] (str "a nullable " (titled s) (first children)))
-(defmethod accept :tuple [_ s children _] (str "a vector " (titled s) "with exactly " (count children) " items of type: " (str/join ", " children)))
-(defmethod accept :re [_ s _ options] (str "a regex pattern " (titled s) "matching " (pr-str (first (mc/children s options)))))
+(defmethod accept :enum [_ s children _options] (str "enum" (titled s) " of " (str/join ", " children)))
+(defmethod accept :maybe [_ s children _] (str "nullable " (titled s) (first children)))
+(defmethod accept :tuple [_ s children _] (str "vector " (titled s) "with exactly " (count children) " items of type: " (str/join ", " children)))
+(defmethod accept :re [_ s _ options] (str "regex pattern " (titled s) "matching " (pr-str (first (mc/children s options)))))
 
 (defmethod accept 'any? [_ s _ _] (str "anything" (titled s)))
 (defmethod accept :any [_ s _ _] (str "anything" (titled s)))
@@ -168,10 +168,10 @@
 
 (defmethod accept :=> [_ s _ _]
   (let [{:keys [input output]} (mc/-function-info s)]
-    (str "a function that takes input: [" (describe input) "] and returns " (describe output))))
+    (str "function that takes input: [" (describe input) "] and returns " (describe output))))
 
-(defmethod accept :function [_ _ _children _] "a function")
-(defmethod accept :fn [_ _ _ _] "a function")
+(defmethod accept :function [_ _ _children _] "function")
+(defmethod accept :fn [_ _ _ _] "function")
 
 (defmethod accept :or [_ _ children _] (str/join ", or " children))
 (defmethod accept :orn [_ _ children _] (str/join ", or " (map (fn [[tag _ c]] (str c " (tag: " tag ")" )) children)))
@@ -193,8 +193,10 @@
   (let [optional (set (->> children (filter (mc/-comp :optional second)) (mapv first)))
         additional-properties (:closed (mc/properties schema))
         kv-description (str/join ", " (map (fn [[k _ s]] (str k (when (contains? optional  k) " (optional)") " -> " (diamond s))) children))]
-    (cond-> (str "a map where {" kv-description "}")
-      additional-properties (str " with no other keys"))))
+    (str/trim
+     (cond-> (str "map ")
+       (seq kv-description) (str "where {" kv-description "} ")
+       additional-properties (str "with no other keys ")))))
 
 (defmethod accept ::mc/val [_ _ children _] (first children))
 (defmethod accept 'map? [n schema children o] (-map n schema children o))
@@ -224,4 +226,4 @@
                         {::mc/walk-entry-vals true,
                          ::definitions definitions,
                          ::describe -describe})]
-     (-describe ?schema options))))
+     (str/trim (-describe ?schema options)))))
