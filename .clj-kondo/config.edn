@@ -53,7 +53,7 @@
   {:exclude
    {metabase.cmd/dump                                                            {:namespaces ["metabase.cmd-test" "metabase-enterprise.serialization.cmd-test"]}
     metabase.cmd/load                                                            {:namespaces ["metabase.cmd-test" "metabase-enterprise.serialization.cmd-test"]}
-    metabase.api.common/defendpoint-schema                                       {:namespaces ["metabase.api.*" "metabase-enterprise.*.api"]}
+    metabase.api.common/defendpoint-schema                                       {:namespaces ["metabase.api.*" "metabase-enterprise.*.api" "metabase.util.schema-test"]}
     metabase.api.common/defendpoint-async-schema                                 {:namespaces ["metabase.api.*"]}
     metabase.db.data-migrations/data-migrations                                  {:namespaces ["metabase.db.data-migrations"]}
     metabase.db.data-migrations/defmigration                                     {:namespaces ["metabase.db.data-migrations"]}
