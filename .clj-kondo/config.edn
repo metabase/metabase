@@ -120,8 +120,12 @@
     honeysql.types                                                  htypes
     java-time                                                       t
     malli.core                                                      mc
+    malli.error                                                     me
     malli.experimental                                              mx
+    malli.generator                                                 mg
+    malli.provider                                                  mp
     malli.transform                                                 mtx
+    malli.util                                                      mut
     medley.core                                                     m
     metabase-enterprise.audit-app.pages.common                      common
     metabase-enterprise.sandbox.api.table                           table

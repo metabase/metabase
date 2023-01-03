@@ -4,7 +4,7 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [compojure.core :refer [POST]]
-   [malli.util :as mu]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.internal :as internal]
@@ -28,7 +28,7 @@
      [:lonlat [:tuple double? double?]]]]])
 
 (def ClosedTestAddress
-  (mu/closed-schema TestAddress))
+  (mut/closed-schema TestAddress))
 
 (api/defendpoint POST "/post/any" [:as {body :body :as _request}]
   {:status 200 :body body})
