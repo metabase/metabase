@@ -1,11 +1,13 @@
 (ns metabase.events.activity-feed-test
-  (:require [clojure.test :refer :all]
-            [metabase.events.activity-feed :as events.activity-feed]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.events.activity-feed :as events.activity-feed]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models
+    :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn- activity
   ([topic]
@@ -132,6 +134,7 @@
                 :table_id    nil
                 :details     {:name        "My Cool Dashboard"
                               :description nil
+                              :parameters  []
                               :dashcards   [{:description (:description card)
                                              :name        (:name card)
                                              :id          (:id dashcard)
@@ -156,6 +159,7 @@
                 :table_id    nil
                 :details     {:name        "My Cool Dashboard"
                               :description nil
+                              :parameters  []
                               :dashcards   [{:description (:description card)
                                              :name        (:name card)
                                              :id          (:id dashcard)

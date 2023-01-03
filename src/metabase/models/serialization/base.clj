@@ -9,13 +9,14 @@
 
   If the model is not exported, add it to the exclusion lists in the tests. Every model should be explicitly listed as
   exported or not, and a test enforces this so serialization isn't forgotten for new models."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.models.interface :as mi]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              :serdes/meta                                                      |

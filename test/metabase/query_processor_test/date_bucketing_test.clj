@@ -14,26 +14,27 @@
 
   If a report timezone is specified and the database supports it, the JVM timezone should have no impact on queries or
   their results."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.format-rows :as format-rows]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.regex :as u.regex]
-            [potemkin.types :as p.types]
-            [pretty.core :as pretty]
-            [toucan.db :as db])
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.format-rows :as format-rows]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.regex :as u.regex]
+   [potemkin.types :as p.types]
+   [pretty.core :as pretty]
+   [toucan.db :as db])
   (:import [java.time LocalDate LocalDateTime]))
 
 (defn- ->long-if-number [x]

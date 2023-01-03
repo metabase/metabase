@@ -1,9 +1,10 @@
 (ns release.common.github
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.string :as str]
-            [metabuild-common.core :as u]
-            [release.common :as c]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [metabuild-common.core :as u]
+   [release.common :as c]))
 
 (defn github-api-base []
   (str "https://api.github.com/repos/" (c/metabase-repo)))

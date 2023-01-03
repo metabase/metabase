@@ -122,7 +122,7 @@ export function isAdHocModelQuestionCard(card: Card, originalCard?: Card) {
   const isSameCard = card.id === originalCard.id;
   const { query } = card.dataset_query as StructuredDatasetQuery;
   const isSelfReferencing =
-    query["source-table"] === getQuestionVirtualTableId(originalCard);
+    query["source-table"] === getQuestionVirtualTableId(originalCard.id);
 
   return isModel && isSameCard && isSelfReferencing;
 }

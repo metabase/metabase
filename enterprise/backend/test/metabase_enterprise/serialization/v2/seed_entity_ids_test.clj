@@ -7,7 +7,8 @@
    [metabase.models :refer [Collection]]
    [metabase.test :as mt]
    [toucan.db :as db])
-  (:import java.time.LocalDateTime))
+  (:import
+   (java.time LocalDateTime)))
 
 (deftest seed-entity-ids-test
   (testing "Sanity check: should succeed before we go around testing specific situations"

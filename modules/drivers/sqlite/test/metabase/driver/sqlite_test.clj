@@ -182,14 +182,14 @@
                                        {:fields [$col_timestamp $col_date $col_datetime]
                                         :filter [:= $test_case "epoch"]})))))
           (testing "select datetime stored as string with milliseconds"
-            (is (= [["2021-08-25 04:18:24.111"    ; TIMESTAMP (raw string)
+            (is (= [["2021-08-25T04:18:24.111Z"   ; TIMESTAMP (raw string)
                      "2021-08-25T04:18:24.111Z"]] ; DATETIME
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
                                        {:fields [$col_timestamp $col_datetime]
                                         :filter [:= $test_case "iso8601-ms"]})))))
           (testing "select datetime stored as string without milliseconds"
-            (is (= [["2021-08-25 04:18:24"    ; TIMESTAMP (raw string)
+            (is (= [["2021-08-25T04:18:24Z"   ; TIMESTAMP (raw string)
                      "2021-08-25T04:18:24Z"]] ; DATETIME
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table

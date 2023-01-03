@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.prevent-infinite-recursive-preprocesses
-  (:require [clojure.tools.logging :as log]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [clojure.tools.logging :as log]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.i18n :refer [tru]]))
 
 (def ^:private ^:dynamic *preprocessing-level* 1)
 

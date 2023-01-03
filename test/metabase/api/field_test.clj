@@ -1,19 +1,20 @@
 (ns metabase.api.field-test
   "Tests for `/api/field` endpoints."
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.field :as api.field]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database Field FieldValues Table]]
-            [metabase.sync :as sync]
-            [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]
-            [ring.util.codec :as codec]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.field :as api.field]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database Field FieldValues Table]]
+   [metabase.sync :as sync]
+   [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util :as u]
+   [ring.util.codec :as codec]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 

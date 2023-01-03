@@ -1,19 +1,22 @@
 (ns metabase.api.timeline-event
   "/api/timeline-event endpoints."
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.common :as api]
-            [metabase.models.collection :as collection]
-            [metabase.models.timeline :as timeline :refer [Timeline]]
-            [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
+   [metabase.models.collection :as collection]
+   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.models.timeline-event
+    :as timeline-event
+    :refer [TimelineEvent]]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
-(api/defendpoint POST "/"
+(api/defendpoint-schema POST "/"
   "Create a new [[TimelineEvent]]."
   [:as {{:keys [name description timestamp time_matters timezone icon timeline_id source question_id archived] :as body} :body}]
   {name         su/NonBlankString
@@ -35,7 +38,7 @@
     ;; todo: revision system
     (let [parsed   (if (nil? timestamp)
                      (throw (ex-info (tru "Timestamp cannot be null") {:status-code 400}))
-                   (u.date/parse timestamp))
+                     (u.date/parse timestamp))
           tl-event (merge (dissoc body :source :question_id)
                           {:creator_id api/*current-user-id*
                            :timestamp  parsed}
@@ -49,12 +52,12 @@
                                (boolean question_id) (assoc :question_id question_id)))
       (db/insert! TimelineEvent tl-event))))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
   [id]
   (api/read-check TimelineEvent id))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update a [[TimelineEvent]]."
   [id :as {{:keys [name description timestamp time_matters timezone icon timeline_id archived]
             :as   timeline-event-updates} :body}]
@@ -77,7 +80,7 @@
         :non-nil #{:name}))
     (db/select-one TimelineEvent :id id)))
 
-(api/defendpoint DELETE "/:id"
+(api/defendpoint-schema DELETE "/:id"
   "Delete a [[TimelineEvent]]."
   [id]
   (api/write-check TimelineEvent id)

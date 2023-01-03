@@ -1,3 +1,4 @@
+import { XMLHttpRequest } from "xmlhttprequest";
 import "raf/polyfill";
 import "jest-localstorage-mock";
 import "jest-canvas-mock";
@@ -10,6 +11,10 @@ import "__support__/mocks";
 process.on("uncaughtException", err =>
   console.error("WARNING: UNCAUGHT EXCEPTION", err),
 );
+
+if (!global.XMLHttpRequest) {
+  global.XMLHttpRequest = XMLHttpRequest;
+}
 
 if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
   global.console = {

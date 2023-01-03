@@ -1,9 +1,10 @@
 (ns metabase.pulse.render.table-test
-  (:require [clojure.test :refer :all]
-            [metabase.pulse.render.color :as color]
-            [metabase.pulse.render.table :as table]
-            [metabase.pulse.render.test-util :as render.tu]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.pulse.render.color :as color]
+   [metabase.pulse.render.table :as table]
+   [metabase.pulse.render.test-util :as render.tu]
+   [metabase.test :as mt]))
 
 (defn- query-results->header+rows
   "Makes pulse header and data rows with no bar-width. Including bar-width just adds extra HTML that will be ignored."
@@ -76,9 +77,9 @@
 (deftest header-truncation-test []
   (let [[normal-heading long-heading :as row] ["Count" (apply str (repeat 120 "A"))]
         [normal-rendered long-rendered]       (->> (#'table/render-table-head {:row row})
-                                             (tree-seq vector? rest)
-                                             (filter #(= :th (first %)))
-                                             (map last))]
+                                               (tree-seq vector? rest)
+                                               (filter #(= :th (first %)))
+                                               (map last))]
     (testing "Table Headers are truncated if they are really long."
       (is (= normal-heading normal-rendered))
       (is (= "A..." (subs long-rendered (- (count long-rendered) 4) (count long-rendered))))

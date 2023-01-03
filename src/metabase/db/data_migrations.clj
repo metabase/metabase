@@ -7,16 +7,17 @@
   That said, these migrations should be idempotent, e.g:
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [cheshire.core :as json]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.setting :as setting :refer [Setting]]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting :refer [Setting]]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; # Migration Helpers
 

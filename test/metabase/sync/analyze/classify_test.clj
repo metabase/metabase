@@ -1,15 +1,16 @@
 (ns metabase.sync.analyze.classify-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.analyze.classify :as classify]
-            [metabase.sync.interface :as i]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync.analyze.classify :as classify]
+   [metabase.sync.interface :as i]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (deftest fields-to-classify-test
   (testing "Finds current fingerprinted versions that are not analyzed"

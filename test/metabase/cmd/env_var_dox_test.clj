@@ -1,13 +1,14 @@
 (ns metabase.cmd.env-var-dox-test
-  (:require [clojure.test :refer :all]
-            [metabase.cmd.env-var-dox :as sut]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.cmd.env-var-dox :as sut]))
 
-(def settings '({:description "Have we sent an abandonment email to the instance admin?",
+(def settings '({:description "Have we sent a follow up email to the instance admin?",
                  :database-local :never,
                  :cache? true,
                  :user-local :never,
                  :default false,
-                 :name :abandonment-email-sent,
+                 :name :follow-up-email-sent,
                  :type :boolean,
                  :enabled? nil,
                  :deprecated nil,
@@ -16,7 +17,7 @@
                  :on-change nil,
                  :doc nil,
                  :namespace metabase.task.follow-up-emails,
-                 :munged-name "abandonment-email-sent",
+                 :munged-name "follow-up-email-sent",
                  :visibility :internal}
                 {:description "The email address users should be referred to if they encounter a problem.",
                  :database-local :never,
@@ -53,7 +54,7 @@
                  :munged-name "analytics-uuid",
                  :visibility :public}))
 
-(def expected-docs '("### `MB_ABANDONMENT_EMAIL_SENT`\n\nType: boolean\n\nDefault: `false`\n\nHave we sent an abandonment email to the instance admin?"
+(def expected-docs '("### `MB_FOLLOW_UP_EMAIL_SENT`\n\nType: boolean\n\nDefault: `false`\n\nHave we sent a follow up email to the instance admin?"
                      "### `MB_ADMIN_EMAIL`\n\nType: string\n\nDefault: `null`\n\nThe email address users should be referred to if they encounter a problem."))
 
 (deftest test-env-var-docs

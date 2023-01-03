@@ -31,10 +31,7 @@ import {
   maybeUsePivotEndpoint,
   MetabaseApi,
 } from "metabase/services";
-import {
-  Parameter as ParameterObject,
-  ParameterValues,
-} from "metabase-types/types/Parameter";
+import { ParameterValues } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { Column, Dataset, Value } from "metabase-types/types/Dataset";
@@ -46,7 +43,7 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId } from "metabase-types/api";
+import { CollectionId, Parameter as ParameterObject } from "metabase-types/api";
 
 import {
   getParameterValuesBySlug,
@@ -583,7 +580,7 @@ class QuestionInner {
           type: "query",
           database: this.databaseId(),
           query: {
-            "source-table": getQuestionVirtualTableId(this.card()),
+            "source-table": getQuestionVirtualTableId(this.id()),
           },
         },
       };
@@ -600,7 +597,7 @@ class QuestionInner {
       type: "query",
       database: this.databaseId(),
       query: {
-        "source-table": getQuestionVirtualTableId(this.card()),
+        "source-table": getQuestionVirtualTableId(this.id()),
       },
     });
   }
@@ -1008,7 +1005,7 @@ class QuestionInner {
     if (this.isDataset() && this.isSaved()) {
       dependencies.push({
         type: "table",
-        id: getQuestionVirtualTableId(this.card()),
+        id: getQuestionVirtualTableId(this.id()),
       });
     }
 

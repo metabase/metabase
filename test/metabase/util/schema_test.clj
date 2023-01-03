@@ -1,12 +1,13 @@
 (ns metabase.util.schema-test
   "Tests for utility schemas and various API helper functions."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [compojure.core :refer [POST]]
-            [metabase.api.common :as api]
-            [metabase.test :as mt]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [compojure.core :refer [POST]]
+   [metabase.api.common :as api]
+   [metabase.test :as mt]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (deftest ^:parallel generate-api-error-message-test
   (testing "check that the API error message generation is working as intended"
@@ -31,7 +32,7 @@
                  {:a {:b {:c {:d {:key                           (s/maybe s/Bool)
                                   (s/optional-key :optional-key) s/Int}}}}}))))))
 
-(api/defendpoint POST "/:id/dimension"
+(api/defendpoint-schema POST "/:id/dimension"
   "Sets the dimension for the given object with ID."
   #_{:clj-kondo/ignore [:unused-binding]}
   [id :as {{dimension-type :type, dimension-name :name} :body}]

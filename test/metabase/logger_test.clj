@@ -1,9 +1,10 @@
 (ns metabase.logger-test
-  (:require [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [clojure.tools.logging.impl :as log.impl]
-            [metabase.logger :as mb.logger]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.tools.logging :as log]
+   [clojure.tools.logging.impl :as log.impl]
+   [metabase.logger :as mb.logger]
+   [metabase.test :as mt]))
 
 (deftest added-appender-tests
   (testing "appender is added to the logger"

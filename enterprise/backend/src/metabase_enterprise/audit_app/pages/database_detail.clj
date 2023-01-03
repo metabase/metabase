@@ -1,9 +1,10 @@
 (ns metabase-enterprise.audit-app.pages.database-detail
-  (:require [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as s]))
+  (:require
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [schema.core :as s]))
 
 ;; Query execution history for queries against this Database.
 (s/defmethod audit.i/internal-query ::audit-log

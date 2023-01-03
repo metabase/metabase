@@ -1,6 +1,7 @@
 (ns column.strict
-  (:require [clojure.spec.alpha :as s]
-            column.common))
+  (:require
+   [clojure.spec.alpha :as s]
+   [column.common]))
 
 (defmulti column-name :name)
 

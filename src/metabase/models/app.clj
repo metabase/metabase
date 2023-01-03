@@ -1,11 +1,12 @@
 (ns metabase.models.app
-  (:require [metabase.models.action :as action]
-            [metabase.models.permissions :as perms]
-            [metabase.models.query :as query]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.action :as action]
+   [metabase.models.permissions :as perms]
+   [metabase.models.query :as query]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel App :app)
 

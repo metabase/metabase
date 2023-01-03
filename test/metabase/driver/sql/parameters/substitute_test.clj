@@ -1,20 +1,21 @@
 (ns metabase.driver.sql.parameters.substitute-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters.parse :as params.parse]
-            [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models :refer [Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.parameters.native :as qp.native]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test :as mt]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models :refer [Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.parameters.native :as qp.native]
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.test :as mt]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))

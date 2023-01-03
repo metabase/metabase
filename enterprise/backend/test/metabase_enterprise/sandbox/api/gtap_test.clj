@@ -1,13 +1,14 @@
 (ns metabase-enterprise.sandbox.api.gtap-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card Field PermissionsGroup Table]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase.http-client :as client]
+   [metabase.models :refer [Card Field PermissionsGroup Table]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [schema.core :as s]))
 
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"

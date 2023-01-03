@@ -1,18 +1,18 @@
 (ns release
-  (:require [clojure.string :as str]
-            [environ.core :as env]
-            [flatland.ordered.map :as ordered-map]
-            [metabuild-common.core :as u]
-            [release
-             [check-prereqs :as check-prereqs]
-             [common :as c]
-             [draft-release :as draft-release]
-             [elastic-beanstalk :as eb]
-             [git-tags :as git-tags]
-             [set-build-options :as set-build-options]
-             [uberjar :as uberjar]
-             [version-info :as version-info]]
-            [release.common.slack :as slack]))
+  (:require
+   [clojure.string :as str]
+   [environ.core :as env]
+   [flatland.ordered.map :as ordered-map]
+   [metabuild-common.core :as u]
+   [release.check-prereqs :as check-prereqs]
+   [release.common :as c]
+   [release.common.slack :as slack]
+   [release.draft-release :as draft-release]
+   [release.elastic-beanstalk :as eb]
+   [release.git-tags :as git-tags]
+   [release.set-build-options :as set-build-options]
+   [release.uberjar :as uberjar]
+   [release.version-info :as version-info]))
 
 (set! *warn-on-reflection* true)
 

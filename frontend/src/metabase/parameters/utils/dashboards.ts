@@ -2,15 +2,15 @@ import _ from "underscore";
 
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { slugify } from "metabase/lib/formatting";
-import type {
-  Parameter,
-  ParameterMappingOptions,
-} from "metabase-types/types/Parameter";
+import type { ParameterMappingOptions } from "metabase-types/types/Parameter";
 import type {
   Card,
   Dashboard,
   DashboardParameterMapping,
   DashboardOrderedCard,
+  ValuesSourceType,
+  ValuesSourceConfig,
+  Parameter,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
@@ -64,6 +64,14 @@ export function setParameterName(
     name: name,
     slug: slug,
   };
+}
+
+export function getSourceType(parameter: Parameter): ValuesSourceType {
+  return parameter.values_source_type ?? null;
+}
+
+export function getSourceConfig(parameter: Parameter): ValuesSourceConfig {
+  return parameter.values_source_config ?? {};
 }
 
 export function getIsMultiSelect(parameter: Parameter): boolean {

@@ -1,7 +1,8 @@
 (ns metabase.util.i18n.plural-test
-  (:require [clojure.test :refer :all]
-            [instaparse.core :as insta]
-            [metabase.util.i18n.plural :as i18n.plural]))
+  (:require
+   [clojure.test :refer :all]
+   [instaparse.core :as insta]
+   [metabase.util.i18n.plural :as i18n.plural]))
 
 (defn- compute
   ([formula]

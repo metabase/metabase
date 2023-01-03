@@ -1,12 +1,14 @@
 (ns metabase.server.middleware.exceptions
   "Ring middleware for handling Exceptions thrown in API request handler functions."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.server.middleware.security :as mw.security]
-            [metabase.util.i18n :refer [trs]])
-  (:import java.sql.SQLException
-           org.eclipse.jetty.io.EofException))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.server.middleware.security :as mw.security]
+   [metabase.util.i18n :refer [trs]])
+  (:import
+   (java.sql SQLException)
+   (org.eclipse.jetty.io EofException)))
 
 (defn genericize-exceptions
   "Catch any exceptions thrown in the request handler body and rethrow a generic 400 exception instead. This minimizes

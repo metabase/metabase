@@ -1,7 +1,8 @@
 (ns metabase.server.middleware.json-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [metabase.server.middleware.json :as mw.json]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.server.middleware.json :as mw.json]))
 
 (comment mw.json/keep-me) ; so custom Cheshire encoders are loaded
 

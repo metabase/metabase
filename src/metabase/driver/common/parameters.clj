@@ -1,8 +1,9 @@
 (ns metabase.driver.common.parameters
   "Various record types below are used as a convenience for differentiating the different param types."
-  (:require [potemkin.types :as p.types]
-            [pretty.core :as pretty]
-            [schema.core :as s]))
+  (:require
+   [potemkin.types :as p.types]
+   [pretty.core :as pretty]
+   [schema.core :as s]))
 
 ;; "FieldFilter" is something that expands to a clause like "some_field BETWEEN 1 AND 10"
 ;;

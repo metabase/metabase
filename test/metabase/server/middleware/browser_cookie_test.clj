@@ -1,9 +1,11 @@
 (ns metabase.server.middleware.browser-cookie-test
-  (:require [clojure.test :refer :all]
-            [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
-            [ring.mock.request :as ring.mock]
-            [ring.util.response :as response])
-  (:import java.util.UUID))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
+   [ring.mock.request :as ring.mock]
+   [ring.util.response :as response])
+  (:import
+   (java.util UUID)))
 
 (defn- handler [request]
   ((mw.browser-cookie/ensure-browser-id-cookie

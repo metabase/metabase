@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-timezone-info
-  (:require [metabase.query-processor.timezone :as qp.timezone]))
+  (:require
+   [metabase.query-processor.timezone :as qp.timezone]))
 
 (defn- add-timezone-metadata [metadata]
   (merge

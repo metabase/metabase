@@ -134,4 +134,5 @@ const Input = forwardRef(function Input(
 export default Object.assign(Input, {
   Root: InputRoot,
   Field: InputField,
+  Subtitle: InputSubtitle,
 });

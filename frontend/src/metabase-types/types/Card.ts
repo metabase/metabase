@@ -3,10 +3,10 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { VisualizationSettings } from "metabase-types/api/card";
+import { Parameter, VisualizationSettings } from "metabase-types/api";
 import { DatabaseId } from "./Database";
 import { StructuredQuery, NativeQuery } from "./Query";
-import { Parameter, ParameterQueryObject } from "./Parameter";
+import { ParameterQueryObject } from "./Parameter";
 
 export type CardId = number;
 

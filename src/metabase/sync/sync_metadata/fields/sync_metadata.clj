@@ -2,17 +2,18 @@
   "Logic for updating metadata properties of `Field` instances in the application database as needed -- this includes
   the base type, database type, semantic type, and comment/remark (description) properties. This primarily affects
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.sync.interface :as i]
-            [metabase.sync.sync-metadata.fields.common :as common]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.fields.common :as common]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (s/defn ^:private update-field-metadata-if-needed! :- (s/enum 0 1)
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs

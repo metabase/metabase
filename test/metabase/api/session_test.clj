@@ -1,24 +1,31 @@
 (ns metabase.api.session-test
   "Tests for /api/session"
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.test :refer :all]
-            [metabase.api.session :as api.session]
-            [metabase.driver.h2 :as h2]
-            [metabase.http-client :as client]
-            [metabase.models :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Session User]]
-            [metabase.models.setting :as setting]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.integrations.ldap :as ldap.test]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.test :refer :all]
+   [metabase.api.session :as api.session]
+   [metabase.driver.h2 :as h2]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [LoginHistory
+            PermissionsGroup
+            PermissionsGroupMembership
+            Session
+            User]]
+   [metabase.models.setting :as setting]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.integrations.ldap :as ldap.test]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
 
 ;; one of the tests below compares the way properties for the H2 driver are translated, so we need to make sure it's
 ;; loaded

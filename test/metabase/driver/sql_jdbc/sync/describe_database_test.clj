@@ -1,20 +1,23 @@
 (ns metabase.driver.sql-jdbc.sync.describe-database-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
-            [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database Table]]
-            [metabase.query-processor :as qp]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db])
-  (:import java.sql.ResultSet))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync.describe-database
+    :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database Table]]
+   [metabase.query-processor :as qp]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db])
+  (:import
+   (java.sql ResultSet)))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 

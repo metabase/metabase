@@ -1,8 +1,9 @@
 (ns metabase.query-processor-test.sum-where-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.test :as mt]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
