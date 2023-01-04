@@ -3,6 +3,7 @@ import React, {
   MouseEvent,
   memo,
   useCallback,
+  useMemo,
   useState,
   useEffect,
 } from "react";
@@ -50,12 +51,14 @@ const TimelineCard = ({
   const isEventSelected = events.some(e => selectedEventIds.includes(e.id));
   const [isExpanded, setIsExpanded] = useState(isDefault || isEventSelected);
 
-  const anyEventVisible = events.some(event =>
-    visibleEventIds.includes(event.id),
+  const anyEventVisible = useMemo(
+    () => events.some(event => visibleEventIds.includes(event.id)),
+    [events, visibleEventIds],
   );
 
-  const allEventsVisible = events.every(event =>
-    visibleEventIds.includes(event.id),
+  const allEventsVisible = useMemo(
+    () => events.every(event => visibleEventIds.includes(event.id)),
+    [events, visibleEventIds],
   );
 
   const handleHeaderClick = useCallback(() => {
