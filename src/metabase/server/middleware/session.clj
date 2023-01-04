@@ -391,13 +391,12 @@
                  (log/warn (trs "Session timeout must be less than 100 years."))
                  value)))
   :setter  (fn [new-value]
-             (let [error-key (check-session-timeout new-value)]
-               (case error-key
-                 :amount-must-be-positive
-                 (throw (ex-info (tru "Session timeout amount must be positive.") {:status-code 400}))
-                 :amount-must-be-less-than-100-years
-                 (throw (ex-info (tru "Session timeout must be less than 100 years.") {:status-code 400}))
-                 (setting/set-value-of-type! :json :session-timeout new-value)))))
+             (when-let [error-key (check-session-timeout new-value)]
+               (throw (ex-info (case error-key
+                                 :amount-must-be-positive            (tru "Session timeout amount must be positive.")
+                                 :amount-must-be-less-than-100-years (tru "Session timeout must be less than 100 years."))
+                               {:status-code 400}))
+             (setting/set-value-of-type! :json :session-timeout new-value))))
 
 (defn session-timeout->seconds
   "Convert the session-timeout setting value to seconds."
