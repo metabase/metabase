@@ -34,8 +34,7 @@
 
 (mi/define-methods
  Action
- {:pre-insert (fn [action] (check-data-apps-enabled) action)
-  :types      (constantly {:type :keyword
+ {:types      (constantly {:type :keyword
                            :parameter_mappings :parameters-list
                            :parameters :parameters-list
                            :visualization_settings :visualization-settings})
