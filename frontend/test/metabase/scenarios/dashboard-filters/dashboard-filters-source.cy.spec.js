@@ -40,6 +40,7 @@ describe("scenarios > dashboard > filters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
@@ -103,6 +104,10 @@ const setupStructuredQuestionSource = () => {
   });
   popover().within(() => {
     cy.findByText("Category").click();
+    cy.wait("@dataset");
+  });
+  modal().within(() => {
+    cy.findByText("Gadget").should("be.visible");
   });
   modal().within(() => {
     cy.button("Done").click();
@@ -121,6 +126,10 @@ const setupNativeQuestionSource = () => {
   });
   popover().within(() => {
     cy.findByText("CATEGORY").click();
+    cy.wait("@dataset");
+  });
+  modal().within(() => {
+    cy.findByText("Gadget").should("be.visible");
   });
   modal().within(() => {
     cy.button("Done").click();
