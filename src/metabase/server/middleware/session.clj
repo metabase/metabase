@@ -28,7 +28,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru tru trs]]
+   [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
    [ring.util.response :as response]
    [schema.core :as s]
    [toucan.db :as db])
