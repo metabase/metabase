@@ -49,6 +49,43 @@ export const getIsAdminApp = createSelector([getRouterPath], path => {
   return path.startsWith("/admin/");
 });
 
+export const getIsCollectionPathVisible = createSelector(
+  [getQuestion, getDashboard, getRouterPath, getIsEmbedded, getEmbedOptions],
+  (question, dashboard, path, isEmbedded, embedOptions) => {
+    if (isEmbedded && !embedOptions.breadcrumbs) {
+      return false;
+    }
+
+    return (
+      ((question != null && question.isSaved()) || dashboard != null) &&
+      PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path))
+    );
+  },
+);
+
+export const getIsQuestionLineageVisible = createSelector(
+  [getQuestion, getOriginalQuestion, getRouterPath],
+  (question, originalQuestion, path) =>
+    question != null &&
+    !question.isSaved() &&
+    originalQuestion != null &&
+    !originalQuestion.isDataset() &&
+    PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
+);
+
+const getIsEmbeddedAppBarVisible = createSelector(
+  [getEmbedOptions, getIsQuestionLineageVisible, getIsCollectionPathVisible],
+  (embedOptions, isQuestionLineageVisible, isCollectionPathVisible) => {
+    const anyEmbeddedAppBarElementVisible =
+      embedOptions.search ||
+      embedOptions.new_button ||
+      embedOptions.logo ||
+      isQuestionLineageVisible ||
+      isCollectionPathVisible;
+    return embedOptions.top_nav && anyEmbeddedAppBarElementVisible;
+  },
+);
+
 export const getIsAppBarVisible = createSelector(
   [
     getUser,
@@ -57,7 +94,7 @@ export const getIsAppBarVisible = createSelector(
     getIsAdminApp,
     getIsEditingDashboard,
     getIsEmbedded,
-    getEmbedOptions,
+    getIsEmbeddedAppBarVisible,
   ],
   (
     currentUser,
@@ -66,19 +103,13 @@ export const getIsAppBarVisible = createSelector(
     isAdminApp,
     isEditingDashboard,
     isEmbedded,
-    embedOptions,
+    isEmbeddedAppBarVisible,
   ) => {
     const isFullscreen = hash.includes("fullscreen");
-    const allEmbeddedAppBarElementsHidden =
-      !embedOptions.search &&
-      !embedOptions.new_button &&
-      !embedOptions.breadcrumbs &&
-      !embedOptions.logo;
-    const isEmbeddedAppBarHidden =
-      !embedOptions.top_nav || allEmbeddedAppBarElementsHidden;
+
     if (
       !currentUser ||
-      (isEmbedded && isEmbeddedAppBarHidden) ||
+      (isEmbedded && !isEmbeddedAppBarVisible) ||
       isAdminApp ||
       isEditingDashboard ||
       isFullscreen
@@ -150,28 +181,4 @@ export const getCollectionId = createSelector(
   [getQuestion, getDashboard, getDashboardId],
   (question, dashboard, dashboardId) =>
     dashboardId ? dashboard?.collection_id : question?.collectionId(),
-);
-
-export const getIsCollectionPathVisible = createSelector(
-  [getQuestion, getDashboard, getRouterPath, getIsEmbedded, getEmbedOptions],
-  (question, dashboard, path, isEmbedded, embedOptions) => {
-    if (isEmbedded && !embedOptions.breadcrumbs) {
-      return false;
-    }
-
-    return (
-      ((question != null && question.isSaved()) || dashboard != null) &&
-      PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path))
-    );
-  },
-);
-
-export const getIsQuestionLineageVisible = createSelector(
-  [getQuestion, getOriginalQuestion, getRouterPath],
-  (question, originalQuestion, path) =>
-    question != null &&
-    !question.isSaved() &&
-    originalQuestion != null &&
-    !originalQuestion.isDataset() &&
-    PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
 );

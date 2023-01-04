@@ -12,7 +12,14 @@ describe("scenarios > embedding > full app", () => {
     cy.intercept("GET", "/api/automagic-dashboards/**").as("getXrayDashboard");
   });
 
-  describe("navigation", () => {
+  describe("home page navigation", () => {
+    it("should hide the top nav when nothing is shown", () => {
+      visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+      cy.findByText(/Bobby/).should("be.visible");
+      cy.findByText("Our analytics").should("not.exist");
+      cy.findByTestId("main-logo").should("not.exist");
+    });
+
     it("should show the top nav and breadcrumbs by default", () => {
       visitUrl({ url: "/" });
       cy.findByText(/Bobby/).should("be.visible");
@@ -76,6 +83,15 @@ describe("scenarios > embedding > full app", () => {
       cy.findByText("Our analytics").click();
       cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
+    });
+  });
+
+  describe("browse data", () => {
+    it("should hide the top nav when nothing is shown", () => {
+      visitUrl({ url: "/browse", qs: { side_nav: false, logo: false } });
+      cy.findByText("Our data").should("be.visible");
+      cy.findByText("Our analytics").should("not.exist");
+      cy.findByTestId("main-logo").should("not.exist");
     });
   });
 
