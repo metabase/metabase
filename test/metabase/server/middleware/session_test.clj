@@ -420,7 +420,10 @@
     (is (some? (mw.session/session-timeout! {:unit "minutes", :amount 1})))
     (is (some? (mw.session/session-timeout! {:unit "hours", :amount 1})))
     (is (some? (mw.session/session-timeout! {:unit "minutes", :amount (dec (* 100 365.25 24 60))})))
-    (is (some? (mw.session/session-timeout! {:unit "hours", :amount (dec (* 100 365.25 24))})))))
+    (is (some? (mw.session/session-timeout! {:unit "hours", :amount (dec (* 100 365.25 24))}))))
+  (testing "Setting an invalid timeout via PUT /api/setting/:key endpoint should return a 400 status code"
+    (is (= "Session timeout amount must be positive."
+           (mt/user-http-request :crowberto :put 400 "setting/session-timeout" {:value {:unit "hours", :amount -1}})))))
 
 (deftest session-timeout-env-var-validation-test
   (let [set-and-get (fn [timeout]
@@ -435,14 +438,14 @@
       (doseq [amount [0 -1]
               :let [timeout {:unit "hours", :amount amount}]]
         (is (nil? (set-and-get timeout)))
-        (is (= (println-str "WARNING: Session timeout amount must be positive.")
-               (with-out-str (set-and-get timeout))))))
+        (is (= [[:warn nil "Session timeout amount must be positive."]]
+               (mt/with-log-messages-for-level :warn (set-and-get timeout))))))
     (testing "Setting the session timeout via env var should fail if the timeout is too large"
       (doseq [timeout [{:unit "hours", :amount (* 100 365.25 24)}
                        {:unit "minutes", :amount (* 100 365.25 24 60)}]]
         (is (nil? (set-and-get timeout)))
-        (is (= (println-str "WARNING: Session timeout must be less than 100 years.")
-               (with-out-str (set-and-get timeout))))))))
+        (is (= [[:warn nil "Session timeout must be less than 100 years."]]
+               (mt/with-log-messages-for-level :warn (set-and-get timeout))))))))
 
 (deftest session-timeout-test
   (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")

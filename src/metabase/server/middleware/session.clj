@@ -28,7 +28,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru tru trs]]
    [ring.util.response :as response]
    [schema.core :as s]
    [toucan.db :as db])
@@ -360,7 +360,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- check-session-timeout
-  "Returns nil if the [[session-timeout]] value is valid. Otherwise returns an exception."
+  "Returns nil if the [[session-timeout]] value is valid. Otherwise returns an error key."
   [timeout]
   (when (some? timeout)
     (let [{:keys [unit amount]} timeout
@@ -371,9 +371,9 @@
           units-in-100-years (* units-in-24-hours 365.25 100)]
       (cond
         (not (pos? amount))
-        (Exception. (tru "Session timeout amount must be positive."))
+        :amount-must-be-positive
         (>= amount units-in-100-years)
-        (Exception. (tru "Session timeout must be less than 100 years."))))))
+        :amount-must-be-less-than-100-years))))
 
 (defsetting session-timeout
   ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours".
@@ -382,14 +382,22 @@
   :type    :json
   :default nil
   :getter  (fn []
-             (let [value (setting/get-value-of-type :json :session-timeout)]
-               (if-let [exception (check-session-timeout value)]
-                 (println (str "WARNING: " (ex-message exception)))
+             (let [value     (setting/get-value-of-type :json :session-timeout)
+                   error-key (check-session-timeout value)]
+               (case error-key
+                 :amount-must-be-positive
+                 (log/warn (trs "Session timeout amount must be positive."))
+                 :amount-must-be-less-than-100-years
+                 (log/warn (trs "Session timeout must be less than 100 years."))
                  value)))
   :setter  (fn [new-value]
-             (if-let [exception (check-session-timeout new-value)]
-               (throw exception)
-               (setting/set-value-of-type! :json :session-timeout new-value))))
+             (let [error-key (check-session-timeout new-value)]
+               (case error-key
+                 :amount-must-be-positive
+                 (throw (ex-info (tru "Session timeout amount must be positive.") {:status-code 400}))
+                 :amount-must-be-less-than-100-years
+                 (throw (ex-info (tru "Session timeout must be less than 100 years.") {:status-code 400}))
+                 (setting/set-value-of-type! :json :session-timeout new-value)))))
 
 (defn session-timeout->seconds
   "Convert the session-timeout setting value to seconds."
