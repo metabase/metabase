@@ -870,6 +870,14 @@ Default: `"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
+### `MB_MAX_RESULTS_BARE_ROWS`
+
+Type: integer<br>
+Default: 2000<br>
+Since: 43.0<br>
+
+Maximum number of rows to return specifically on :rows type queries via the API.
+
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
 Type: string (`"substring"`, `"prefix"`, `"off"`)<br>
