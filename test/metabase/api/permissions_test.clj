@@ -164,6 +164,12 @@
         (is (= :all
                (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))))
 
+(deftest update-perms-graph-error-test
+  (testing "PUT /api/permissions/graph"
+    (testing "make sure an error is thrown if the :sandboxes key is included in an OSS request"
+      (is (= "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature."
+             (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                   (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))
 (defn- ee-features-enabled? []
   (u/ignore-exceptions
    (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
