@@ -112,7 +112,6 @@ const setupStructuredQuestionSource = () => {
 const setupNativeQuestionSource = () => {
   cy.findByText("Values from a model or question").click();
   modal().within(() => {
-    cy.findByText("Saved Questions").click();
     cy.findByText("Categories").click();
     cy.button("Select column").click();
   });
