@@ -1038,8 +1038,8 @@
    table-id        :- su/IntGreaterThanZeroPlumatic
    new-query-perms :- (s/enum :all :segmented :none)]
   (case new-query-perms
-    :all       (grant-permissions!  group-id (table-query-path           db-id schema table-id))
-    :segmented (grant-permissions!  group-id (table-segmented-query-path db-id schema table-id))
+    :all       (grant-permissions! group-id (table-query-path           db-id schema table-id))
+    :segmented (grant-permissions! group-id (table-segmented-query-path db-id schema table-id))
     :none      (revoke-data-perms! group-id (table-query-path           db-id schema table-id))))
 
 (s/defn ^:private update-table-data-access-permissions!
