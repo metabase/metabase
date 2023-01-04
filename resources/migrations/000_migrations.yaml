@@ -13235,6 +13235,22 @@ databaseChangeLog:
             constraintName: fk_parameter_card_ref_card_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v46.00-036
+      author: qnkhuat
+      comment: Added 0.46.0 - add entity_id to parameter_card
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: parameter_card
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

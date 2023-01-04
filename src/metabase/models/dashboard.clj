@@ -510,19 +510,25 @@
        (set/union (serdes.util/parameters-deps parameters))))
 
 (defmethod serdes.base/serdes-descendants "Dashboard" [_model-name id]
-  (let [dashcards (db/select ['DashboardCard :card_id :parameter_mappings]
-                             :dashboard_id id)
-        dashboard (db/select-one Dashboard :id id)]
+  (let [dashcards       (db/select ['DashboardCard :card_id :parameter_mappings]
+                                   :dashboard_id id)
+        dashboard       (db/select-one Dashboard :id id)
+        parameter-cards (db/select-field :id 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id id)]
     (set/union
       ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
       ;; here. So their cards, both direct and mentioned in their parameters.
-      (set (for [{:keys [card_id parameter_mappings]} dashcards
-                 ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
-                 card-id (cond-> (set (keep :card_id parameter_mappings))
-                           card_id (conj card_id))]
-             ["Card" card-id]))
+      (when dashcards
+        (set (for [{:keys [card_id parameter_mappings]} dashcards
+                   ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
+                   card-id (cond-> (set (keep :card_id parameter_mappings))
+                             card_id (conj card_id))]
+               ["Card" card-id])))
       ;; parameter with values_source_type = "card" will depend on a card
       (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
-             ["Card" card-id])))))
+             ["Card" card-id]))
+      ;; any ParameterCard that have this dashboard as Parameterized Object
+      (when parameter-cards
+        (set (for [id parameter-cards]
+               ["ParameterCard" id]))))))
 
 (serdes.base/register-ingestion-path! "Dashboard" (serdes.base/ingestion-matcher-collected "collections" "Dashboard"))
