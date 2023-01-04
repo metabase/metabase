@@ -429,8 +429,10 @@
 (def Email
   "Schema for a valid email string."
   (mc/schema
-    [:and {:error/fn (constantly (deferred-tru "value must be a valid email address."))}
-     :string [:fn u/email?]]))
+    [:and
+     :string
+     [:fn {:error/fn (constantly (deferred-tru "value must be a valid email address."))}
+      u/email?]]))
 
 (def ValidPasswordPlumatic
   "Schema for a valid password of sufficient complexity which is not found on a common password list."
@@ -440,9 +442,10 @@
 (def ValidPassword
   "Schema for a valid password of sufficient complexity which is not found on a common password list."
   (mc/schema
-    [:and {:error/fn (constantly (fn [_ _] (deferred-tru "password is too common.")))}
+    [:and
      :string
-     [:fn u.password/is-valid?]]))
+     [:fn {:error/fn (constantly (fn [_ _] (deferred-tru "password is too common.")))}
+      u.password/is-valid?]]))
 
 (def IntStringPlumatic
   "Schema for a string that can be parsed as an integer.
@@ -454,9 +457,10 @@
   "Schema for a string that can be parsed as an integer.
   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (mc/schema
-    [:and {:error/fn (constantly (deferred-tru "value must be a valid integer."))}
+    [:and
      :string
-     [:fn #(u/ignore-exceptions (Integer/parseInt %))]]))
+     [:fn {:error/fn (constantly (deferred-tru "value must be a valid integer."))}
+      #(u/ignore-exceptions (Integer/parseInt %))]]))
 
 (def IntStringGreaterThanZeroPlumatic
   "Schema for a string that can be parsed as an integer, and is greater than zero.
@@ -468,9 +472,10 @@
   "Schema for a string that can be parsed as an integer, and is greater than zero.
   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (mc/schema
-    [:and {:error/fn (constantly (deferred-tru "value must be a valid integer greater than zero."))}
+    [:and
      :string
-     [:fn #(u/ignore-exceptions (< 0 (Integer/parseInt %)))]]))
+     [:fn {:error/fn (constantly (deferred-tru "value must be a valid integer greater than zero."))}
+      #(u/ignore-exceptions (< 0 (Integer/parseInt %)))]]))
 
 (def IntStringGreaterThanOrEqualToZeroPlumatic
   "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
@@ -482,9 +487,10 @@
   "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (mc/schema
-    [:and {:error/fn (constantly (deferred-tru "value must be a valid integer greater than or equal to zero."))}
+    [:and
      :string
-     [:fn #(u/ignore-exceptions (<= 0 (Integer/parseInt %)))]]))
+     [:fn {:error/fn (constantly (deferred-tru "value must be a valid integer greater than or equal to zero."))}
+      #(u/ignore-exceptions (<= 0 (Integer/parseInt %)))]]))
 
 (defn- boolean-string? ^Boolean [s]
   (boolean (when (string? s)
@@ -501,9 +507,10 @@
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
   Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
   (mc/schema
-    [:and {:error/fn (constantly (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))}
+    [:and
      :string
-     [:fn boolean-string?]]))
+     [:fn {:error/fn (constantly (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))}
+      boolean-string?]]))
 
 (def TemporalStringPlumatic
   "Schema for a string that can be parsed by date2/parse."
@@ -513,9 +520,10 @@
 (def TemporalString
   "Schema for a string that can be parsed by date2/parse."
   (mc/schema
-    [:and {:error/fn (constantly (deferred-tru "value must be a valid date string"))}
+    [:and
      :string
-     [:fn #(u/ignore-exceptions (boolean (u.date/parse %)))]]))
+     [:fn {:error/fn (constantly (deferred-tru "value must be a valid date string"))}
+      #(u/ignore-exceptions (boolean (u.date/parse %)))]]))
 
 (def JSONStringPlumatic
   "Schema for a string that is valid serialized JSON."
@@ -529,13 +537,14 @@
 (def JSONString
   "Schema for a string that is valid serialized JSON."
   (mc/schema
-    [:and {:error/fn (constantly (deferred-tru "value must be a valid JSON string."))}
+    [:and
      :string
-     [:fn #(try
-             (json/parse-string %)
-             true
-             (catch Throwable _
-               false))]]))
+     [:fn {:error/fn (constantly (deferred-tru "value must be a valid JSON string."))}
+      #(try
+         (json/parse-string %)
+         true
+         (catch Throwable _
+           false))]]))
 
 (def ^:private keyword-or-non-blank-str
   (s/conditional
@@ -652,9 +661,10 @@
 (def ValidLocale
   "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
   (mc/schema
-    [:and {:error/fn (constantly (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'."))}
+    [:and
      NonBlankString
-     [:fn i18n/available-locale?]]))
+     [:fn {:error/fn (constantly (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'."))}
+      i18n/available-locale?]]))
 
 (def NanoIdStringPlumatic
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
