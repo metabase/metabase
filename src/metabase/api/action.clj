@@ -88,9 +88,9 @@
 (def ^:private json-query-schema
   [:and
    string?
-   [:fn {:error/message "must be a valid json-query"
-         :description "must be a valid json-query"}
-    #(http-action/apply-json-query {} %)]])
+   (mu/with-api-error-message
+     [:fn #(http-action/apply-json-query {} %)]
+     "must be a valid json-query, something like: .item.title")])
 
 (def ^:private http-action-template
   [:map {:closed true}
