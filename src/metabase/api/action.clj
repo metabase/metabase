@@ -8,7 +8,6 @@
    [metabase.models :refer [Action Card HTTPAction ImplicitAction QueryAction]]
    [metabase.models.action :as action]
    [metabase.util.malli :as mu]
-   [metabase.util.schema :as su]
    [toucan.db :as db]))
 
 (def ^:private json-query-schema
@@ -18,7 +17,7 @@
      [:fn #(http-action/apply-json-query {} %)]
      "must be a valid json-query, something like '.item.title'")])
 
-(def supported-action-type
+(def ^:private supported-action-type
   (mu/with-api-error-message
     [:enum "http" "query" "implicit"]
     "Unsupported action type"))
