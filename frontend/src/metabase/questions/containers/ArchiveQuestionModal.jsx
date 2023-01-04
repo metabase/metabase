@@ -49,7 +49,7 @@ class ArchiveQuestionModal extends Component {
     return (
       <ArchiveModal
         title={title}
-        message={message + additionalWarning}
+        message={`${message}${additionalWarning}`}
         onArchive={this.onArchive}
         onClose={onClose}
       />
