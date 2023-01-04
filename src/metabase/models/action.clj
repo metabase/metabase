@@ -158,9 +158,9 @@
         http-actions (normalize-http-actions http)]
     (sort-by :updated_at (concat query-actions http-actions))))
 
-(defn cards-by-action-id
-  "Hydrates action_id from Card for is_write cards"
-  {:batched-hydrate :card/action-id}
+(mi/define-batched-hydration-method cards-by-action-id
+  :card/action-id
+  "Hydrates `:action_id` from Card for is_write cards"
   [cards]
   (if-let [card-id->action-id (not-empty (db/select-field->field
                                            :card_id :action_id
@@ -234,9 +234,9 @@
                     implicit-action
                     action))))
 
-(defn dashcard-action
-  "Hydrates action from DashboardCard"
-  {:batched-hydrate :dashcard/action}
+(mi/define-batched-hydration-method dashcard-action
+  :dashcard/action
+  "Hydrates action from DashboardCard."
   [dashcards]
   (let [model-slug-by-dashcard-id (->> dashcards
                                        (keep (fn [dashcard]

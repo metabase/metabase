@@ -120,7 +120,8 @@
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser))
 
-(defn ^:hydrate recipients
+(mi/define-simple-hydration-method recipients
+  :recipients
   "Return the `PulseChannelRecipients` associated with this `pulse-channel`."
   [{pulse-channel-id :id, {:keys [emails]} :details}]
   (concat
