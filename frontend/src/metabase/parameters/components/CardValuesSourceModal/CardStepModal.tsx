@@ -6,6 +6,7 @@ import Button from "metabase/core/components/Button/Button";
 import Input from "metabase/core/components/Input";
 import ModalContent from "metabase/components/ModalContent";
 import DataPicker, {
+  DataPickerDataType,
   DataPickerValue,
   useDataPicker,
   useDataPickerValue,
@@ -25,6 +26,11 @@ import {
   DataPickerContainer,
   SearchInputContainer,
 } from "./CardStepModal.styled";
+
+const DATA_PICKER_FILTERS = {
+  types: (type: DataPickerDataType) =>
+    type === "questions" || type === "models",
+};
 
 interface CardStepModalOwnProps {
   cardId: CardId | undefined;
@@ -83,7 +89,11 @@ const CardStepModal = ({
       <DataPicker.Provider>
         <DataPickerSearchInput />
         <DataPickerContainer>
-          <DataPicker value={value} onChange={setValue} />
+          <DataPicker
+            value={value}
+            filters={DATA_PICKER_FILTERS}
+            onChange={setValue}
+          />
         </DataPickerContainer>
       </DataPicker.Provider>
     </ModalContent>
