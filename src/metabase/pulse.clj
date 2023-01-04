@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
@@ -54,7 +53,6 @@
   (try
     (let [card-id (u/the-id card-or-id)
           card    (db/select-one Card :id card-id)
-          _       (api/check-is-readonly card)
           result  (mw.session/with-current-user owner-id
                     (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)

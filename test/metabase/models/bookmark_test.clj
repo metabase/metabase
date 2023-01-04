@@ -15,8 +15,6 @@
                :report_card.name             nil
                :report_dashboard.archived    false
                :collection.description       "Collection description"
-               :report_dashboard.is_app_page true
-               :collection.app_id            178
                :collection.archived          true
                :report_card.dataset          nil
                :created_at                   #t "2022-09-14T17:45:13.444716Z"
@@ -25,7 +23,5 @@
               :name        "Test Dashboard"
               :type        "dashboard"
               :description "Dashboard description"
-              :is_app_page true
-              :app_id      178,
               :id          "dashboard-853"}
              (#'bookmark/normalize-bookmark-result row))))))
