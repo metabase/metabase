@@ -10,6 +10,11 @@ const getDescriptionForNow = (database: Database, reportTimezone: string) => {
   const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
   const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
 
+  // H2 is the only DBMS we support where:
+  // · set-timezone isn't a feature, and
+  // · it's possible for now to be in the system timezone, not UTC.
+  // also H2 is not recommended for use in production, so for now we skip
+  // deeper logic to support displaying timestamps in it.
   if (database.engine === "h2") {
     return t`Returns the current timestamp (in milliseconds).`;
   } else {
