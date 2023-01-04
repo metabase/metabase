@@ -36,32 +36,15 @@ import {
   PivotTableTopLeftCellsContainer,
   RowToggleIconRoot,
   CELL_HEIGHT,
-  PivotTableSettingLabel,
 } from "./PivotTable.styled";
 
-const partitions = [
-  {
-    name: "rows",
-    columnFilter: isDimension,
-    title: (
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Rows`}</PivotTableSettingLabel>
-    ),
-  },
-  {
-    name: "columns",
-    columnFilter: isDimension,
-    title: (
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Columns`}</PivotTableSettingLabel>
-    ),
-  },
-  {
-    name: "values",
-    columnFilter: col => !isDimension(col),
-    title: (
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Measures`}</PivotTableSettingLabel>
-    ),
-  },
-];
+import { partitions } from "./partitions";
+import {
+  addMissingCardBreakouts,
+  isColumnValid,
+  isFormattablePivotColumn,
+  updateValueWithCurrentColumns,
+} from "./utils";
 
 // cell width and height for normal body cells
 const CELL_WIDTH = 100;
@@ -719,61 +702,4 @@ function Cell({
       </div>
     </PivotTableCell>
   );
-}
-
-function updateValueWithCurrentColumns(storedValue, columns) {
-  const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
-  const currentSettingFieldRefs = Object.values(storedValue).flatMap(
-    fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)),
-  );
-  const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
-  const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
-
-  // remove toRemove
-  const value = _.mapObject(storedValue, fieldRefs =>
-    fieldRefs.filter(
-      field_ref => !toRemove.includes(JSON.stringify(field_ref)),
-    ),
-  );
-  // add toAdd to first partitions where it matches the filter
-  for (const fieldRef of toAdd) {
-    for (const { columnFilter: filter, name } of partitions) {
-      const column = columns.find(
-        c => JSON.stringify(c.field_ref) === fieldRef,
-      );
-      if (filter == null || filter(column)) {
-        value[name] = [...value[name], column.field_ref];
-        break;
-      }
-    }
-  }
-  return value;
-}
-
-// This is a hack. We need to pass pivot_rows and pivot_cols on each query.
-// When a breakout is added to the query, we need to partition it before getting the rows.
-// We pretend the breakouts are columns so we can partition the new breakout.
-function addMissingCardBreakouts(setting, card) {
-  const breakouts = getIn(card, ["dataset_query", "query", "breakout"]) || [];
-  if (breakouts.length <= setting.columns.length + setting.rows.length) {
-    return setting;
-  }
-  const breakoutFieldRefs = breakouts.map(field_ref => ({ field_ref }));
-  const { columns, rows } = updateValueWithCurrentColumns(
-    setting,
-    breakoutFieldRefs,
-  );
-  return { ...setting, columns, rows };
-}
-
-function isColumnValid(col) {
-  return (
-    col.source === "aggregation" ||
-    col.source === "breakout" ||
-    isPivotGroupColumn(col)
-  );
-}
-
-function isFormattablePivotColumn(column) {
-  return column.source === "aggregation";
 }
