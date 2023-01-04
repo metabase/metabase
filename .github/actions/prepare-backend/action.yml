@@ -41,4 +41,4 @@ runs:
     - name: List contents of cache
       shell: bash
       run: |
-        ls /home/runner/.m2/repository
+        echo "found directories: $(find /home/runner/.m2/repository -d | wc -l)"
