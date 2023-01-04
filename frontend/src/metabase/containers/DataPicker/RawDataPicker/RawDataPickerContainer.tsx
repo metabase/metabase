@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from "react";
-import _ from "underscore";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -23,6 +22,7 @@ interface TableListLoaderProps {
 }
 
 interface RawDataPickerOwnProps extends DataPickerProps {
+  isMultiSelect?: boolean;
   onBack?: () => void;
 }
 
@@ -31,6 +31,7 @@ type RawDataPickerProps = RawDataPickerOwnProps & DatabaseListLoaderProps;
 function RawDataPicker({
   value,
   databases,
+  isMultiSelect,
   onChange,
   onBack,
 }: RawDataPickerProps) {
@@ -38,7 +39,7 @@ function RawDataPicker({
 
   const { selectedTableIds, toggleTableIdSelection } = useSelectedTables({
     initialValues: value.tableIds,
-    mode: "multiple",
+    isMultiSelect,
   });
 
   const selectedDatabase = useMemo(() => {

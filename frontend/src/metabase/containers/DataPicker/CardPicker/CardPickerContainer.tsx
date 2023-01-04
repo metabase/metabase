@@ -27,6 +27,7 @@ import CardPickerView from "./CardPickerView";
 
 interface CardPickerOwnProps extends DataPickerProps {
   targetModel: "model" | "question";
+  isMultiSelect?: boolean;
   onBack?: () => void;
 }
 
@@ -63,6 +64,7 @@ function CardPickerContainer({
   schema: selectedSchema,
   currentUser,
   targetModel,
+  isMultiSelect,
   onChange,
   onBack,
 }: CardPickerProps) {
@@ -70,7 +72,7 @@ function CardPickerContainer({
 
   const { selectedTableIds, toggleTableIdSelection } = useSelectedTables({
     initialValues: value.tableIds,
-    mode: "multiple",
+    isMultiSelect,
   });
 
   const collectionsMap = useMemo(

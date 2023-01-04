@@ -33,6 +33,7 @@ export type DataPickerFiltersProp = Partial<DataPickerFilters>;
 
 export interface DataPickerProps {
   value: DataPickerValue;
+  isMultiSelect?: boolean;
   onChange: (value: DataPickerValue) => void;
   filters?: DataPickerFiltersProp;
 }
