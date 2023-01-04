@@ -22,6 +22,7 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [java-time :as t]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
@@ -164,16 +165,15 @@
                                        :else
                                        [])))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class FieldValues)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:human_readable_values :json-no-keywordization
-                                    :values                :json
-                                    :type                  :keyword})
-          :pre-insert  pre-insert
-          :pre-update  pre-update
-          :post-select post-select}))
+(mi/define-methods
+ FieldValues
+ {:properties  (constantly {::mi/timestamped? true})
+  :types       (constantly {:human_readable_values :json-no-keywordization
+                            :values                :json
+                            :type                  :keyword})
+  :pre-insert  pre-insert
+  :pre-update  pre-update
+  :post-select post-select})
 
 (defmethod serdes.hash/identity-hash-fields FieldValues
   [_field-values]

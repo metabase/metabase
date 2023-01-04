@@ -137,10 +137,8 @@
       (when (:card_id updates)
         (check-columns-match-table updated)))))
 
-(u/strict-extend (class GroupTableAccessPolicy)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:types      (constantly {:attribute_remappings ::attribute-remappings})
-    :pre-insert pre-insert
-    :pre-update pre-update}))
+(mi/define-methods
+ GroupTableAccessPolicy
+ {:types      (constantly {:attribute_remappings ::attribute-remappings})
+  :pre-insert pre-insert
+  :pre-update pre-update})

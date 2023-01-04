@@ -122,8 +122,12 @@
     honeysql.types                                                  htypes
     java-time                                                       t
     malli.core                                                      mc
+    malli.error                                                     me
     malli.experimental                                              mx
+    malli.generator                                                 mg
+    malli.provider                                                  mp
     malli.transform                                                 mtx
+    malli.util                                                      mut
     medley.core                                                     m
     metabase-enterprise.audit-app.pages.common                      common
     metabase-enterprise.sandbox.api.table                           table
@@ -474,6 +478,8 @@
    metabase.models.emitter/Emitter                                                                                           hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.field-values/FieldValues                                                                                  hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.field/Field                                                                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
+   metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.login-history/LoginHistory                                                                                hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.metric-important-field/MetricImportantField                                                               hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.metric/Metric                                                                                             hooks.metabase.models.disallow-invoking-model/hook

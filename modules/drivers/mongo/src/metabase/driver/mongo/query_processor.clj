@@ -8,6 +8,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
@@ -20,13 +21,14 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [monger.operators :refer [$add $addToSet $and $avg $cond $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
+            [monger.operators :refer [$add $addToSet $and $avg $cond
+                                      $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
                                       $group $gt $gte $hour $limit $lt $lte $match $max $min $minute $mod $month
                                       $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
                                       $sum $toLower $year]]
             [schema.core :as s])
-  (:import [org.bson.types ObjectId Binary]
-           org.bson.BsonBinarySubType))
+  (:import org.bson.BsonBinarySubType
+           [org.bson.types Binary ObjectId]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -77,6 +79,9 @@
 
 ;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
+
+(defn- get-mongo-version []
+  (driver/dbms-version :mongo (qp.store/database)))
 
 (defmulti ^:private ->rvalue
   "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
@@ -420,20 +425,61 @@
 (defmethod ->rvalue :exp       [[_ inp]] {"$exp" (->rvalue inp)})
 (defmethod ->rvalue :sqrt      [[_ inp]] {"$sqrt" (->rvalue inp)})
 
-(defmethod ->rvalue :trim      [[_ inp]] {"$trim" (->rvalue inp)})
-(defmethod ->rvalue :ltrim     [[_ inp]] {"$ltrim" (->rvalue inp)})
-(defmethod ->rvalue :rtrim     [[_ inp]] {"$rtrim" (->rvalue inp)})
+(defmethod ->rvalue :trim      [[_ inp]] {"$trim" {"input" (->rvalue inp)}})
+(defmethod ->rvalue :ltrim     [[_ inp]] {"$ltrim" {"input" (->rvalue inp)}})
+(defmethod ->rvalue :rtrim     [[_ inp]] {"$rtrim" {"input" (->rvalue inp)}})
 (defmethod ->rvalue :upper     [[_ inp]] {"$toUpper" (->rvalue inp)})
 (defmethod ->rvalue :lower     [[_ inp]] {"$toLower" (->rvalue inp)})
 (defmethod ->rvalue :length    [[_ inp]] {"$strLenCP" (->rvalue inp)})
 
 (defmethod ->rvalue :power     [[_ & args]] {"$pow" (mapv ->rvalue args)})
-(defmethod ->rvalue :replace   [[_ & args]] {"$replaceAll" (mapv ->rvalue args)})
 (defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
-(defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
-
 (defmethod ->rvalue :temporal-extract [[_ inp unit]]
   (with-rvalue-temporal-bucketing (->rvalue inp) unit))
+
+(defmethod ->rvalue :replace
+  [[_ & args]]
+  (let [version (get-mongo-version)]
+    (if (driver.u/semantic-version-gte (:semantic-version version) [4 4])
+      (let [[expr fnd replacement] (mapv ->rvalue args)]
+        {"$replaceAll" {"input" expr "find" fnd "replacement" replacement}})
+      (throw (ex-info "Replace requires MongoDB 4.4 or above"
+                      {:database-version version})))))
+
+(defmethod ->rvalue :substring
+  [[_ & [expr idx cnt]]]
+  (let [expr-val (->rvalue expr)
+        idx-val {"$subtract" [(->rvalue idx) 1]}]
+    {"$substrCP" [expr-val
+                  idx-val
+                  ;; The last argument is not optional in mongo
+                  (if (some? cnt)
+                    (->rvalue cnt)
+                    {"$subtract" [{"$strLenCP" expr-val} idx-val]})]}))
+
+(defmethod ->rvalue :/
+  [[_ & [_ & divisors :as args]]]
+  ;; division works outside in (/ 1 2 3) => (/ (/ 1 2) 3)
+  (let [division (reduce
+                   (fn [accum head]
+                     {"$divide" [accum head]})
+                   (map ->rvalue args))
+        literal-zero? (some #(and (number? %) (zero? %)) divisors)
+        non-literal-nil-checks (mapv (fn [divisor] {"$eq" [(->rvalue divisor) 0]}) (remove number? divisors))]
+    (cond
+      literal-zero?
+      nil
+
+      (empty? non-literal-nil-checks)
+      division
+
+      (= 1 (count non-literal-nil-checks))
+      {"$cond" [(first non-literal-nil-checks) nil
+                division]}
+
+      :else
+      {"$cond" [{"$or" non-literal-nil-checks} nil
+                division]})))
 
 ;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
 ;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
@@ -442,9 +488,6 @@
 ;;; rest of the operands had to be integers and would be treated as milliseconds.)
 ;;; Because of this, whenever we translate date arithmetic with intervals, we check the major
 ;;; version of the database and throw a nice exception if it's less than 5.
-
-(defn- get-mongo-version []
-  (driver/dbms-version :mongo (qp.store/database)))
 
 (defn- check-date-operations-supported []
   (let [{mongo-version :version, [major-version] :semantic-version} (get-mongo-version)]
@@ -494,7 +537,6 @@
     {"$subtract" (mapv ->rvalue args)}))
 
 (defmethod ->rvalue :* [[_ & args]] {"$multiply" (mapv ->rvalue args)})
-(defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
@@ -677,6 +719,10 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
+(def ^:private aggregation-op
+  "The set of operators handled by [[aggregation->rvalue]] and [[expand-aggregation]]."
+  #{:avg :count :count-where :distinct :max :min :share :stddev :sum :sum-where :var})
+
 (defmethod ->rvalue :case [[_ cases options]]
   {:$switch {:branches (for [[pred expr] cases]
                          {:case (compile-cond pred)
@@ -685,8 +731,8 @@
 
 (defn- aggregation->rvalue [ag]
   (mbql.u/match-one ag
-    [:aggregation-options ag _]
-    (recur ag)
+    [:aggregation-options ag' _]
+    (recur ag')
 
     [:count]
     {$sum 1}
@@ -715,7 +761,7 @@
     :else
     (throw
      (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
-       {:type :invalid-query, :clause ag}))))
+              {:type :invalid-query, :clause ag}))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :aggregation-options)
@@ -755,41 +801,101 @@
 
 (defmethod expand-aggregation :share
   [[_ pred :as ag]]
-  (let [count-where-name (name (gensym "count-where-"))
-        count-name       (name (gensym "count-"))
+  (let [count-where-expr (name (gensym "$count-where-"))
+        count-expr       (name (gensym "$count-"))
         pred             (if (= (first pred) :share)
                            (second pred)
                            pred)]
-    {:group {count-where-name (aggregation->rvalue [:count-where pred])
-             count-name       (aggregation->rvalue [:count])}
-     :post  {(annotate/aggregation-name ag) {$divide [(str "$" count-where-name) (str "$" count-name)]}}}))
+    {:group {(subs count-where-expr 1) (aggregation->rvalue [:count-where pred])
+             (subs count-expr 1)       (aggregation->rvalue [:count])}
+     :post  [{(annotate/aggregation-name ag) {$divide [count-where-expr count-expr]}}]}))
 
 ;; MongoDB doesn't have a variance operator, but you calculate it by taking the square of the standard deviation.
 ;; However, `$pow` is not allowed in the `$group` stage. So calculate standard deviation in the
 (defmethod expand-aggregation :var
   [ag]
   (let [[_ expr]    (unwrap-named-ag ag)
-        stddev-name (name (gensym "stddev-"))]
-    {:group {stddev-name (aggregation->rvalue [:stddev expr])}
-     :post  {(annotate/aggregation-name ag) {:$pow [(str \$ stddev-name) 2]}}}))
+        stddev-expr (name (gensym "$stddev-"))]
+    {:group {(subs stddev-expr 1) (aggregation->rvalue [:stddev expr])}
+     :post  [{(annotate/aggregation-name ag) {:$pow [stddev-expr 2]}}]}))
 
 (defmethod expand-aggregation :default
   [ag]
   {:group {(annotate/aggregation-name ag) (aggregation->rvalue ag)}})
 
+(defn- extract-aggregation
+  "Separate the expression `aggregation` named `aggr-name` into two parts:
+  an simple expression and an aggregation expression, where the simple expression
+  references the result of the aggregation expression such that first evaluating
+  the aggregation expression and binding its result to `aggr-name` and then
+  evaluating the simple expression in this context, the result is the same as
+  evaluating the whole expression `aggregation`.
+  This separation is necessary, because MongoDB doesn't support embedding
+  aggregations in `normal' expressions.
+
+  For example the aggregation
+    [:aggregation-options
+     [:+ [:/ [:sum
+              [:case [[[:< [:field 12 nil] [:field 7 nil]]
+                       [:field 12 nil]]]
+               {:default 0}]]
+             2]
+         1]
+     {:name \"expression\"}]
+  is transformed into the simple expression
+    [:+ [:/ \"$expression\" 2] 1]
+  and the aggregation expression
+    [:aggregation-options
+     [:sum
+      [:case [[[:< [:field 12 nil] [:field 7 nil]]
+               [:field 12 nil]]]
+       {:default 0}]]
+     {:name \"expression\"}]"
+  [aggregation aggr-name]
+  (when (and (vector? aggregation) (seq aggregation))
+    (let [[op & args] aggregation]
+      (cond
+        (= op :aggregation-options)
+        (let [[embedding-expr aggregation'] (extract-aggregation (first args) aggr-name)]
+          [embedding-expr (into [:aggregation-options aggregation'] (rest args))])
+
+        (aggregation-op op)
+        [(str \$ aggr-name) aggregation]
+
+        :else
+        (let [ges (map #(extract-aggregation % aggr-name) args)
+              [embedding-expr aggregation'] (first (filter some? ges))]
+          (when-not aggregation'
+            (throw
+             (ex-info (tru "Don''t know how to handle aggregation {0}" aggregation)
+                      {:type :invalid-query, :clause aggregation})))
+          [(into [op] (map (fn [arg ge] (if ge embedding-expr arg)) args ges))
+           aggregation'])))))
+
+(defn- expand-embedded-aggregation [aggregation]
+  (let [aggr-name (annotate/aggregation-name aggregation)
+        [embedding-expr aggregation-expr] (extract-aggregation aggregation aggr-name)
+        expanded (expand-aggregation aggregation-expr)]
+    (cond-> expanded
+      (not (string? embedding-expr))
+      (update :post conj {aggr-name (->rvalue embedding-expr)}))))
+
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
    though [:/ [:count-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
    more complex aggregations are split in two: the reductions are done in `$group` stage after which
-   we do postprocessing in `$addFields` stage to arrive at the final result. The intermittent results
-   accrued in `$group` stage are discarded in the final `$project` stage."
+   we do postprocessing in `$addFields` stage to arrive at the final result.
+   The groups are assumed to be independent an collapsed into a single stage, but separate
+   `$addFields` stages are created for post processing so that stages can refer to the results
+   of preceding stages.
+   The intermittent results accrued in `$group` stage are discarded in the final `$project` stage."
   [id aggregations]
-  (let [expanded-ags (map expand-aggregation aggregations)
+  (let [expanded-ags (map expand-embedded-aggregation aggregations)
         group-ags    (mapcat :group expanded-ags)
         post-ags     (mapcat :post expanded-ags)]
-    [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}
-     (when (not-empty post-ags)
-       {:$addFields (into (ordered-map/ordered-map) post-ags)})]))
+    (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
+          (map (fn [p] {:$addFields p}))
+          post-ags)))
 
 (defn- projection-group-map [fields]
   (reduce
@@ -855,10 +961,6 @@
                                 :asc   1
                                 :desc -1)]))})
 
-(defn- handle-order-by [{:keys [order-by]} pipeline-ctx]
-  (cond-> pipeline-ctx
-    (seq order-by) (update :query conj (order-by->$sort order-by))))
-
 ;;; ----------------------------------------------------- fields -----------------------------------------------------
 
 (defn- remove-parent-fields
@@ -869,8 +971,9 @@
   To preserve the previous behavior, we will include only the child fields (since the parent field always appears first
   in the projection/field order list, and that is the stated behavior according to the link above)."
   [fields]
-  (let [parent->child-id (reduce (fn [acc [_ field-id & _]]
-                                   (if (integer? field-id)
+  (let [parent->child-id (reduce (fn [acc [agg-type field-id & _]]
+                                   (if (and (= agg-type :field)
+                                            (integer? field-id))
                                      (let [field (qp.store/field field-id)]
                                        (if-let [parent-id (:parent_id field)]
                                          (update acc parent-id conj (u/the-id field))
@@ -881,6 +984,20 @@
     (remove (fn [[_ field-id & _]]
               (and (integer? field-id) (contains? parent->child-id field-id)))
             fields)))
+
+(defn- handle-order-by [{:keys [order-by breakout]} pipeline-ctx]
+  (let [breakout-fields (set breakout)
+        sort-fields (for [field (remove-parent-fields (map second order-by))
+                          ;; We only care about expressions not added as breakout
+                          :when (and (not (contains? breakout-fields field))
+                                     (= :expression ((.dispatchFn ^clojure.lang.MultiFn ->rvalue) field)))]
+                      [(->lvalue field) (->rvalue field)])]
+    (cond-> pipeline-ctx
+      (seq sort-fields) (update :query conj
+                                ;; We $addFields before sorting, otherwise expressions will not be available for the sort
+                                {:$addFields (into (ordered-map/ordered-map) sort-fields)})
+      (seq order-by) (update :query conj
+                             (order-by->$sort order-by)))))
 
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
   (if-not (seq fields)

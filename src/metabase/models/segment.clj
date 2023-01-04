@@ -34,15 +34,13 @@
                   (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:types          (constantly {:definition :metric-segment-definition})
-    :properties     (constantly {:timestamped? true
-                                 :entity_id    true})
-    :hydration-keys (constantly [:segment])
-    :pre-update     pre-update}))
+(mi/define-methods
+ Segment
+ {:types          (constantly {:definition :metric-segment-definition})
+  :properties     (constantly {::mi/timestamped? true
+                               ::mi/entity-id    true})
+  :hydration-keys (constantly [:segment])
+  :pre-update     pre-update})
 
 (defmethod serdes.hash/identity-hash-fields Segment
   [_segment]

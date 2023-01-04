@@ -31,6 +31,8 @@
   (eval . (put 's/defn 'clojure-doc-string-elt 2))
   (eval . (put 'p.types/defprotocol+ 'clojure-doc-string-elt 2))
   (eval . (put 'methodical/defmulti 'clojure-doc-string-elt 2))
+  (eval . (put 'mi/define-simple-hydration-method 'clojure-doc-string-elt 3))
+  (eval . (put 'mi/define-batched-hydration-method 'clojure-doc-string-elt 3))
   ;; Define custom indentation for functions inside metabase.
   ;; This list isn't complete; add more forms as we come across them.
   ;;
@@ -48,6 +50,7 @@
   (eval . (put-clojure-indent 'mbql.match/match-one 1))
   (eval . (put-clojure-indent 'mbql.match/replace 1))
   (eval . (put-clojure-indent 'mbql.match/replace-in 2))
+  (eval . (put-clojure-indent 'mi/define-methods '(:form)))
   (eval . (put-clojure-indent 'mt/dataset 1))
   (eval . (put-clojure-indent 'mt/format-rows-by 1))
   (eval . (put-clojure-indent 'mt/query 1))
@@ -57,7 +60,6 @@
   (eval . (put-clojure-indent 'qp.streaming/streaming-response 1))
   (eval . (put-clojure-indent 'u/prog1 1))
   (eval . (put-clojure-indent 'u/select-keys-when 1))
-  (eval . (put-clojure-indent 'u/strict-extend 1))
   (eval . (put-clojure-indent 'with-meta '(:form)))
   ;; these ones have to be done with `define-clojure-indent' for now because of upstream bug
   ;; https://github.com/clojure-emacs/clojure-mode/issues/600 once that's resolved we should use `put-clojure-indent'
