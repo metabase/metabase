@@ -8,6 +8,7 @@
    [malli.experimental :as mx]
    [malli.generator :as mg]
    [malli.instrument :as minst]
+   [malli.util :as mut]
    [metabase.util :as u]
    [ring.util.codec :as codec]))
 
@@ -63,7 +64,8 @@ explain-fn-fail!
                    ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
                    ~@(when-not single (some->> arities val :meta vector)))]
        (mc/=> ~name ~schema)
-       (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= ~id)))]
+       (minst/instrument! {;; instrument the defn we just registered, via ~id
+                           :filters [(minst/-filter-var #(-> % meta :validate! (= ~id)))]
                            :report #'explain-fn-fail!})
        defn#)))
 
@@ -72,3 +74,20 @@ explain-fn-fail!
    Calls to minst/unstrument! can remove this, so use a filter that avoids :validate! if you use that."
   [& args]
   (-defn mx/SchematizedParams args))
+
+(def ^:private Schema
+  [:fn {:description "a malli schema"} mc/schema])
+
+(defn with-api-error-message :- Schema
+  "Update a malli schema to have a :description (picked up by api docs),
+  and a :error/message (used by defendpoint). They don't have to be the same, but usually are."
+  ([mschema :- Schema message :- string?]
+   (with-api-error-message mschema message message))
+  ([mschema :- Schema
+    docs-message :- string?
+    error-message :- string?]
+   (mut/update-properties mschema assoc
+                          ;; override generic description in api docs
+                          :description docs-message
+                          ;; override generic description in defendpoint api errors
+                          :error/message error-message)))

@@ -12,6 +12,7 @@
    [metabase.models.setting :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -103,7 +104,8 @@
 (api/defendpoint PUT "/:id"
   [id :as {{:keys [type name template response_handle error_handle] :as action} :body}]
   {id              pos-int?
-   type            [:enum {:description "Only http actions are supported at this time."} "http"]
+   type            (mu/with-api-error-message [:enum "http"]
+                     "Only http actions are supported at this time.")
    name            [:maybe :string]
    template        [:maybe http-action-template]
    response_handle [:maybe json-query-schema]
