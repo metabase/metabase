@@ -20,8 +20,8 @@
    [ring.mock.request :as ring.mock]
    [toucan.db :as db])
   (:import
-   clojure.lang.ExceptionInfo
-   java.util.UUID))
+   (clojure.lang ExceptionInfo)
+   (java.util UUID)))
 
 (use-fixtures :once (fn [thunk]
                       (init-status/set-complete!)
