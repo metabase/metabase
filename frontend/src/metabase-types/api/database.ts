@@ -29,16 +29,14 @@ export type DatabaseFeature =
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
-  is_saved_questions?: boolean;
+  is_saved_questions: boolean;
   features: DatabaseFeature[];
   creator_id?: number;
   timezone?: string;
   native_permissions: NativePermissions;
-  initial_sync_status?: InitialSyncStatus;
+  initial_sync_status: InitialSyncStatus;
 
   settings?: DatabaseSettings | null;
-
-  tables?: Table[];
 
   created_at: ISO8601Time;
   updated_at: ISO8601Time;
