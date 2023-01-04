@@ -178,21 +178,21 @@
               action-path (str "action/" (:id created-action))]
           (testing "Validate POST"
             (testing "Required fields"
-              (is (partial= {:errors {:name "value must be a string."}}
+              (is (partial= {:errors {:name "should be a string."}}
                             (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
-              (is (partial= {:errors {:model_id "value must be an integer greater than zero."}}
+              (is (partial= {:errors {:model_id "should be a positive int."}}
                             (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
             (testing "Handles need to be valid jq"
-              (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+              (is (partial= {:errors {:response_handle "must be a valid json-query, something like '.item.title'."}}
                             (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :response_handle "body"))))
-              (is (partial= {:errors {:error_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+              (is (partial= {:errors {:error_handle "must be a valid json-query, something like '.item.title'."}}
                             (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :error_handle "x"))))))
           (testing "Validate PUT"
             (testing "Template needs method and url"
-              (is (partial= {:errors {:template "value may be nil, or if non-nil, value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
+              (is (partial= {:errors {:template "[:method [\"missing required key\"]] [:url [\"missing required key\"]]."}}
                             (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
             (testing "Handles need to be valid jq"
-              (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+              (is (partial= {:errors {:response_handle "must be a valid json-query, something like '.item.title'."}}
                             (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :response_handle "body"))))
-              (is (partial= {:errors {:error_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+              (is (partial= {:errors {:error_handle "must be a valid json-query, something like '.item.title'."}}
                             (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :error_handle "x")))))))))))

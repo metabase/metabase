@@ -286,7 +286,7 @@
       (throw (ex-info (tru "Invalid m field: {0}" field-name)
                       {:status-code 400
                        :errors      {(keyword field-name)
-                                     (me/humanize (me/with-spell-checking explained))}})))))
+                                     (str (str/join " " (me/humanize (me/with-spell-checking explained))) ".")}})))))
 
 (defn validate-param
   "Validate a parameter against its respective schema, or throw an Exception."

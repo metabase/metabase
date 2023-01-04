@@ -16,7 +16,7 @@
    string?
    (mu/with-api-error-message
      [:fn #(http-action/apply-json-query {} %)]
-     "must be a valid json-query, something like: .item.title")])
+     "must be a valid json-query, something like '.item.title'")])
 
 (def supported-action-type
   (mu/with-api-error-message
