@@ -1,5 +1,6 @@
 (ns metabase.models.parameter-card
   (:require
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
@@ -30,13 +31,12 @@
   (u/prog1 pc
     (validate-parameterized-object-type pc)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ParameterCard)
-                 models/IModel
-                 (merge models/IModelDefaults
-                        {:properties (constantly {:timestamped? true})
-                         :types      (constantly {:parameterized_object_type :keyword})
-                         :pre-insert pre-insert
-                         :pre-update pre-update}))
+(mi/define-methods
+ ParameterCard
+ {:properties (constantly {::mi/timestamped? true})
+  :types      (constantly {:parameterized_object_type :keyword})
+  :pre-insert pre-insert
+  :pre-update pre-update})
 
 (defn delete-all-for-parameterized-object!
   "Delete all ParameterCard for a give Parameterized Object and NOT listed in the optional

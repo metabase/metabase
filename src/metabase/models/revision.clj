@@ -71,13 +71,12 @@
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Revision)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types       (constantly {:object :json})
-          :pre-insert  pre-insert
-          :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!"))))
-          :post-select do-post-select-for-object}))
+(mi/define-methods
+ Revision
+ {:types       (constantly {:object :json})
+  :pre-insert  pre-insert
+  :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!"))))
+  :post-select do-post-select-for-object})
 
 
 ;;; # Functions

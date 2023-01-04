@@ -515,9 +515,8 @@
   (e.g., :left-join is not supported by any version of Mongo DB).
 
   In some cases, a feature may only be supported by certain versions of the database engine.
-  In this case, after implementing `:version` in `describe-database` for the driver,
-  you can check in `(get-in db [:details :version])` and determine
-  whether a feature is supported for this particular database.
+  In this case, after implementing `[[dbms-version]]` for your driver
+  you can determine whether a feature is supported for this particular database.
 
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}

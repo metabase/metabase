@@ -1,10 +1,10 @@
 (ns metabase.models.app
   (:require
    [metabase.models.action :as action]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
    [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.util :as u]
    [toucan.db :as db]
    [toucan.models :as models]))
 
@@ -13,14 +13,13 @@
 ;;; You can read/write an App if you can read/write its Collection
 (derive App ::perms/use-parent-collection-perms)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class App)
-  models/IModel
-  (merge models/IModelDefaults
-         {:pre-insert (fn [app] (action/check-data-apps-enabled) app)
-          :types (constantly {:options :json
-                              :nav_items :json})
-          :properties (constantly {:timestamped? true
-                                   :entity_id    true})}))
+(mi/define-methods
+ App
+ {:pre-insert (fn [app] (action/check-data-apps-enabled) app)
+  :types      (constantly {:options   :json
+                           :nav_items :json})
+  :properties (constantly {::mi/timestamped? true
+                           ::mi/entity-id    true})})
 
 ;;; Should not be needed as every app should have an entity_id, but currently it's necessary to satisfy
 ;;; metabase-enterprise.models.entity-id-test/comprehensive-identity-hash-test.
@@ -28,9 +27,9 @@
   [_app]
   [:entity_id])
 
-(defn add-app-id
+(mi/define-batched-hydration-method add-app-id
+  :app_id
   "Add `app_id` to Collections that are linked with an App."
-  {:batched-hydrate :app_id}
   [collections]
   (if-let [coll-ids (seq (into #{}
                                (comp (map :id)
@@ -70,9 +69,9 @@
                               [:in :id model-ids]
                               :dataset]})))
 
-(defn add-models
+(mi/define-simple-hydration-method add-models
+  :models
   "Add the fully hydrated models used by the app."
-  {:hydrate :models}
   [app]
   (let [used-cards (app-cards app)
         contained-models (into #{} (filter :dataset) used-cards)]

@@ -197,23 +197,22 @@
       :read  (perms/data-perms-path db-id)
       :write (perms/db-details-write-perms-path db-id))})
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Database)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:database :db])
-          :types          (constantly {:details                     :encrypted-json
-                                       :options                     :json
-                                       :engine                      :keyword
-                                       :metadata_sync_schedule      :cron-string
-                                       :cache_field_values_schedule :cron-string
-                                       :start_of_week               :keyword
-                                       :settings                    :encrypted-json
-                                       :dbms_version                :json})
-          :post-insert    post-insert
-          :post-select    post-select
-          :pre-insert     pre-insert
-          :pre-update     pre-update
-          :pre-delete     pre-delete}))
+(mi/define-methods
+ Database
+ {:hydration-keys (constantly [:database :db])
+  :types          (constantly {:details                     :encrypted-json
+                               :options                     :json
+                               :engine                      :keyword
+                               :metadata_sync_schedule      :cron-string
+                               :cache_field_values_schedule :cron-string
+                               :start_of_week               :keyword
+                               :settings                    :encrypted-json
+                               :dbms_version                :json})
+  :post-insert    post-insert
+  :post-select    post-select
+  :pre-insert     pre-insert
+  :pre-update     pre-update
+  :pre-delete     pre-delete})
 
 (defmethod serdes.hash/identity-hash-fields Database
   [_database]
@@ -222,7 +221,8 @@
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
-(defn ^:hydrate tables
+(mi/define-simple-hydration-method tables
+  :tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?

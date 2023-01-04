@@ -89,8 +89,7 @@
 
 (def TableRowsSampleOptions
   "Schema for `table-rows-sample` options"
-  (s/maybe {(s/optional-key :truncation-start) s/Int
-            (s/optional-key :truncation-size)  s/Int
+  (s/maybe {(s/optional-key :truncation-size)  s/Int
             (s/optional-key :limit)            s/Int
             (s/optional-key :order-by)         (helpers/distinct (helpers/non-empty [mbql.s/OrderBy]))
             (s/optional-key :rff)              s/Any}))
@@ -108,9 +107,7 @@
   "Returns the mbql query to query a table for sample rows"
   [table
    fields
-   {:keys [truncation-start truncation-size limit order-by]
-    :or {truncation-start 1, limit max-sample-rows}
-    :as _opts}]
+   {:keys [truncation-size limit order-by] :or {limit max-sample-rows} :as _opts}]
   (let [database           (table/database table)
         driver             (driver.u/database->driver database)
         text-fields        (filter text-field? fields)
@@ -118,7 +115,7 @@
                              (into {} (for [field text-fields]
                                         [field [(str (gensym "substring"))
                                                 [:substring [:field (u/the-id field) nil]
-                                                 truncation-start truncation-size]]])))]
+                                                 1 truncation-size]]])))]
     {:database   (:db_id table)
      :type       :query
      :query      (cond-> {:source-table (u/the-id table)

@@ -35,22 +35,16 @@
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
-(defn dashboard-count
+(mi/define-simple-hydration-method dashboard-count
+  :dashboard_count
   "Return the number of Dashboards this Card is in."
-  {:hydrate :dashboard_count}
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
-(defn parameter-card-count
-  "Return the number of Parameters that this Card is in."
-  {:hydrate :parameter_card_count}
-  [{:keys [id]}]
-  (db/count ParameterCard :card_id id))
-
-(defn average-query-time
-  "Average query time of card, taken by query executions which didn't hit cache.
-  If it's nil we don't have any query executions on file"
-  {:hydrate :average_query_time}
+(mi/define-simple-hydration-method average-query-time
+  :average_query_time
+  "Average query time of card, taken by query executions which didn't hit cache. If it's nil we don't have any query
+  executions on file."
   [{:keys [id]}]
   (-> (db/query {:select [:%avg.running_time]
                  :from [:query_execution]
@@ -60,9 +54,9 @@
                          [:= :card_id id]]})
       first vals first))
 
-(defn last-query-start
+(mi/define-simple-hydration-method last-query-start
+  :last_query_start
   "Timestamp for start of last query of this card."
-  {:hydrate :last_query_start}
   [{:keys [id]}]
   (-> (db/query {:select [:%max.started_at]
                  :from [:query_execution]
@@ -318,27 +312,26 @@
   :in mi/json-in
   :out result-metadata-out)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:card])
-          :types          (constantly {:dataset_query          :metabase-query
-                                       :display                :keyword
-                                       :embedding_params       :json
-                                       :query_type             :keyword
-                                       :result_metadata        ::result-metadata
-                                       :visualization_settings :visualization-settings
-                                       :parameters             :parameters-list
-                                       :parameter_mappings     :parameters-list})
-          :properties     (constantly {:timestamped? true
-                                       :entity_id    true})
-          ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
-          ;; functions those fns call assume normalized queries
-          :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
-          :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
-          :post-insert    post-insert
-          :pre-delete     pre-delete
-          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
+(mi/define-methods
+ Card
+ {:hydration-keys (constantly [:card])
+  :types          (constantly {:dataset_query          :metabase-query
+                               :display                :keyword
+                               :embedding_params       :json
+                               :query_type             :keyword
+                               :result_metadata        ::result-metadata
+                               :visualization_settings :visualization-settings
+                               :parameters             :parameters-list
+                               :parameter_mappings     :parameters-list})
+  :properties     (constantly {::mi/timestamped? true
+                               ::mi/entity-id    true})
+  ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
+  ;; functions those fns call assume normalized queries
+  :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
+  :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
+  :post-insert    post-insert
+  :pre-delete     pre-delete
+  :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]
