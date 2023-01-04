@@ -11,12 +11,14 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of all the GTAPs currently in use."
   []
   ;; TODO - do we need to hydrate anything here?
   (db/select GroupTableAccessPolicy))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch GTAP by `id`"
   [id]
@@ -28,6 +30,7 @@
    (su/with-api-error-message (s/maybe {su/NonBlankString su/NonBlankString})
      "value must be a valid attribute remappings map (attribute name -> remapped name)"))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new GTAP."
   [:as {{:keys [table_id card_id group_id attribute_remappings]} :body}]
@@ -41,6 +44,7 @@
      :group_id             group_id
      :attribute_remappings attribute_remappings}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the
   paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
@@ -57,6 +61,7 @@
         :present #{:card_id :attribute_remappings})))
   (GroupTableAccessPolicy id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Delete a GTAP entry."
   [id]

@@ -33,6 +33,7 @@
          app (db/insert! App app-params)]
      (hydrate-details app))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Endpoint to create an app"
   [:as {{:keys [dashboard_id options nav_items]
@@ -48,6 +49,7 @@
    authority_level collection/AuthorityLevel}
   (create-app! app))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:app-id"
   "Endpoint to change an app"
   [app-id :as {{:keys [dashboard_id options nav_items] :as body} :body}]
@@ -59,6 +61,7 @@
   (db/update! App app-id (select-keys body [:dashboard_id :options :nav_items]))
   (hydrate-details (db/select-one App :id app-id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of all Apps that the current user has read permissions for.
 
@@ -76,6 +79,7 @@
                     (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
         :order-by [[:%lower.collection.name :asc]]}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch a specific App"
   [id]
@@ -268,6 +272,7 @@
                                                            :hidden true
                                                            :sectionId "id"}])))}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/scaffold"
   "Endpoint to scaffold a fully working data-app"
   [:as {{:keys [table-ids app-name]} :body}]
@@ -282,6 +287,7 @@
       (create-scaffold-dashcards! scaffold-target->id pages)
       (hydrate-details (db/select-one App :id app-id)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:app-id/scaffold"
   "Endpoint to scaffold a new table onto an existing data-app"
   [app-id :as {{:keys [table-ids]} :body}]

@@ -16,6 +16,7 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new [[TimelineEvent]]."
   [:as {{:keys [name description timestamp time_matters timezone icon timeline_id source question_id archived] :as body} :body}]
@@ -52,11 +53,13 @@
                                (boolean question_id) (assoc :question_id question_id)))
       (db/insert! TimelineEvent tl-event))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
   [id]
   (api/read-check TimelineEvent id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a [[TimelineEvent]]."
   [id :as {{:keys [name description timestamp time_matters timezone icon timeline_id archived]
@@ -80,6 +83,7 @@
         :non-nil #{:name}))
     (db/select-one TimelineEvent :id id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Delete a [[TimelineEvent]]."
   [id]

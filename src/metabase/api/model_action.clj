@@ -9,6 +9,7 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Endpoint to fetch actions for a model, must filter with card-id="
   [card-id]
@@ -22,6 +23,7 @@
              :where [:= :model_action.card_id card-id]
              :order-by [:model_action.id]}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Endpoint to associate an action with a model"
   [:as {{:keys [card_id action_id slug requires_pk parameter_mappings visualization_settings] :as body} :body}]
@@ -33,6 +35,7 @@
    visualization_settings (s/maybe su/MapPlumatic)}
   (db/insert! ModelAction body))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:model-action-id"
   "Endpoint to modify an action of a model"
   [model-action-id :as {{:keys [action_id slug requires_pk parameter_mappings visualization_settings] :as body} :body}]
@@ -44,6 +47,7 @@
   (db/update! ModelAction model-action-id (dissoc body :card_id))
   api/generic-204-no-content)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:model-action-id"
   "Endpoint to delete an action"
   [model-action-id]

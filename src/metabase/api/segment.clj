@@ -19,6 +19,7 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new `Segment`."
   [:as {{:keys [name description table_id definition], :as body} :body}]
@@ -51,11 +52,13 @@
                :query_description
                (api.qd/generate-query-description table (:definition segment)))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch `Segment` with ID."
   [id]
   (first (add-query-descriptions [(hydrated-segment id)])))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch *all* `Segments`."
   []
@@ -85,6 +88,7 @@
       (events/publish-event! (if archive? :segment-delete :segment-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a `Segment` with ID."
   [id :as {{:keys [name definition revision_message archived caveats description points_of_interest
@@ -100,6 +104,7 @@
    show_in_getting_started (s/maybe s/Bool)}
   (write-check-and-update-segment! id body))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [id revision_message]
@@ -110,6 +115,7 @@
   api/generic-204-no-content)
 
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for `Segment` with ID."
   [id]
@@ -117,6 +123,7 @@
   (revision/revisions+details Segment id))
 
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/revert"
   "Revert a `Segement` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
@@ -128,6 +135,7 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]

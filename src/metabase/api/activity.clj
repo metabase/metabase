@@ -98,6 +98,7 @@
                                 (or (existing-dataset? (:card_id dashcard))
                                     (existing-card? (:card_id dashcard))))))))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defendpoint-schema GET "/"
   "Get recent activity."
   []
@@ -197,6 +198,7 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defendpoint-schema GET "/recent_views"
   "Get the list of 5 things the current user has been viewing most recently."
   []
@@ -260,6 +262,7 @@
       (let [groups (group-by :model items)]
         (mapcat #(get groups %) model-precedence))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defendpoint-schema GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
   finds anything archived, deleted, etc it can hopefully still get 5."

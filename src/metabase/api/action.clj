@@ -54,21 +54,25 @@
         (throw (ex-info (i18n/tru "Actions are not enabled for Database {0}." database-id)
                         {:status-code 400}))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Returns cards that can be used for QueryActions"
   [model-id]
   {model-id su/IntGreaterThanZeroPlumatic}
   (action/merged-model-action nil :card_id model-id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:action-id"
   [action-id]
   (api/check-404 (first (action/select-actions :id action-id))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:action-id"
   [action-id]
   (db/delete! HTTPAction :action_id action-id)
   api/generic-204-no-content)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new HTTP action."
   [:as {{:keys [type name template response_handle error_handle] :as action} :body}]
@@ -84,6 +88,7 @@
       ;; so we return the most recently updated http action.
       (last (action/select-actions :type "http")))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   [id :as {{:keys [type name template response_handle error_handle] :as action} :body}]
   {id su/IntGreaterThanZeroPlumatic

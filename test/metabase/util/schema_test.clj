@@ -34,6 +34,7 @@
                  {:a {:b {:c {:d {:key                           (s/maybe s/Bool)
                                   (s/optional-key :optional-key) s/Int}}}}}))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/dimension"
   "Sets the dimension for the given object with ID."
   #_{:clj-kondo/ignore [:unused-binding :deprecated-var]}

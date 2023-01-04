@@ -493,10 +493,12 @@
     (some? limit)       (assoc :limit-int limit)
     (some? offset)      (assoc :offset-int offset)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/models"
   "Get the set of models that a search query will return"
   [q archived-string table-db-id] (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Search within a bunch of models for the substring `q`.
   For the list of models, check `metabase.search.config/all-models.

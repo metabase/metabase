@@ -11,6 +11,7 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single

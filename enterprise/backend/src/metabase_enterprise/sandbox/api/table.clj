@@ -53,6 +53,7 @@
     (update query-metadata-response :fields #(filter (comp (set gtap-field-ids) u/the-id) %))
     query-metadata-response))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has segmented permissions
   that only gives them access to a subset of columns for a given table, those inaccessable columns should also be

@@ -26,6 +26,7 @@
 (u/ignore-exceptions
  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch all alerts"
   [archived user_id]
@@ -36,12 +37,14 @@
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch an alert by ID"
   [id]
   (-> (api/read-check (pulse/retrieve-alert id))
       (hydrate :can_write)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/question/:id"
   "Fetch all questions for the given question (`Card`) id"
   [id archived]
@@ -128,6 +131,7 @@
     (assoc card :include_csv true)
     card))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new Alert."
   [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal]
@@ -162,6 +166,7 @@
     (doseq [recipient (collect-alert-recipients alert)]
       (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a `Alert` with ID."
   [id :as {{:keys [alert_condition alert_first_only alert_above_goal card channels archived]
@@ -241,6 +246,7 @@
       ;; Finally, return the updated Alert
       updated-alert)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]
