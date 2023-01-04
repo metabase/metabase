@@ -1049,8 +1049,7 @@
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
                       Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
-                      Card       [card-2 (card-with-native-query "Card 2")]
-                      Card       [_card-3 (assoc (card-with-native-query "Card 3") :is_write true :result_metadata {})]]
+                      Card       [card-2 (card-with-native-query "Card 2")]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))

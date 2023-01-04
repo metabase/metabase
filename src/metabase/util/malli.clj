@@ -76,7 +76,8 @@ explain-fn-fail!
   (-defn mx/SchematizedParams args))
 
 (def ^:private Schema
-  [:fn {:description "a malli schema"} mc/schema])
+  [:and any?
+   [:fn {:description "a malli schema"} mc/schema]])
 
 (defn with-api-error-message :- Schema
   "Update a malli schema to have a :description (picked up by api docs),
