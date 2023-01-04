@@ -4,9 +4,9 @@ import { getIn } from "icepick";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import * as Urls from "metabase/lib/urls";
 import {
-  GoogleButtonContainer,
+  GoogleButtonRoot,
   AuthError,
-  AuthErrorContainer,
+  AuthErrorRoot,
   TextLink,
 } from "./GoogleButton.styled";
 
@@ -50,7 +50,7 @@ const GoogleButton = ({
   }, []);
 
   return (
-    <GoogleButtonContainer>
+    <GoogleButtonRoot>
       {isCard && clientId ? (
         <GoogleOAuthProvider clientId={clientId}>
           <GoogleLogin
@@ -68,13 +68,13 @@ const GoogleButton = ({
       )}
 
       {errors.length > 0 && (
-        <AuthErrorContainer>
+        <AuthErrorRoot>
           {errors.map((error, index) => (
             <AuthError key={index}>{error}</AuthError>
           ))}
-        </AuthErrorContainer>
+        </AuthErrorRoot>
       )}
-    </GoogleButtonContainer>
+    </GoogleButtonRoot>
   );
 };
 
