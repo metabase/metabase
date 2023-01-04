@@ -85,13 +85,12 @@
                            (u/pprint-to-str schema) (u/add-period route-str)))))))
 
 (defn- malli-dox-for-schema
-  "Look up the docstring for `schema` for use in auto-generated API documentation. In most cases this is defined by
-  wrapping the schema with `with-api-error-message`."
+  "Generate the docstring for `schema` for use in auto-generated API documentation."
   [schema route-str]
   (try (umd/describe schema)
        (catch Exception _
          (ex-data
-          (when config/is-dev?
+          (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
             (log/warn
              (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
                              (u/pprint-to-str schema)
