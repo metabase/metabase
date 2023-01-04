@@ -34,15 +34,15 @@ class ArchiveQuestionModal extends Component {
       ? t`This model will be removed from any dashboards or pulses using it.`
       : t`This question will be removed from any dashboards or pulses using it.`;
 
-    const filterCount = question.getFilterCountForValues();
+    const widgetCount = question.getDropdownWidgetCountForValues();
 
     const additionalWarning =
-      filterCount > 0
+      widgetCount > 0
         ? " " +
           ngettext(
             msgid`It will also be removed from the filter that uses it to populate values.`,
-            `It will also be removed from the ${filterCount} filters that use it to populate values.`,
-            filterCount,
+            `It will also be removed from the ${widgetCount} filters that use it to populate values.`,
+            widgetCount,
           )
         : "";
 

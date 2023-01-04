@@ -39,10 +39,10 @@
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
-(mi/define-simple-hydration-method filter-values-usage-count
-  :filter_values_usage_count
-  "Return the number of dashboard/card filters that use this card to populate their available values (via
-  ParameterCards)"
+(mi/define-simple-hydration-method dropdown-widget-values-usage-count
+  :dropdown_widget_values_usage_count
+  "Return the number of dashboard/card filters and other widgets that use this card to populate their available
+  values (via ParameterCards)"
   [{:keys [id]}]
   (db/count 'ParameterCard, :card_id id))
 

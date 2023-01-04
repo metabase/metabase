@@ -183,7 +183,7 @@
                  (hydrate :creator
                           :bookmarked
                           :dashboard_count
-                          :filter_values_usage_count
+                          :dropdown_widget_values_usage_count
                           :can_write
                           :average_query_time
                           :last_query_start

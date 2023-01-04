@@ -444,10 +444,10 @@ class QuestionInner {
   }
 
   /**
-   * How many filters are this question's values used for?
+   * How many filters or other widgets are this question's values used for?
    */
-  getFilterCountForValues(): number {
-    return this.card().filter_values_usage_count || 0;
+  getDropdownWidgetCountForValues(): number {
+    return this.card().dropdown_widget_values_usage_count || 0;
   }
 
   /**
