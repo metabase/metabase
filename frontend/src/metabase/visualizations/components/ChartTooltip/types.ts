@@ -22,6 +22,22 @@ export interface HoveredTimelineEvent {
   element: HTMLElement;
 }
 
+export interface TooltipRowModel {
+  color?: string;
+  name: string;
+  value: unknown;
+  formatter?: (value: unknown) => string;
+}
+
+export interface TooltipModel {
+  headerTitle?: string;
+  headerRows: TooltipRowModel[];
+  bodyRows?: TooltipRowModel[];
+  totalFormatter?: (value: unknown) => string;
+  showTotal?: boolean;
+  showPercentages?: boolean;
+}
+
 export interface HoveredObject {
   index?: number;
   axisIndex?: number;
@@ -34,4 +50,5 @@ export interface HoveredObject {
   settings?: VisualizationSettings;
   element?: HTMLElement;
   event?: MouseEvent;
+  dataTooltip?: TooltipModel;
 }

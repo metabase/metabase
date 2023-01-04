@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   DatasetColumn,
   RowValue,
@@ -20,6 +21,8 @@ import {
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
 import { sumMetric } from "metabase/visualizations/shared/utils/data";
+import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
+import { TooltipRowModel } from "metabase/visualizations/components/ChartTooltip/types";
 import { isMetric } from "metabase-lib/types/utils/isa";
 
 const getMetricColumnData = (
@@ -167,23 +170,125 @@ export const getLegendClickData = (
   };
 };
 
+const getBreakoutsTooltipRows = (
+  bar: BarData<GroupedDatum>,
+  settings: VisualizationSettings,
+  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
+  seriesColors: Record<string, string>,
+): TooltipRowModel[] =>
+  multipleSeries.map(series => {
+    const value = series.xAccessor(bar.datum);
+    return {
+      name: series.seriesName,
+      color: seriesColors[series.seriesKey],
+      value,
+      formatter: value =>
+        String(
+          formatValueForTooltip({
+            value,
+            settings,
+            column: series.seriesInfo?.metricColumn,
+          }),
+        ),
+    };
+  });
+
+const getMultipleMetricsTooltipRows = (
+  bar: BarData<GroupedDatum>,
+  settings: VisualizationSettings,
+  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
+  seriesColors: Record<string, string>,
+): TooltipRowModel[] =>
+  multipleSeries.map(series => {
+    const value = series.xAccessor(bar.datum);
+
+    return {
+      name: series.seriesName,
+      color: seriesColors[series.seriesKey],
+      value,
+      formatter: value =>
+        String(
+          formatValueForTooltip({
+            value,
+            settings,
+            column: series.seriesInfo?.metricColumn,
+          }),
+        ),
+    };
+  });
+
+const getTooltipModel = (
+  bar: BarData<GroupedDatum>,
+  settings: VisualizationSettings,
+  chartColumns: ChartColumns,
+  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
+  seriesColors: Record<string, string>,
+) => {
+  const { series, datum } = bar;
+  const dimensionValue = series.yAccessor(datum);
+
+  const headerTitle = String(
+    formatValueForTooltip({
+      value: dimensionValue,
+      column: chartColumns.dimension.column,
+      settings,
+    }),
+  );
+
+  const hasBreakout = "breakout" in chartColumns;
+
+  const rows = hasBreakout
+    ? getBreakoutsTooltipRows(bar, settings, multipleSeries, seriesColors)
+    : getMultipleMetricsTooltipRows(
+        bar,
+        settings,
+        multipleSeries,
+        seriesColors,
+      );
+
+  const [headerRows, bodyRows] = _.partition(
+    rows,
+    row => row.name === series.seriesName,
+  );
+
+  const totalFormatter = hasBreakout
+    ? (value: unknown) =>
+        String(
+          formatValueForTooltip({
+            value,
+            settings,
+            column: chartColumns.metric.column,
+          }),
+        )
+    : undefined;
+
+  return {
+    headerTitle,
+    headerRows,
+    bodyRows,
+    totalFormatter,
+    showTotal: hasBreakout,
+    showPercentages: hasBreakout,
+  };
+};
+
 export const getHoverData = (
   bar: BarData<GroupedDatum>,
   settings: VisualizationSettings,
   chartColumns: ChartColumns,
-  datasetColumns: DatasetColumn[],
+  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
+  seriesColors: Record<string, string>,
 ) => {
-  const data = getColumnsData(
-    chartColumns,
-    bar.series,
-    bar.datum,
-    datasetColumns,
-  );
-
   return {
     settings,
     datumIndex: bar.datumIndex,
     index: bar.seriesIndex,
-    data,
+    dataTooltip: getTooltipModel(
+      bar,
+      settings,
+      chartColumns,
+      multipleSeries,
+      seriesColors,
+    ),
   };
 };
