@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
@@ -11,7 +10,6 @@ import { connect } from "react-redux";
 import { getScrollBarSize } from "metabase/lib/dom";
 import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
 import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_SPLIT_SETTING,
@@ -31,10 +29,10 @@ import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { isDimension } from "metabase-lib/types/utils/isa";
 
 import { RowToggleIcon } from "./RowToggleIcon";
+import { Cell } from "./PivotTableCell";
 
 import {
   PivotTableRoot,
-  PivotTableCell,
   PivotTableTopLeftCellsContainer,
   CELL_HEIGHT,
 } from "./PivotTable.styled";
@@ -592,44 +590,3 @@ class PivotTable extends Component {
 }
 
 export default connect(mapStateToProps)(PivotTable);
-
-function Cell({
-  value,
-  style,
-  icon,
-  backgroundColor,
-  isBody = false,
-  isBold,
-  isEmphasized,
-  isNightMode,
-  isBorderedHeader,
-  isTransparent,
-  hasTopBorder,
-  onClick,
-}) {
-  return (
-    <PivotTableCell
-      data-testid="pivot-table-cell"
-      isNightMode={isNightMode}
-      isBold={isBold}
-      isEmphasized={isEmphasized}
-      isBorderedHeader={isBorderedHeader}
-      hasTopBorder={hasTopBorder}
-      isTransparent={isTransparent}
-      style={{
-        ...style,
-        ...(backgroundColor
-          ? {
-              backgroundColor,
-            }
-          : {}),
-      }}
-      onClick={onClick}
-    >
-      <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
-        <Ellipsified>{value}</Ellipsified>
-        {icon && <div className="pl1">{icon}</div>}
-      </div>
-    </PivotTableCell>
-  );
-}
