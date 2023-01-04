@@ -20,8 +20,6 @@ Although connection details differ database to database, in general you'll need 
 
 The databases listed below have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing) will get official support.
 
-If you don't see your database listed here, see [partner and community drivers](../developers-guide/partner-and-community-drivers.md#partner-drivers).
-
 - [Amazon Athena](./connections/athena.md)
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
 - Druid
@@ -38,6 +36,8 @@ If you don't see your database listed here, see [partner and community drivers](
 - [SQL Server](./connections/sql-server.md)
 - SQLite
 - [Vertica](./connections/vertica.md)
+
+If you don't see your database listed here, see [partner and community drivers](../developers-guide/partner-and-community-drivers.md#partner-drivers).
 
 ## Connecting to databases hosted by a cloud provider
 

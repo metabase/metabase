@@ -70,16 +70,15 @@
       :read  (perms/table-read-path table)
       :write (perms/data-model-write-perms-path db-id schema table-id))})
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Table)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:table])
-          :types          (constantly {:entity_type     :keyword
-                                       :visibility_type :keyword
-                                       :field_order     :keyword})
-          :properties     (constantly {:timestamped? true})
-          :pre-insert     pre-insert
-          :pre-delete     pre-delete}))
+(mi/define-methods
+ Table
+ {:hydration-keys (constantly [:table])
+  :types          (constantly {:entity_type     :keyword
+                               :visibility_type :keyword
+                               :field_order     :keyword})
+  :properties     (constantly {::mi/timestamped? true})
+  :pre-insert     pre-insert
+  :pre-delete     pre-delete})
 
 (defmethod serdes.hash/identity-hash-fields Table
   [_table]
@@ -135,7 +134,8 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(defn ^:hydrate fields
+(mi/define-simple-hydration-method fields
+  :fields
   "Return the Fields belonging to a single `table`."
   [{:keys [id]}]
   (db/select Field
@@ -144,9 +144,9 @@
     :visibility_type [:not= "retired"]
     {:order-by field-order-rule}))
 
-(defn field-values
+(mi/define-simple-hydration-method ^{:arglists '([table])} field-values
+  :field_values
   "Return the FieldValues for all Fields belonging to a single `table`."
-  {:hydrate :field_values, :arglists '([table])}
   [{:keys [id]}]
   (let [field-ids (db/select-ids Field
                     :table_id        id
@@ -155,9 +155,9 @@
     (when (seq field-ids)
       (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
 
-(defn pk-field-id
+(mi/define-simple-hydration-method ^{:arglists '([table])} pk-field-id
+  :pk_field
   "Return the ID of the primary key `Field` for `table`."
-  {:hydrate :pk_field, :arglists '([table])}
   [{:keys [id]}]
   (db/select-one-id Field
     :table_id        id
@@ -172,18 +172,18 @@
     (for [table tables]
       (assoc table hydration-key (get table-id->objects (:id table) [])))))
 
-(defn with-segments
+(mi/define-batched-hydration-method with-segments
+  :segments
   "Efficiently hydrate the Segments for a collection of `tables`."
-  {:batched-hydrate :segments}
   [tables]
   (with-objects :segments
     (fn [table-ids]
       (db/select Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
-(defn with-metrics
+(mi/define-batched-hydration-method with-metrics
+  :metrics
   "Efficiently hydrate the Metrics for a collection of `tables`."
-  {:batched-hydrate :metrics}
   [tables]
   (with-objects :metrics
     (fn [table-ids]

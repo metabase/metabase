@@ -5,6 +5,7 @@
             [honeysql.core :as hsql]
             [malli.dev :as malli-dev]
             [metabase.api.common :as api]
+            [metabase.config :as config]
             [metabase.core :as mbc]
             [metabase.db.connection :as mdb.connection]
             [metabase.db.setup :as mdb.setup]
@@ -37,6 +38,8 @@
 (defn start!
   []
   (server/start-web-server! #'handler/app)
+  (when config/is-dev?
+    (malli-dev/start!))
   (when-not @initialized?
     (init!)))
 
@@ -136,7 +139,3 @@
   ([direction & [version]]
    (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source)
                        direction version)))
-
-(defn start-malli!
-  []
-  (malli-dev/start!))

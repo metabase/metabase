@@ -39,6 +39,8 @@
 
 (driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
 
+(defmethod driver/database-supports? [:oracle :datetime-diff] [_driver _feat _db] true)
+
 (defmethod driver/database-supports? [:oracle :convert-timezone]
   [_driver _feat _db]
   true)
@@ -335,6 +337,53 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :microseconds]
   [driver _ field-or-value]
   (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000000))))
+
+(defn- time-zoned-trunc
+  "Same as [[trunc]], but truncates `x` to `unit` in the results timezone
+   if `x` is a timestamp with time zone."
+  [unit x]
+  (let [x (cond-> x
+             (hx/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")
+             (hx/->AtTimeZone (qp.timezone/results-timezone-id)))]
+    (trunc unit x)))
+
+(defmethod sql.qp/datetime-diff [:oracle :year]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 12))
+
+(defmethod sql.qp/datetime-diff [:oracle :quarter]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 3))
+
+(defmethod sql.qp/datetime-diff [:oracle :month]
+  [_driver _unit x y]
+  (hsql/call :MONTHS_BETWEEN (time-zoned-trunc :dd y) (time-zoned-trunc :dd x)))
+
+(defmethod sql.qp/datetime-diff [:oracle :week]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :day x y) 7))
+
+(defmethod sql.qp/datetime-diff [:oracle :day]
+  [_driver _unit x y]
+  (hx/- (time-zoned-trunc :dd y) (time-zoned-trunc :dd x)))
+
+(defn- utc-days-diff
+  "Calculates the number of fractional days between `x` and `y`, converting to UTC if the
+   args are timestamps with time zones. This is needed because some time zones don't have
+   24 hours in every day, which can cause incorrect results if we calculate the number of
+   hours, minutes, or seconds between two timestamps with naive subtraction."
+  [x y]
+  (let [x (cond-> x
+            (hx/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")
+            (hx/->AtTimeZone "UTC"))
+        y (cond-> y
+            (hx/is-of-type? y #"(?i)timestamp(\(\d\))? with time zone")
+            (hx/->AtTimeZone "UTC"))]
+    (hx/- (hx/->date y) (hx/->date x))))
+
+(defmethod sql.qp/datetime-diff [:oracle :hour] [_driver _unit x y] (hx/* (utc-days-diff x y) 24))
+(defmethod sql.qp/datetime-diff [:oracle :minute] [_driver _unit x y] (hx/* (utc-days-diff x y) 1440))
+(defmethod sql.qp/datetime-diff [:oracle :second] [_driver _unit x y] (hx/* (utc-days-diff x y) 86400))
 
 ;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
 ;; supported on Oracle versions older than 12). This has to wrap the actual query, e.g.

@@ -32,14 +32,14 @@
                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
              mi/json-out-with-keywordization))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Action)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types      (constantly {:type :keyword
-                                   :parameter_mappings :parameters-list
-                                   :parameters :parameters-list
-                                   :visualization_settings :visualization-settings})
-          :properties (constantly {:timestamped? true})}))
+(mi/define-methods
+ Action
+ {:pre-insert (fn [action] (check-data-apps-enabled) action)
+  :types      (constantly {:type :keyword
+                           :parameter_mappings :parameters-list
+                           :parameters :parameters-list
+                           :visualization_settings :visualization-settings})
+  :properties (constantly {::mi/timestamped? true})})
 
 (defn- pre-update
   [action]
@@ -56,25 +56,24 @@
 
 (def ^:private Action-subtype-IModel-impl
   "[[models/IModel]] impl for `HTTPAction` and `QueryAction`"
-  (merge models/IModelDefaults
-         {:primary-key (constantly :action_id) ; This is ok as long as we're 1:1
-          :pre-delete pre-delete
-          :pre-update pre-update}))
+  {:primary-key (constantly :action_id) ; This is ok as long as we're 1:1
+   :pre-delete pre-delete
+   :pre-update pre-update})
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class QueryAction)
-  models/IModel
-  (merge
-    Action-subtype-IModel-impl
-    {:types (constantly {:dataset_query :json})}))
+(mi/define-methods
+ QueryAction
+ (merge
+  Action-subtype-IModel-impl
+  {:types (constantly {:dataset_query :json})}))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ImplicitAction)
-  models/IModel
-  Action-subtype-IModel-impl)
+(mi/define-methods
+ ImplicitAction
+ Action-subtype-IModel-impl)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class HTTPAction)
-  models/IModel
-  (merge Action-subtype-IModel-impl
-         {:types (constantly {:template ::json-with-nested-parameters})}))
+(mi/define-methods
+ HTTPAction
+ (merge Action-subtype-IModel-impl
+        {:types (constantly {:template ::json-with-nested-parameters})}))
 
 (defn insert!
   "Inserts an Action and related type table. Returns the action id."
@@ -203,9 +202,9 @@
 
                                     :always seq))))))
 
-(defn dashcard-action
-  "Hydrates action from DashboardCard"
-  {:batched-hydrate :dashcard/action}
+(mi/define-batched-hydration-method dashcard-action
+  :dashcard/action
+  "Hydrates action from DashboardCard."
   [dashcards]
   (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
                         (m/index-by :id (actions-with-implicit-params (map :card dashcards) :id [:in action-ids])))]

@@ -623,11 +623,11 @@
                                    (:object permissions))))
   (assert-not-admin-group permissions))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Permissions)
-  models/IModel (merge models/IModelDefaults
-                       {:pre-insert pre-insert
-                        :pre-update pre-update
-                        :pre-delete pre-delete}))
+(mi/define-methods
+ Permissions
+ {:pre-insert pre-insert
+  :pre-update pre-update
+  :pre-delete pre-delete})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
