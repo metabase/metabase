@@ -105,6 +105,18 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
+## `GET /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute`
+
+Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
+
+### PARAMS:
+
+*  **`uuid`** 
+
+*  **`dashcard-id`** value must be an integer greater than zero.
+
+*  **`parameters`** value must be a valid JSON string.
+
 ## `GET /api/public/dashboard/:uuid/field/:field-id/remapping/:remapped-id`
 
 Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
@@ -211,6 +223,30 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 *  **`dashcard-id`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+## `POST /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute`
+
+Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values.
+
+### PARAMS:
+
+*  **`uuid`** 
+
+*  **`dashcard-id`** value must be an integer greater than zero.
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a map with schema: (
+  value must be a map with schema: (
+    p? : 
+    pred-name : 
+  ) : value must be a map with schema: (
+    _ : 
+  )
+)
+
+*  **`_body`**
 
 ---
 
