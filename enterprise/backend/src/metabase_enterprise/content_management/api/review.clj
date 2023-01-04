@@ -7,6 +7,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new `ModerationReview`."
   [:as {{:keys [text moderated_item_id moderated_item_type status]} :body}]

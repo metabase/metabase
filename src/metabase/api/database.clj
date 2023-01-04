@@ -982,6 +982,7 @@
    (perms/set-has-full-permissions? @api/*current-user-permissions-set*
                                     (perms/data-model-write-perms-path database-id schema-name))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
   [id]

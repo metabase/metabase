@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [compojure.core :refer [GET]]
    [medley.core :as m]
+   #_{:clj-kondo/ignore [:deprecated-var]}
    [metabase.api.common
     :refer [*current-user-id* defendpoint-schema define-routes]]
    [metabase.models.activity :refer [Activity]]

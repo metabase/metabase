@@ -427,6 +427,7 @@
     (api/check-500 (db/update! User id, k false)))
   {:success true})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/send_invite"
   "Resend the user invite email for a given user."
   [id]

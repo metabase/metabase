@@ -490,6 +490,7 @@
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:token/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Cards."
