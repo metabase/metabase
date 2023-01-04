@@ -1,4 +1,4 @@
-import type { Database } from "metabase-types/types/Database";
+import type { Database } from "metabase-types/api/database";
 
 export interface HelpText {
   name: string;

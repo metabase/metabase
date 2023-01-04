@@ -1,5 +1,7 @@
 import { NativePermissions } from "./permissions";
 import { ScheduleSettings } from "./settings";
+import { Table } from "./table";
+import { ISO8601Time } from ".";
 
 export type DatabaseId = number;
 
@@ -22,19 +24,24 @@ export type DatabaseFeature =
   | "nested-queries"
   | "standard-deviation-aggregations"
   | "persist-models"
-  | "persist-models-enabled";
+  | "persist-models-enabled"
+  | "set-timezone";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
-  is_saved_questions: boolean;
+  is_saved_questions?: boolean;
   features: DatabaseFeature[];
   creator_id?: number;
-  created_at: string;
   timezone?: string;
   native_permissions: NativePermissions;
-  initial_sync_status: InitialSyncStatus;
+  initial_sync_status?: InitialSyncStatus;
 
   settings?: DatabaseSettings | null;
+
+  tables?: Table[];
+
+  created_at: ISO8601Time;
+  updated_at: ISO8601Time;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;

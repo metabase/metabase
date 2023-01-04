@@ -19,8 +19,7 @@ export type DatabaseFeature =
   | "nested-queries"
   | "expressions"
   | "case-sensitivity-string-filter-options"
-  | "binning"
-  | "set-timezone";
+  | "binning";
 
 export type DatabaseDetails = Record<string, any>;
 
