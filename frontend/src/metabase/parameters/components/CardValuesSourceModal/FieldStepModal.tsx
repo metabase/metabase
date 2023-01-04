@@ -7,13 +7,16 @@ import Select, {
   SelectChangeEvent,
 } from "metabase/core/components/Select";
 import ModalContent from "metabase/components/ModalContent";
+import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
+import Visualization from "metabase/visualizations/components/Visualization/Visualization";
 import Tables from "metabase/entities/tables";
 import { CardId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import { ModalBody } from "./FieldStepModal.styled";
+import { ModalBody, ModalCaption } from "./FieldStepModal.styled";
 
 interface FieldStepModalOwnProps {
   cardId: CardId | undefined;
@@ -26,6 +29,10 @@ interface FieldStepModalOwnProps {
 
 interface FieldStepModalTableProps {
   table: Table;
+}
+
+interface QuestionResultLoaderProps {
+  rawSeries: unknown[];
 }
 
 type FieldStepModalProps = FieldStepModalOwnProps & FieldStepModalTableProps;
@@ -42,9 +49,13 @@ const FieldStepModal = ({
     return getSupportedFields(table);
   }, [table]);
 
-  const selectedField = useMemo(() => {
+  const field = useMemo(() => {
     return fieldReference && getFieldByReference(fields, fieldReference);
   }, [fields, fieldReference]);
+
+  const question = useMemo(() => {
+    return field && getFieldQuestion(table, field);
+  }, [table, field]);
 
   const handleChange = useCallback(
     (event: SelectChangeEvent<Field>) => {
@@ -61,25 +72,42 @@ const FieldStepModal = ({
         <Button
           key="submit"
           primary
-          disabled={!selectedField}
+          disabled={!field}
           onClick={onSubmit}
         >{t`Done`}</Button>,
       ]}
       onClose={onClose}
     >
       <ModalBody>
-        <Select
-          value={selectedField}
-          placeholder={t`Pick a column`}
-          onChange={handleChange}
-        >
-          {fields.map((field, index) => (
-            <Option key={index} name={field.displayName()} value={field} />
-          ))}
-        </Select>
+        <ModalCaption>
+          <Select
+            value={field}
+            placeholder={t`Pick a column`}
+            onChange={handleChange}
+          >
+            {fields.map((field, index) => (
+              <Option key={index} name={field.displayName()} value={field} />
+            ))}
+          </Select>
+        </ModalCaption>
+        <QuestionResultLoader question={question}>
+          {({ rawSeries }: QuestionResultLoaderProps) =>
+            rawSeries && <Visualization rawSeries={rawSeries} isDashboard />
+          }
+        </QuestionResultLoader>
       </ModalBody>
     </ModalContent>
   );
+};
+
+const getFieldQuestion = (table: Table, field: Field) => {
+  const query = table.question().query();
+
+  if (query instanceof StructuredQuery) {
+    return query.setFields([field.reference()]).question();
+  } else {
+    return query.question();
+  }
 };
 
 const getFieldByReference = (fields: Field[], fieldReference: unknown[]) => {
