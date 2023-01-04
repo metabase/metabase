@@ -2,7 +2,7 @@
 import React from "react";
 
 import { t, ngettext, msgid } from "ttag";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import {
   ReadPermissionLabel,
   WritePermissionLabel,

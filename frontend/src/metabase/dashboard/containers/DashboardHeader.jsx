@@ -11,7 +11,7 @@ import { getIsNavbarOpen } from "metabase/redux/app";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import Bookmark from "metabase/entities/bookmarks";
