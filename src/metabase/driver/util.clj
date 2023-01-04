@@ -13,6 +13,8 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
    [toucan.db :as db])
   (:import
    (java.io ByteArrayInputStream)
@@ -160,16 +162,6 @@
         (log/error e (trs "Failed to connect to database"))
         false))))
 
-(defn report-timezone-if-supported
-  "Returns the report-timezone if `driver` supports setting it's timezone and a report-timezone has been specified by
-  the user."
-  [driver]
-  (when (driver/supports? driver :set-timezone)
-    (let [report-tz (driver/report-timezone)]
-      (when (seq report-tz)
-        report-tz))))
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Driver Resolution                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -211,6 +203,25 @@
   (set (for [driver (descendants driver/hierarchy :metabase.driver/driver)
              :when  (driver/available? driver)]
          driver)))
+
+(s/defn semantic-version-gte
+  "Returns true if xv is greater than or equal to yv according to semantic versioning.
+   xv and yv are sequences of integers of the form `[major minor ...]`, where only
+   major is obligatory.
+   Examples:
+   (semantic-version-gte [4 1] [4 1]) => true
+   (semantic-version-gte [4 0 1] [4 1]) => false
+   (semantic-version-gte [4 1] [4]) => true
+   (semantic-version-gte [3 1] [4]) => false"
+  [xv :- [su/NonNegativeInt] yv :- [su/NonNegativeInt]] :- s/Bool
+  (loop [xv (seq xv), yv (seq yv)]
+    (or (nil? yv)
+        (let [[x & xs] xv
+              [y & ys] yv
+              x (if (nil? x) 0 x)
+              y (if (nil? y) 0 y)]
+          (or (> x y)
+              (and (>= x y) (recur xs ys)))))))
 
 (defn- file-upload-props [{prop-name :name, visible-if :visible-if, disp-nm :display-name, :as conn-prop}]
   (if (premium-features/is-hosted?)

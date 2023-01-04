@@ -171,8 +171,7 @@
                           :can_write
                           :average_query_time
                           :last_query_start
-                          :collection [:moderation_reviews :moderator_details]
-                          :parameter_card_count)
+                          :collection [:moderation_reviews :moderator_details])
                  (cond-> ;; card
                    (:dataset raw-card) (hydrate :persisted)
                    (:is_write raw-card) (hydrate :card/action-id))
@@ -960,7 +959,7 @@ saved later when it is ready."
 (api/defendpoint GET "/:card-id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`.
 
-    ;; fetch values for Card 1 parameter 'abc' that are possible when parameter 'def' is set to 100
+    ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/card/1/params/abc/values"
   [card-id param-key]
   (let [card (api/read-check Card card-id)]

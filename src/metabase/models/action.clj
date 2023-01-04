@@ -37,12 +37,11 @@
                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
              mi/json-out-with-keywordization))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Action)
-  models/IModel
-  (merge models/IModelDefaults
-         {:pre-insert (fn [action] (check-data-apps-enabled) action)
-          :types      (constantly {:type :keyword})
-          :properties (constantly {:timestamped? true})}))
+(mi/define-methods
+ Action
+ {:pre-insert (fn [action] (check-data-apps-enabled) action)
+  :types      (constantly {:type :keyword})
+  :properties (constantly {::mi/timestamped? true})})
 
 (defn- pre-update
   [action]
@@ -57,27 +56,25 @@
 
 (def ^:private Action-subtype-IModel-impl
   "[[models/IModel]] impl for `HTTPAction` and `QueryAction`"
-  (merge models/IModelDefaults
-         {:primary-key (constantly :action_id) ; This is ok as long as we're 1:1
-          :pre-delete pre-delete
-          :pre-update pre-update}))
+  {:primary-key (constantly :action_id) ; This is ok as long as we're 1:1
+   :pre-delete pre-delete
+   :pre-update pre-update})
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class QueryAction)
-  models/IModel
-  Action-subtype-IModel-impl)
+(mi/define-methods
+ QueryAction
+ Action-subtype-IModel-impl)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class HTTPAction)
-  models/IModel
-  (merge Action-subtype-IModel-impl
-         {:types (constantly {:template ::json-with-nested-parameters})}))
+(mi/define-methods
+ HTTPAction
+ (merge Action-subtype-IModel-impl
+        {:types (constantly {:template ::json-with-nested-parameters})}))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ModelAction)
-  models/IModel
-  (merge models/IModelDefaults
-         {:pre-insert (fn [model-action] (check-data-apps-enabled) model-action)
-          :properties (constantly {:entity_id    true})
-          :types      (constantly {:parameter_mappings     :parameters-list
-                                   :visualization_settings :visualization-settings})}))
+(mi/define-methods
+ ModelAction
+ {:pre-insert (fn [model-action] (check-data-apps-enabled) model-action)
+  :properties (constantly {::mi/entity-id true})
+  :types      (constantly {:parameter_mappings     :parameters-list
+                           :visualization_settings :visualization-settings})})
 
 ;;; TODO -- this doesn't seem right. [[serdes.hash/identity-hash-fields]] is used to calculate `entity_id`, so we
 ;;; shouldn't use it in the calculation. We can fix this later
@@ -161,9 +158,9 @@
         http-actions (normalize-http-actions http)]
     (sort-by :updated_at (concat query-actions http-actions))))
 
-(defn cards-by-action-id
-  "Hydrates action_id from Card for is_write cards"
-  {:batched-hydrate :card/action-id}
+(mi/define-batched-hydration-method cards-by-action-id
+  :card/action-id
+  "Hydrates `:action_id` from Card for is_write cards"
   [cards]
   (if-let [card-id->action-id (not-empty (db/select-field->field
                                            :card_id :action_id
@@ -237,9 +234,9 @@
                     implicit-action
                     action))))
 
-(defn dashcard-action
-  "Hydrates action from DashboardCard"
-  {:batched-hydrate :dashcard/action}
+(mi/define-batched-hydration-method dashcard-action
+  :dashcard/action
+  "Hydrates action from DashboardCard."
   [dashcards]
   (let [model-slug-by-dashcard-id (->> dashcards
                                        (keep (fn [dashcard]

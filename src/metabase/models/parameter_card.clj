@@ -1,5 +1,6 @@
 (ns metabase.models.parameter-card
   (:require
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
@@ -10,13 +11,13 @@
 (models/defmodel ParameterCard :parameter_card)
 
 (defonce ^{:doc "Set of valid parameterized_object_type for a ParameterCard"}
-  valid-parameterized_object_type #{"dashboard" "card"})
+  valid-parameterized-object-type #{"dashboard" "card"})
 
 (defn- validate-parameterized-object-type
   [{:keys [parameterized_object_type] :as _parameter-card}]
-  (when-not (valid-parameterized_object_type parameterized_object_type)
+  (when-not (valid-parameterized-object-type parameterized_object_type)
     (throw (ex-info (tru "invalid parameterized_object_type")
-                    {:allowed-types valid-parameterized_object_type}))))
+                    {:allowed-types valid-parameterized-object-type}))))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -30,13 +31,12 @@
   (u/prog1 pc
     (validate-parameterized-object-type pc)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ParameterCard)
-                 models/IModel
-                 (merge models/IModelDefaults
-                        {:properties (constantly {:timestamped? true})
-                         :types      (constantly {:parameterized_object_type :keyword})
-                         :pre-insert pre-insert
-                         :pre-update pre-update}))
+(mi/define-methods
+ ParameterCard
+ {:properties (constantly {::mi/timestamped? true})
+  :types      (constantly {:parameterized_object_type :keyword})
+  :pre-insert pre-insert
+  :pre-update pre-update})
 
 (defn delete-all-for-parameterized-object!
   "Delete all ParameterCard for a give Parameterized Object and NOT listed in the optional

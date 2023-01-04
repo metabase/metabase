@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [honeysql.helpers :as hh]
    [metabase.db.connection :as mdb.connection]
+   [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
@@ -100,17 +101,18 @@
     (when group-name
       (check-name-not-already-taken group-name))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PermissionsGroup)
-  models/IModel (merge models/IModelDefaults
-                   {:pre-delete  pre-delete
-                    :pre-insert  pre-insert
-                    :pre-update  pre-update}))
+(mi/define-methods
+ PermissionsGroup
+ {:pre-delete  pre-delete
+  :pre-insert  pre-insert
+  :pre-update  pre-update})
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
 
-(defn ^:hydrate members
-  "Return `Users` that belong to GROUP-OR-ID, ordered by their name (case-insensitive)."
+(mi/define-simple-hydration-method members
+  :members
+  "Return `Users` that belong to `group-or-id`, ordered by their name (case-insensitive)."
   [group-or-id]
   (db/query (cond-> {:select    [:user.first_name
                                  :user.last_name

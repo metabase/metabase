@@ -1,5 +1,6 @@
 (ns metabase.models.permissions-group-membership
   (:require
+   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -54,9 +55,8 @@
       (db/update! 'User user_id
         :is_superuser true))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PermissionsGroupMembership)
-  models/IModel
-  (merge models/IModelDefaults
-         {:pre-delete  pre-delete
-          :pre-insert  pre-insert
-          :post-insert post-insert}))
+(mi/define-methods
+ PermissionsGroupMembership
+ {:pre-delete  pre-delete
+  :pre-insert  pre-insert
+  :post-insert post-insert})

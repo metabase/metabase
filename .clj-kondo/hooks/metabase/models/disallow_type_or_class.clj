@@ -23,6 +23,7 @@
      Emitter
      Field
      FieldValues
+     GroupTableAccessPolicy
      HTTPAction
      LoginHistory
      Metric
