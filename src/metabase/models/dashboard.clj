@@ -513,7 +513,7 @@
   (let [dashcards       (db/select ['DashboardCard :card_id :parameter_mappings]
                                    :dashboard_id id)
         dashboard       (db/select-one Dashboard :id id)
-        parameter-cards (db/select-field :id 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id id)]
+        parameter-cards (db/select-field :id ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id id)]
     (set/union
       ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
       ;; here. So their cards, both direct and mentioned in their parameters.

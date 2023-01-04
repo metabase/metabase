@@ -983,7 +983,8 @@
                     :value_field ["field" (:id @field) nil]}
                    (-> (db/select-one-field :parameters Card :entity_id new-eid)
                        first
-                       :values_source_config)))))))))
+                       :values_source_config)))
+            (is (some? (db/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id @card))))))))))
 
 (deftest dashboard-has-parameter-with-source-card-test
   (let [db        (atom nil)
@@ -1032,4 +1033,5 @@
                     :value_field ["field" (:id @field) nil]}
                    (-> (db/select-one-field :parameters Dashboard :entity_id new-eid)
                        first
-                       :values_source_config)))))))))
+                       :values_source_config)))
+            (is (some? (db/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id @dash))))))))))
