@@ -66,13 +66,13 @@ jobs:
       - run: |
           echo "Didn't run due to conditional filtering"
 
-  be-tests-mongo-4-0-ee:
+  be-tests-mongo-4-2-ee:
     runs-on: ubuntu-20.04
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
 
-  be-tests-mongo-4-0-ssl-ee:
+  be-tests-mongo-4-2-ssl-ee:
     runs-on: ubuntu-20.04
     steps:
       - run: |

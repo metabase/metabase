@@ -16,7 +16,6 @@
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.email-test :as et]
    [metabase.http-client :as client]
-   [metabase.models.action :as action]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test :as qp.test]
@@ -49,7 +48,6 @@
 
 (humane-are/install!)
 (humane-test-output/activate!)
-(alter-var-root #'action/*data-apps-enabled* (constantly true))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
@@ -206,6 +204,7 @@
   secret-value-equals?
   select-keys-sequentially
   throw-if-called
+  with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes
   with-env-keys-renamed-by

@@ -7,7 +7,6 @@
    [metabase.api.common
     :refer [*current-user-id* defendpoint-schema define-routes]]
    [metabase.models.activity :refer [Activity]]
-   [metabase.models.app :refer [App]]
    [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
@@ -55,18 +54,10 @@
        (cond-> {}
          (seq dataset-ids) (assoc "dataset" (set dataset-ids))
          (seq card-ids')   (assoc "card" (set card-ids')))))
-   (when-let [dashboard-ids (get referenced-objects "dashboard")]
-     (let [id->page?                            (db/select-id->field :is_app_page Dashboard
-                                                                     :id [:in dashboard-ids])
-           {page-ids true dashboard-ids' false} (group-by (comp boolean id->page?)
-                                                          ;; only existing ids go back
-                                                          (keys id->page?))]
-       (cond-> {}
-         (seq page-ids)       (assoc "page" (set page-ids))
-         (seq dashboard-ids') (assoc "dashboard" (set dashboard-ids')))))
-   (into {} (for [[model ids] (dissoc referenced-objects "card" "dashboard")
+   (into {} (for [[model ids] (dissoc referenced-objects "card")
                   :when       (seq ids)]
               [model (case model
+                       "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
                        "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
                        "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
                        "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
@@ -78,15 +69,12 @@
   (let [existing-objects (-> activities activities->referenced-objects referenced-objects->existing-objects)
         model-exists? (fn [model id] (contains? (get existing-objects model) id))
         existing-dataset? (partial model-exists? "dataset")
-        existing-page? (partial model-exists? "page")
         existing-card? (partial model-exists? "card")]
     (for [{:keys [model_id], :as activity} activities]
-      (let [model (cond
-                    (and (= (:model activity) "card")
-                         (existing-dataset? (:model_id activity))) "dataset"
-                    (and (= (:model activity) "dashboard")
-                         (existing-page? (:model_id activity)))    "page"
-                    :else                                          (:model activity))]
+      (let [model (if (and (= (:model activity) "card")
+                           (existing-dataset? (:model_id activity)))
+                    "dataset"
+                    (:model activity))]
         (cond-> (assoc activity
                        :model_exists (model-exists? model model_id)
                        :model model)
@@ -115,8 +103,7 @@
                      (db/qualify Collection :authority_level)]
         "dashboard" [Dashboard
                      :id :name :collection_id :description
-                     :archived :is_app_page
-                     [(db/qualify App :id) :app_id]
+                     :archived
                      (db/qualify Collection :authority_level)]
         "table"     [Table
                      :id :name :db_id
@@ -126,8 +113,7 @@
             self-qualify #(db/qualify model-symb %)]
         (cond-> {:where [:in (self-qualify :id) ids]}
           (not= model "table")
-          (merge {:left-join [Collection [:= (db/qualify Collection :id) (self-qualify :collection_id)]
-                              App [:= (db/qualify App :collection_id) (db/qualify Collection :id)]]})))))
+          (merge {:left-join [Collection [:= (db/qualify Collection :id) (self-qualify :collection_id)]]})))))
 
 (defn- select-items! [model ids]
   (when (seq ids)
@@ -211,8 +197,7 @@
                           (not (or (:archived model-object)
                                    (= (:visibility_type model-object) :hidden))))]
            (cond-> (assoc view-log :model_object model-object)
-             (:dataset model-object) (assoc :model "dataset")
-             (:is_app_page model-object) (assoc :model "page")))
+             (:dataset model-object) (assoc :model "dataset")))
          (take 5))))
 
 (defn- official?
@@ -252,7 +237,7 @@
                       (* (/ cnt max-count) views-wt)]]
           (assoc item :score (double (reduce + scores))))))))
 
-(def ^:private model-precedence ["dashboard" "page" "card" "dataset" "table"])
+(def ^:private model-precedence ["dashboard" "card" "dataset" "table"])
 
 (defn- order-items
   [items]
@@ -279,8 +264,7 @@
                                         (not (or (:archived model-object)
                                                  (= (:visibility_type model-object) :hidden))))]
                          (cond-> (assoc view-log :model_object model-object)
-                           (:dataset model-object) (assoc :model "dataset")
-                           (:is_app_page model-object) (assoc :model "page")))
+                           (:dataset model-object) (assoc :model "dataset")))
         scored-views (score-items filtered-views)]
     (->> scored-views
          (sort-by :score)

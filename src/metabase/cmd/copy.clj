@@ -12,7 +12,6 @@
    [metabase.db.setup :as mdb.setup]
    [metabase.models
     :refer [Activity
-            App
             ApplicationPermissionsRevision
             BookmarkOrdering
             Card
@@ -31,7 +30,6 @@
             LoginHistory
             Metric
             MetricImportantField
-            ModelAction
             ModerationReview
             NativeQuerySnippet
             ParameterCard
@@ -102,13 +100,11 @@
    Card
    CardBookmark
    DashboardBookmark
-   ModelAction
    CollectionBookmark
    BookmarkOrdering
    DashboardCard
    DashboardCardSeries
    Activity
-   App
    Pulse
    PulseCard
    PulseChannel
