@@ -84,7 +84,7 @@
 (defmethod accept :<= [_ _ [value] _] (str "<= " value))
 (defmethod accept :=  [_ _ [value] _] (str "must equal " value))
 (defmethod accept :not= [_ _ [value] _] (str "not equal " value))
-(defmethod accept :not [_ schema children _] {:not (last children)})
+(defmethod accept :not [_ _ children _] {:not (last children)})
 
 (defmethod accept :multi [_ s children _]
   (let [dispatcher (or (-> s mc/properties :dispatch-description)
