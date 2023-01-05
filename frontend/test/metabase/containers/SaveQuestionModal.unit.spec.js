@@ -1,41 +1,19 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
+
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-
-import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
-import MetabaseSettings from "metabase/lib/settings";
-
 import {
   SAMPLE_DATABASE,
   ORDERS,
   metadata,
 } from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
-import Question from "metabase-lib/Question";
+import { mockSettings } from "__support__/settings";
 
-function mockCachingEnabled(enabled = true) {
-  const original = MetabaseSettings.get.bind(MetabaseSettings);
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "enable-query-caching") {
-      return enabled;
-    }
-    if (key === "application-name") {
-      return "Metabase Test";
-    }
-    if (key === "version") {
-      return { tag: "" };
-    }
-    if (key === "is-hosted?") {
-      return false;
-    }
-    if (key === "enable-enhancements?") {
-      return false;
-    }
-    return original(key);
-  });
-}
+import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
+
+import Question from "metabase-lib/Question";
 
 const setup = async (question, originalQuestion) => {
   const onCreateMock = jest.fn(() => Promise.resolve());
@@ -546,7 +524,7 @@ describe("SaveQuestionModal", () => {
 
   describe("Cache TTL field", () => {
     beforeEach(() => {
-      mockCachingEnabled();
+      mockSettings({ "enable-query-caching": true });
     });
 
     const question = Question.create({
