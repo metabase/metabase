@@ -105,12 +105,12 @@
 (declare client)
 
 (def ^:private Credentials
-  {:username su/NonBlankString, :password su/NonBlankString})
+  {:username su/NonBlankStringPlumatic, :password su/NonBlankStringPlumatic})
 
 (def UUIDString
   "Schema for a canonical string representation of a UUID."
   (schema/constrained
-   su/NonBlankString
+   su/NonBlankStringPlumatic
    (partial re-matches #"^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$")))
 
 (schema/defn authenticate :- UUIDString
@@ -179,15 +179,15 @@
 (def ^:private ClientParamsMap
   {(schema/optional-key :credentials)      (schema/maybe (schema/cond-pre UUIDString Credentials))
    :method                                 (apply schema/enum (keys method->request-fn))
-   (schema/optional-key :expected-status)  (schema/maybe su/IntGreaterThanZero)
-   :url                                    su/NonBlankString
+   (schema/optional-key :expected-status)  (schema/maybe su/IntGreaterThanZeroPlumatic)
+   :url                                    su/NonBlankStringPlumatic
    ;; body can be either a map or a vector -- we encode it as JSON. Of course, other things are valid JSON as well, but
    ;; currently none of our endpoints accept them -- add them if needed.
    (schema/optional-key :http-body)        (schema/cond-pre
-                                            (schema/maybe su/Map)
+                                            (schema/maybe su/MapPlumatic)
                                             (schema/maybe clojure.lang.IPersistentVector))
-   (schema/optional-key :query-parameters) (schema/maybe su/Map)
-   (schema/optional-key :request-options)  (schema/maybe su/Map)})
+   (schema/optional-key :query-parameters) (schema/maybe su/MapPlumatic)
+   (schema/optional-key :request-options)  (schema/maybe su/MapPlumatic)})
 
 (schema/defn ^:private -client
   ;; Since the params for this function can get a little complicated make sure we validate them

@@ -39,7 +39,7 @@
 
 (def ^:private SetupToken
   "Schema for a string that matches the instance setup token."
-  (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
+  (su/with-api-error-message (s/constrained su/NonBlankStringPlumatic setup/token-match?)
     "Token does not match the setup token."))
 
 (def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
@@ -108,6 +108,7 @@
   (public-settings/anon-tracking-enabled! (or (nil? allow-tracking?)
                                               allow-tracking?)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
@@ -122,16 +123,16 @@
           invited_email      :email}                    :invite
          {:keys [allow_tracking site_name site_locale]} :prefs} :body, :as request}]
   {token              SetupToken
-   site_name          su/NonBlankString
-   site_locale        (s/maybe su/ValidLocale)
-   first_name         (s/maybe su/NonBlankString)
-   last_name          (s/maybe su/NonBlankString)
-   email              su/Email
-   invited_first_name (s/maybe su/NonBlankString)
-   invited_last_name  (s/maybe su/NonBlankString)
-   invited_email      (s/maybe su/Email)
-   password           su/ValidPassword
-   allow_tracking     (s/maybe (s/cond-pre s/Bool su/BooleanString))
+   site_name          su/NonBlankStringPlumatic
+   site_locale        (s/maybe su/ValidLocalePlumatic)
+   first_name         (s/maybe su/NonBlankStringPlumatic)
+   last_name          (s/maybe su/NonBlankStringPlumatic)
+   email              su/EmailPlumatic
+   invited_first_name (s/maybe su/NonBlankStringPlumatic)
+   invited_last_name  (s/maybe su/NonBlankStringPlumatic)
+   invited_email      (s/maybe su/EmailPlumatic)
+   password           su/ValidPasswordPlumatic
+   allow_tracking     (s/maybe (s/cond-pre s/Bool su/BooleanStringPlumatic))
    schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
    auto_run_queries   (s/maybe s/Bool)}
   (letfn [(create! []
@@ -170,6 +171,7 @@
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/validate"
   "Validate that we can connect to a database given a set of details."
   [:as {{{:keys [engine details]} :details, token :token} :body}]
@@ -299,6 +301,7 @@
 (defn- admin-checklist []
   (partition-steps-into-groups (add-next-step-info (admin-checklist-values))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
@@ -307,6 +310,7 @@
 
 ;; User defaults endpoint
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/user_defaults"
   "Returns object containing default user details for initial setup, if configured,
    and if the provided token value matches the token in the configuration value."

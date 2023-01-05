@@ -69,7 +69,7 @@
                        (get-in (mt/user-http-request :crowberto :get 200 "permissions/graph")
                                (venues-perms-graph-keypath &group)))))
               (testing "GTAP should exist in application DB"
-                (is (schema= [(s/one {:id                   su/IntGreaterThanZero
+                (is (schema= [(s/one {:id                   su/IntGreaterThanZeroPlumatic
                                       :group_id             (s/eq (u/the-id &group))
                                       :table_id             (s/eq (mt/id :venues))
                                       :card_id              (s/eq nil)
@@ -101,7 +101,7 @@
                            :group_id (u/the-id &group)
                            :table_id (mt/id :venues)))))
                 (testing "GTAP for same group, other database should not be affected"
-                  (is (schema= [(s/one {:id                   su/IntGreaterThanZero
+                  (is (schema= [(s/one {:id                   su/IntGreaterThanZeroPlumatic
                                         :group_id             (s/eq (u/the-id &group))
                                         :table_id             (s/eq (u/the-id db-2-table))
                                         :card_id              (s/eq nil)
@@ -111,7 +111,7 @@
                                  :group_id (u/the-id &group)
                                  :table_id (u/the-id db-2-table)))))
                 (testing "GTAP for same table, other group should not be affected"
-                  (is (schema= [(s/one {:id                   su/IntGreaterThanZero
+                  (is (schema= [(s/one {:id                   su/IntGreaterThanZeroPlumatic
                                         :group_id             (s/eq (u/the-id other-group))
                                         :table_id             (s/eq (mt/id :venues))
                                         :card_id              (s/eq nil)

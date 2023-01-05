@@ -22,7 +22,7 @@
 ;; ORDER BY {{group-fn(timestamp}} ASC
 (s/defn views-by-time
   "Get views of a Card or Dashboard broken out by a time `unit`, e.g. `day` or `day-of-week`."
-  [model :- ModelName, model-id :- su/IntGreaterThanZero, unit :- common/DateTimeUnitStr]
+  [model :- ModelName, model-id :- su/IntGreaterThanZeroPlumatic, unit :- common/DateTimeUnitStr]
   {:metadata [[:date  {:display_name "Date",  :base_type (common/datetime-unit-str->base-type unit)}]
               [:views {:display_name "Views", :base_type :type/Integer}]]
    :results (let [grouped-timestamp (common/grouped-datetime unit :timestamp)]
@@ -40,7 +40,7 @@
 (s/defn cached-views-by-time
   "Get number of views of a Card broken out by a time `unit`, e.g. `day` or `day-of-week` and by cache status.
   Still here instead of in cards because of similarity to views-by-time"
-  [card-id :- su/IntGreaterThanZero, unit :- common/DateTimeUnitStr]
+  [card-id :- su/IntGreaterThanZeroPlumatic, unit :- common/DateTimeUnitStr]
   {:metadata [[:date           {:display_name "Date",
                                 :base_type (common/datetime-unit-str->base-type unit)}]
               [:cached-views   {:display_name "Cached Views",
@@ -64,7 +64,7 @@
 (s/defn avg-execution-time-by-time
   "Get average execution time of a Card broken out by a time `unit`, e.g. `day` or `day-of-week`.
   Still here instead of in cards because of similarity to views-by-time"
-  [card-id :- su/IntGreaterThanZero, unit :- common/DateTimeUnitStr]
+  [card-id :- su/IntGreaterThanZeroPlumatic, unit :- common/DateTimeUnitStr]
   {:metadata [[:date        {:display_name "Date",            :base_type (common/datetime-unit-str->base-type unit)}]
               [:avg_runtime {:display_name "Average Runtime", :base_type :type/Number}]]
    :results (let [grouped-timestamp (common/grouped-datetime unit :started_at)]
@@ -80,7 +80,7 @@
 (s/defn revision-history
   "Get a revision history table for a Card or Dashboard."
   [model-entity :- (s/cond-pre (mi/InstanceOf Card) (mi/InstanceOf Dashboard))
-   model-id     :- su/IntGreaterThanZero]
+   model-id     :- su/IntGreaterThanZeroPlumatic]
   {:metadata [[:timestamp   {:display_name "Edited on",   :base_type :type/DateTime}]
               [:user_id     {:display_name "User ID",     :base_type :type/Integer, :remapped_to   :user_name}]
               [:user_name   {:display_name "Edited by",   :base_type :type/Name,    :remapped_from :user_id}]
@@ -95,7 +95,7 @@
 
 (s/defn audit-log
   "Get a view log for a Card or Dashboard."
-  [model :- ModelName, model-id :- su/IntGreaterThanZero]
+  [model :- ModelName, model-id :- su/IntGreaterThanZeroPlumatic]
   {:metadata [[:when    {:display_name "When",    :base_type :type/DateTime}]
               [:user_id {:display_name "User ID", :base_type :type/Integer, :remapped_to   :who}]
               [:who     {:display_name "Who",     :base_type :type/Name,    :remapped_from :user_id}]

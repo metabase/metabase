@@ -37,22 +37,22 @@
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
 
-(def ^:private $ProjectStage   {(s/eq $project)    {su/NonBlankString s/Any}})
-(def ^:private $SortStage      {(s/eq $sort)       {su/NonBlankString (s/enum -1 1)}})
-(def ^:private $MatchStage     {(s/eq $match)      {(s/constrained (s/cond-pre su/NonBlankString s/Keyword)
+(def ^:private $ProjectStage   {(s/eq $project)    {su/NonBlankStringPlumatic s/Any}})
+(def ^:private $SortStage      {(s/eq $sort)       {su/NonBlankStringPlumatic (s/enum -1 1)}})
+(def ^:private $MatchStage     {(s/eq $match)      {(s/constrained (s/cond-pre su/NonBlankStringPlumatic s/Keyword)
                                                                    #(not (#{:$not "$not"} %)))
                                                     s/Any}})
-(def ^:private $GroupStage     {(s/eq $group)      {su/NonBlankString s/Any}})
-(def ^:private $AddFieldsStage {(s/eq :$addFields) {su/NonBlankString s/Any}})
-(def ^:private $LimitStage     {(s/eq $limit)      su/IntGreaterThanZero})
-(def ^:private $SkipStage      {(s/eq $skip)       su/IntGreaterThanZero})
+(def ^:private $GroupStage     {(s/eq $group)      {su/NonBlankStringPlumatic s/Any}})
+(def ^:private $AddFieldsStage {(s/eq :$addFields) {su/NonBlankStringPlumatic s/Any}})
+(def ^:private $LimitStage     {(s/eq $limit)      su/IntGreaterThanZeroPlumatic})
+(def ^:private $SkipStage      {(s/eq $skip)       su/IntGreaterThanZeroPlumatic})
 
 (defn- is-stage? [stage]
   (fn [m] (= (first (keys m)) stage)))
 
 (def ^:private Stage
   (s/both
-   (s/constrained su/Map #(= (count (keys %)) 1) "map with a single key")
+   (s/constrained su/MapPlumatic #(= (count (keys %)) 1) "map with a single key")
    (s/conditional
     (is-stage? $project)    $ProjectStage
     (is-stage? $sort)       $SortStage
@@ -768,7 +768,7 @@
     (recur arg)
     ag))
 
-(s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankString "projected-field-name"
+(s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankStringPlumatic "projected-field-name"
                                                                   s/Any             "source")]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."

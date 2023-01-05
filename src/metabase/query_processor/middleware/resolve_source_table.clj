@@ -18,7 +18,7 @@
         (tru "Invalid :source-table ''{0}'': should be resolved to a Table ID by now." (:source-table m))
         {:form m}))))
 
-(s/defn ^:private query->source-table-ids :- (s/maybe (su/non-empty #{su/IntGreaterThanZero}))
+(s/defn ^:private query->source-table-ids :- (s/maybe (su/non-empty #{su/IntGreaterThanZeroPlumatic}))
   "Fetch a set of all `:source-table` IDs anywhere in `query`."
   [query]
   (some->

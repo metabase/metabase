@@ -53,6 +53,7 @@
     (update query-metadata-response :fields #(filter (comp (set gtap-field-ids) u/the-id) %))
     query-metadata-response))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has segmented permissions
   that only gives them access to a subset of columns for a given table, those inaccessable columns should also be
@@ -60,9 +61,9 @@
   doesn't add/change anything from the OSS version. See the docs on the OSS version of the endpoint for more
   information."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
-  {include_sensitive_fields    (s/maybe su/BooleanString)
-   include_hidden_fields       (s/maybe su/BooleanString)
-   include_editable_data_model (s/maybe su/BooleanString)}
+  {include_sensitive_fields    (s/maybe su/BooleanStringPlumatic)
+   include_hidden_fields       (s/maybe su/BooleanStringPlumatic)
+   include_editable_data_model (s/maybe su/BooleanStringPlumatic)}
   (let [table            (api/check-404 (db/select-one Table :id id))
         segmented-perms? (only-segmented-perms? table)
         thunk            (fn []

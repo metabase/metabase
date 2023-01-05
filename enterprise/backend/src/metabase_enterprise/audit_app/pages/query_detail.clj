@@ -61,7 +61,7 @@
 
 ;; Details about a specific query (currently just average execution time).
 (s/defmethod audit.i/internal-query ::details
-  [_ query-hash :- su/NonBlankString]
+  [_ query-hash :- su/NonBlankStringPlumatic]
   {:metadata [[:query                  {:display_name "Query",                :base_type :type/Dictionary}]
               [:average_execution_time {:display_name "Avg. Exec. Time (ms)", :base_type :type/Number}]]
    :results  (common/reducible-query

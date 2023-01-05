@@ -43,6 +43,7 @@
 
 (declare root-collection)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
@@ -50,8 +51,8 @@
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`."
   [archived namespace]
-  {archived  (s/maybe su/BooleanString)
-   namespace (s/maybe su/NonBlankString)}
+  {archived  (s/maybe su/BooleanStringPlumatic)
+   namespace (s/maybe su/NonBlankStringPlumatic)}
   (let [archived? (Boolean/parseBoolean archived)]
     (as-> (db/select Collection
             {:where    [:and
@@ -76,6 +77,7 @@
             (dissoc ::collection.root/is-root?)
             collection/personal-collection-with-ui-details)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
@@ -98,8 +100,8 @@
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
   [exclude-archived namespace]
-  {exclude-archived (s/maybe su/BooleanString)
-   namespace        (s/maybe su/NonBlankString)}
+  {exclude-archived (s/maybe su/BooleanStringPlumatic)
+   namespace        (s/maybe su/NonBlankStringPlumatic)}
   (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
                                 (update acc (if dataset :dataset :card) conj collection_id))
                               {:dataset #{}
@@ -615,29 +617,33 @@
       collection/personal-collection-with-ui-details
       (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch a specific Collection with standard details added"
   [id]
   (collection-detail (api/read-check Collection id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/root/timelines"
   "Fetch the root Collection's timelines."
   [include archived]
   {include  (s/maybe api.timeline/Include)
-   archived (s/maybe su/BooleanString)}
+   archived (s/maybe su/BooleanStringPlumatic)}
   (let [archived? (Boolean/parseBoolean archived)]
     (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                             :timeline/archived? archived?})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   [id include archived]
   {include  (s/maybe api.timeline/Include)
-   archived (s/maybe su/BooleanString)}
+   archived (s/maybe su/BooleanStringPlumatic)}
   (let [archived? (Boolean/parseBoolean archived)]
     (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                            :timeline/archived? archived?})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
@@ -648,7 +654,7 @@
                    when `all`, return everything. By default returns everything"
   [id models archived pinned_state sort_column sort_direction]
   {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanString)
+   archived       (s/maybe su/BooleanStringPlumatic)
    pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
    sort_column    (s/maybe (apply s/enum valid-sort-columns))
    sort_direction (s/maybe (apply s/enum valid-sort-directions))}
@@ -666,10 +672,11 @@
 (defn- root-collection [collection-namespace]
   (collection-detail (collection/root-collection-with-ui-details collection-namespace)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/root"
   "Return the 'Root' Collection object with standard details added"
   [namespace]
-  {namespace (s/maybe su/NonBlankString)}
+  {namespace (s/maybe su/NonBlankStringPlumatic)}
   (-> (root-collection namespace)
       (api/read-check)
       (dissoc ::collection.root/is-root?)))
@@ -686,6 +693,7 @@
       #{:collection}
       #{:no_models})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
@@ -702,8 +710,8 @@
   `snippets`, you can pass the `?namespace=` parameter."
   [models archived namespace pinned_state sort_column sort_direction]
   {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanString)
-   namespace      (s/maybe su/NonBlankString)
+   archived       (s/maybe su/BooleanStringPlumatic)
+   namespace      (s/maybe su/NonBlankStringPlumatic)
    pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
    sort_column    (s/maybe (apply s/enum valid-sort-columns))
    sort_direction (s/maybe (apply s/enum valid-sort-directions))}
@@ -750,14 +758,15 @@
      (when parent_id
        {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new Collection."
   [:as {{:keys [name color description parent_id namespace authority_level] :as body} :body}]
-  {name            su/NonBlankString
+  {name            su/NonBlankStringPlumatic
    color           collection/hex-color-regex
-   description     (s/maybe su/NonBlankString)
-   parent_id       (s/maybe su/IntGreaterThanZero)
-   namespace       (s/maybe su/NonBlankString)
+   description     (s/maybe su/NonBlankStringPlumatic)
+   parent_id       (s/maybe su/IntGreaterThanZeroPlumatic)
+   namespace       (s/maybe su/NonBlankStringPlumatic)
    authority_level collection/AuthorityLevel}
   (create-collection! body))
 
@@ -808,14 +817,15 @@
                             {:card-ids (db/select-ids Card :collection_id (u/the-id collection-before-update))}))]
       (api.card/delete-alert-and-notify-archived! alerts))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
-  {name                                   (s/maybe su/NonBlankString)
+  {name                                   (s/maybe su/NonBlankStringPlumatic)
    color                                  (s/maybe collection/hex-color-regex)
-   description                            (s/maybe su/NonBlankString)
+   description                            (s/maybe su/NonBlankStringPlumatic)
    archived                               (s/maybe s/Bool)
-   parent_id                              (s/maybe su/IntGreaterThanZero)
+   parent_id                              (s/maybe su/IntGreaterThanZeroPlumatic)
    authority_level                        collection/AuthorityLevel}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
@@ -843,10 +853,11 @@
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/graph"
   "Fetch a graph of all Collection Permissions."
   [namespace]
-  {namespace (s/maybe su/NonBlankString)}
+  {namespace (s/maybe su/NonBlankStringPlumatic)}
   (api/check-superuser)
   (graph/graph namespace))
 
@@ -884,12 +895,13 @@
 (defn- decode-graph [permission-graph]
   (graph-decoder permission-graph))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
   [:as {{:keys [namespace], :as body} :body}]
-  {body      su/Map
-   namespace (s/maybe su/NonBlankString)}
+  {body      su/MapPlumatic
+   namespace (s/maybe su/NonBlankStringPlumatic)}
   (api/check-superuser)
   (->> (dissoc body :namespace)
        decode-graph

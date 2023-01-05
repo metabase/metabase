@@ -96,10 +96,10 @@
 ;;        (fingerprint_version < 2 AND
 ;;         base_type IN ("type/Text", "type/SerializedJSON")))
 
-(s/defn ^:private base-types->descendants :- #{su/FieldTypeKeywordOrString}
+(s/defn ^:private base-types->descendants :- #{su/FieldTypeKeywordOrStringPlumatic}
   "Given a set of BASE-TYPES return an expanded set that includes those base types as well as all of their
    descendants. These types are converted to strings so HoneySQL doesn't confuse them for columns."
-  [base-types :- #{su/FieldType}]
+  [base-types :- #{su/FieldTypePlumatic}]
   (->> (for [base-type base-types]
          (cons base-type (descendants base-type)))
        (reduce set/union)

@@ -70,7 +70,7 @@
 
 (s/defn ^:private group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
-  [group-id :- su/IntGreaterThanOrEqualToZero object :- perms/Path]
+  [group-id :- su/IntGreaterThanOrEqualToZeroPlumatic object :- perms/Path]
   ;; e.g. WHERE (object || '%') LIKE '/db/1000/'
   (db/exists? Permissions
     :group_id group-id
