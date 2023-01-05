@@ -10,7 +10,7 @@ function cleanTable(table: Table): TableObject {
   const object = {
     ..._.omit(table.getPlainObject(), "schema", "schema_name"),
     // After table is built inside the metadata object,
-    // what it is normally called "schema" is renamed to "schema_name"
+    // what is normally called "schema" is renamed to "schema_name"
     schema: table.schema_name,
   };
   return object as TableObject;
