@@ -561,7 +561,8 @@
 
 (defmulti datetime-diff
   "Helper function for ->rvalue for `datetime-diff` clauses."
-  (fn [_x _y unit] unit))
+  {:arglists '([x y unit])}
+  (fn [_ _ unit] unit))
 
 (defmethod datetime-diff :year
   [x y _unit]
@@ -573,19 +574,17 @@
 
 (defmethod datetime-diff :month
   [x y _unit]
-  (let [x (->rvalue x)
-        y (->rvalue y)]
-    {$add [{"$dateDiff" {:startDate x, :endDate y, :unit "month"}}
+  {$add [{"$dateDiff" {:startDate x, :endDate y, :unit "month"}}
            ;; dateDiff counts month boundaries not whole months, so we need to adjust
            ;; if x<y but x>y in the month calendar then subtract one month
            ;; if x>y but x<y in the month calendar then add one month
-           {:$switch {:branches [{:case {:$and [{$lt [x y]}
-                                                {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
-                                  :then -1}
-                                 {:case {:$and [{$gt [x y]}
-                                                {$lt [{$dayOfMonth x} {$dayOfMonth y}]}]}
-                                  :then 1}]
-                      :default  0}}]}))
+         {:$switch {:branches [{:case {:$and [{$lt [x y]}
+                                              {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                :then -1}
+                               {:case {:$and [{$gt [x y]}
+                                              {$lt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                :then 1}]
+                    :default  0}}]})
 
 (defmethod datetime-diff :week
   [x y _unit]
@@ -601,15 +600,13 @@
 
 (defmethod datetime-diff :hour
   [x y _unit]
-  (let [x (->rvalue x)
-        y (->rvalue y)]
-    ;; mongo's dateDiff with hour isn't accurate to the millisecond
-    {$divide [{"$dateDiff" {:startDate x, :endDate y, :unit "millisecond"}}
-              3600000]}))
+  ;; mongo's dateDiff with hour isn't accurate to the millisecond
+  {$divide [{"$dateDiff" {:startDate x, :endDate y, :unit "millisecond"}}
+            3600000]})
 
 (defmethod ->rvalue :datetime-diff [[_ x y unit]]
   (check-date-operations-supported)
-  (datetime-diff x y unit))
+  (datetime-diff (->rvalue x) (->rvalue y) unit))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
