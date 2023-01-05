@@ -8,14 +8,9 @@ import React, {
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
-import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { getIsMultiSelect } from "../../utils/dashboards";
-import {
-  canUseCustomSource,
-  isSingleOrMultiSelectable,
-} from "../../utils/parameter-type";
-import ParameterSourceSettings from "../ParameterSourceSettings";
+import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import {
   SettingLabel,
   SettingRemoveButton,
@@ -34,16 +29,12 @@ export interface ParameterSettingsProps {
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
-  onChangeSourceType: (sourceType: ValuesSourceType) => void;
-  onChangeSourceConfig: (sourceOptions: ValuesSourceConfig) => void;
   onRemoveParameter: () => void;
 }
 
 const ParameterSettings = ({
   parameter,
   onChangeName,
-  onChangeSourceType,
-  onChangeSourceConfig,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onRemoveParameter,
@@ -54,16 +45,6 @@ const ParameterSettings = ({
         <SettingLabel>{t`Label`}</SettingLabel>
         <ParameterInput initialValue={parameter.name} onChange={onChangeName} />
       </SettingSection>
-      {canUseCustomSource(parameter) && (
-        <SettingSection>
-          <SettingLabel>{t`Options to pick from`}</SettingLabel>
-          <ParameterSourceSettings
-            parameter={parameter}
-            onChangeSourceType={onChangeSourceType}
-            onChangeSourceConfig={onChangeSourceConfig}
-          />
-        </SettingSection>
-      )}
       <SettingSection>
         <SettingLabel>{t`Default value`}</SettingLabel>
         <SettingValueWidget

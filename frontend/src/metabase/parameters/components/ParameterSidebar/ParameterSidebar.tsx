@@ -2,11 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import {
-  ParameterId,
-  ValuesSourceConfig,
-  ValuesSourceType,
-} from "metabase-types/api";
+import { ParameterId } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import ParameterSettings from "../ParameterSettings";
@@ -21,14 +17,6 @@ export interface ParameterSidebarProps {
   onChangeIsMultiSelect: (
     parameterId: ParameterId,
     isMultiSelect: boolean,
-  ) => void;
-  onChangeSourceType: (
-    parameterId: ParameterId,
-    sourceType: ValuesSourceType,
-  ) => void;
-  onChangeSourceConfig: (
-    parameterId: ParameterId,
-    sourceOptions: ValuesSourceConfig,
   ) => void;
   onChangeFilteringParameters: (
     parameterId: ParameterId,
@@ -45,8 +33,6 @@ const ParameterSidebar = ({
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
-  onChangeSourceType,
-  onChangeSourceConfig,
   onChangeFilteringParameters,
   onRemoveParameter,
   onShowAddParameterPopover,
@@ -75,20 +61,6 @@ const ParameterSidebar = ({
       onChangeIsMultiSelect(parameterId, isMultiSelect);
     },
     [parameterId, onChangeIsMultiSelect],
-  );
-
-  const handleSourceTypeChange = useCallback(
-    (sourceType: ValuesSourceType) => {
-      onChangeSourceType(parameterId, sourceType);
-    },
-    [parameterId, onChangeSourceType],
-  );
-
-  const handleSourceConfigChange = useCallback(
-    (sourceOptions: ValuesSourceConfig) => {
-      onChangeSourceConfig(parameterId, sourceOptions);
-    },
-    [parameterId, onChangeSourceConfig],
   );
 
   const handleFilteringParametersChange = useCallback(
@@ -120,8 +92,6 @@ const ParameterSidebar = ({
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}
-            onChangeSourceType={handleSourceTypeChange}
-            onChangeSourceConfig={handleSourceConfigChange}
             onRemoveParameter={handleRemove}
           />
         ) : (
