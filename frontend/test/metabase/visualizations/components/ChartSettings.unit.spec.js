@@ -20,10 +20,7 @@ function widget(widget = {}) {
 }
 
 const setup = props => {
-  return renderWithProviders(<ChartSettings {...DEFAULT_PROPS} {...props} />, {
-    withSettings: true,
-    withEmbedSettings: true,
-  });
+  return renderWithProviders(<ChartSettings {...DEFAULT_PROPS} {...props} />);
 };
 
 describe("ChartSettings", () => {

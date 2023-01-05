@@ -130,8 +130,9 @@ export interface TokenFeatures {
 
 export interface SettingDefinition {
   key: string;
-  env_name: string;
+  env_name?: string;
   is_env_setting: boolean;
+  value: unknown;
 }
 
 export interface Settings {

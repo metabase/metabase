@@ -103,6 +103,7 @@ export const createMockSettingDefinition = (
   key: "key",
   env_name: "",
   is_env_setting: false,
+  value: null,
   ...opts,
 });
 

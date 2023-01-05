@@ -5,6 +5,8 @@ import {
   NativeQuerySnippet,
   NativeQuerySnippetId,
   Table,
+  User,
+  UserId,
 } from "metabase-types/api";
 
 export interface EntitiesState {
@@ -12,4 +14,5 @@ export interface EntitiesState {
   databases?: Record<number, Database>;
   tables?: Record<number | string, Table>;
   snippets?: Record<NativeQuerySnippetId, NativeQuerySnippet>;
+  users?: Record<UserId, User>;
 }
