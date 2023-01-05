@@ -5,30 +5,34 @@ import { isPivotGroupColumn } from "metabase/lib/data_grid";
 
 import type { Column } from "metabase-types/types/Dataset";
 import type { Card } from "metabase-types/types/Card";
-import type { Field } from "metabase-types/types/Field";
-
+import type { PivotSetting, FieldOrAggregationReference } from "./types";
 import { partitions } from "./partitions";
 
-type PivotSetting = { columns: Field[]; rows: Field[]; values: Field[] };
-
+// adds or removes columns from the pivot settings based on the current query
 export function updateValueWithCurrentColumns(
   storedValue: PivotSetting,
   columns: Column[],
 ) {
   const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
   const currentSettingFieldRefs = Object.values(storedValue).flatMap(
-    (fieldRefs: Field[]) =>
-      fieldRefs.map((field_ref: Field) => JSON.stringify(field_ref)),
+    (fieldRefs: FieldOrAggregationReference[]) =>
+      fieldRefs.map((field_ref: FieldOrAggregationReference) =>
+        JSON.stringify(field_ref),
+      ),
   );
   const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
   const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
 
   // remove toRemove
-  const value = _.mapObject(storedValue, fieldRefs =>
-    fieldRefs.filter(
-      (field_ref: Field) => !toRemove.includes(JSON.stringify(field_ref)),
-    ),
-  ) ?? { columns: [], rows: [], values: [] };
+  const value = _.mapObject(
+    storedValue,
+    (fieldRefs: FieldOrAggregationReference[]) =>
+      fieldRefs.filter(
+        (field_ref: FieldOrAggregationReference) =>
+          !toRemove.includes(JSON.stringify(field_ref)),
+      ),
+  );
+
   // add toAdd to first partitions where it matches the filter
   for (const fieldRef of toAdd) {
     for (const { columnFilter: filter, name } of partitions) {
@@ -36,7 +40,7 @@ export function updateValueWithCurrentColumns(
         c => JSON.stringify(c.field_ref) === fieldRef,
       );
       if (filter == null || filter(column)) {
-        value[name] = [...(value[name] as any[]), column?.field_ref];
+        value[name].push(column?.field_ref as FieldOrAggregationReference);
         break;
       }
     }
