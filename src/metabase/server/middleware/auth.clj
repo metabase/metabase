@@ -4,7 +4,8 @@
   (:require
    [clojure.string :as str]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.server.middleware.util :as mw.util]))
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.util.i18n :refer [deferred-trs]]))
 
 (def ^:private ^:const ^String metabase-api-key-header "x-metabase-apikey")
 
@@ -38,7 +39,7 @@
 
 (def api-key-not-set-message
   "Message sent if an endpoint protected by this middleware is hit but MB_API_KEY is not set."
-  (format "MB_API_KEY is not set. See %s for details" mb-api-key-doc-url))
+  (deferred-trs "MB_API_KEY is not set. See {0} for details" mb-api-key-doc-url))
 
 (defn enforce-api-key
   "Middleware that enforces validation of the client via API Key, canceling the request processing if the check fails.
