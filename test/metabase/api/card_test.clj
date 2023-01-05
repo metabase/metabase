@@ -2309,24 +2309,52 @@
      (format "card/%d/params/%s/search/%s" (u/the-id card-or-id) (name param-key) query)
      (format "card/%d/params/%s/values" (u/the-id card-or-id) (name param-key)))))
 
-(deftest parameters-with-source-is-card-test
-  ;; TODO add permissions tests
-  (mt/with-temp*
-    [Card [{source-card-id :id}
-           {:database_id   (mt/id)
-            :table_id      (mt/id :venues)
-            :dataset_query (mt/mbql-query venues {:limit 5})}]
-     Card [{card-id         :id}
-           {:database_id     (mt/id)
-            :dataset_query   (mt/mbql-query venues)
-            :parameters      [{:id                   "abc"
-                               :type                 "category"
-                               :name                 "CATEGORY"
-                               :values_source_type   "card"
-                               :values_source_config {:card_id     source-card-id
-                                                      :value_field (mt/$ids $venues.name)}}]
-            :table_id        (mt/id :venues)}]]
+(defn do-with-card-param-values-fixtures
+  "Impl of `with-card-param-values-fixtures` macro."
+  ([f]
+   (do-with-card-param-values-fixtures nil f))
 
+  ([card-values f]
+   (mt/with-temp*
+     [Card [source-card {:database_id   (mt/id)
+                          :table_id      (mt/id :venues)
+                          :dataset_query (mt/mbql-query venues {:limit 5})}]
+      Card [card        (merge
+                          {:database_id     (mt/id)
+                           :dataset_query   (mt/mbql-query venues)
+                           :parameters      [{:name                  "Static Category",
+                                              :slug                  "static_category"
+                                              :id                    "_STATIC_CATEGORY_",
+                                              :type                  "category",
+                                              :values_source_type    "static-list"
+                                              :values_source_config {:values ["African" "American" "Asian"]}}
+                                             {:name                  "Static Category label",
+                                              :slug                  "static_category_label"
+                                              :id                    "_STATIC_CATEGORY_LABEL_",
+                                              :type                  "category",
+                                              :values_source_type    "static-list"
+                                              :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
+                                             {:name                 "Card as source"
+                                              :slug                 "card"
+                                              :id                   "_CARD_"
+                                              :type                 "category"
+                                              :values_source_type   "card"
+                                              :values_source_config {:card_id     (:id source-card)
+                                                                     :value_field (mt/$ids $venues.name)}}]
+                           :table_id        (mt/id :venues)}
+                          card-values)]]
+     (f {:source-card source-card
+         :card        card
+         :param-keys  {:static-list       "_STATIC_CATEGORY_"
+                       :static-list-label "_STATIC_CATEGORY_LABEL_"
+                       :card              "_CARD_"}}))))
+
+(defmacro with-card-param-values-fixtures [[binding card-values] & body]
+  "Execute `body` with all needed setup to tests param values on card."
+  `(do-with-card-param-values-fixtures ~card-values (fn [~binding] ~@body)))
+
+(deftest parameters-with-source-is-card-test
+  (with-card-param-values-fixtures [{:keys [card param-keys]}]
     (testing "GET /api/card/:card-id/params/:param-key/values"
       (is (=? {:values          ["Red Medicine"
                                  "Stout Burgers & Beers"
@@ -2334,60 +2362,39 @@
                                  "Wurstküche"
                                  "Brite Spot Family Restaurant"]
                :has_more_values false}
-              (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc")))))
+              (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
 
     (testing "GET /api/card/:card-id/params/:param-key/search/:query"
       (is (= {:values          ["Red Medicine"]
               :has_more_values false}
-             (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "red")))))
-
-    (testing "get card should have parameter_card_count"
-      (is (= 1
-             (:parameter_card_count (mt/user-http-request :crowberto :get 200 (str "card/" source-card-id))))))))
+             (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))
 
 (deftest parameters-with-source-is-static-list-test
-  (mt/with-temp*
-    [Card [{card-id         :id}
-           {:database_id     (mt/id)
-            :dataset_query   (mt/mbql-query venues)
-            :parameters      [{:name                  "Static Category",
-                               :slug                  "static_category"
-                               :id                    "_STATIC_CATEGORY_",
-                               :type                  "category",
-                               :values_source_type    "static-list"
-                               :values_source_config {:values ["African" "American" "Asian"]}}
-                              {:name                  "Static Category label",
-                               :slug                  "static_category_label"
-                               :id                    "_STATIC_CATEGORY_LABEL_",
-                               :type                  "category",
-                               :values_source_type    "static-list"
-                               :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}]
-            :table_id        (mt/id :venues)}]]
-
+  (with-card-param-values-fixtures [{:keys [card param-keys]}]
     (testing "we could get the values"
       (is (= {:has_more_values false,
               :values          ["African" "American" "Asian"]}
              (mt/user-http-request :rasta :get 200
-                                   (param-values-url card-id "_STATIC_CATEGORY_"))))
+                                   (param-values-url card (:static-list param-keys)))))
 
       (is (= {:has_more_values false,
               :values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}
              (mt/user-http-request :rasta :get 200
-                                   (param-values-url card-id "_STATIC_CATEGORY_LABEL_")))))
+                                   (param-values-url card (:static-list-label param-keys))))))
 
     (testing "we could search the values"
       (is (= {:has_more_values false,
               :values          ["African"]}
              (mt/user-http-request :rasta :get 200
-                                   (param-values-url card-id "_STATIC_CATEGORY_" "af"))))
+                                   (param-values-url card (:static-list param-keys) "af"))))
 
       (is (= {:has_more_values false,
               :values          [["African" "Af"]]}
              (mt/user-http-request :rasta :get 200
-                                   (param-values-url card-id "_STATIC_CATEGORY_LABEL_" "af")))))
+                                   (param-values-url card (:static-list-label param-keys) "af")))))
 
     (testing "we could edit the values list"
-      (let [card (mt/user-http-request :rasta :put 200 (str "card/" card-id)
+      (let [card (mt/user-http-request :rasta :put 200 (str "card/" (:id card))
                                        {:parameters [{:name                  "Static Category",
                                                       :slug                  "static_category"
                                                       :id                    "_STATIC_CATEGORY_",
