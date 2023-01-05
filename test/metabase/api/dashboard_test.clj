@@ -1694,7 +1694,7 @@
 
   ([dashboard-values f]
    (mt/with-temp* [Card          [{source-card-id         :id}
-                                  (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues {:limit 5}))
+                                  (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories {:limit 5}))
                                          {:database_id     (mt/id)
                                           :table_id        (mt/id :venues)})]
                    Dashboard     [dashboard (merge {:parameters [{:name "Category Name"
@@ -2059,17 +2059,13 @@
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (testing "It uses the results of the card's query execution"
         (let-url [url (chain-filter-values-url dashboard (:card param-keys))]
-          (is (= {:values          ["Red Medicine"
-                                    "Stout Burgers & Beers"
-                                    "The Apple Pan"
-                                    "Wurstküche"
-                                    "Brite Spot Family Restaurant"]
+          (is (= {:values          ["African" "American" "Artisan" "Asian" "BBQ"]
                   :has_more_values false}
                  (mt/user-http-request :rasta :get 200 url)))))
 
       (testing "it only returns search matches"
-        (let-url [url (chain-filter-search-url dashboard (:card param-keys) "red")]
-          (is (= {:values          ["Red Medicine"]
+        (let-url [url (chain-filter-search-url dashboard (:card param-keys) "af")]
+          (is (= {:values          ["African"]
                   :has_more_values false}
                  (mt/user-http-request :rasta :get 200 url)))))))
 

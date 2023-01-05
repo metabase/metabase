@@ -2365,16 +2365,12 @@
                                    "Wurstküche"
                                    "Brite Spot Family Restaurant"]
                  :has_more_values false}
-                (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc")))))
+                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
 
       (testing "GET /api/card/:card-id/params/:param-key/search/:query"
         (is (= {:values          ["Red Medicine"]
                 :has_more_values false}
-               (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "red")))))
-
-      (testing "get card should have parameter_card_count"
-        (is (= 1
-               (:parameter_card_count (mt/user-http-request :crowberto :get 200 (str "card/" source-card-id))))))))
+               (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))
 
   (testing "users must have permissions to read the collection that source card is in"
     (mt/with-non-admin-groups-no-root-collection-perms

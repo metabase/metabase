@@ -368,6 +368,7 @@
         (update :creator_id             serdes.util/export-user)
         (update :made_public_by_id      serdes.util/export-user)
         (update :dataset_query          serdes.util/export-mbql)
+        (update :parameters             serdes.util/export-parameters)
         (update :parameter_mappings     serdes.util/export-parameter-mappings)
         (update :visualization_settings serdes.util/export-visualization-settings)
         (update :result_metadata        export-result-metadata))
@@ -384,14 +385,17 @@
       (update :made_public_by_id      serdes.util/import-user)
       (update :collection_id          serdes.util/import-fk 'Collection)
       (update :dataset_query          serdes.util/import-mbql)
+      (update :parameters             serdes.util/import-parameters)
       (update :parameter_mappings     serdes.util/import-parameter-mappings)
       (update :visualization_settings serdes.util/import-visualization-settings)
       (update :result_metadata        import-result-metadata)))
 
 (defmethod serdes.base/serdes-dependencies "Card"
-  [{:keys [collection_id database_id dataset_query parameter_mappings result_metadata table_id visualization_settings]}]
+  [{:keys [collection_id database_id dataset_query parameters parameter_mappings
+           result_metadata table_id visualization_settings]}]
   (->> (map serdes.util/mbql-deps parameter_mappings)
        (reduce set/union)
+       (set/union (serdes.util/parameters-deps parameters))
        (set/union #{[{:model "Database" :id database_id}]})
        ; table_id and collection_id are nullable.
        (set/union (when table_id #{(serdes.util/table->path table_id)}))
@@ -402,16 +406,20 @@
        vec))
 
 (defmethod serdes.base/serdes-descendants "Card" [_model-name id]
-  (let [card          (db/select-one Card :id id)
-        source-table  (some->  card :dataset_query :query :source-table)
-        template-tags (some->> card :dataset_query :native :template-tags vals (keep :card-id))
-        snippets      (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
+  (let [card               (db/select-one Card :id id)
+        source-table       (some->  card :dataset_query :query :source-table)
+        template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
+        parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
+        snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
     (set/union
       (when (and (string? source-table)
                  (.startsWith ^String source-table "card__"))
         #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})
       (when (seq template-tags)
         (set (for [card-id template-tags]
+               ["Card" card-id])))
+      (when (seq parameters-card-id)
+        (set (for [card-id parameters-card-id]
                ["Card" card-id])))
       (when (seq snippets)
         (set (for [snippet-id snippets]
