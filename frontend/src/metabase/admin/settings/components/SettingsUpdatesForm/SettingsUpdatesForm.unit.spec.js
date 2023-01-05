@@ -48,7 +48,7 @@ describe("SettingsUpdatesForm", () => {
 
   it("shows correct message when latest version is installed", () => {
     setup({ currentVersion: "v1.0.0", latestVersion: "v1.0.0" });
-    screen.getByText(/which is the latest and greatest/);
+    screen.getByText(/You're running Metabase 1.0.0/);
   });
 
   it("shows correct message when no version checks have been run", () => {
