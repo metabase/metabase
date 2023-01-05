@@ -327,7 +327,7 @@
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
         ;; temporarily override the underlying environment variable value
-        (with-redefs [env/env (assoc env/env env-var-keyword value)]
+        (with-redefs [env/env (assoc env/env (setting/setting-env-map-name env-var-keyword) value)]
           ;; flush the Setting cache so it picks up the env var value for the Setting (if applicable)
           (setting.cache/restore-cache!)
           (thunk))
@@ -424,8 +424,8 @@
                        (catch Exception e
                          (when-not raw-setting?
                            (throw e))))]
-    (if-let [env-var-value (and (not raw-setting?) (#'setting/env-var-value setting-k))]
-      (do-with-temp-env-var-value setting env-var-value thunk)
+    (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
+      (do-with-temp-env-var-value setting-k value thunk)
       (let [original-value (if raw-setting?
                              (db/select-one-field :value Setting :key setting-k)
                              (#'setting/get setting-k))]
