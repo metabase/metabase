@@ -5,12 +5,12 @@ import Radio from "metabase/core/components/Radio";
 import ModalContent from "metabase/components/ModalContent";
 import { UiParameter } from "metabase-lib/parameters/types";
 import {
-  ModalFooter,
   ModalLabel,
   ModalLayout,
   ModalMain,
   ModalPane,
   ModalSection,
+  ModalTextArea,
 } from "./ValuesSourceModal.styled";
 
 const SOURCE_TYPE_OPTIONS = [
@@ -32,6 +32,7 @@ const ValuesSourceModal = ({
   return (
     <ModalContent
       title={t`Selectable values for ${parameter.name}`}
+      footer={[<Button key="submit" primary>{t`Done`}</Button>]}
       onClose={onClose}
     >
       <ModalLayout>
@@ -46,11 +47,10 @@ const ValuesSourceModal = ({
             />
           </ModalSection>
         </ModalPane>
-        <ModalMain />
+        <ModalMain>
+          <ModalTextArea fullWidth />
+        </ModalMain>
       </ModalLayout>
-      <ModalFooter>
-        <Button primary>{t`Done`}</Button>
-      </ModalFooter>
     </ModalContent>
   );
 };

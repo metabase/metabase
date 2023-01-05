@@ -5,12 +5,12 @@ import Modal from "metabase/components/Modal";
 import SelectButton from "metabase/core/components/SelectButton";
 import Radio from "metabase/core/components/Radio";
 import { UiParameter } from "metabase-lib/parameters/types";
+import ValuesSourceModal from "../ValuesSourceModal";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import {
   canUseCustomSource,
   isSingleOrMultiSelectable,
 } from "../../utils/parameter-type";
-import ValuesSourceModal from "../ValuesSourceModal";
 import {
   SettingLabel,
   SettingRemoveButton,
@@ -72,7 +72,7 @@ const ParameterSettings = ({
             {getSourceTypeName(parameter)}
           </SelectButton>
           {isOpened && (
-            <Modal medium onClose={handleModalClose}>
+            <Modal onClose={handleModalClose}>
               <ValuesSourceModal
                 parameter={parameter}
                 onClose={handleModalClose}
