@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import { color } from "metabase/lib/colors";
 import { useHover } from "metabase/hooks/use-hover";

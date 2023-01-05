@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {

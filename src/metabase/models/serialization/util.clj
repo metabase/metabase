@@ -414,9 +414,10 @@
   "Given the :parameter field as exported by serialization convert its field references
   (`[db schema table field]`) back into raw IDs."
   [parameters]
-  (->> parameters
-       (map mbql-fully-qualified-names->ids)
-       (map #(m/update-existing-in % [:values_source_config :card_id] import-fk 'Card))))
+  (for [param parameters]
+    (-> param
+        mbql-fully-qualified-names->ids
+        (m/update-existing-in [:values_source_config :card_id] import-fk 'Card))))
 
 (defn parameters-deps
   "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.

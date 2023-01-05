@@ -368,7 +368,7 @@
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
   honeysql.util/defalias                                                               clojure.core/def
   metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
-  metabase.actions.test-util/with-action                                               clojure.core/let
+  metabase.actions.test-util/with-actions                                              clojure.core/let
   metabase.actions.test-util/with-card-emitter                                         clojure.core/let
   metabase.actions.test-util/with-dashboard-emitter                                    clojure.core/let
   metabase.api.common/let-404                                                          clojure.core/let
@@ -435,6 +435,7 @@
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
+   metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings
    metabase.api.embed-test/with-chain-filter-fixtures                                                                        hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-card                                                                                    hooks.common/let-one-with-optional-value

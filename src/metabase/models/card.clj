@@ -6,7 +6,6 @@
    [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.models.action :as action]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -195,15 +194,6 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
-(defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
-  (when is-write?
-    (when-not (db/select-one action/QueryAction :card_id card-id)
-      (action/insert! {:card_id card-id :type :query}))))
-
-(defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
-  (when (not is-write?)
-    (db/delete! action/QueryAction :card_id card-id)))
-
 (defn- assert-valid-model
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
   [{:keys [dataset dataset_query]}]
@@ -236,7 +226,6 @@
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (create-actions-when-is-writable! card)
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
 (defonce
@@ -255,7 +244,7 @@
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
-          old-card-info (when (or (:dataset changes)
+          old-card-info (when (or (contains? changes :dataset)
                                   (get-in changes [:dataset_query :native]))
                           (db/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
@@ -277,6 +266,12 @@
       ;; make sure this Card doesn't have circular source query references if we're updating the query
       (when (:dataset_query changes)
         (check-for-circular-source-query-references changes))
+      ;; prevent demoting a model if it has actions
+      (when (and (not (:dataset changes))
+                 (:dataset old-card-info)
+                 (db/select-one ['Action :id] :model_id id))
+        (throw (ex-info (tru "Cannot make a question from a model with actions")
+                        {:id id})))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
@@ -286,10 +281,6 @@
       (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)
-      ;; create Action and QueryAction when is_write is set true
-      (create-actions-when-is-writable! changes)
-      ;; delete Action and QueryAction when is_write is set false
-      (delete-actions-when-not-writable! changes)
       (assert-valid-model (merge old-card-info changes)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
@@ -298,7 +289,6 @@
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
   (db/delete! ParameterCard :card_id id)
-  (db/delete! 'QueryAction :card_id id)
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (db/delete! 'Revision :model "Card", :model_id id))
 
