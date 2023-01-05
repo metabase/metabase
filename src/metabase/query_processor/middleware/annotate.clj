@@ -212,6 +212,25 @@
     :expression_name expression-name
     :field_ref       clause}))
 
+(defn- remove-field-opt [field opt-key]
+  (update field 2 (fn [opts]
+                    (let [opts' (dissoc opts opt-key)]
+                      (if (empty? opts') nil opts')))))
+
+(defn- source-metadata-for-joined-field
+  "Returns the source metadata for a field my matching fields without a :join-alias.
+   It assumes there is only one field in the source-metadata that matches the field without the :join-alias.
+
+   FIXME: this might return the wrong match when the source query has multiple fields that are identical except
+   for the :join-alias. See (metabase#27521) for a related issue. Solving this would require a change to the way
+   fields are referenced."
+  [source-metadata field]
+  (let [field-without-join-alias (remove-field-opt field :join-alias)]
+    (some (fn [x]
+            (when (= field-without-join-alias (remove-field-opt (:field_ref x) :join-alias))
+              x))
+          source-metadata)))
+
 (s/defn ^:private col-info-for-field-clause*
   [{:keys [source-metadata source-card-id], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
   (let [join                      (when (:join-alias opts)
@@ -242,11 +261,15 @@
                   :display_name (humanization/name->human-readable-name id-or-name)}))
 
       (integer? id-or-name)
-      (merge (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id-or-name) :database_type)]
-               (if-not parent-id
-                 field
-                 (let [parent (col-info-for-field-clause inner-query [:field parent-id nil])]
-                   (update field :name #(str (:name parent) \. %))))))
+      (merge
+       (let [{parent-id :parent_id, :as field} (if join
+                                                 (-> (source-metadata-for-joined-field (:source-metadata join) clause)
+                                                     (dissoc :field_ref))
+                                                 (dissoc (qp.store/field id-or-name) :database_type))]
+         (if-not parent-id
+           field
+           (let [parent (col-info-for-field-clause inner-query [:field parent-id nil])]
+             (update field :name #(str (:name parent) \. %))))))
 
       (:binning opts)
       (assoc :binning_info (-> (:binning opts)
@@ -691,6 +714,7 @@
                        (merged-column-info
                         query
                         (assoc metadata :rows truncated-rows)))))))))
+
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
