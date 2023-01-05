@@ -159,7 +159,6 @@
                           :where    (into [:and
                                            [:not= :result_metadata nil]
                                            [:= :archived false]
-                                           [:= :is_write false]
                                            [:= :dataset (= question-type :dataset)]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
                                            (collection/visible-collection-ids->honeysql-filter-clause

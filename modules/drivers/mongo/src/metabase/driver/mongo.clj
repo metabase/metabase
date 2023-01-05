@@ -12,6 +12,7 @@
             [metabase.driver.mongo.parameters :as mongo.params]
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
+            [metabase.driver.util :as driver.u]
             [metabase.models :refer [Field]]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
@@ -233,30 +234,24 @@
                  :standard-deviation-aggregations]]
   (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 
-(defn- db-version [db]
-  (get-in db [:details :version]))
+(defmethod driver/database-supports? [:mongo :expressions]
+  [_driver _feature db]
+  (-> (:dbms_version db)
+      :semantic-version
+      (driver.u/semantic-version-gte [4 2])))
 
-(defn- parse-version [version]
-  (->> (str/split version #"\.")
-       (take 2)
-       (map #(Integer/parseInt %))))
-
-(defn- db-major-version [db]
-  (some-> (db-version db) parse-version first))
-
-(defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
-  (let [version (db-major-version db)]
-    (and (some? version) (>= version 4))))
-
-(defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
-  (let [version (db-major-version db)]
-    (and (some? version) (>= version 5))))
+(defmethod driver/database-supports? [:mongo :date-arithmetics]
+  [_driver _feature db]
+  (-> (:dbms_version db)
+      :semantic-version
+      (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
-  [_ _ db]
-  (let [version (some-> (db-version db) parse-version)]
-    (and (some? version) (>= (first version) 4) (>= (second version) 2))))
+  [_driver _feature db]
+  (-> (:dbms_version db)
+      :semantic-version
+      (driver.u/semantic-version-gte [4 2])))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
@@ -320,16 +315,12 @@
 
 (defmethod driver/table-rows-sample :mongo
   [_driver table fields rff opts]
-  (let [mongo-opts {;; setting :truncation-start is needed because of a bug
-                    ;; in our mongo drivers handling of :substring (#27270)
-                    :truncation-start 0
-                    :limit metadata-queries/nested-field-sample-limit
+  (let [mongo-opts {:limit metadata-queries/nested-field-sample-limit
                     :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
     (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts))))
 
 (comment
   (require '[clojure.java.io :as io]
-           '[metabase.driver.util :as driver.u]
            '[monger.credentials :as mcred])
   (import javax.net.ssl.SSLSocketFactory)
 

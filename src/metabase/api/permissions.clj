@@ -8,11 +8,14 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.models :refer [PermissionsGroupMembership User]]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group
     :as perms-group
     :refer [PermissionsGroup]]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -33,6 +36,13 @@
   (api/check-superuser)
   (perms/data-perms-graph))
 
+(defenterprise upsert-sandboxes!
+  "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
+  metabase-enterprise.sandbox.models.group-table-access-policy
+  [_sandboxes]
+  (throw (ex-info (tru "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature.")
+                  {:status-code 402})))
+
 (api/defendpoint-schema PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
   format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
@@ -41,7 +51,12 @@
 
   Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
-  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
+  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that.
+
+  The optional `sandboxes` key contains a list of sandboxes that should be created or modified in conjunction with
+  this permissions graph update. Since data sandboxing is an Enterprise Edition-only feature, a 402 (Payment Required)
+  response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the
+  `:sandboxes` feature flag is not present."
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
@@ -51,8 +66,12 @@
                            (s/explain-str ::api.permission-graph/data-permissions-graph body))
                       {:status-code 400
                        :error       (s/explain-data ::api.permission-graph/data-permissions-graph body)})))
-    (perms/update-data-perms-graph! graph))
-  (perms/data-perms-graph))
+    (db/transaction
+      (perms/update-data-perms-graph! (dissoc graph :sandboxes))
+      (if-let [sandboxes (:sandboxes body)]
+       (let [new-sandboxes (upsert-sandboxes! sandboxes)]
+         (assoc (perms/data-perms-graph) :sandboxes new-sandboxes))
+       (perms/data-perms-graph)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -82,9 +101,9 @@
                (some? offset) (hh/offset offset)
                (some? query)  (hh/where query))))
 
-(defn add-member-counts
+(mi/define-batched-hydration-method add-member-counts
+  :member_count
   "Efficiently add `:member_count` to PermissionGroups."
-  {:batched-hydrate :member_count}
   [groups]
   (let [group-id->num-members (group-id->num-members)]
     (for [group groups]
@@ -224,5 +243,33 @@
     (validation/check-manager-of-group (:group_id membership))
     (db/delete! PermissionsGroupMembership :id id)
     api/generic-204-no-content))
+
+
+;;; ------------------------------------------- Execution Endpoints -------------------------------------------
+
+(api/defendpoint-schema GET "/execution/graph"
+  "Fetch a graph of execution permissions."
+  []
+  (api/check-superuser)
+  (perms/execution-perms-graph))
+
+(api/defendpoint-schema PUT "/execution/graph"
+  "Do a batch update of execution permissions by passing in a modified graph. The modified graph of the same
+  form as returned by the corresponding GET endpoint.
+
+  Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party
+  modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
+  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
+  [:as {body :body}]
+  {body su/Map}
+  (api/check-superuser)
+  (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/execution-permissions-graph body)]
+    (when (= graph :clojure.spec.alpha/invalid)
+      (throw (ex-info (tru "Invalid execution permission graph: {0}"
+                           (s/explain-str ::api.permission-graph/execution-permissions-graph body))
+                      {:status-code 400
+                       :error       (s/explain-data ::api.permission-graph/execution-permissions-graph body)})))
+    (perms/update-execution-perms-graph! graph))
+  (perms/execution-perms-graph))
 
 (api/define-routes)

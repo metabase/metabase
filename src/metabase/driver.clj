@@ -476,7 +476,7 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
-    ;; Does the driver support custom writeback actions using `is_write` Saved Questions. Drivers that support this must
+    ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom})
 
@@ -515,9 +515,8 @@
   (e.g., :left-join is not supported by any version of Mongo DB).
 
   In some cases, a feature may only be supported by certain versions of the database engine.
-  In this case, after implementing `:version` in `describe-database` for the driver,
-  you can check in `(get-in db [:details :version])` and determine
-  whether a feature is supported for this particular database.
+  In this case, after implementing `[[dbms-version]]` for your driver
+  you can determine whether a feature is supported for this particular database.
 
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}
@@ -774,8 +773,8 @@
   nil)
 
 (defmulti execute-write-query!
-  "Execute a writeback query (from an `is_write` Card) e.g. one powering a custom
-  `QueryAction` (see [[metabase.models.action]]). Drivers that support `:actions/custom` must implement this method."
+  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.models.action]]).
+  Drivers that support `:actions/custom` must implement this method."
   {:added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

@@ -1,7 +1,7 @@
 import React, { MouseEvent, useMemo } from "react";
 import _ from "underscore";
 import { getEventTarget } from "metabase/lib/dom";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import DataPointTooltip from "./DataPointTooltip";
 import TimelineEventTooltip from "./TimelineEventTooltip";
 import {

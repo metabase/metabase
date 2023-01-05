@@ -127,16 +127,14 @@
     (= api/*current-user-id* (:creator_id notification))
     (mi/current-user-has-full-permissions? :write notification)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Pulse)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:hydration-keys (constantly [:pulse])
-    :properties     (constantly {:timestamped? true
-                                 :entity_id    true})
-    :pre-insert     pre-insert
-    :pre-update     pre-update
-    :types          (constantly {:parameters :json})}))
+(mi/define-methods
+ Pulse
+ {:hydration-keys (constantly [:pulse])
+  :properties     (constantly {::mi/timestamped? true
+                               ::mi/entity-id    true})
+  :pre-insert     pre-insert
+  :pre-update     pre-update
+  :types          (constantly {:parameters :json})})
 
 (defmethod serdes.hash/identity-hash-fields Pulse
   [_pulse]
@@ -201,13 +199,13 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(defn ^:hydrate channels
+(mi/define-simple-hydration-method channels
+  :channels
   "Return the PulseChannels associated with this `notification`."
   [notification-or-id]
   (db/select PulseChannel, :pulse_id (u/the-id notification-or-id)))
 
-(s/defn ^:hydrate cards :- [HybridPulseCard]
-  "Return the Cards associated with this `notification`."
+(s/defn ^:private cards* :- [HybridPulseCard]
   [notification-or-id]
   (map (partial models/do-post-select Card)
        (db/query
@@ -221,6 +219,12 @@
                      [:= :p.id (u/the-id notification-or-id)]
                      [:= :c.archived false]]
          :order-by [[:pc.position :asc]]})))
+
+(mi/define-simple-hydration-method cards
+  :cards
+  "Return the Cards associated with this `notification`."
+  [notification-or-id]
+  (cards* notification-or-id))
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 

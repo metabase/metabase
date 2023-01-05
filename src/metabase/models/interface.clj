@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [cheshire.core :as json]
    [clojure.core.memoize :as memoize]
+   [clojure.spec.alpha :as s]
    [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
@@ -16,9 +17,10 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs tru]]
    [potemkin :as p]
-   [schema.core :as s]
+   [schema.core :as schema]
    [taoensso.nippy :as nippy]
    [toucan.db :as db]
+   [toucan.hydrate :as hydrate]
    [toucan.models :as models])
   (:import
    (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
@@ -116,12 +118,12 @@
   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization))
 
 (def ^:private MetricSegmentDefinition
-  {(s/optional-key :filter)      (s/maybe mbql.s/Filter)
-   (s/optional-key :aggregation) (s/maybe [mbql.s/Aggregation])
-   s/Keyword                     s/Any})
+  {(schema/optional-key :filter)      (schema/maybe mbql.s/Filter)
+   (schema/optional-key :aggregation) (schema/maybe [mbql.s/Aggregation])
+   schema/Keyword                     schema/Any})
 
 (def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (s/validator MetricSegmentDefinition))
+  (schema/validator MetricSegmentDefinition))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
@@ -235,7 +237,7 @@
   :out decompress)
 
 (defn- validate-cron-string [s]
-  (s/validate (s/maybe u.cron/CronScheduleString) s))
+  (schema/validate (schema/maybe u.cron/CronScheduleString) s))
 
 (models/add-type! :cron-string
   :in  validate-cron-string
@@ -266,16 +268,16 @@
   (cond-> obj
     (not (:updated_at obj)) (assoc :updated_at (now))))
 
-(models/add-property! :timestamped?
+(models/add-property! ::timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
   :update add-updated-at-timestamp)
 
 ;; like `timestamped?`, but for models that only have an `:created_at` column
-(models/add-property! :created-at-timestamped?
+(models/add-property! ::created-at-timestamped?
   :insert add-created-at-timestamp)
 
 ;; like `timestamped?`, but for models that only have an `:updated_at` column
-(models/add-property! :updated-at-timestamped?
+(models/add-property! ::updated-at-timestamped?
   :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
 
@@ -287,8 +289,64 @@
     obj
     (assoc obj :entity_id (u/generate-nano-id))))
 
-(models/add-property! :entity_id
+(models/add-property! ::entity-id
   :insert add-entity-id)
+
+
+;;;; [[define-simple-hydration-method]] and [[define-batched-hydration-method]]
+
+(s/def ::define-hydration-method
+  (s/cat :fn-name       symbol?
+         :hydration-key keyword?
+         :docstring     string?
+         :fn-tail       (s/alt :arity-1 :clojure.core.specs.alpha/params+body
+                               :arity-n (s/+ (s/spec :clojure.core.specs.alpha/params+body)))))
+
+(defonce ^:private defined-hydration-methods
+  (atom {}))
+
+(defn- define-hydration-method [hydration-type fn-name hydration-key fn-tail]
+  {:pre [(#{:hydrate :batched-hydrate} hydration-type)]}
+  ;; let's be nice and clear the Toucan 1 hydration method cache while we're at it, so that redefined hydration
+  ;; functions get picked up.
+  (hydrate/flush-hydration-key-caches!)
+  ;; Let's  be EXTRA nice and make sure there are no duplicate hydration keys!
+  (let [fn-symb (symbol (str (ns-name *ns*)) (name fn-name))]
+    (when-let [existing-fn-symb (get @defined-hydration-methods hydration-key)]
+      (when (not= fn-symb existing-fn-symb)
+        (throw (ex-info (format "Hydration key %s already exists at %s" hydration-key existing-fn-symb)
+                        {:hydration-key       hydration-key
+                         :existing-definition existing-fn-symb}))))
+    (swap! defined-hydration-methods assoc hydration-key fn-symb))
+  `(defn ~(vary-meta fn-name assoc hydration-type hydration-key)
+     ~@fn-tail))
+
+(defmacro define-simple-hydration-method
+  "Define a Toucan hydration function (Toucan 1) or method (Toucan 2) to do 'simple' hydration (this function is called
+  for each individual object that gets hydrated). This helper is in place to make the switch to Toucan 2 easier to
+  accomplish. Toucan 2 uses multimethods instead of regular functions with `:hydrate` metadata. When we switch to
+  Toucan 2, we won't need to rewrite all of our hydration methods at once -- we can just change the implementation of
+  this function, and eventually remove it entirely."
+  {:style/indent :defn}
+  [fn-name hydration-key & fn-tail]
+  (define-hydration-method :hydrate fn-name hydration-key fn-tail))
+
+(s/fdef define-simple-hydration-method
+  :args ::define-hydration-method
+  :ret  any?)
+
+(defmacro define-batched-hydration-method
+  "Like [[define-simple-hydration-method]], but defines a Toucan 'batched' hydration function (Toucan 1) or
+  method (Toucan 2). 'Batched' hydration means this function can be used to hydrate a sequence of objects in one call.
+
+  See docstring for [[define-simple-hydration-method]] for more information as to why this macro exists."
+  {:style/indent :defn}
+  [fn-name hydration-key & fn-tail]
+  (define-hydration-method :batched-hydrate fn-name hydration-key fn-tail))
+
+(s/fdef define-batched-hydration-method
+  :args ::define-hydration-method
+  :ret  any?)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
@@ -335,8 +393,15 @@
   *  `(partial current-user-has-full-permissions? :write)` (you must also implement [[perms-objects-set]] to use this)
   *  `(partial current-user-has-partial-permissions? :write)` (you must also implement [[perms-objects-set]] to use
       this)"
-  {:arglists '([instance] [model pk]), :hydrate :can_write}
+  {:arglists '([instance] [model pk])}
   dispatch-on-model)
+
+#_{:clj-kondo/ignore [:unused-private-var]}
+(define-simple-hydration-method ^:private hydrate-can-write
+  :can_write
+  "Hydration method for `:can_write`."
+  [instance]
+  (can-write? instance))
 
 (defmulti can-create?
   "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map
@@ -467,6 +532,27 @@
   [_model _m]
   (superuser?))
 
+;;;; [[define-methods]]
+
+(defn- validate-properties [properties]
+  (doseq [k (keys properties)]
+    (assert (namespace k) "All :properties keys should be namespaced!")
+    (assert (contains? (set (keys @@#'models/property-fns)) k)
+            (str "Invalid property: " k))))
+
+(defn define-methods
+  "Helper for defining [[toucan.models/IModel]] methods for a `model`. Prefer this over using `extend` directly, because
+  it's easier to swap a single function when we make the switch to Toucan 2 in the future than to update all the
+  various model namespaces."
+  {:style/indent [:form]}
+  [model method-map]
+  (when-let [properties-method (:properties method-map)]
+    (validate-properties (properties-method model)))
+  (extend (class model)
+    models/IModel
+    (merge
+     models/IModelDefaults
+     method-map)))
 
 ;;;; redefs
 

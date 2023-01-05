@@ -24,6 +24,12 @@ Remove a User from a PermissionsGroup (delete their membership).
 
 *  **`id`**
 
+## `GET /api/permissions/execution/graph`
+
+Fetch a graph of execution permissions.
+
+You must be a superuser to do this.
+
 ## `GET /api/permissions/graph`
 
 Fetch a graph of all Permissions.
@@ -76,6 +82,21 @@ Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging 
 
 *  **`is_group_manager`** value may be nil, or if non-nil, value must be a boolean.
 
+## `PUT /api/permissions/execution/graph`
+
+Do a batch update of execution permissions by passing in a modified graph. The modified graph of the same
+  form as returned by the corresponding GET endpoint.
+
+  Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party
+  modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
+  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that.
+
+You must be a superuser to do this.
+
+### PARAMS:
+
+*  **`body`** value must be a map.
+
 ## `PUT /api/permissions/graph`
 
 Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
@@ -86,6 +107,11 @@ Do a batch update of Permissions by passing in a modified graph. This should ret
   Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that.
+
+  The optional `sandboxes` key contains a list of sandboxes that should be created or modified in conjunction with
+  this permissions graph update. Since data sandboxing is an Enterprise Edition-only feature, a 402 (Payment Required)
+  response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the
+  `:sandboxes` feature flag is not present.
 
 You must be a superuser to do this.
 
@@ -102,6 +128,14 @@ Update the name of a `PermissionsGroup`.
 *  **`group-id`** 
 
 *  **`name`** value must be a non-blank string.
+
+## `PUT /api/permissions/membership/:group-id/clear`
+
+Remove all members from a `PermissionsGroup`.
+
+### PARAMS:
+
+*  **`group-id`**
 
 ## `PUT /api/permissions/membership/:id`
 

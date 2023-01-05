@@ -31,6 +31,7 @@
                               :percentile-aggregations                false
                               :advanced-math-expressions              false
                               :standard-deviation-aggregations        false
+                              :datetime-diff                          true
                               :now                                    true}]
   (defmethod driver/supports? [:sqlite feature] [_ _] supported?))
 
@@ -123,9 +124,7 @@
 
 ;; See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html).
 
-(defmethod sql.qp/date [:sqlite :default]
-  [driver _ expr]
-  (sql.qp/->honeysql driver expr))
+(defmethod sql.qp/date [:sqlite :default] [_driver _unit expr] expr)
 
 (defmethod sql.qp/date [:sqlite :second]
   [driver _ expr]
@@ -359,6 +358,55 @@
 (defmethod sql.qp/current-datetime-honeysql-form :sqlite
   [_]
   (hsql/call :datetime (hx/literal :now)))
+
+(defmethod sql.qp/datetime-diff [:sqlite :year]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 12))
+
+(defmethod sql.qp/datetime-diff [:sqlite :quarter]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 3))
+
+(defmethod sql.qp/datetime-diff [:sqlite :month]
+  [driver _unit x y]
+  (let [extract            (fn [unit x] (sql.qp/date driver unit x))
+        year-diff          (hx/- (extract :year y) (extract :year x))
+        month-of-year-diff (hx/- (extract :month-of-year y) (extract :month-of-year x))
+        total-month-diff   (hx/+ month-of-year-diff (hx/* year-diff 12))]
+    (hx/+ total-month-diff
+          ;; total-month-diff counts month boundaries not whole months, so we need to adjust
+          ;; if x<y but x>y in the month calendar then subtract one month
+          ;; if x>y but x<y in the month calendar then add one month
+          (hsql/call
+           :case
+           (hsql/call :and (hsql/call :< x y) (hsql/call :> (extract :day-of-month x) (extract :day-of-month y)))
+           -1
+           (hsql/call :and (hsql/call :> x y) (hsql/call :< (extract :day-of-month x) (extract :day-of-month y)))
+           1
+           :else 0))))
+
+(defmethod sql.qp/datetime-diff [:sqlite :week]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :day x y) 7))
+
+(defmethod sql.qp/datetime-diff [:sqlite :day]
+  [_driver _unit x y]
+  (hx/->integer
+   (hx/- (hsql/call :julianday y (hx/literal "start of day"))
+         (hsql/call :julianday x (hx/literal "start of day")))))
+
+(defmethod sql.qp/datetime-diff [:sqlite :hour]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :second x y) 3600))
+
+(defmethod sql.qp/datetime-diff [:sqlite :minute]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :second x y) 60))
+
+(defmethod sql.qp/datetime-diff [:sqlite :second]
+  [_driver _unit x y]
+  ;; strftime strftime('%s', <timestring>) returns the unix time as an integer.
+  (hx/- (strftime "%s" y) (strftime "%s" x)))
 
 ;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them. So skip that
 ;; step. SQLite doesn't have a notion of session timezones so don't do that either. The only thing we're doing here from

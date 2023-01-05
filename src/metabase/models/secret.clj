@@ -27,15 +27,12 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Secret)
-  models/IModel
-  (merge models/IModelDefaults
-         { ;:hydration-keys (constantly [:database :db]) ; don't think there's any hydration going on since other models
-                                        ; won't have a direct secret-id column
-          :types          (constantly {:value  :secret-value
-                                       :kind   :keyword
-                                       :source :keyword})
-          :properties     (constantly {:timestamped? true})}))
+(mi/define-methods
+ Secret
+ {:types      (constantly {:value  :secret-value
+                           :kind   :keyword
+                           :source :keyword})
+  :properties (constantly {::mi/timestamped? true})})
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
