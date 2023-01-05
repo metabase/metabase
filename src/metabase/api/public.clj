@@ -283,6 +283,7 @@
             ;; Undo middleware string->keyword coercion
             (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
   [url format maxheight maxwidth]
