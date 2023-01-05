@@ -13,7 +13,7 @@ const propTypes = {
   size: PropTypes.oneOf(["small", "medium"]),
   className: PropTypes.string,
   children: PropTypes.node.isRequired,
-  as: PropTypes.element,
+  as: PropTypes.any,
 };
 
 export function BaseSelectListItem({
