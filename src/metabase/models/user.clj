@@ -82,10 +82,18 @@
 (defn- pre-update
   [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (when (some? superuser?)
-    (let [membership-exists? (db/exists? PermissionsGroupMembership
-                               :group_id (:id (perms-group/admin))
-                               :user_id  id)]
+  (let [membership-exists? (db/exists? PermissionsGroupMembership
+                             :group_id (:id (perms-group/admin))
+                             :user_id  id)
+        still-superuser?   (or superuser?
+                               (and (nil? superuser?) membership-exists?))]
+    ;; Do not let the last admin archive themselves
+    (when (and still-superuser?
+               (false? active?)
+               (= 1 (perms-group-membership/admin-count))) ;; The 1 is this very user
+      (throw (ex-info (str perms-group-membership/fail-to-remove-last-admin-msg)
+                      {:status-code 400})))
+    (when (some? superuser?)
       (cond
         (and superuser?
              (not membership-exists?))

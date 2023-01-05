@@ -26,10 +26,20 @@
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
                {:status-code 400})))))
 
-(defn- check-not-last-admin []
-  (when (<= (db/count PermissionsGroupMembership
-              :group_id (:id (perms-group/admin)))
-            1)
+(defn admin-count
+  "The current number of non-archived admins (superusers)."
+  []
+  (:count
+   (first
+    (db/query {:select [:%count.*]
+               :from   [[:permissions_group_membership :pgm]]
+               :join   [[:core_user :user] [:= :user.id :pgm.user_id]]
+               :where  [:and [:= :pgm.group_id (u/the-id (perms-group/admin))]
+                             [:= :user.is_active true]]}))))
+
+(defn- check-not-last-admin
+  []
+  (when (<= (admin-count) 1)
     (throw (ex-info (str fail-to-remove-last-admin-msg)
                     {:status-code 400}))))
 
