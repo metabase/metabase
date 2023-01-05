@@ -36,8 +36,6 @@ const getProps = (
   onChangeName: jest.fn(),
   onChangeDefaultValue: jest.fn(),
   onChangeIsMultiSelect: jest.fn(),
-  onChangeSourceType: jest.fn(),
-  onChangeSourceConfig: jest.fn(),
   onRemoveParameter: jest.fn(),
   ...opts,
 });
