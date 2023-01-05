@@ -319,6 +319,23 @@
       str/lower-case
       keyword))
 
+(defn- safe-env-var-keyword
+  "Transform setting-k into the env/env lookup. [[do-with-temp-env-var-value]] is called from a few contexts.
+
+  One is [[mt/with-temp-env-var-value]] which seems to expect the env variable convention of `mb-email-smtp-port` or
+  `\"MB_DISABLE_SCHEDULER\"`. The point is you know the setting is an environmental setting and set it as such.
+
+  The other calling style is from `(mt/with-temporary-setting-values [api-key \"api-key\"]...)` when it is an
+  implementation detail that a particular setting was set in the environment. Here you use the convenient setting name
+  of :api-key not :mb-api-key.
+
+  Both pathways flow through this [[do-with-temp-env-var-value]]. So doing this check is not sloppy but handles the
+  two calling conventions through here."
+  [setting-k]
+  (if (str/starts-with? (name setting-k) "mb")
+    setting-k
+    (setting/setting-env-map-name setting-k)))
+
 (defn do-with-temp-env-var-value
   "Impl for [[with-temp-env-var-value]] macro."
   [env-var-keyword value thunk]
@@ -327,7 +344,7 @@
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
         ;; temporarily override the underlying environment variable value
-        (with-redefs [env/env (assoc env/env (setting/setting-env-map-name env-var-keyword) value)]
+        (with-redefs [env/env (assoc env/env (safe-env-var-keyword env-var-keyword) value)]
           ;; flush the Setting cache so it picks up the env var value for the Setting (if applicable)
           (setting.cache/restore-cache!)
           (thunk))
