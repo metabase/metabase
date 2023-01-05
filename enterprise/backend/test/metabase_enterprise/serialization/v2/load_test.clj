@@ -984,7 +984,7 @@
                    (-> (db/select-one-field :parameters Card :entity_id new-eid)
                        first
                        :values_source_config)))
-            (is (some? (db/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id @card))))))))))
+            (is (some? (db/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id @card2))))))))))
 
 (deftest dashboard-has-parameter-with-source-card-test
   (let [db        (atom nil)

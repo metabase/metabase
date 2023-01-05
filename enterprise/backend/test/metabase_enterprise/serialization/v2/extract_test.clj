@@ -1016,8 +1016,6 @@
                        Collection [{coll3-id   :id
                                     coll3-eid  :entity_id}    {:name     "Grandchild Collection"
                                                                :location (str "/" coll1-id "/" coll2-id "/")}]
-                       Collection [{coll4-id   :id
-                                    coll4-eid  :entity_id}    {:name     "Just another Collection"}]
 
                        Database   [{db-id      :id}           {:name "My Database"}]
                        Table      [{no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}]
