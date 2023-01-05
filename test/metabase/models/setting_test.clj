@@ -226,7 +226,7 @@
   (tu/do-with-temporary-setting-value setting db-value
     (fn []
       (tu/do-with-temp-env-var-value
-       (keyword setting)
+       (setting/setting-env-map-name (keyword setting))
        env-var-value
        (fn []
          (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
@@ -632,7 +632,7 @@
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
                                          (tu/do-with-temp-env-var-value
-                                          setting-name
+                                          (setting/setting-env-map-name setting-name)
                                           site-wide-value
                                           thunk))]]
         ;; clear out Setting if it was already set for some reason (except for `:only` where this is explicitly
