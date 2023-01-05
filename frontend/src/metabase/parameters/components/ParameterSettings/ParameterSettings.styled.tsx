@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import ParameterValueWidget from "../ParameterValueWidget";
 

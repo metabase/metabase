@@ -1,16 +1,16 @@
-import React, {
-  ChangeEvent,
-  FocusEvent,
-  useCallback,
-  useLayoutEffect,
-  useState,
-} from "react";
+import React, { ChangeEvent, useCallback, useState } from "react";
 import { t } from "ttag";
-import Input from "metabase/core/components/Input";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import Modal from "metabase/components/Modal";
+import SelectButton from "metabase/core/components/SelectButton";
 import Radio from "metabase/core/components/Radio";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { getIsMultiSelect } from "../../utils/dashboards";
-import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
+import {
+  canUseCustomSource,
+  isSingleOrMultiSelectable,
+} from "../../utils/parameter-type";
+import ValuesSourceModal from "../ValuesSourceModal";
 import {
   SettingLabel,
   SettingRemoveButton,
@@ -39,12 +39,48 @@ const ParameterSettings = ({
   onChangeIsMultiSelect,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
+  const [isOpened, setIsOpened] = useState(false);
+
+  const handleNameChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      onChangeName(event.target.value);
+    },
+    [onChangeName],
+  );
+
+  const handleModalOpen = useCallback(() => {
+    setIsOpened(true);
+  }, []);
+
+  const handleModalClose = useCallback(() => {
+    setIsOpened(false);
+  }, []);
+
   return (
     <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
-        <ParameterInput initialValue={parameter.name} onChange={onChangeName} />
+        <InputBlurChange
+          value={parameter.name}
+          onBlurChange={handleNameChange}
+        />
       </SettingSection>
+      {canUseCustomSource(parameter) && (
+        <SettingSection>
+          <SettingLabel>{t`Options to pick from`}</SettingLabel>
+          <SelectButton onClick={handleModalOpen}>
+            {getSourceTypeName(parameter)}
+          </SelectButton>
+          {isOpened && (
+            <Modal medium onClose={handleModalClose}>
+              <ValuesSourceModal
+                parameter={parameter}
+                onClose={handleModalClose}
+              />
+            </Modal>
+          )}
+        </SettingSection>
+      )}
       <SettingSection>
         <SettingLabel>{t`Default value`}</SettingLabel>
         <SettingValueWidget
@@ -73,37 +109,13 @@ const ParameterSettings = ({
   );
 };
 
-interface ParameterInputProps {
-  initialValue: string;
-  onChange: (value: string) => void;
-}
-
-const ParameterInput = ({ initialValue, onChange }: ParameterInputProps) => {
-  const [value, setValue] = useState(initialValue);
-
-  useLayoutEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
-
-  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setValue(event.target.value);
-  }, []);
-
-  const handleBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
-      onChange(event.target.value);
-    },
-    [onChange],
-  );
-
-  return (
-    <Input
-      value={value}
-      fullWidth
-      onChange={handleChange}
-      onBlur={handleBlur}
-    />
-  );
+const getSourceTypeName = (parameter: UiParameter) => {
+  switch (parameter.values_source_type) {
+    case "static-list":
+      return t`Custom list`;
+    default:
+      return t`From this field`;
+  }
 };
 
 export default ParameterSettings;
