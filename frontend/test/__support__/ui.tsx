@@ -105,7 +105,7 @@ function Wrapper({
   store: any;
   withRouter: boolean;
   withDND: boolean;
-}) {
+}): JSX.Element {
   return (
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
