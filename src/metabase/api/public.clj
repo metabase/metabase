@@ -461,14 +461,16 @@
   [uuid param-key]
   (validation/check-public-sharing-enabled)
   (let [card (db/select-one Card :public_uuid uuid, :archived false)]
-    (api.card/param-values card param-key)))
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (api.card/param-values card param-key))))
 
 (api/defendpoint-schema GET "/card/:uuid/params/:param-key/search/:query"
   "Fetch values for a parameter on a public card containing `query`."
   [uuid param-key query]
   (validation/check-public-sharing-enabled)
   (let [card (db/select-one Card :public_uuid uuid, :archived false)]
-    (api.card/param-values card param-key query)))
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (api.card/param-values card param-key query))))
 
 (api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
