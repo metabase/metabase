@@ -550,7 +550,10 @@
   [col-a col-b]
   (let [[min-a min-b]    (map #(get-in % [:fingerprint :type :type/Number :min]) [col-a col-b])
         [max-a max-b]    (map #(get-in % [:fingerprint :type :type/Number :max]) [col-a col-b])
-        valid-ranges?    (and min-a min-b max-a max-b)
+        valid-ranges?    (and min-a min-b max-a max-b
+                              ;; ranges with same min and max won't be considered ranges.
+                              (not= min-a max-a)
+                              (not= min-b max-b))
         overlapping-and-valid? (and valid-ranges?
                                     (or (<= min-a min-b max-a)
                                         (<= min-a max-b max-a)))]
@@ -741,7 +744,6 @@
         series-seqs     [(if (= (count x-cols) 1)
                            (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name)
                            (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name))]
-
         labels          (combo-label-info x-cols y-cols viz-settings)
         settings        (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
     (image-bundle/make-image-bundle
