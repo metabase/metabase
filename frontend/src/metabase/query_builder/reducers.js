@@ -3,6 +3,8 @@ import { assoc, dissoc, merge } from "icepick";
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
 
+import TimelineEvents from "metabase/entities/timeline-events";
+
 import {
   RESET_QB,
   INITIALIZE_QB,
@@ -55,8 +57,8 @@ import {
   onCloseQuestionInfo,
   onOpenTimelines,
   onCloseTimelines,
-  SHOW_TIMELINES,
-  HIDE_TIMELINES,
+  HIDE_TIMELINE_EVENTS,
+  SHOW_TIMELINE_EVENTS,
   SELECT_TIMELINE_EVENTS,
   DESELECT_TIMELINE_EVENTS,
   SET_DOCUMENT_TITLE,
@@ -540,18 +542,21 @@ export const currentState = handleActions(
   null,
 );
 
-export const visibleTimelineIds = handleActions(
+export const visibleTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
-    [SHOW_TIMELINES]: {
-      next: (state, { payload: timelines }) => [
-        ...state,
-        ...timelines.map(t => t.id),
-      ],
+    [SHOW_TIMELINE_EVENTS]: {
+      next: (state, { payload: events }) =>
+        _.uniq([...state, ...events.map(event => event.id)]),
     },
-    [HIDE_TIMELINES]: {
-      next: (state, { payload: timelines }) =>
-        _.without(state, ...timelines.map(t => t.id)),
+    [HIDE_TIMELINE_EVENTS]: {
+      next: (state, { payload: events }) => {
+        const eventIdsToHide = events.map(event => event.id);
+        return state.filter(eventId => !eventIdsToHide.includes(eventId));
+      },
+    },
+    [TimelineEvents.actionTypes.CREATE]: {
+      next: (state, { payload }) => [...state, payload.timelineEvent.id],
     },
     [RESET_QB]: { next: () => [] },
   },
@@ -566,10 +571,6 @@ export const selectedTimelineEventIds = handleActions(
     },
     [DESELECT_TIMELINE_EVENTS]: {
       next: () => [],
-    },
-    [HIDE_TIMELINES]: {
-      next: (state, { payload: timelines }) =>
-        _.without(state, ...timelines.flatMap(t => t.events.map(e => e.id))),
     },
     [onCloseTimelines]: { next: () => [] },
     [RESET_QB]: { next: () => [] },

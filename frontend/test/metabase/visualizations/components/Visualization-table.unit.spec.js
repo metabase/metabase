@@ -42,8 +42,6 @@ describe("Table", () => {
     const { getByText } = renderWithProviders(
       <Visualization rawSeries={series(rows, settings)} />,
       {
-        withSettings: true,
-        withEmbedSettings: true,
         storeInitialState: {
           qb: qbState,
         },

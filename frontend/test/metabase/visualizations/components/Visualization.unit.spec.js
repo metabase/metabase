@@ -9,10 +9,7 @@ import { NumberColumn, StringColumn } from "../__support__/visualizations";
 
 describe("Visualization", () => {
   const renderViz = async series => {
-    const utils = renderWithProviders(<Visualization rawSeries={series} />, {
-      withSettings: true,
-      withEmbedSettings: true,
-    });
+    const utils = renderWithProviders(<Visualization rawSeries={series} />);
     // The chart isn't rendered until the next tick. This is due to ExplicitSize
     // not setting the dimensions until after mounting.
     await delay(0);

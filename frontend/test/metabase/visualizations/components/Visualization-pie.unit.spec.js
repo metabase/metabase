@@ -13,10 +13,7 @@ const series = rows => {
 };
 
 const setup = series =>
-  renderWithProviders(<Visualization rawSeries={series} />, {
-    withSettings: true,
-    withEmbedSettings: true,
-  });
+  renderWithProviders(<Visualization rawSeries={series} />);
 
 describe("pie chart", () => {
   it("should render correct percentages in legend", () => {

@@ -1,4 +1,4 @@
-import { GroupsPermissions } from "metabase-types/api";
+import { GroupsPermissions, SettingDefinition } from "metabase-types/api";
 
 export type AdminPathKey =
   | "data-model"
@@ -21,6 +21,9 @@ export interface AdminState {
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;
+  };
+  settings: {
+    settings: SettingDefinition[];
   };
 }
 

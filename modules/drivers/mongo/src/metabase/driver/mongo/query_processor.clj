@@ -559,6 +559,55 @@
                     :unit      unit
                     :amount    amount}})
 
+(defmulti datetime-diff
+  "Helper function for ->rvalue for `datetime-diff` clauses."
+  {:arglists '([x y unit])}
+  (fn [_ _ unit] unit))
+
+(defmethod datetime-diff :year
+  [x y _unit]
+  {$divide [(datetime-diff x y :month) 12]})
+
+(defmethod datetime-diff :quarter
+  [x y _unit]
+  {$divide [(datetime-diff x y :month) 3]})
+
+(defmethod datetime-diff :month
+  [x y _unit]
+  {$add [{"$dateDiff" {:startDate x, :endDate y, :unit "month"}}
+           ;; dateDiff counts month boundaries not whole months, so we need to adjust
+           ;; if x<y but x>y in the month calendar then subtract one month
+           ;; if x>y but x<y in the month calendar then add one month
+         {:$switch {:branches [{:case {:$and [{$lt [x y]}
+                                              {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                :then -1}
+                               {:case {:$and [{$gt [x y]}
+                                              {$lt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                :then 1}]
+                    :default  0}}]})
+
+(defmethod datetime-diff :week
+  [x y _unit]
+  {$divide [(datetime-diff x y :day) 7]})
+
+(defn- simple-datediff
+  [x y unit]
+  {"$dateDiff" {:startDate x, :endDate y, :unit unit}})
+
+(defmethod datetime-diff :day    [x y unit] (simple-datediff x y unit))
+(defmethod datetime-diff :minute [x y unit] (simple-datediff x y unit))
+(defmethod datetime-diff :second [x y unit] (simple-datediff x y unit))
+
+(defmethod datetime-diff :hour
+  [x y _unit]
+  ;; mongo's dateDiff with hour isn't accurate to the millisecond
+  {$divide [{"$dateDiff" {:startDate x, :endDate y, :unit "millisecond"}}
+            3600000]})
+
+(defmethod ->rvalue :datetime-diff [[_ x y unit]]
+  (check-date-operations-supported)
+  (datetime-diff (->rvalue x) (->rvalue y) unit))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+

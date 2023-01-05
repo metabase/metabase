@@ -35,7 +35,7 @@ async function setup({
   const modelCacheInfo = getMockModelCacheInfo({
     ...cacheInfo,
     card_id: model.id(),
-    card_name: model.displayName(),
+    card_name: model.displayName() as string,
   });
 
   const onRefreshMock = jest

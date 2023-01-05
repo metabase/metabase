@@ -39,10 +39,6 @@ const setup = (seriesDisplay, numberOfSeries = 1, changeSeriesName = false) => {
       initial={{ section: "Display" }}
       isDashboard={true}
     />,
-    {
-      withSettings: true,
-      withEmbedSettings: true,
-    },
   );
 };
 

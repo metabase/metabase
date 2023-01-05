@@ -5,10 +5,17 @@ import nock from "nock";
 import { renderWithProviders, screen } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 
-import { User } from "metabase-types/api";
+import { Collection, User } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import { createMockEntitiesState } from "metabase-types/store/mocks";
 
 import CreateCollectionForm from "./CreateCollectionForm";
+
+const ROOT_COLLECTION = {
+  id: "root",
+  name: "Our analytics",
+  can_write: true,
+} as Collection;
 
 type SetupOpts = {
   user?: User;
@@ -26,6 +33,13 @@ function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
 
   renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
     currentUser: user,
+    storeInitialState: {
+      entities: createMockEntitiesState({
+        collections: {
+          root: ROOT_COLLECTION,
+        },
+      }),
+    },
   });
 
   return { onCancel };
@@ -33,15 +47,7 @@ function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
 
 describe("CreateCollectionForm", () => {
   beforeEach(() => {
-    nock(location.origin)
-      .get("/api/collection")
-      .reply(200, [
-        {
-          id: "root",
-          name: "Our analytics",
-          can_write: true,
-        },
-      ]);
+    nock(location.origin).get("/api/collection").reply(200, [ROOT_COLLECTION]);
   });
 
   afterEach(() => {
