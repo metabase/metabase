@@ -747,9 +747,9 @@
 
 (def ^:private StrictDBPermissionsGraph
   {su/IntGreaterThanZeroPlumatic {(s/optional-key :data) StrictDataPermissionsGraph
-                          (s/optional-key :download) DownloadPermissionsGraph
-                          (s/optional-key :data-model) DataModelPermissionsGraph
-                          (s/optional-key :details) DetailsPermissions}})
+                                  (s/optional-key :download) DownloadPermissionsGraph
+                                  (s/optional-key :data-model) DataModelPermissionsGraph
+                                  (s/optional-key :details) DetailsPermissions}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
@@ -757,11 +757,11 @@
 
 (def ^:private ExecutionGroupPermissionsGraph
   (s/cond-pre ExecutePermissions
-              {su/IntGreaterThanZero ExecutePermissions}))
+              {su/IntGreaterThanZeroPlumatic ExecutePermissions}))
 
 (def ^:private ExecutionPermissionsGraph
   {:revision s/Int
-   :groups   {su/IntGreaterThanZero ExecutionGroupPermissionsGraph}})
+   :groups   {su/IntGreaterThanZeroPlumatic ExecutionGroupPermissionsGraph}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH FETCH                                                   |
@@ -1202,7 +1202,7 @@
     (grant-permissions! group-id "/execute/")))
 
 (s/defn ^:private update-execution-permissions!
-  [group-id :- su/IntGreaterThanZero new-group-perms :- ExecutionGroupPermissionsGraph]
+  [group-id :- su/IntGreaterThanZeroPlumatic new-group-perms :- ExecutionGroupPermissionsGraph]
   (if (map? new-group-perms)
     (doseq [[db-id new-db-perms] new-group-perms]
       (update-feature-level-permission! group-id db-id new-db-perms :execute))

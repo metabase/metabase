@@ -128,7 +128,7 @@
 
 (s/defn check-query-action-permissions*
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
-  [outer-query :- su/Map]
+  [outer-query :- su/MapPlumatic]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
     (check-card-read-perms *card-id*))

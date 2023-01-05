@@ -202,7 +202,7 @@
 
 (s/defn update-db-execute-permissions!
   "Update the DB details permissions for a database."
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-perms :- perms/ExecutePermissions]
+  [group-id :- su/IntGreaterThanZeroPlumatic db-id :- su/IntGreaterThanZeroPlumatic new-perms :- perms/ExecutePermissions]
   (when-not (premium-features/enable-advanced-permissions?)
     (throw (perms/ee-permissions-exception :execute)))
   (revoke-permissions! :execute :all group-id db-id)

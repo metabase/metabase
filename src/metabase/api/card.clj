@@ -376,8 +376,8 @@ saved later when it is ready."
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
-  {name                   su/NonBlankString
-   dataset_query          su/Map
+  {name                   su/NonBlankStringPlumatic
+   dataset_query          su/MapPlumatic
    parameters             (s/maybe [su/ParameterPlumatic])
    parameter_mappings     (s/maybe [su/ParameterMappingPlumatic])
    description            (s/maybe su/NonBlankStringPlumatic)

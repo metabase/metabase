@@ -275,7 +275,7 @@
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
   [:as {body :body}]
-  {body su/Map}
+  {body su/MapPlumatic}
   (api/check-superuser)
   (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/execution-permissions-graph body)]
     (when (= graph :clojure.spec.alpha/invalid)

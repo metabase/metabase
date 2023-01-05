@@ -100,7 +100,7 @@
                    kind
                    database_id dataset_query
                    template response_handle error_handle] :as action} :body}]
-  {id su/IntGreaterThanZero
+  {id su/IntGreaterThanZeroPlumatic
    type (s/maybe SupportedActionType)
    name (s/maybe s/Str)
    description (s/maybe s/Str)
