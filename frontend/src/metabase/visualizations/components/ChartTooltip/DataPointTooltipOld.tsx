@@ -14,7 +14,7 @@ export interface DataPointTooltipProps {
   settings: VisualizationSettings;
 }
 
-const DataPointTooltip = ({ hovered, settings }: DataPointTooltipProps) => {
+const DataPointTooltipOld = ({ hovered, settings }: DataPointTooltipProps) => {
   const rows = useMemo(() => getRows(hovered), [hovered]);
 
   return (
@@ -85,4 +85,4 @@ const getRowFromDimension = ({ column, value }: HoveredDimension) => ({
   col: column,
 });
 
-export default DataPointTooltip;
+export default DataPointTooltipOld;

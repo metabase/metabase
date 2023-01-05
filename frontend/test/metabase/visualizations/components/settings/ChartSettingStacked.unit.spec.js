@@ -85,10 +85,6 @@ const setup = seriesMetrics => {
       series={getSeries(seriesMetrics)}
       initial={{ section: "Display" }}
     />,
-    {
-      withSettings: true,
-      withEmbedSettings: true,
-    },
   );
 };
 

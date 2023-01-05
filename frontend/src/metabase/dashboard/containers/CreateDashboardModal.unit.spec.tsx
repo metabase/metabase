@@ -1,10 +1,21 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
+
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
+
 import MetabaseSettings from "metabase/lib/settings";
+import type { Collection } from "metabase-types/api";
+import { createMockEntitiesState } from "metabase-types/store/mocks";
+
 import CreateDashboardModal from "./CreateDashboardModal";
+
+const ROOT_COLLECTION = {
+  id: "root",
+  name: "Our analytics",
+  can_write: true,
+} as Collection;
 
 function mockCachingEnabled(enabled = true) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);
@@ -38,7 +49,15 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
       .reply(200, (url, body) => body);
   }
 
-  renderWithProviders(<CreateDashboardModal onClose={onClose} />);
+  renderWithProviders(<CreateDashboardModal onClose={onClose} />, {
+    storeInitialState: {
+      entities: createMockEntitiesState({
+        collections: {
+          root: ROOT_COLLECTION,
+        },
+      }),
+    },
+  });
 
   return {
     onClose,
@@ -47,15 +66,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
 
 describe("CreateDashboardModal", () => {
   beforeEach(() => {
-    nock(location.origin)
-      .get("/api/collection")
-      .reply(200, [
-        {
-          id: "root",
-          name: "Our analytics",
-          can_write: true,
-        },
-      ]);
+    nock(location.origin).get("/api/collection").reply(200, [ROOT_COLLECTION]);
   });
 
   afterEach(() => {
