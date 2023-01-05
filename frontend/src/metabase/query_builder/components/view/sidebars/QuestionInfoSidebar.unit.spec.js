@@ -1,4 +1,5 @@
 import React from "react";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   SAMPLE_DATABASE,
@@ -6,8 +7,10 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
-import MetabaseSettings from "metabase/lib/settings";
+import { mockSettings } from "__support__/settings";
+
 import Question from "metabase-lib/Question";
+
 import { QuestionInfoSidebar } from "./QuestionInfoSidebar";
 
 const BASE_QUESTION = {
@@ -36,22 +39,6 @@ const BASE_QUESTION = {
   ],
 };
 
-function mockCachingSettings({ enabled = true } = {}) {
-  const original = MetabaseSettings.get.bind(MetabaseSettings);
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    const settings = {
-      "enable-query-caching": enabled,
-      "query-caching-min-ttl": 10000,
-      "application-name": "Metabase Test",
-      version: { tag: "" },
-      "is-hosted?": false,
-      "enable-enhancements?": false,
-    };
-    return settings[key] ?? original(key);
-  });
-}
-
 function getQuestion(card) {
   return new Question(
     {
@@ -74,8 +61,9 @@ function getDataset(card) {
 }
 
 function setup({ question, cachingEnabled = true } = {}) {
-  mockCachingSettings({
-    enabled: cachingEnabled,
+  mockSettings({
+    "enable-query-caching": cachingEnabled,
+    "query-caching-min-ttl": 10000,
   });
 
   const onSave = jest.fn();
