@@ -54,6 +54,33 @@
                                         :group_id             group-id
                                         :card_id              card-id
                                         :attribute_remappings {"foo" 1}}))))))))
+
+(deftest fetch-gtap-test
+  (testing "GET /api/mt/gtap/"
+    (with-gtap-cleanup
+      (mt/with-temp* [Table                  [{table-id-1 :id}]
+                      Table                  [{table-id-2 :id}]
+                      PermissionsGroup       [{group-id-1 :id}]
+                      PermissionsGroup       [{group-id-2 :id}]
+                      Card                   [{card-id :id}]
+                      GroupTableAccessPolicy [{gtap-id-1 :id} {:table_id table-id-1
+                                                               :group_id group-id-1
+                                                               :card_id  card-id}]
+                      GroupTableAccessPolicy [{gtap-id-2 :id} {:table_id table-id-2
+                                                               :group_id group-id-2
+                                                               :card_id  card-id}]]
+        (testing "Test that we can fetch the list of all GTAPs"
+          (is (partial=
+               [{:id gtap-id-1 :table_id table-id-1 :group_id group-id-1}
+                {:id gtap-id-2 :table_id table-id-2 :group_id group-id-2}]
+               (mt/user-http-request :crowberto :get 200 "mt/gtap/"))))
+
+        (testing "Test that we can fetch the list of GTAPs for a specific table and group"
+          (is (partial=
+               {:id gtap-id-1 :table_id table-id-1 :group_id group-id-1}
+               (mt/user-http-request :crowberto :get 200 "mt/gtap/"
+                                     :group_id group-id-1 :table_id table-id-1))))))))
+
 (deftest create-gtap-test
   (testing "POST /api/mt/gtap"
     (mt/with-temp* [Table            [{table-id :id}]
