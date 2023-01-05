@@ -499,7 +499,7 @@
         (testing query-description
           (mt/with-model-cleanup [Card]
             (testing "without result metadata"
-              (is (schema= {:id       su/IntGreaterThanZero
+              (is (schema= {:id       su/IntGreaterThanZeroPlumatic
                             s/Keyword s/Any}
                            (mt/user-http-request :rasta :post 200 "card"
                                                  (merge (mt/with-temp-defaults Card)
@@ -510,7 +510,7 @@
                                :columns)]
               (testing (format "with result metadata\n%s" (u/pprint-to-str metadata))
                 (is (some? metadata))
-                (is (schema= {:id       su/IntGreaterThanZero
+                (is (schema= {:id       su/IntGreaterThanZeroPlumatic
                               s/Keyword s/Any}
                              (mt/user-http-request :rasta :post 200 "card"
                                                    (merge (mt/with-temp-defaults Card)
@@ -521,7 +521,7 @@
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [Card]
       (let [card        (card-with-name-and-query)]
-        (is (schema= {:id su/IntGreaterThanZero, s/Keyword s/Any}
+        (is (schema= {:id su/IntGreaterThanZeroPlumatic, s/Keyword s/Any}
                      (mt/user-http-request :rasta
                                            :post
                                            200

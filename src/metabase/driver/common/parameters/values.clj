@@ -54,7 +54,7 @@
 
 (def ^:private ParsedParamValue
   "Schema for valid param value(s). Params can have one or more values."
-  (s/named (s/maybe (s/cond-pre params/SingleValue MultipleValues su/Map))
+  (s/named (s/maybe (s/cond-pre params/SingleValue MultipleValues su/MapPlumatic))
            "Valid param value(s)"))
 
 (s/defn ^:private tag-targets
@@ -91,7 +91,7 @@
                 param-display-name)
            {:type qp.error-type/missing-required-parameter}))
 
-(s/defn ^:private field-filter->field-id :- su/IntGreaterThanZero
+(s/defn ^:private field-filter->field-id :- su/IntGreaterThanZeroPlumatic
   [field-filter]
   (second field-filter))
 
@@ -263,7 +263,7 @@
   to parse it as appropriate based on the base type and semantic type of the Field associated with it). These are
   special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
   UUID fields."
-  [effective-type :- su/FieldType value]
+  [effective-type :- su/FieldTypePlumatic value]
   (cond
     (isa? effective-type :type/UUID)
     (UUID/fromString value)
@@ -340,7 +340,7 @@
                        :type (or (:type (ex-data e)) qp.error-type/invalid-parameter)}
                       e)))))
 
-(s/defn query->params-map :- {su/NonBlankString ParsedParamValue}
+(s/defn query->params-map :- {su/NonBlankStringPlumatic ParsedParamValue}
   "Extract parameters info from `query`. Return a map of parameter name -> value.
 
     (query->params-map some-query)

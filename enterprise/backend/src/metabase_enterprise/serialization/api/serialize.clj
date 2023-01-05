@@ -10,6 +10,7 @@
    [metabase.util.schema :as su]
    [toucan.db :as db]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/data-model"
   "This endpoint should serialize: the data model, settings.yaml, and all the selected Collections
 
@@ -23,9 +24,9 @@
   - The collections that they want to serialize (using selective serialization)"
   [:as {{:keys [collection_ids path]} :body}]
   {collection_ids (su/with-api-error-message
-                    (su/distinct (su/non-empty [su/IntGreaterThanZero]))
+                    (su/distinct (su/non-empty [su/IntGreaterThanZeroPlumatic]))
                     "Non-empty, distinct array of Collection IDs")
-   path           (su/with-api-error-message su/NonBlankString
+   path           (su/with-api-error-message su/NonBlankStringPlumatic
                     "Valid directory to serialize results to")}
   ;; Make sure all the specified collection IDs exist.
   (let [existing-collection-ids (db/select-ids Collection :id [:in (set collection_ids)])]

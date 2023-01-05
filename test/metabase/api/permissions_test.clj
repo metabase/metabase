@@ -37,12 +37,12 @@
               (testing "All Users Group should be returned"
                 (is (schema= {:id           (s/eq (:id (perms-group/all-users)))
                               :name         (s/eq "All Users")
-                              :member_count su/IntGreaterThanZero}
+                              :member_count su/IntGreaterThanZeroPlumatic}
                              (get id->group (:id (perms-group/all-users))))))
               (testing "Administrators Group should be returned"
                 (is (schema= {:id           (s/eq (:id (perms-group/admin)))
                               :name         (s/eq "Administrators")
-                              :member_count su/IntGreaterThanZero}
+                              :member_count su/IntGreaterThanZeroPlumatic}
                              (get id->group (:id (perms-group/admin)))))))]
       (let [id->group (m/index-by :id (fetch-groups))]
         (check-default-groups-returned id->group))
@@ -52,8 +52,8 @@
           (let [id->group (m/index-by :id (fetch-groups))]
             (check-default-groups-returned id->group)
             (testing "empty group should be returned"
-              (is (schema= {:id           su/IntGreaterThanZero
-                            :name         su/NonBlankString
+              (is (schema= {:id           su/IntGreaterThanZeroPlumatic
+                            :name         su/NonBlankStringPlumatic
                             :member_count (s/eq 0)}
                            (get id->group (:id group)))))))))
     (testing "requires superuser"
@@ -80,19 +80,19 @@
                     :last_name     (s/eq "Corv")
                     :email         (s/eq "crowberto@metabase.com")
                     :user_id       (s/eq (mt/user->id :crowberto))
-                    :membership_id su/IntGreaterThanZero}
+                    :membership_id su/IntGreaterThanZeroPlumatic}
                    (get id->member (mt/user->id :crowberto))))
       (is (schema= {:first_name    (s/eq "Lucky")
                     :last_name     (s/eq "Pigeon")
                     :email         (s/eq "lucky@metabase.com")
                     :user_id       (s/eq (mt/user->id :lucky))
-                    :membership_id su/IntGreaterThanZero}
+                    :membership_id su/IntGreaterThanZeroPlumatic}
                    (get id->member (mt/user->id :lucky))))
       (is (schema= {:first_name    (s/eq "Rasta")
                     :last_name     (s/eq "Toucan")
                     :email         (s/eq "rasta@metabase.com")
                     :user_id       (s/eq (mt/user->id :rasta))
-                    :membership_id su/IntGreaterThanZero}
+                    :membership_id su/IntGreaterThanZeroPlumatic}
                    (get id->member (mt/user->id :rasta))))
       (testing "Should *not* include inactive users"
         (is (= nil
@@ -251,10 +251,10 @@
 
     (testing "Return a graph of membership"
       (let [result (mt/user-http-request :crowberto :get 200 "permissions/membership")]
-        (is (schema= {su/IntGreaterThanZero
-                      [{:membership_id su/IntGreaterThanZero
-                        :group_id su/IntGreaterThanZero
-                        :user_id su/IntGreaterThanZero
+        (is (schema= {su/IntGreaterThanZeroPlumatic
+                      [{:membership_id su/IntGreaterThanZeroPlumatic
+                        :group_id su/IntGreaterThanZeroPlumatic
+                        :user_id su/IntGreaterThanZeroPlumatic
                         :is_group_manager s/Bool}]}
                      result))
         (is (= (db/select-field :id 'User) (set (keys result))))))))

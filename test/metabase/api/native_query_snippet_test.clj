@@ -74,7 +74,7 @@
         (try
           (let [snippet-input    {:name "test-snippet", :description "Just null", :content "NULL"}
                 snippet-from-api (mt/user-http-request user :post 200 (snippet-url) snippet-input)]
-            (is (schema= {:id          su/IntGreaterThanZero
+            (is (schema= {:id          su/IntGreaterThanZeroPlumatic
                           :name        (s/eq "test-snippet")
                           :description (s/eq "Just null")
                           :content     (s/eq "NULL")

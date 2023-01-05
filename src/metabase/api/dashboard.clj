@@ -54,6 +54,7 @@
     (hydrate <> :creator)
     (filter mi/can-read? <>)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
 
@@ -71,15 +72,16 @@
                    dashboard)))
           dashboards)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new Dashboard."
   [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
-  {name                su/NonBlankString
-   parameters          (s/maybe [su/Parameter])
+  {name                su/NonBlankStringPlumatic
+   parameters          (s/maybe [su/ParameterPlumatic])
    description         (s/maybe s/Str)
-   cache_ttl           (s/maybe su/IntGreaterThanZero)
-   collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+   cache_ttl           (s/maybe su/IntGreaterThanZeroPlumatic)
+   collection_id       (s/maybe su/IntGreaterThanZeroPlumatic)
+   collection_position (s/maybe su/IntGreaterThanZeroPlumatic)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -308,14 +310,15 @@
                                                series)))))))
           ordered-cards)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
   [from-dashboard-id :as {{:keys [name description collection_id collection_position
                                   is_deep_copy], :as _dashboard} :body}]
-  {name                   (s/maybe su/NonBlankString)
+  {name                   (s/maybe su/NonBlankStringPlumatic)
    description            (s/maybe s/Str)
-   collection_id          (s/maybe su/IntGreaterThanZero)
-   collection_position    (s/maybe su/IntGreaterThanZero)
+   collection_id          (s/maybe su/IntGreaterThanZeroPlumatic)
+   collection_position    (s/maybe su/IntGreaterThanZeroPlumatic)
    is_deep_copy           (s/maybe s/Bool)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
@@ -355,6 +358,7 @@
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Get Dashboard with ID."
   [id]
@@ -371,6 +375,7 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a Dashboard.
 
@@ -380,19 +385,19 @@
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
                    embedding_params position archived collection_id collection_position cache_ttl]
             :as dash-updates} :body}]
-  {name                    (s/maybe su/NonBlankString)
+  {name                    (s/maybe su/NonBlankStringPlumatic)
    description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
    points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)
    enable_embedding        (s/maybe s/Bool)
-   embedding_params        (s/maybe su/EmbeddingParams)
-   parameters              (s/maybe [su/Parameter])
-   position                (s/maybe su/IntGreaterThanZero)
+   embedding_params        (s/maybe su/EmbeddingParamsPlumatic)
+   parameters              (s/maybe [su/ParameterPlumatic])
+   position                (s/maybe su/IntGreaterThanZeroPlumatic)
    archived                (s/maybe s/Bool)
-   collection_id           (s/maybe su/IntGreaterThanZero)
-   collection_position     (s/maybe su/IntGreaterThanZero)
-   cache_ttl               (s/maybe su/IntGreaterThanZero)}
+   collection_id           (s/maybe su/IntGreaterThanZeroPlumatic)
+   collection_position     (s/maybe su/IntGreaterThanZeroPlumatic)
+   cache_ttl               (s/maybe su/IntGreaterThanZeroPlumatic)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
@@ -418,6 +423,7 @@
 
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
 ;; be setting `:archived` to `true` via the `PUT` endpoint instead
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Delete a Dashboard."
   [id]
@@ -473,10 +479,11 @@
                                :actual-permissions @api/*current-user-permissions-set*})))))))))
 
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/cards"
   "Add a `Card` to a Dashboard."
   [id :as {{:keys [cardId parameter_mappings], :as dashboard-card} :body}]
-  {cardId             (s/maybe su/IntGreaterThanZero)
+  {cardId             (s/maybe su/IntGreaterThanZeroPlumatic)
    parameter_mappings (s/maybe [dashboard-card/ParamMapping])}
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
@@ -526,20 +533,21 @@
 
 (def ^:private UpdatedDashboardCard
   (su/with-api-error-message
-    {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZero
+    {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZeroPlumatic
                                             "value must be a DashboardCard ID.")
-     (s/optional-key :size_x)             (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :size_y)             (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :row)                (s/maybe su/IntGreaterThanOrEqualToZero)
-     (s/optional-key :col)                (s/maybe su/IntGreaterThanOrEqualToZero)
-     (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankString
+     (s/optional-key :size_x)             (s/maybe su/IntGreaterThanZeroPlumatic)
+     (s/optional-key :size_y)             (s/maybe su/IntGreaterThanZeroPlumatic)
+     (s/optional-key :row)                (s/maybe su/IntGreaterThanOrEqualToZeroPlumatic)
+     (s/optional-key :col)                (s/maybe su/IntGreaterThanOrEqualToZeroPlumatic)
+     (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankStringPlumatic
                                                      :target       s/Any
                                                      s/Keyword     s/Any}])
-     (s/optional-key :series)             (s/maybe [su/Map])
+     (s/optional-key :series)             (s/maybe [su/MapPlumatic])
      s/Keyword                            s/Any}
     "value must be a valid DashboardCard map."))
 
 ;; TODO - we should use schema to validate the format of the Cards :D
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id/cards"
   "Update `Cards` on a Dashboard. Request body should have the form:
 
@@ -560,25 +568,28 @@
   (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
   {:status :ok})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id/cards"
   "Remove a `DashboardCard` from a Dashboard."
   [id dashcardId]
-  {dashcardId su/IntStringGreaterThanZero}
+  {dashcardId su/IntStringGreaterThanZeroPlumatic}
   (api/check-not-archived (api/write-check Dashboard id))
   (when-let [dashboard-card (db/select-one DashboardCard :id (Integer/parseInt dashcardId))]
     (api/check-500 (dashboard-card/delete-dashboard-card! dashboard-card api/*current-user-id*))
     api/generic-204-no-content))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."
   [id]
   (api/read-check Dashboard id)
   (revision/revisions+details Dashboard id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/revert"
   "Revert a Dashboard to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
-  {revision_id su/IntGreaterThanZero}
+  {revision_id su/IntGreaterThanZeroPlumatic}
   (api/write-check Dashboard id)
   (revision/revert!
     :entity      Dashboard
@@ -588,6 +599,7 @@
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:dashboard-id/public_link"
   "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
@@ -602,6 +614,7 @@
                  :public_uuid       <>
                  :made_public_by_id api/*current-user-id*)))})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [dashboard-id]
@@ -613,6 +626,7 @@
     :made_public_by_id nil)
   {:status 204, :body nil})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/public"
   "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
   enabled."
@@ -621,6 +635,7 @@
   (validation/check-public-sharing-enabled)
   (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/embeddable"
   "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
   endpoints and a signed JWT."
@@ -629,6 +644,7 @@
   (validation/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
@@ -636,6 +652,7 @@
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/save/collection/:parent-collection-id"
   "Save a denormalized description of dashboard into collection with ID `:parent-collection-id`."
   [parent-collection-id :as {dashboard :body}]
@@ -643,6 +660,7 @@
   (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
        (events/publish-event! :dashboard-create)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/save"
   "Save a denormalized description of dashboard."
   [:as {dashboard :body}]
@@ -660,7 +678,7 @@
   "How many results to return when chain filtering"
   1000)
 
-(s/defn ^:private mappings->field-ids :- (s/maybe #{su/IntGreaterThanZero})
+(s/defn ^:private mappings->field-ids :- (s/maybe #{su/IntGreaterThanZeroPlumatic})
   [parameter-mappings :- (s/maybe (s/cond-pre #{dashboard-card/ParamMapping} [dashboard-card/ParamMapping]))]
   (set (for [param parameter-mappings
              :let  [field-clause (params/param-target->field-clause (:target param) (:dashcard param))]
@@ -700,10 +718,10 @@
   ([dashboard param-key constraint-param-key->value]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
-  ([dashboard                   :- su/Map
-    param-key                   :- su/NonBlankString
-    constraint-param-key->value :- su/Map
-    query                       :- (s/maybe su/NonBlankString)]
+  ([dashboard                   :- su/MapPlumatic
+    param-key                   :- su/NonBlankStringPlumatic
+    constraint-param-key->value :- su/MapPlumatic
+    query                       :- (s/maybe su/NonBlankStringPlumatic)]
    (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
          field-ids   (param-key->field-ids dashboard param-key)]
      (when (empty? field-ids)
@@ -739,10 +757,10 @@
   ([dashboard param-key query-params]
    (param-values dashboard param-key query-params nil))
 
-  ([dashboard                   :- su/Map
-    param-key                   :- su/NonBlankString
-    constraint-param-key->value :- su/Map
-    query                       :- (s/maybe su/NonBlankString)]
+  ([dashboard                   :- su/MapPlumatic
+    param-key                   :- su/NonBlankStringPlumatic
+    constraint-param-key->value :- su/MapPlumatic
+    query                       :- (s/maybe su/NonBlankStringPlumatic)]
    (let [dashboard (hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param
@@ -754,6 +772,7 @@
        "card"        (params.card-values/param->values param query)
        nil           (chain-filter dashboard param-key constraint-param-key->value query)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
   restrict these values by passing query parameters like `other-parameter=value` e.g.
@@ -764,6 +783,7 @@
   (let [dashboard (api/read-check Dashboard id)]
     (param-values dashboard param-key query-params)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
   these values by passing query parameters like `other-parameter=value` e.g.
@@ -777,6 +797,7 @@
   (let [dashboard (api/read-check Dashboard id)]
     (param-values dashboard param-key query-params query)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
   parameters) and a set of `filtering` Field IDs that will be used to restrict values of `filtered` Fields, for each
@@ -799,10 +820,10 @@
 
     `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
   [:as {{:keys [filtered filtering]} :params}]
-  {filtered  (s/cond-pre su/IntStringGreaterThanZero
-                         (su/non-empty [su/IntStringGreaterThanZero]))
-   filtering (s/maybe (s/cond-pre su/IntStringGreaterThanZero
-                                  (su/non-empty [su/IntStringGreaterThanZero])))}
+  {filtered  (s/cond-pre su/IntStringGreaterThanZeroPlumatic
+                         (su/non-empty [su/IntStringGreaterThanZeroPlumatic]))
+   filtering (s/maybe (s/cond-pre su/IntStringGreaterThanZeroPlumatic
+                                  (su/non-empty [su/IntStringGreaterThanZeroPlumatic])))}
     ;; parse IDs for filtered/filtering
   (letfn [(parse-ids [s]
             (set (cond
@@ -818,29 +839,31 @@
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`."
   (su/with-api-error-message
-    {:id       su/NonBlankString
+    {:id       su/NonBlankStringPlumatic
      s/Keyword s/Any}
     "value must be a parameter map with an 'id' key"))
 
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [dashboard-id dashcard-id parameters]
-  {dashboard-id su/IntGreaterThanZero
-   dashcard-id su/IntGreaterThanZero
-   parameters su/JSONString}
+  {dashboard-id su/IntGreaterThanZeroPlumatic
+   dashcard-id su/IntGreaterThanZeroPlumatic
+   parameters su/JSONStringPlumatic}
   (api/read-check Dashboard dashboard-id)
   (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
   [dashboard-id dashcard-id :as {{:keys [parameters], :as _body} :body}]
-  {dashboard-id su/IntGreaterThanZero
-   dashcard-id su/IntGreaterThanZero
+  {dashboard-id su/IntGreaterThanZeroPlumatic
+   dashcard-id su/IntGreaterThanZeroPlumatic
    parameters (s/maybe {s/Keyword s/Any})}
   (api/read-check Dashboard dashboard-id)
   ;; Undo middleware string->keyword coercion
@@ -848,6 +871,7 @@
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
@@ -859,6 +883,7 @@
               :card-id      card-id
               :dashcard-id  dashcard-id})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
@@ -866,7 +891,7 @@
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
   [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters], :as request-parameters} :params}]
-  {parameters    (s/maybe su/JSONString)
+  {parameters    (s/maybe su/JSONStringPlumatic)
    export-format api.dataset/ExportFormat}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge
@@ -886,6 +911,7 @@
                               :format-rows?           false
                               :js-int-to-string?      false}})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]

@@ -401,14 +401,14 @@
     dashboard))
 
 (def ^:private ParamWithMapping
-  {:name     su/NonBlankString
-   :id       su/NonBlankString
+  {:name     su/NonBlankStringPlumatic
+   :id       su/NonBlankStringPlumatic
    :mappings (s/maybe #{dashboard-card/ParamMapping})
    s/Keyword s/Any})
 
-(s/defn ^:private dashboard->resolved-params* :- (let [param-id su/NonBlankString]
+(s/defn ^:private dashboard->resolved-params* :- (let [param-id su/NonBlankStringPlumatic]
                                                    {param-id ParamWithMapping})
-  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/Map])
+  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/MapPlumatic])
                  s/Keyword                    s/Any}]
   (let [dashboard           (hydrate dashboard [:ordered_cards :card])
         param-key->mappings (apply
@@ -422,7 +422,6 @@
 (mi/define-simple-hydration-method dashboard->resolved-params
   :resolved-params
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
-
     (dashboard->resolved-params (db/select-one Dashboard :id 62))
     ;; ->
     {\"ee876336\" {:name     \"Category Name\"
@@ -443,7 +442,6 @@
                                 :target       [:dimension [:field-id 264]]}}}}"
   [dashboard]
   (dashboard->resolved-params* dashboard))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |

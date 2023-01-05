@@ -22,14 +22,14 @@
    [toucan.db :as db]))
 
 (def ^:private KeypathComponents
-  {:table-name (s/maybe su/NonBlankString)
-   :field-name (s/maybe su/NonBlankString)
+  {:table-name (s/maybe su/NonBlankStringPlumatic)
+   :field-name (s/maybe su/NonBlankStringPlumatic)
    :k          s/Keyword})
 
 (s/defn ^:private parse-keypath :- KeypathComponents
   "Parse a KEYPATH into components for easy use."
   ;; TODO: this does not support schemas in dbs :(
-  [keypath :- su/NonBlankString]
+  [keypath :- su/NonBlankStringPlumatic]
   ;; keypath will have one of three formats:
   ;; property (for database-level properties)
   ;; table_name.property

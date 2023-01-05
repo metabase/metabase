@@ -10,7 +10,7 @@
 
 (def DBMSVersion
   "Schema for the expected output of `describe-table-fks`."
-  {:version  su/NonBlankString
+  {:version  su/NonBlankStringPlumatic
    s/Keyword s/Any})
 
 (s/defn sync-dbms-version!
