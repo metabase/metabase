@@ -43,17 +43,6 @@ const barData = {
   seriesIndex: 0,
 };
 
-// export type BreakoutChartColumns = {
-//   dimension: ColumnDescriptor;
-//   breakout: ColumnDescriptor;
-//   metric: ColumnDescriptor;
-// };
-
-// export type MultipleMetricsChartColumns = {
-//   dimension: ColumnDescriptor;
-//   metrics: ColumnDescriptor[];
-// };
-
 const breakoutChartColumns: BreakoutChartColumns = {
   dimension: {
     index: 0,

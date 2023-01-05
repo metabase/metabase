@@ -1,6 +1,9 @@
 import moment from "moment-timezone";
 
-import { getClickHoverObject } from "metabase/visualizations/lib/apply_tooltips";
+import {
+  getClickObject,
+  getTooltipModel,
+} from "metabase/visualizations/lib/apply_tooltips";
 import { getDatas } from "metabase/visualizations/lib/renderer_utils";
 
 import {
@@ -11,7 +14,7 @@ import {
   NumberColumn,
 } from "../__support__/visualizations";
 
-describe("getClickHoverObject", () => {
+describe("getClickObject", () => {
   it("should return data for tooltip", () => {
     const d = { data: { key: "foobar", value: 123 } };
     const cols = [StringColumn(), NumberColumn()];
@@ -20,10 +23,9 @@ describe("getClickHoverObject", () => {
       ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
       classList: [],
-      event: {},
     };
 
-    const obj = getClickHoverObject(d, otherArgs);
+    const obj = getClickObject(d, otherArgs);
 
     expect(getFormattedTooltips(obj)).toEqual(["foobar", "123"]);
   });
@@ -45,10 +47,9 @@ describe("getClickHoverObject", () => {
       ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
       classList: [],
-      event: {},
     };
 
-    const obj = getClickHoverObject(d, otherArgs);
+    const obj = getClickObject(d, otherArgs);
 
     expect(getFormattedTooltips(obj)).toEqual(["April, 2016", "2"]);
   });
@@ -70,48 +71,11 @@ describe("getClickHoverObject", () => {
       ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
       classList: [],
-      event: {},
     };
 
-    const obj = getClickHoverObject(d, otherArgs);
+    const obj = getClickObject(d, otherArgs);
 
     expect(getFormattedTooltips(obj)).toEqual(["April, 2016", "2"]);
-  });
-
-  // This is an ugly test. It's looking at whether we correctly set event and
-  // element properties on the returned object. Those are used to determine how
-  // the tooltips are positioned.
-  it("should return event/element target correctly", () => {
-    const d = { data: { key: "foobar", value: 123 } };
-    const cols = [StringColumn(), NumberColumn()];
-    const rows = [["foobar", 123]];
-    const otherArgs = {
-      ...seriesAndData({ cols, rows }),
-      seriesIndex: 0,
-      element: "DOM element",
-    };
-
-    for (const [eventType, klass, shouldUseMouseLocation] of [
-      ["mousemove", "bar", false],
-      ["click", "bar", true],
-      ["mousemove", "dot", false],
-      ["click", "dot", false],
-      ["mousemove", "area", true],
-      ["click", "area", true],
-    ]) {
-      const { event, element } = getClickHoverObject(d, {
-        ...otherArgs,
-        classList: [klass],
-        event: { type: eventType },
-      });
-      if (shouldUseMouseLocation) {
-        expect(event).toEqual({ type: eventType });
-        expect(element).toEqual(null);
-      } else {
-        expect(event).toEqual(null);
-        expect(element).toEqual("DOM element");
-      }
-    }
   });
 
   it("should exclude aggregation and query-transform columns from dimensions", () => {
@@ -126,10 +90,9 @@ describe("getClickHoverObject", () => {
       ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
       classList: [],
-      event: {},
     };
 
-    const { data, dimensions } = getClickHoverObject(d, otherArgs);
+    const { data, dimensions } = getClickObject(d, otherArgs);
 
     expect(data.map(d => d.col)).toEqual(cols);
     expect(dimensions.map(d => d.column)).toEqual([cols[0]]);
@@ -143,14 +106,13 @@ describe("getClickHoverObject", () => {
       ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
       classList: [],
-      event: {},
       seriesTitle: "better name",
     };
 
     const {
       dimensions: [, { value: dimValue }],
       value: dValue,
-    } = getClickHoverObject(d, otherArgs);
+    } = getClickObject(d, otherArgs);
 
     expect(dimValue).toBe(true);
     expect(dValue).toBe(true);
@@ -174,11 +136,106 @@ describe("getClickHoverObject", () => {
       }),
       seriesIndex: 0,
       classList: [],
-      event: {},
     };
 
-    const obj = getClickHoverObject(d, otherArgs);
+    const obj = getClickObject(d, otherArgs);
     expect(getFormattedTooltips(obj)).toEqual(["(empty)", "2"]);
+  });
+});
+
+describe("getTooltipModel", () => {
+  const settings = {
+    "series_settings.colors": {
+      "Series 1": "red",
+      "Series 2": "green",
+    },
+    series: () => null,
+  };
+  const cols = [StringColumn(), NumberColumn()];
+  const getMockSeries = hasBreakout => [
+    {
+      data: {
+        cols,
+        rows: [["foo", 100]],
+        settings: {},
+        _breakoutColumn: hasBreakout ? StringColumn() : undefined,
+      },
+      card: {
+        name: "Series 1",
+        _breakoutColumn: hasBreakout ? StringColumn() : undefined,
+      },
+    },
+    {
+      data: {
+        cols,
+        rows: [["foo", 200]],
+        settings: {},
+      },
+      card: { name: "Series 2" },
+    },
+  ];
+
+  const hoveredIndex = 0;
+  const xValue = "foo";
+
+  it("sets tooltip model rows", () => {
+    const series = getMockSeries();
+    const datas = getDatas({ series, settings });
+    const { bodyRows, headerRows, headerTitle } = getTooltipModel(
+      xValue,
+      series,
+      hoveredIndex,
+      datas,
+      settings,
+    );
+
+    expect(headerTitle).toBe("foo");
+    expect(headerRows).toHaveLength(1);
+    expect(headerRows[0]).toEqual(
+      expect.objectContaining({
+        color: "red",
+        name: "Series 1",
+        value: 100,
+      }),
+    );
+    expect(bodyRows).toHaveLength(1);
+    expect(bodyRows[0]).toEqual(
+      expect.objectContaining({
+        color: "green",
+        name: "Series 2",
+        value: 200,
+      }),
+    );
+  });
+
+  it("sets showTotal and showPercentages to true for charts with breakouts", () => {
+    const series = getMockSeries(true);
+    const datas = getDatas({ series, settings });
+    const { showTotal, showPercentages } = getTooltipModel(
+      xValue,
+      series,
+      hoveredIndex,
+      datas,
+      settings,
+    );
+
+    expect(showTotal).toBe(true);
+    expect(showPercentages).toBe(true);
+  });
+
+  it("sets showTotal and showPercentages to false for charts without breakouts", () => {
+    const series = getMockSeries();
+    const datas = getDatas({ series, settings });
+    const { showTotal, showPercentages } = getTooltipModel(
+      xValue,
+      series,
+      hoveredIndex,
+      datas,
+      settings,
+    );
+
+    expect(showTotal).toBe(false);
+    expect(showPercentages).toBe(false);
   });
 });
 

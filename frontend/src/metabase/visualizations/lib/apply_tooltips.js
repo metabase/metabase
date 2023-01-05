@@ -3,13 +3,21 @@
 import d3 from "d3";
 import moment from "moment-timezone";
 import { getIn } from "icepick";
+import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
 import { formatNullable } from "metabase/lib/formatting/nullable";
+import {
+  formatValueForTooltip,
+  determineSeriesIndexFromElement,
+} from "metabase/visualizations/lib/tooltip";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 
 import { isNormalized, isStacked } from "./renderer_utils";
-import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
+
+const DIMENSION_INDEX = 0;
+const METRIC_INDEX = 1;
 
 function isDashboardAddedSeries(series, seriesIndex, dashboard) {
   // the first series by definition can't be an "added" series
@@ -30,7 +38,7 @@ function isDashboardAddedSeries(series, seriesIndex, dashboard) {
   return (dashCard?.series || []).some(card => card.id === addedSeriesCard.id);
 }
 
-export function getClickHoverObject(
+export function getClickObject(
   d,
   {
     series,
@@ -39,8 +47,6 @@ export function getClickHoverObject(
     seriesIndex,
     seriesTitle,
     classList,
-    event,
-    element,
     settings,
     dashboard,
   },
@@ -224,27 +230,7 @@ export function getClickHoverObject(
   const column = series[seriesIndex].data.cols[1];
   value = parseBooleanStringValue({ column, value });
 
-  // We align tooltips differently depending on the type of chart and whether
-  // the user is hovering/clicked.
-  //
-  // On hover, we want to put the tooltip statically next to the hovered element
-  // *unless* the element is an area. Those are weirdly shaped, so we put the
-  // tooltip next to the mouse.
-  //
-  // On click, it's somewhat reversed. Typically we want the tooltip to appear
-  // right next to where the user just clicked. The exception is line charts.
-  // There we want to snap to the closest hovered dot since the voronoi snapping
-  // we do means the mouse might be slightly off.
-  const isLine = classList.includes("dot");
-  const isArea = classList.includes("area");
-  const shouldUseMouseCoordinates =
-    event.type === "mousemove" ? isArea : !isLine;
-
   return {
-    // for single series bar charts, fade the series and highlght the hovered element with CSS
-    index: isSingleSeriesBar ? -1 : seriesIndex,
-    element: !shouldUseMouseCoordinates ? element : null,
-    event: shouldUseMouseCoordinates ? event : null,
     data: data.length > 0 ? data : null,
     dimensions,
     value,
@@ -286,6 +272,90 @@ function aggregateRows(rows) {
   return aggregatedRow;
 }
 
+export function getTooltipModel(
+  xValue,
+  multipleCardSeries,
+  hoveredIndex,
+  datas,
+  settings,
+) {
+  const isWaterfallChart = multipleCardSeries.some(
+    series => series.card?.display === "waterfall",
+  );
+
+  const seriesWithGroupedData = multipleCardSeries.map((series, index) => ({
+    ...series,
+    groupedData: datas[index],
+  }));
+
+  const hoveredSeries = seriesWithGroupedData[hoveredIndex];
+  const hoveredCardId = hoveredSeries?.card?.id;
+  const hoveredCardSeries = seriesWithGroupedData.filter(
+    series => series.card?.id === hoveredCardId,
+  );
+  const hasBreakout = hoveredCardSeries?.some(
+    series => series.card?._breakoutColumn != null,
+  );
+
+  const formattedXValue = formatValueForTooltip({
+    value: xValue,
+    settings,
+    column: hoveredSeries?.data?.cols[DIMENSION_INDEX],
+  });
+
+  const totalFormatter = value =>
+    formatValueForTooltip({
+      value,
+      settings,
+      column: hoveredSeries?.data?.cols[METRIC_INDEX],
+    });
+
+  const tooltipRows = hoveredCardSeries
+    .map(series => {
+      const { card, groupedData, data } = series;
+      const datum = groupedData?.find(
+        datum => datum[DIMENSION_INDEX] === xValue,
+      );
+
+      if (!datum) {
+        return null;
+      }
+
+      const value = datum[METRIC_INDEX];
+      const valueColumn = data.cols[METRIC_INDEX];
+      const name = settings.series(series)?.["title"] || card.name;
+      const colorKey = keyForSingleSeries(series);
+      const color = settings["series_settings.colors"][colorKey];
+
+      return {
+        color: !isWaterfallChart ? color : undefined,
+        name,
+        value,
+        formatter: value =>
+          formatValueForTooltip({
+            value,
+            settings,
+            column: valueColumn,
+          }),
+      };
+    })
+    .filter(Boolean);
+
+  const [headerRows, bodyRows] = _.partition(
+    tooltipRows,
+    row => row.name === hoveredSeries?.card?.name,
+  );
+
+  return {
+    headerTitle: formattedXValue,
+    headerRows,
+    bodyRows,
+    totalFormatter: hasBreakout ? totalFormatter : undefined,
+    showTotal: hasBreakout,
+    showPercentages: hasBreakout,
+  };
+}
+
 export function setupTooltips(
   {
     settings,
@@ -302,11 +372,32 @@ export function setupTooltips(
   const stacked = isStacked(settings, datas);
   const normalized = isNormalized(settings, datas);
 
-  const getClickHoverHelper = (target, d) => {
+  const getClickData = (target, d) => {
     const seriesIndex = determineSeriesIndexFromElement(target, stacked);
     const seriesSettings = chart.settings.series(series[seriesIndex]);
     const seriesTitle = seriesSettings && seriesSettings.title;
-    const classList = [...target.classList.values()]; // values returns an iterator, but getClickHoverObject uses Array#includes
+    const classList = Array.from(target.classList.values);
+
+    return getClickObject(d, {
+      classList,
+      seriesTitle,
+      seriesIndex,
+      series,
+      datas,
+      isNormalized: normalized,
+      isScalarSeries,
+      isStacked: stacked,
+      settings,
+      dashboard,
+    });
+  };
+
+  const getHoverData = (target, d) => {
+    const hoveredSeriesIndex = determineSeriesIndexFromElement(target, stacked);
+    const classList = Array.from(target.classList.values);
+    const isMultiseries = series.length > 1;
+    const isBar = classList.includes("bar");
+    const isSingleSeriesBar = isBar && !isMultiseries;
 
     // no tooltips when brushing
     if (isBrushing()) {
@@ -317,20 +408,41 @@ export function setupTooltips(
       return null;
     }
 
-    return getClickHoverObject(d, {
-      classList,
-      seriesTitle,
-      seriesIndex,
+    // We align tooltips differently depending on the type of chart and whether
+    // the user is hovering/clicked.
+    //
+    // On hover, we want to put the tooltip statically next to the hovered element
+    // *unless* the element is an area. Those are weirdly shaped, so we put the
+    // tooltip next to the mouse.
+    //
+    // On click, it's somewhat reversed. Typically we want the tooltip to appear
+    // right next to where the user just clicked. The exception is line charts.
+    // There we want to snap to the closest hovered dot since the voronoi snapping
+    // we do means the mouse might be slightly off.
+    const isLine = classList.includes("dot");
+    const isArea = classList.includes("area");
+    const shouldUseMouseCoordinates =
+      event.type === "mousemove" ? isArea : !isLine;
+
+    const isScatterChart = series.some(
+      series => series.card?.display === "scatter",
+    );
+    const xValue = isScatterChart ? d.key[0] : d.x;
+
+    const dataTooltip = getTooltipModel(
+      xValue,
       series,
+      hoveredSeriesIndex,
       datas,
-      isNormalized: normalized,
-      isScalarSeries,
-      isStacked: stacked,
-      event: d3.event,
-      element: target,
       settings,
-      dashboard,
-    });
+    );
+
+    return {
+      index: isSingleSeriesBar ? -1 : hoveredSeriesIndex,
+      element: !shouldUseMouseCoordinates ? target : null,
+      event: shouldUseMouseCoordinates ? d3.event : null,
+      dataTooltip,
+    };
   };
 
   chart.on("renderlet.tooltips", function (chart) {
@@ -341,7 +453,7 @@ export function setupTooltips(
       chart
         .selectAll(".bar, .dot, .area, .line, .bubble")
         .on("mousemove", function (d) {
-          const hovered = getClickHoverHelper(this, d);
+          const hovered = getHoverData(this, d);
           onHoverChange(hovered);
         })
         .on("mouseleave", function () {
@@ -351,7 +463,7 @@ export function setupTooltips(
 
     if (onVisualizationClick) {
       const onClick = function (d) {
-        const clicked = getClickHoverHelper(this, d);
+        const clicked = getClickData(this, d);
         if (clicked) {
           onVisualizationClick(clicked);
         }
