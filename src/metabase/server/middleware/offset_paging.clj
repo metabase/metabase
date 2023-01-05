@@ -1,7 +1,6 @@
 (ns metabase.server.middleware.offset-paging
   (:require
    [medley.core :as m]
-   [metabase.server.middleware.security :as mw.security]
    [metabase.util.i18n :refer [tru]]))
 
 (def ^:dynamic *limit* "Limit for offset-limit paging." nil)
@@ -46,12 +45,8 @@
                             (catch Throwable e
                               e))]
         (if (instance? Throwable paging-params)
-          (let [^Throwable e paging-params]
-            (respond {:status  400
-                      :headers (mw.security/security-headers)
-                      :body    (merge
-                                 (Throwable->map e)
-                                 {:message (tru "Error parsing paging parameters: {0}" (ex-message e))})}))
+          (raise (ex-info (tru "Error parsing paging parameters: {0}" (ex-message paging-params))
+                          {:status-code 400}))
           (let [{:keys [limit offset]} paging-params
                 request                (with-paging-params request paging-params)]
             (binding [*limit*  limit
