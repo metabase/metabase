@@ -463,7 +463,11 @@ class PivotTable extends Component {
     );
 
     return (
-      <PivotTableRoot isDashboard={isDashboard} isNightMode={isNightMode}>
+      <PivotTableRoot
+        isDashboard={isDashboard}
+        isNightMode={isNightMode}
+        data-testid="pivot-table"
+      >
         <ScrollSync>
           {({ onScroll, scrollLeft, scrollTop }) => (
             <div className="full-height flex flex-column">
@@ -590,3 +594,4 @@ class PivotTable extends Component {
 }
 
 export default connect(mapStateToProps)(PivotTable);
+export { PivotTable };
