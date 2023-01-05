@@ -55,12 +55,12 @@
         (is (schema= SessionResponse
                      response))
         (testing "Login should record a LoginHistory item"
-          (is (schema= {:id                 su/IntGreaterThanZero
+          (is (schema= {:id                 su/IntGreaterThanZeroPlumatic
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
                         :device_id          client/UUIDString
-                        :device_description su/NonBlankString
-                        :ip_address         su/NonBlankString
+                        :device_description su/NonBlankStringPlumatic
+                        :ip_address         su/NonBlankStringPlumatic
                         :active             (s/eq true)
                         s/Keyword s/Any}
                        (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
@@ -210,8 +210,8 @@
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
                         :device_id          client/UUIDString
-                        :device_description su/NonBlankString
-                        :ip_address         su/NonBlankString
+                        :device_description su/NonBlankStringPlumatic
+                        :ip_address         su/NonBlankStringPlumatic
                         :active             (s/eq false)
                         s/Keyword           s/Any}
                        (db/select-one LoginHistory :id login-history-id))))))))

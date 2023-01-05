@@ -161,7 +161,7 @@
 (s/defn ^:private jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
-  [{driver :engine, :keys [details], :as database} :- (s/maybe su/Map)]
+  [{driver :engine, :keys [details], :as database} :- (s/maybe su/MapPlumatic)]
   (when (some? database)
     (hash (connection-details->spec driver details))))
 

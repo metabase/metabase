@@ -85,4 +85,13 @@
   (is (= "ConsCell <nullable vector with exactly 2 items of type: integer, \"ConsCell\">"
          (umd/describe [:schema
                            {:registry {"ConsCell" [:maybe [:tuple :int [:ref "ConsCell"]]]}}
-                           "ConsCell"]))))
+                           "ConsCell"])))
+
+  (is (= "integer greater than or equal to 0"
+         (umd/describe [:int {:min 0}])))
+
+  (is (= "integer less than or equal to 1"
+         (umd/describe [:int {:max 1}])))
+
+  (is (= "integer between 0 and 1 inclusive"
+         (umd/describe [:int {:min 0 :max 1}]))))

@@ -50,8 +50,8 @@ export type FieldDimension = {
   name: string;
 };
 
-export interface Field {
-  id?: FieldId;
+export interface ConcreteField {
+  id: FieldId;
   table_id: TableId;
 
   name: string;
@@ -85,3 +85,7 @@ export interface Field {
   created_at: string;
   updated_at: string;
 }
+
+export type Field = Omit<ConcreteField, "id"> & {
+  id?: FieldId;
+};

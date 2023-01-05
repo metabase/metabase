@@ -29,7 +29,7 @@
            {:same-site :none, :secure true}
            {:same-site :lax})))
 
-(s/defn ^:private add-browser-id-cookie [request response browser-id :- su/NonBlankString]
+(s/defn ^:private add-browser-id-cookie [request response browser-id :- su/NonBlankStringPlumatic]
   (response/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
 
 (defn ensure-browser-id-cookie

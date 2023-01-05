@@ -246,6 +246,12 @@
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
+(defmethod driver/database-supports? [:mongo :datetime-diff]
+  [_driver _feature db]
+  (-> (:dbms_version db)
+      :semantic-version
+      (driver.u/semantic-version-gte [5])))
+
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
   [_driver _feature db]

@@ -89,12 +89,12 @@
   (testing "Make sure scheduler-info doesn't explode and returns info in the general shape we expect"
     (mt/with-temp-scheduler
       (is (schema= {:scheduler (su/non-empty [s/Str])
-                    :jobs      [{:key         su/NonBlankString
-                                 :description su/NonBlankString
-                                 :triggers    [{:key                 su/NonBlankString
-                                                :description         su/NonBlankString
-                                                :misfire-instruction su/NonBlankString
-                                                :state               su/NonBlankString
+                    :jobs      [{:key         su/NonBlankStringPlumatic
+                                 :description su/NonBlankStringPlumatic
+                                 :triggers    [{:key                 su/NonBlankStringPlumatic
+                                                :description         su/NonBlankStringPlumatic
+                                                :misfire-instruction su/NonBlankStringPlumatic
+                                                :state               su/NonBlankStringPlumatic
                                                 s/Keyword            s/Any}]
                                  s/Keyword    s/Any}]}
                    (task/scheduler-info))))))

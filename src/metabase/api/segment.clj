@@ -19,12 +19,13 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new `Segment`."
   [:as {{:keys [name description table_id definition], :as body} :body}]
-  {name       su/NonBlankString
-   table_id   su/IntGreaterThanZero
-   definition su/Map
+  {name       su/NonBlankStringPlumatic
+   table_id   su/IntGreaterThanZeroPlumatic
+   definition su/MapPlumatic
    description (s/maybe s/Str)}
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check Segment body)
@@ -38,7 +39,7 @@
     (-> (events/publish-event! :segment-create segment)
         (hydrate :creator))))
 
-(s/defn ^:private hydrated-segment [id :- su/IntGreaterThanZero]
+(s/defn ^:private hydrated-segment [id :- su/IntGreaterThanZeroPlumatic]
   (-> (api/read-check (db/select-one Segment :id id))
       (hydrate :creator)))
 
@@ -51,11 +52,13 @@
                :query_description
                (api.qd/generate-query-description table (:definition segment)))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch `Segment` with ID."
   [id]
   (first (add-query-descriptions [(hydrated-segment id)])))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch *all* `Segments`."
   []
@@ -85,14 +88,15 @@
       (events/publish-event! (if archive? :segment-delete :segment-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a `Segment` with ID."
   [id :as {{:keys [name definition revision_message archived caveats description points_of_interest
                    show_in_getting_started]
             :as   body} :body}]
-  {name                    (s/maybe su/NonBlankString)
-   definition              (s/maybe su/Map)
-   revision_message        su/NonBlankString
+  {name                    (s/maybe su/NonBlankStringPlumatic)
+   definition              (s/maybe su/MapPlumatic)
+   revision_message        su/NonBlankStringPlumatic
    archived                (s/maybe s/Bool)
    caveats                 (s/maybe s/Str)
    description             (s/maybe s/Str)
@@ -100,16 +104,18 @@
    show_in_getting_started (s/maybe s/Bool)}
   (write-check-and-update-segment! id body))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [id revision_message]
-  {revision_message su/NonBlankString}
+  {revision_message su/NonBlankStringPlumatic}
   (log/warn
    (trs "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id."))
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for `Segment` with ID."
   [id]
@@ -117,10 +123,11 @@
   (revision/revisions+details Segment id))
 
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/revert"
   "Revert a `Segement` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
-  {revision_id su/IntGreaterThanZero}
+  {revision_id su/IntGreaterThanZeroPlumatic}
   (api/write-check Segment id)
   (revision/revert!
     :entity      Segment
@@ -128,6 +135,7 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]

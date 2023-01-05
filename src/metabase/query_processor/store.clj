@@ -64,11 +64,11 @@
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
   (s/both
    (mi/InstanceOf Database)
-   {:id       su/IntGreaterThanZero
+   {:id       su/IntGreaterThanZeroPlumatic
     :engine   s/Keyword
-    :name     su/NonBlankString
-    :details  su/Map
-    :settings (s/maybe su/Map)
+    :name     su/NonBlankStringPlumatic
+    :details  su/MapPlumatic
+    :settings (s/maybe su/MapPlumatic)
     s/Any     s/Any}))
 
 (def ^:private table-columns-to-fetch
@@ -82,7 +82,7 @@
   (s/both
    (mi/InstanceOf Table)
    {:schema (s/maybe s/Str)
-    :name   su/NonBlankString
+    :name   su/NonBlankStringPlumatic
     s/Any   s/Any}))
 
 
@@ -109,19 +109,19 @@
 (def ^:private FieldInstanceWithRequiredStorekeys
   (s/both
    (mi/InstanceOf Field)
-   {:name                               su/NonBlankString
-    :display_name                       su/NonBlankString
+   {:name                               su/NonBlankStringPlumatic
+    :display_name                       su/NonBlankStringPlumatic
     :description                        (s/maybe s/Str)
-    :database_type                      su/NonBlankString
-    :base_type                          su/FieldType
+    :database_type                      su/NonBlankStringPlumatic
+    :base_type                          su/FieldTypePlumatic
     ;; there's a tension as we sometimes store fields from the db, and sometimes store computed fields. ideally we
     ;; would make everything just use base_type.
-    (s/optional-key :effective_type)    (s/maybe su/FieldType)
-    (s/optional-key :coercion_strategy) (s/maybe su/CoercionStrategy)
-    :semantic_type                      (s/maybe su/FieldSemanticOrRelationType)
-    :fingerprint                        (s/maybe su/Map)
-    :parent_id                          (s/maybe su/IntGreaterThanZero)
-    :nfc_path                           (s/maybe [su/NonBlankString])
+    (s/optional-key :effective_type)    (s/maybe su/FieldTypePlumatic)
+    (s/optional-key :coercion_strategy) (s/maybe su/CoercionStrategyPlumatic)
+    :semantic_type                      (s/maybe su/FieldSemanticOrRelationTypePlumatic)
+    :fingerprint                        (s/maybe su/MapPlumatic)
+    :parent_id                          (s/maybe su/IntGreaterThanZeroPlumatic)
+    :nfc_path                           (s/maybe [su/NonBlankStringPlumatic])
     s/Any                               s/Any}))
 
 
@@ -150,7 +150,7 @@
 
 ;;; ----------------------- Fetching objects from application DB, and saving them in the store -----------------------
 
-(s/defn ^:private db-id :- su/IntGreaterThanZero
+(s/defn ^:private db-id :- su/IntGreaterThanZeroPlumatic
   []
   (or (get-in @*store* [:database :id])
       (throw (Exception. (tru "Cannot store Tables or Fields before Database is stored.")))))
@@ -159,7 +159,7 @@
   "Fetch the Database this query will run against from the application database, and store it in the QP Store for the
   duration of the current query execution. If Database has already been fetched, this function will no-op. Throws an
   Exception if Table does not exist."
-  [database-id :- su/IntGreaterThanZero]
+  [database-id :- su/IntGreaterThanZeroPlumatic]
   (if-let [existing-db-id (get-in @*store* [:database :id])]
     ;; if there's already a DB in the Store, double-check it has the same ID as the one that we were asked to fetch
     (when-not (= existing-db-id database-id)
@@ -174,8 +174,8 @@
 (def ^:private IDs
   (s/maybe
    (s/cond-pre
-    #{su/IntGreaterThanZero}
-    [su/IntGreaterThanZero])))
+    #{su/IntGreaterThanZeroPlumatic}
+    [su/IntGreaterThanZeroPlumatic])))
 
 (s/defn fetch-and-store-tables!
   "Fetch Table(s) from the application database, and store them in the QP Store for the duration of the current query
@@ -248,7 +248,7 @@
 
 (s/defn table :- TableInstanceWithRequiredStoreKeys
   "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned."
-  [table-id :- su/IntGreaterThanZero]
+  [table-id :- su/IntGreaterThanZeroPlumatic]
   (*table* table-id))
 
 (defn- default-field
@@ -263,7 +263,7 @@
 
 (s/defn field :- FieldInstanceWithRequiredStorekeys
   "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned."
-  [field-id :- su/IntGreaterThanZero]
+  [field-id :- su/IntGreaterThanZeroPlumatic]
   (*field* field-id))
 
 

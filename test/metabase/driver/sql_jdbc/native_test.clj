@@ -67,7 +67,7 @@
     (is (schema= {:status     (s/eq :failed)
                   :class      (s/eq org.h2.jdbc.JdbcSQLSyntaxErrorException)
                   :error      #"^Column \"ZID\" not found"
-                  :stacktrace [su/NonBlankString]
+                  :stacktrace [su/NonBlankStringPlumatic]
                   :json_query {:native   {:query (s/eq "SELECT ZID FROM CHECKINS LIMIT 2")}
                                :type     (s/eq :native)
                                s/Keyword s/Any}

@@ -42,7 +42,7 @@
   (sql.qp/mbql->native driver query))
 
 (s/defmethod driver/substitute-native-parameters :sql
-  [_ {:keys [query] :as inner-query} :- {:query su/NonBlankString, s/Keyword s/Any}]
+  [_ {:keys [query] :as inner-query} :- {:query su/NonBlankStringPlumatic, s/Keyword s/Any}]
   (let [[query params] (-> query
                            params.parse/parse
                            (sql.params.substitute/substitute (params.values/query->params-map inner-query)))]

@@ -10,6 +10,7 @@
    [toucan.db :as db]))
 
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of recent tasks stored as Task History"
   []
@@ -19,11 +20,13 @@
    :offset mw.offset-paging/*offset*
    :data   (task-history/all mw.offset-paging/*limit* mw.offset-paging/*offset*)})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Get `TaskHistory` entry with ID."
   [id]
   (api/check-404 (api/read-check TaskHistory id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
   []

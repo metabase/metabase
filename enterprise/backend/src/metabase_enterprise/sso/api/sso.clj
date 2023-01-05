@@ -24,6 +24,7 @@
     (throw (ex-info (str (tru "SSO requires a valid token"))
              {:status-code 403}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [:as req]
@@ -44,6 +45,7 @@
                  :exceptionClass (.getName Exception)
                  :additionalData data}))})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Route the SSO backends call with successful login details"
   [:as req]

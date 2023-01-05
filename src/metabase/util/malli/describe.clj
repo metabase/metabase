@@ -29,6 +29,14 @@
       max (str " with length >= " max)
       :else "")))
 
+(defn- min-max-suffix-number [schema]
+  (let [{:keys [min max]} (-> schema mc/properties)]
+    (cond
+      (and min max) (str " between " min " and " max " inclusive")
+      min (str " greater than or equal to " min)
+      max (str " less than or equal to " max)
+      :else "")))
+
 (defmulti accept
   "Can this be accepted?"
   (fn [name _schema _children _options] name) :default ::default)
@@ -132,12 +140,12 @@
 (defmethod accept 'neg? [_ schema _ _] (str "number less than 0" (min-max-suffix schema)))
 (defmethod accept :neg [_ schema _ _] (str "number less than 0" (min-max-suffix schema)))
 
-(defmethod accept 'integer? [_ schema _ _] (str "integer" (min-max-suffix schema)))
-(defmethod accept 'int? [_ schema _ _] (str "integer" (min-max-suffix schema)))
-(defmethod accept :int [_ schema _ _] (str "integer" (min-max-suffix schema)))
+(defmethod accept 'integer? [_ schema _ _] (str "integer" (min-max-suffix-number schema)))
+(defmethod accept 'int? [_ schema _ _] (str "integer" (min-max-suffix-number schema)))
+(defmethod accept :int [_ schema _ _] (str "integer" (min-max-suffix-number schema)))
 
-(defmethod accept 'double? [_ schema _ _] (str "double" (min-max-suffix schema)))
-(defmethod accept :double [_ schema _ _] (str "double" (min-max-suffix schema)))
+(defmethod accept 'double? [_ schema _ _] (str "double" (min-max-suffix-number schema)))
+(defmethod accept :double [_ schema _ _] (str "double" (min-max-suffix-number schema)))
 
 (defmethod accept :merge [_ schema _ options] ((::describe options) (mc/deref schema) options))
 (defmethod accept :union [_ schema _ options] ((::describe options) (mc/deref schema) options))

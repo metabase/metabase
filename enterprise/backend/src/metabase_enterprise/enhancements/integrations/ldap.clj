@@ -63,7 +63,7 @@
   "Get user information for the supplied username."
   :feature :any
   [ldap-connection :- LDAPConnectionPool
-   username        :- su/NonBlankString
+   username        :- su/NonBlankStringPlumatic
    settings        :- i/LDAPSettings]
   (when-let [result (default-impl/search ldap-connection username settings)]
     (when-let [user-info (default-impl/ldap-search-result->user-info

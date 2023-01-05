@@ -8,7 +8,7 @@
 
 ;; Query execution history for queries against this Database.
 (s/defmethod audit.i/internal-query ::audit-log
-  [_ database-id :- su/IntGreaterThanZero]
+  [_ database-id :- su/IntGreaterThanZeroPlumatic]
   {:metadata [[:started_at {:display_name "Viewed on",  :base_type :type/DateTime}]
               [:card_id    {:display_name "Card ID",    :base_type :type/Integer, :remapped_to   :query}]
               [:query_hash {:display_name "Query Hash", :base_type :type/Text}]

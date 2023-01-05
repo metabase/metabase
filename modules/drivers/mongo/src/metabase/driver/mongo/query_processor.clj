@@ -37,22 +37,22 @@
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
 
-(def ^:private $ProjectStage   {(s/eq $project)    {su/NonBlankString s/Any}})
-(def ^:private $SortStage      {(s/eq $sort)       {su/NonBlankString (s/enum -1 1)}})
-(def ^:private $MatchStage     {(s/eq $match)      {(s/constrained (s/cond-pre su/NonBlankString s/Keyword)
+(def ^:private $ProjectStage   {(s/eq $project)    {su/NonBlankStringPlumatic s/Any}})
+(def ^:private $SortStage      {(s/eq $sort)       {su/NonBlankStringPlumatic (s/enum -1 1)}})
+(def ^:private $MatchStage     {(s/eq $match)      {(s/constrained (s/cond-pre su/NonBlankStringPlumatic s/Keyword)
                                                                    #(not (#{:$not "$not"} %)))
                                                     s/Any}})
-(def ^:private $GroupStage     {(s/eq $group)      {su/NonBlankString s/Any}})
-(def ^:private $AddFieldsStage {(s/eq :$addFields) {su/NonBlankString s/Any}})
-(def ^:private $LimitStage     {(s/eq $limit)      su/IntGreaterThanZero})
-(def ^:private $SkipStage      {(s/eq $skip)       su/IntGreaterThanZero})
+(def ^:private $GroupStage     {(s/eq $group)      {su/NonBlankStringPlumatic s/Any}})
+(def ^:private $AddFieldsStage {(s/eq :$addFields) {su/NonBlankStringPlumatic s/Any}})
+(def ^:private $LimitStage     {(s/eq $limit)      su/IntGreaterThanZeroPlumatic})
+(def ^:private $SkipStage      {(s/eq $skip)       su/IntGreaterThanZeroPlumatic})
 
 (defn- is-stage? [stage]
   (fn [m] (= (first (keys m)) stage)))
 
 (def ^:private Stage
   (s/both
-   (s/constrained su/Map #(= (count (keys %)) 1) "map with a single key")
+   (s/constrained su/MapPlumatic #(= (count (keys %)) 1) "map with a single key")
    (s/conditional
     (is-stage? $project)    $ProjectStage
     (is-stage? $sort)       $SortStage
@@ -559,6 +559,55 @@
                     :unit      unit
                     :amount    amount}})
 
+(defmulti datetime-diff
+  "Helper function for ->rvalue for `datetime-diff` clauses."
+  {:arglists '([x y unit])}
+  (fn [_ _ unit] unit))
+
+(defmethod datetime-diff :year
+  [x y _unit]
+  {$divide [(datetime-diff x y :month) 12]})
+
+(defmethod datetime-diff :quarter
+  [x y _unit]
+  {$divide [(datetime-diff x y :month) 3]})
+
+(defmethod datetime-diff :month
+  [x y _unit]
+  {$add [{"$dateDiff" {:startDate x, :endDate y, :unit "month"}}
+           ;; dateDiff counts month boundaries not whole months, so we need to adjust
+           ;; if x<y but x>y in the month calendar then subtract one month
+           ;; if x>y but x<y in the month calendar then add one month
+         {:$switch {:branches [{:case {:$and [{$lt [x y]}
+                                              {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                :then -1}
+                               {:case {:$and [{$gt [x y]}
+                                              {$lt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                :then 1}]
+                    :default  0}}]})
+
+(defmethod datetime-diff :week
+  [x y _unit]
+  {$divide [(datetime-diff x y :day) 7]})
+
+(defn- simple-datediff
+  [x y unit]
+  {"$dateDiff" {:startDate x, :endDate y, :unit unit}})
+
+(defmethod datetime-diff :day    [x y unit] (simple-datediff x y unit))
+(defmethod datetime-diff :minute [x y unit] (simple-datediff x y unit))
+(defmethod datetime-diff :second [x y unit] (simple-datediff x y unit))
+
+(defmethod datetime-diff :hour
+  [x y _unit]
+  ;; mongo's dateDiff with hour isn't accurate to the millisecond
+  {$divide [{"$dateDiff" {:startDate x, :endDate y, :unit "millisecond"}}
+            3600000]})
+
+(defmethod ->rvalue :datetime-diff [[_ x y unit]]
+  (check-date-operations-supported)
+  (datetime-diff (->rvalue x) (->rvalue y) unit))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -768,7 +817,7 @@
     (recur arg)
     ag))
 
-(s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankString "projected-field-name"
+(s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankStringPlumatic "projected-field-name"
                                                                   s/Any             "source")]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."

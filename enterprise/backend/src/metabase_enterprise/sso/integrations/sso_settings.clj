@@ -11,7 +11,7 @@
    [schema.core :as s]))
 
 (def ^:private GroupMappings
-  (s/maybe {su/KeywordOrString [su/IntGreaterThanZero]}))
+  (s/maybe {su/KeywordOrStringPlumatic [su/IntGreaterThanZeroPlumatic]}))
 
 (def ^:private ^{:arglists '([group-mappings])} validate-group-mappings
   (s/validator GroupMappings))

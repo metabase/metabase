@@ -27,7 +27,7 @@
   :visibility :settings-manager)
 
 (def ^:private ReplyToAddresses
-  (s/maybe [su/Email]))
+  (s/maybe [su/EmailPlumatic]))
 
 (def ^:private ^{:arglists '([reply-to-addresses])} validate-reply-to-addresses
   (s/validator ReplyToAddresses))
@@ -106,7 +106,7 @@
    {:subject      s/Str
     :recipients   [(s/pred u/email?)]
     :message-type (s/enum :text :html :attachments)
-    :message      (s/cond-pre s/Str [su/Map])} ; TODO - what should this be a sequence of?
+    :message      (s/cond-pre s/Str [su/MapPlumatic])} ; TODO - what should this be a sequence of?
    (fn [{:keys [message-type message]}]
      (if (= message-type :attachments)
        (and (sequential? message) (every? map? message))
@@ -163,8 +163,8 @@
       {::error e})))
 
 (def ^:private SMTPSettings
-  {:host                         su/NonBlankString
-   :port                         su/IntGreaterThanZero
+  {:host                         su/NonBlankStringPlumatic
+   :port                         su/IntGreaterThanZeroPlumatic
      ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
    (s/optional-key :user)        (s/maybe s/Str)
    (s/optional-key :security)    (s/maybe (s/enum :tls :ssl :none :starttls))

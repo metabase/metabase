@@ -119,13 +119,13 @@
 (def ^:private ValidFieldName #"^[A-Za-z_]\w{0,127}$")
 
 (s/defn ^:private delete-table!
-  [dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
+  [dataset-id :- su/NonBlankStringPlumatic, table-id :- su/NonBlankStringPlumatic]
   (.delete (bigquery) (TableId/of dataset-id table-id))
   (println (u/format-color 'red "Deleted table `%s.%s.%s`" (project-id) dataset-id table-id)))
 
 (s/defn ^:private create-table!
-  [^String dataset-id :- su/NonBlankString
-   table-id           :- su/NonBlankString
+  [^String dataset-id :- su/NonBlankStringPlumatic
+   table-id           :- su/NonBlankStringPlumatic
    field-name->type   :- {ValidFieldName (apply s/enum valid-field-types)}]
   (u/ignore-exceptions
    (delete-table! dataset-id table-id))

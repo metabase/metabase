@@ -25,8 +25,8 @@
 
 (def Definition
   "Definition spec for a cached table."
-  {:table-name su/NonBlankString
-   :field-definitions [{:field-name su/NonBlankString
+  {:table-name su/NonBlankStringPlumatic
+   :field-definitions [{:field-name su/NonBlankStringPlumatic
                         ;; TODO check (isa? :type/Integer :type/*)
                         :base-type  s/Keyword}]})
 

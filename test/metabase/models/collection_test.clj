@@ -1252,7 +1252,7 @@
 
   (testing "Does hydrating `:personal_collection_id` force creation of Personal Collections?"
     (mt/with-temp User [temp-user]
-      (is (schema= {:personal_collection_id su/IntGreaterThanZero
+      (is (schema= {:personal_collection_id su/IntGreaterThanZeroPlumatic
                     s/Keyword               s/Any}
                    (hydrate temp-user :personal_collection_id))))))
 

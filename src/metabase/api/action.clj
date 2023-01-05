@@ -58,6 +58,7 @@
                           :implicit ImplicitAction
                           :query QueryAction))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:action-id"
   [action-id]
   (let [{existing-action-type :type} (api/write-check Action action-id)]

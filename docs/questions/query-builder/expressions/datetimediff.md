@@ -33,18 +33,8 @@ title: DatetimeDiff
 
 `datetimeDiff` is currently unavailable for the following databases:
 
-- Amazon Athena
 - Druid
 - Google Analytics
-- H2
-- MongoDB
-- Oracle
-- Presto
-- Redshift
-- SparkSQL
-- SQLite
-- SQL Server
-- Vertica
 
 ## Calculating age
 
