@@ -12,7 +12,7 @@ import SettingsUpdatesForm from "./SettingsUpdatesForm";
 const elements = [
   {
     key: "key",
-    widget: "widget",
+    widget: "span",
   },
 ];
 
