@@ -5,6 +5,7 @@
    [clojure.core.async :as a]
    [compojure.core :refer [GET]]
    [medley.core :as m]
+   [metabase.actions.execution :as actions.execution]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
@@ -31,8 +32,11 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
+   [throttle.core :as throttle]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
@@ -171,12 +175,12 @@
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
   (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
-      (hydrate [:ordered_cards :card :series] :param_fields)
+      (hydrate [:ordered_cards :card :series :dashcard/action] :param_fields)
       api.dashboard/add-query-average-durations
       (update :ordered_cards (fn [dashcards]
                                (for [dashcard dashcards]
                                  (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x
-                                                            :size_y :parameter_mappings :visualization_settings])
+                                                            :size_y :parameter_mappings :visualization_settings :action])
                                      (update :card remove-card-non-public-columns)
                                      (update :series (fn [series]
                                                        (for [series series]
@@ -201,14 +205,12 @@
   * `export-format` - `:api` (default format with metadata), `:json` (results only), `:csv`, or `:xslx`. Default: `:api`
   * `qp-runner`     - QP function to run the query with. Default [[qp/process-query-and-save-execution!]]
 
-  Throws a 404 immediately if the Card isn't part of the Dashboard. Throws a 405 immediately if the Card has is_write
-  set to true, as those are meant to only be executed through the actions api. Returns a `StreamingResponse`."
+  Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
   {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters] :as options}])}
-  [& {:keys [export-format parameters qp-runner card-id]
+  [& {:keys [export-format parameters qp-runner]
       :or   {qp-runner     qp/process-query-and-save-execution!
              export-format :api}
       :as   options}]
-  (api/check-is-readonly {:is_write (db/select-one-field :is_write 'Card :id card-id)})
   (let [options (merge
                  {:context     :public-dashboard
                   :constraints (qp.constraints/default-query-constraints)}
@@ -240,6 +242,47 @@
      :parameters    parameters)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+  [uuid dashcard-id parameters]
+  {dashcard-id su/IntGreaterThanZeroPlumatic
+   parameters su/JSONStringPlumatic}
+  (validation/check-public-sharing-enabled)
+  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+    (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters))))
+
+(def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/dashboard/:uuid/dashcard/:dashcard-id/execute"
+  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values."
+  [uuid dashcard-id :as {{:keys [parameters], :as _body} :body}]
+  {dashcard-id su/IntGreaterThanZeroPlumatic
+   parameters (s/maybe {s/Keyword s/Any})}
+  (let [throttle-message (try
+                           (throttle/check dashcard-execution-throttle dashcard-id)
+                           nil
+                           (catch ExceptionInfo e
+                             (get-in (ex-data e) [:errors :dashcard-id])))
+        throttle-time (when throttle-message
+                        (second (re-find #"You must wait ([0-9]+) seconds" throttle-message)))]
+    (if throttle-message
+      (cond-> {:status 429
+               :body throttle-message}
+        throttle-time (assoc :headers {"Retry-After" throttle-time}))
+      (do
+        (validation/check-public-sharing-enabled)
+        (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+          ;; Run this query with full superuser perms. We don't want the various perms checks
+          ;; failing because there are no current user perms; if this Dashcard is public
+          ;; you're by definition allowed to run it without a perms check anyway
+          (binding [api/*current-user-permissions-set* (delay #{"/"})]
+            ;; Undo middleware string->keyword coercion
+            (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
+
 (api/defendpoint-schema GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
   [url format maxheight maxwidth]

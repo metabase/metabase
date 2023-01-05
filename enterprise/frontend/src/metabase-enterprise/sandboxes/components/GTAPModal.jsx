@@ -13,7 +13,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Select, { Option } from "metabase/core/components/Select";
 import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import { GTAPApi } from "metabase/services";
 
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";

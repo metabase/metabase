@@ -16,7 +16,6 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.action :as action]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -79,15 +78,13 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new Dashboard."
-  [:as {{:keys [name description parameters cache_ttl collection_id collection_position is_app_page], :as _dashboard} :body}]
+  [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
   {name                su/NonBlankStringPlumatic
    parameters          (s/maybe [su/ParameterPlumatic])
    description         (s/maybe s/Str)
    cache_ttl           (s/maybe su/IntGreaterThanZeroPlumatic)
    collection_id       (s/maybe su/IntGreaterThanZeroPlumatic)
-   collection_position (s/maybe su/IntGreaterThanZeroPlumatic)
-   is_app_page         (s/maybe s/Bool)}
-  (when is_app_page (action/check-data-apps-enabled))
+   collection_position (s/maybe su/IntGreaterThanZeroPlumatic)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -96,8 +93,7 @@
                         :creator_id          api/*current-user-id*
                         :cache_ttl           cache_ttl
                         :collection_id       collection_id
-                        :collection_position collection_position
-                        :is_app_page         (boolean is_app_page)}
+                        :collection_position collection_position}
         dash           (db/transaction
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
                         ;; position, check that and fix up if needed
@@ -335,8 +331,7 @@
                         :parameters          (or (:parameters existing-dashboard) [])
                         :creator_id          api/*current-user-id*
                         :collection_id       collection_id
-                        :collection_position collection_position
-                        :is_app_page         (:is_app_page existing-dashboard)}
+                        :collection_position collection_position}
         new-cards      (atom nil)
         dashboard      (db/transaction
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
@@ -391,7 +386,7 @@
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl is_app_page]
+                   embedding_params position archived collection_id collection_position cache_ttl]
             :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankStringPlumatic)
    description             (s/maybe s/Str)
@@ -405,9 +400,7 @@
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZeroPlumatic)
    collection_position     (s/maybe su/IntGreaterThanZeroPlumatic)
-   cache_ttl               (s/maybe su/IntGreaterThanZeroPlumatic)
-   is_app_page             (s/maybe s/Bool)}
-  (when is_app_page (action/check-data-apps-enabled))
+   cache_ttl               (s/maybe su/IntGreaterThanZeroPlumatic)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
@@ -425,7 +418,7 @@
          (u/select-keys-when dash-updates
            :present #{:description :position :collection_id :collection_position :cache_ttl}
            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                      :embedding_params :archived :is_app_page})))))
+                      :embedding_params :archived})))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (db/select-one Dashboard :id id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
@@ -882,29 +875,28 @@
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
-  "Fetches the values for filling in execution parameters."
-  [dashboard-id dashcard-id slug]
+(api/defendpoint-schema GET "/:dashboard-id/dashcard/:dashcard-id/execute"
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+  [dashboard-id dashcard-id parameters]
   {dashboard-id su/IntGreaterThanZeroPlumatic
    dashcard-id su/IntGreaterThanZeroPlumatic
-   slug su/NonBlankStringPlumatic}
-  (action/check-data-apps-enabled)
-  (throw (UnsupportedOperationException. "Not implemented")))
+   parameters su/JSONStringPlumatic}
+  (api/read-check Dashboard dashboard-id)
+  (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
+(api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  [dashboard-id dashcard-id slug :as {{:keys [parameters], :as _body} :body}]
+  [dashboard-id dashcard-id :as {{:keys [parameters], :as _body} :body}]
   {dashboard-id su/IntGreaterThanZeroPlumatic
    dashcard-id su/IntGreaterThanZeroPlumatic
-   slug su/NonBlankStringPlumatic
    parameters (s/maybe {s/Keyword s/Any})}
-  (action/check-data-apps-enabled)
+  (api/read-check Dashboard dashboard-id)
   ;; Undo middleware string->keyword coercion
-  (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name)))
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 

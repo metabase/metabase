@@ -69,7 +69,7 @@
           (cond->> collections
             (mi/can-read? root)
             (cons root))))
-      (hydrate collections :can_write :app_id)
+      (hydrate collections :can_write)
       ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
       ;; and for personal collections we translate the name to user's locale
       (for [collection collections]
@@ -118,8 +118,7 @@
                          (collection/visible-collection-ids->honeysql-filter-clause
                           :id
                           (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-        colls (map collection/personal-collection-with-ui-details colls)
-        colls (hydrate colls :app_id)]
+        colls (map collection/personal-collection-with-ui-details colls)]
     (collection/collections->tree coll-type-ids colls)))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -127,7 +126,7 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "dataset" "collection" "app" "dashboard" "page" "pulse" "snippet" "no_models" "timeline"})
+  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
 
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
@@ -286,7 +285,6 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :is_write false]
                    [:= :dataset dataset?]]}
       (hh/merge-where (pinned-state->clause pinned-state))))
 
@@ -352,9 +350,9 @@
   [_ rows]
   (map post-process-card-row rows))
 
-(defn- dashboard-query [collection {:keys [page? archived? pinned-state]}]
+(defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
-                   [(hx/literal (if page? "page" "dashboard")) :model]
+                   [(hx/literal "dashboard") :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
@@ -371,14 +369,13 @@
                    [:= :r.model_id :d.id]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   [:= :is_app_page page?]
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]]}
       (hh/merge-where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
   [_ collection options]
-  (dashboard-query collection (assoc options :page? false)))
+  (dashboard-query collection options))
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
@@ -387,16 +384,8 @@
                 :dataset_query)
        rows))
 
-(defmethod collection-children-query :page
-  [_ collection options]
-  (dashboard-query collection (assoc options :page? true)))
-
-(defmethod post-process-collection-children :page
-  [_ rows]
-  (post-process-collection-children :dashboard rows))
-
 (defn- collection-query
-  [collection {:keys [app? archived? collection-namespace pinned-state]}]
+  [collection {:keys [archived? collection-namespace pinned-state]}]
   (-> (assoc (collection/effective-children-query
               collection
               [:= :archived archived?]
@@ -408,22 +397,14 @@
                       :description
                       :entity_id
                       :personal_owner_id
-                      [(hx/literal (if app? "app" "collection")) :model]
-                      :authority_level
-                      :app_id]
-             ;; A simple left join would force us qualifying :id from
-             ;; collection and that doesn't work with effective-children-query.
-             ;; The sub-query makes sure that :app.id is only visible as :app_id.
-             :left-join [[{:select [[:id :app_id] :collection_id]
-                           :from [:app]} :app]
-                         [:= :app.collection_id :col.id]])
-      (hh/merge-where [(if app? :<> :=) :app_id nil])
+                      [(hx/literal "collection") :model]
+                      :authority_level])
       ;; the nil indicates that collections are never pinned.
       (hh/merge-where (pinned-state->clause pinned-state nil))))
 
 (defmethod collection-children-query :collection
   [_ collection options]
-  (collection-query collection (assoc options :app? false)))
+  (collection-query collection options))
 
 (defmethod post-process-collection-children :collection
   [_ rows]
@@ -435,18 +416,9 @@
     (cond-> row
       ;; when fetching root collection, we might have personal collection
       (:personal_owner_id row) (assoc :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
-      (nil? (:app_id row))     (dissoc :app_id)
       true                     (assoc :can_write (mi/can-write? Collection (:id row)))
       true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id
                                        :collection_preview :dataset_query))))
-
-(defmethod collection-children-query :app
-  [_ collection options]
-  (collection-query collection (assoc options :app? true)))
-
-(defmethod post-process-collection-children :app
-  [_ rows]
-  (post-process-collection-children :collection rows))
 
 (s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
@@ -481,11 +453,9 @@
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
     :collection Collection
-    :app        Collection
     :card       Card
     :dataset    Card
     :dashboard  Dashboard
-    :page       Dashboard
     :pulse      Pulse
     :snippet    NativeQuerySnippet
     :timeline   Timeline))
@@ -507,7 +477,7 @@
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
-   :model :collection_position :authority_level [:app_id :integer] [:personal_owner_id :integer]
+   :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
@@ -623,7 +593,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:app :collection :dataset :card :page :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -645,7 +615,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :app_id)))
+      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
@@ -764,16 +734,17 @@
 (defn- write-check-collection-or-root-collection
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
-  [collection-id]
+  [collection-id collection-namespace]
   (api/write-check (if collection-id
                      (db/select-one Collection :id collection-id)
-                     collection/root-collection)))
+                     (cond-> collection/root-collection
+                       collection-namespace (assoc :namespace collection-namespace)))))
 
 (defn create-collection!
   "Create a new collection."
   [{:keys [name color description parent_id namespace authority_level]}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
-  (write-check-collection-or-root-collection parent_id)
+  (write-check-collection-or-root-collection parent_id namespace)
   ;; Now create the new Collection :)
   (api/check-403 (or (nil? authority_level)
                      (and api/*is-superuser?* authority_level)))
@@ -821,10 +792,6 @@
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
            (collection/perms-for-moving collection-before-update new-parent)))
-        (when (not= new-parent collection/root-collection)
-          ;; apps are not allowed to be moved away from the root collection
-          (api/check-403
-           (nil? (:app_id (hydrate collection-before-update :app_id)))))
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 

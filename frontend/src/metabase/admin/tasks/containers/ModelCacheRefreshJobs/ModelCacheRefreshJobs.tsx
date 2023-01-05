@@ -7,7 +7,7 @@ import Link from "metabase/core/components/Link";
 import DateTime from "metabase/components/DateTime";
 import EmptyState from "metabase/components/EmptyState";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import PaginationControls from "metabase/components/PaginationControls";
 
 import PersistedModels from "metabase/entities/persisted-models";
