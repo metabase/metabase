@@ -26,27 +26,30 @@
 (u/ignore-exceptions
  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch all alerts"
   [archived user_id]
-  {archived (s/maybe su/BooleanString)
-   user_id  (s/maybe su/IntGreaterThanZero)}
+  {archived (s/maybe su/BooleanStringPlumatic)
+   user_id  (s/maybe su/IntGreaterThanZeroPlumatic)}
   (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)
                                 :user-id   user_id}) <>
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch an alert by ID"
   [id]
   (-> (api/read-check (pulse/retrieve-alert id))
       (hydrate :can_write)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/question/:id"
   "Fetch all questions for the given question (`Card`) id"
   [id archived]
-  {id       (s/maybe su/IntGreaterThanZero)
-   archived (s/maybe su/BooleanString)}
+  {id       (s/maybe su/IntGreaterThanZeroPlumatic)
+   archived (s/maybe su/BooleanStringPlumatic)}
   (-> (if api/*is-superuser?*
         (pulse/retrieve-alerts-for-cards {:card-ids [id], :archived? (Boolean/parseBoolean archived)})
         (pulse/retrieve-user-alerts-for-card {:card-id id, :user-id api/*current-user-id*, :archived? (Boolean/parseBoolean archived)}))
@@ -128,6 +131,7 @@
     (assoc card :include_csv true)
     card))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new Alert."
   [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal]
@@ -136,7 +140,7 @@
    alert_first_only s/Bool
    alert_above_goal (s/maybe s/Bool)
    card             pulse/CardRef
-   channels         (su/non-empty [su/Map])}
+   channels         (su/non-empty [su/MapPlumatic])}
   (validation/check-has-application-permission :subscription false)
   ;; To create an Alert you need read perms for its Card
   (api/read-check Card (u/the-id card))
@@ -157,6 +161,7 @@
     (doseq [recipient (collect-alert-recipients alert)]
       (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a `Alert` with ID."
   [id :as {{:keys [alert_condition alert_first_only alert_above_goal card channels archived]
@@ -165,7 +170,7 @@
    alert_first_only (s/maybe s/Bool)
    alert_above_goal (s/maybe s/Bool)
    card             (s/maybe pulse/CardRef)
-   channels         (s/maybe (su/non-empty [su/Map]))
+   channels         (s/maybe (su/non-empty [su/MapPlumatic]))
    archived         (s/maybe s/Bool)}
   (try
    (validation/check-has-application-permission :monitoring)
@@ -236,6 +241,7 @@
       ;; Finally, return the updated Alert
       updated-alert)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]

@@ -175,7 +175,7 @@
                             s/Keyword s/Any}
                            (ldap/fetch-or-create-user! user-info))))
             (testing "Call fetch-or-create-user! again to trigger update"
-              (is (schema= {:id su/IntGreaterThanZero,  s/Keyword s/Any}
+              (is (schema= {:id su/IntGreaterThanZeroPlumatic,  s/Keyword s/Any}
                            (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
             (is (= {:first_name       "John"
                     :last_name        "Smith"
@@ -201,7 +201,7 @@
                               s/Keyword s/Any}
                              (ldap/fetch-or-create-user! user-info))))
               (testing "Call fetch-or-create-user! again to trigger update"
-                (is (schema= {:id su/IntGreaterThanZero,  s/Keyword s/Any}
+                (is (schema= {:id su/IntGreaterThanZeroPlumatic,  s/Keyword s/Any}
                              (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
               (is (= {:first_name       "John"
                       :last_name        "Smith"

@@ -246,7 +246,7 @@
     ;; in case anyone needs to know we're compiling a Field filter.
     ::compiling-field-filter? true}])
 
-(s/defn ^:private field->identifier :- su/NonBlankString
+(s/defn ^:private field->identifier :- su/NonBlankStringPlumatic
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."

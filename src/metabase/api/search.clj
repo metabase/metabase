@@ -30,10 +30,10 @@
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
-  {:search-string                (s/maybe su/NonBlankString)
+  {:search-string                (s/maybe su/NonBlankStringPlumatic)
    :archived?                    s/Bool
    :current-user-perms           #{perms/Path}
-   (s/optional-key :models)      (s/maybe #{su/NonBlankString})
+   (s/optional-key :models)      (s/maybe #{su/NonBlankStringPlumatic})
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)
    (s/optional-key :offset-int)  (s/maybe s/Int)})
@@ -223,7 +223,7 @@
 (s/defn ^:private add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`."
-  [honeysql-query :- su/Map, collection-id-column :- s/Keyword, {:keys [current-user-perms]} :- SearchContext]
+  [honeysql-query :- su/MapPlumatic, collection-id-column :- s/Keyword, {:keys [current-user-perms]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
                                   collection-id-column
@@ -240,7 +240,7 @@
 (s/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- su/Map, id :- (s/maybe s/Int)]
+  [query :- su/MapPlumatic, id :- (s/maybe s/Int)]
   (if (some? id)
     (hh/merge-where query [:= id :db_id])
     query))
@@ -248,7 +248,7 @@
 (s/defn ^:private add-card-db-id-clause
   "Add a WHERE clause to only return cards with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- su/Map, id :- (s/maybe s/Int)]
+  [query :- su/MapPlumatic, id :- (s/maybe s/Int)]
   (if (some? id)
     (hh/merge-where query [:= id :database_id])
     query))
@@ -446,15 +446,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional vector? [su/NonBlankString] :else su/NonBlankString))
+(def ^:private models-schema (s/conditional vector? [su/NonBlankStringPlumatic] :else su/NonBlankStringPlumatic))
 
 (s/defn ^:private search-context :- SearchContext
-  [search-string :-   (s/maybe su/NonBlankString),
-   archived-string :- (s/maybe su/BooleanString)
-   table-db-id :-     (s/maybe su/IntGreaterThanZero)
+  [search-string :-   (s/maybe su/NonBlankStringPlumatic),
+   archived-string :- (s/maybe su/BooleanStringPlumatic)
+   table-db-id :-     (s/maybe su/IntGreaterThanZeroPlumatic)
    models :-          (s/maybe models-schema)
-   limit :-           (s/maybe su/IntGreaterThanZero)
-   offset :-          (s/maybe su/IntGreaterThanOrEqualToZero)]
+   limit :-           (s/maybe su/IntGreaterThanZeroPlumatic)
+   offset :-          (s/maybe su/IntGreaterThanOrEqualToZeroPlumatic)]
   (cond-> {:search-string      search-string
            :archived?          (Boolean/parseBoolean archived-string)
            :current-user-perms @api/*current-user-permissions-set*}
@@ -464,10 +464,12 @@
     (some? limit)       (assoc :limit-int limit)
     (some? offset)      (assoc :offset-int offset)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/models"
   "Get the set of models that a search query will return"
   [q archived-string table-db-id] (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Search within a bunch of models for the substring `q`.
   For the list of models, check `metabase.search.config/all-models.
@@ -478,9 +480,9 @@
   To specify a list of models, pass in an array to `models`.
   "
   [q archived table_db_id models]
-  {q            (s/maybe su/NonBlankString)
-   archived     (s/maybe su/BooleanString)
-   table_db_id  (s/maybe su/IntGreaterThanZero)
+  {q            (s/maybe su/NonBlankStringPlumatic)
+   archived     (s/maybe su/BooleanStringPlumatic)
+   table_db_id  (s/maybe su/IntGreaterThanZeroPlumatic)
    models       (s/maybe models-schema)}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (search (search-context

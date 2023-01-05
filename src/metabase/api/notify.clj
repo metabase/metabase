@@ -11,6 +11,7 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single
@@ -19,8 +20,8 @@
   This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in
   the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.html#mb_api_key)"
   [id :as {{:keys [table_id table_name scan synchronous?]} :body}]
-  {table_id   (s/maybe su/IntGreaterThanZero)
-   table_name (s/maybe su/NonBlankString)
+  {table_id   (s/maybe su/IntGreaterThanZeroPlumatic)
+   table_name (s/maybe su/NonBlankStringPlumatic)
    scan       (s/maybe (s/enum "full" "schema"))}
   (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)

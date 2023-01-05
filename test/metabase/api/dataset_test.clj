@@ -139,7 +139,7 @@
 
         (testing "\nSaved QueryExecution"
           (is (schema= {:hash         (Class/forName "[B")
-                        :id           su/IntGreaterThanZero
+                        :id           su/IntGreaterThanZeroPlumatic
                         :result_rows  (s/eq 0)
                         :row_count    (s/eq 0)
                         :context      (s/eq :ad-hoc)

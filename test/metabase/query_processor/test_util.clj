@@ -24,7 +24,7 @@
 ;; TODO - I don't think we different QP test util namespaces? We should roll this namespace into
 ;; `metabase.query-processor-test`
 
-(s/defn ^:private everything-store-table [table-id :- (s/maybe su/IntGreaterThanZero)]
+(s/defn ^:private everything-store-table [table-id :- (s/maybe su/IntGreaterThanZeroPlumatic)]
   (assert (= (:id (qp.store/database)) (data/id))
     "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
   (or (get-in @@#'qp.store/*store* [:tables table-id])
@@ -32,7 +32,7 @@
         (qp.store/fetch-and-store-tables! [table-id])
         (qp.store/table table-id))))
 
-(s/defn ^:private everything-store-field [field-id :- (s/maybe su/IntGreaterThanZero)]
+(s/defn ^:private everything-store-field [field-id :- (s/maybe su/IntGreaterThanZeroPlumatic)]
   (assert (= (:id (qp.store/database)) (data/id))
     "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
   (or (get-in @@#'qp.store/*store* [:fields field-id])

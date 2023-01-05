@@ -223,11 +223,11 @@
 
 (s/defn find-user :- (s/maybe i/UserInfo)
   "Get user information for the supplied username."
-  ([username :- su/NonBlankString]
+  ([username :- su/NonBlankStringPlumatic]
    (with-ldap-connection [conn]
      (find-user conn username)))
 
-  ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankString]
+  ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankStringPlumatic]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
 (s/defn fetch-or-create-user! :- (mi/InstanceOf User)
