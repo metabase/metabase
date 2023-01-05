@@ -2,7 +2,7 @@ import React from "react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
