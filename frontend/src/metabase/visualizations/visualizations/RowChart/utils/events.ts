@@ -170,10 +170,10 @@ export const getLegendClickData = (
   };
 };
 
-const getBreakoutsTooltipRows = (
-  bar: BarData<GroupedDatum>,
+const getBreakoutsTooltipRows = <TDatum>(
+  bar: BarData<TDatum>,
   settings: VisualizationSettings,
-  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
+  multipleSeries: Series<TDatum, SeriesInfo>[],
   seriesColors: Record<string, string>,
 ): TooltipRowModel[] =>
   multipleSeries.map(series => {
@@ -193,10 +193,10 @@ const getBreakoutsTooltipRows = (
     };
   });
 
-const getMultipleMetricsTooltipRows = (
-  bar: BarData<GroupedDatum>,
+const getMultipleMetricsTooltipRows = <TDatum>(
+  bar: BarData<TDatum>,
   settings: VisualizationSettings,
-  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
+  multipleSeries: Series<TDatum, SeriesInfo>[],
   seriesColors: Record<string, string>,
 ): TooltipRowModel[] =>
   multipleSeries.map(series => {
@@ -217,11 +217,11 @@ const getMultipleMetricsTooltipRows = (
     };
   });
 
-const getTooltipModel = (
-  bar: BarData<GroupedDatum>,
+const getTooltipModel = <TDatum>(
+  bar: BarData<TDatum>,
   settings: VisualizationSettings,
   chartColumns: ChartColumns,
-  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
+  multipleSeries: Series<TDatum, SeriesInfo>[],
   seriesColors: Record<string, string>,
 ) => {
   const { series, datum } = bar;
@@ -272,11 +272,11 @@ const getTooltipModel = (
   };
 };
 
-export const getHoverData = (
-  bar: BarData<GroupedDatum>,
+export const getHoverData = <TDatum>(
+  bar: BarData<TDatum>,
   settings: VisualizationSettings,
   chartColumns: ChartColumns,
-  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
+  multipleSeries: Series<TDatum, SeriesInfo>[],
   seriesColors: Record<string, string>,
 ) => {
   return {
