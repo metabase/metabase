@@ -396,10 +396,10 @@
     (with-temp-env-var-value [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
       (testing "Should convert values to strings"
         (is (= "123"
-               (:some-fake-env-var env/env))))
+               (:mb-some-fake-env-var env/env))))
       (testing "should handle CAPITALS/SNAKE_CASE"
         (is (= "def"
-               (:another-fake-env-var env/env))))))
+               (:mb-another-fake-env-var env/env))))))
 
   (testing "validation"
     (are [form] (thrown?
