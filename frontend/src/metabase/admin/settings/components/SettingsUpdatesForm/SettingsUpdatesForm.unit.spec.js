@@ -66,6 +66,8 @@ describe("SettingsUpdatesForm", () => {
 
     setup({ currentVersion: "v1.0.0", latestVersion: "v2.0.0" });
 
-    expect(screen.queryByText("Migrate to Metabase Cloud.")).toBeNull();
+    expect(
+      screen.queryByText("Migrate to Metabase Cloud."),
+    ).not.toBeInTheDocument();
   });
 });
