@@ -382,21 +382,20 @@
   :type    :json
   :default nil
   :getter  (fn []
-             (let [value     (setting/get-value-of-type :json :session-timeout)
-                   error-key (check-session-timeout value)]
-               (case error-key
-                 :amount-must-be-positive
-                 (log/warn (trs "Session timeout amount must be positive."))
-                 :amount-must-be-less-than-100-years
-                 (log/warn (trs "Session timeout must be less than 100 years."))
+             (let [value (setting/get-value-of-type :json :session-timeout)]
+               (if-let [error-key (check-session-timeout value)]
+                 (do (log/warn (case error-key
+                                 :amount-must-be-positive            (trs "Session timeout amount must be positive.")
+                                 :amount-must-be-less-than-100-years (trs "Session timeout must be less than 100 years.")))
+                     nil)
                  value)))
   :setter  (fn [new-value]
              (when-let [error-key (check-session-timeout new-value)]
                (throw (ex-info (case error-key
                                  :amount-must-be-positive            (tru "Session timeout amount must be positive.")
                                  :amount-must-be-less-than-100-years (tru "Session timeout must be less than 100 years."))
-                               {:status-code 400}))
-             (setting/set-value-of-type! :json :session-timeout new-value))))
+                               {:status-code 400})))
+             (setting/set-value-of-type! :json :session-timeout new-value)))
 
 (defn session-timeout->seconds
   "Convert the session-timeout setting value to seconds."
