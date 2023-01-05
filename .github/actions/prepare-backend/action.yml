@@ -38,3 +38,7 @@ runs:
         key: ${{ runner.os }}-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: |
           ${{ runner.os }}-${{ inputs.m2-cache-key }}-
+    - name: List contents of cache
+      shell: bash
+      run: |
+        echo "found directories: $(find /home/runner/.m2/repository -d | wc -l)"
