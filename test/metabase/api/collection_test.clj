@@ -1349,7 +1349,7 @@
                         :authority_level   (s/eq "official")
                         :id                s/Int
                         :location          (s/eq "/")
-                        :entity_id         (s/maybe su/NanoIdString)
+                        :entity_id         (s/maybe su/NanoIdStringPlumatic)
                         :namespace         (s/eq nil)
                         :created_at        java.time.temporal.Temporal}
                        (mt/user-http-request :crowberto :post 200 "collection"

@@ -76,8 +76,8 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getIsBookmarked,
-  getVisibleTimelineIds,
   getVisibleTimelineEvents,
+  getVisibleTimelineEventIds,
   getSelectedTimelineEventIds,
   getFilteredTimelines,
   getTimeseriesXDomain,
@@ -129,8 +129,8 @@ const mapStateToProps = (state, props) => {
 
     timelines: getFilteredTimelines(state),
     timelineEvents: getVisibleTimelineEvents(state),
-    visibleTimelineIds: getVisibleTimelineIds(state),
     selectedTimelineEventIds: getSelectedTimelineEventIds(state),
+    visibleTimelineEventIds: getVisibleTimelineEventIds(state),
     xDomain: getTimeseriesXDomain(state),
 
     result: getFirstQueryResult(state),

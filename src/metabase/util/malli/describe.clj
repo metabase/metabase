@@ -12,12 +12,20 @@
 
 (defn- diamond [s] (str "<" s ">"))
 (defn- titled [schema] (if-let [t (-> schema mc/properties :title)] (str "(titled: ‘" t "’) ") ""))
-(defn- min-max-suffix [schema]
+(defn- min-max-suffix-length [schema]
   (let [{:keys [min max]} (-> schema mc/properties)]
     (cond
-      (and min max) (str " with length between " min " and " max)
+      (and min max) (str " with length between " min " and " max " inclusive")
       min (str " with length longer than " min)
       max (str " with length shorter than " max)
+      :else "")))
+
+(defn- min-max-suffix-number [schema]
+  (let [{:keys [min max]} (-> schema mc/properties)]
+    (cond
+      (and min max) (str " between " min " and " max " inclusive")
+      min (str " greater than or equal to " min)
+      max (str " less than or equal to " max)
       :else "")))
 
 (defmulti accept
@@ -86,22 +94,22 @@
          " dispatched by " dispatcher)))
 
 (defmethod accept :map-of [_ schema children _]
-  (str "a map " (titled schema) "from " (diamond (first children)) " to " (diamond (second children)) (min-max-suffix schema)))
+  (str "a map " (titled schema) "from " (diamond (first children)) " to " (diamond (second children)) (min-max-suffix-length schema)))
 
-(defmethod accept 'vector? [_ schema children _] (str "vector" (titled schema) (min-max-suffix schema) " of " (first children)))
-(defmethod accept :vector [_ schema children _] (str "vector" (titled schema) (min-max-suffix schema) " of " (first children)))
+(defmethod accept 'vector? [_ schema children _] (str "vector" (titled schema) (min-max-suffix-length schema) " of " (first children)))
+(defmethod accept :vector [_ schema children _] (str "vector" (titled schema) (min-max-suffix-length schema) " of " (first children)))
 
-(defmethod accept 'sequential? [_ schema children _] (str "sequence" (titled schema) (min-max-suffix schema) " of " (first children)))
-(defmethod accept :sequential [_ schema children _] (str "sequence" (titled schema) (min-max-suffix schema) " of " (first children)))
+(defmethod accept 'sequential? [_ schema children _] (str "sequence" (titled schema) (min-max-suffix-length schema) " of " (first children)))
+(defmethod accept :sequential [_ schema children _] (str "sequence" (titled schema) (min-max-suffix-length schema) " of " (first children)))
 
-(defmethod accept 'set? [_ schema children _] (str "set" (titled schema) (min-max-suffix schema) " of " (first children)))
-(defmethod accept :set [_ schema children _] (str "set" (titled schema) (min-max-suffix schema) " of " (first children)))
+(defmethod accept 'set? [_ schema children _] (str "set" (titled schema) (min-max-suffix-length schema) " of " (first children)))
+(defmethod accept :set [_ schema children _] (str "set" (titled schema) (min-max-suffix-length schema) " of " (first children)))
 
-(defmethod accept 'string? [_ schema _ _] (str "string" (min-max-suffix schema)))
-(defmethod accept :string [_ schema _ _] (str "string" (min-max-suffix schema)))
+(defmethod accept 'string? [_ schema _ _] (str "string" (min-max-suffix-length schema)))
+(defmethod accept :string [_ schema _ _] (str "string" (min-max-suffix-length schema)))
 
-(defmethod accept 'number? [_ _ _ _] "number")
-(defmethod accept :number [_ _ _ _] "number")
+(defmethod accept 'number? [_ schema _ _] (str "number" (min-max-suffix-number schema)))
+(defmethod accept :number [_ schema _ _] (str "number" (min-max-suffix-number schema)))
 
 (defmethod accept 'pos-int? [_ _ _ _] "integer greater than 0")
 (defmethod accept :pos-int [_ _ _ _] "integer greater than 0")
@@ -112,8 +120,8 @@
 (defmethod accept 'nat-int? [_ _ _ _] "natural integer")
 (defmethod accept :nat-int [_ _ _ _] "natural integer")
 
-(defmethod accept 'float? [_ _ _ _] "float")
-(defmethod accept :float [_ _ _ _] "float")
+(defmethod accept 'float? [_ schema _ _] (str "float" (min-max-suffix-number schema)))
+(defmethod accept :float [_ schema _ _] (str "float" (min-max-suffix-number schema)))
 
 (defmethod accept 'pos? [_ _ _ _] "number greater than 0")
 (defmethod accept :pos [_ _ _ _] "number greater than 0")
@@ -121,12 +129,12 @@
 (defmethod accept 'neg? [_ _ _ _] "number less than 0")
 (defmethod accept :neg [_ _ _ _] "number less than 0")
 
-(defmethod accept 'integer? [_ schema _ _] (str "integer" (min-max-suffix schema)))
-(defmethod accept 'int? [_ schema _ _] (str "integer" (min-max-suffix schema)))
-(defmethod accept :int [_ schema _ _] (str "integer" (min-max-suffix schema)))
+(defmethod accept 'integer? [_ schema _ _] (str "integer" (min-max-suffix-number schema)))
+(defmethod accept 'int? [_ schema _ _] (str "integer" (min-max-suffix-number schema)))
+(defmethod accept :int [_ schema _ _] (str "integer" (min-max-suffix-number schema)))
 
-(defmethod accept 'double? [_ schema _ _] (str "double" (min-max-suffix schema)))
-(defmethod accept :double [_ schema _ _] (str "double" (min-max-suffix schema)))
+(defmethod accept 'double? [_ schema _ _] (str "double" (min-max-suffix-number schema)))
+(defmethod accept :double [_ schema _ _] (str "double" (min-max-suffix-number schema)))
 
 (defmethod accept :merge [_ schema _ options] ((::describe options) (mc/deref schema) options))
 (defmethod accept :union [_ schema _ options] ((::describe options) (mc/deref schema) options))
@@ -184,10 +192,6 @@
 
 (defmethod accept 'keyword? [_ _ _ _] "keyword")
 (defmethod accept :keyword [_ _ _ _] "keyword")
-
-(defmethod accept 'integer? [_ _ _ _] "integer")
-(defmethod accept 'int? [_ _ _ _] "integer")
-(defmethod accept :int [_ _ _ _] "integer")
 
 (defn- -map [_n schema children _o]
   (let [optional (set (->> children (filter (mc/-comp :optional second)) (mapv first)))

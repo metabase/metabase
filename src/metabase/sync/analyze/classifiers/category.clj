@@ -30,7 +30,7 @@
       (isa? semantic_type :type/FK)))
 
 (s/defn ^:private field-should-be-category? :- (s/maybe s/Bool)
-  [fingerprint :- (s/maybe i/Fingerprint), field :- su/Map]
+  [fingerprint :- (s/maybe i/Fingerprint), field :- su/MapPlumatic]
   (let [distinct-count (get-in fingerprint [:global :distinct-count])
         nil%           (get-in fingerprint [:global :nil%])]
     ;; Only mark a Field as a Category if it doesn't already have a semantic type.

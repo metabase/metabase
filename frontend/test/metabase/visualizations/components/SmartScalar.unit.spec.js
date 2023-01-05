@@ -6,10 +6,7 @@ import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/setting
 import { NumberColumn, DateTimeColumn } from "../__support__/visualizations";
 
 const setup = series =>
-  renderWithProviders(<Visualization rawSeries={series} />, {
-    withSettings: true,
-    withEmbedSettings: true,
-  });
+  renderWithProviders(<Visualization rawSeries={series} />);
 
 const series = ({ rows, insights }) => {
   const cols = [

@@ -129,18 +129,18 @@
 
 ;; All the references in the dumps should resolved to entities already loaded.
 (def ^:private Context
-  {(s/optional-key :database)   su/IntGreaterThanZero
-   (s/optional-key :table)      su/IntGreaterThanZero
+  {(s/optional-key :database)   su/IntGreaterThanZeroPlumatic
+   (s/optional-key :table)      su/IntGreaterThanZeroPlumatic
    (s/optional-key :schema)     (s/maybe s/Str)
-   (s/optional-key :field)      su/IntGreaterThanZero
-   (s/optional-key :metric)     su/IntGreaterThanZero
-   (s/optional-key :segment)    su/IntGreaterThanZero
-   (s/optional-key :card)       su/IntGreaterThanZero
-   (s/optional-key :dashboard)  su/IntGreaterThanZero
-   (s/optional-key :collection) (s/maybe su/IntGreaterThanZero) ; root collection
-   (s/optional-key :pulse)      su/IntGreaterThanZero
-   (s/optional-key :user)       su/IntGreaterThanZero
-   (s/optional-key :snippet)    (s/maybe su/IntGreaterThanZero)})
+   (s/optional-key :field)      su/IntGreaterThanZeroPlumatic
+   (s/optional-key :metric)     su/IntGreaterThanZeroPlumatic
+   (s/optional-key :segment)    su/IntGreaterThanZeroPlumatic
+   (s/optional-key :card)       su/IntGreaterThanZeroPlumatic
+   (s/optional-key :dashboard)  su/IntGreaterThanZeroPlumatic
+   (s/optional-key :collection) (s/maybe su/IntGreaterThanZeroPlumatic) ; root collection
+   (s/optional-key :pulse)      su/IntGreaterThanZeroPlumatic
+   (s/optional-key :user)       su/IntGreaterThanZeroPlumatic
+   (s/optional-key :snippet)    (s/maybe su/IntGreaterThanZeroPlumatic)})
 
 (defmulti ^:private path->context* (fn [_ model _ _]
                                      model))

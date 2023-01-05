@@ -529,7 +529,7 @@
                                                   :breakout    [!month.created_at]})}]
         (let [card-tag (str "#" (u/the-id card))]
           (is (schema= {:card-id  (s/eq (u/the-id card))
-                        :query    su/NonBlankString
+                        :query    su/NonBlankStringPlumatic
                         :params   (s/eq ["G%"])
                         s/Keyword s/Any}
                        (#'params.values/parse-tag

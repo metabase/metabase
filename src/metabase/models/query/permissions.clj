@@ -40,7 +40,7 @@
 ;; `table-segmented-query-path`. `perms-set` will require full access to the tables, `segmented-perms-set` will only
 ;; require segmented access
 
-(s/defn query->source-table-ids :- #{(s/cond-pre (s/eq ::native) su/IntGreaterThanZero)}
+(s/defn query->source-table-ids :- #{(s/cond-pre (s/eq ::native) su/IntGreaterThanZeroPlumatic)}
   "Return a sequence of all Table IDs referenced by `query`."
   [query]
   (set
@@ -67,7 +67,7 @@
 (def ^:private TableOrIDOrNativePlaceholder
   (s/cond-pre
    (s/eq ::native)
-   su/IntGreaterThanZero))
+   su/IntGreaterThanZeroPlumatic))
 
 (s/defn tables->permissions-path-set :- #{perms/Path}
   "Given a sequence of `tables-or-ids` referenced by a query, return a set of required permissions. A truthy value for
@@ -75,7 +75,7 @@
 
   Custom `table-perms-fn` and `native-perms-fn` can be passed as options to generate permissions paths for feature-level
   permissions, such as download permissions."
-  [database-or-id            :- (s/cond-pre su/IntGreaterThanZero su/Map)
+  [database-or-id            :- (s/cond-pre su/IntGreaterThanZeroPlumatic su/MapPlumatic)
    tables-or-ids             :- #{TableOrIDOrNativePlaceholder}
    {:keys [segmented-perms?
            table-perms-fn
@@ -103,7 +103,7 @@
 (s/defn ^:private source-card-read-perms :- #{perms/Path}
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
-  [source-card-id :- su/IntGreaterThanZero]
+  [source-card-id :- su/IntGreaterThanZeroPlumatic]
   (mi/perms-objects-set (or (db/select-one ['Card :collection_id] :id source-card-id)
                            (throw (Exception. (tru "Card {0} does not exist." source-card-id))))
                        :read))
@@ -122,7 +122,7 @@
   things when a single Card is busted (e.g. API endpoints that filter out unreadable Cards) and instead returns 'only
   admins can see this' permissions -- `#{\"db/0\"}` (DB 0 will never exist, thus normal users will never be able to
   get permissions for it, but admins have root perms and will still get to see (and hopefully fix) it)."
-  [query :- {:query su/Map, s/Keyword s/Any}
+  [query :- {:query su/MapPlumatic, s/Keyword s/Any}
    {:keys [throw-exceptions? already-preprocessed?], :as perms-opts} :- PermsOptions]
   (try
     (let [query (mbql.normalize/normalize query)]

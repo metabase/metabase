@@ -275,7 +275,7 @@
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`
 (defmacro defendpoint-schema
-  "Define an API function.
+  "Define an API function with Plumatic Schema.
    This automatically does several things:
 
    -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
@@ -290,8 +290,11 @@
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
       the function in the generated `defroutes` form.
 
-   -  Generates a super-sophisticated Markdown-formatted docstring"
-  {:arglists '([method route docstr? args schemas-map? & body])}
+   -  Generates a super-sophisticated Markdown-formatted docstring.
+
+  DEPRECATED: use `defendpoint` instead where we use Malli to define the schema."
+  {:arglists   '([method route docstr? args schemas-map? & body])
+   :deprecated "0.46.0"}
   [& defendpoint-args]
   (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
@@ -326,6 +329,20 @@
                                                (wrap-response-if-needed
                                                 (do ~@body))))))))
 
+(defmacro defendpoint-async-schema
+  "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params.
+
+  DEPRECATED: use `defendpoint-async` instead where we use Malli to define the schema."
+  {:arglists   '([method route docstr? args schemas-map? & body])
+   :deprecated "0.46.0"}
+  [& defendpoint-args]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
+    `(defendpoint* ~(assoc defendpoint-args
+                           :args []
+                           :body `((fn ~args
+                                     ~@(validate-params arg->schema)
+                                     ~@body))))))
+
 (defmacro defendpoint-async
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
   {:arglists '([method route docstr? args schemas-map? & body])}
@@ -334,7 +351,7 @@
     `(defendpoint* ~(assoc defendpoint-args
                            :args []
                            :body `((fn ~args
-                                     ~@(validate-params arg->schema)
+                                     ~@(malli-validate-params arg->schema)
                                      ~@body))))))
 
 (defn- namespace->api-route-fns
@@ -468,7 +485,7 @@
     (api/column-will-change? :archived (db/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
 
     (api/column-will-change? :archived (db/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
-  [k :- schema/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
+  [k :- schema/Keyword, object-before-updates :- su/MapPlumatic, object-updates :- su/MapPlumatic]
   (boolean
    (and (contains? object-updates k)
         (not= (get object-before-updates k)
@@ -479,9 +496,9 @@
 (schema/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
   for fixing card/dashboard/pulse changes that impact other instances in the collection"
-  [collection-id :- (schema/maybe su/IntGreaterThanZero)
-   old-position  :- (schema/maybe su/IntGreaterThanZero)
-   new-position  :- (schema/maybe su/IntGreaterThanZero)]
+  [collection-id :- (schema/maybe su/IntGreaterThanZeroPlumatic)
+   old-position  :- (schema/maybe su/IntGreaterThanZeroPlumatic)
+   new-position  :- (schema/maybe su/IntGreaterThanZeroPlumatic)]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse]]
                        (db/update-where! model {:collection_id       collection-id
@@ -504,15 +521,15 @@
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  {:collection_id       (schema/maybe su/IntGreaterThanZero)
-   :collection_position (schema/maybe su/IntGreaterThanZero)
+  {:collection_id       (schema/maybe su/IntGreaterThanZeroPlumatic)
+   :collection_position (schema/maybe su/IntGreaterThanZeroPlumatic)
    schema/Any           schema/Any})
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
-  {(schema/optional-key :collection_id)       (schema/maybe su/IntGreaterThanZero)
-   (schema/optional-key :collection_position) (schema/maybe su/IntGreaterThanZero)
+  {(schema/optional-key :collection_id)       (schema/maybe su/IntGreaterThanZeroPlumatic)
+   (schema/optional-key :collection_position) (schema/maybe su/IntGreaterThanZeroPlumatic)
    schema/Any                                 schema/Any})
 
 (schema/defn maybe-reconcile-collection-position!

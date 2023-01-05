@@ -34,7 +34,7 @@
 
 (declare unschedule-tasks-for-db!)
 
-(s/defn ^:private job-context->database-id :- (s/maybe su/IntGreaterThanZero)
+(s/defn ^:private job-context->database-id :- (s/maybe su/IntGreaterThanZeroPlumatic)
   "Get the Database ID referred to in `job-context`."
   [job-context]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))

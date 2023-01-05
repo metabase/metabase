@@ -37,9 +37,9 @@
 ;;; Presto API helpers
 
 (def ^:private PrestoConnectionDetails
-  {:host    su/NonBlankString
-   :port    (s/cond-pre su/NonBlankString su/IntGreaterThanZero)
-   :catalog su/NonBlankString
+  {:host    su/NonBlankStringPlumatic
+   :port    (s/cond-pre su/NonBlankStringPlumatic su/IntGreaterThanZeroPlumatic)
+   :catalog su/NonBlankStringPlumatic
    s/Any    s/Any})
 
 (s/defn ^:private details->uri
@@ -196,7 +196,7 @@
                                 (sql.u/quote-name driver :database catalog)))]
     (= v "information_schema")))
 
-(s/defn ^:private database->all-schemas :- #{su/NonBlankString}
+(s/defn ^:private database->all-schemas :- #{su/NonBlankStringPlumatic}
   "Return a set of all schema names in this `database`."
   [driver {{:keys [catalog] :as details} :details :as _database}]
   (let [sql            (presto-common/describe-catalog-sql driver catalog)

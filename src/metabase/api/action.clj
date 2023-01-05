@@ -35,18 +35,20 @@
    :url s/Str
    (s/optional-key :body) (s/maybe s/Str)
    (s/optional-key :headers) (s/maybe s/Str)
-   (s/optional-key :parameters) (s/maybe [su/Map])
-   (s/optional-key :parameter_mappings) (s/maybe su/Map)})
+   (s/optional-key :parameters) (s/maybe [su/MapPlumatic])
+   (s/optional-key :parameter_mappings) (s/maybe su/MapPlumatic)})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Returns cards that can be used for QueryActions"
   [model-id]
-  {model-id su/IntGreaterThanZero}
+  {model-id su/IntGreaterThanZeroPlumatic}
   (let [model (api/read-check Card model-id)]
     ;; We don't check the permissions on the actions, we assume they are
     ;; readable if the model is readable.
     (action/actions-with-implicit-params [model] :model_id model-id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:action-id"
   [action-id]
   (api/read-check (first (action/actions-with-implicit-params nil :id action-id))))
@@ -57,12 +59,14 @@
                           :implicit ImplicitAction
                           :query QueryAction))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:action-id"
   [action-id]
   (let [{existing-action-type :type} (api/write-check Action action-id)]
     (db/delete! (type->model existing-action-type) :action_id action-id))
   api/generic-204-no-content)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new action."
   [:as {{:keys [type name description model_id parameters parameter_mappings visualization_settings
@@ -72,13 +76,13 @@
   {type SupportedActionType
    name s/Str
    description (s/maybe s/Str)
-   model_id su/IntGreaterThanZero
-   parameters (s/maybe [su/Map])
-   parameter_mappings (s/maybe su/Map)
-   visualization_settings (s/maybe su/Map)
+   model_id su/IntGreaterThanZeroPlumatic
+   parameters (s/maybe [su/MapPlumatic])
+   parameter_mappings (s/maybe su/MapPlumatic)
+   visualization_settings (s/maybe su/MapPlumatic)
    kind (s/maybe ImplicitActionKind)
-   database_id (s/maybe su/IntGreaterThanZero)
-   dataset_query (s/maybe su/Map)
+   database_id (s/maybe su/IntGreaterThanZeroPlumatic)
+   dataset_query (s/maybe su/MapPlumatic)
    template (s/maybe HTTPActionTemplate)
    response_handle (s/maybe JsonQuerySchema)
    error_handle (s/maybe JsonQuerySchema)}
@@ -90,22 +94,23 @@
       ;; so we return the most recently updated http action.
       (last (action/actions-with-implicit-params nil :type type)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   [id :as {{:keys [type name description model_id parameters parameter_mappings visualization_settings
                    kind
                    database_id dataset_query
                    template response_handle error_handle] :as action} :body}]
-  {id su/IntGreaterThanZero
+  {id su/IntGreaterThanZeroPlumatic
    type (s/maybe SupportedActionType)
    name (s/maybe s/Str)
    description (s/maybe s/Str)
-   model_id (s/maybe su/IntGreaterThanZero)
-   parameters (s/maybe [su/Map])
-   parameter_mappings (s/maybe su/Map)
-   visualization_settings (s/maybe su/Map)
+   model_id (s/maybe su/IntGreaterThanZeroPlumatic)
+   parameters (s/maybe [su/MapPlumatic])
+   parameter_mappings (s/maybe su/MapPlumatic)
+   visualization_settings (s/maybe su/MapPlumatic)
    kind (s/maybe ImplicitActionKind)
-   database_id (s/maybe su/IntGreaterThanZero)
-   dataset_query (s/maybe su/Map)
+   database_id (s/maybe su/IntGreaterThanZeroPlumatic)
+   dataset_query (s/maybe su/MapPlumatic)
    template (s/maybe HTTPActionTemplate)
    response_handle (s/maybe JsonQuerySchema)
    error_handle (s/maybe JsonQuerySchema)}
