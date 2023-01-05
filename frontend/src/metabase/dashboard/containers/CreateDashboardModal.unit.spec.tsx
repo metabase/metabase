@@ -2,7 +2,7 @@ import React from "react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
@@ -73,15 +73,18 @@ describe("CreateDashboardModal", () => {
 
   it("can't submit if name is empty", async () => {
     setup();
-    const submitButton = await waitFor(() =>
-      screen.getByRole("button", { name: "Create" }),
-    );
-    expect(submitButton).toBeDisabled();
+    expect(
+      await screen.findByRole("button", { name: "Create" }),
+    ).toBeDisabled();
   });
 
-  it("calls onClose when Cancel button is clicked", () => {
+  it("calls onClose when Cancel button is clicked", async () => {
     const { onClose } = setup();
-    userEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
+    await act(async () => {
+      await userEvent.click(
+        screen.getByRole("button", { name: "Cancel" }) as Element,
+      );
+    });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
