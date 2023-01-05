@@ -645,7 +645,23 @@
     (testing "Multiple series with close values does not split y-axis."
       (is (not (axes-split? rows))))
     (testing "Multiple series with far values does split y-axis."
-      (is (axes-split? (conj rows ["D" 3 70]))))))
+      (is (axes-split? (conj rows ["D" 3 70]))))
+    (testing "Multiple axes split does not fail when a series has the same value for all of its rows #27427"
+      (let [rows        [["Category" "Series A" "Series B"]
+                         ["A"        1          1.3]
+                         ["B"        1          1.9]
+                         ["C"        1          4]]
+            axes-split? (fn [rows]
+                          (let [text (-> rows first last)]
+                            ;; there is always 1 node with the series name in the legend
+                            ;; so we see if the series name shows up a second time, which will
+                            ;; be the axis label, indicating that there is indeed a split
+                            (< 1 (-> rows
+                                     (render.tu/make-viz-data :bar {})
+                                     :viz-tree
+                                     (render.tu/nodes-with-text text)
+                                     count))))]
+        (is (axes-split? rows))))))
 
 (deftest ^:parallel x-and-y-axis-label-info-test
   (let [x-col {:display_name "X col"}
