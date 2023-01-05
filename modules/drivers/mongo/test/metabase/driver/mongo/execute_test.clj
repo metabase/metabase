@@ -40,7 +40,7 @@
                     :columns ["name" "last_login" "_id" "alias"]}
                    (mt/rows+column-names (qp/process-query query))))))
 
-        (testing "columns can be suppressed"
+        (testing "Columns can be suppressed"
           (let [query {:database (mt/id)
                        :native
                        {:collection "users"
