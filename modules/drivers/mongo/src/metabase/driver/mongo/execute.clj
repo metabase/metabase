@@ -51,14 +51,22 @@
 
 (def ^:private suppressing-values
   "The values in the $project stage which suppress the column."
-  #{(BsonInt32. 0) BsonBoolean/FALSE})
+  #{0 (BsonInt32. 0) false BsonBoolean/FALSE})
 
 (defn- merge-col-names
   "Returns a vector containing `projected-names` with any elements of
   `first-row-col-names` not in `projected-names` appended.
+  \"_id\" is handled specially, since it is returned unless specifically
+  suppressed. If it is not suppressed and not included in `projected-names`
+  it is returned at the first position.
   Both arguments can be nil, although `first-row-col-names` shouldn't."
   [projected-names first-row-col-names]
-  (into (vec projected-names) (remove (set projected-names)) first-row-col-names))
+  (let [projected-set (set projected-names)
+        projected-vec (vec (cond->> projected-names
+                             (and (not (projected-set "_id"))
+                                  (contains? first-row-col-names "_id"))
+                             (cons "_id")))]
+    (into projected-vec (remove (conj projected-set "_id")) first-row-col-names)))
 
 (s/defn ^:private result-col-names :- {:row [s/Str], :unescaped [s/Str]}
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
@@ -68,7 +76,8 @@
   ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
   (if-not mbql?
     (let [project-stage (->> query (filter #(contains? % "$project")) last)
-          projected (keep (fn [[k v]] (when-not (suppressing-values v) k)) (get project-stage "$project"))
+          projected (keep (fn [[k v]] (when-not (contains? suppressing-values v) k))
+                          (get project-stage "$project"))
           col-names (merge-col-names projected first-row-col-names)]
       {:row col-names, :unescaped col-names})
     (do

@@ -35,9 +35,9 @@
                         :query "[{\"$match\": {\"id\": {\"$lt\": 42}}},
                                  {\"$project\": {\"name\": true, \"last_login\": 1}}]"}
                        :type "native"}]
-            (is (= {:rows [["Crowberto" nil 0 "the Brave"]
-                           ["Rasta"     now 1 nil]]
-                    :columns ["name" "last_login" "_id" "alias"]}
+            (is (= {:rows [[0 "Crowberto" nil "the Brave"]
+                           [1 "Rasta"     now nil]]
+                    :columns ["_id" "name" "last_login" "alias"]}
                    (mt/rows+column-names (qp/process-query query))))))
 
         (testing "Columns can be suppressed"
@@ -48,7 +48,7 @@
                                   \"suppressed0\": 0, \"supressed-false\": false}},
                                  {\"$match\": {\"id\": {\"$lt\": 42}}}]"}
                        :type "native"}]
-            (is (= {:rows [["Crowberto" nil 0 "the Brave"]
-                           ["Rasta"     now 1 nil]]
-                    :columns ["name" "last_login" "_id" "alias"]}
+            (is (= {:rows [[0 "Crowberto" nil "the Brave"]
+                           [1 "Rasta"     now nil]]
+                    :columns ["_id" "name" "last_login" "alias"]}
                    (mt/rows+column-names (qp/process-query query))))))))))
