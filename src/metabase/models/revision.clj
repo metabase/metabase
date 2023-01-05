@@ -1,13 +1,14 @@
 (ns metabase.models.revision
-  (:require [clojure.data :as data]
-            [metabase.models.interface :as mi]
-            [metabase.models.revision.diff :refer [diff-string]]
-            [metabase.models.user :refer [User]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [clojure.data :as data]
+   [metabase.models.interface :as mi]
+   [metabase.models.revision.diff :refer [diff-string]]
+   [metabase.models.user :refer [User]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions
@@ -70,13 +71,12 @@
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Revision)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types       (constantly {:object :json})
-          :pre-insert  pre-insert
-          :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!"))))
-          :post-select do-post-select-for-object}))
+(mi/define-methods
+ Revision
+ {:types       (constantly {:object :json})
+  :pre-insert  pre-insert
+  :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!"))))
+  :post-select do-post-select-for-object})
 
 
 ;;; # Functions

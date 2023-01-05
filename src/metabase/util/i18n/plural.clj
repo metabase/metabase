@@ -1,8 +1,9 @@
 (ns metabase.util.i18n.plural
   "Resources for parsing the Plural-Forms header from a translation file and determining which of multiple
   pluralities to use for a translated string."
-  (:require [clojure.core.memoize :as memoize]
-            [instaparse.core :as insta]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [instaparse.core :as insta]))
 
 (def ^:private plural-form-parser
   "This is a parser for the C-like syntax used to express pluralization rules in the Plural-Forms header in

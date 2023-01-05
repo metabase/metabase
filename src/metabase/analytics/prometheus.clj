@@ -5,26 +5,24 @@
 
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
-  (:require [clojure.tools.logging :as log]
-            [iapetos.collector :as collector]
-            [iapetos.collector.ring :as collector.ring]
-            [iapetos.core :as prometheus]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.server :as server]
-            [metabase.troubleshooting :as troubleshooting]
-            [metabase.util.i18n :refer [deferred-trs trs]]
-            [potemkin :as p]
-            [potemkin.types :as p.types]
-            [ring.adapter.jetty :as ring-jetty])
-  (:import [io.prometheus.client Collector GaugeMetricFamily]
-           [io.prometheus.client.hotspot
-            GarbageCollectorExports
-            MemoryPoolsExports
-            StandardExports
-            ThreadExports]
-           io.prometheus.client.jetty.JettyStatisticsCollector
-           [java.util ArrayList List]
-           org.eclipse.jetty.server.Server))
+  (:require
+   [clojure.tools.logging :as log]
+   [iapetos.collector :as collector]
+   [iapetos.collector.ring :as collector.ring]
+   [iapetos.core :as prometheus]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.server :as server]
+   [metabase.troubleshooting :as troubleshooting]
+   [metabase.util.i18n :refer [deferred-trs trs]]
+   [potemkin :as p]
+   [potemkin.types :as p.types]
+   [ring.adapter.jetty :as ring-jetty])
+  (:import
+   (io.prometheus.client Collector GaugeMetricFamily)
+   (io.prometheus.client.hotspot GarbageCollectorExports MemoryPoolsExports StandardExports ThreadExports)
+   (io.prometheus.client.jetty JettyStatisticsCollector)
+   (java.util ArrayList List)
+   (org.eclipse.jetty.server Server)))
 
 ;;; Infra:
 ;; defsetting enables and [[system]] holds the system (webserver and registry)
@@ -232,5 +230,4 @@
 
 (comment
   (require 'iapetos.export)
-  (spit "metrics" (iapetos.export/text-format (.registry system)))
-  )
+  (spit "metrics" (iapetos.export/text-format (.registry system))))

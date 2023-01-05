@@ -23,6 +23,7 @@
 (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
 
 (defmethod tx/supports-time-type? :sparksql [_driver] false)
+(defmethod tx/supports-timestamptz-type? :sparksql [_driver] false)
 
 (doseq [[base-type database-type] {:type/BigInteger "BIGINT"
                                    :type/Boolean    "BOOLEAN"

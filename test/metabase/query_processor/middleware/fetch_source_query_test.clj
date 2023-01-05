@@ -1,15 +1,17 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
-  (:require [cheshire.core :as json]
-            [clojure.set :as set]
-            [clojure.test :refer :all]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Card]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models :refer [Card]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.fetch-source-query
+    :as fetch-source-query]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn- resolve-card-id-source-tables [query]
   (:pre (mt/test-qp-middleware fetch-source-query/resolve-card-id-source-tables query)))

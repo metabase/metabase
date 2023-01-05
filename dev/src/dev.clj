@@ -5,6 +5,7 @@
             [honeysql.core :as hsql]
             [malli.dev :as malli-dev]
             [metabase.api.common :as api]
+            [metabase.config :as config]
             [metabase.core :as mbc]
             [metabase.db.connection :as mdb.connection]
             [metabase.db.setup :as mdb.setup]
@@ -37,6 +38,8 @@
 (defn start!
   []
   (server/start-web-server! #'handler/app)
+  (when config/is-dev?
+    (malli-dev/start!))
   (when-not @initialized?
     (init!)))
 
@@ -77,7 +80,7 @@
      (ns-unalias a-namespace symb))))
 
 (defmacro require-model
-  "Rather than requiring all models inn the ns declaration, make it easy to require the ones you need for your current
+  "Rather than requiring all models in the ns declaration, make it easy to require the ones you need for your current
   session"
   [model-sym]
   `(require [(symbol (str "metabase.models." (quote ~model-sym))) :as (quote ~model-sym)]))
@@ -129,10 +132,10 @@
         (throw e)))))
 
 (defn migrate!
-  "Run migrations for the Metabase application database."
-  []
-  (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source) :up))
-
-(defn start-malli!
-  []
-  (malli-dev/start!))
+  "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:down`, and
+  `:release-locks`. When migrating `:down` pass along a version to migrate to (44+)."
+  ([]
+   (migrate! :up))
+  ([direction & [version]]
+   (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source)
+                       direction version)))

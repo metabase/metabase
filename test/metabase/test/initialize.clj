@@ -1,11 +1,12 @@
 (ns metabase.test.initialize
   "Logic for initializing different components that need to be initialized when running tests."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.test-runner.init :as test-runner.init]
-            [metabase.util :as u]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.config :as config]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.test-runner.init :as test-runner.init]
+   [metabase.util :as u]))
 
 (defmulti ^:private do-initialization!
   "Perform component-specific initialization. This is guaranteed to only be called once."

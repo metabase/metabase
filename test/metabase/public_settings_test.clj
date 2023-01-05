@@ -1,13 +1,14 @@
 (ns metabase.public-settings-test
-  (:require [clj-http.fake :as http-fake]
-            [clojure.core.memoize :as memoize]
-            [clojure.test :refer :all]
-            [metabase.models.setting :as setting]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util.i18n :as i18n :refer [tru]]))
+  (:require
+   [clj-http.fake :as http-fake]
+   [clojure.core.memoize :as memoize]
+   [clojure.test :refer :all]
+   [metabase.models.setting :as setting]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.i18n :as i18n :refer [tru]]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

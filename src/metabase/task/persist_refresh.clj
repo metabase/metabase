@@ -1,32 +1,36 @@
 (ns metabase.task.persist-refresh
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite.conversion :as qc]
-            [clojurewerkz.quartzite.jobs :as jobs]
-            [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.db :as mdb]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.email.messages :as messages]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
-            [metabase.models.task-history :refer [TaskHistory]]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.middleware.limit :as limit]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.task :as task]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [potemkin.types :as p]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import java.util.TimeZone
-           [org.quartz ObjectAlreadyExistsException Trigger]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojurewerkz.quartzite.conversion :as qc]
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.cron :as cron]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.db :as mdb]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.email.messages :as messages]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.persisted-info
+    :as persisted-info
+    :refer [PersistedInfo]]
+   [metabase.models.task-history :refer [TaskHistory]]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.middleware.limit :as limit]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.task :as task]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [potemkin.types :as p]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (java.util TimeZone)
+   (org.quartz ObjectAlreadyExistsException Trigger)))
 
 (defn- job-context->job-type
   [job-context]
@@ -298,10 +302,10 @@
         hours 1]
 
      (if (= 24 hours)
-                            (format "0 %d %d * * ? *" start-minute start-hour)
-                            (format "0 %d %d/%d * * ? *" start-minute start-hour hours)))
+         (format "0 %d %d * * ? *" start-minute start-hour)
+         (format "0 %d %d/%d * * ? *" start-minute start-hour hours))))
 
-  )
+
 
 (def ^:private prune-scheduled-trigger
   (triggers/build
@@ -370,9 +374,9 @@
            (log/info
             (u/format-color 'green "Persistence already present for model %d"
                             (:card_id persisted-info)
-                            (.. ^Trigger tggr getKey getName))))
+                            (.. ^Trigger tggr getKey getName)))))))
          ;; other errors?
-         )))
+
 
 (defn job-info-by-db-id
   "Fetch all database-ids that have a refresh job scheduled."

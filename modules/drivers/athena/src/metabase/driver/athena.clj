@@ -37,6 +37,8 @@
 
 (defmethod driver/supports? [:athena :foreign-keys] [_ _] true)
 
+(defmethod driver/database-supports? [:athena :datetime-diff] [_driver _feature _database] true)
+
 (defmethod driver/supports? [:athena :nested-fields] [_ _] false #_true) ; huh? Not sure why this was `true`. Disabled
                                                                          ; for now.
 
@@ -109,7 +111,7 @@
     :time                                :type/Time
     :timestamp                           :type/DateTime
     ;; Same for timestamp with time zone... the type sort of exists. You can't store it AFAIK but you can create one
-    ;; from a literal.
+    ;; from a literal or by converting a `timestamp` column, e.g. with the `with_timezone` function.
     (keyword "timestamp with time zone") :type/DateTimeWithZoneID
     :tinyint                             :type/Integer
     :varchar                             :type/Text} database-type))
@@ -188,8 +190,7 @@
          :limit items
          ::offset (* items (dec page))))
 
-;;; Helper function for truncating dates - currently unused
-#_(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
 
 ;;; Example of handling report timezone
 ;;; (defn- date-trunc
@@ -255,6 +256,15 @@
   [_driver _semantic-type expr]
   (hx/->time expr))
 
+(defmethod sql.qp/->honeysql [:athena :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)]
+    (case unit
+      (:year :month :quarter :week :day)
+      (hsql/call :date_diff (hx/literal unit) (date-trunc :day x) (date-trunc :day y))
+      (:hour :minute :second)
+      (hsql/call :date_diff (hx/literal unit) (hx/->timestamp x) (hx/->timestamp y)))))
 
 ;; fix to allow integer division to be cast as double (float is not supported by athena)
 (defmethod sql.qp/->float :athena

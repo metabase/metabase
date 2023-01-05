@@ -4,18 +4,20 @@
   - Convert strings to parse tree
   - Convert parse tree to path, e.g. ['3' :all] or ['3' :schemas :all]
   - Convert set of paths to a map, the permission graph"
-  (:require [clojure.core.match :refer [match]]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [instaparse.core :as insta]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojure.core.match :refer [match]]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [instaparse.core :as insta]
+   [metabase.util.i18n :refer [trs]]))
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
-  "permission = ( all | db | block | download | data-model | details | collection )
+  "permission = ( all | execute | db | block | download | data-model | details | collection )
   all         = <'/'>
-  db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
+  db          = <'/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
+  execute     = <'/execute/'> ( <'db/'> #'\\d+' <'/'> )?
   native      = <'native/'>
   schemas     = <'schema/'> schema?
   schema      = schema-name <'/'> table?
@@ -118,6 +120,8 @@
   (match tree
     (_ :guard insta/failure?)      (log/error (trs "Error parsing permissions tree {0}" (pr-str tree)))
     [:permission t]                (path2 t)
+    [:execute]                     [:execute :all]
+    [:execute db-id]               [:execute (Long/parseUnsignedLong db-id) :all]
     [:schema-name schema-name]     (unescape-path-component schema-name)
     ;; data model perms
     [:data-model db-node]          (path2 db-node)

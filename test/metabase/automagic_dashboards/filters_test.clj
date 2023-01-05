@@ -1,6 +1,7 @@
 (ns metabase.automagic-dashboards.filters-test
-  (:require [clojure.test :refer :all]
-            [metabase.automagic-dashboards.filters :as filters]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.automagic-dashboards.filters :as filters]))
 
 (deftest replace-date-range-test
   (testing "Replace range with the more specific `:=`."

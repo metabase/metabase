@@ -1,11 +1,12 @@
 (ns metabase.driver.sql.query-processor-test-util
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [honeysql.format :as hformat]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.query-processor :as qp]
-            [metabase.util :as u]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [honeysql.format :as hformat]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.query-processor :as qp]
+   [metabase.util :as u]))
 
 ;; [[install-pretty-formatters!]] -- tweaks the actual methods HoneySQL uses to generate SQL strings to add indentation
 

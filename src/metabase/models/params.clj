@@ -1,18 +1,20 @@
 (ns metabase.models.params
   "Utility functions for dealing with parameters for Dashboards and Cards."
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.db.util :as mdb.u]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.db.util :as mdb.u]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -104,12 +106,12 @@
                               ;; `list` instead of `auto-list`.)
                               (hydrate :has_field_values)))))
 
-(defn add-name-field
+(mi/define-batched-hydration-method add-name-field
+  :name_field
   "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
   Field, if a matching name Field exists, add it under the `:name_field` key. This is so the Fields can be used in
   public/embedded field values search widgets. This only includes the information needed to power those widgets, and
   no more."
-  {:batched-hydrate :name_field}
   [fields]
   (let [table-id->name-field (fields->table-id->name-field (pk-fields fields))]
     (for [field fields]
@@ -157,10 +159,17 @@
                         (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
                         remove-dimensions-nonpublic-columns))))
 
-(defmulti ^:private ^{:hydrate :param_fields} param-fields
+(defmulti ^:private param-fields
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
   Dashboard. Implementations are below in respective sections."
   name)
+
+#_{:clj-kondo/ignore [:unused-private-var]}
+(mi/define-simple-hydration-method ^:private hydrate-param-fields
+  :param_fields
+  "Hydration method for `:param_fields`."
+  [instance]
+  (param-fields instance))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

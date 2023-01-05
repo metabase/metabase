@@ -1,8 +1,9 @@
 (ns metabase.api.google-test
-  (:require [clojure.test :refer :all]
-            [metabase.integrations.google :as google]
-            [metabase.integrations.google.interface :as google.i]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.integrations.google :as google]
+   [metabase.integrations.google.interface :as google.i]
+   [metabase.test :as mt]))
 
 (def ^:private test-client-id "test-client-id.apps.googleusercontent.com")
 

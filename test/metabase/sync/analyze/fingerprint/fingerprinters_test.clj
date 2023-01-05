@@ -1,14 +1,15 @@
 (ns metabase.sync.analyze.fingerprint.fingerprinters-test
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-            [metabase.test :as mt]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.test :as mt]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (deftest fingerprint-temporal-values-test
   ;; we want to test h2 and postgres, because h2 doesn't
@@ -59,18 +60,18 @@
                     (transduce identity
                                (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/DateTime}))
                                (repeat 10 nil)))))
-            (testing "handle all supported types"
-              (is (= {:global {:distinct-count 5
-                               :nil%           0.0}
-                      :type   {:type/DateTime {:earliest "1970-01-01T00:00:01.234Z"
-                                               :latest   "2020-07-06T20:25:33.36Z"}}}
-                     (transduce identity
-                                (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Temporal}))
-                                [(java.time.LocalDateTime/of 2013 01 01 20 04 0 0) ; LocalDateTime
-                                 1234 ; int
-                                 1594067133360 ; long
-                                 "2007-12-03T10:15:30.00Z" ; string
-                                 (java.time.ZonedDateTime/of 2016 01 01 20 04 0 0 (java.time.ZoneOffset/UTC))]))))))))))
+           (testing "handle all supported types"
+             (is (= {:global {:distinct-count 5
+                              :nil%           0.0}
+                     :type   {:type/DateTime {:earliest "1970-01-01T00:00:01.234Z"
+                                              :latest   "2020-07-06T20:25:33.36Z"}}}
+                    (transduce identity
+                               (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Temporal}))
+                               [(java.time.LocalDateTime/of 2013 01 01 20 04 0 0) ; LocalDateTime
+                                1234 ; int
+                                1594067133360 ; long
+                                "2007-12-03T10:15:30.00Z" ; string
+                                (java.time.ZonedDateTime/of 2016 01 01 20 04 0 0 (java.time.ZoneOffset/UTC))]))))))))))
 
 (deftest disambiguate-test
   (testing "We should correctly disambiguate multiple competing multimethods (DateTime and FK in this case)"

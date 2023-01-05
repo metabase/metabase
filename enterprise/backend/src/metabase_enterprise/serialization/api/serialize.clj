@@ -10,7 +10,7 @@
    [metabase.util.schema :as su]
    [toucan.db :as db]))
 
-(api/defendpoint POST "/data-model"
+(api/defendpoint-schema POST "/data-model"
   "This endpoint should serialize: the data model, settings.yaml, and all the selected Collections
 
   The data model should only change if the user triggers a manual sync or scan (since the scheduler is turned off)

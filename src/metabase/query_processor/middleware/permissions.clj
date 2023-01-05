@@ -1,20 +1,23 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.query.permissions :as query-perms]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [metabase.api.common
+    :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.resolve-referenced
+    :as qp.resolve-referenced]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:dynamic *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
@@ -114,6 +117,32 @@
   but we definitely don't want users passing it in themselves. So remove it if it's present."
   [query]
   (dissoc query ::perms))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Writeback fns                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- query-action-perms
+  [{:keys [database]}]
+  #{(perms/execute-query-perms-path database)})
+
+(s/defn check-query-action-permissions*
+  "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
+  [outer-query :- su/Map]
+  (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
+  (when *card-id*
+    (check-card-read-perms *card-id*))
+  (when-not (has-data-perms? (required-perms outer-query))
+    (check-block-permissions outer-query))
+  (when-not (has-data-perms? (query-action-perms outer-query))
+    (throw (perms-exception required-perms))))
+
+(defn check-query-action-permissions
+  "Middleware that check that the current user has permissions to run the current query action."
+  [qp]
+  (fn [query rff context]
+    (check-query-action-permissions* query)
+    (qp query rff context)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

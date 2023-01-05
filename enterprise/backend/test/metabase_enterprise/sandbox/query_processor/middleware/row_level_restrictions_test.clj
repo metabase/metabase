@@ -1,31 +1,32 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
-  (:require [clojure.core.async :as a]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [medley.core :as m]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Card Collection Field Table]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.cache-test :as cache-test]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.test :as mt]
-            [metabase.test.data.env :as tx.env]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [honeysql.core :as hsql]
+   [medley.core :as m]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Card Collection Field Table]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.cache-test :as cache-test]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.test :as mt]
+   [metabase.test.data.env :as tx.env]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      SHARED GTAP DEFINITIONS & HELPER FNS                                      |
@@ -271,6 +272,15 @@
            #"Query requires user attribute `cat`"
            (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                            :attributes {"something_random" 50}}
+             (mt/run-mbql-query venues {:aggregation [[:count]]})))))
+
+    (testing (str "When processing a query that requires a user attribute and that user attribute is nil, throw an "
+                  "exception letting the user know it's missing")
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Query requires user attribute `cat`"
+           (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                           :attributes {"cat" nil}}
              (mt/run-mbql-query venues {:aggregation [[:count]]})))))
 
     (testing "Another basic test, same as above, but with a numeric string that needs to be coerced"
@@ -1007,12 +1017,11 @@
     (mt/dataset sample-dataset
       ;; with-gtaps creates a new copy of the database. So make sure to do that before anything else. Gets really
       ;; confusing when `(mt/id)` and friends change value halfway through the test
-      (mt/with-gtaps {:gtaps      {:products
-                                   {:remappings {:category
-                                                 ["dimension"
-                                                  [:field (mt/id :products :category)
-                                                   nil]]}}}
-                      :attributes {"category" nil}}
+      (mt/with-gtaps {:gtaps {:products
+                              {:remappings {:category
+                                            ["dimension"
+                                             [:field (mt/id :products :category)
+                                              nil]]}}}}
         (mt/with-persistence-enabled [persist-models!]
           (mt/with-temp* [Card [model {:dataset       true
                                        :dataset_query (mt/mbql-query
@@ -1020,8 +1029,9 @@
                                                        ;; note does not include the field we have to filter on. No way
                                                        ;; to use the sandbox filter on the cached table
                                                        {:fields [$id $price]})}]]
-            ;; persist model
-            (persist-models!)
+            ;; persist model (as admin, so sandboxing is not applied to the persisted query)
+            (mt/with-test-user :crowberto
+              (persist-models!))
             (let [persisted-info (db/select-one 'PersistedInfo
                                                 :database_id (mt/id)
                                                 :card_id (:id model))]

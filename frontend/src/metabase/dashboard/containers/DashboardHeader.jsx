@@ -11,7 +11,7 @@ import { getIsNavbarOpen } from "metabase/redux/app";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import Bookmark from "metabase/entities/bookmarks";
@@ -35,13 +35,10 @@ import {
 } from "./DashboardHeader.styled";
 
 const mapStateToProps = (state, props) => {
-  const isDataApp = false;
-  const isShowingDashboardInfoSidebar =
-    !isDataApp && getIsShowDashboardInfoSidebar(state);
   return {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
-    isShowingDashboardInfoSidebar,
+    isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
   };
 };
 
@@ -202,7 +199,6 @@ class DashboardHeader extends Component {
       closeSidebar,
     } = this.props;
 
-    const isDataAppPage = false;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
     const buttons = [];
@@ -348,19 +344,17 @@ class DashboardHeader extends Component {
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
           />,
-          !isDataAppPage && (
-            <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
-              <DashboardHeaderButton
-                icon="info"
-                isActive={isShowingDashboardInfoSidebar}
-                onClick={() =>
-                  isShowingDashboardInfoSidebar
-                    ? closeSidebar()
-                    : setSidebar({ name: SIDEBAR_NAME.info })
-                }
-              />
-            </Tooltip>
-          ),
+          <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
+            <DashboardHeaderButton
+              icon="info"
+              isActive={isShowingDashboardInfoSidebar}
+              onClick={() =>
+                isShowingDashboardInfoSidebar
+                  ? closeSidebar()
+                  : setSidebar({ name: SIDEBAR_NAME.info })
+              }
+            />
+          </Tooltip>,
           <EntityMenu
             key="dashboard-action-menu-button"
             items={extraButtons}
@@ -384,7 +378,6 @@ class DashboardHeader extends Component {
       setSidebar,
     } = this.props;
 
-    const isDataAppPage = false;
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
@@ -395,9 +388,7 @@ class DashboardHeader extends Component {
         dashboard={dashboard}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
-        isLastEditInfoVisible={
-          !isDataAppPage && hasLastEditInfo && isAdditionalInfoVisible
-        }
+        isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
         isEditingInfo={isEditing}
         isNavBarOpen={this.props.isNavBarOpen}
         headerButtons={this.getHeaderButtons()}

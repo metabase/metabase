@@ -1,21 +1,22 @@
 (ns metabase.models.task-history
-  (:require [cheshire.core :as json]
-            [cheshire.generate :refer [add-encoder encode-map]]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.common :refer [*current-user-id*]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.core :as json]
+   [cheshire.generate :refer [add-encoder encode-map]]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :refer [*current-user-id*]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel TaskHistory :task_history)
 
@@ -63,11 +64,10 @@
   (u/prog1 task
     (snowplow/track-event! ::snowplow/new-task-history *current-user-id* (task->snowplow-event <>))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TaskHistory)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types      (constantly {:task_details :json})
-          :post-insert post-insert}))
+(mi/define-methods
+ TaskHistory
+ {:types      (constantly {:task_details :json})
+  :post-insert post-insert})
 
 (s/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"

@@ -1,10 +1,9 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import xhrMock from "xhr-mock";
+import nock from "nock";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import MetabaseSettings from "metabase/lib/settings";
-import { createMockDashboard } from "metabase-types/api/mocks";
 import CreateDashboardModal from "./CreateDashboardModal";
 
 function mockCachingEnabled(enabled = true) {
@@ -34,9 +33,9 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   const onClose = jest.fn();
 
   if (mockCreateDashboardResponse) {
-    xhrMock.post(`/api/dashboard`, (req, res) =>
-      res.status(200).body(req.body()),
-    );
+    nock(location.origin)
+      .post(`/api/dashboard`)
+      .reply(200, (url, body) => body);
   }
 
   renderWithProviders(<CreateDashboardModal onClose={onClose} />);
@@ -46,61 +45,21 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   };
 }
 
-function setupCreateRequestAssertion(
-  doneCallback: (...args: any[]) => any,
-  changedValues: Record<string, unknown>,
-) {
-  xhrMock.post("/api/dashboard", (req, res) => {
-    try {
-      console.log("### POST /api/dashboard", { body: req.body() });
-      expect(JSON.parse(req.body())).toEqual({
-        ...changedValues,
-        collection_id: null,
-      });
-      doneCallback();
-      const dashboard = createMockDashboard(changedValues);
-      return res.status(200).body(dashboard);
-    } catch (err) {
-      doneCallback(err);
-    }
-  });
-}
-
-type FormInputValues = { name?: string; description?: string };
-
-function fillForm({ name, description }: FormInputValues = {}) {
-  const nextDashboardState: FormInputValues = {};
-  if (name) {
-    const input = screen.getByLabelText("Name");
-    userEvent.clear(input);
-    userEvent.type(input, name);
-    nextDashboardState.name = name;
-  }
-  if (description) {
-    const input = screen.getByLabelText("Description");
-    userEvent.clear(input);
-    userEvent.type(input, description);
-    nextDashboardState.description = description;
-  }
-  return nextDashboardState;
-}
-
 describe("CreateDashboardModal", () => {
   beforeEach(() => {
-    xhrMock.setup();
-    xhrMock.get("/api/collection", {
-      body: JSON.stringify([
+    nock(location.origin)
+      .get("/api/collection")
+      .reply(200, [
         {
           id: "root",
           name: "Our analytics",
           can_write: true,
         },
-      ]),
-    });
+      ]);
   });
 
   afterEach(() => {
-    xhrMock.teardown();
+    nock.cleanAll();
   });
 
   it("displays empty form fields", () => {

@@ -58,7 +58,6 @@ class FieldInner extends Base {
   name: string;
   description: string | null;
   semantic_type: string | null;
-  database_required: boolean;
   fingerprint?: FieldFingerprint;
   base_type: string | null;
   table?: Table;

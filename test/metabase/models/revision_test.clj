@@ -1,11 +1,12 @@
 (ns metabase.models.revision-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.models.revision :as revision :refer [Revision]]
-            [metabase.test :as mt]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.models.revision :as revision :refer [Revision]]
+   [metabase.test :as mt]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (def ^:private reverted-to
   (atom nil))

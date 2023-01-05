@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc.sync.interface
-  (:require [metabase.driver :as driver]))
+  (:require
+   [metabase.driver :as driver]))
 
 (defmulti active-tables
   "Return a reducible sequence of maps containing information about the active tables/views, collections, or equivalent

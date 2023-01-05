@@ -1,14 +1,17 @@
 (ns metabase.models.permissions-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
-            [metabase.models.table :refer [Table]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.permissions-group
+    :as perms-group
+    :refer [PermissionsGroup]]
+   [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
@@ -49,6 +52,8 @@
    "/data-model/db/1/schema/PUBLIC/table/1/"
    ;; db details permissions
    "/details/db/1/"
+   ;; execution permissions
+   "/execute/"
    ;; full admin (everything) root permissions
    "/"])
 
@@ -690,7 +695,7 @@
                        :details    :yes}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
-                   (select-keys [db-id]))))))))
+                   (select-keys [db-id :execute]))))))))
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"

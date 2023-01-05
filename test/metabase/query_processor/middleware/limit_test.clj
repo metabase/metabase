@@ -1,10 +1,11 @@
 (ns metabase.query-processor.middleware.limit-test
   "Tests for the `:limit` clause and `:max-results` constraints."
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.context.default :as context.default]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.middleware.limit :as limit]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.limit :as limit]
+   [metabase.test :as mt]))
 
 (def ^:private test-max-results 10000)
 

@@ -9,12 +9,13 @@
 
   There used to also be `:advanced`, which was the default until enough customers
   complained that we first fixed it and then the fix wasn't good enough so we removed it."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (declare humanization-strategy)
 

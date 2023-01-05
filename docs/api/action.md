@@ -30,38 +30,23 @@ Returns cards that can be used for QueryActions.
 
 ## `POST /api/action/`
 
-Create a new HTTP action.
+Create a new action.
 
 ### PARAMS:
 
-*  **`type`** Only http actions are supported at this time.
+*  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
 
-*  **`name`** value must be a string.
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a map.
 
-*  **`template`** value must be a map with schema: (
-  body (optional) : value may be nil, or if non-nil, value must be a string.
-  headers (optional) : value may be nil, or if non-nil, value must be a string.
-  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.
-  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.
-  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.
-  url : value must be a string.
-)
-
-*  **`response_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`description`** value may be nil, or if non-nil, value must be a string.
 
 *  **`error_handle`** value may be nil, or if non-nil, must be a valid json-query
 
-*  **`action`**
+*  **`database_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-## `PUT /api/action/:id`
+*  **`name`** value must be a string.
 
-### PARAMS:
-
-*  **`id`** value must be an integer greater than zero.
-
-*  **`type`** Only http actions are supported at this time.
-
-*  **`name`** value may be nil, or if non-nil, value must be a string.
+*  **`response_handle`** value may be nil, or if non-nil, must be a valid json-query
 
 *  **`template`** value may be nil, or if non-nil, value must be a map with schema: (
   body (optional) : value may be nil, or if non-nil, value must be a string.
@@ -72,9 +57,56 @@ Create a new HTTP action.
   url : value must be a string.
 )
 
-*  **`response_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`type`** Unsupported action type
+
+*  **`dataset_query`** value may be nil, or if non-nil, value must be a map.
+
+*  **`model_id`** value must be an integer greater than zero.
+
+*  **`kind`** value may be nil, or if non-nil, Unsupported implicit action kind
+
+*  **`parameter_mappings`** value may be nil, or if non-nil, value must be a map.
+
+*  **`action`**
+
+## `PUT /api/action/:id`
+
+### PARAMS:
+
+*  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
+
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a map.
+
+*  **`description`** value may be nil, or if non-nil, value must be a string.
 
 *  **`error_handle`** value may be nil, or if non-nil, must be a valid json-query
+
+*  **`database_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`name`** value may be nil, or if non-nil, value must be a string.
+
+*  **`response_handle`** value may be nil, or if non-nil, must be a valid json-query
+
+*  **`template`** value may be nil, or if non-nil, value must be a map with schema: (
+  body (optional) : value may be nil, or if non-nil, value must be a string.
+  headers (optional) : value may be nil, or if non-nil, value must be a string.
+  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.
+  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.
+  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.
+  url : value must be a string.
+)
+
+*  **`type`** value may be nil, or if non-nil, Unsupported action type
+
+*  **`dataset_query`** value may be nil, or if non-nil, value must be a map.
+
+*  **`model_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`id`** value must be an integer greater than zero.
+
+*  **`kind`** value may be nil, or if non-nil, Unsupported implicit action kind
+
+*  **`parameter_mappings`** value may be nil, or if non-nil, value must be a map.
 
 *  **`action`**
 

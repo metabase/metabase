@@ -7,7 +7,9 @@
    [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
-   [metabase.models :refer [Database Field FieldValues Table]]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database Field FieldValues Secret Table]]
+   [metabase.models.secret :as secret]
    [metabase.plugins.classloader :as classloader]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
@@ -289,6 +291,31 @@
   (copy-db-tables! old-db-id new-db-id)
   (copy-db-fks! old-db-id new-db-id))
 
+(defn- get-linked-secrets
+  [{:keys [details] :as database}]
+  (when-let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
+    (let [conn-props (conn-props-fn (driver.u/database->driver database))]
+      (into {}
+            (keep (fn [prop-name]
+                    (let [id-prop (keyword (str prop-name "-id"))]
+                      (when-let [id (get details id-prop)]
+                        [id-prop id]))))
+            (keys (secret/conn-props->secret-props-by-name conn-props))))))
+
+(defn- copy-secrets [database]
+  (let [prop->old-id (get-linked-secrets database)]
+    (if (seq prop->old-id)
+      (let [secrets (db/select [Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
+            new-ids (db/insert-many! Secret (map #(dissoc % :id) secrets))
+            old-id->new-id (zipmap (map :id secrets) new-ids)]
+        (assoc database
+               :details
+               (reduce (fn [details [id-prop old-id]]
+                         (assoc details id-prop (get old-id->new-id old-id)))
+                 (:details database)
+                 prop->old-id)))
+      database)))
+
 (def ^:dynamic *db-is-temp-copy?*
   "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
@@ -298,7 +325,7 @@
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*get-db*)
-        original-db                 (select-keys old-db [:details :engine :name])
+        original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
         {new-db-id :id, :as new-db} (db/insert! Database original-db)]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)

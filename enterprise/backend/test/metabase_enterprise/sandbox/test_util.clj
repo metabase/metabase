@@ -1,21 +1,22 @@
 (ns metabase-enterprise.sandbox.test-util
   "Shared test utilities for sandbox tests."
-  (:require [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test.data :as data]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test.data :as data]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
   (let [user-id (test.users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]

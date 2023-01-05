@@ -119,6 +119,14 @@
     honeysql.helpers                                                hh
     honeysql.types                                                  htypes
     java-time                                                       t
+    malli.core                                                      mc
+    malli.error                                                     me
+    malli.experimental                                              mx
+    malli.generator                                                 mg
+    malli.provider                                                  mp
+    malli.transform                                                 mtx
+    malli.util                                                      mut
+    medley.core                                                     m
     metabase-enterprise.audit-app.pages.common                      common
     metabase-enterprise.sandbox.api.table                           table
     metabase.analytics.stats                                        stats
@@ -290,6 +298,8 @@
     metabase.server.middleware.ssl                                  mw.ssl
     metabase.server.middleware.util                                 mw.util
     metabase.server.protocols                                       server.protocols
+    metabase.shared.util                                            shared.u
+    metabase.shared.util.currency                                   currency
     metabase.sync.analyze.classifiers.category                      classifiers.category
     metabase.sync.analyze.classifiers.name                          classifiers.name
     metabase.sync.analyze.classifiers.no-preview-display            classifiers.no-preview-display
@@ -331,6 +341,7 @@
     metabase.util.files                                             u.files
     metabase.util.i18n                                              i18n
     metabase.util.i18n.impl                                         i18n.impl
+    metabase.util.malli                                             mu
     metabase.util.password                                          u.password
     metabase.util.schema                                            su
     metabase.util.ui-logic                                          ui-logic
@@ -338,6 +349,7 @@
     metabuild-common.core                                           u
     metabuild-common.output                                         out
     metabuild-common.shell                                          shell
+    monger.collection                                               mcoll
     ring.mock.request                                               ring.mock
     ring.util.codec                                                 codec
     ring.util.response                                              response
@@ -356,7 +368,7 @@
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
   honeysql.util/defalias                                                               clojure.core/def
   metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
-  metabase.actions.test-util/with-action                                               clojure.core/let
+  metabase.actions.test-util/with-actions                                              clojure.core/let
   metabase.actions.test-util/with-card-emitter                                         clojure.core/let
   metabase.actions.test-util/with-dashboard-emitter                                    clojure.core/let
   metabase.api.common/let-404                                                          clojure.core/let
@@ -395,6 +407,7 @@
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
+  metabase.util.malli/defn                                                             schema.core/defn
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   monger.operators/defoperator                                                         clojure.core/def
   potemkin.types/defprotocol+                                                          clojure.core/defprotocol
@@ -418,6 +431,7 @@
    metabase.api.card-test/with-temp-native-card                                                                              hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params                                                                  hooks.common/with-two-bindings
    metabase.api.collection-test/with-french-user-and-personal-collection                                                     hooks.common/with-two-top-level-bindings
+   metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
@@ -461,6 +475,8 @@
    metabase.models.emitter/Emitter                                                                                           hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.field-values/FieldValues                                                                                  hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.field/Field                                                                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
+   metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.login-history/LoginHistory                                                                                hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.metric-important-field/MetricImportantField                                                               hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.metric/Metric                                                                                             hooks.metabase.models.disallow-invoking-model/hook

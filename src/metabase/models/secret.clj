@@ -1,21 +1,23 @@
 (ns metabase.models.secret
-  (:require [cheshire.generate :refer [add-encoder encode-map]]
-            [clojure.core.memoize :as memoize]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as mi]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import java.io.File
-           java.nio.charset.StandardCharsets))
+  (:require
+   [cheshire.generate :refer [add-encoder encode-map]]
+   [clojure.core.memoize :as memoize]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.interface :as mi]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models])
+  (:import
+   (java.io File)
+   (java.nio.charset StandardCharsets)))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -25,15 +27,12 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Secret)
-  models/IModel
-  (merge models/IModelDefaults
-         { ;:hydration-keys (constantly [:database :db]) ; don't think there's any hydration going on since other models
-                                        ; won't have a direct secret-id column
-          :types          (constantly {:value  :secret-value
-                                       :kind   :keyword
-                                       :source :keyword})
-          :properties     (constantly {:timestamped? true})}))
+(mi/define-methods
+ Secret
+ {:types      (constantly {:value  :secret-value
+                           :kind   :keyword
+                           :source :keyword})
+  :properties (constantly {::mi/timestamped? true})})
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 

@@ -1,17 +1,21 @@
 (ns metabase.api.permissions-test
   "Tests for `/api/permissions` endpoints."
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.permissions :as api.permissions]
-            [metabase.models :refer [Database PermissionsGroup PermissionsGroupMembership Table User]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.permissions :as api.permissions]
+   [metabase.models
+    :refer [Database Permissions PermissionsGroup PermissionsGroupMembership Table User]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;; there are some issues where it doesn't look like the hydrate function for `member_count` is being added (?)
 (comment api.permissions/keep-me)
@@ -116,7 +120,6 @@
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
-      ;; do not inline db-id, the DB should exist when we query the data-perms-graph
       (let [db-id (mt/id :venues)]
         (mt/with-temp PermissionsGroup [group]
           (mt/user-http-request
@@ -128,17 +131,15 @@
                  (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))))
 
       (testing "Table-specific perms"
-        ;; do not inline db-id, the DB should exist when we query the data-perms-graph
-        (let [db-id (mt/id :venues)]
-          (mt/with-temp PermissionsGroup [group]
-            (mt/user-http-request
-             :crowberto :put 200 "permissions/graph"
-             (assoc-in (perms/data-perms-graph)
-                       [:groups (u/the-id group) (mt/id) :data :schemas]
-                       {"PUBLIC" {db-id {:read :all, :query :segmented}}}))
-            (is (= {db-id {:read  :all
-                           :query :segmented}}
-                   (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))))))
+        (mt/with-temp PermissionsGroup [group]
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (assoc-in (perms/data-perms-graph)
+                     [:groups (u/the-id group) (mt/id) :data :schemas]
+                     {"PUBLIC" {(mt/id :venues) {:read :all, :query :segmented}}}))
+          (is (= {(mt/id :venues) {:read  :all
+                                   :query :segmented}}
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))))
 
     (testing "permissions for new db"
       (mt/with-temp* [PermissionsGroup [group]
@@ -163,6 +164,82 @@
         (is (= :all
                (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))))
 
+(deftest update-perms-graph-error-test
+  (testing "PUT /api/permissions/graph"
+    (testing "make sure an error is thrown if the :sandboxes key is included in an OSS request"
+      (is (= "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature."
+             (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                   (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))
+(defn- ee-features-enabled? []
+  (u/ignore-exceptions
+   (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+   (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
+
+(deftest update-execution-perms-graph-test
+  (mt/with-model-cleanup [Permissions]
+    (testing "global execute permission"
+      (testing "without :advanced-permissions feature flag"
+        (testing "for All Users"
+          (let [group-id (:id (perms-group/all-users))]
+            (mt/user-http-request
+             :crowberto :put 200 "permissions/execution/graph"
+             (assoc-in (perms/execution-perms-graph) [:groups group-id] :all))
+            (is (= :all
+                   (get-in (perms/execution-perms-graph) [:groups group-id])))))
+        (testing "for non-magic group"
+          (mt/with-temp* [PermissionsGroup [{group-id :id}]]
+            (mt/user-http-request
+             :crowberto :put 402 "permissions/execution/graph"
+             (assoc-in (perms/execution-perms-graph) [:groups group-id] :all)))))
+
+      (when (ee-features-enabled?)
+        (testing "with :advanced-permissions feature flag"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "for All Users"
+              (let [group-id (:id (perms-group/all-users))]
+                (mt/user-http-request
+                 :crowberto :put 200 "permissions/execution/graph"
+                 (assoc-in (perms/execution-perms-graph) [:groups group-id] :all))
+                (is (= :all
+                       (get-in (perms/execution-perms-graph) [:groups group-id])))))
+            (testing "for non-magic group"
+              (mt/with-temp* [PermissionsGroup [{group-id :id}]]
+                (mt/user-http-request
+                 :crowberto :put 200 "permissions/execution/graph"
+                 (assoc-in (perms/execution-perms-graph) [:groups group-id] :all))
+                (is (= :all
+                       (get-in (perms/execution-perms-graph) [:groups group-id])))))))))
+
+    (testing "DB execute permission"
+      (mt/with-temp* [PermissionsGroup [{group-id :id}]
+                      Database         [{db-id :id}]]
+        (testing "without :advanced-permissions feature flag"
+          (testing "for All Users"
+            (mt/user-http-request
+             :crowberto :put 402 "permissions/execution/graph"
+             (assoc-in (perms/execution-perms-graph) [:groups (:id (perms-group/all-users))] {db-id :all})))
+
+          (testing "for non-magic group"
+            (mt/user-http-request
+             :crowberto :put 402 "permissions/execution/graph"
+             (assoc-in (perms/execution-perms-graph) [:groups group-id db-id] :all))))
+
+        (when (ee-features-enabled?)
+          (testing "with :advanced-permissions feature flag"
+            (premium-features-test/with-premium-features #{:advanced-permissions}
+              (testing "for All Users"
+                (mt/user-http-request
+                 :crowberto :put 200 "permissions/execution/graph"
+                 (assoc-in (perms/execution-perms-graph) [:groups (:id (perms-group/all-users))] {db-id :all}))
+                (is (= :all
+                       (get-in (perms/execution-perms-graph) [:groups (:id (perms-group/all-users)) db-id]))))
+
+              (testing "for non-magic group"
+                (mt/user-http-request
+                 :crowberto :put 200 "permissions/execution/graph"
+                 (assoc-in (perms/execution-perms-graph) [:groups group-id] {db-id :all}))
+                (is (= :all
+                       (get-in (perms/execution-perms-graph) [:groups group-id db-id])))))))))))
 
 ;;; +---------------------------------------------- permissions membership apis -----------------------------------------------------------+
 

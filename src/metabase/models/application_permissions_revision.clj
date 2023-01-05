@@ -1,18 +1,18 @@
 (ns metabase.models.application-permissions-revision
-  (:require [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.interface :as mi]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel ApplicationPermissionsRevision :application_permissions_revision)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ApplicationPermissionsRevision)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types      (constantly {:before :json
-                                   :after  :json})
-          :properties (constantly {:created-at-timestamped? true})
-          :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a ApplicationPermissionsRevision!"))))}))
+(mi/define-methods
+ ApplicationPermissionsRevision
+ {:types      (constantly {:before :json
+                           :after  :json})
+  :properties (constantly {::mi/created-at-timestamped? true})
+  :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a ApplicationPermissionsRevision!"))))})
 
 (defn latest-id
   "Return the ID of the newest `ApplicationPermissionsRevision`, or zero if none have been made yet.

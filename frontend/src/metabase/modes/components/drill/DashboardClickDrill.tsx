@@ -9,7 +9,6 @@ import type Question from "metabase-lib/Question";
 
 import {
   getDashboardDrillLinkUrl,
-  getDashboardDrillPageUrl,
   getDashboardDrillParameters,
   getDashboardDrillQuestionUrl,
   getDashboardDrillType,
@@ -21,7 +20,6 @@ import type { ClickAction, ClickObject, Drill } from "../../types";
 type DashboardDrillType =
   | "link-url"
   | "question-url"
-  | "page-url"
   | "dashboard-url"
   | "dashboard-filter"
   | "dashboard-reset";
@@ -40,10 +38,6 @@ function getAction(
     case "question-url":
       return {
         url: () => getDashboardDrillQuestionUrl(question, clicked),
-      };
-    case "page-url":
-      return {
-        action: () => push(getDashboardDrillPageUrl(clicked)) as ReduxAction,
       };
     case "dashboard-url":
       return { url: () => getDashboardDrillUrl(clicked) };

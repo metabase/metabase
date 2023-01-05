@@ -1,7 +1,8 @@
 (ns release.set-build-options
-  (:require [metabuild-common.core :as u]
-            [release.common :as c]
-            [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]
+   [metabuild-common.core :as u]
+   [release.common :as c]))
 
 (defn prompt-and-set-build-options! []
   (let [[current-branch] (u/step "Determine current branch"

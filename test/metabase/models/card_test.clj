@@ -1,17 +1,20 @@
 (ns metabase.models.card-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [metabase.models :refer [Action Card Collection Dashboard DashboardCard QueryAction]]
-            [metabase.models.card :as card]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
-  (:import java.time.LocalDateTime))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.models
+    :refer [Card Collection Dashboard DashboardCard]]
+   [metabase.models.card :as card]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt])
+  (:import
+   (java.time LocalDateTime)))
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
@@ -255,39 +258,6 @@
                clojure.lang.ExceptionInfo
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
                (db/update! Card card-id bad-card-data))))))))
-
-(deftest action-creation-test
-  (testing "actions are created when is_write is set"
-    (testing "during create"
-      (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (seq qa-rows)
-              "Inserting a card with :is_write true should create QueryAction")
-          (is (seq (db/select Action :id action_id))))))
-    (testing "during update"
-      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
-        (db/update! Card card-id {:is_write true})
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (seq qa-rows) "Updating a card to have :is_write true should create QueryAction")
-          (is (seq (db/select Action :id action_id)))))))
-  (testing "actions are not created when is_write is not set"
-    (testing "during create:"
-      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (empty? qa-rows) "Inserting a card with :is_write false should not create QueryAction")
-          (is (empty? (db/select Action :id action_id))))))
-    (testing "during update"
-      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
-        (db/update! Card card-id {:is_write false})
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (empty? qa-rows) "Updating a card to have :is_write false should delete QueryAction")
-          (is (empty? (db/select Action :id action_id)))))))
-  (testing "actions are deleted when is_write is set to false during update"
-    (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
-      (db/update! Card card-id {:is_write false})
-      (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-        (is (empty? qa-rows) "Updating a card to have :is_write false should create a QueryAction")
-        (is (empty? (db/select Action :id action_id)))))))
 
 ;;; ------------------------------------------ Parameters tests ------------------------------------------
 

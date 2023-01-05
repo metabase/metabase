@@ -1,31 +1,32 @@
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.database :as api.database]
-            [metabase.api.table :as api.table]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Card Collection Database Field
-                                     FieldValues Table]]
-            [metabase.models.database :as database :refer [protected-password]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.sync.analyze :as analyze]
-            [metabase.sync.field-values :as field-values]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [metabase.util.cron :as u.cron]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :as hydrate]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.database :as api.database]
+   [metabase.api.table :as api.table]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models
+    :refer [Card Collection Database Field FieldValues Table]]
+   [metabase.models.database :as database :refer [protected-password]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.field-values :as field-values]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :as hydrate]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -1048,8 +1049,7 @@
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
                       Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
-                      Card       [card-2 (card-with-native-query "Card 2")]
-                      Card       [_card-3 (assoc (card-with-native-query "Card 3") :is_write true :result_metadata {})]]
+                      Card       [card-2 (card-with-native-query "Card 2")]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))

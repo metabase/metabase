@@ -1,28 +1,29 @@
 (ns metabase.api.table
   "/api/table endpoints."
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET POST PUT]]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.related :as related]
-            [metabase.sync :as sync]
-            [metabase.sync.concurrent :as sync.concurrent]
-            #_:clj-kondo/ignore
-            [metabase.sync.field-values :as sync.field-values]
-            [metabase.types :as types]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [GET POST PUT]]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.related :as related]
+   [metabase.sync :as sync]
+   [metabase.sync.concurrent :as sync.concurrent]
+   #_:clj-kondo/ignore
+   [metabase.sync.field-values :as sync.field-values]
+   [metabase.types :as types]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
@@ -32,14 +33,14 @@
   "Schema for a valid table field ordering."
   (apply s/enum (map name table/field-orderings)))
 
-(api/defendpoint GET "/"
+(api/defendpoint-schema GET "/"
   "Get all `Tables`."
   []
   (as-> (db/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (hydrate tables :db)
     (filterv mi/can-read? tables)))
 
-(api/defendpoint GET "/:id"
+(api/defendpoint-schema GET "/:id"
   "Get `Table` with ID."
   [id include_editable_data_model]
   (let [api-perm-check-fn (if (Boolean/parseBoolean include_editable_data_model)
@@ -90,7 +91,7 @@
       (sync-unhidden-tables newly-unhidden)
       updated-tables)))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint-schema PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
                    show_in_getting_started field_order], :as body} :body}]
@@ -104,7 +105,7 @@
    field_order             (s/maybe FieldOrder)}
   (first (update-tables! [id] body)))
 
-(api/defendpoint PUT "/"
+(api/defendpoint-schema PUT "/"
   "Update all `Table` in `ids`."
   [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
                 show_in_getting_started], :as body} :body}]
@@ -289,7 +290,7 @@
                                             :sensitive include-sensitive-fields?
                                             true)))))))
 
-(api/defendpoint GET "/:id/query_metadata"
+(api/defendpoint-schema GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
@@ -369,7 +370,7 @@
                                        (assoc field :semantic_type nil)
                                        field))))
 
-(api/defendpoint GET "/card__:id/query_metadata"
+(api/defendpoint-schema GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
   (let [{:keys [database_id] :as card} (db/select-one [Card :id :dataset_query :result_metadata :name :description
@@ -391,13 +392,13 @@
         (assoc-dimension-options (driver.u/database->driver database_id))
         remove-nested-pk-fk-semantic-types)))
 
-(api/defendpoint GET "/card__:id/fks"
+(api/defendpoint-schema GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
   []
   []) ; return empty array
 
-(api/defendpoint GET "/:id/fks"
+(api/defendpoint-schema GET "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
   (api/read-check Table id)
@@ -411,7 +412,7 @@
        :destination    (hydrate (db/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
 
 
-(api/defendpoint POST "/:id/rescan_values"
+(api/defendpoint-schema POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
@@ -426,7 +427,7 @@
          (sync.field-values/update-field-values-for-table! table))))
     {:status :success}))
 
-(api/defendpoint POST "/:id/discard_values"
+(api/defendpoint-schema POST "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
@@ -435,12 +436,12 @@
     (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
 
-(api/defendpoint GET "/:id/related"
+(api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Table :id id) api/read-check related/related))
 
-(api/defendpoint PUT "/:id/fields/order"
+(api/defendpoint-schema PUT "/:id/fields/order"
   "Reorder fields"
   [id :as {field_order :body}]
   {field_order [su/IntGreaterThanZero]}

@@ -1,8 +1,9 @@
 (ns metabase.query-processor.middleware.large-int-id-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.large-int-id :as large-int-id]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.large-int-id :as large-int-id]
+   [metabase.test :as mt]))
 
 (deftest convert-ids
   (let [query (mt/mbql-query users
@@ -87,7 +88,7 @@
               [3 47]
               [4 61]]
              (mt/formatted-rows [int int]
-               (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))) )
+               (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
     (testing "aggregation does not convert to strings with middleware disabled (default)"
       (is (= [[1 55]
               [2 48]

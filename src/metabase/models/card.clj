@@ -1,30 +1,30 @@
 (ns metabase.models.card
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.action :as action]
-            [metabase.models.collection :as collection]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as mi]
-            [metabase.models.params :as params]
-            [metabase.models.permissions :as perms]
-            [metabase.models.query :as query]
-            [metabase.models.revision :as revision]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.moderation :as moderation]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.collection :as collection]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.interface :as mi]
+   [metabase.models.params :as params]
+   [metabase.models.permissions :as perms]
+   [metabase.models.query :as query]
+   [metabase.models.revision :as revision]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.moderation :as moderation]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel Card :report_card)
 
@@ -33,16 +33,16 @@
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
-(defn dashboard-count
+(mi/define-simple-hydration-method dashboard-count
+  :dashboard_count
   "Return the number of Dashboards this Card is in."
-  {:hydrate :dashboard_count}
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
-(defn average-query-time
-  "Average query time of card, taken by query executions which didn't hit cache.
-  If it's nil we don't have any query executions on file"
-  {:hydrate :average_query_time}
+(mi/define-simple-hydration-method average-query-time
+  :average_query_time
+  "Average query time of card, taken by query executions which didn't hit cache. If it's nil we don't have any query
+  executions on file."
   [{:keys [id]}]
   (-> (db/query {:select [:%avg.running_time]
                  :from [:query_execution]
@@ -52,9 +52,9 @@
                          [:= :card_id id]]})
       first vals first))
 
-(defn last-query-start
+(mi/define-simple-hydration-method last-query-start
+  :last_query_start
   "Timestamp for start of last query of this card."
-  {:hydrate :last_query_start}
   [{:keys [id]}]
   (-> (db/query {:select [:%max.started_at]
                  :from [:query_execution]
@@ -193,15 +193,6 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
-(defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
-  (when is-write?
-    (when-not (db/select-one action/QueryAction :card_id card-id)
-      (action/insert! {:card_id card-id :type :query}))))
-
-(defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
-  (when (not is-write?)
-    (db/delete! action/QueryAction :card_id card-id)))
-
 (defn- assert-valid-model
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
   [{:keys [dataset dataset_query]}]
@@ -233,8 +224,7 @@
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (create-actions-when-is-writable! card)))
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))))
 
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
@@ -252,7 +242,7 @@
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
-          old-card-info (when (or (:dataset changes)
+          old-card-info (when (or (contains? changes :dataset)
                                   (get-in changes [:dataset_query :native]))
                           (db/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
@@ -274,6 +264,12 @@
       ;; make sure this Card doesn't have circular source query references if we're updating the query
       (when (:dataset_query changes)
         (check-for-circular-source-query-references changes))
+      ;; prevent demoting a model if it has actions
+      (when (and (not (:dataset changes))
+                 (:dataset old-card-info)
+                 (db/select-one ['Action :id] :model_id id))
+        (throw (ex-info (tru "Cannot make a question from a model with actions")
+                        {:id id})))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
@@ -282,15 +278,10 @@
       (params/assert-valid-parameter-mappings changes)
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)
-      ;; create Action and QueryAction when is_write is set true
-      (create-actions-when-is-writable! changes)
-      ;; delete Action and QueryAction when is_write is set false
-      (delete-actions-when-not-writable! changes)
       (assert-valid-model (merge old-card-info changes)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
-  (db/delete! 'QueryAction :card_id id)
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (db/delete! 'Revision :model "Card", :model_id id))
 
@@ -304,27 +295,26 @@
   :in mi/json-in
   :out result-metadata-out)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:card])
-          :types          (constantly {:dataset_query          :metabase-query
-                                       :display                :keyword
-                                       :embedding_params       :json
-                                       :query_type             :keyword
-                                       :result_metadata        ::result-metadata
-                                       :visualization_settings :visualization-settings
-                                       :parameters             :parameters-list
-                                       :parameter_mappings     :parameters-list})
-          :properties     (constantly {:timestamped? true
-                                       :entity_id    true})
-          ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
-          ;; functions those fns call assume normalized queries
-          :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
-          :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
-          :post-insert    post-insert
-          :pre-delete     pre-delete
-          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
+(mi/define-methods
+ Card
+ {:hydration-keys (constantly [:card])
+  :types          (constantly {:dataset_query          :metabase-query
+                               :display                :keyword
+                               :embedding_params       :json
+                               :query_type             :keyword
+                               :result_metadata        ::result-metadata
+                               :visualization_settings :visualization-settings
+                               :parameters             :parameters-list
+                               :parameter_mappings     :parameters-list})
+  :properties     (constantly {::mi/timestamped? true
+                               ::mi/entity-id    true})
+  ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
+  ;; functions those fns call assume normalized queries
+  :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
+  :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
+  :post-insert    post-insert
+  :pre-delete     pre-delete
+  :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]

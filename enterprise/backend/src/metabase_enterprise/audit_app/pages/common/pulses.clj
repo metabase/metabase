@@ -1,12 +1,13 @@
 (ns metabase-enterprise.audit-app.pages.common.pulses
   "Shared code for [[metabase-enterprise.audit-app.pages.dashboard-subscriptions]]
   and [[metabase-enterprise.audit-app.pages.alerts]]."
-  (:require [cheshire.core :as json]
-            [clojure.tools.logging :as log]
-            [metabase.models.collection :as collection]
-            [metabase.util.cron :as u.cron]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.tools.logging :as log]
+   [metabase.models.collection :as collection]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs tru]]))
 
 (def table-metadata
   "Common Metadata for the columns returned by both the [[metabase-enterprise.audit-app.pages.dashboard-subscriptions]]

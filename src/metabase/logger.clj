@@ -2,14 +2,16 @@
   "Configures the logger system for Metabase. Sets up an in-memory logger in a ring buffer for showing in the UI. Other
   logging options are set in [[metabase.bootstrap]]: the context locator for log4j2 and ensuring log4j2 is the logger
   that clojure.tools.logging uses."
-  (:require [amalloy.ring-buffer :refer [ring-buffer]]
-            [clj-time.coerce :as time.coerce]
-            [clj-time.format :as time.format]
-            [metabase.config :as config])
-  (:import org.apache.commons.lang3.exception.ExceptionUtils
-           [org.apache.logging.log4j.core Appender LogEvent LoggerContext]
-           org.apache.logging.log4j.core.config.LoggerConfig
-           org.apache.logging.log4j.LogManager))
+  (:require
+   [amalloy.ring-buffer :refer [ring-buffer]]
+   [clj-time.coerce :as time.coerce]
+   [clj-time.format :as time.format]
+   [metabase.config :as config])
+  (:import
+   (org.apache.commons.lang3.exception ExceptionUtils)
+   (org.apache.logging.log4j LogManager)
+   (org.apache.logging.log4j.core Appender LogEvent LoggerContext)
+   (org.apache.logging.log4j.core.config LoggerConfig)))
 
 (def ^:private ^:const max-log-entries 2500)
 

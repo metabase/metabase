@@ -1,22 +1,23 @@
 (ns metabase.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.edn :as edn]
-            [clojure.spec.alpha :as s]
-            [clojure.string :as str]
-            [clojure.test :as t]
-            [clojure.tools.logging :as log]
-            java-time
-            [metabase.config :as config]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
-            [metabase.test.initialize :as initialize]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as schema]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.edn :as edn]
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]
+   [clojure.test :as t]
+   [clojure.tools.logging :as log]
+   [java-time]
+   [metabase.config :as config]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
+   [metabase.test.initialize :as initialize]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [schema.core :as schema]))
 
 ;;; build-url
 

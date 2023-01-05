@@ -1,20 +1,27 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [clojure.spec.alpha :as s]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :as compojure]
-            [honeysql.types :as htypes]
-            [medley.core :as m]
-            [metabase.api.common.internal
-             :refer
-             [add-route-param-regexes auto-parse route-dox route-fn-name validate-params wrap-response-if-needed]]
-            [metabase.models.interface :as mi]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as schema]
-            [toucan.db :as db]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :as compojure]
+   [honeysql.types :as htypes]
+   [medley.core :as m]
+   [metabase.api.common.internal
+    :refer [add-route-param-regexes
+            auto-parse
+            malli-route-dox
+            malli-validate-params
+            route-dox
+            route-fn-name
+            validate-params
+            wrap-response-if-needed]]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as schema]
+   [toucan.db :as db]))
 
 (declare check-403 check-404)
 
@@ -217,10 +224,27 @@
    :route       (some-fn string? sequential?)
    :docstr      (s/? string?)
    :args        vector?
-   :arg->schema (s/? (s/map-of symbol? any?))
+   :arg->schema (s/? (s/map-of symbol? any?)) ;; any? is either a plumatic or malli schema
    :body        (s/* any?)))
 
 (defn- parse-defendpoint-args [args]
+  (let [parsed (s/conform ::defendpoint-args args)]
+    (when (= parsed ::s/invalid)
+      (throw (ex-info (str "Invalid defendpoint-schema args: " (s/explain-str ::defendpoint-args args))
+                      (s/explain-data ::defendpoint-args args))))
+    (let [{:keys [method route docstr args arg->schema body]} parsed
+          fn-name                                             (route-fn-name method route)
+          route                                               (add-route-param-regexes route)
+          ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
+          ;; their API error messages
+          docstr                                              (route-dox method route docstr args (m/map-vals eval arg->schema) body)]
+      ;; Don't i18n this, it's dev-facing only
+      (when-not docstr
+        (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
+                                  (ns-name *ns*) fn-name)))
+      (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
+
+(defn- malli-parse-defendpoint-args [args]
   (let [parsed (s/conform ::defendpoint-args args)]
     (when (= parsed ::s/invalid)
       (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
@@ -230,7 +254,7 @@
           route                                               (add-route-param-regexes route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (route-dox method route docstr args (m/map-vals eval arg->schema) body)]
+          docstr                                              (malli-route-dox method route docstr args (m/map-vals eval arg->schema) body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
@@ -250,7 +274,7 @@
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`
-(defmacro defendpoint
+(defmacro defendpoint-schema
   "Define an API function.
    This automatically does several things:
 
@@ -275,6 +299,32 @@
                                      ~@(validate-params arg->schema)
                                      (wrap-response-if-needed
                                       (do ~@body))))))))
+
+(defmacro defendpoint
+  "Define an API function.
+   This automatically does several things:
+
+   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
+      `Integer/parseInt`
+
+   -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+
+   -  sequentially applies specified annotation functions on args to validate them.
+
+   -  automatically calls `wrap-response-if-needed` on the result of `body`
+
+   -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
+      the function in the generated `defroutes` form.
+
+   -  Generates a super-sophisticated Markdown-formatted docstring"
+  {:arglists '([method route docstr? args schemas-map? & body])}
+  [& defendpoint-args]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
+    `(defendpoint* ~(assoc defendpoint-args
+                           :body `((auto-parse ~args
+                                               ~@(malli-validate-params arg->schema)
+                                               (wrap-response-if-needed
+                                                (do ~@body))))))))
 
 (defmacro defendpoint-async
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
@@ -401,13 +451,6 @@
     (check-404 object)
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
-
-(defn check-is-readonly
-  "Check that the object has `:is_write` = false, or throw a `405`. Returns `object` as-is if check passes."
-  [object]
-  (u/prog1 object
-    (check (not (:is_write object))
-      [405 {:message (tru "Write queries are only executable via the Actions API."), :error_code "is_not_readonly"}])))
 
 (defn check-valid-page-params
   "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."

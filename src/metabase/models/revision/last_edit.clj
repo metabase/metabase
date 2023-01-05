@@ -7,13 +7,14 @@
   This constructs `:last-edit-info`, a map with keys `:timestamp`, `:id`, `:first_name`, `:last_name`, and
   `:email`. It is not a full User object (missing some superuser metadata, last login time, and a common name). This
   was done to prevent another db call and hooking up timestamps to users but this can be added if preferred."
-  (:require [clj-time.core :as time]
-            [clojure.set :as set]
-            [honeysql.core :as hsql]
-            [medley.core :as m]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clj-time.core :as time]
+   [clojure.set :as set]
+   [honeysql.core :as hsql]
+   [medley.core :as m]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 

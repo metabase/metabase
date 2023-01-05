@@ -1,0 +1,62 @@
+{:lint-as {potemkin.collections/compile-if      clojure.core/if
+           potemkin.collections/reify-map-type  clojure.core/reify
+           potemkin.collections/def-map-type    clj-kondo.lint-as/def-catch-all
+           potemkin.collections/def-derived-map clj-kondo.lint-as/def-catch-all
+
+           potemkin.types/reify+                clojure.core/reify
+           potemkin.types/defprotocol+          clojure.core/defprotocol
+           potemkin.types/deftype+              clojure.core/deftype
+           potemkin.types/defrecord+            clojure.core/defrecord
+           potemkin.types/definterface+         clojure.core/defprotocol
+           potemkin.types/extend-protocol+      clojure.core/extend-protocol
+           potemkin.types/def-abstract-type     clj-kondo.lint-as/def-catch-all
+
+           potemkin.utils/doit                  clojure.core/doseq
+           potemkin.utils/doary                 clojure.core/doseq
+           potemkin.utils/condp-case            clojure.core/condp
+           potemkin.utils/fast-bound-fn         clojure.core/bound-fn
+
+           potemkin.walk/prewalk                clojure.walk/prewalk
+           potemkin.walk/postwalk               clojure.walk/postwalk
+           potemkin.walk/walk                   clojure.walk/walk
+
+           ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+           ;;;; top-level from import-vars
+           ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+           ;; Have hooks
+           ;;potemkin/import-fn potemkin.namespaces/import-fn
+           ;;potemkin/import-macro potemkin.namespaces/import-macro
+           ;;potemkin/import-def potemkin.namespaces/import-def
+
+           ;; Internal, not transitive
+           ;;potemkin/unify-gensyms               potemkin.macros/unify-gensyms
+           ;;potemkin/normalize-gensyms           potemkin.macros/normalize-gensyms
+           ;;potemkin/equivalent?                 potemkin.macros/equivalent?
+
+           potemkin/condp-case                  clojure.core/condp
+           potemkin/doit                        potemkin.utils/doit
+           potemkin/doary                       potemkin.utils/doary
+
+           potemkin/def-abstract-type           clj-kondo.lint-as/def-catch-all
+           potemkin/reify+                      clojure.core/reify
+           potemkin/defprotocol+                clojure.core/defprotocol
+           potemkin/deftype+                    clojure.core/deftype
+           potemkin/defrecord+                  clojure.core/defrecord
+           potemkin/definterface+               clojure.core/defprotocol
+           potemkin/extend-protocol+            clojure.core/extend-protocol
+
+           potemkin/reify-map-type              clojure.core/reify
+           potemkin/def-derived-map             clj-kondo.lint-as/def-catch-all
+           potemkin/def-map-type                clj-kondo.lint-as/def-catch-all}
+
+ ;; leave import-vars alone, kondo special-cases it
+ :hooks   {:macroexpand {#_#_potemkin.namespaces/import-vars potemkin.namespaces/import-vars
+                         potemkin.namespaces/import-fn    potemkin.namespaces/import-fn
+                         potemkin.namespaces/import-macro potemkin.namespaces/import-macro
+                         potemkin.namespaces/import-def   potemkin.namespaces/import-def
+
+                         #_#_potemkin/import-vars potemkin.namespaces/import-vars
+                         potemkin/import-fn               potemkin.namespaces/import-fn
+                         potemkin/import-macro            potemkin.namespaces/import-macro
+                         potemkin/import-def              potemkin.namespaces/import-def}}}

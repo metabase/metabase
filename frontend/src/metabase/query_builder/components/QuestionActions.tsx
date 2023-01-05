@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
@@ -57,8 +57,6 @@ interface Props {
     opt: { datasetEditorTab: string },
   ) => void;
   turnDatasetIntoQuestion: () => void;
-  turnQuestionIntoAction: () => void;
-  turnActionIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
   isModerator: boolean;

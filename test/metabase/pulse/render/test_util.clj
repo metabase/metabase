@@ -9,17 +9,19 @@
   1. build a minimal card and query result dataset for different visualization types and settings (scenarios)
   2. run the real rendering pipeline, but, return a hiccup tree instead of png bytes
   3. provide quick ways to 'query' the tree for different content, to confirm that elements are properly rendered."
-  (:require [clojure.string :as str]
-            [clojure.zip :as zip]
-            [metabase.pulse.render :as render]
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.render.datetime :as datetime]
-            [metabase.pulse.render.image-bundle :as image-bundle]
-            [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.util :as u])
-  (:import [org.apache.batik.anim.dom SVGOMDocument]
-           [org.w3c.dom Element Node]))
+  (:require
+   [clojure.string :as str]
+   [clojure.zip :as zip]
+   [metabase.pulse.render :as render]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.render.datetime :as datetime]
+   [metabase.pulse.render.image-bundle :as image-bundle]
+   [metabase.pulse.render.js-svg :as js-svg]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.util :as u])
+  (:import
+   (org.apache.batik.anim.dom SVGOMDocument)
+   (org.w3c.dom Element Node)))
 
 (def test-card
   {:visualization_settings
@@ -455,7 +457,7 @@
 (defn- wrapped-node?
   [loc]
   (let [node (zip/node loc)]
-    (and (= 1 (count node ))
+    (and (= 1 (count node))
          (seqable? node))))
 
 (def ^:private parse-svg #'js-svg/parse-svg-string)

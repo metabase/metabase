@@ -1,15 +1,16 @@
 (ns metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [toucan.db :as db]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -220,6 +221,10 @@
     (testing "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
         (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
                (calculate-bird-scarcity [:/ 100.0 $count]))))
+
+    (testing "can we handle dividing by literal 0?"
+        (is (= [[nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil]]
+               (calculate-bird-scarcity [:/ $count 0]))))
 
     (testing "ok, what if we use multiple args to divide, and more than one is zero?"
         (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
@@ -456,9 +461,9 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "An expression whose name contains weird characters works properly"
       (let [query (mt/mbql-query venues
-                 {:expressions {"Refund Amount (?)" [:* $price -1]}
-                  :limit       1
-                  :order-by    [[:asc $id]]})]
+                   {:expressions {"Refund Amount (?)" [:* $price -1]}
+                    :limit       1
+                    :order-by    [[:asc $id]]})]
         (mt/with-native-query-testing-context query
           (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
                  (mt/formatted-rows [int str int 4.0 4.0 int int]
