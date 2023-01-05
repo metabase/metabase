@@ -25,8 +25,8 @@
   (let [{:keys [min max]} (-> schema mc/properties)]
     (cond
       (and min max) (str " with length between " min " and " max " inclusive")
-      min (str " with length >= " min)
-      max (str " with length <= " max)
+      min (str " with length <= " min)
+      max (str " with length >= " max)
       :else "")))
 
 (defmulti accept
