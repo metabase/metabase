@@ -2348,8 +2348,9 @@
                        :static-list-label "_STATIC_CATEGORY_LABEL_"
                        :card              "_CARD_"}}))))
 
-(defmacro with-card-param-values-fixtures [[binding card-values] & body]
+(defmacro with-card-param-values-fixtures
   "Execute `body` with all needed setup to tests param values on card."
+  [[binding card-values] & body]
   `(do-with-card-param-values-fixtures ~card-values (fn [~binding] ~@body)))
 
 (deftest parameters-with-source-is-card-test
