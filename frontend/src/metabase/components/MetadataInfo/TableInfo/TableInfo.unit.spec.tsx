@@ -107,7 +107,9 @@ describe("TableInfo", () => {
     });
 
     it("should display the given table's description", () => {
-      expect(screen.getByText(PRODUCTS.description)).toBeInTheDocument();
+      expect(
+        screen.getByText(PRODUCTS.description as string),
+      ).toBeInTheDocument();
     });
 
     it("should show a count of columns on the table", () => {
