@@ -18,7 +18,7 @@
   (testing "POST /api/notify/db/:id"
     (testing "endpoint requires MB_API_KEY set"
       (mt/with-temporary-setting-values [api-key nil]
-        (is (= (str mw.auth/api-key-not-set-message)
+        (is (= (-> mw.auth/key-not-set-response :body str)
                (client/client :post 403 "notify/db/100")))))
     (testing "endpoint requires authentication"
       (mt/with-temporary-setting-values [api-key "test-api-key"] ;; set in :test but not in :dev

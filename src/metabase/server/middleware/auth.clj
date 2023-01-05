@@ -37,9 +37,10 @@
   "Url for documentation on how to set MB_API_KEY."
   "https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_api_key")
 
-(def api-key-not-set-message
-  "Message sent if an endpoint protected by this middleware is hit but MB_API_KEY is not set."
-  (deferred-trs "MB_API_KEY is not set. See {0} for details" mb-api-key-doc-url))
+(def key-not-set-response
+  "Response when the MB_API_KEY is not set."
+  {:status 403
+   :body (deferred-trs "MB_API_KEY is not set. See {0} for details" mb-api-key-doc-url)})
 
 (defn enforce-api-key
   "Middleware that enforces validation of the client via API Key, canceling the request processing if the check fails.
@@ -54,7 +55,7 @@
   [handler]
   (fn [{:keys [metabase-api-key], :as request} respond raise]
     (cond (str/blank? (api-key))
-          (respond {:status 403 :body api-key-not-set-message})
+          (respond key-not-set-response)
 
           (not metabase-api-key)
           (respond mw.util/response-forbidden)
