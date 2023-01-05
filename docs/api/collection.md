@@ -52,7 +52,7 @@ Fetch a specific Collection's items with the following options:
 
 *  **`id`** 
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -110,7 +110,7 @@ Fetch objects that the current user should see at their root level. As mentioned
 
 ### PARAMS:
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -204,6 +204,7 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 ## `PUT /api/collection/graph`
 
 Do a batch update of Collections Permissions by passing in a modified graph.
+  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
 
 You must be a superuser to do this.
 
