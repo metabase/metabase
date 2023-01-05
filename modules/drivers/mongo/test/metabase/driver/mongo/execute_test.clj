@@ -19,7 +19,7 @@
 
 (deftest field-filter-relative-time-native-test
   (mt/test-driver :mongo
-    (let [now (java.time.Instant/now)]
+    (let [now (str (java.time.Instant/now))]
       (with-redefs [mongo.execute/aggregate
                     (fn [& _] (make-mongo-cursor [{"_id" 0
                                                   "name" "Crowberto"
@@ -35,9 +35,10 @@
                         :query "[{\"$match\": {\"id\": {\"$lt\": 42}}},
                                  {\"$project\": {\"name\": true, \"last_login\": 1}}]"}
                        :type "native"}]
-            (is (= [["Crowberto" nil       0  "the Brave"]
-                    ["Rasta"     (str now) 1  nil]]
-                   (mt/rows (qp/process-query query))))))
+            (is (= {:rows [["Crowberto" nil 0 "the Brave"]
+                           ["Rasta"     now 1 nil]]
+                    :columns ["name" "last_login" "_id" "alias"]}
+                   (mt/rows+column-names (qp/process-query query))))))
 
         (testing "columns can be suppressed"
           (let [query {:database (mt/id)
@@ -47,6 +48,7 @@
                                   \"suppressed0\": 0, \"supressed-false\": false}},
                                  {\"$match\": {\"id\": {\"$lt\": 42}}}]"}
                        :type "native"}]
-            (is (= [["Crowberto" nil       0 "the Brave"]
-                    ["Rasta"     (str now) 1 nil]]
-                   (mt/rows (qp/process-query query))))))))))
+            (is (= {:rows [["Crowberto" nil 0 "the Brave"]
+                           ["Rasta"     now 1 nil]]
+                    :columns ["name" "last_login" "_id" "alias"]}
+                   (mt/rows+column-names (qp/process-query query))))))))))
