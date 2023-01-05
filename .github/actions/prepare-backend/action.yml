@@ -33,7 +33,7 @@ runs:
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: |
-          ~/.m2/
+          ~/.m2
           ~/.gitlibs
         key: ${{ runner.os }}-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: |
