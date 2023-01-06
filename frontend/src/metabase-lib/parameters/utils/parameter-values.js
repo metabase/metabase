@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { getFields } from "metabase-lib/parameters/utils/fields";
+import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
 import { isVirtualFieldId } from "metabase-lib/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/queries/utils/field";

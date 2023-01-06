@@ -5,6 +5,10 @@ import Radio from "metabase/core/components/Radio/Radio";
 import ModalContent from "metabase/components/ModalContent";
 import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import {
+  getDefaultSourceConfig,
+  isValidSourceConfig,
+} from "metabase-lib/parameters/utils/parameter-source";
+import {
   ModalLabel,
   ModalLayout,
   ModalMain,
@@ -107,30 +111,6 @@ const getValues = (value: string) => {
 
 const getValuesText = (values?: string[][]) => {
   return values?.map(([key]) => key).join(NEW_LINE) ?? "";
-};
-
-const isValidSourceConfig = (
-  sourceType: ValuesSourceType,
-  sourceConfig: ValuesSourceConfig,
-) => {
-  switch (sourceType) {
-    case "static-list":
-      return sourceConfig.values != null && sourceConfig.values.length > 0;
-    default:
-      return true;
-  }
-};
-
-const getDefaultSourceConfig = (
-  sourceType: ValuesSourceType,
-  fieldValues: string[][],
-) => {
-  switch (sourceType) {
-    case "static-list":
-      return { values: fieldValues };
-    default:
-      return {};
-  }
 };
 
 export default SourceTypeModal;

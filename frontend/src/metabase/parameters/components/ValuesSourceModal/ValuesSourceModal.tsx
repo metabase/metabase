@@ -1,24 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import Fields from "metabase/entities/fields";
-import { Dispatch } from "metabase-types/store";
-import { UiParameter } from "metabase-lib/parameters/types";
-import { getFields } from "metabase-lib/parameters/utils/fields";
-import { isVirtualFieldId } from "metabase-lib/metadata/utils/fields";
+import Field from "metabase-lib/metadata/Field";
+import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { getParameterValues } from "metabase-lib/parameters/utils/parameter-values";
+import { UiParameter } from "metabase-lib/parameters/types";
 import SourceTypeModal from "./SourceTypeModal";
 
-interface ValuesSourceModalOwnProps {
+interface FetchFieldValuesOpts {
+  id: Field["id"];
+}
+
+interface ValuesSourceModalProps {
   parameter: UiParameter;
+  onFetchFieldValues: (opts: FetchFieldValuesOpts) => void;
   onClose: () => void;
 }
-
-interface ValuesSourceModalDispatchProps {
-  onFetchFieldValues: (parameter: UiParameter) => void;
-}
-
-type ValuesSourceModalProps = ValuesSourceModalOwnProps &
-  ValuesSourceModalDispatchProps;
 
 const ValuesSourceModal = ({
   parameter,
@@ -38,7 +35,7 @@ const ValuesSourceModal = ({
   }, [parameter]);
 
   useEffect(() => {
-    onFetchFieldValues(parameter);
+    getNonVirtualFields(parameter).forEach(field => onFetchFieldValues(field));
   }, [parameter, onFetchFieldValues]);
 
   return (
@@ -53,16 +50,8 @@ const ValuesSourceModal = ({
   );
 };
 
-const mapDispatchToProps = (
-  dispatch: Dispatch,
-): ValuesSourceModalDispatchProps => ({
-  onFetchFieldValues: (parameter: UiParameter) => {
-    getFields(parameter)
-      .filter(field => !isVirtualFieldId(field.id))
-      .forEach(field =>
-        dispatch(Fields.actions.fetchFieldValues({ id: field.id })),
-      );
-  },
-});
+const mapDispatchToProps = {
+  onFetchFieldValues: Fields.actions.fetchFieldValues,
+};
 
 export default connect(null, mapDispatchToProps)(ValuesSourceModal);

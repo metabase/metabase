@@ -1,3 +1,4 @@
+import { isVirtualFieldId } from "metabase-lib/metadata/utils/fields";
 import {
   FieldFilterUiParameter,
   UiParameter,
@@ -15,4 +16,8 @@ export const getFields = (parameter: UiParameter) => {
   } else {
     return [];
   }
+};
+
+export const getNonVirtualFields = (parameter: UiParameter) => {
+  return getFields(parameter).filter(field => !isVirtualFieldId(field.id));
 };
