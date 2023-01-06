@@ -5,7 +5,7 @@ import Field from "metabase-lib/metadata/Field";
 import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { getParameterValues } from "metabase-lib/parameters/utils/parameter-values";
 import { UiParameter } from "metabase-lib/parameters/types";
-import SourceTypeModal from "./SourceTypeModal";
+import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 
 interface FetchFieldValuesOpts {
   id: Field["id"];
@@ -39,7 +39,7 @@ const ValuesSourceModal = ({
   }, [parameter, onFetchFieldValues]);
 
   return (
-    <SourceTypeModal
+    <ValuesSourceTypeModal
       sourceType={sourceType}
       sourceConfig={sourceConfig}
       fieldValues={fieldValues}

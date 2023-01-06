@@ -15,7 +15,7 @@ import {
   ModalPane,
   ModalSection,
   ModalTextArea,
-} from "./SourceTypeModal.styled";
+} from "./ValuesSourceTypeModal.styled";
 
 const NEW_LINE = "\n";
 
@@ -24,7 +24,7 @@ const SOURCE_TYPE_OPTIONS = [
   { name: t`Custom list`, value: "static-list" },
 ];
 
-interface SourceTypeModalProps {
+interface ValuesSourceTypeModalProps {
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   fieldValues: string[][];
@@ -33,14 +33,14 @@ interface SourceTypeModalProps {
   onClose: () => void;
 }
 
-const SourceTypeModal = ({
+const ValuesSourceTypeModal = ({
   sourceType,
   sourceConfig,
   fieldValues,
   onChangeSourceType,
   onChangeSourceConfig,
   onClose,
-}: SourceTypeModalProps): JSX.Element => {
+}: ValuesSourceTypeModalProps): JSX.Element => {
   const handleTypeChange = useCallback(
     (sourceType: ValuesSourceType) => {
       onChangeSourceType(sourceType);
@@ -113,4 +113,4 @@ const getValuesText = (values?: string[][]) => {
   return values?.map(([key]) => key).join(NEW_LINE) ?? "";
 };
 
-export default SourceTypeModal;
+export default ValuesSourceTypeModal;
