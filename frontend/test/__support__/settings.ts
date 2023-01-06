@@ -5,7 +5,7 @@ import type { Settings } from "metabase-types/api";
 
 export function mockSettings(params: Partial<Settings> = {}) {
   const settings = createMockSettings(params);
-  const state = createMockSettingsState({ values: settings });
+  const state = createMockSettingsState(settings);
 
   MetabaseSettings.setAll(settings);
 
