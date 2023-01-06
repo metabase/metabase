@@ -17,7 +17,7 @@ import {
 interface NativeQueryModalProps {
   title: string;
   query?: string;
-  error?: string;
+  error?: unknown;
   isLoading?: boolean;
   children?: ReactNode;
   onClose?: () => void;
@@ -47,7 +47,7 @@ const NativeQueryModal = ({
         {isLoading ? (
           <ModalLoadingSpinner />
         ) : error ? (
-          <NativeCodePanel value={error} isHighlighted />
+          <NativeCodePanel value={String(error)} isHighlighted />
         ) : query ? (
           <NativeCodePanel value={query} isCopyEnabled />
         ) : null}

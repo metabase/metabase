@@ -13,7 +13,7 @@ import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
 import { ModalExternalLink } from "./PreviewQueryModal.styled";
 
 interface PreviewQueryModalProps {
-  question: Question;
+  question?: Question;
   onLoadQuery: () => Promise<NativeQueryForm>;
   onClose?: () => void;
 }
@@ -23,13 +23,13 @@ const PreviewQueryModal = ({
   onLoadQuery,
   onClose,
 }: PreviewQueryModalProps): JSX.Element => {
-  const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
+  const { data, error, isLoading } = useNativeQuery(question, onLoadQuery);
   const learnUrl = MetabaseSettings.learnUrl("debugging-sql/sql-syntax");
 
   return (
     <NativeQueryModal
       title={t`Query preview`}
-      query={query}
+      query={data}
       error={error}
       isLoading={isLoading}
       onClose={onClose}
@@ -44,9 +44,7 @@ const PreviewQueryModal = ({
 };
 
 const mapStateToProps = (state: State) => ({
-  // FIXME: remove the non-null assertion operator
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  question: getQuestion(state)!,
+  question: getQuestion(state),
   onLoadQuery: getNativeQueryFn(state),
 });
 

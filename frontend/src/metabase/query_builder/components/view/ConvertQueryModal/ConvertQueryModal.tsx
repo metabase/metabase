@@ -27,7 +27,7 @@ interface UpdateQuestionOpts {
 }
 
 interface ConvertQueryModalProps {
-  question: Question;
+  question?: Question;
   onLoadQuery: () => Promise<NativeQueryForm>;
   onUpdateQuestion?: (question: Question, opts?: UpdateQuestionOpts) => void;
   onClose?: () => void;
@@ -39,33 +39,33 @@ const ConvertQueryModal = ({
   onUpdateQuestion,
   onClose,
 }: ConvertQueryModalProps): JSX.Element => {
-  const engineType = getEngineNativeType(question.database()?.engine);
-  const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
+  const engineType = getEngineNativeType(question?.database()?.engine);
+  const { data, error, isLoading } = useNativeQuery(question, onLoadQuery);
 
   const handleConvertClick = useCallback(() => {
-    if (!query) {
+    if (!question || !data) {
       return;
     }
 
     const newQuestion = question.setDatasetQuery({
       type: "native",
-      native: { query, "template-tags": {} },
+      native: { query: data, "template-tags": {} },
       database: question.datasetQuery().database,
     });
 
     onUpdateQuestion?.(newQuestion, { shouldUpdateUrl: true });
     onClose?.();
-  }, [question, query, onUpdateQuestion, onClose]);
+  }, [question, data, onUpdateQuestion, onClose]);
 
   return (
     <NativeQueryModal
       title={MODAL_TITLE[engineType]}
-      query={query}
+      query={data}
       error={error}
       isLoading={isLoading}
       onClose={onClose}
     >
-      {query && (
+      {data && (
         <Button primary onClick={handleConvertClick}>
           {BUTTON_TITLE[engineType]}
         </Button>
@@ -75,9 +75,7 @@ const ConvertQueryModal = ({
 };
 
 const mapStateToProps = (state: State) => ({
-  // FIXME: remove the non-null assertion operator
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  question: getQuestion(state)!,
+  question: getQuestion(state),
   onLoadQuery: getNativeQueryFn(state),
 });
 

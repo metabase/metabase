@@ -5,7 +5,7 @@ const useAsync = <T extends (...args: any[]) => Promise<any>>(
   fn: T,
   deps: DependencyList,
 ) => {
-  const [load, state] = useAsyncFn(fn, deps, { loading: true });
+  const [load, state] = useAsyncFn(fn, deps, { isLoading: true });
 
   useEffect(() => {
     load();

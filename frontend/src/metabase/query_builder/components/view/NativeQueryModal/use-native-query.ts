@@ -1,39 +1,19 @@
-import { useEffect, useState } from "react";
-import { getIn } from "icepick";
+import useAsync from "metabase/core/hooks/use-async";
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { formatNativeQuery } from "metabase/lib/engine";
 import { NativeQueryForm } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 
-interface UseNativeQuery {
-  query?: string;
-  error?: string;
-  isLoading: boolean;
-}
-
 export const useNativeQuery = (
-  question: Question,
+  question: Question | undefined,
   getNativeQuery: () => Promise<NativeQueryForm>,
 ) => {
-  const [state, setState] = useState<UseNativeQuery>({ isLoading: true });
-
-  useEffect(() => {
-    getNativeQuery()
-      .then(data =>
-        setState({ query: getQueryText(question, data), isLoading: false }),
-      )
-      .catch(error =>
-        setState({ error: getQueryError(error), isLoading: false }),
-      );
+  return useAsync(async () => {
+    try {
+      const query = await getNativeQuery();
+      return formatNativeQuery(query, question?.database()?.engine);
+    } catch (error) {
+      throw getResponseErrorMessage(error);
+    }
   }, [question, getNativeQuery]);
-
-  return state;
-};
-
-const getQueryText = (question: Question, data: NativeQueryForm) => {
-  const engine = question.database()?.engine;
-  return formatNativeQuery(data.query, engine);
-};
-
-const getQueryError = (error: unknown): string | undefined => {
-  return getIn(error, ["data", "message"]);
 };
