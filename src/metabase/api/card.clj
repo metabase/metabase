@@ -921,9 +921,9 @@ saved later when it is ready."
   ([card param-key]
    (param-values card param-key nil))
 
-  ([card      :- su/Map
-    param-key :- su/NonBlankString
-    query     :- (s/maybe su/NonBlankString)]
+  ([card      :- su/MapPlumatic
+    param-key :- su/NonBlankStringPlumatic
+    query     :- (s/maybe su/NonBlankStringPlumatic)]
    (let [param       (get (m/index-by :id (:parameters card)) param-key)
          source-type (:values_source_type param)]
      (when-not param
