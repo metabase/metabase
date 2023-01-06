@@ -3,6 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import _ from "underscore";
 
 import { renderWithProviders } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import EmbedModalContent from "./EmbedModalContent";
@@ -143,6 +144,7 @@ describe("EmbedModalContent", () => {
 function renderWithConfiguredProviders(element: JSX.Element) {
   renderWithProviders(element, {
     storeInitialState: {
+      currentUser: createMockUser({ is_superuser: true }),
       settings: createMockSettingsState({
         "enable-embedding": true,
         "embedding-secret-key": "my_super_secret_key",

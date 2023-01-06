@@ -7,6 +7,7 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 
+import { createMockUser } from "metabase-types/api/mocks";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
 import Question from "metabase-lib/Question";
@@ -70,11 +71,14 @@ function getUnverifiedDataset() {
 
 function setup({ question } = {}) {
   const card = getVerifiedDataset();
-  const state = { qb: createMockQueryBuilderState({ card }) };
+  const state = {
+    currentUser: createMockUser({ is_superuser: true }),
+    qb: createMockQueryBuilderState({ card }),
+  };
 
   return renderWithProviders(<QuestionModerationButton question={question} />, {
     withSampleDatabase: true,
-    initialState: state,
+    storeInitialState: state,
   });
 }
 
