@@ -15,6 +15,35 @@ describe("scenarios > visualizations > table", () => {
     cy.signInAsNormalUser();
   });
 
+  function joinTable(table) {
+    cy.findByText("Join data").click();
+    popover().findByText(table).click();
+  }
+
+  function selectFromDropdown(option, clickOpts) {
+    popover().last().findByText(option).click(clickOpts);
+  }
+
+  it("should allow changing column title when the field ref is the same except for the join-alias", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    openOrdersTable({ mode: "notebook" });
+    joinTable("Orders");
+    selectFromDropdown("ID");
+    selectFromDropdown("User ID");
+    visualize();
+
+    // Rename the first ID column, and make sure the second one is not updated
+    cy.findByText("ID").click();
+    cy.findByText("Filter by this column");
+    cy.get("div[role=tooltip]").find(".Icon-gear").click();
+    cy.get("input[value=ID]").type(" updated");
+    // This defocuses the input, which triggers the update
+    cy.findByText("Column title").click();
+    // This is just to click somewhere else to close the popover
+    cy.findByText("Subtotal").click();
+    cy.findAllByText("ID updated").should("have.length", 1);
+  });
+
   it("should allow to display any column as link with extrapolated url and text", () => {
     openPeopleTable({ limit: 2 });
 
