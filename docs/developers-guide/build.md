@@ -164,3 +164,11 @@ The entire Metabase application is compiled and assembled into a single .jar fil
     ./bin/build
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
+
+### Build  a Metabase Uberjar in a containerized environment
+
+If you want to build Metabase without installing Clojure, Java, and Node.js on your host machine, you can build the Uberjar inside a container by running:
+```
+DOCKER_BUILDKIT=1 docker build --output container-output/ .
+```
+Make sure that your Docker Daemon is running before executing the command. After running the command, you'll find the Metabase JAR file at `./container-output/app/metabase.jar`.
