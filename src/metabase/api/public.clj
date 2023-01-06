@@ -477,7 +477,7 @@
   (validation/check-public-sharing-enabled)
   (let [card (db/select-one Card :public_uuid uuid, :archived false)]
     (api.card/param-values card param-key)))
-    
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid/params/:param-key/search/:query"
   "Fetch values for a parameter on a public card containing `query`."
