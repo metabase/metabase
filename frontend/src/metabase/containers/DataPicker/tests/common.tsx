@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import React from "react";
 import nock from "nock";
 
@@ -28,7 +29,6 @@ import {
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import type Database from "metabase-lib/metadata/Database";
-import { getCollectionVirtualSchemaId } from "metabase-lib/metadata/utils/saved-questions";
 
 import type { DataPickerValue, DataPickerFiltersProp } from "../types";
 import useDataPickerValue from "../useDataPickerValue";
