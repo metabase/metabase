@@ -23,7 +23,7 @@ const SOURCE_TYPE_OPTIONS = [
 interface SourceTypeModalProps {
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
-  fieldValues: string[];
+  fieldValues: string[][];
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onClose: () => void;
@@ -101,11 +101,12 @@ const getValues = (value: string) => {
   return value
     .split(NEW_LINE)
     .map(line => line.trim())
-    .filter(line => line.length > 0);
+    .filter(line => line.length > 0)
+    .map(line => [line]);
 };
 
-const getValuesText = (values?: string[]) => {
-  return values?.join(NEW_LINE) ?? "";
+const getValuesText = (values?: string[][]) => {
+  return values?.map(([key]) => key).join(NEW_LINE) ?? "";
 };
 
 const isValidSourceConfig = (
@@ -122,7 +123,7 @@ const isValidSourceConfig = (
 
 const getDefaultSourceConfig = (
   sourceType: ValuesSourceType,
-  fieldValues: string[],
+  fieldValues: string[][],
 ) => {
   switch (sourceType) {
     case "static-list":

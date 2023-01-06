@@ -49,5 +49,5 @@ export interface Parameter {
 export type ValuesSourceType = null | "static-list";
 
 export interface ValuesSourceConfig {
-  values?: string[];
+  values?: string[][];
 }
