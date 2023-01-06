@@ -9,5 +9,5 @@ export function mockSettings(params: Partial<Settings> = {}) {
 
   MetabaseSettings.setAll(settings);
 
-  return { state };
+  return state;
 }

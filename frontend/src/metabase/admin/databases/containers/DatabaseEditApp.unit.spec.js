@@ -46,7 +46,7 @@ async function setup({ cachingEnabled = false } = {}) {
 
   renderWithProviders(<DatabaseEditApp />, {
     withRouter: true,
-    reducers: { admin, settings: () => settings.state },
+    reducers: { admin, settings },
   });
 
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));

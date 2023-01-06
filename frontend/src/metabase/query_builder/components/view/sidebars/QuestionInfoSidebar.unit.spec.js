@@ -73,7 +73,7 @@ function setup({ question, cachingEnabled = true } = {}) {
     {
       withSampleDatabase: true,
       storeInitialState: {
-        settings: settings.state,
+        settings,
       },
     },
   );

@@ -38,7 +38,7 @@ function setup({
           root: ROOT_COLLECTION,
         },
       }),
-      settings: settings.state,
+      settings,
     },
   });
 
