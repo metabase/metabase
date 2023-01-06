@@ -116,14 +116,16 @@ describe("Tooltip", () => {
     setup({ isOpen: true, tooltip: null });
 
     expect(screen.getByText("child target element")).toBeInTheDocument();
+    // eslint-disable-next-line testing-library/no-node-access
     expect(document.querySelector(".tippy-box")).toBeNull();
   });
 
   it("should be themed as a tooltip", () => {
     setup({ isOpen: true });
-    expect(
-      document.querySelector('[data-theme~="tooltip"'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("tooltip")).toHaveAttribute(
+      "data-theme",
+      "tooltip ",
+    );
   });
 
   it("should support using a reference element instead of a child target element", () => {
