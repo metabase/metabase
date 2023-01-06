@@ -3,29 +3,36 @@ import { render, fireEvent, screen } from "@testing-library/react";
 
 import EmailAttachmentPicker from "./EmailAttachmentPicker";
 
+function setup({ pulse = createPulse(), hasAttachments = false } = {}) {
+  const setPulse = jest.fn();
+
+  if (hasAttachments) {
+    pulse.cards[0]["include_xls"] = true;
+  }
+
+  render(
+    <EmailAttachmentPicker
+      cards={pulse.cards}
+      pulse={pulse}
+      setPulse={setPulse}
+    />,
+  );
+
+  return { setPulse };
+}
+
 describe("EmailAttachmentPicker", () => {
   describe("when instantiated without any cards with attachments", () => {
-    let pulse;
-    let setPulse;
-    beforeEach(() => {
-      pulse = createPulse();
-      setPulse = jest.fn();
-      render(
-        <EmailAttachmentPicker
-          cards={pulse.cards}
-          pulse={pulse}
-          setPulse={setPulse}
-        />,
-      );
-    });
-
     it("should have a Toggle that is not toggled", () => {
+      setup();
       const toggle = screen.getByLabelText("Attach results");
       expect(toggle).toBeInTheDocument();
       expect(toggle).not.toBeChecked();
     });
 
     it("should have a clickable toggle that reveals attachment type and a checkbox per question", () => {
+      setup();
+
       expect(screen.queryByText("File format")).not.toBeInTheDocument();
       expect(screen.queryByText("Questions to attach")).not.toBeInTheDocument();
       expect(screen.queryByText("card1")).not.toBeInTheDocument();
@@ -49,28 +56,15 @@ describe("EmailAttachmentPicker", () => {
   });
 
   describe("when instantiated with cards with attachments", () => {
-    let pulse;
-    let setPulse;
-    beforeEach(() => {
-      pulse = createPulse();
-      pulse.cards[0]["include_xls"] = true;
-      setPulse = jest.fn();
-      render(
-        <EmailAttachmentPicker
-          cards={pulse.cards}
-          pulse={pulse}
-          setPulse={setPulse}
-        />,
-      );
-    });
-
     it("should have a toggled Toggle", () => {
+      setup({ hasAttachments: true });
       const toggle = screen.getByLabelText("Attach results");
       expect(toggle).toBeInTheDocument();
       expect(toggle).toBeChecked();
     });
 
     it("should have selected the xlsv format", () => {
+      setup({ hasAttachments: true });
       const csvFormatInput = screen.getByLabelText(".csv");
       expect(csvFormatInput).not.toBeChecked();
       const xlsxFormatInput = screen.getByLabelText(".xlsx");
@@ -78,6 +72,8 @@ describe("EmailAttachmentPicker", () => {
     });
 
     it("should show a checked checkbox for the card with an attachment", () => {
+      setup({ hasAttachments: true });
+
       const toggleAllCheckbox = screen.getByLabelText("Questions to attach");
       expect(toggleAllCheckbox).not.toBeChecked();
 
@@ -89,6 +85,7 @@ describe("EmailAttachmentPicker", () => {
     });
 
     it("should let you check or uncheck card checkboxes", () => {
+      setup({ hasAttachments: true });
       const card1Checkbox = screen.getByLabelText("card1");
       fireEvent.click(card1Checkbox);
       expect(card1Checkbox).not.toBeChecked();
@@ -97,6 +94,7 @@ describe("EmailAttachmentPicker", () => {
     });
 
     it("should let you check all checkboxes", () => {
+      setup({ hasAttachments: true });
       const card2Checkbox = screen.getByLabelText("card2");
       fireEvent.click(card2Checkbox);
       expect(card2Checkbox).toBeChecked();
@@ -104,6 +102,8 @@ describe("EmailAttachmentPicker", () => {
     });
 
     it("should let you check/uncheck all boxes via the `Questions to attach` toggle", () => {
+      setup({ hasAttachments: true });
+
       const toggleAllCheckbox = screen.getByLabelText("Questions to attach");
       const card1Checkbox = screen.getByLabelText("card1");
       const card2Checkbox = screen.getByLabelText("card2");
@@ -122,6 +122,8 @@ describe("EmailAttachmentPicker", () => {
     });
 
     it("should uncheck all boxes if disabling attachments", () => {
+      setup({ hasAttachments: true });
+
       const toggle = screen.getByLabelText("Attach results");
       expect(screen.getByLabelText("card1")).toBeChecked();
 
