@@ -110,8 +110,8 @@ describe("pie chart", () => {
       ["baz", 0.002],
       ["qux", 0.008],
     ];
-    const { container } = setup(series(rows));
-    const paths = container.querySelectorAll("path");
+    setup(series(rows));
+    const paths = screen.getAllByTestId("pie-chart-arc");
     const otherPath = paths[paths.length - 1];
 
     // condensed tooltips display as "dimension: metric"
@@ -131,8 +131,8 @@ describe("pie chart", () => {
       ["bar", 0.49],
       ["baz", 0.002],
     ];
-    const { container } = setup(series(rows));
-    const paths = container.querySelectorAll("path");
+    setup(series(rows));
+    const paths = screen.getAllByTestId("pie-chart-arc");
     const otherPath = paths[paths.length - 1];
 
     fireEvent.mouseMove(otherPath);
