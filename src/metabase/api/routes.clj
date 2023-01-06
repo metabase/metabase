@@ -65,7 +65,7 @@
 
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   ee-routes
-  (context "/action"              [] (+auth api.action/routes))
+  (context "/action"               [] (+auth api.action/routes))
   (context "/activity"             [] (+auth api.activity/routes))
   (context "/alert"                [] (+auth api.alert/routes))
   (context "/app"                  [] (+auth api.app/routes))
