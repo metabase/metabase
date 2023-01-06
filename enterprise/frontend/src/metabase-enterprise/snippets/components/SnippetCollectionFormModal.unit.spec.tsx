@@ -152,8 +152,6 @@ describe("SnippetCollectionFormModal", () => {
       const folder = createMockCollection({ description: "has description" });
       await setupEditing({ folder });
 
-      screen.debug();
-
       expect(screen.getByLabelText(LABEL.NAME)).toBeInTheDocument();
       expect(screen.getByLabelText(LABEL.NAME)).toHaveValue(folder.name);
 
