@@ -17,8 +17,13 @@ const ROOT_COLLECTION = {
   can_write: true,
 } as Collection;
 
-function setup({ mockCreateDashboardResponse = true } = {}) {
+function setup({
+  isCachingEnabled = false,
+  mockCreateDashboardResponse = true,
+} = {}) {
   const onClose = jest.fn();
+
+  const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
 
   if (mockCreateDashboardResponse) {
     nock(location.origin)
@@ -33,6 +38,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
           root: ROOT_COLLECTION,
         },
       }),
+      settings: settings.state,
     },
   });
 
@@ -80,15 +86,9 @@ describe("CreateDashboardModal", () => {
   });
 
   describe("Cache TTL field", () => {
-    beforeEach(() => {
-      mockSettings({
-        "enable-query-caching": true,
-      });
-    });
-
     describe("OSS", () => {
       it("is not shown", () => {
-        setup();
+        setup({ isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -102,7 +102,7 @@ describe("CreateDashboardModal", () => {
       });
 
       it("is not shown", () => {
-        setup();
+        setup({ isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),

@@ -61,7 +61,7 @@ function getDataset(card) {
 }
 
 function setup({ question, cachingEnabled = true } = {}) {
-  mockSettings({
+  const settings = mockSettings({
     "enable-query-caching": cachingEnabled,
     "query-caching-min-ttl": 10000,
   });
@@ -72,6 +72,9 @@ function setup({ question, cachingEnabled = true } = {}) {
     <QuestionInfoSidebar question={question} onSave={onSave} />,
     {
       withSampleDatabase: true,
+      storeInitialState: {
+        settings: settings.state,
+      },
     },
   );
 }

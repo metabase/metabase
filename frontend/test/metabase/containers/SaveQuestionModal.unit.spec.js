@@ -15,10 +15,17 @@ import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 
 import Question from "metabase-lib/Question";
 
-const setup = async (question, originalQuestion) => {
+const setup = async (
+  question,
+  originalQuestion,
+  { isCachingEnabled = false } = {},
+) => {
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
+
+  const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
+
   renderWithProviders(
     <SaveQuestionModal
       card={question.card()}
@@ -28,8 +35,14 @@ const setup = async (question, originalQuestion) => {
       onSave={onSaveMock}
       onClose={onCloseMock}
     />,
+    {
+      storeInitialState: {
+        settings: settings.state,
+      },
+    },
   );
   await waitFor(() => screen.getByRole("button", { name: "Save" }));
+
   return { onSaveMock, onCreateMock, onCloseMock };
 };
 
@@ -523,10 +536,6 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("Cache TTL field", () => {
-    beforeEach(() => {
-      mockSettings({ "enable-query-caching": true });
-    });
-
     const question = Question.create({
       databaseId: SAMPLE_DATABASE.id,
       tableId: ORDERS.id,
@@ -538,7 +547,7 @@ describe("SaveQuestionModal", () => {
 
     describe("OSS", () => {
       it("is not shown", async () => {
-        await setup(question);
+        await setup(question, null, { isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -552,7 +561,7 @@ describe("SaveQuestionModal", () => {
       });
 
       it("is not shown", async () => {
-        await setup(question);
+        await setup(question, null, { isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
