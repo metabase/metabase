@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { merge } from "icepick";
 import { createMemoryHistory } from "history";
 import { Router, Route } from "react-router";
@@ -134,6 +134,14 @@ function MaybeDNDProvider({
       {children}
     </DragDropContextProvider>
   );
+}
+
+export function getIcon(name: string) {
+  return screen.getByLabelText(`${name} icon`);
+}
+
+export function queryIcon(name: string) {
+  return screen.queryByLabelText(`${name} icon`);
 }
 
 export * from "@testing-library/react";
