@@ -16,11 +16,14 @@ import type { State } from "metabase-types/store";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
+import mainReducers from "metabase/reducers-main";
+import publicReducers from "metabase/reducers-public";
+
 import { getStore } from "./entities-store";
 
 export interface RenderWithProvidersOptions {
   currentUser?: User;
-  reducers?: Record<string, (state: any) => any>;
+  mode?: "default" | "public";
   storeInitialState?: Partial<State>;
   withSampleDatabase?: boolean;
   withRouter?: boolean;
@@ -44,7 +47,7 @@ export function renderWithProviders(
   ui: React.ReactElement,
   {
     currentUser = DEFAULT_USER,
-    reducers = {},
+    mode = "default",
     storeInitialState = {},
     withSampleDatabase,
     withRouter = false,
@@ -61,17 +64,7 @@ export function renderWithProviders(
   const initialReduxState = createMockState(customStateParams);
 
   const store = getStore(
-    {
-      admin: (state = initialReduxState.admin) => state,
-      app: (state = initialReduxState.app) => state,
-      currentUser: (state = initialReduxState.currentUser) => state,
-      dashboard: (state = initialReduxState.dashboard) => state,
-      embed: (state = initialReduxState.embed) => state,
-      settings: (state = initialReduxState.settings) => state,
-      setup: (state = initialReduxState.setup) => state,
-      qb: (state = initialReduxState.qb) => state,
-      ...reducers,
-    },
+    mode === "default" ? mainReducers : publicReducers,
     initialReduxState,
   );
 
