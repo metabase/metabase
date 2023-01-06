@@ -44,9 +44,10 @@ describe("Popover", () => {
 
   it("should be themed as a popover", () => {
     setup({ visible: true });
-    expect(
-      document.querySelector('[data-theme~="popover"'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("tooltip")).toHaveAttribute(
+      "data-theme",
+      "popover",
+    );
   });
 
   describe("lazy", () => {
