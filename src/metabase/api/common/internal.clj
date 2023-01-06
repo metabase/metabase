@@ -85,18 +85,17 @@
                            (u/pprint-to-str schema) (u/add-period route-str)))))))
 
 (defn- malli-dox-for-schema
-  "Look up the docstring for `schema` for use in auto-generated API documentation. In most cases this is defined by
-  wrapping the schema with `with-api-error-message`."
+  "Generate the docstring for `schema` for use in auto-generated API documentation."
   [schema route-str]
-  (if-not schema
-    ""
-    (u/prog1 (umd/describe schema)
-     ;; Don't try to i18n this stuff! It's developer-facing only.
-     (when config/is-dev?
-       (log/warn
-        (u/format-color 'red (str "We don't have a nice error message for MALLI SCHEMA: %s defined at %s")
-                        (u/pprint-to-str schema)
-                        (u/add-period route-str)))))))
+  (try (umd/describe schema)
+       (catch Exception _
+         (ex-data
+          (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
+            (log/warn
+             (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
+                             (u/pprint-to-str schema)
+                             (u/add-period route-str)))))
+         "")))
 
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
@@ -282,10 +281,11 @@
   "Validate a parameter against its respective malli schema, or throw an Exception."
   [field-name value schema]
   (when-not (mc/validate schema value)
-    (throw (ex-info (tru "Invalid m field: {0}" field-name)
-                    {:status-code 400
-                     :errors      {(keyword field-name)
-                                   (me/humanize (mc/explain schema value))}}))))
+    (let [explained (mc/explain schema value)]
+      (throw (ex-info (tru "Invalid m field: {0}" field-name)
+                      {:status-code 400
+                       :errors      {(keyword field-name)
+                                     (me/humanize (me/with-spell-checking explained))}})))))
 
 (defn validate-param
   "Validate a parameter against its respective schema, or throw an Exception."

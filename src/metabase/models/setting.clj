@@ -398,6 +398,11 @@
                  (str/replace "-" "_")
                  str/upper-case)))
 
+(defn setting-env-map-name
+  "Correctly translate a setting to the keyword it will be found at in [[env/env]]."
+  [setting-definition-or-name]
+  (keyword (str "mb-" (munge-setting-name (setting-name setting-definition-or-name)))))
+
 (defn env-var-value
   "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
    The name of the Setting is converted to uppercase and dashes to underscores; for example, a setting named
@@ -407,7 +412,7 @@
   ^String [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
     (when (allows-site-wide-values? setting)
-      (let [v (env/env (keyword (str "mb-" (munge-setting-name (setting-name setting)))))]
+      (let [v (env/env (setting-env-map-name setting))]
         (when (seq v)
           v)))))
 
