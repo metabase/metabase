@@ -21,11 +21,7 @@ import { ROOT_COLLECTION } from "metabase/entities/collections";
 
 import type { Collection } from "metabase-types/api";
 
-import {
-  createMockCard,
-  createMockCollection,
-  createMockSettings,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import type Database from "metabase-lib/metadata/Database";
@@ -152,11 +148,9 @@ export async function setup({
     SAMPLE_MODEL,
   ]);
 
-  const settings = createMockSettings({
+  const settings = createMockSettingsState({
     "enable-nested-queries": hasNestedQueriesEnabled,
   });
-
-  const settingsReducer = () => createMockSettingsState({ values: settings });
 
   renderWithProviders(
     <DataPickerWrapper
@@ -165,8 +159,8 @@ export async function setup({
       onChange={onChange}
     />,
     {
-      reducers: {
-        settings: settingsReducer,
+      storeInitialState: {
+        settings,
       },
       withSampleDatabase: hasDataAccess,
     },
