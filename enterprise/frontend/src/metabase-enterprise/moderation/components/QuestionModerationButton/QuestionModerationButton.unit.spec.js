@@ -1,10 +1,14 @@
 import React from "react";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   SAMPLE_DATABASE,
   ORDERS,
   metadata,
 } from "__support__/sample_database_fixture";
+
+import { createMockQueryBuilderState } from "metabase-types/store/mocks";
+
 import Question from "metabase-lib/Question";
 import QuestionModerationButton from "./QuestionModerationButton";
 
@@ -65,15 +69,12 @@ function getUnverifiedDataset() {
 }
 
 function setup({ question } = {}) {
-  const qbState = {
-    card: getVerifiedDataset(),
-  };
+  const card = getVerifiedDataset();
+  const state = { qb: createMockQueryBuilderState({ card }) };
 
   return renderWithProviders(<QuestionModerationButton question={question} />, {
     withSampleDatabase: true,
-    initialState: {
-      qb: qbState,
-    },
+    initialState: state,
   });
 }
 
