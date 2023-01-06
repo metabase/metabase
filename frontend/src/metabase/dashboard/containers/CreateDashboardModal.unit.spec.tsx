@@ -2,7 +2,7 @@ import React from "react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
@@ -80,12 +80,10 @@ describe("CreateDashboardModal", () => {
 
   it("calls onClose when Cancel button is clicked", async () => {
     const { onClose } = setup();
-    await act(async () => {
-      await userEvent.click(
-        screen.getByRole("button", { name: "Cancel" }) as Element,
-      );
+    userEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
-    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   describe("Cache TTL field", () => {
