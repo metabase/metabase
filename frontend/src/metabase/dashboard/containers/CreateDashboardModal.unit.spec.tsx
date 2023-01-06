@@ -4,8 +4,8 @@ import nock from "nock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 
-import MetabaseSettings from "metabase/lib/settings";
 import type { Collection } from "metabase-types/api";
 import { createMockEntitiesState } from "metabase-types/store/mocks";
 
@@ -17,31 +17,13 @@ const ROOT_COLLECTION = {
   can_write: true,
 } as Collection;
 
-function mockCachingEnabled(enabled = true) {
-  const original = MetabaseSettings.get.bind(MetabaseSettings);
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "enable-query-caching") {
-      return enabled;
-    }
-    if (key === "application-name") {
-      return "Metabase Test";
-    }
-    if (key === "version") {
-      return { tag: "" };
-    }
-    if (key === "is-hosted?") {
-      return false;
-    }
-    if (key === "enable-enhancements?") {
-      return false;
-    }
-    return original(key);
-  });
-}
-
-function setup({ mockCreateDashboardResponse = true } = {}) {
+function setup({
+  isCachingEnabled = false,
+  mockCreateDashboardResponse = true,
+} = {}) {
   const onClose = jest.fn();
+
+  const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
 
   if (mockCreateDashboardResponse) {
     nock(location.origin)
@@ -56,6 +38,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
           root: ROOT_COLLECTION,
         },
       }),
+      settings,
     },
   });
 
@@ -103,13 +86,9 @@ describe("CreateDashboardModal", () => {
   });
 
   describe("Cache TTL field", () => {
-    beforeEach(() => {
-      mockCachingEnabled();
-    });
-
     describe("OSS", () => {
       it("is not shown", () => {
-        setup();
+        setup({ isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -123,7 +102,7 @@ describe("CreateDashboardModal", () => {
       });
 
       it("is not shown", () => {
-        setup();
+        setup({ isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),

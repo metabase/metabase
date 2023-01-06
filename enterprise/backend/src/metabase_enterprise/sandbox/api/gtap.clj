@@ -11,12 +11,14 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
-  "Fetch a list of all the GTAPs currently in use."
-  []
-  ;; TODO - do we need to hydrate anything here?
-  (db/select GroupTableAccessPolicy))
+(api/defendpoint GET "/"
+  "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
+  [group_id table_id]
+  {group_id [:maybe pos-int?]
+   table_id [:maybe pos-int?]}
+  (if (and group_id table_id)
+    (db/select-one GroupTableAccessPolicy :group_id group_id :table_id table_id)
+    (db/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
