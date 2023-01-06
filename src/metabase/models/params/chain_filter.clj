@@ -66,8 +66,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
-   [honeysql.format :as hformat]
+   [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
@@ -506,38 +505,48 @@
    options           :- (s/maybe Options)]
   (unremapped-chain-filter remapped-field-id constraints (assoc options :original-field-id original-field-id)))
 
-(defmethod hformat/fn-handler (u/qualified-name ::parens) [_ x]
-  (str "(" (hformat/to-sql x) ")"))
+(defn- format-parens [_fn [x]]
+  (let [[sql & args] (sql/format-expr x)]
+    (into [(str "(" sql ")")] args)))
 
-(defn- parens [x]
-  (hsql/call (u/qualified-name ::parens) x))
+(sql/register-fn! ::parens format-parens)
+
+(defn- format-union
+  "Workaround for https://github.com/seancorfield/honeysql/issues/451. Wrap the subselects in parens, otherwise it will
+  fail on Postgres."
+  [_clause exprs]
+  (let [[sqls args] (sql/format-expr-list exprs)
+        sql         (str/join " UNION " sqls)]
+    (into [sql] args)))
+
+(sql/register-clause! ::union format-union :union)
+
+(defn- remapped-field-id-query [field-id]
+  {:select [[:ids.id :id]]
+   :from   [[{::union [{:select [[:dimension.human_readable_field_id :id]]
+                        :from   [[:dimension :dimension]]
+                        :where  [:and
+                                 [:= :dimension.field_id field-id]
+                                 [:not= :dimension.human_readable_field_id nil]]
+                        :limit  1}
+                       {:select    [[:dest.id :id]]
+                        :from      [[:metabase_field :source]]
+                        :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
+                                    [:metabase_field :dest] [:= :dest.table_id :table.id]]
+                        :where     [:and
+                                    [:= :source.id field-id]
+                                    (mdb.u/isa :source.semantic_type :type/PK)
+                                    (mdb.u/isa :dest.semantic_type :type/Name)]
+                        :limit     1}]}
+             :ids]]
+   :limit  1})
 
 ;; TODO -- add some caching here?
 (s/defn ^:private remapped-field-id :- (s/maybe su/IntGreaterThanZeroPlumatic)
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- su/IntGreaterThanZeroPlumatic]
-  (let [[{:keys [id]}] (mdb.query/query {:select [[:ids.id :id]]
-                                         :from   [[{:union [(parens
-                                                             {:select [[:dimension.human_readable_field_id :id]]
-                                                              :from   [[:dimension :dimension]]
-                                                              :where  [:and
-                                                                       [:= :dimension.field_id field-id]
-                                                                       [:not= :dimension.human_readable_field_id nil]]
-                                                              :limit  1})
-                                                            (parens
-                                                             {:select    [[:dest.id :id]]
-                                                              :from      [[:field :source]]
-                                                              :left-join [[:table :table] [:= :source.table_id :table.id]
-                                                                          [:field :dest] [:= :dest.table_id :table.id]]
-                                                              :where     [:and
-                                                                          [:= :source.id field-id]
-                                                                          (mdb.u/isa :source.semantic_type :type/PK)
-                                                                          (mdb.u/isa :dest.semantic_type :type/Name)]
-                                                              :limit     1})]}
-                                                   :ids]]
-                                         :limit  1})]
-    id))
+  (:id (first (mdb.query/query (remapped-field-id-query field-id)))))
 
 (defn- use-cached-field-values?
   "Whether we should use cached `FieldValues` instead of running a query via the QP."

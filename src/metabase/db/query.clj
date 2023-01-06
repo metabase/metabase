@@ -50,7 +50,7 @@
   (classloader/require 'metabase.db.setup)
   (let [sql-args (try
                    (binding [hx/*honey-sql-version* 2]
-                     (sql/format honey-sql {:quoted true, :dialect :metabase.db.setup/application-db, :pretty true}))
+                     (sql/format honey-sql {:quoted true, :dialect :metabase.db.setup/application-db}))
                    (catch Throwable e
                      ;; this is not i18n'ed because it (hopefully) shouldn't be user-facing -- we shouldn't be running
                      ;; in to unexpected Honey SQL compilation errors at run time -- if we are it means we're not being
