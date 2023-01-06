@@ -15,6 +15,7 @@ import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
+import { getSetting } from "metabase/selectors/settings";
 
 import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -181,6 +182,8 @@ const mapStateToProps = (state, props) => {
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
     loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
+
+    reportTimezone: getSetting(state, "report-timezone-long"),
   };
 };
 

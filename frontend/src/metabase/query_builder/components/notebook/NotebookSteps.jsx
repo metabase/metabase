@@ -38,7 +38,7 @@ export default class NotebookSteps extends React.Component {
   };
 
   render() {
-    const { question, className, updateQuestion } = this.props;
+    const { question, className, reportTimezone, updateQuestion } = this.props;
     const { openSteps, lastOpenedStep } = this.state;
 
     if (!question) {
@@ -67,6 +67,7 @@ export default class NotebookSteps extends React.Component {
               closeStep={this.closeStep}
               isLastStep={index === steps.length - 1}
               isLastOpened={lastOpenedStep === step.id}
+              reportTimezone={reportTimezone}
             />
           );
         })}
