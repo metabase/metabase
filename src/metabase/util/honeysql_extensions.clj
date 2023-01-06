@@ -10,7 +10,7 @@
    [metabase.util.honey-sql-2-extensions :as h2x]
    [schema.core :as s]))
 
-(def ^:dynamic *honey-sql-version*
+(def ^:dynamic ^{:added "0.46.0"} *honey-sql-version*
   "The version of Honey SQL to target when compiling. Currently, the Query Processor targets Honey SQL 1. The
   application database (via Toucan 2) targets Honey SQL 2. Since some application-database-related stuff uses some
   methods here (like [[add-interval-honeysql-form]]) you can rebind this to target Honey SQL 2 for drivers/clauses

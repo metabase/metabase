@@ -1,4 +1,4 @@
-(ns metabase.util.honey-sql-1-extensions
+(ns ^{:deprecated "0.46.0"} metabase.util.honey-sql-1-extensions
   (:refer-clojure
    :exclude
    [+ - / * abs mod inc dec cast concat format second])

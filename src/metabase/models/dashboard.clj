@@ -107,19 +107,17 @@
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)
         affected     (mdb.query/query
-                      {:select    [[:p.id :pulse-id] [:pc.card_id :card-id]]
-                       :modifiers [:distinct]
-                       :from      [[:pulse :p]]
-                       :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
-                       :where     [:= :p.dashboard_id dashboard-id]})]
+                      {:select-distinct [[:p.id :pulse-id] [:pc.card_id :card-id]]
+                       :from            [[:pulse :p]]
+                       :join            [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+                       :where           [:= :p.dashboard_id dashboard-id]})]
     (when-let [pulse-ids (seq (distinct (map :pulse-id affected)))]
       (let [correct-card-ids     (->> (mdb.query/query
-                                       {:select    [:dc.card_id]
-                                        :modifiers [:distinct]
-                                        :from      [[:report_dashboardcard :dc]]
-                                        :where     [:and
-                                                    [:= :dc.dashboard_id dashboard-id]
-                                                    [:not= :dc.card_id nil]]})
+                                       {:select-distinct [:dc.card_id]
+                                        :from            [[:report_dashboardcard :dc]]
+                                        :where           [:and
+                                                          [:= :dc.dashboard_id dashboard-id]
+                                                          [:not= :dc.card_id nil]]})
                                       (map :card_id)
                                       set)
             stale-card-ids       (->> affected

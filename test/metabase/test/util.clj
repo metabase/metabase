@@ -514,7 +514,11 @@
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model                    (db/resolve-model model)
         [original-column->value] (mdb.query/query {:select (keys column->temp-value)
-                                                   :from   [model]
+                                                   :from   [(u/prog1 (:table model)
+                                                              ;; this will fail once we switch to Toucan 2, since models
+                                                              ;; aren't objects; this is here so we can catch it easily
+                                                              ;; and fix it without hurting our heads
+                                                              (assert (keyword? <>)))]
                                                    :where  [:= :id (u/the-id object-or-id)]})]
     (assert original-column->value
             (format "%s %d not found." (name model) (u/the-id object-or-id)))

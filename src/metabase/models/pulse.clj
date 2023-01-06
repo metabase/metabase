@@ -289,22 +289,21 @@
   ([{:keys [archived? user-id]
      :or   {archived? false}}]
    (assert boolean? archived?)
-   (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
-                :modifiers [:distinct]
-                :from      [[:pulse :p]]
-                :left-join (when user-id
-                             [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
-                              [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
-                :where     [:and
-                            [:not= :p.alert_condition nil]
-                            [:= :p.archived archived?]
-                            (when user-id
-                              [:or
-                               [:= :p.creator_id user-id]
-                               [:= :pcr.user_id user-id]])]
-                :order-by  [[:lower-name :asc]]}]
+   (let [query {:select-distinct [:p.* [:%lower.p.name :lower-name]]
+                :from            [[:pulse :p]]
+                :left-join       (when user-id
+                                   [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
+                                    [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
+                :where           [:and
+                                  [:not= :p.alert_condition nil]
+                                  [:= :p.archived archived?]
+                                  (when user-id
+                                    [:or
+                                     [:= :p.creator_id user-id]
+                                     [:= :pcr.user_id user-id]])]
+                :order-by        [[:lower-name :asc]]}]
      (for [alert (hydrate-notifications (query-as Pulse query))
-           :let [alert (notification->alert alert)]
+           :let  [alert (notification->alert alert)]
            ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
            ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
            ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
@@ -315,29 +314,28 @@
   "Fetch all `Pulses`."
   [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}}]
-  (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
-               :modifiers [:distinct]
-               :from      [[Pulse :p]]
-               :left-join (concat
-                           [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
-                           (when user-id
-                             [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
-                              [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
-               :where     [:and
-                           [:= :p.alert_condition nil]
-                           [:= :p.archived archived?]
-                           [:or
-                            [:= :p.dashboard_id nil]
-                            [:= :d.archived false]]
-                           (when dashboard-id
-                             [:= :p.dashboard_id dashboard-id])
-                           (when user-id
-                             [:and
-                              [:not= :p.dashboard_id nil]
-                              [:or
-                               [:= :p.creator_id user-id]
-                               [:= :pcr.user_id user-id]]])]
-               :order-by  [[:lower-name :asc]]}]
+  (let [query {:select-distinct [:p.* [:%lower.p.name :lower-name]]
+               :from            [[:pulse :p]]
+               :left-join       (concat
+                                 [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
+                                 (when user-id
+                                   [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
+                                    [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
+               :where           [:and
+                                 [:= :p.alert_condition nil]
+                                 [:= :p.archived archived?]
+                                 [:or
+                                  [:= :p.dashboard_id nil]
+                                  [:= :d.archived false]]
+                                 (when dashboard-id
+                                   [:= :p.dashboard_id dashboard-id])
+                                 (when user-id
+                                   [:and
+                                    [:not= :p.dashboard_id nil]
+                                    [:or
+                                     [:= :p.creator_id user-id]
+                                     [:= :pcr.user_id user-id]]])]
+               :order-by        [[:lower-name :asc]]}]
     (for [pulse (query-as Pulse query)]
       (-> pulse
           (dissoc :lower-name)

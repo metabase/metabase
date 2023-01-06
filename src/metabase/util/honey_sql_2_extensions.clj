@@ -1,4 +1,4 @@
-(ns metabase.util.honey-sql-2-extensions
+(ns ^{:added  "0.46.0"} metabase.util.honey-sql-2-extensions
   "Honey SQL 2 extensions. Used for the application database. For QP/drivers stuff,
   see [[metabase.util.honeysql-extensions]], which at the time of this writing still uses Honey SQL 1."
   (:refer-clojure
