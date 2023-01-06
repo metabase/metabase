@@ -58,7 +58,7 @@ async function setup({
   );
 
   if (waitForSectionAppearance) {
-    await waitFor(() => utils.queryByTestId("model-cache-section"));
+    await utils.findByTestId("model-cache-section");
   }
 
   return {

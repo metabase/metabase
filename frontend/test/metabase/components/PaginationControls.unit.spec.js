@@ -44,7 +44,7 @@ describe("PaginationControls", () => {
     });
 
     expect(previousPageButton).toBeDisabled();
-    expect(nextPageButton).not.toBeDisabled();
+    expect(nextPageButton).toBeEnabled();
   });
 
   it("should disable pagination button on the last page when total is provided", () => {
@@ -56,7 +56,7 @@ describe("PaginationControls", () => {
       onPreviousPage: () => {},
     });
 
-    expect(previousPageButton).not.toBeDisabled();
+    expect(previousPageButton).toBeEnabled();
     expect(nextPageButton).toBeDisabled();
   });
 

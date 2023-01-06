@@ -31,7 +31,7 @@ describe("PermissionSelect", () => {
     );
 
     const selected = queryByText("Allowed");
-    expect(selected).not.toBeNull();
+    expect(selected).toBeInTheDocument();
   });
 
   it("when clicked shows options except selected", () => {
@@ -43,10 +43,10 @@ describe("PermissionSelect", () => {
     fireEvent.click(selected);
 
     const optionsList = getByRole("listbox");
-    expect(optionsList).not.toBeNull();
+    expect(optionsList).toBeInTheDocument();
 
-    const [limited, noAccess, ...rest] = getAllByRole("option");
-    expect(rest).toHaveLength(0);
+    const [limited, noAccess, ...rest] = getByRole("option");
+    expect(rest).not.toBeInTheDocument();
 
     expect(limited).toHaveTextContent("Limited");
     expect(noAccess).toHaveTextContent("No access");
@@ -66,7 +66,7 @@ describe("PermissionSelect", () => {
     fireEvent.click(selected);
 
     const optionsList = getByRole("listbox");
-    expect(optionsList).not.toBeNull();
+    expect(optionsList).toBeInTheDocument();
 
     const [limited] = getAllByRole("option");
     fireEvent.click(limited);
@@ -83,7 +83,7 @@ describe("PermissionSelect", () => {
     fireEvent.click(selected);
 
     const optionsList = queryByRole("listbox");
-    expect(optionsList).toBeNull();
+    expect(optionsList).not.toBeInTheDocument();
 
     fireEvent.mouseEnter(selected);
   });
@@ -100,6 +100,6 @@ describe("PermissionSelect", () => {
     fireEvent.mouseEnter(warning);
     const warningTooltip = screen.queryByText(WARNING);
 
-    expect(warningTooltip).not.toBeNull();
+    expect(warningTooltip).toBeInTheDocument();
   });
 });

@@ -102,7 +102,7 @@ describe("RowChart", () => {
         series: [series1],
         hasYAxis: false,
       });
-      expect(queryByText("foo")).toBeNull();
+      expect(queryByText("foo")).not.toBeInTheDocument();
     });
 
     it("should render nice values for X-ticks", () => {
@@ -118,7 +118,7 @@ describe("RowChart", () => {
         series: [series1],
         hasXAxis: false,
       });
-      expect(queryByText("50")).toBeNull();
+      expect(queryByText("50")).not.toBeInTheDocument();
     });
 
     it("should apply formatting", () => {
@@ -152,9 +152,9 @@ describe("RowChart", () => {
     it("should render chart bars for a single series chart", () => {
       const { bars } = setup({ series: [series1] });
       expect(bars).toHaveLength(3);
-      expect(bars[0].getAttribute("aria-label")).toBe("100");
-      expect(bars[1].getAttribute("aria-label")).toBe("200");
-      expect(bars[2].getAttribute("aria-label")).toBe("300");
+      expect(bars[0]).toHaveAttribute("aria-label", "100");
+      expect(bars[1]).toHaveAttribute("aria-label", "200");
+      expect(bars[2]).toHaveAttribute("aria-label", "300");
     });
 
     it("should render chart bars for a multi-series chart", () => {
@@ -162,14 +162,14 @@ describe("RowChart", () => {
       expect(bars).toHaveLength(6);
 
       // Series 1
-      expect(bars[0].getAttribute("aria-label")).toBe("100");
-      expect(bars[1].getAttribute("aria-label")).toBe("200");
-      expect(bars[2].getAttribute("aria-label")).toBe("300");
+      expect(bars[0]).toHaveAttribute("aria-label", "100");
+      expect(bars[1]).toHaveAttribute("aria-label", "200");
+      expect(bars[2]).toHaveAttribute("aria-label", "300");
 
       // Series 2
-      expect(bars[3].getAttribute("aria-label")).toBe("200");
-      expect(bars[4].getAttribute("aria-label")).toBe("400");
-      expect(bars[5].getAttribute("aria-label")).toBe("600");
+      expect(bars[3]).toHaveAttribute("aria-label", "200");
+      expect(bars[4]).toHaveAttribute("aria-label", "400");
+      expect(bars[5]).toHaveAttribute("aria-label", "600");
     });
   });
 
@@ -301,11 +301,11 @@ describe("RowChart", () => {
       const secondSeriesBars = bars.slice(3);
 
       firstSeriesBars.forEach(bar =>
-        expect(bar.getAttribute("opacity")).toBe("0.4"),
+        expect(bar).toHaveAttribute("opacity", "0.4"),
       );
 
       secondSeriesBars.forEach(bar =>
-        expect(bar.getAttribute("opacity")).toBe("1"),
+        expect(bar).toHaveAttribute("opacity", "1"),
       );
     });
 

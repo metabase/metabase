@@ -70,8 +70,8 @@ describe("FilterableTree", () => {
     });
     expect(getAllByRole("menuitem")).toHaveLength(2);
 
-    expect(queryByText("Item 1 in Group 1")).not.toBeNull();
-    expect(queryByText("Item 1 in Group 2")).not.toBeNull();
+    expect(queryByText("Item 1 in Group 1")).toBeInTheDocument();
+    expect(queryByText("Item 1 in Group 2")).toBeInTheDocument();
   });
 
   it("allows to filter nested tree items", () => {
@@ -82,7 +82,7 @@ describe("FilterableTree", () => {
     act(() => {
       jest.advanceTimersByTime(SEARCH_DEBOUNCE_DURATION);
     });
-    expect(getAllByRole("menuitem")).toHaveLength(1);
-    expect(queryByText("Child Item 3 in Group 3")).not.toBeNull();
+    expect(getByRole("menuitem")).toBeInTheDocument();
+    expect(queryByText("Child Item 3 in Group 3")).toBeInTheDocument();
   });
 });

@@ -29,7 +29,7 @@ describe("Visualization", () => {
           data: { rows: [[1]], cols: [NumberColumn({ name: "Count" })] },
         },
       ]);
-      expect(container.querySelector("h1").textContent).toEqual("1");
+      expect(container.querySelector("h1")).toHaveTextContent("1");
     });
   });
 

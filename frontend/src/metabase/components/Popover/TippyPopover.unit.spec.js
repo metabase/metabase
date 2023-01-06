@@ -64,7 +64,7 @@ describe("Popover", () => {
       const contentFn = jest.fn();
       setup({ contentFn, lazy: false });
       expect(contentFn).toHaveBeenCalled();
-      expect(screen.queryByText("popover content")).toBeNull();
+      expect(screen.queryByText("popover content")).not.toBeInTheDocument();
     });
   });
 

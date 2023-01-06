@@ -41,7 +41,7 @@ const setup = async (
       },
     },
   );
-  await waitFor(() => screen.getByRole("button", { name: "Save" }));
+  await screen.findByRole("button", { name: "Save" });
 
   return { onSaveMock, onCreateMock, onCloseMock };
 };

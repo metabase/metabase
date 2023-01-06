@@ -33,9 +33,9 @@ describe("Tree", () => {
       <Tree data={data} onSelect={jest.fn()} />,
     );
     expect(getAllByRole("menuitem")).toHaveLength(2);
-    expect(queryByText("Item 1")).not.toBeNull();
-    expect(queryByText("Item 2")).not.toBeNull();
-    expect(queryByText("Item 3")).toBeNull();
+    expect(queryByText("Item 1")).toBeInTheDocument();
+    expect(queryByText("Item 2")).toBeInTheDocument();
+    expect(queryByText("Item 3")).not.toBeInTheDocument();
   });
 
   it("expands tree to the selected item", () => {
@@ -43,9 +43,9 @@ describe("Tree", () => {
       <Tree data={data} onSelect={jest.fn()} selectedId={3} />,
     );
     expect(getAllByRole("menuitem")).toHaveLength(3);
-    expect(queryByText("Item 1")).not.toBeNull();
-    expect(queryByText("Item 2")).not.toBeNull();
-    expect(queryByText("Item 3")).not.toBeNull();
+    expect(queryByText("Item 1")).toBeInTheDocument();
+    expect(queryByText("Item 2")).toBeInTheDocument();
+    expect(queryByText("Item 3")).toBeInTheDocument();
   });
 
   it("should render expand and collapse items with children", () => {
@@ -56,11 +56,11 @@ describe("Tree", () => {
     fireEvent.click(getByRole("button"));
 
     expect(getAllByRole("menuitem")).toHaveLength(3);
-    expect(queryByText("Item 3")).not.toBeNull();
+    expect(queryByText("Item 3")).toBeInTheDocument();
 
     fireEvent.click(getByRole("button"));
     expect(getAllByRole("menuitem")).toHaveLength(2);
-    expect(queryByText("Item 3")).toBeNull();
+    expect(queryByText("Item 3")).not.toBeInTheDocument();
   });
 
   it("should allow to select items", () => {

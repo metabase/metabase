@@ -127,7 +127,7 @@ describe("SnippetCollectionFormModal", () => {
       await waitFor(() => {
         expect(
           screen.getByRole("button", { name: "Create" }),
-        ).not.toBeDisabled();
+        ).toBeEnabled();
       });
     });
 
@@ -196,7 +196,7 @@ describe("SnippetCollectionFormModal", () => {
       await waitFor(() => {
         expect(
           screen.getByRole("button", { name: "Update" }),
-        ).not.toBeDisabled();
+        ).toBeEnabled();
       });
     });
 

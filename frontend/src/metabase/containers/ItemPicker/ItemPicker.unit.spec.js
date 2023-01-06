@@ -191,7 +191,7 @@ describe("ItemPicker", () => {
 
   it("does not display read-only collections", async () => {
     await setup();
-    expect(screen.queryByText(COLLECTION.READ_ONLY.name)).toBeNull();
+    expect(screen.queryByText(COLLECTION.READ_ONLY.name)).not.toBeInTheDocument();
   });
 
   it("displays read-only collections if they have writable children", async () => {
@@ -227,7 +227,7 @@ describe("ItemPicker", () => {
     header = getItemPickerHeader();
     const list = getItemPickerList();
 
-    expect(header.queryByText(COLLECTION.REGULAR.name)).toBeNull();
+    expect(header.queryByText(COLLECTION.REGULAR.name)).not.toBeInTheDocument();
 
     expect(list.queryByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
     expect(list.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();

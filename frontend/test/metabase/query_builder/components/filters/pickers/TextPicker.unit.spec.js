@@ -33,6 +33,6 @@ describe("TextPicker", () => {
     const spy = jest.fn();
     render(<TextPicker values={["foo", "bar"]} onValuesChange={spy} />);
 
-    expect(screen.queryByTestId("input-prefix")).toBeNull();
+    expect(screen.queryByTestId("input-prefix")).not.toBeInTheDocument();
   });
 });

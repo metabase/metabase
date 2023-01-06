@@ -84,7 +84,7 @@ describe("HistoryModal", () => {
     setup({
       revisions: [getRevision({ diff: { before: null, after: null } })],
     });
-    expect(screen.queryAllByTestId("revision-history-row")).toHaveLength(0);
+    expect(screen.queryByTestId("revision-history-row")).not.toBeInTheDocument();
   });
 
   it("calls onClose when close icon is clicked", () => {

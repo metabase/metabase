@@ -1,5 +1,5 @@
 import React from "react";
-import { queryByText } from "@testing-library/dom";
+import { queryByText } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "__support__/ui";
 
@@ -81,7 +81,7 @@ describe("ChartNestedSettingSeries", () => {
 
     //Expand a section
     userEvent.click(expandButtons[0]);
-    expect(getAllByRole("img", { name: /chevronup/i })).toHaveLength(1);
+    expect(getByRole("img", { name: /chevronup/i })).toBeInTheDocument();
     expect(getByText("Line style")).toBeInTheDocument();
     expect(getByText("Show dots on lines")).toBeInTheDocument();
     expect(getByText("Replace missing values with")).toBeInTheDocument();
@@ -90,7 +90,7 @@ describe("ChartNestedSettingSeries", () => {
 
     //Expand another section, should only be 1 open section
     userEvent.click(expandButtons[1]);
-    expect(getAllByRole("img", { name: /chevronup/i })).toHaveLength(1);
+    expect(getByRole("img", { name: /chevronup/i })).toBeInTheDocument();
   });
 
   it("should show original series title in subtitle if it's changed", () => {

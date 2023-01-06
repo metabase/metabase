@@ -19,6 +19,6 @@ describe("ModerationReviewBanner", () => {
         currentUser={currentUser}
       />,
     );
-    expect(getByText("Foo verified this")).toBeTruthy();
+    expect(getByText("Foo verified this")).toBeInTheDocument();
   });
 });

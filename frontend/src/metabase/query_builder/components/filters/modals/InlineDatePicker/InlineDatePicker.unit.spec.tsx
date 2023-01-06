@@ -280,16 +280,16 @@ describe("InlineDatePicker", () => {
     );
 
     userEvent.click(screen.getByLabelText("more options"));
-    await waitFor(() => screen.getByText("Relative dates..."));
+    await screen.findByText("Relative dates...");
     userEvent.click(screen.getByText("Relative dates..."));
-    await waitFor(() => screen.getByTestId("relative-datetime-value"));
+    await screen.findByTestId("relative-datetime-value");
 
     const input = screen.getByTestId("relative-datetime-value");
     userEvent.clear(input);
     userEvent.type(input, "88");
     // FIXME: for some reason this button never gets enabled
     await waitFor(() =>
-      expect(screen.getByText("Add filter")).not.toBeDisabled(),
+      expect(screen.getByText("Add filter")).toBeEnabled(),
     );
     userEvent.click(screen.getByText("Add filter"));
     await waitFor(() => expect(changeSpy).toHaveBeenCalled());
@@ -325,7 +325,7 @@ describe("InlineDatePicker", () => {
 
     const btn = screen.getByText("between November 5, 1605 November 5, 2005");
     userEvent.click(btn);
-    await waitFor(() => screen.getByDisplayValue("11/05/1605"));
+    await screen.findByDisplayValue("11/05/1605");
     const input = screen.getByDisplayValue("11/05/1605");
 
     userEvent.clear(input);
@@ -333,7 +333,7 @@ describe("InlineDatePicker", () => {
 
     // FIXME: for some reason this button never gets enabled
     await waitFor(() =>
-      expect(screen.getByText("Update filter")).not.toBeDisabled(),
+      expect(screen.getByText("Update filter")).toBeEnabled(),
     );
 
     screen.getByText("Update filter").click();

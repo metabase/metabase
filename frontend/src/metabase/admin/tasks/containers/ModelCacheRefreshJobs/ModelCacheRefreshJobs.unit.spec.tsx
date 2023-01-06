@@ -31,7 +31,7 @@ async function setup({ logs = [] }: { logs?: ModelCacheRefreshStatus[] } = {}) {
     </ModelCacheRefreshJobs>,
   );
 
-  await waitFor(() => utils.queryByTestId("model-cache-logs"));
+  await utils.findByTestId("model-cache-logs");
 
   return {
     ...utils,

@@ -87,7 +87,7 @@ describe("Tooltip", () => {
     const tooltip = screen.getByTestId("tooltip-component-wrapper");
 
     expect(tooltip).toBeInTheDocument();
-    expect(tooltip.textContent).toEqual("bad target");
+    expect(tooltip).toHaveTextContent("bad target");
   });
 
   it("should not wrap target Components with forwarded refs", () => {

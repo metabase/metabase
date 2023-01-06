@@ -40,13 +40,13 @@ describe("DimensionListItem", () => {
 
   it("renders remove button when selected", () => {
     const { queryByLabelText } = setup({ isSelected: true });
-    expect(queryByLabelText("Add dimension")).toBeNull();
-    expect(queryByLabelText("Remove dimension")).not.toBeNull();
+    expect(queryByLabelText("Add dimension")).not.toBeInTheDocument();
+    expect(queryByLabelText("Remove dimension")).toBeInTheDocument();
   });
 
   it("renders add button when not selected", () => {
     const { queryByLabelText } = setup({ isSelected: false });
-    expect(queryByLabelText("Remove dimension")).toBeNull();
-    expect(queryByLabelText("Add dimension")).not.toBeNull();
+    expect(queryByLabelText("Remove dimension")).not.toBeInTheDocument();
+    expect(queryByLabelText("Add dimension")).toBeInTheDocument();
   });
 });

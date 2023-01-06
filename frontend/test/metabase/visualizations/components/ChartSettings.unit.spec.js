@@ -90,7 +90,7 @@ describe("ChartSettings", () => {
     });
 
     expect(getByText("Widget1", { exact: false })).toBeInTheDocument();
-    expect(queryByText("Widget2", { exact: false })).toBe(null);
+    expect(queryByText("Widget2", { exact: false })).not.toBeInTheDocument();
   });
 
   it("should show the section picker if there are multiple sections", () => {
@@ -112,6 +112,6 @@ describe("ChartSettings", () => {
       ],
     });
 
-    expect(queryByText("Foo")).toBe(null);
+    expect(queryByText("Foo")).not.toBeInTheDocument();
   });
 });

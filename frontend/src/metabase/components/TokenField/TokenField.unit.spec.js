@@ -92,15 +92,15 @@ describe("TokenField", () => {
     fireEvent.keyDown(input(), { keyCode: keyCode });
 
   const findWithinValues = collection =>
-    expect(values().textContent).toBe(collection.join(""));
+    expect(values()).toHaveTextContent(collection.join(""));
 
   const findWithinOptions = collection =>
-    expect(options().textContent).toBe(collection.join(""));
+    expect(options()).toHaveTextContent(collection.join(""));
 
   it("should render with no options or values", () => {
     render(<TokenFieldWithStateAndDefaults />);
-    expect(screen.queryByText("foo")).toBeNull();
-    expect(screen.queryByText("bar")).toBeNull();
+    expect(screen.queryByText("foo")).not.toBeInTheDocument();
+    expect(screen.queryByText("bar")).not.toBeInTheDocument();
   });
 
   it("should render input prefix with prefix prop", () => {
@@ -110,7 +110,7 @@ describe("TokenField", () => {
 
   it("should not render input prefix without prefix prop", () => {
     render(<TokenFieldWithStateAndDefaults />);
-    expect(screen.queryByTestId("input-prefix")).toBeNull();
+    expect(screen.queryByTestId("input-prefix")).not.toBeInTheDocument();
   });
 
   it("should render with 1 options and 1 values", () => {
@@ -165,7 +165,7 @@ describe("TokenField", () => {
         canAddItems={false}
       />,
     );
-    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
   it("should add freeform value if parseFreeformValue is provided", () => {
@@ -260,7 +260,7 @@ describe("TokenField", () => {
       userEvent.clear(input());
       type("");
       input().blur();
-      expect(values().textContent).toBe("");
+      expect(values()).toHaveTextContent("");
       expect(input().value).toEqual("");
     });
 
@@ -334,13 +334,13 @@ describe("TokenField", () => {
 
     it("should not add freeform value immediately", () => {
       type("yep");
-      expect(values().textContent).toBe("");
+      expect(values()).toHaveTextContent("");
     });
 
     it("should not add freeform value when blurring", () => {
       type("yep");
       fireEvent.blur(input());
-      expect(values().textContent).toBe("");
+      expect(values()).toHaveTextContent("");
     });
   });
 
@@ -359,7 +359,7 @@ describe("TokenField", () => {
 
     it("should not add freeform value immediately", () => {
       type("yep");
-      expect(values().textContent).toBe("");
+      expect(values()).toHaveTextContent("");
     });
 
     it("should add freeform value when blurring", () => {

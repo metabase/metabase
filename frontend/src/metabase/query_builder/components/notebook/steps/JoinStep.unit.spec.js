@@ -339,7 +339,7 @@ describe.skip("Notebook Editor > Join Step", () => {
     expect(screen.getByTestId("parent-dimension")).toHaveTextContent(
       "Pick a column...",
     );
-    expect(screen.queryByRole("rowgroup")).toBe(null);
+    expect(screen.queryByRole("rowgroup")).not.toBeInTheDocument();
     expect(onQueryChange).toHaveBeenLastCalledWith(
       expectedJoin({
         joinedTable: PRODUCTS,
@@ -357,7 +357,7 @@ describe.skip("Notebook Editor > Join Step", () => {
     expect(screen.getByTestId("join-dimension")).toHaveTextContent(
       "Pick a column...",
     );
-    expect(screen.queryByRole("rowgroup")).toBe(null);
+    expect(screen.queryByRole("rowgroup")).not.toBeInTheDocument();
     expect(onQueryChange).toHaveBeenLastCalledWith(
       expectedJoin({
         joinedTable: PRODUCTS,
@@ -369,7 +369,7 @@ describe.skip("Notebook Editor > Join Step", () => {
   it("hides icons for removing dimensions if dimensions are not set yet", async () => {
     await setup({ joinTable: "Reviews" });
 
-    expect(screen.queryAllByLabelText("close icon")).toHaveLength(0);
+    expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
   it("shows the fields picker tooltip on control hover", async () => {
@@ -388,7 +388,7 @@ describe.skip("Notebook Editor > Join Step", () => {
     userEvent.click(screen.getByLabelText("table icon"));
     userEvent.hover(screen.getByLabelText("table icon"));
 
-    expect(screen.queryByRole("tooltip")).toBe(null);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
   it("shows temporal unit for date-time fields", async () => {
@@ -414,7 +414,7 @@ describe.skip("Notebook Editor > Join Step", () => {
       await setup({ joinTable: "Reviews" });
 
       expect(screen.queryAllByText("Pick a column...")).toHaveLength(2);
-      expect(screen.queryByLabelText("add icon")).toBe(null);
+      expect(screen.queryByLabelText("add icon")).not.toBeInTheDocument();
     });
 
     it("can add a new dimension pair", async () => {
@@ -474,7 +474,7 @@ describe.skip("Notebook Editor > Join Step", () => {
 
       userEvent.click(screen.queryByLabelText("add icon"));
 
-      expect(screen.queryByLabelText("add icon")).toBe(null);
+      expect(screen.queryByLabelText("add icon")).not.toBeInTheDocument();
     });
 
     it("can remove an empty dimension pair", async () => {

@@ -14,10 +14,10 @@ describe("ListSearchField", () => {
   });
 
   it("should have focused the input field", () => {
-    expect(document.activeElement).toBe(input);
+    expect(input).toHaveFocus();
   });
 
   it("should pass through any additional input properties", () => {
-    expect(input.getAttribute("type")).toBe("number");
+    expect(input).toHaveAttribute("type", "number");
   });
 });

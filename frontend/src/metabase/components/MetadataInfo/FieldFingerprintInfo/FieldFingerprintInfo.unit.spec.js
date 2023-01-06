@@ -20,7 +20,7 @@ describe("FieldFingerprintInfo", () => {
 
       delete field.fingerprint;
       const { container } = setup(field);
-      expect(container.firstChild).toBeNull();
+      expect(container).toBeEmptyDOMElement();
     });
   });
 
@@ -39,7 +39,7 @@ describe("FieldFingerprintInfo", () => {
       });
 
       it("should render nothing", () => {
-        expect(container.firstChild).toBeNull();
+        expect(container).toBeEmptyDOMElement();
       });
     });
 
@@ -91,7 +91,7 @@ describe("FieldFingerprintInfo", () => {
       });
 
       it("should render nothing", () => {
-        expect(container.firstChild).toBeNull();
+        expect(container).toBeEmptyDOMElement();
       });
     });
 
@@ -135,7 +135,7 @@ describe("FieldFingerprintInfo", () => {
       });
 
       it("should render nothing", () => {
-        expect(container.firstChild).toBeNull();
+        expect(container).toBeEmptyDOMElement();
       });
     });
 
@@ -154,7 +154,7 @@ describe("FieldFingerprintInfo", () => {
       });
 
       it("should not render anything for the avg", () => {
-        expect(screen.queryByText("Average")).toBeNull();
+        expect(screen.queryByText("Average")).not.toBeInTheDocument();
       });
 
       it("should still render min and max", () => {
@@ -180,7 +180,7 @@ describe("FieldFingerprintInfo", () => {
       };
 
       const { container } = setup(idField);
-      expect(container.firstChild).toBeNull();
+      expect(container).toBeEmptyDOMElement();
     });
   });
 });

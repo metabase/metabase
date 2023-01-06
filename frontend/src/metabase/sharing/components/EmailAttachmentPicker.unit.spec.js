@@ -26,10 +26,10 @@ describe("EmailAttachmentPicker", () => {
     });
 
     it("should have a clickable toggle that reveals attachment type and a checkbox per question", () => {
-      expect(screen.queryByText("File format")).toBeNull();
-      expect(screen.queryByText("Questions to attach")).toBeNull();
-      expect(screen.queryByText("card1")).toBeNull();
-      expect(screen.queryByText("card2")).toBeNull();
+      expect(screen.queryByText("File format")).not.toBeInTheDocument();
+      expect(screen.queryByText("Questions to attach")).not.toBeInTheDocument();
+      expect(screen.queryByText("card1")).not.toBeInTheDocument();
+      expect(screen.queryByText("card2")).not.toBeInTheDocument();
 
       const toggle = screen.getByLabelText("Attach results");
       fireEvent.click(toggle);
@@ -67,7 +67,7 @@ describe("EmailAttachmentPicker", () => {
     it("should have a toggled Toggle", () => {
       const toggle = screen.getByLabelText("Attach results");
       expect(toggle).toBeInTheDocument();
-      expect(toggle).toHaveProperty("checked", true);
+      expect(toggle).toBeChecked();
     });
 
     it("should have selected the xlsv format", () => {
@@ -127,10 +127,10 @@ describe("EmailAttachmentPicker", () => {
 
       fireEvent.click(toggle);
 
-      expect(screen.queryByText("File format")).toBeNull();
-      expect(screen.queryByText("Questions to attach")).toBeNull();
-      expect(screen.queryByText("card1")).toBeNull();
-      expect(screen.queryByText("card2")).toBeNull();
+      expect(screen.queryByText("File format")).not.toBeInTheDocument();
+      expect(screen.queryByText("Questions to attach")).not.toBeInTheDocument();
+      expect(screen.queryByText("card1")).not.toBeInTheDocument();
+      expect(screen.queryByText("card2")).not.toBeInTheDocument();
 
       fireEvent.click(toggle);
       expect(screen.getByLabelText("card1")).not.toBeChecked();

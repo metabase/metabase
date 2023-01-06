@@ -1,5 +1,5 @@
 import React from "react";
-import { within } from "@testing-library/dom";
+import { within } from "@testing-library/react";
 import { renderWithProviders, screen } from "__support__/ui";
 
 // these tests use ChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker

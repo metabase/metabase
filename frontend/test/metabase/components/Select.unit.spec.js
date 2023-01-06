@@ -12,7 +12,7 @@ describe("Select", () => {
       </Select>,
     );
 
-    expect(queryByText("option a")).toBe(null);
+    expect(queryByText("option a")).not.toBeInTheDocument();
     getByText("option b");
   });
 
@@ -24,7 +24,7 @@ describe("Select", () => {
       </Select>,
     );
 
-    expect(queryByText("option a")).toBe(null);
+    expect(queryByText("option a")).not.toBeInTheDocument();
     getByText("option b");
   });
 
@@ -36,8 +36,8 @@ describe("Select", () => {
       </Select>,
     );
 
-    expect(queryByText("option a")).toBe(null);
-    expect(queryByText("option b")).toBe(null);
+    expect(queryByText("option a")).not.toBeInTheDocument();
+    expect(queryByText("option b")).not.toBeInTheDocument();
     getByText("choose an option");
   });
 });
