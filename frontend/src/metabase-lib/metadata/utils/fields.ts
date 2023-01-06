@@ -49,3 +49,7 @@ function getFieldIdentifier(field: Field): number | string {
 
   return id || name;
 }
+
+export function isVirtualField(field: Field) {
+  return typeof field.id !== "number";
+}
