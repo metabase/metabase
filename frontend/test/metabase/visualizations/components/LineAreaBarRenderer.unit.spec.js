@@ -10,7 +10,7 @@ import {
   StringColumn,
   dispatchUIEvent,
   renderLineAreaBar,
-  getFormattedTooltips,
+  getTooltipData,
 } from "../__support__/visualizations";
 
 // jsdom doesn't support layout methods like getBBox, so we need to mock it.
@@ -51,16 +51,10 @@ describe("LineAreaBarRenderer", () => {
     });
     dispatchUIEvent(qs(".dot"), "mousemove");
     expect(onHoverChange.mock.calls.length).toBe(1);
-    expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
-      "2015",
-      "1",
-    ]);
-    // Doesn't return the correct ticks in Jest for some reason
-    // expect(qsa(".tick text").map(e => e.textContent)).toEqual([
-    //     "2015",
-    //     "2016",
-    //     "2017"
-    // ]);
+    expect(getTooltipData(onHoverChange.mock.calls[0][0])).toEqual({
+      headerTitle: "2015",
+      values: ["1"],
+    });
   });
 
   it("should display a warning for invalid dates", () => {
@@ -157,8 +151,7 @@ describe("LineAreaBarRenderer", () => {
     dispatchUIEvent(qs(".dot"), "mousemove");
 
     const hover = onHoverChange.mock.calls[0][0];
-    const [formattedWeek] = getFormattedTooltips(hover, settings);
-    expect(formattedWeek).toEqual("January 5 – 11, 2020");
+    expect(getTooltipData(hover).headerTitle).toEqual("January 5 – 11, 2020");
 
     const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
     expect(ticks).toEqual([
@@ -202,8 +195,7 @@ describe("LineAreaBarRenderer", () => {
     dispatchUIEvent(qs(".dot"), "mousemove");
 
     const hover = onHoverChange.mock.calls[0][0];
-    const [formattedWeek] = getFormattedTooltips(hover, settings);
-    expect(formattedWeek).toEqual("1-2016");
+    expect(getTooltipData(hover).headerTitle).toEqual("1-2016");
 
     const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
     expect(ticks).toEqual(["1-2016", "2-2016"]);
@@ -329,8 +321,8 @@ describe("LineAreaBarRenderer", () => {
       });
       dispatchUIEvent(qs(".goal text"), "mouseenter");
 
-      expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
-        "30",
+      expect(onHoverChange.mock.calls[0][0].data).toEqual([
+        { key: "Goal", value: 30 },
       ]);
     });
   });
@@ -448,7 +440,10 @@ describe("LineAreaBarRenderer", () => {
       element,
       rowsOfSeries.map(rows => ({
         data: {
-          cols: [DateTimeColumn({ unit }), NumberColumn()],
+          cols: [
+            DateTimeColumn({ unit, name: "date_time_column" }),
+            NumberColumn({ name: "number_column" }),
+          ],
           rows: rows,
         },
         card: {

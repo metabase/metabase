@@ -187,8 +187,20 @@ export function renderLineAreaBar(...args) {
   return renderChart(lineAreaBarRenderer, ...args);
 }
 
+export function getTooltipData(hover) {
+  const values = [
+    ...hover.dataTooltip.headerRows,
+    ...hover.dataTooltip.bodyRows,
+  ].map(row => (row.formatter ? row.formatter(row.value) : row.value));
+
+  return {
+    headerTitle: hover.dataTooltip.headerTitle,
+    values,
+  };
+}
+
 // mirrors logic in ChartTooltip
-export function getFormattedTooltips(hover, settings) {
+export function getClickValues(hover, settings) {
   let data;
   if (hover.data) {
     data = hover.data;

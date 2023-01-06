@@ -7,7 +7,7 @@ import {
 import { getDatas } from "metabase/visualizations/lib/renderer_utils";
 
 import {
-  getFormattedTooltips,
+  getClickValues,
   BooleanColumn,
   DateTimeColumn,
   StringColumn,
@@ -27,7 +27,7 @@ describe("getClickObject", () => {
 
     const obj = getClickObject(d, otherArgs);
 
-    expect(getFormattedTooltips(obj)).toEqual(["foobar", "123"]);
+    expect(getClickValues(obj)).toEqual(["foobar", "123"]);
   });
 
   it("should show the correct tooltip for dates", () => {
@@ -51,7 +51,7 @@ describe("getClickObject", () => {
 
     const obj = getClickObject(d, otherArgs);
 
-    expect(getFormattedTooltips(obj)).toEqual(["April, 2016", "2"]);
+    expect(getClickValues(obj)).toEqual(["April, 2016", "2"]);
   });
 
   it("should show the correct tooltip for months", () => {
@@ -75,7 +75,7 @@ describe("getClickObject", () => {
 
     const obj = getClickObject(d, otherArgs);
 
-    expect(getFormattedTooltips(obj)).toEqual(["April, 2016", "2"]);
+    expect(getClickValues(obj)).toEqual(["April, 2016", "2"]);
   });
 
   it("should exclude aggregation and query-transform columns from dimensions", () => {
@@ -139,7 +139,7 @@ describe("getClickObject", () => {
     };
 
     const obj = getClickObject(d, otherArgs);
-    expect(getFormattedTooltips(obj)).toEqual(["(empty)", "2"]);
+    expect(getClickValues(obj)).toEqual(["(empty)", "2"]);
   });
 });
 

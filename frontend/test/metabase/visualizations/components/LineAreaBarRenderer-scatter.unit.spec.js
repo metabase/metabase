@@ -4,7 +4,7 @@ import {
   NumberColumn,
   dispatchUIEvent,
   renderLineAreaBar,
-  getFormattedTooltips,
+  getTooltipData,
   createFixture,
   cleanupFixture,
 } from "../__support__/visualizations";
@@ -67,10 +67,10 @@ describe("LineAreaBarRenderer-scatter", () => {
 
     dispatchUIEvent(qsa(".bubble")[0], "mousemove");
 
-    expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
-      "1",
-      "2",
-    ]);
+    expect(getTooltipData(onHoverChange.mock.calls[0][0])).toEqual({
+      headerTitle: "1",
+      values: ["2"],
+    });
   });
 
   it("should render a scatter chart with 2 dimensions and 1 metric", () => {
@@ -100,10 +100,9 @@ describe("LineAreaBarRenderer-scatter", () => {
 
     dispatchUIEvent(qsa(".bubble")[0], "mousemove");
 
-    expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
-      "1",
-      "2",
-      "3",
-    ]);
+    expect(getTooltipData(onHoverChange.mock.calls[0][0])).toEqual({
+      headerTitle: "1",
+      values: ["2"],
+    });
   });
 });

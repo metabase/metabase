@@ -9,7 +9,7 @@ import {
   DateTimeColumn,
   dispatchUIEvent,
   renderLineAreaBar,
-  getFormattedTooltips,
+  getTooltipData,
 } from "../__support__/visualizations";
 
 // make WIDTH big enough that ticks aren't skipped
@@ -50,7 +50,7 @@ describe("LineAreaBarRenderer-bar", () => {
   const getXAxisLabelsText = () =>
     qsa(".axis.x .tick text").map(t => t.textContent);
   const getTooltipDimensionValueText = () =>
-    onHoverChange.mock.calls.map(([t]) => getFormattedTooltips(t)[0]);
+    onHoverChange.mock.calls.map(([t]) => getTooltipData(t).headerTitle);
 
   const getSVGElementMiddle = element => {
     return (
