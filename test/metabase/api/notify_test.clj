@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.http-client :as client]
    [metabase.models.database :as database]
+   [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.util :as mw.util]
    [metabase.sync]
    [metabase.sync.sync-metadata]
@@ -13,11 +14,16 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server))
 
-(deftest unauthenticated-test
+(deftest authentication-test
   (testing "POST /api/notify/db/:id"
-    (testing "endpoint should require authentication"
-      (is (= (get mw.util/response-forbidden :body)
-             (client/client :post 403 "notify/db/100"))))))
+    (testing "endpoint requires MB_API_KEY set"
+      (mt/with-temporary-setting-values [api-key nil]
+        (is (= (-> mw.auth/key-not-set-response :body str)
+               (client/client :post 403 "notify/db/100")))))
+    (testing "endpoint requires authentication"
+      (mt/with-temporary-setting-values [api-key "test-api-key"] ;; set in :test but not in :dev
+        (is (= (get mw.util/response-forbidden :body)
+               (client/client :post 403 "notify/db/100")))))))
 
 (def api-headers {:headers {"X-METABASE-APIKEY" "test-api-key"
                             "Content-Type"      "application/json"}})
