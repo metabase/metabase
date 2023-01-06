@@ -33,9 +33,6 @@ const setupState = hasAdminNavItems => {
     storeInitialState: {
       admin,
     },
-    reducers: {
-      admin: () => admin,
-    },
   };
 };
 

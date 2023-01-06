@@ -53,6 +53,4 @@ export interface DashboardState {
     name?: DashboardSidebarName;
     props: Record<string, unknown>;
   };
-
-  titleTemplateChange: string | null;
 }

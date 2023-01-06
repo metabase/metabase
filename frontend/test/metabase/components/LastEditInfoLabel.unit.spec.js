@@ -2,6 +2,7 @@ import React from "react";
 import mockDate from "mockdate";
 import moment from "moment-timezone";
 import { renderWithProviders } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
 describe("LastEditInfoLabel", () => {
@@ -11,12 +12,12 @@ describe("LastEditInfoLabel", () => {
 
   const NOW_REAL = moment().toISOString();
 
-  const TEST_USER = {
+  const TEST_USER = createMockUser({
     id: 2,
     first_name: "John",
     last_name: "Doe",
     email: "john@metabase.test",
-  };
+  });
 
   function setup({ isLastEditedByCurrentUser = false } = {}) {
     const testItem = {
@@ -26,13 +27,13 @@ describe("LastEditInfoLabel", () => {
       },
     };
 
-    function userReducer() {
-      return isLastEditedByCurrentUser ? TEST_USER : { id: TEST_USER.id + 1 };
-    }
+    const currentUser = isLastEditedByCurrentUser
+      ? TEST_USER
+      : { ...TEST_USER, id: TEST_USER.id + 1 };
 
     return renderWithProviders(<LastEditInfoLabel item={testItem} />, {
-      reducers: {
-        currentUser: userReducer,
+      storeInitialState: {
+        currentUser,
       },
     });
   }
