@@ -10,7 +10,6 @@ import HTML5Backend from "react-dnd-html5-backend";
 
 import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";
 
-import type { User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { createMockState } from "metabase-types/store/mocks";
@@ -21,7 +20,6 @@ import publicReducers from "metabase/reducers-public";
 import { getStore } from "./entities-store";
 
 export interface RenderWithProvidersOptions {
-  currentUser?: User;
   mode?: "default" | "public";
   storeInitialState?: Partial<State>;
   withSampleDatabase?: boolean;
