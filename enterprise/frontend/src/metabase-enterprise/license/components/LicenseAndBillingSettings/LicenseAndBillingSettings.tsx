@@ -17,7 +17,7 @@ import {
   useLicense,
 } from "metabase/admin/settings/hooks/use-license";
 import {
-  ExporePaidPlansContainer,
+  ExplorePaidPlansContainer,
   LoaderContainer,
   SectionDescription,
   SectionHeader,
@@ -166,9 +166,9 @@ const LicenseAndBillingSettings = ({
               </ExternalLink>
             )}`}
           </SectionDescription>
-          <ExporePaidPlansContainer justifyContent="flex-end">
+          <ExplorePaidPlansContainer justifyContent="flex-end">
             <ExplorePlansIllustration />
-          </ExporePaidPlansContainer>
+          </ExplorePaidPlansContainer>
         </>
       )}
     </SettingsLicenseContainer>
