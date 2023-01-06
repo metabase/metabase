@@ -51,7 +51,7 @@ describe("column settings", () => {
     expect(computed.column(series[0].data.cols[0]).currency).toEqual("BTC");
   });
   // DISABLED to match legacy behavior until we determine the best way to reference columns
-  xit("should find by column 'field-literal' ref", () => {
+  it.skip("should find by column 'field-literal' ref", () => {
     const series = seriesWithColumn({
       field_ref: ["field", "foo", { "base-type": "type/Float" }],
     });

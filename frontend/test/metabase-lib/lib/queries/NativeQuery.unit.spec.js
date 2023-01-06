@@ -50,7 +50,7 @@ describe("NativeQuery", () => {
       });
     });
     describe("databaseId()", () => {
-      it("returns the Database ID of the wrapped query ", () => {
+      it("returns the Database ID of the wrapped query", () => {
         expect(query.databaseId()).toBe(SAMPLE_DATABASE.id);
       });
     });

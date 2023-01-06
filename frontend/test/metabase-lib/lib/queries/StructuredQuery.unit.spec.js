@@ -67,7 +67,7 @@ describe("StructuredQuery", () => {
       });
     });
     describe("databaseId", () => {
-      it("returns the Database ID of the wrapped query ", () => {
+      it("returns the Database ID of the wrapped query", () => {
         expect(query.databaseId()).toBe(SAMPLE_DATABASE.id);
       });
     });
@@ -423,7 +423,7 @@ describe("StructuredQuery", () => {
         // Should just include the non-fk keys from the current table
         expect(query.fieldOptions().dimensions.length).toBe(7);
       });
-      xit("does not include foreign key fields in the dimensions list", () => {
+      it.skip("does not include foreign key fields in the dimensions list", () => {
         const dimensions = query.fieldOptions().dimensions;
         const fkDimensions = dimensions.filter(
           dim => dim.field() && dim.field().isFK(),
@@ -442,7 +442,7 @@ describe("StructuredQuery", () => {
 
   describe("FIELD REFERENCE METHODS", () => {
     describe("fieldReferenceForColumn", () => {
-      xit('should return `["field", 1, null]` for a normal column', () => {
+      it.skip('should return `["field", 1, null]` for a normal column', () => {
         expect(query.fieldReferenceForColumn({ id: ORDERS.TOTAL.id })).toEqual([
           "field",
           ORDERS.TOTAL.id,

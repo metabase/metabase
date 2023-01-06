@@ -70,7 +70,7 @@ describe("ChartSettingOrderedColumns", () => {
   });
 
   // TODO: Test this in Cypress
-  xit("should reorder columns", () => {
+  it.skip("should reorder columns", () => {
     // const onChange = jest.fn();
     // const setting = renderChartSettingOrderedColumns({
     //   value: [{ name: "Foo", enabled: true }, { name: "Bar", enabled: true }],

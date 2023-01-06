@@ -61,7 +61,7 @@ describe("PinnedItemCard", () => {
     expect(screen.getByText(defaultItem.name)).toBeInTheDocument();
   });
 
-  it("it should show the item's description", () => {
+  it("should show the item's description", () => {
     setup();
     expect(screen.getByText(defaultItem.description)).toBeInTheDocument();
   });

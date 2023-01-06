@@ -14,7 +14,7 @@ describe("validators", () => {
     it("should return an error if the value is a non-empty string", () => {
       expect(validators.required()("asdf")).toBeFalsy();
     });
-    xit("should return an error if the value is a number", () => {
+    it.skip("should return an error if the value is a number", () => {
       expect(validators.required()(0)).toBeFalsy();
     });
   });

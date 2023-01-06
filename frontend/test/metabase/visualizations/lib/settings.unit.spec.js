@@ -18,7 +18,7 @@ describe("settings framework", () => {
       const expected = { foo: "foo" };
       expect(getComputedSettings(defs, mockObject, stored)).toEqual(expected);
     });
-    it("should not return stored settings for settings without setting definition ", () => {
+    it("should not return stored settings for settings without setting definition", () => {
       const defs = {};
       const stored = { foo: "foo" };
       const expected = {};
@@ -154,7 +154,7 @@ describe("settings framework", () => {
       expect(onChangeSettings.mock.calls).toEqual([[{ foo: "bar" }]]);
     });
     // FIXME: is writeDependencies broken or is this test wrong?
-    xit("should include writeDependencies in onChangeSettings", () => {
+    it.skip("should include writeDependencies in onChangeSettings", () => {
       const defs = {
         foo: { widget: "input", writeDependencies: ["bar"] },
         bar: { default: "foo" },

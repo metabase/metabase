@@ -6,7 +6,7 @@ describe("prepareAnalyticsValue", () => {
   const checkResult = (setting = defaultSetting, expected = "success") =>
     expect(prepareAnalyticsValue(setting)).toEqual(expected);
 
-  it("should return a non identifying value by default ", () => {
+  it("should return a non identifying value by default", () => {
     checkResult();
   });
 

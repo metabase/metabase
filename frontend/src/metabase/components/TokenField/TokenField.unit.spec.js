@@ -216,7 +216,7 @@ describe("TokenField", () => {
   });
 
   // Not clear? and not possible to simulate with RTL
-  xit("should type a character that's on the comma key", () => {
+  it.skip("should type a character that's on the comma key", () => {
     render(<TokenFieldWithStateAndDefaults value={[]} options={["fooбar"]} />);
 
     type("foo");
@@ -436,7 +436,7 @@ describe("TokenField", () => {
 
   describe("with multi=true", () => {
     // Couldn't confirm that blur is prevented
-    xit("should prevent blurring on tab", () => {
+    it.skip("should prevent blurring on tab", () => {
       render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}

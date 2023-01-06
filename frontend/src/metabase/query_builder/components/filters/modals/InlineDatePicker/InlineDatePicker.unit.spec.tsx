@@ -332,7 +332,7 @@ describe("InlineDatePicker", () => {
 
     screen.getByText("Update filter").click();
 
-    expect(changeSpy).toBeCalledWith([
+    expect(changeSpy).toHaveBeenCalledWith([
       "between",
       ["field", dateField.id, null],
       "1995-09-05",
@@ -363,7 +363,7 @@ describe("InlineDatePicker", () => {
 
     const clearBtn = screen.getByLabelText("close icon");
     userEvent.click(clearBtn);
-    expect(clearSpy).toBeCalledTimes(1);
-    expect(changeSpy).toBeCalledTimes(0);
+    expect(clearSpy).toHaveBeenCalledTimes(1);
+    expect(changeSpy).toHaveBeenCalledTimes(0);
   });
 });

@@ -152,7 +152,7 @@ describe("metabase-lib/expressions/parser", () => {
       ).not.toThrow();
     });
     // TODO: This should be handled by a separate pass
-    xit("should reject CASE with only one argument", () => {
+    it.skip("should reject CASE with only one argument", () => {
       expect(() => parseExpression("case([Deal])")).toThrow();
     });
     it("should accept CASE with two arguments", () => {
@@ -235,7 +235,7 @@ describe("metabase-lib/expressions/parser", () => {
     });
 
     // TODO: This should be handled by a separate pass
-    xit("should reject CASE with only one argument", () => {
+    it.skip("should reject CASE with only one argument", () => {
       expect(() => parseFilter("case([Deal])")).toThrow();
     });
   });
