@@ -21,15 +21,19 @@ export const ModalSection = styled.div`
 
 export const ModalLabel = styled.label`
   display: block;
-  margin-bottom: 0.75rem;
   color: ${color("text-medium")};
-  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
   font-weight: bold;
-  line-height: 1rem;
 `;
 
 export const ModalTextArea = styled(TextArea)`
   display: block;
   min-height: 40vh;
   resize: none;
+`;
+
+export const ModalHelpText = styled.div`
+  color: ${color("text-medium")};
+  margin-top: 0.25rem;
+  margin-left: 1.25rem;
 `;

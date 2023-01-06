@@ -72,7 +72,7 @@ const ParameterSettings = ({
             {getSourceTypeName(parameter)}
           </SelectButton>
           {isOpened && (
-            <Modal onClose={handleModalClose}>
+            <Modal medium onClose={handleModalClose}>
               <ValuesSourceModal
                 parameter={parameter}
                 onClose={handleModalClose}

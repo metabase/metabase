@@ -9,6 +9,7 @@ import {
   isValidSourceConfig,
 } from "metabase-lib/parameters/utils/parameter-source";
 import {
+  ModalHelpText,
   ModalLabel,
   ModalLayout,
   ModalMain,
@@ -78,6 +79,9 @@ const ValuesSourceTypeModal = ({
               vertical
               onChange={handleTypeChange}
             />
+            {sourceType === "static-list" && (
+              <ModalHelpText>{t`Enter one value per line.`}</ModalHelpText>
+            )}
           </ModalSection>
         </ModalPane>
         <ModalMain>
