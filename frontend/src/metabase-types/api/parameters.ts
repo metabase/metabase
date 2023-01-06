@@ -46,8 +46,9 @@ export interface Parameter {
   values_source_config?: ValuesSourceConfig;
 }
 
-export type ValuesSourceType = null | "static-list";
+export type ValuesSourceType = null | "card" | "static-list";
 
 export interface ValuesSourceConfig {
   values?: string[];
+  valueField?: unknown[];
 }
