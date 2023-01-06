@@ -4,6 +4,7 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import Modal from "metabase/components/Modal";
 import SelectButton from "metabase/core/components/SelectButton";
 import Radio from "metabase/core/components/Radio";
+import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import ValuesSourceModal from "../ValuesSourceModal";
 import { getIsMultiSelect } from "../../utils/dashboards";
@@ -29,6 +30,8 @@ export interface ParameterSettingsProps {
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
+  onChangeSourceType: (sourceType: ValuesSourceType) => void;
+  onChangeSourceConfig: (sourceOptions: ValuesSourceConfig) => void;
   onRemoveParameter: () => void;
 }
 
@@ -37,6 +40,8 @@ const ParameterSettings = ({
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
+  onChangeSourceType,
+  onChangeSourceConfig,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
   const [isOpened, setIsOpened] = useState(false);
@@ -55,6 +60,14 @@ const ParameterSettings = ({
   const handleModalClose = useCallback(() => {
     setIsOpened(false);
   }, []);
+
+  const handleModalSubmit = useCallback(
+    (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
+      onChangeSourceType(sourceType);
+      onChangeSourceConfig(sourceConfig);
+    },
+    [onChangeSourceType, onChangeSourceConfig],
+  );
 
   return (
     <SettingsRoot>
@@ -75,6 +88,7 @@ const ParameterSettings = ({
             <Modal medium onClose={handleModalClose}>
               <ValuesSourceModal
                 parameter={parameter}
+                onSubmit={handleModalSubmit}
                 onClose={handleModalClose}
               />
             </Modal>

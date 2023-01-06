@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import Fields from "metabase/entities/fields";
+import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
 import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { getParameterValues } from "metabase-lib/parameters/utils/parameter-values";
@@ -14,12 +15,17 @@ interface FetchFieldValuesOpts {
 interface ValuesSourceModalProps {
   parameter: UiParameter;
   onFetchFieldValues: (opts: FetchFieldValuesOpts) => void;
+  onSubmit: (
+    sourceType: ValuesSourceType,
+    sourceConfig: ValuesSourceConfig,
+  ) => void;
   onClose: () => void;
 }
 
 const ValuesSourceModal = ({
   parameter,
   onFetchFieldValues,
+  onSubmit,
   onClose,
 }: ValuesSourceModalProps): JSX.Element => {
   const [sourceType, setSourceType] = useState(
@@ -34,6 +40,10 @@ const ValuesSourceModal = ({
     return getParameterValues(parameter);
   }, [parameter]);
 
+  const handleSubmit = useCallback(() => {
+    onSubmit(sourceType, sourceConfig);
+  }, [sourceType, sourceConfig, onSubmit]);
+
   useEffect(() => {
     getNonVirtualFields(parameter).forEach(field => onFetchFieldValues(field));
   }, [parameter, onFetchFieldValues]);
@@ -45,6 +55,7 @@ const ValuesSourceModal = ({
       fieldValues={fieldValues}
       onChangeSourceType={setSourceType}
       onChangeSourceConfig={setSourceConfig}
+      onSubmit={handleSubmit}
       onClose={onClose}
     />
   );

@@ -31,6 +31,7 @@ interface ValuesSourceTypeModalProps {
   fieldValues: string[][];
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+  onSubmit: () => void;
   onClose: () => void;
 }
 
@@ -40,6 +41,7 @@ const ValuesSourceTypeModal = ({
   fieldValues,
   onChangeSourceType,
   onChangeSourceConfig,
+  onSubmit,
   onClose,
 }: ValuesSourceTypeModalProps): JSX.Element => {
   const handleTypeChange = useCallback(
@@ -65,6 +67,7 @@ const ValuesSourceTypeModal = ({
           key="submit"
           primary
           disabled={!isValidSourceConfig(sourceType, sourceConfig)}
+          onClick={onSubmit}
         >{t`Done`}</Button>,
       ]}
       onClose={onClose}

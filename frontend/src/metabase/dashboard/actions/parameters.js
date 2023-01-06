@@ -194,6 +194,32 @@ export const setParameterIsMultiSelect = createThunkAction(
   },
 );
 
+export const SET_PARAMETER_SOURCE_TYPE =
+  "metabase/dashboard/SET_PARAMETER_SOURCE_TYPE";
+export const setParameterSourceType = createThunkAction(
+  SET_PARAMETER_SOURCE_TYPE,
+  (parameterId, sourceType) => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameterId, parameter => ({
+      ...parameter,
+      values_source_type: sourceType,
+    }));
+    return { id: parameterId, sourceType };
+  },
+);
+
+export const SET_PARAMETER_SOURCE_CONFIG =
+  "metabase/dashboard/SET_PARAMETER_SOURCE_CONFIG";
+export const setParameterSourceConfig = createThunkAction(
+  SET_PARAMETER_SOURCE_CONFIG,
+  (parameterId, sourceConfig) => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameterId, parameter => ({
+      ...parameter,
+      values_source_config: sourceConfig,
+    }));
+    return { id: parameterId, sourceConfig };
+  },
+);
+
 export const SET_PARAMETER_INDEX = "metabase/dashboard/SET_PARAMETER_INDEX";
 export const setParameterIndex = createThunkAction(
   SET_PARAMETER_INDEX,
