@@ -7,7 +7,7 @@ describe("TextPicker", () => {
   it("should display provided values", () => {
     const spy = jest.fn();
     render(<TextPicker values={["foo", "bar"]} onValuesChange={spy} />);
-    screen.getByDisplayValue("foo, bar");
+    expect(screen.getByDisplayValue("foo, bar")).toBeInTheDocument();
   });
 
   it("should fire onValuesChange function on change", async () => {

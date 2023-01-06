@@ -138,7 +138,7 @@ describe("TagEditorParam", () => {
         },
       });
 
-      screen.getByText("String");
+      expect(screen.getByText("String")).toBeInTheDocument();
     });
   });
 

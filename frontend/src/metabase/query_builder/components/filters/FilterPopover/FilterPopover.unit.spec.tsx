@@ -1,7 +1,7 @@
 import "__support__/ui-mocks";
 import React from "react";
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders } from "__support__/ui";
@@ -51,7 +51,7 @@ describe("FilterPopover", () => {
           />,
         );
 
-        screen.getByTestId("date-picker");
+        expect(screen.getByTestId("date-picker")).toBeInTheDocument();
       });
     });
     describe("filter operator selection", () => {
@@ -64,8 +64,8 @@ describe("FilterPopover", () => {
             onChangeFilter={dummyFunction}
           />,
         );
-        screen.getByText("Equal to");
-        screen.getByText("1,234");
+        expect(screen.getByText("Equal to")).toBeInTheDocument();
+        expect(screen.getByText("1,234")).toBeInTheDocument();
       });
     });
     describe("filter options", () => {
@@ -92,7 +92,7 @@ describe("FilterPopover", () => {
             onChangeFilter={dummyFunction}
           />,
         );
-        screen.getByText("Case sensitive");
+        expect(screen.getByText("Case sensitive")).toBeInTheDocument();
       });
 
       // Note: couldn't get it to work with React Testing library no matter what!
@@ -107,9 +107,9 @@ describe("FilterPopover", () => {
           />,
         );
         const ellipsis = screen.getByLabelText("ellipsis icon");
-        fireEvent.click(ellipsis);
+        userEvent.click(ellipsis);
         const includeToday = await screen.findByText("Include today");
-        fireEvent.click(includeToday);
+        userEvent.click(includeToday);
       });
 
       it.skip("should let the user toggle a date filter type", async () => {
@@ -138,7 +138,9 @@ describe("FilterPopover", () => {
         userEvent.click(await screen.findByText("Contains"));
         userEvent.click(await screen.findByText("Is"));
 
-        await screen.findByTestId("date-picker-shortcuts");
+        expect(
+          await screen.findByTestId("date-picker-shortcuts"),
+        ).toBeInTheDocument();
       });
     });
   });

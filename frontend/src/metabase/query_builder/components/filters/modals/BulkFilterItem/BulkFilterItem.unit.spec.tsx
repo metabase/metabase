@@ -204,7 +204,7 @@ describe("BulkFilterItem", () => {
       />,
     );
 
-    screen.getByTestId("value-picker");
+    expect(screen.getByTestId("value-picker")).toBeInTheDocument();
   });
 
   it("renders a value picker for float field type", () => {
@@ -225,7 +225,7 @@ describe("BulkFilterItem", () => {
         onRemoveFilter={changeSpy}
       />,
     );
-    screen.getByTestId("value-picker");
+    expect(screen.getByTestId("value-picker")).toBeInTheDocument();
   });
 
   it("defaults to a between picker for float field type", () => {
@@ -241,10 +241,10 @@ describe("BulkFilterItem", () => {
         onRemoveFilter={changeSpy}
       />,
     );
-    screen.getByTestId("value-picker");
-    screen.getByText(/between/i);
-    screen.getByPlaceholderText("Min");
-    screen.getByPlaceholderText("Max");
+    expect(screen.getByTestId("value-picker")).toBeInTheDocument();
+    expect(screen.getByText(/between/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Min")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Max")).toBeInTheDocument();
   });
 
   it("renders a category picker for category type", () => {
@@ -265,7 +265,7 @@ describe("BulkFilterItem", () => {
         onRemoveFilter={changeSpy}
       />,
     );
-    screen.getByTestId("category-picker");
+    expect(screen.getByTestId("category-picker")).toBeInTheDocument();
   });
 
   it("renders a value picker for a primary key", () => {
@@ -286,7 +286,7 @@ describe("BulkFilterItem", () => {
         onRemoveFilter={changeSpy}
       />,
     );
-    screen.getByTestId("value-picker");
+    expect(screen.getByTestId("value-picker")).toBeInTheDocument();
   });
 
   it("renders a value picker for a foreign key", () => {
@@ -307,7 +307,7 @@ describe("BulkFilterItem", () => {
         onRemoveFilter={changeSpy}
       />,
     );
-    screen.getByTestId("value-picker");
+    expect(screen.getByTestId("value-picker")).toBeInTheDocument();
   });
 
   it("renders a value picker for a text field", () => {
@@ -328,8 +328,8 @@ describe("BulkFilterItem", () => {
         onRemoveFilter={changeSpy}
       />,
     );
-    screen.getByTestId("value-picker");
-    screen.getByDisplayValue("foo");
+    expect(screen.getByTestId("value-picker")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("foo")).toBeInTheDocument();
   });
 
   it("defaults key filters to 'is' operator", () => {
@@ -345,7 +345,7 @@ describe("BulkFilterItem", () => {
         onRemoveFilter={changeSpy}
       />,
     );
-    screen.getByText(/is/i);
+    expect(screen.getByText(/is/i)).toBeInTheDocument();
   });
 
   it("defaults text filters to 'is' operator", () => {
@@ -361,7 +361,7 @@ describe("BulkFilterItem", () => {
         onRemoveFilter={changeSpy}
       />,
     );
-    screen.getByText(/is/i);
+    expect(screen.getByText(/is/i)).toBeInTheDocument();
   });
 
   it("defaults long text filters to 'contains' operator", () => {
@@ -377,6 +377,6 @@ describe("BulkFilterItem", () => {
         onRemoveFilter={changeSpy}
       />,
     );
-    screen.getByText(/contains/i);
+    expect(screen.getByText(/contains/i)).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import React from "react";
 
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import ClampedText from "metabase/components/ClampedText";
 
@@ -30,9 +31,9 @@ describe("ClampedText", () => {
     });
 
     it("should show a toggle for showing expanded or clamped text", async () => {
-      screen.getByText(SEE_MORE).click();
-      screen.getByText(SEE_LESS).click();
-      screen.getByText(SEE_MORE);
+      userEvent.click(screen.getByText(SEE_MORE));
+      userEvent.click(screen.getByText(SEE_LESS));
+      expect(screen.getByText(SEE_MORE)).toBeInTheDocument();
     });
   });
 
@@ -48,13 +49,8 @@ describe("ClampedText", () => {
     });
 
     it("should not show a toggle", () => {
-      expect(() => {
-        screen.getByText(SEE_MORE);
-      }).toThrow();
-
-      expect(() => {
-        screen.getByText(SEE_LESS);
-      }).toThrow();
+      expect(screen.queryByText(SEE_MORE)).not.toBeInTheDocument();
+      expect(screen.queryByText(SEE_LESS)).not.toBeInTheDocument();
     });
   });
 });

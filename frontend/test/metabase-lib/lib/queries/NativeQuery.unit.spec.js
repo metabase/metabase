@@ -134,19 +134,19 @@ describe("NativeQuery", () => {
       expect(q1).toEqual(q2);
     });
   });
-  describe("Acessing the underlying native query", () => {
-    describe("You can access the actual native query via queryText()", () => {
+  describe("Accessing the underlying native query", () => {
+    test("You can access the actual native query via queryText()", () => {
       expect(makeQuery("SELECT * FROM ORDERS").queryText()).toEqual(
         "SELECT * FROM ORDERS",
       );
     });
-    describe("You can update query text the same way as well via setQueryText(newQueryText)", () => {
+    test("You can update query text the same way as well via setQueryText(newQueryText)", () => {
       const newQuery = makeQuery("SELECT 1");
       expect(newQuery.queryText()).toEqual("SELECT 1");
       const newerQuery = newQuery.setQueryText("SELECT 2");
       expect(newerQuery.queryText()).toEqual("SELECT 2");
     });
-    describe("lineCount() lets you know how long your query is", () => {
+    test("lineCount() lets you know how long your query is", () => {
       expect(makeQuery("SELECT 1").lineCount()).toBe(1);
       expect(makeQuery("SELECT \n 1").lineCount()).toBe(2);
     });

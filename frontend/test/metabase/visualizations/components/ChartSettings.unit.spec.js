@@ -25,16 +25,18 @@ const setup = props => {
 
 describe("ChartSettings", () => {
   it("should not crash if there are no widgets", () => {
-    setup({
-      widgets: [],
-    });
+    expect(() => setup({ widgets: [] })).not.toThrow();
   });
+
   it("should not crash if the initial section is invalid", () => {
-    setup({
-      widgets: [widget({ section: "Foo" })],
-      initial: { section: "Bar" },
-    });
+    expect(() =>
+      setup({
+        widgets: [widget({ section: "Foo" })],
+        initial: { section: "Bar" },
+      }),
+    ).not.toThrow();
   });
+
   it("should default to the first section (if no section in DEFAULT_TAB_PRIORITY)", () => {
     const { getByLabelText } = setup({
       widgets: [widget({ section: "Foo" }), widget({ section: "Bar" })],
@@ -42,6 +44,7 @@ describe("ChartSettings", () => {
     expect(getByLabelText("Foo")).toBeChecked();
     expect(getByLabelText("Bar")).not.toBeChecked();
   });
+
   it("should default to the DEFAULT_TAB_PRIORITY", () => {
     const { getByLabelText } = setup({
       widgets: [
@@ -53,6 +56,7 @@ describe("ChartSettings", () => {
     expect(getByLabelText("Foo")).not.toBeChecked();
     expect(getByLabelText("Display")).toBeChecked();
   });
+
   it("should be able to switch sections", () => {
     const { getByText, getByLabelText } = setup({
       widgets: [widget({ section: "Foo" }), widget({ section: "Bar" })],

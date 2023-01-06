@@ -8,7 +8,7 @@ describe("LoadingAndErrorWrapper", () => {
     it("should display a loading message if given a true loading prop", () => {
       render(<LoadingAndErrorWrapper loading={true} />);
 
-      screen.getByText("Loading...");
+      expect(screen.getByText("Loading...")).toBeInTheDocument();
     });
 
     it("should display a given child if loading is false", () => {
@@ -19,11 +19,13 @@ describe("LoadingAndErrorWrapper", () => {
           {() => <Child />}
         </LoadingAndErrorWrapper>,
       );
-      screen.getByText("Hey");
+      expect(screen.getByText("Hey")).toBeInTheDocument();
     });
 
     it("shouldn't fail if loaded with null children and no wrapper", () => {
-      render(<LoadingAndErrorWrapper loading={false} noWrapper />);
+      expect(() =>
+        render(<LoadingAndErrorWrapper loading={false} noWrapper />),
+      ).not.toThrow();
     });
 
     it("should display a given scene during loading", () => {
@@ -36,7 +38,7 @@ describe("LoadingAndErrorWrapper", () => {
           loadingScenes={[<Scene key="0" />]}
         />,
       );
-      screen.getByText("Fun load animation");
+      expect(screen.getByText("Fun load animation")).toBeInTheDocument();
     });
 
     describe("cycling", () => {
@@ -54,16 +56,16 @@ describe("LoadingAndErrorWrapper", () => {
           />,
         );
 
-        screen.getByText("One");
+        expect(screen.getByText("One")).toBeInTheDocument();
         jest.advanceTimersByTime(interval);
 
-        screen.getByText("Two");
+        expect(screen.getByText("Two")).toBeInTheDocument();
         jest.advanceTimersByTime(interval);
 
-        screen.getByText("Three");
+        expect(screen.getByText("Three")).toBeInTheDocument();
         jest.advanceTimersByTime(interval);
 
-        screen.getByText("One");
+        expect(screen.getByText("One")).toBeInTheDocument();
       });
     });
   });
@@ -76,7 +78,7 @@ describe("LoadingAndErrorWrapper", () => {
       };
 
       render(<LoadingAndErrorWrapper loading={true} error={error} />);
-      screen.getByText(error.message);
+      expect(screen.getByText(error.message)).toBeInTheDocument();
     });
   });
 });

@@ -39,7 +39,9 @@ describe("FieldValuesWidget", () => {
 
       it("should have 'Enter some text' as the placeholder text", async () => {
         renderFieldValuesWidget({ ...props });
-        await screen.findByPlaceholderText("Enter some text");
+        expect(
+          await screen.findByPlaceholderText("Enter some text"),
+        ).toBeInTheDocument();
       });
     });
     describe("has_field_values = list", () => {
@@ -53,19 +55,20 @@ describe("FieldValuesWidget", () => {
         expect(fetchFieldValues).toHaveBeenCalledWith(PRODUCTS.CATEGORY.id);
       });
 
-      // current version of this component always shows the search box
-      it.skip("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", async () => {
+      it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", async () => {
         renderFieldValuesWidget({ ...props });
         expect(
           await screen.queryByPlaceholderText("Search the list"),
-        ).toBeNull();
+        ).not.toBeInTheDocument();
       });
 
       it("should have 'Enter some text' as the placeholder text for fields with more than 10 values", async () => {
         renderFieldValuesWidget({
           fields: [mock(PRODUCTS.TITLE, { has_field_values: "list" })],
         });
-        await screen.findByPlaceholderText("Enter some text");
+        expect(
+          await screen.findByPlaceholderText("Enter some text"),
+        ).toBeInTheDocument();
       });
     });
 
@@ -82,7 +85,9 @@ describe("FieldValuesWidget", () => {
 
       it("should have 'Search by Category' as the placeholder text", async () => {
         renderFieldValuesWidget({ ...props });
-        await screen.findByPlaceholderText("Search by Category");
+        expect(
+          await screen.findByPlaceholderText("Search by Category"),
+        ).toBeInTheDocument();
       });
     });
   });
@@ -93,7 +98,9 @@ describe("FieldValuesWidget", () => {
         renderFieldValuesWidget({
           fields: [mock(ORDERS.PRODUCT_ID, { has_field_values: "none" })],
         });
-        await screen.findByPlaceholderText("Enter an ID");
+        expect(
+          await screen.findByPlaceholderText("Enter an ID"),
+        ).toBeInTheDocument();
       });
     });
 
@@ -107,7 +114,9 @@ describe("FieldValuesWidget", () => {
             }),
           ],
         });
-        await screen.findByPlaceholderText("Search the list");
+        expect(
+          await screen.findByPlaceholderText("Search the list"),
+        ).toBeInTheDocument();
       });
     });
 
@@ -121,7 +130,11 @@ describe("FieldValuesWidget", () => {
             }),
           ],
         });
-        await screen.findByPlaceholderText("Search by Category or enter an ID");
+        expect(
+          await screen.findByPlaceholderText(
+            "Search by Category or enter an ID",
+          ),
+        ).toBeInTheDocument();
       });
 
       it("should not duplicate 'ID' in placeholder when ID itself is searchable", async () => {
@@ -132,7 +145,9 @@ describe("FieldValuesWidget", () => {
           }),
         ];
         renderFieldValuesWidget({ fields });
-        await screen.findByPlaceholderText("Search by Product");
+        expect(
+          await screen.findByPlaceholderText("Search by Product"),
+        ).toBeInTheDocument();
       });
     });
   });
@@ -144,10 +159,12 @@ describe("FieldValuesWidget", () => {
         mock(PEOPLE.STATE, { has_field_values: "list" }),
       ];
       renderFieldValuesWidget({ fields });
-      await screen.findByPlaceholderText("Search the list");
+      expect(
+        await screen.findByPlaceholderText("Search the list"),
+      ).toBeInTheDocument();
 
-      await screen.findByText("AZ");
-      await screen.findByText("Facebook");
+      expect(await screen.findByText("AZ")).toBeInTheDocument();
+      expect(await screen.findByText("Facebook")).toBeInTheDocument();
     });
 
     it("search if any field is a search", async () => {

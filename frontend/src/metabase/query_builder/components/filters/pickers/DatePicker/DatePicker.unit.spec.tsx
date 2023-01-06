@@ -168,7 +168,10 @@ describe("DatePicker", () => {
         render(<DatePickerStateWrapper filter={filter} />);
 
         userEvent.click(screen.getByText(new RegExp(type, "i")));
-        await screen.findAllByTestId(`${type}-date-picker`);
+
+        expect(
+          (await screen.findAllByTestId(`${type}-date-picker`)).length,
+        ).not.toBe(0);
       });
     });
 
@@ -276,11 +279,11 @@ describe("DatePicker", () => {
         userEvent.click(screen.getByText(/specific/i));
         userEvent.click(screen.getByText("On"));
 
-        await screen.findByText("May 2020");
+        expect(await screen.findByText("May 2020")).toBeInTheDocument();
         userEvent.click(await screen.getByLabelText(/chevronright/i));
-        await screen.findByText("June 2020");
+        expect(await screen.findByText("June 2020")).toBeInTheDocument();
         userEvent.click(await screen.getByLabelText(/chevronright/i));
-        await screen.findByText("July 2020");
+        expect(await screen.findByText("July 2020")).toBeInTheDocument();
       });
     });
 

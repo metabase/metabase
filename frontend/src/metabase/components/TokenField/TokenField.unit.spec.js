@@ -1,3 +1,4 @@
+/* eslint-disable jest/expect-expect */
 /* eslint-disable react/display-name */
 /* eslint-disable react/prop-types */
 
@@ -5,12 +6,7 @@ import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import {
-  KEYCODE_DOWN,
-  KEYCODE_TAB,
-  KEYCODE_ENTER,
-  KEY_COMMA,
-} from "metabase/lib/keyboard";
+import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 import TokenField from "./TokenField";
 
 const DEFAULT_OPTIONS = ["Doohickey", "Gadget", "Gizmo", "Widget"];
@@ -215,23 +211,6 @@ describe("TokenField", () => {
     findWithinValues(["bar"]);
   });
 
-  // Not clear? and not possible to simulate with RTL
-  it.skip("should type a character that's on the comma key", () => {
-    render(<TokenFieldWithStateAndDefaults value={[]} options={["fooбar"]} />);
-
-    type("foo");
-
-    input().focus();
-    fireEvent.keyDown(input(), {
-      key: "б",
-      keyCode: 188,
-    });
-    // 188 is comma on most layouts
-    // input().simulate("keydown", { keyCode: 188, key: "б" });
-    // if that keydown was interpreted as a comma, the value would be "fooбar"
-    // expect(input().props().value).toEqual("foo");
-  });
-
   describe("when updateOnInputChange is provided", () => {
     beforeEach(() => {
       render(
@@ -390,71 +369,7 @@ describe("TokenField", () => {
     });
   });
 
-  describe.skip("key selection", () => {
-    [
-      ["keyCode", KEYCODE_TAB],
-      ["keyCode", KEYCODE_ENTER],
-      ["key", KEY_COMMA],
-    ].map(([keyType, keyValue]) =>
-      it(`should allow the user to use arrow keys and then ${keyType}: ${keyValue} to select a recipient`, () => {
-        const spy = jest.fn();
-
-        render(
-          <TokenField
-            {...DEFAULT_TOKEN_FIELD_PROPS}
-            options={DEFAULT_OPTIONS}
-            onChange={spy}
-          />,
-        );
-
-        // limit our options by typing
-        type("G");
-
-        // the initially selected option should be the first option
-        // expect(component.state().selectedOptionValue).toBe(DEFAULT_OPTIONS[1]);
-
-        inputKeydown(KEYCODE_DOWN);
-
-        // input().simulate("keydown", {
-        //   keyCode: KEYCODE_DOWN,
-        //   preventDefault: jest.fn(),
-        // });
-
-        // // the next possible option should be selected now
-        // // expect(component.state().selectedOptionValue).toBe(DEFAULT_OPTIONS[2]);
-
-        // input().simulate("keydown", {
-        //   [keyType]: keyValue,
-        //   preventDefalut: jest.fn(),
-        // });
-
-        // expect(spy).toHaveBeenCalledTimes(1);
-        // expect(spy).toHaveBeenCalledWith([DEFAULT_OPTIONS[2]]);
-      }),
-    );
-  });
-
   describe("with multi=true", () => {
-    // Couldn't confirm that blur is prevented
-    it.skip("should prevent blurring on tab", () => {
-      render(
-        <TokenFieldWithStateAndDefaults
-          options={DEFAULT_OPTIONS}
-          // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
-          updateOnInputChange
-          multi
-        />,
-      );
-      type("asdf");
-      input().focus();
-      userEvent.tab();
-
-      // Instead of relying on `preventDefault` like the previous version of the test did,
-      // we're simply checking the values - onBlur would've set the value
-      expect(values().textContent).toBe("");
-    });
-
     it('should paste "1,2,3" as multiple values', () => {
       render(
         <TokenFieldWithStateAndDefaults

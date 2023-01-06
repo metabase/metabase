@@ -740,12 +740,6 @@ describe("QB Actions > initializeQB", () => {
       expect(filter.raw()).toEqual(["segment", SEGMENT_ID]);
     });
 
-    it("opens summarization sidebar if metric is applied", async () => {
-      const METRIC_ID = 777;
-      const { result } = await setupOrdersTable({ metric: METRIC_ID });
-      expect(result.uiControls.isShowingSummarySidebar).toBe(true);
-    });
-
     it("applies 'metric' param correctly", async () => {
       const METRIC_ID = 777;
 

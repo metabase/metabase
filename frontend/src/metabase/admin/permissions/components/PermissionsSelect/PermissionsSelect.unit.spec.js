@@ -3,7 +3,7 @@ import { render, fireEvent, screen } from "@testing-library/react";
 
 import { PermissionsSelect } from "./PermissionsSelect";
 
-export const options = [
+const options = [
   {
     label: "Allowed",
     value: "all",

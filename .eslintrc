@@ -123,7 +123,10 @@
         "*.unit.spec.tsx",
         "*.unit.spec.js",
         "*.unit.spec.jsx"
-      ]
+      ],
+      "rules": {
+        "jest/valid-title": ["error", { "ignoreTypeOfDescribeName": true }]
+      }
     }
   ]
 }

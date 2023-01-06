@@ -24,7 +24,7 @@ describe("MetricForm", () => {
         visualizationIsClickable={() => false}
       />,
     );
-    getByText("Scalar Title");
+    expect(getByText("Scalar Title")).toBeInTheDocument();
   });
 
   it("shouldn't render compact if normal formatting is <=6 characters", () => {
@@ -36,7 +36,7 @@ describe("MetricForm", () => {
         width={230}
       />,
     );
-    getByText("12,345"); // with compact formatting, we'd have 1
+    expect(getByText("12,345")).toBeInTheDocument(); // with compact formatting, we'd have 1
   });
 
   it("should render compact if normal formatting is >6 characters", () => {
@@ -48,7 +48,7 @@ describe("MetricForm", () => {
         width={230}
       />,
     );
-    getByText("12.3k");
+    expect(getByText("12.3k")).toBeInTheDocument();
   });
 
   it("should render null", () => {
@@ -60,6 +60,6 @@ describe("MetricForm", () => {
         visualizationIsClickable={() => false}
       />,
     );
-    getByText("Scalar Title"); // just confirms that it rendered
+    expect(getByText("Scalar Title")).toBeInTheDocument(); // just confirms that it rendered
   });
 });

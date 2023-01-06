@@ -1,5 +1,5 @@
 import React from "react";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -28,12 +28,13 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = setup(series({ rows, insights }));
 
-    getAllByText("120");
-    getAllByText("20%");
-    getAllByText("was 100");
-    getAllByText("last month");
+    setup(series({ rows, insights }));
+
+    expect(screen.getByText("120")).toBeInTheDocument();
+    expect(screen.getByText("20%")).toBeInTheDocument();
+    expect(screen.getByText("was 100")).toBeInTheDocument();
+    expect(screen.getByText("last month")).toBeInTheDocument();
   });
 
   it("should show 20% decrease", () => {
@@ -47,11 +48,13 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = setup(series({ rows, insights }));
-    getAllByText("80");
-    getAllByText("20%");
-    getAllByText("was 100");
-    getAllByText("last month");
+
+    setup(series({ rows, insights }));
+
+    expect(screen.getByText("80")).toBeInTheDocument();
+    expect(screen.getByText("20%")).toBeInTheDocument();
+    expect(screen.getByText("was 100")).toBeInTheDocument();
+    expect(screen.getByText("last month")).toBeInTheDocument();
   });
 
   it("should show 0% change", () => {
@@ -65,9 +68,11 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = setup(series({ rows, insights }));
-    getAllByText("100");
-    getAllByText("No change from last month");
+
+    setup(series({ rows, insights }));
+
+    expect(screen.getByText("100")).toBeInTheDocument();
+    expect(screen.getByText("No change from last month")).toBeInTheDocument();
   });
 
   it("should show 8000% change", () => {
@@ -84,8 +89,10 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = setup(series({ rows, insights }));
-    getAllByText("8,000%");
+
+    setup(series({ rows, insights }));
+
+    expect(screen.getByText("8,000%")).toBeInTheDocument();
   });
 
   it("shouldn't throw an error getting settings for single-column data", () => {

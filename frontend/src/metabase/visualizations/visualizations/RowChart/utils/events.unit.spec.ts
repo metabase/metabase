@@ -11,7 +11,7 @@ const data = [
   { y: "baz", x: 300, x1: 600 },
 ];
 
-export type TestDatum = { y: string; x: number; x1: number };
+type TestDatum = { y: string; x: number; x1: number };
 
 const series1 = {
   seriesKey: "series 1",
@@ -42,17 +42,6 @@ const barData = {
   series: series1,
   seriesIndex: 0,
 };
-
-// export type BreakoutChartColumns = {
-//   dimension: ColumnDescriptor;
-//   breakout: ColumnDescriptor;
-//   metric: ColumnDescriptor;
-// };
-
-// export type MultipleMetricsChartColumns = {
-//   dimension: ColumnDescriptor;
-//   metrics: ColumnDescriptor[];
-// };
 
 const breakoutChartColumns: BreakoutChartColumns = {
   dimension: {

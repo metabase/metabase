@@ -339,7 +339,7 @@ describe("StructuredQuery", () => {
       });
     });
 
-    describe("excludes breakout that has the same base dimension as what is already used", () => {
+    it("excludes breakout that has the same base dimension as what is already used", () => {
       const breakout = [
         "field",
         ORDERS.CREATED_AT.id,
@@ -354,6 +354,7 @@ describe("StructuredQuery", () => {
       expect(queryWithBreakout.breakoutOptions().all()).toEqual(
         expect.not.arrayContaining(createdAtBreakoutDimension),
       );
+
       expect(
         queryWithBreakout
           .breakoutOptions()
@@ -423,31 +424,12 @@ describe("StructuredQuery", () => {
         // Should just include the non-fk keys from the current table
         expect(query.fieldOptions().dimensions.length).toBe(7);
       });
-      it.skip("does not include foreign key fields in the dimensions list", () => {
-        const dimensions = query.fieldOptions().dimensions;
-        const fkDimensions = dimensions.filter(
-          dim => dim.field() && dim.field().isFK(),
-        );
-        expect(fkDimensions.length).toBe(0);
-      });
 
       it("returns correct count of foreign keys", () => {
         expect(query.fieldOptions().fks.length).toBe(2);
       });
       it("returns a correct count of fields", () => {
         expect(query.fieldOptions().count).toBe(28);
-      });
-    });
-  });
-
-  describe("FIELD REFERENCE METHODS", () => {
-    describe("fieldReferenceForColumn", () => {
-      it.skip('should return `["field", 1, null]` for a normal column', () => {
-        expect(query.fieldReferenceForColumn({ id: ORDERS.TOTAL.id })).toEqual([
-          "field",
-          ORDERS.TOTAL.id,
-          null,
-        ]);
       });
     });
   });

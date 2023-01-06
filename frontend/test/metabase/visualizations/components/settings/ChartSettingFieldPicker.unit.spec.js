@@ -1,6 +1,6 @@
 import React from "react";
 import { within } from "@testing-library/dom";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 // these tests use ChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
@@ -49,11 +49,11 @@ const setup = seriesDisplay => {
   );
 };
 
-describe("ChartSettinFieldPicker", () => {
+describe("ChartSettingFieldPicker", () => {
   it("should not show ellipsis when a colum has no settings", () => {
-    const { getAllByTestId } = setup();
+    setup();
 
-    const fields = getAllByTestId("chartsettings-field-picker");
+    const fields = screen.getAllByTestId("chartsettings-field-picker");
 
     expect(fields[0]).toHaveTextContent("FOO");
     expect(fields[1]).toHaveTextContent("BAR");
@@ -67,7 +67,7 @@ describe("ChartSettinFieldPicker", () => {
     ).toBeInTheDocument();
   });
 
-  it("Should handle 'hasColumnSettings' check when dealing with currency", () => {
+  it("should handle 'hasColumnSettings' check when dealing with currency", () => {
     setup({ semantic_type: "type/Currency" });
   });
 });
