@@ -91,7 +91,6 @@ async function setup({ question, cachingEnabled = true } = {}) {
   renderWithProviders(
     <QuestionInfoSidebar question={question} onSave={onSave} />,
     {
-      currentUser: user,
       withSampleDatabase: true,
       storeInitialState: {
         settings: settings,

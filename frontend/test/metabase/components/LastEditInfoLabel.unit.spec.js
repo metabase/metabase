@@ -32,7 +32,6 @@ describe("LastEditInfoLabel", () => {
       : { ...TEST_USER, id: TEST_USER.id + 1 };
 
     return renderWithProviders(<LastEditInfoLabel item={testItem} />, {
-      currentUser,
       storeInitialState: {
         currentUser,
       },

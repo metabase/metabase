@@ -13,7 +13,6 @@ import { state as sampleDatabaseReduxState } from "__support__/sample_database_f
 import type { User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import mainReducers from "metabase/reducers-main";
@@ -30,14 +29,6 @@ export interface RenderWithProvidersOptions {
   withDND?: boolean;
 }
 
-const DEFAULT_USER = createMockUser({
-  id: 1,
-  first_name: "Bobby",
-  last_name: "Tables",
-  email: "bobby@metabase.test",
-  is_superuser: true,
-});
-
 /**
  * Custom wrapper of react testing library's render function,
  * helping to setup common wrappers and provider components
@@ -46,7 +37,6 @@ const DEFAULT_USER = createMockUser({
 export function renderWithProviders(
   ui: React.ReactElement,
   {
-    currentUser = DEFAULT_USER,
     mode = "default",
     storeInitialState = {},
     withSampleDatabase,
@@ -55,13 +45,11 @@ export function renderWithProviders(
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  let customStateParams = merge({ currentUser }, storeInitialState);
-
-  customStateParams = withSampleDatabase
-    ? merge(sampleDatabaseReduxState, customStateParams)
-    : customStateParams;
-
-  const initialReduxState = createMockState(customStateParams);
+  const initialReduxState = createMockState(
+    withSampleDatabase
+      ? merge(sampleDatabaseReduxState, storeInitialState)
+      : storeInitialState,
+  );
 
   const store = getStore(
     mode === "default" ? mainReducers : publicReducers,
