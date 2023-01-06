@@ -24,3 +24,6 @@ export * from "./table";
 export * from "./timeline";
 export * from "./user";
 export * from "./parameters";
+
+// ISO8601 timestamp
+export type ISO8601Time = string;

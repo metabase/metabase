@@ -7,6 +7,7 @@ import {
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 import ItemPicker from "./ItemPicker";
 
 function collection({
@@ -36,11 +37,11 @@ function dashboard({ id, name, collection_id = null }) {
   };
 }
 
-const CURRENT_USER = {
+const CURRENT_USER = createMockUser({
   id: 1,
   personal_collection_id: 100,
   is_superuser: true,
-};
+});
 
 const COLLECTION = {
   ROOT: collection({ id: "root", name: "Our analytics", location: null }),
@@ -136,7 +137,9 @@ async function setup({
   renderWithProviders(
     <ItemPicker models={models} onChange={onChange} {...props} />,
     {
-      currentUser: CURRENT_USER,
+      storeInitialState: {
+        currentUser: CURRENT_USER,
+      },
     },
   );
 

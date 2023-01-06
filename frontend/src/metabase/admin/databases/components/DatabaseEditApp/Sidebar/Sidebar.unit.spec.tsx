@@ -9,9 +9,6 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import MetabaseSettings from "metabase/lib/settings";
-import Utils from "metabase/lib/utils";
-
 import type { InitialSyncStatus } from "metabase-types/api";
 
 import {
@@ -68,22 +65,7 @@ function setup({
   };
 }
 
-function mockMetabaseSettings() {
-  const original = MetabaseSettings.get.bind(MetabaseSettings);
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "site-uuid") {
-      return Utils.uuid();
-    }
-    return original(key);
-  });
-}
-
 describe("DatabaseEditApp/Sidebar", () => {
-  beforeAll(() => {
-    mockMetabaseSettings();
-  });
-
   it("syncs database schema", () => {
     const { database, syncDatabaseSchema } = setup();
     userEvent.click(screen.getByText(/Sync database schema now/i));

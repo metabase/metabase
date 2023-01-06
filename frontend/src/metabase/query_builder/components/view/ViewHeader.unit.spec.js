@@ -11,6 +11,8 @@ import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/Question";
 import { ViewTitleHeader } from "./ViewHeader";
 
+console.warn = jest.fn();
+
 const BASE_GUI_QUESTION = {
   display: "table",
   visualization_settings: {},
@@ -94,32 +96,37 @@ function mockSettings({ enableNestedQueries = true } = {}) {
 function setup({
   question,
   settings,
-  isRunnable = true,
   isActionListVisible = true,
   isAdditionalInfoVisible = true,
+  isDirty = false,
+  isRunnable = true,
   ...props
 } = {}) {
   mockSettings(settings);
 
   const callbacks = {
     runQuestionQuery: jest.fn(),
+    updateQuestion: jest.fn(),
     setQueryBuilderMode: jest.fn(),
     onOpenModal: jest.fn(),
     onAddFilter: jest.fn(),
     onCloseFilter: jest.fn(),
     onEditSummary: jest.fn(),
+    onOpenQuestionInfo: jest.fn(),
     onCloseSummary: jest.fn(),
     onSave: jest.fn(),
   };
 
   renderWithProviders(
     <ViewTitleHeader
+      isRunning={false}
       {...callbacks}
       {...props}
       question={question}
-      isRunnable={isRunnable}
       isActionListVisible={isActionListVisible}
       isAdditionalInfoVisible={isAdditionalInfoVisible}
+      isDirty={isDirty}
+      isRunnable={isRunnable}
     />,
     {
       withRouter: true,

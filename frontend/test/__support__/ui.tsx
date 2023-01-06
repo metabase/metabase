@@ -10,30 +10,22 @@ import HTML5Backend from "react-dnd-html5-backend";
 
 import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";
 
-import type { User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
+
+import mainReducers from "metabase/reducers-main";
+import publicReducers from "metabase/reducers-public";
 
 import { getStore } from "./entities-store";
 
 export interface RenderWithProvidersOptions {
-  currentUser?: User;
-  reducers?: Record<string, (state: any) => any>;
+  mode?: "default" | "public";
   storeInitialState?: Partial<State>;
   withSampleDatabase?: boolean;
   withRouter?: boolean;
   withDND?: boolean;
 }
-
-const DEFAULT_USER = createMockUser({
-  id: 1,
-  first_name: "Bobby",
-  last_name: "Tables",
-  email: "bobby@metabase.test",
-  is_superuser: true,
-});
 
 /**
  * Custom wrapper of react testing library's render function,
@@ -43,8 +35,7 @@ const DEFAULT_USER = createMockUser({
 export function renderWithProviders(
   ui: React.ReactElement,
   {
-    currentUser = DEFAULT_USER,
-    reducers = {},
+    mode = "default",
     storeInitialState = {},
     withSampleDatabase,
     withRouter = false,
@@ -52,26 +43,14 @@ export function renderWithProviders(
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  let customStateParams = merge({ currentUser }, storeInitialState);
-
-  customStateParams = withSampleDatabase
-    ? merge(sampleDatabaseReduxState, customStateParams)
-    : customStateParams;
-
-  const initialReduxState = createMockState(customStateParams);
+  const initialReduxState = createMockState(
+    withSampleDatabase
+      ? merge(sampleDatabaseReduxState, storeInitialState)
+      : storeInitialState,
+  );
 
   const store = getStore(
-    {
-      admin: (state = initialReduxState.admin) => state,
-      app: (state = initialReduxState.app) => state,
-      currentUser: (state = initialReduxState.currentUser) => state,
-      dashboard: (state = initialReduxState.dashboard) => state,
-      embed: (state = initialReduxState.embed) => state,
-      settings: (state = initialReduxState.settings) => state,
-      setup: (state = initialReduxState.setup) => state,
-      qb: (state = initialReduxState.qb) => state,
-      ...reducers,
-    },
+    mode === "default" ? mainReducers : publicReducers,
     initialReduxState,
   );
 

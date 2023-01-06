@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
-import { getIn, updateIn } from "icepick";
+import { getIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
 import { findDOMNode } from "react-dom";
@@ -11,8 +10,6 @@ import { connect } from "react-redux";
 import { getScrollBarSize } from "metabase/lib/dom";
 import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
-import Icon from "metabase/components/Icon";
 import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_SPLIT_SETTING,
@@ -30,38 +27,23 @@ import { ChartSettingIconRadio } from "metabase/visualizations/components/settin
 
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { isDimension } from "metabase-lib/types/utils/isa";
+
+import { RowToggleIcon } from "./RowToggleIcon";
+import { Cell } from "./PivotTableCell";
+
 import {
   PivotTableRoot,
-  PivotTableCell,
   PivotTableTopLeftCellsContainer,
-  RowToggleIconRoot,
   CELL_HEIGHT,
-  PivotTableSettingLabel,
 } from "./PivotTable.styled";
 
-const partitions = [
-  {
-    name: "rows",
-    columnFilter: isDimension,
-    title: (
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Rows`}</PivotTableSettingLabel>
-    ),
-  },
-  {
-    name: "columns",
-    columnFilter: isDimension,
-    title: (
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Columns`}</PivotTableSettingLabel>
-    ),
-  },
-  {
-    name: "values",
-    columnFilter: col => !isDimension(col),
-    title: (
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Measures`}</PivotTableSettingLabel>
-    ),
-  },
-];
+import { partitions } from "./partitions";
+import {
+  addMissingCardBreakouts,
+  isColumnValid,
+  isFormattablePivotColumn,
+  updateValueWithCurrentColumns,
+} from "./utils";
 
 // cell width and height for normal body cells
 const CELL_WIDTH = 100;
@@ -481,7 +463,11 @@ class PivotTable extends Component {
     );
 
     return (
-      <PivotTableRoot isDashboard={isDashboard} isNightMode={isNightMode}>
+      <PivotTableRoot
+        isDashboard={isDashboard}
+        isNightMode={isNightMode}
+        data-testid="pivot-table"
+      >
         <ScrollSync>
           {({ onScroll, scrollLeft, scrollTop }) => (
             <div className="full-height flex flex-column">
@@ -608,172 +594,4 @@ class PivotTable extends Component {
 }
 
 export default connect(mapStateToProps)(PivotTable);
-
-function RowToggleIcon({
-  value,
-  settings,
-  updateSettings,
-  hideUnlessCollapsed,
-  rowIndex,
-  hasCustomColors,
-  isNightMode,
-}) {
-  if (value == null) {
-    return null;
-  }
-  const setting = settings[COLLAPSED_ROWS_SETTING];
-  const ref = JSON.stringify(value);
-  const isColumn = !Array.isArray(value);
-  const columnRef = isColumn ? null : JSON.stringify(value.length);
-  const settingValue = setting.value || [];
-  const isColumnCollapsed = !isColumn && settingValue.includes(columnRef);
-  const isCollapsed = settingValue.includes(ref) || isColumnCollapsed;
-  if (hideUnlessCollapsed && !isCollapsed) {
-    // subtotal rows shouldn't have an icon unless the section is collapsed
-    return null;
-  }
-
-  // The giant nested ternary below picks the right function to toggle the current button.
-  // That depends on whether we're a row or column header and whether we're open or closed.
-  const toggle =
-    isColumn && !isCollapsed // click on open column
-      ? settingValue =>
-          settingValue
-            .filter(v => {
-              const parsed = JSON.parse(v);
-              return !(Array.isArray(parsed) && parsed.length === value);
-            }) // remove any already collapsed items in this column
-            .concat(ref) // add column to list
-      : !isColumn && isColumnCollapsed // single row in collapsed column
-      ? settingValue =>
-          settingValue
-            .filter(v => v !== columnRef) // remove column from list
-            .concat(
-              // add other rows in this columns so they stay closed
-              rowIndex
-                .filter(
-                  item =>
-                    // equal length means they're in the same column
-                    item.length === value.length &&
-                    // but not exactly this item
-                    !_.isEqual(item, value),
-                )
-                // serialize those paths
-                .map(item => JSON.stringify(item)),
-            )
-      : isCollapsed // closed row or column
-      ? settingValue => settingValue.filter(v => v !== ref)
-      : // open row or column
-        settingValue => settingValue.concat(ref);
-
-  return (
-    <RowToggleIconRoot
-      onClick={e => {
-        e.stopPropagation();
-        updateSettings({
-          [COLLAPSED_ROWS_SETTING]: updateIn(setting, ["value"], toggle),
-        });
-      }}
-    >
-      <Icon name={isCollapsed ? "add" : "dash"} size={8} />
-    </RowToggleIconRoot>
-  );
-}
-
-function Cell({
-  value,
-  style,
-  icon,
-  backgroundColor,
-  isBody = false,
-  isBold,
-  isEmphasized,
-  isNightMode,
-  isBorderedHeader,
-  isTransparent,
-  hasTopBorder,
-  onClick,
-}) {
-  return (
-    <PivotTableCell
-      data-testid="pivot-table-cell"
-      isNightMode={isNightMode}
-      isBold={isBold}
-      isEmphasized={isEmphasized}
-      isBorderedHeader={isBorderedHeader}
-      hasTopBorder={hasTopBorder}
-      isTransparent={isTransparent}
-      style={{
-        ...style,
-        ...(backgroundColor
-          ? {
-              backgroundColor,
-            }
-          : {}),
-      }}
-      onClick={onClick}
-    >
-      <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
-        <Ellipsified>{value}</Ellipsified>
-        {icon && <div className="pl1">{icon}</div>}
-      </div>
-    </PivotTableCell>
-  );
-}
-
-function updateValueWithCurrentColumns(storedValue, columns) {
-  const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
-  const currentSettingFieldRefs = Object.values(storedValue).flatMap(
-    fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)),
-  );
-  const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
-  const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
-
-  // remove toRemove
-  const value = _.mapObject(storedValue, fieldRefs =>
-    fieldRefs.filter(
-      field_ref => !toRemove.includes(JSON.stringify(field_ref)),
-    ),
-  );
-  // add toAdd to first partitions where it matches the filter
-  for (const fieldRef of toAdd) {
-    for (const { columnFilter: filter, name } of partitions) {
-      const column = columns.find(
-        c => JSON.stringify(c.field_ref) === fieldRef,
-      );
-      if (filter == null || filter(column)) {
-        value[name] = [...value[name], column.field_ref];
-        break;
-      }
-    }
-  }
-  return value;
-}
-
-// This is a hack. We need to pass pivot_rows and pivot_cols on each query.
-// When a breakout is added to the query, we need to partition it before getting the rows.
-// We pretend the breakouts are columns so we can partition the new breakout.
-function addMissingCardBreakouts(setting, card) {
-  const breakouts = getIn(card, ["dataset_query", "query", "breakout"]) || [];
-  if (breakouts.length <= setting.columns.length + setting.rows.length) {
-    return setting;
-  }
-  const breakoutFieldRefs = breakouts.map(field_ref => ({ field_ref }));
-  const { columns, rows } = updateValueWithCurrentColumns(
-    setting,
-    breakoutFieldRefs,
-  );
-  return { ...setting, columns, rows };
-}
-
-function isColumnValid(col) {
-  return (
-    col.source === "aggregation" ||
-    col.source === "breakout" ||
-    isPivotGroupColumn(col)
-  );
-}
-
-function isFormattablePivotColumn(column) {
-  return column.source === "aggregation";
-}
+export { PivotTable };
