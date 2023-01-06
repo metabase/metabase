@@ -38,6 +38,26 @@ function isDashboardAddedSeries(series, seriesIndex, dashboard) {
   return (dashCard?.series || []).some(card => card.id === addedSeriesCard.id);
 }
 
+function getColumnDisplayName(
+  col,
+  settings,
+  isBreakout,
+  colVizSettingsKey = col.name,
+) {
+  const colTitle = getIn(settings, [
+    "series_settings",
+    colVizSettingsKey,
+    "title",
+  ]);
+
+  // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
+  if (!isBreakout && colTitle) {
+    return colTitle;
+  }
+
+  return getFriendlyName(col);
+}
+
 export function getClickObject(
   d,
   {
@@ -49,6 +69,8 @@ export function getClickObject(
     classList,
     settings,
     dashboard,
+    event,
+    element,
   },
 ) {
   let { cols } = series[seriesIndex].data;
@@ -58,21 +80,6 @@ export function getClickObject(
   const isBreakoutMultiseries = isMultiseries && card._breakoutColumn;
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
-
-  function getColumnDisplayName(col, colVizSettingsKey = col.name) {
-    const colTitle = getIn(settings, [
-      "series_settings",
-      colVizSettingsKey,
-      "title",
-    ]);
-
-    // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
-    if (!isBreakoutMultiseries && colTitle) {
-      return colTitle;
-    }
-
-    return getFriendlyName(col);
-  }
 
   let data = [];
   let dimensions = [];
@@ -84,14 +91,14 @@ export function getClickObject(
       data = d.key._origin.row.map((value, index) => {
         const col = d.key._origin.cols[index];
         return {
-          key: getColumnDisplayName(col),
+          key: getColumnDisplayName(col, settings, isBreakoutMultiseries),
           value: value,
           col,
         };
       });
     } else {
       data = d.key.map((value, index) => ({
-        key: getColumnDisplayName(cols[index]),
+        key: getColumnDisplayName(cols[index], settings, isBreakoutMultiseries),
         value: value,
         col: cols[index],
       }));
@@ -172,7 +179,7 @@ export function getClickObject(
       data = rawCols.map((col, i) => {
         if (isNormalized && cols[1].field_ref === col.field_ref) {
           return {
-            key: getColumnDisplayName(cols[1]),
+            key: getColumnDisplayName(cols[1], settings, isBreakoutMultiseries),
             value: formatValue(d.data.value, {
               number_style: "percent",
               column: cols[1],
@@ -185,7 +192,12 @@ export function getClickObject(
           };
         }
         return {
-          key: getColumnDisplayName(col, colVizSettingsKeys[i]),
+          key: getColumnDisplayName(
+            col,
+            settings,
+            isBreakoutMultiseries,
+            colVizSettingsKeys[i],
+          ),
           value: formatNullable(aggregatedRow[i]),
           col: col,
         };
@@ -198,7 +210,13 @@ export function getClickObject(
   } else if (isBreakoutMultiseries) {
     // an area doesn't have any data, but might have a breakout series to show
     const { _breakoutValue: value, _breakoutColumn: column } = card;
-    data = [{ key: getColumnDisplayName(column), col: column, value }];
+    data = [
+      {
+        key: getColumnDisplayName(column, settings, isBreakoutMultiseries),
+        col: column,
+        value,
+      },
+    ];
     dimensions = [{ column, value }];
   }
 
@@ -231,6 +249,8 @@ export function getClickObject(
   value = parseBooleanStringValue({ column, value });
 
   return {
+    event,
+    element,
     data: data.length > 0 ? data : null,
     dimensions,
     value,
@@ -278,6 +298,7 @@ export function getTooltipModel(
   hoveredIndex,
   datas,
   settings,
+  dashboard,
 ) {
   const isWaterfallChart = multipleCardSeries.some(
     series => series.card?.display === "waterfall",
@@ -286,6 +307,8 @@ export function getTooltipModel(
   const seriesWithGroupedData = multipleCardSeries.map((series, index) => ({
     ...series,
     groupedData: datas[index],
+    isHovered: hoveredIndex === index,
+    seriesIndex: index,
   }));
 
   const hoveredSeries = seriesWithGroupedData[hoveredIndex];
@@ -296,6 +319,12 @@ export function getTooltipModel(
   const hasBreakout = hoveredCardSeries?.some(
     series => series.card?._breakoutColumn != null,
   );
+
+  const seriesToShow = hasBreakout
+    ? hoveredCardSeries
+    : seriesWithGroupedData.filter(
+        series => series.card?._breakoutColumn == null,
+      );
 
   const formattedXValue = formatValueForTooltip({
     value: xValue,
@@ -310,7 +339,7 @@ export function getTooltipModel(
       column: hoveredSeries?.data?.cols[METRIC_INDEX],
     });
 
-  const tooltipRows = hoveredCardSeries
+  const tooltipRows = seriesToShow
     .map(series => {
       const { card, groupedData, data } = series;
       const datum = groupedData?.find(
@@ -323,7 +352,33 @@ export function getTooltipModel(
 
       const value = datum[METRIC_INDEX];
       const valueColumn = data.cols[METRIC_INDEX];
-      const name = settings.series(series)?.["title"] || card.name;
+
+      let name = null;
+      if (hasBreakout) {
+        name = settings.series(series)?.["title"] ?? card.name;
+      } else {
+        const hasMultipleMetricsInCard =
+          multipleCardSeries.filter(
+            singleSeries => series.card?.id === singleSeries.card?.id,
+          ).length > 1;
+        const isAddedSeriesOnDashcard = isDashboardAddedSeries(
+          multipleCardSeries,
+          series.seriesIndex,
+          dashboard,
+        );
+
+        let settingsKey = null;
+        if (isAddedSeriesOnDashcard) {
+          settingsKey = hasMultipleMetricsInCard
+            ? `${card.originalCardName}: ${valueColumn.display_name}`
+            : card.name;
+        } else {
+          settingsKey = valueColumn.name;
+        }
+
+        name = getColumnDisplayName(valueColumn, settings, false, settingsKey);
+      }
+
       const colorKey = keyForSingleSeries(series);
       const color = settings["series_settings.colors"][colorKey];
 
@@ -331,6 +386,7 @@ export function getTooltipModel(
         color: !isWaterfallChart ? color : undefined,
         name,
         value,
+        isHovered: series.isHovered,
         formatter: value =>
           formatValueForTooltip({
             value,
@@ -341,10 +397,7 @@ export function getTooltipModel(
     })
     .filter(Boolean);
 
-  const [headerRows, bodyRows] = _.partition(
-    tooltipRows,
-    row => row.name === hoveredSeries?.card?.name,
-  );
+  const [headerRows, bodyRows] = _.partition(tooltipRows, row => row.isHovered);
 
   return {
     headerTitle: formattedXValue,
@@ -357,14 +410,7 @@ export function getTooltipModel(
 }
 
 export function setupTooltips(
-  {
-    settings,
-    series,
-    isScalarSeries,
-    onHoverChange,
-    onVisualizationClick,
-    dashboard,
-  },
+  { settings, series, onHoverChange, onVisualizationClick, dashboard },
   datas,
   chart,
   { isBrushing },
@@ -385,8 +431,8 @@ export function setupTooltips(
       series,
       datas,
       isNormalized: normalized,
-      isScalarSeries,
-      isStacked: stacked,
+      event: d3.event,
+      element: target,
       settings,
       dashboard,
     });
@@ -435,6 +481,7 @@ export function setupTooltips(
       hoveredSeriesIndex,
       datas,
       settings,
+      dashboard,
     );
 
     return {

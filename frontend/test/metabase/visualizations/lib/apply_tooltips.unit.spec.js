@@ -194,7 +194,7 @@ describe("getTooltipModel", () => {
     expect(headerRows[0]).toEqual(
       expect.objectContaining({
         color: "red",
-        name: "Series 1",
+        name: "column_display_name",
         value: 100,
       }),
     );
@@ -202,7 +202,7 @@ describe("getTooltipModel", () => {
     expect(bodyRows[0]).toEqual(
       expect.objectContaining({
         color: "green",
-        name: "Series 2",
+        name: "column_display_name",
         value: 200,
       }),
     );

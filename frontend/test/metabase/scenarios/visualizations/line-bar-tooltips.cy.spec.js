@@ -30,29 +30,23 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
-      const originalTooltipText = [
-        ["Created At", "2016"],
-        ["Sum of Total", "42,156.87"],
-      ];
+      const originalTooltipText = [["Sum of Total", "42,156.87"]];
 
-      const updatedTooltipText = [
-        ["Created At", "2016"],
-        ["Custom", "42,156.87"],
-      ];
+      const updatedTooltipText = [["Custom", "42,156.87"]];
 
       const seriesIndex = 0;
 
       showTooltipForFirstCircleInSeries(seriesIndex);
-      testTooltipText(originalTooltipText);
+      testTooltipContent("2016", originalTooltipText);
 
       openDashCardVisualizationOptions();
 
-      updateColumnTitle(originalTooltipText[1][0], updatedTooltipText[1][0]);
+      updateColumnTitle(originalTooltipText[0][0], updatedTooltipText[0][0]);
 
       saveDashCardVisualizationOptions();
 
       showTooltipForFirstCircleInSeries(seriesIndex);
-      testTooltipText(updatedTooltipText);
+      testTooltipContent("2016", updatedTooltipText);
     });
   });
 
@@ -89,42 +83,30 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       const originalSeriesIndex = 0;
       const addedSeriesIndex = 1;
-      const originalSeriesTooltipText = [
-        ["Created At", "2016"],
-        ["Sum of Total", "42,156.87"],
-      ];
-      const updatedOriginalSeriesTooltipText = [
-        ["Created At", "2016"],
-        ["Custom Q1", "42,156.87"],
-      ];
+      const originalSeriesTooltipText = [["Sum of Total", "42,156.87"]];
+      const updatedOriginalSeriesTooltipText = [["Custom Q1", "42,156.87"]];
 
-      const addedSeriesTooltipText = [
-        ["Created At", "2016"],
-        ["Average of Total", "56.66"],
-      ];
-      const updatedAddedSeriesTooltipText = [
-        ["Created At", "2016"],
-        ["Custom Q2", "56.66"],
-      ];
+      const addedSeriesTooltipText = [["Average of Total", "56.66"]];
+      const updatedAddedSeriesTooltipText = [["Custom Q2", "56.66"]];
 
       showTooltipForFirstCircleInSeries(originalSeriesIndex);
-      testTooltipText(originalSeriesTooltipText);
+      testTooltipContent("2016", originalSeriesTooltipText);
 
       showTooltipForFirstCircleInSeries(addedSeriesIndex);
-      testTooltipText(addedSeriesTooltipText);
+      testTooltipContent("2016", addedSeriesTooltipText);
 
       openDashCardVisualizationOptions();
 
-      updateColumnTitle("Q1", updatedOriginalSeriesTooltipText[1][0]);
-      updateColumnTitle("Q2", updatedAddedSeriesTooltipText[1][0]);
+      updateColumnTitle("Q1", updatedOriginalSeriesTooltipText[0][0]);
+      updateColumnTitle("Q2", updatedAddedSeriesTooltipText[0][0]);
 
       saveDashCardVisualizationOptions();
 
       showTooltipForFirstCircleInSeries(originalSeriesIndex);
-      testTooltipText(updatedOriginalSeriesTooltipText);
+      testTooltipContent("2016", updatedOriginalSeriesTooltipText);
 
       showTooltipForFirstCircleInSeries(addedSeriesIndex);
-      testTooltipText(updatedAddedSeriesTooltipText);
+      testTooltipContent("2016", updatedAddedSeriesTooltipText);
     });
   });
 
@@ -152,13 +134,11 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       const originalTooltipText = [
-        ["Created At", "2016"],
         ["Average of Total", "56.66"],
         ["Sum of Quantity", "3,236"],
       ];
 
       const updatedTooltipText = [
-        ["Created At", "2016"],
         ["Custom 1", "56.66"],
         ["Custom 2", "3,236"],
       ];
@@ -166,17 +146,17 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const seriesIndex = 0;
 
       showTooltipForFirstCircleInSeries(seriesIndex);
-      testTooltipText(originalTooltipText);
+      testTooltipContent("2016", originalTooltipText);
 
       openDashCardVisualizationOptions();
 
+      updateColumnTitle(originalTooltipText[0][0], updatedTooltipText[0][0]);
       updateColumnTitle(originalTooltipText[1][0], updatedTooltipText[1][0]);
-      updateColumnTitle(originalTooltipText[2][0], updatedTooltipText[2][0]);
 
       saveDashCardVisualizationOptions();
 
       showTooltipForFirstCircleInSeries(seriesIndex);
-      testTooltipText(updatedTooltipText);
+      testTooltipContent("2016", updatedTooltipText);
     });
   });
 
@@ -218,67 +198,63 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       const originalIndices = [0, 1];
-      const addedIndices = [2, 3];
+      const addedIndices = [1, 2];
       const originalSeriesTooltipText = [
-        ["Created At", "2016"],
         ["Average of Total", "56.66"],
         ["Sum of Quantity", "3,236"],
       ];
       const updatedOriginalSeriesTooltipText = [
-        ["Created At", "2016"],
         ["Q1 Custom 1", "56.66"],
         ["Q1 Custom 2", "3,236"],
       ];
 
       const addedSeriesTooltipText = [
-        ["Created At", "2016"],
         ["Average of Discount", "5.03"],
         ["Sum of Discount", "342.09"],
       ];
       const updatedAddedSeriesTooltipText = [
-        ["Created At", "2016"],
         ["Q2 Custom 1", "5.03"],
         ["Q2 Custom 2", "342.09"],
       ];
 
       originalIndices.forEach(index => {
         showTooltipForFirstCircleInSeries(index);
-        testTooltipText(originalSeriesTooltipText);
+        testTooltipContent("2016", originalSeriesTooltipText);
       });
       addedIndices.forEach(index => {
         showTooltipForFirstCircleInSeries(index);
-        testTooltipText(addedSeriesTooltipText);
+        testTooltipContent("2016", addedSeriesTooltipText);
       });
 
       openDashCardVisualizationOptions();
 
       updateColumnTitle(
+        `Q1: ${originalSeriesTooltipText[0][0]}`,
+        updatedOriginalSeriesTooltipText[0][0],
+      );
+      updateColumnTitle(
         `Q1: ${originalSeriesTooltipText[1][0]}`,
         updatedOriginalSeriesTooltipText[1][0],
       );
-      updateColumnTitle(
-        `Q1: ${originalSeriesTooltipText[2][0]}`,
-        updatedOriginalSeriesTooltipText[2][0],
-      );
 
+      updateColumnTitle(
+        `Q2: ${addedSeriesTooltipText[0][0]}`,
+        updatedAddedSeriesTooltipText[0][0],
+      );
       updateColumnTitle(
         `Q2: ${addedSeriesTooltipText[1][0]}`,
         updatedAddedSeriesTooltipText[1][0],
-      );
-      updateColumnTitle(
-        `Q2: ${addedSeriesTooltipText[2][0]}`,
-        updatedAddedSeriesTooltipText[2][0],
       );
 
       saveDashCardVisualizationOptions();
 
       originalIndices.forEach(index => {
         showTooltipForFirstCircleInSeries(index);
-        testTooltipText(updatedOriginalSeriesTooltipText);
+        testTooltipContent("2016", updatedOriginalSeriesTooltipText);
       });
       addedIndices.forEach(index => {
         showTooltipForFirstCircleInSeries(index);
-        testTooltipText(updatedAddedSeriesTooltipText);
+        testTooltipContent("2016", updatedAddedSeriesTooltipText);
       });
     });
   });
@@ -303,29 +279,22 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
-      const originalTooltipText = [
-        ["Created At", "2016"],
-        ["Sum of Total", "42,156.87"],
-      ];
-
-      const updatedTooltipText = [
-        ["Created At", "2016"],
-        ["Custom", "42,156.87"],
-      ];
+      const originalTooltipText = [["Sum of Total", "42,156.87"]];
+      const updatedTooltipText = [["Custom", "42,156.87"]];
 
       const seriesIndex = 0;
 
       showTooltipForFirstBarInSeries(seriesIndex);
-      testTooltipText(originalTooltipText);
+      testTooltipContent("2016", originalTooltipText);
 
       openDashCardVisualizationOptions();
 
-      updateColumnTitle(originalTooltipText[1][0], updatedTooltipText[1][0]);
+      updateColumnTitle(originalTooltipText[0][0], updatedTooltipText[0][0]);
 
       saveDashCardVisualizationOptions();
 
       showTooltipForFirstBarInSeries(seriesIndex);
-      testTooltipText(updatedTooltipText);
+      testTooltipContent("2016", updatedTooltipText);
     });
   });
 
@@ -362,42 +331,30 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       const originalSeriesIndex = 0;
       const addedSeriesIndex = 1;
-      const originalSeriesTooltipText = [
-        ["Created At", "2016"],
-        ["Sum of Total", "42,156.87"],
-      ];
-      const updatedOriginalSeriesTooltipText = [
-        ["Created At", "2016"],
-        ["Custom Q1", "42,156.87"],
-      ];
+      const originalSeriesTooltipText = [["Sum of Total", "42,156.87"]];
+      const updatedOriginalSeriesTooltipText = [["Custom Q1", "42,156.87"]];
 
-      const addedSeriesTooltipText = [
-        ["Created At", "2016"],
-        ["Average of Total", "56.66"],
-      ];
-      const updatedAddedSeriesTooltipText = [
-        ["Created At", "2016"],
-        ["Custom Q2", "56.66"],
-      ];
+      const addedSeriesTooltipText = [["Average of Total", "56.66"]];
+      const updatedAddedSeriesTooltipText = [["Custom Q2", "56.66"]];
 
       showTooltipForFirstBarInSeries(originalSeriesIndex);
-      testTooltipText(originalSeriesTooltipText);
+      testTooltipContent("2016", originalSeriesTooltipText);
 
       showTooltipForFirstBarInSeries(addedSeriesIndex);
-      testTooltipText(addedSeriesTooltipText);
+      testTooltipContent("2016", addedSeriesTooltipText);
 
       openDashCardVisualizationOptions();
 
-      updateColumnTitle("Q1", updatedOriginalSeriesTooltipText[1][0]);
-      updateColumnTitle("Q2", updatedAddedSeriesTooltipText[1][0]);
+      updateColumnTitle("Q1", updatedOriginalSeriesTooltipText[0][0]);
+      updateColumnTitle("Q2", updatedAddedSeriesTooltipText[0][0]);
 
       saveDashCardVisualizationOptions();
 
       showTooltipForFirstBarInSeries(originalSeriesIndex);
-      testTooltipText(updatedOriginalSeriesTooltipText);
+      testTooltipContent("2016", updatedOriginalSeriesTooltipText);
 
       showTooltipForFirstBarInSeries(addedSeriesIndex);
-      testTooltipText(updatedAddedSeriesTooltipText);
+      testTooltipContent("2016", updatedAddedSeriesTooltipText);
     });
   });
 });
@@ -461,11 +418,13 @@ function showTooltipForFirstBarInSeries(series_index) {
 }
 
 function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
+  cy.contains(val1).next("td").findByText(val2);
 }
 
-function testTooltipText(rowPairs = []) {
+function testTooltipContent(header, rowPairs = []) {
   popover().within(() => {
+    cy.findByTestId("tooltip-header").should("have.text", header);
+
     rowPairs.forEach(([label, value]) => {
       testPairedTooltipValues(label, value);
     });
