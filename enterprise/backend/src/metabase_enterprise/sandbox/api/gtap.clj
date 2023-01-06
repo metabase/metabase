@@ -18,7 +18,7 @@
    table_id [:maybe pos-int?]}
   (if (and group_id table_id)
     (db/select-one GroupTableAccessPolicy :group_id group_id :table_id table_id)
-    (db/select GroupTableAccessPolicy)))
+    (db/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
