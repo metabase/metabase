@@ -13,6 +13,7 @@
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
   (:require
+   [metabase.db.query :as mdb.query]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -206,12 +207,12 @@
   ;; remove any IDs for Fields that have already been fetched
   (when-let [ids-to-fetch (seq (remove (set (keys (:fields @*store*))) field-ids))]
     (let [fetched-fields (db/do-post-select Field
-                           (db/query
+                           (mdb.query/query
                             {:select    (for [column-kw field-columns-to-fetch]
                                           [(keyword (str "field." (name column-kw)))
                                            column-kw])
-                             :from      [[Field :field]]
-                             :left-join [[Table :table] [:= :field.table_id :table.id]]
+                             :from      [[:metabase_field :field]]
+                             :left-join [[:metabase_table :table] [:= :field.table_id :table.id]]
                              :where     [:and
                                          [:in :field.id (set ids-to-fetch)]
                                          [:= :table.db_id (db-id)]]}))
@@ -221,7 +222,7 @@
         (when-not (fetched-ids id)
           (throw
            (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." id)
-             {:field id, :database (db-id)}))))
+                    {:field id, :database (db-id)}))))
       ;; ok, now store them all in the Store
       (doseq [field fetched-fields]
         (store-field! field)))))

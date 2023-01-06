@@ -18,12 +18,10 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
-   [metabase.models.dashboard-card
-    :as dashboard-card
-    :refer [DashboardCard]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -208,13 +206,13 @@
 (s/defn ^:private cards* :- [HybridPulseCard]
   [notification-or-id]
   (map (partial models/do-post-select Card)
-       (db/query
+       (mdb.query/query
         {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls
                      :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings]] ;; :dc.parameter_mappings - how do you select this?
-         :from      [[Pulse :p]]
-         :join      [[PulseCard :pc] [:= :p.id :pc.pulse_id]
-                     [Card :c] [:= :c.id :pc.card_id]]
-         :left-join [[DashboardCard :dc] [:= :pc.dashboard_card_id :dc.id]]
+         :from      [[:pulse :p]]
+         :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
+                     [:report_card :c] [:= :c.id :pc.card_id]]
+         :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
          :where     [:and
                      [:= :p.id (u/the-id notification-or-id)]
                      [:= :c.archived false]]
@@ -281,7 +279,7 @@
           notification->alert))
 
 (defn- query-as [model query]
-  (db/do-post-select model (db/query query)))
+  (db/do-post-select model (mdb.query/query query)))
 
 (s/defn retrieve-alerts :- [(mi/InstanceOf Pulse)]
   "Fetch all Alerts."
@@ -293,10 +291,10 @@
    (assert boolean? archived?)
    (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
                 :modifiers [:distinct]
-                :from      [[Pulse :p]]
+                :from      [[:pulse :p]]
                 :left-join (when user-id
-                             [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
-                              [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
+                             [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
+                              [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
                 :where     [:and
                             [:not= :p.alert_condition nil]
                             [:= :p.archived archived?]
@@ -307,9 +305,9 @@
                 :order-by  [[:lower-name :asc]]}]
      (for [alert (hydrate-notifications (query-as Pulse query))
            :let [alert (notification->alert alert)]
-          ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
-          ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
-          ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
+           ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
+           ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
+           ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
            :when (:card alert)]
        alert))))
 

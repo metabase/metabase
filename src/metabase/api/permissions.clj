@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.permission-graph :as api.permission-graph]
+   [metabase.db.query :as mdb.query]
    [metabase.models :refer [PermissionsGroupMembership User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -84,15 +85,15 @@
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
   groups.)"
   []
-  (let [results (db/query
-                  {:select    [[:pgm.group_id :group_id] [:%count.pgm.id :members]]
-                   :from      [[:permissions_group_membership :pgm]]
-                   :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
-                   :where     [:= :user.is_active true]
-                   :group-by  [:pgm.group_id]})]
+  (let [results (mdb.query/query
+                 {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
+                  :from      [[:permissions_group_membership :pgm]]
+                  :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
+                  :where     [:= :user.is_active true]
+                  :group-by  [:pgm.group_id]})]
     (zipmap
-      (map :group_id results)
-      (map :members results))))
+     (map :group_id results)
+     (map :members results))))
 
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`."

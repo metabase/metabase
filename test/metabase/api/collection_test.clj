@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
    [metabase.api.collection :as api.collection]
    [metabase.models
     :refer [Card
@@ -438,19 +437,19 @@
                                            :moderator_id        user-id
                                            :most_recent         true}]]
         (is (= (mt/obj->json->obj
-                [{:id                  card-id
-                  :name                (:name card)
-                  :collection_position nil
-                  :collection_preview  true
-                  :display             "table"
-                  :description         nil
-                  :entity_id           (:entity_id card)
-                  :moderated_status    "verified"
-                  :model               "card"
-                  :fully_parametrized  true}])
+                 [{:id                  card-id
+                   :name                (:name card)
+                   :collection_position nil
+                   :collection_preview  true
+                   :display             "table"
+                   :description         nil
+                   :entity_id           (:entity_id card)
+                   :moderated_status    "verified"
+                   :model               "card"
+                   :fully_parametrized  true}])
                (mt/obj->json->obj
-                (:data (mt/user-http-request :crowberto :get 200
-                                             (str "collection/" (u/the-id collection) "/items"))))))))
+                 (:data (mt/user-http-request :crowberto :get 200
+                                              (str "collection/" (u/the-id collection) "/items"))))))))
     (testing "check that limit and offset work and total comes back"
       (mt/with-temp* [Collection [collection]
                       Card       [_ {:collection_id (u/the-id collection)}]
@@ -694,7 +693,7 @@
       (is (= [[:%lower.name :asc]]
              (api.collection/children-sort-clause nil app-db)))))
   (testing "Sorting by last-edited-at"
-    (is (= [[(hsql/call :ISNULL :last_edit_timestamp)]
+    (is (= [[:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-at :asc] :mysql)))
@@ -709,9 +708,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-by :asc] :postgres)))
-    (is (= [[(hsql/call :ISNULL :last_edit_last_name)]
+    (is (= [[:%isnull.last_edit_last_name]
             [:last_edit_last_name :asc]
-            [(hsql/call :ISNULL :last_edit_first_name)]
+            [:%isnull.last_edit_first_name]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-by :asc] :mysql))))

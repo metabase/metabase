@@ -10,6 +10,7 @@
    [metabase.api.table :as api.table]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
@@ -46,9 +47,7 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models])
-  (:import
-   (metabase.models.database DatabaseInstance)))
+   [toucan.models :as models]))
 
 (def DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
@@ -135,7 +134,8 @@
                (db/select-ids Database))))
 
 (defn- source-query-cards
-  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables). Since Cards can be either `dataset` or `card`, pass in the `question-type` of `:dataset` or `:card`"
+  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables). Since Cards can be either
+  `dataset` or `card`, pass in the `question-type` of `:dataset` or `:card`"
   [question-type & {:keys [additional-constraints xform], :or {xform identity}}]
   {:pre [(#{:card :dataset} question-type)]}
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
@@ -145,26 +145,27 @@
            xform)
      (completing conj #(hydrate % :collection))
      []
-     (db/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
-                                     [{:select   [:status]
-                                       :from     [:moderation_review]
-                                       :where    [:and
-                                                  [:= :moderated_item_type "card"]
-                                                  [:= :moderated_item_id :report_card.id]
-                                                  [:= :most_recent true]]
-                                       :order-by [[:id :desc]]
-                                       :limit    1}
-                                      :moderated_status]]
-                          :from     [:report_card]
-                          :where    (into [:and
-                                           [:not= :result_metadata nil]
-                                           [:= :archived false]
-                                           [:= :dataset (= question-type :dataset)]
-                                           [:in :database_id ids-of-dbs-that-support-source-queries]
-                                           (collection/visible-collection-ids->honeysql-filter-clause
-                                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                                          additional-constraints)
-                          :order-by [[:%lower.name :asc]]}))))
+     (mdb.query/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
+                                            [{:select   [:status]
+                                              :from     [:moderation_review]
+                                              :where    [:and
+                                                         [:= :moderated_item_type "card"]
+                                                         [:= :moderated_item_id :report_card.id]
+                                                         [:= :most_recent true]]
+                                              :order-by [[:id :desc]]
+                                              :limit    1}
+                                             :moderated_status]]
+                                 :from     [:report_card]
+                                 :where    (into [:and
+                                                  [:not= :result_metadata nil]
+                                                  [:= :archived false]
+                                                  [:= :dataset (= question-type :dataset)]
+                                                  [:in :database_id ids-of-dbs-that-support-source-queries]
+                                                  (collection/visible-collection-ids->honeysql-filter-clause
+                                                   (collection/permissions-set->visible-collection-ids
+                                                    @api/*current-user-permissions-set*))]
+                                                 additional-constraints)
+                                 :order-by [[:%lower.name :asc]]}))))
 
 (defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
@@ -295,7 +296,7 @@
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
-(s/defn ^:private expanded-schedules [db :- DatabaseInstance]
+(s/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
   {:cache_field_values (u.cron/cron-string->schedule-map (:cache_field_values_schedule db))
    :metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))})
 
@@ -948,11 +949,11 @@
 
 ;; "Discard saved field values" action in db UI
 (defn- database->field-values-ids [database-or-id]
-  (map :id (db/query {:select    [[:fv.id :id]]
-                      :from      [[FieldValues :fv]]
-                      :left-join [[Field :f] [:= :fv.field_id :f.id]
-                                  [Table :t] [:= :f.table_id :t.id]]
-                      :where     [:= :t.db_id (u/the-id database-or-id)]})))
+  (map :id (mdb.query/query {:select    [[:fv.id :id]]
+                             :from      [[:metabase_fieldvalues :fv]]
+                             :left-join [[:metabase_field :f] [:= :fv.field_id :f.id]
+                                         [:metabase_table :t] [:= :f.table_id :t.id]]
+                             :where     [:= :t.db_id (u/the-id database-or-id)]})))
 
 (defn- delete-all-field-values-for-database! [database-or-id]
   (when-let [field-values-ids (seq (database->field-values-ids database-or-id))]

@@ -284,7 +284,7 @@
   ([collection-ids :- VisibleCollections]
    (visible-collection-ids->honeysql-filter-clause :collection_id collection-ids))
 
-  ([collection-id-field :- s/Keyword, collection-ids :- VisibleCollections]
+  ([collection-id-field :- s/Keyword collection-ids :- VisibleCollections]
    (if (= collection-ids :all)
      true
      (let [{non-root-ids false, root-id true} (group-by (partial = "root") collection-ids)
@@ -515,9 +515,9 @@
    You can think of this process as 'collapsing' the Collection hierarchy and removing nodes that aren't visible to
    the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
-  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
+  [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
   {:select [:id :name :description]
-   :from   [[Collection :col]]
+   :from   [[:collection :col]]
    :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
 
 (s/defn ^:private effective-children* :- #{(mi/InstanceOf Collection)}

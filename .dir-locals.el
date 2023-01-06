@@ -33,6 +33,7 @@
   (eval . (put 'methodical/defmulti 'clojure-doc-string-elt 2))
   (eval . (put 'mi/define-simple-hydration-method 'clojure-doc-string-elt 3))
   (eval . (put 'mi/define-batched-hydration-method 'clojure-doc-string-elt 3))
+  (eval . (put 'mu/defn 'clojure-doc-string-elt 2))
   ;; Define custom indentation for functions inside metabase.
   ;; This list isn't complete; add more forms as we come across them.
   ;;
@@ -40,8 +41,6 @@
   ;; instead of one call to `define-clojure-indent'
   (eval . (put-clojure-indent 'api/let-404 1))
   (eval . (put-clojure-indent 'c/step 1))
-  (eval . (put-clojure-indent 'db/insert-many! 1))
-  (eval . (put-clojure-indent 'db/update! 2))
   (eval . (put-clojure-indent 'impl/test-migrations 2))
   (eval . (put-clojure-indent 'let-404 0))
   (eval . (put-clojure-indent 'macros/case 0))

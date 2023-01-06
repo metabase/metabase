@@ -34,7 +34,7 @@
   (:import
    (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)
-   (metabase.util.honeysql_extensions Identifier)))
+   (metabase.util.honey_sql_1_extensions Identifier)))
 (comment
   ;; method impls live in these namespaces.
   mysql.actions/keep-me
@@ -149,7 +149,9 @@
   ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
   (if (= unit :millisecond)
     (recur driver hsql-form (/ amount 1000.0) :second)
-    (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %s %s" amount (name unit))))))
+    (case hx/*honey-sql-version*
+      1 (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %s %s" amount (name unit))))
+      2 [:call :date_add hsql-form [:raw (format "INTERVAL %s %s" amount (name unit))]])))
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql

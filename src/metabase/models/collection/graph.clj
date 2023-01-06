@@ -3,6 +3,7 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
+   [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision
     :as c-perm-revision
@@ -10,7 +11,7 @@
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -61,13 +62,13 @@
   [collection-namespace :- (s/maybe su/KeywordOrStringPlumatic)]
   (let [personal-collection-ids (db/select-ids Collection :personal_owner_id [:not= nil])
         honeysql-form           {:select [[:id :id]]
-                                 :from   [Collection]
+                                 :from   [:collection]
                                  :where  (into [:and
                                                 [:= :namespace (u/qualified-name collection-namespace)]
                                                 [:= :personal_owner_id nil]]
                                                (for [collection-id personal-collection-ids]
-                                                 [:not [:like :location (hx/literal (format "/%d/%%" collection-id))]]))}]
-    (set (map :id (db/query honeysql-form)))))
+                                                 [:not [:like :location (h2x/literal (format "/%d/%%" collection-id))]]))}]
+    (set (map :id (mdb.query/query honeysql-form)))))
 
 (defn- collection-permission-graph
   "Return the permission graph for the collections with id in `collection-ids` and the root collection."

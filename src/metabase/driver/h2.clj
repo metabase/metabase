@@ -157,7 +157,10 @@
     (recur driver hsql-form (* amount 1000.0) :millisecond)
 
     :else
-    (hsql/call :dateadd (hx/literal unit) (hx/cast :long amount) (hx/cast :datetime hsql-form))))
+    (let [args [:dateadd (hx/literal unit) (hx/cast :long amount) (hx/cast :datetime hsql-form)]]
+      (case hx/*honey-sql-version*
+        1 (apply hsql/call args)
+        2 (into [:call] args)))))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]

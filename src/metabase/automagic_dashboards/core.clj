@@ -17,6 +17,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.automagic-dashboards.rules :as rules]
    [metabase.automagic-dashboards.visualization-macros :as visualization]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -1268,33 +1269,33 @@
 (defn- enhance-table-stats
   [tables]
   (when (not-empty tables)
-    (let [field-count (->> (db/query {:select   [:table_id [:%count.* "count"]]
-                                      :from     [Field]
-                                      :where    [:and [:in :table_id (map u/the-id tables)]
-                                                 [:= :active true]]
-                                      :group-by [:table_id]})
+    (let [field-count (->> (mdb.query/query {:select   [:table_id [:%count.* "count"]]
+                                             :from     [:metabase_field]
+                                             :where    [:and [:in :table_id (map u/the-id tables)]
+                                                        [:= :active true]]
+                                             :group-by [:table_id]})
                            (into {} (map (juxt :table_id :count))))
           list-like?  (->> (when-let [candidates (->> field-count
                                                       (filter (comp (partial >= 2) val))
                                                       (map key)
                                                       not-empty)]
-                             (db/query {:select   [:table_id]
-                                        :from     [Field]
-                                        :where    [:and [:in :table_id candidates]
-                                                   [:= :active true]
-                                                   [:or [:not= :semantic_type "type/PK"]
-                                                    [:= :semantic_type nil]]]
-                                        :group-by [:table_id]
-                                        :having   [:= :%count.* 1]}))
+                             (mdb.query/query {:select   [:table_id]
+                                               :from     [:metabase_field]
+                                               :where    [:and [:in :table_id candidates]
+                                                          [:= :active true]
+                                                          [:or [:not= :semantic_type "type/PK"]
+                                                           [:= :semantic_type nil]]]
+                                               :group-by [:table_id]
+                                               :having   [:= :%count.* 1]}))
                            (into #{} (map :table_id)))
           ;; Table comprised entierly of join keys
           link-table? (when (seq field-count)
-                        (->> (db/query {:select   [:table_id [:%count.* "count"]]
-                                        :from     [Field]
-                                        :where    [:and [:in :table_id (keys field-count)]
-                                                   [:= :active true]
-                                                   [:in :semantic_type ["type/PK" "type/FK"]]]
-                                        :group-by [:table_id]})
+                        (->> (mdb.query/query {:select   [:table_id [:%count.* "count"]]
+                                               :from     [:metabase_field]
+                                               :where    [:and [:in :table_id (keys field-count)]
+                                                          [:= :active true]
+                                                          [:in :semantic_type ["type/PK" "type/FK"]]]
+                                               :group-by [:table_id]})
                              (filter (fn [{:keys [table_id count]}]
                                        (= count (field-count table_id))))
                              (into #{} (map :table_id))))]

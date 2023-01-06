@@ -9,8 +9,9 @@
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [clojure.string :as str]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
@@ -114,20 +115,20 @@
   :members
   "Return `Users` that belong to `group-or-id`, ordered by their name (case-insensitive)."
   [group-or-id]
-  (db/query (cond-> {:select    [:user.first_name
-                                 :user.last_name
-                                 :user.email
-                                 [:user.id :user_id]
-                                 [:pgm.id :membership_id]]
-                     :from      [[:core_user :user]]
-                     :left-join [[:permissions_group_membership :pgm] [:= :user.id :pgm.user_id]]
-                     :where     [:and [:= :user.is_active true]
-                                 [:= :pgm.group_id (u/the-id group-or-id)]]
-                     :order-by  [[:%lower.user.first_name :asc]
-                                 [:%lower.user.last_name :asc]]}
+  (mdb.query/query (cond-> {:select    [:user.first_name
+                                        :user.last_name
+                                        :user.email
+                                        [:user.id :user_id]
+                                        [:pgm.id :membership_id]]
+                            :from      [[:core_user :user]]
+                            :left-join [[:permissions_group_membership :pgm] [:= :user.id :pgm.user_id]]
+                            :where     [:and [:= :user.is_active true]
+                                        [:= :pgm.group_id (u/the-id group-or-id)]]
+                            :order-by  [[:%lower.user.first_name :asc]
+                                        [:%lower.user.last_name :asc]]}
 
-              (premium-features/enable-advanced-permissions?)
-              (hh/merge-select [:pgm.is_group_manager :is_group_manager]))))
+                     (premium-features/enable-advanced-permissions?)
+                     (sql.helpers/select [:pgm.is_group_manager :is_group_manager]))))
 
 (defn non-admin-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."

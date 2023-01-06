@@ -193,18 +193,17 @@
 
 (deftest order-clause-test
   (testing "it includes all columns and normalizes the query"
-    (is (= (hsql/call
-            :case
-             [:like (hsql/call :lower :model) "%foo%"] 0
-             [:like (hsql/call :lower :name) "%foo%"] 0
-             [:like (hsql/call :lower :display_name) "%foo%"] 0
-             [:like (hsql/call :lower :description) "%foo%"] 0
-             [:like (hsql/call :lower :collection_name) "%foo%"] 0
-             [:like (hsql/call :lower :dataset_query) "%foo%"] 0
-             [:like (hsql/call :lower :table_schema) "%foo%"] 0
-             [:like (hsql/call :lower :table_name) "%foo%"] 0
-             [:like (hsql/call :lower :table_description) "%foo%"] 0
-             :else 1)
+    (is (= [[:case
+             [:like [:lower :model]             "%foo%"] 0
+             [:like [:lower :name]              "%foo%"] 0
+             [:like [:lower :display_name]      "%foo%"] 0
+             [:like [:lower :description]       "%foo%"] 0
+             [:like [:lower :collection_name]   "%foo%"] 0
+             [:like [:lower :dataset_query]     "%foo%"] 0
+             [:like [:lower :table_schema]      "%foo%"] 0
+             [:like [:lower :table_name]        "%foo%"] 0
+             [:like [:lower :table_description] "%foo%"] 0
+             :else 1]]
            (api.search/order-clause "Foo")))))
 
 (deftest basic-test

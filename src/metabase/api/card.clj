@@ -12,6 +12,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.timeline :as api.timeline]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -50,8 +51,7 @@
    [toucan.hydrate :refer [hydrate]])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
-   (java.util UUID)
-   (metabase.models.card CardInstance)))
+   (java.util UUID)))
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
@@ -90,7 +90,7 @@
   [_ table-id]
   (db/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(s/defn ^:private cards-with-ids :- (s/maybe [CardInstance])
+(s/defn ^:private cards-with-ids :- (s/maybe [(mi/InstanceOf Card)])
   "Return unarchived Cards with `card-ids`.
   Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
   [card-ids :- [su/IntGreaterThanZeroPlumatic]]
@@ -125,15 +125,15 @@
 
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
-  [_ model-id]
-  (->> (db/query {:select [:c.*]
-                  :from [[:report_card :m]]
-                  :join [[:report_card :c] [:and
-                                            [:= :c.database_id :m.database_id]
-                                            [:or
-                                             [:like :c.dataset_query (format "%%card__%s%%" model-id)]
-                                             [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                  :where [:= :m.id model-id]})
+  [_filter-option model-id]
+  (->> (mdb.query/query {:select [:c.*]
+                         :from [[:report_card :m]]
+                         :join [[:report_card :c] [:and
+                                                   [:= :c.database_id :m.database_id]
+                                                   [:or
+                                                    [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+                                                    [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
+                         :where [:= :m.id model-id]})
        (db/do-post-select Card)
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))

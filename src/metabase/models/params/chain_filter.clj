@@ -69,10 +69,11 @@
    [honeysql.core :as hsql]
    [honeysql.format :as hformat]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Database Dimension Field FieldValues Table]]
+   [metabase.models :refer [Field FieldValues Table]]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
    [metabase.models.params :as params]
@@ -182,17 +183,17 @@
   (u/minutes->ms 5))
 
 (defn- database-fk-relationships* [database-id enable-reverse-joins?]
-  (let [rows (db/query {:select    [[:fk-field.id :f1]
-                                    [:fk-table.id :t1]
-                                    [:pk-field.id :f2]
-                                    [:pk-field.table_id :t2]]
-                        :from      [[Field :fk-field]]
-                        :left-join [[Table :fk-table]    [:= :fk-field.table_id :fk-table.id]
-                                    [Database :database] [:= :fk-table.db_id :database.id]
-                                    [Field :pk-field]    [:= :fk-field.fk_target_field_id :pk-field.id]]
-                        :where     [:and
-                                    [:= :database.id database-id]
-                                    [:not= :fk-field.fk_target_field_id nil]]})]
+  (let [rows (mdb.query/query {:select    [[:fk-field.id :f1]
+                                           [:fk-table.id :t1]
+                                           [:pk-field.id :f2]
+                                           [:pk-field.table_id :t2]]
+                               :from      [[:metabase_field :fk-field]]
+                               :left-join [[:metabase_table :fk-table]    [:= :fk-field.table_id :fk-table.id]
+                                           [:metabase_database :database] [:= :fk-table.db_id :database.id]
+                                           [:metabase_field :pk-field]    [:= :fk-field.fk_target_field_id :pk-field.id]]
+                               :where     [:and
+                                           [:= :database.id database-id]
+                                           [:not= :fk-field.fk_target_field_id nil]]})]
     (reduce
      (partial merge-with merge)
      {}
@@ -516,26 +517,26 @@
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- su/IntGreaterThanZeroPlumatic]
-  (let [[{:keys [id]}] (db/query {:select [[:ids.id :id]]
-                                  :from   [[{:union [(parens
-                                                      {:select [[:dimension.human_readable_field_id :id]]
-                                                       :from   [[Dimension :dimension]]
-                                                       :where  [:and
-                                                                [:= :dimension.field_id field-id]
-                                                                [:not= :dimension.human_readable_field_id nil]]
-                                                       :limit  1})
-                                                     (parens
-                                                      {:select    [[:dest.id :id]]
-                                                       :from      [[Field :source]]
-                                                       :left-join [[Table :table] [:= :source.table_id :table.id]
-                                                                   [Field :dest] [:= :dest.table_id :table.id]]
-                                                       :where     [:and
-                                                                   [:= :source.id field-id]
-                                                                   (mdb.u/isa :source.semantic_type :type/PK)
-                                                                   (mdb.u/isa :dest.semantic_type :type/Name)]
-                                                       :limit     1})]}
-                                            :ids]]
-                                  :limit  1})]
+  (let [[{:keys [id]}] (mdb.query/query {:select [[:ids.id :id]]
+                                         :from   [[{:union [(parens
+                                                             {:select [[:dimension.human_readable_field_id :id]]
+                                                              :from   [[:dimension :dimension]]
+                                                              :where  [:and
+                                                                       [:= :dimension.field_id field-id]
+                                                                       [:not= :dimension.human_readable_field_id nil]]
+                                                              :limit  1})
+                                                            (parens
+                                                             {:select    [[:dest.id :id]]
+                                                              :from      [[:field :source]]
+                                                              :left-join [[:table :table] [:= :source.table_id :table.id]
+                                                                          [:field :dest] [:= :dest.table_id :table.id]]
+                                                              :where     [:and
+                                                                          [:= :source.id field-id]
+                                                                          (mdb.u/isa :source.semantic_type :type/PK)
+                                                                          (mdb.u/isa :dest.semantic_type :type/Name)]
+                                                              :limit     1})]}
+                                                   :ids]]
+                                         :limit  1})]
     id))
 
 (defn- use-cached-field-values?

@@ -2,7 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
+   [honey.sql :as sql]
    [java-time :as t]
    [metabase.db :as mdb]
    [metabase.models.query-cache :refer [QueryCache]]
@@ -25,14 +25,15 @@
   ;;
   ;; Since application DB can change at run time (during tests) it's not just a plain delay
   (let [f (memoize (fn [_db-type quoting-style]
-                     (first (hsql/format {:select   [:results]
-                                          :from     [QueryCache]
-                                          :where    [:and
-                                                     [:= :query_hash (hsql/raw "?")]
-                                                     [:>= :updated_at (hsql/raw "?")]]
-                                          :order-by [[:updated_at :desc]]
-                                          :limit    1}
-                                         :quoting quoting-style))))]
+                     (first (sql/format {:select   [:results]
+                                         :from     [:query_cache]
+                                         :where    [:and
+                                                    [:= :query_hash [:raw "?"]]
+                                                    [:>= :updated_at [:raw "?"]]]
+                                         :order-by [[:updated_at :desc]]
+                                         :limit    1}
+                                        {:quoted  true
+                                         :dialect quoting-style}))))]
     (fn []
       (f (mdb/db-type) (db/quoting-style)))))
 
