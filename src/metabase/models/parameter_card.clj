@@ -65,9 +65,9 @@
 (s/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
   or delete appropriate ParameterCards for each parameter in the dashboard"
-  [parameterized-object-type :- su/NonBlankString
-   parameterized-object-id   :- su/IntGreaterThanZero
-   parameters                :- [su/Parameter]]
+  [parameterized-object-type :- su/NonBlankStringPlumatic
+   parameterized-object-id   :- su/IntGreaterThanZeroPlumatic
+   parameters                :- [su/ParameterPlumatic]]
   (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
                                 (and values_source_type id (:card_id values_source_config)
                                      (= values_source_type "card")))
