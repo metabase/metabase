@@ -90,7 +90,7 @@ const ValuesSourceTypeModal = ({
         <ModalMain>
           {sourceType === null && (
             <ModalTextArea
-              defaultValue={getValuesText(fieldValues)}
+              defaultValue={getFieldsText(fieldValues)}
               readOnly
               fullWidth
             />
@@ -112,12 +112,15 @@ const getValues = (value: string) => {
   return value
     .split(NEW_LINE)
     .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .map(line => [line]);
+    .filter(line => line.length > 0);
 };
 
-const getValuesText = (values?: string[][]) => {
-  return values?.map(([key]) => key).join(NEW_LINE) ?? "";
+const getValuesText = (values?: string[]) => {
+  return values?.join(NEW_LINE) ?? "";
+};
+
+const getFieldsText = (values?: string[][]) => {
+  return getValuesText(values?.map(([key]) => key));
 };
 
 export default ValuesSourceTypeModal;

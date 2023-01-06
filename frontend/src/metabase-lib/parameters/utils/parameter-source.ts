@@ -18,7 +18,7 @@ export const getDefaultSourceConfig = (
 ) => {
   switch (sourceType) {
     case "static-list":
-      return { values: fieldValues };
+      return { values: fieldValues.map(([key]) => key) };
     default:
       return {};
   }
