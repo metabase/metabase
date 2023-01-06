@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   createMockTimeline,
   createMockTimelineEvent,
@@ -32,10 +33,31 @@ describe("EventCard", () => {
 
     expect(screen.getByText("January 1, 2020, 10:20 AM"));
   });
+
+  it("should toggle an event's visibility", () => {
+    const props = getProps({
+      event: createMockTimelineEvent({
+        timestamp: "2020-01-01T10:20:00Z",
+        time_matters: true,
+      }),
+    });
+
+    render(<EventCard {...props} />);
+
+    const checkbox = screen.getByRole("checkbox");
+
+    expect(checkbox).toBeChecked();
+
+    userEvent.click(screen.getByRole("checkbox"));
+    expect(props.onHideTimelineEvents).toHaveBeenCalled();
+  });
 });
 
 const getProps = (opts?: Partial<EventCardProps>): EventCardProps => ({
   event: createMockTimelineEvent(),
   timeline: createMockTimeline(),
+  isVisible: true,
+  onShowTimelineEvents: jest.fn(),
+  onHideTimelineEvents: jest.fn(),
   ...opts,
 });

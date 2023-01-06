@@ -1,8 +1,11 @@
 import { act, fireEvent, screen } from "@testing-library/react";
 import React from "react";
 import nock from "nock";
+
 import { renderWithProviders } from "__support__/ui";
-import LicenseAndBillingSettings from ".";
+import { createMockAdminState } from "metabase-types/store/mocks";
+
+import LicenseAndBillingSettings from "./LicenseAndBillingSettings";
 
 const setupState = ({
   token,
@@ -14,13 +17,7 @@ const setupState = ({
   env_name?: string;
   features?: string[];
 }) => {
-  const settings = {
-    values: {
-      "token-features": {},
-    },
-  };
-
-  const admin = {
+  const admin = createMockAdminState({
     settings: {
       settings: [
         {
@@ -31,15 +28,11 @@ const setupState = ({
         },
       ],
     },
-  };
+  });
+
   return {
     storeInitialState: {
       admin,
-      settings,
-    },
-    reducers: {
-      settings: () => settings,
-      admin: () => admin,
     },
   };
 };

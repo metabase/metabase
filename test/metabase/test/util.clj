@@ -424,8 +424,8 @@
                        (catch Exception e
                          (when-not raw-setting?
                            (throw e))))]
-    (if-let [env-var-value (and (not raw-setting?) (#'setting/env-var-value setting-k))]
-      (do-with-temp-env-var-value setting env-var-value thunk)
+    (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
+      (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (db/select-one-field :value Setting :key setting-k)
                              (#'setting/get setting-k))]
