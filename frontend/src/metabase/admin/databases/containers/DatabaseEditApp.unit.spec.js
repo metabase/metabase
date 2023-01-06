@@ -8,7 +8,7 @@ import {
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
-import admin from "metabase/admin/admin";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import DatabaseEditApp from "./DatabaseEditApp";
 
@@ -40,13 +40,15 @@ jest.mock(
 async function setup({ cachingEnabled = false } = {}) {
   const settings = mockSettings({
     engines: ENGINES_MOCK,
+    "token-features": createMockTokenFeatures({ advanced_config: true }),
     "enable-query-caching": cachingEnabled,
-    "persisted-models-enabled": false,
   });
 
   renderWithProviders(<DatabaseEditApp />, {
     withRouter: true,
-    reducers: { admin, settings: () => settings },
+    storeInitialState: {
+      settings,
+    },
   });
 
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
