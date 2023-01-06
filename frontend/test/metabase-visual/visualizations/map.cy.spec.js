@@ -37,6 +37,10 @@ describe("visual tests > visualizations > map", () => {
       cy.findByText("Load").click();
     });
 
+    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByLabelText("hourglass icon").should("not.exist");
+    cy.get(".leaflet-container").should("be.visible");
+
     cy.createPercySnapshot();
   });
 
@@ -60,6 +64,10 @@ describe("visual tests > visualizations > map", () => {
         "map.region": "my-test-map-id",
       },
     });
+
+    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByLabelText("hourglass icon").should("not.exist");
+    cy.get(".leaflet-container").should("be.visible");
 
     cy.createPercySnapshot();
   });
