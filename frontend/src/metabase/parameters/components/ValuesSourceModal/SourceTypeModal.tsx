@@ -38,11 +38,11 @@ const SourceTypeModal = ({
   onClose,
 }: SourceTypeModalProps): JSX.Element => {
   const handleTypeChange = useCallback(
-    (type: ValuesSourceType) => {
-      onChangeSourceType(type);
-      onChangeSourceConfig({});
+    (sourceType: ValuesSourceType) => {
+      onChangeSourceType(sourceType);
+      onChangeSourceConfig(getDefaultSourceConfig(sourceType, fieldValues));
     },
-    [onChangeSourceType, onChangeSourceConfig],
+    [fieldValues, onChangeSourceType, onChangeSourceConfig],
   );
 
   const handleValuesChange = useCallback(
@@ -59,7 +59,7 @@ const SourceTypeModal = ({
         <Button
           key="submit"
           primary
-          disabled={!canSubmit(sourceType, sourceConfig)}
+          disabled={!isValidSourceConfig(sourceType, sourceConfig)}
         >{t`Done`}</Button>,
       ]}
       onClose={onClose}
@@ -108,12 +108,27 @@ const getValuesText = (values?: string[]) => {
   return values?.join(NEW_LINE) ?? "";
 };
 
-const canSubmit = (type: ValuesSourceType, config: ValuesSourceConfig) => {
-  switch (type) {
+const isValidSourceConfig = (
+  sourceType: ValuesSourceType,
+  sourceConfig: ValuesSourceConfig,
+) => {
+  switch (sourceType) {
     case "static-list":
-      return config.values != null && config.values.length > 0;
+      return sourceConfig.values != null && sourceConfig.values.length > 0;
     default:
       return true;
+  }
+};
+
+const getDefaultSourceConfig = (
+  sourceType: ValuesSourceType,
+  fieldValues: string[],
+) => {
+  switch (sourceType) {
+    case "static-list":
+      return { values: fieldValues };
+    default:
+      return {};
   }
 };
 

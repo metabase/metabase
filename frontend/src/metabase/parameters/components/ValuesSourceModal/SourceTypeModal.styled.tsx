@@ -30,6 +30,6 @@ export const ModalLabel = styled.label`
 
 export const ModalTextArea = styled(TextArea)`
   display: block;
-  min-height: 20vh;
+  min-height: 40vh;
   resize: none;
 `;
