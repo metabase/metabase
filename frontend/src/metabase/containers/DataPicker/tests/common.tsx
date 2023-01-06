@@ -10,7 +10,7 @@ import {
   setupCollectionEndpoints,
   setupCollectionVirtualSchemaEndpoints,
   setupDatabasesEndpoints,
-} from "__support__/server";
+} from "__support__/server-mocks";
 import {
   SAMPLE_DATABASE,
   MULTI_SCHEMA_DATABASE,
