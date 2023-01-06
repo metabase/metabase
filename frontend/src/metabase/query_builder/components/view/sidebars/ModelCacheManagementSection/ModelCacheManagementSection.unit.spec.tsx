@@ -6,12 +6,7 @@ import PersistedModels from "metabase/entities/persisted-models";
 import { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 
-import {
-  fireEvent,
-  renderWithProviders,
-  waitFor,
-  screen,
-} from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { ORDERS } from "__support__/sample_database_fixture";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";
@@ -53,16 +48,13 @@ async function setup({
     });
   }
 
-  const utils = renderWithProviders(
-    <ModelCacheManagementSection model={model} />,
-  );
+  renderWithProviders(<ModelCacheManagementSection model={model} />);
 
   if (waitForSectionAppearance) {
-    await utils.findByTestId("model-cache-section");
+    await screen.findByTestId("model-cache-section");
   }
 
   return {
-    ...utils,
     modelCacheInfo,
     onRefreshMock,
   };

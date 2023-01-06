@@ -192,12 +192,12 @@ describe("SaveQuestionModal", () => {
 
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
-        expect(onCreateMock).toHaveBeenCalledWith({
-          ...question.card(),
-          name: EXPECTED_SUGGESTED_NAME,
-          description: null,
-          collection_id: null,
-        });
+      });
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...question.card(),
+        name: EXPECTED_SUGGESTED_NAME,
+        description: null,
+        collection_id: null,
       });
     });
 
@@ -213,12 +213,12 @@ describe("SaveQuestionModal", () => {
 
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
-        expect(onCreateMock).toHaveBeenCalledWith({
-          ...question.card(),
-          name: "My favorite orders",
-          description: "So many of them",
-          collection_id: null,
-        });
+      });
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...question.card(),
+        name: "My favorite orders",
+        description: "So many of them",
+        collection_id: null,
       });
     });
 
@@ -234,12 +234,12 @@ describe("SaveQuestionModal", () => {
 
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
-        expect(onCreateMock).toHaveBeenCalledWith({
-          ...question.card(),
-          name: "My favorite orders",
-          description: "So many of them",
-          collection_id: null,
-        });
+      });
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...question.card(),
+        name: "My favorite orders",
+        description: "So many of them",
+        collection_id: null,
       });
     });
 
@@ -254,12 +254,12 @@ describe("SaveQuestionModal", () => {
 
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
-        expect(onCreateMock).toHaveBeenCalledWith({
-          ...question.card(),
-          name: "foo",
-          description: "bar",
-          collection_id: null,
-        });
+      });
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...question.card(),
+        name: "foo",
+        description: "bar",
+        collection_id: null,
       });
     });
 
@@ -312,7 +312,7 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByLabelText("Description")).toHaveValue(
         CARD.description,
       );
-      expect(screen.queryByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Our analytics")).toBeInTheDocument();
     });
 
     it("should allow to save a question with default form values", async () => {
@@ -325,10 +325,10 @@ describe("SaveQuestionModal", () => {
 
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
-        expect(onCreateMock).toHaveBeenCalledWith({
-          ...dirtyQuestion.card(),
-          name: EXPECTED_DIRTY_SUGGESTED_NAME,
-        });
+      });
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...dirtyQuestion.card(),
+        name: EXPECTED_DIRTY_SUGGESTED_NAME,
       });
     });
 
@@ -343,11 +343,11 @@ describe("SaveQuestionModal", () => {
 
       await waitFor(() => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
-        expect(onCreateMock).toHaveBeenCalledWith({
-          ...dirtyQuestion.card(),
-          name: "My Q",
-          description: "Sample",
-        });
+      });
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...dirtyQuestion.card(),
+        name: "My Q",
+        description: "Sample",
       });
     });
 
@@ -375,7 +375,7 @@ describe("SaveQuestionModal", () => {
       await setup(dirtyQuestion, originalQuestion);
 
       expect(
-        screen.queryByText('Replace original question, "Beautiful Orders"'),
+        screen.getByText('Replace original question, "Beautiful Orders"'),
       ).toBeInTheDocument();
     });
 
@@ -388,10 +388,10 @@ describe("SaveQuestionModal", () => {
 
       await waitFor(() => {
         expect(onSaveMock).toHaveBeenCalledTimes(1);
-        expect(onSaveMock).toHaveBeenCalledWith({
-          ...dirtyQuestion.card(),
-          id: originalQuestion.id(),
-        });
+      });
+      expect(onSaveMock).toHaveBeenCalledWith({
+        ...dirtyQuestion.card(),
+        id: originalQuestion.id(),
       });
     });
 
@@ -406,10 +406,10 @@ describe("SaveQuestionModal", () => {
 
       await waitFor(() => {
         expect(onSaveMock).toHaveBeenCalledTimes(1);
-        expect(onSaveMock).toHaveBeenCalledWith({
-          ...dirtyQuestion.card(),
-          id: originalQuestion.id(),
-        });
+      });
+      expect(onSaveMock).toHaveBeenCalledWith({
+        ...dirtyQuestion.card(),
+        id: originalQuestion.id(),
       });
     });
 
@@ -473,10 +473,10 @@ describe("SaveQuestionModal", () => {
         expect(screen.getByLabelText("Name")).toHaveValue(
           "Should not be erased",
         );
-        expect(screen.getByLabelText("Description")).toHaveValue(
-          "This should not be erased too",
-        );
       });
+      expect(screen.getByLabelText("Description")).toHaveValue(
+        "This should not be erased too",
+      );
     });
 
     it("should allow to replace the question if new question form is invalid (metabase#13817)", async () => {
@@ -487,7 +487,7 @@ describe("SaveQuestionModal", () => {
       userEvent.clear(screen.getByLabelText("Name"));
       userEvent.click(screen.getByText(/Replace original question, ".*"/));
 
-      expect(await screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
     });
 
     it("should not allow overwriting when user does not have curate permission on collection (metabase#20717)", async () => {

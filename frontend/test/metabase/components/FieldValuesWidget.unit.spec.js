@@ -58,7 +58,7 @@ describe("FieldValuesWidget", () => {
       it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", async () => {
         renderFieldValuesWidget({ ...props });
         expect(
-          await screen.queryByPlaceholderText("Search the list"),
+          screen.queryByPlaceholderText("Search the list"),
         ).not.toBeInTheDocument();
       });
 

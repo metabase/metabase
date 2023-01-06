@@ -34,8 +34,8 @@ describe("FieldFingerprintInfo", () => {
     describe("without type/DateTime fingerprint", () => {
       beforeEach(() => {
         dateField.fingerprint = { type: {} };
-        const wrapper = setup(dateField);
-        container = wrapper.container;
+        const view = setup(dateField);
+        container = view.container;
       });
 
       it("should render nothing", () => {
@@ -86,8 +86,8 @@ describe("FieldFingerprintInfo", () => {
     describe("without type/Number fingerprint", () => {
       beforeEach(() => {
         numberField.fingerprint = { type: {} };
-        const wrapper = setup(numberField);
-        container = wrapper.container;
+        const view = setup(numberField);
+        container = view.container;
       });
 
       it("should render nothing", () => {

@@ -92,9 +92,7 @@ describe("DatabaseEngineWarning", () => {
     render(
       <DatabaseEngineWarning engineKey="communityEngine" engines={engines} />,
     );
-    expect(
-      screen.queryByText(/community-developed driver/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/community-developed driver/)).toBeInTheDocument();
   });
 
   it("should render both community and deprecated warnings together", () => {
@@ -104,9 +102,7 @@ describe("DatabaseEngineWarning", () => {
         engines={engines}
       />,
     );
-    expect(
-      screen.queryByText(/community-developed driver/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/community-developed driver/)).toBeInTheDocument();
     expect(screen.getByText(/This driver will be removed/)).toBeInTheDocument();
   });
 
@@ -114,7 +110,7 @@ describe("DatabaseEngineWarning", () => {
     render(
       <DatabaseEngineWarning engineKey="partnerEngine" engines={engines} />,
     );
-    expect(screen.queryByText(/partner-developed driver/)).toBeInTheDocument();
+    expect(screen.getByText(/partner-developed driver/)).toBeInTheDocument();
   });
 
   it("should render a partner contact information web link", () => {

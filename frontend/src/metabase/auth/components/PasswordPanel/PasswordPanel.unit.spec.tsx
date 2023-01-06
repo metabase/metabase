@@ -5,7 +5,7 @@ import { AuthProvider } from "metabase/auth/types";
 import PasswordPanel, { PasswordPanelProps } from "./PasswordPanel";
 
 describe("PasswordPanel", () => {
-  it("should login successfully", () => {
+  it("should login successfully", async () => {
     const props = getProps();
     const data = { username: "user@example.test", password: "password" };
 
@@ -14,7 +14,7 @@ describe("PasswordPanel", () => {
     userEvent.type(screen.getByLabelText("Password"), data.password);
     userEvent.click(screen.getByText("Sign in"));
 
-    waitFor(() => expect(props.onLogin).toHaveBeenCalledWith(data));
+    await waitFor(() => expect(props.onLogin).toHaveBeenCalledWith(data));
   });
 
   it("should render a link to reset the password and a list of auth providers", () => {

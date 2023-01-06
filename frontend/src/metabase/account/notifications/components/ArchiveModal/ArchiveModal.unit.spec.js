@@ -124,10 +124,10 @@ describe("ArchiveModal", () => {
 
     screen.getByText("Yes, delete this alert").click();
 
-    waitFor(() => {
+    await waitFor(() => {
       expect(onArchive).toHaveBeenCalled(alert, true);
-      expect(onClose).toHaveBeenCalled();
     });
+    expect(onClose).toHaveBeenCalled();
   });
 
   it("should not close on a submit error", async () => {
@@ -148,10 +148,10 @@ describe("ArchiveModal", () => {
 
     screen.getByText("Yes, delete this alert").click();
 
-    waitFor(() => {
-      screen.getByText("An error occurred");
-      expect(onArchive).toHaveBeenCalled(alert, true);
-      expect(onClose).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText("An error occurred")).toBeInTheDocument();
     });
+    expect(onArchive).toHaveBeenCalled(alert, true);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

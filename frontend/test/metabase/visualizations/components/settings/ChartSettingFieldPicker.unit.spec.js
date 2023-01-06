@@ -63,7 +63,7 @@ describe("ChartSettingFieldPicker", () => {
     ).not.toBeInTheDocument();
 
     expect(
-      within(fields[1]).queryByRole("img", { name: /ellipsis/i }),
+      within(fields[1]).getByRole("img", { name: /ellipsis/i }),
     ).toBeInTheDocument();
   });
 

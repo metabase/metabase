@@ -35,17 +35,17 @@ describe("SearchResult > Collections", () => {
 
     it("renders regular collection correctly", () => {
       render(<SearchResult result={regularCollection} />);
-      expect(screen.queryByText(regularCollection.name)).toBeInTheDocument();
-      expect(screen.queryByText("Collection")).toBeInTheDocument();
-      expect(screen.queryByLabelText("folder icon")).toBeInTheDocument();
+      expect(screen.getByText(regularCollection.name)).toBeInTheDocument();
+      expect(screen.getByText("Collection")).toBeInTheDocument();
+      expect(screen.getByLabelText("folder icon")).toBeInTheDocument();
       expect(screen.queryByLabelText("badge icon")).not.toBeInTheDocument();
     });
 
     it("renders official collections as regular", () => {
       render(<SearchResult result={officialCollection} />);
-      expect(screen.queryByText(regularCollection.name)).toBeInTheDocument();
-      expect(screen.queryByText("Collection")).toBeInTheDocument();
-      expect(screen.queryByLabelText("folder icon")).toBeInTheDocument();
+      expect(screen.getByText(regularCollection.name)).toBeInTheDocument();
+      expect(screen.getByText("Collection")).toBeInTheDocument();
+      expect(screen.getByLabelText("folder icon")).toBeInTheDocument();
       expect(screen.queryByLabelText("badge icon")).not.toBeInTheDocument();
     });
   });
@@ -62,17 +62,17 @@ describe("SearchResult > Collections", () => {
 
     it("renders regular collection correctly", () => {
       render(<SearchResult result={regularCollection} />);
-      expect(screen.queryByText(regularCollection.name)).toBeInTheDocument();
-      expect(screen.queryByText("Collection")).toBeInTheDocument();
-      expect(screen.queryByLabelText("folder icon")).toBeInTheDocument();
+      expect(screen.getByText(regularCollection.name)).toBeInTheDocument();
+      expect(screen.getByText("Collection")).toBeInTheDocument();
+      expect(screen.getByLabelText("folder icon")).toBeInTheDocument();
       expect(screen.queryByLabelText("badge icon")).not.toBeInTheDocument();
     });
 
     it("renders official collections correctly", () => {
       render(<SearchResult result={officialCollection} />);
-      expect(screen.queryByText(regularCollection.name)).toBeInTheDocument();
-      expect(screen.queryByText("Official Collection")).toBeInTheDocument();
-      expect(screen.queryByLabelText("badge icon")).toBeInTheDocument();
+      expect(screen.getByText(regularCollection.name)).toBeInTheDocument();
+      expect(screen.getByText("Official Collection")).toBeInTheDocument();
+      expect(screen.getByLabelText("badge icon")).toBeInTheDocument();
       expect(screen.queryByLabelText("folder icon")).not.toBeInTheDocument();
     });
   });

@@ -204,8 +204,8 @@ describe.skip("Notebook Editor > Join Step", () => {
 
   it("displays a source table and suggests to pick a join table", async () => {
     await setup();
-    expect(screen.queryByText("Orders")).toBeInTheDocument();
-    expect(screen.queryByText("Pick a table...")).toBeInTheDocument();
+    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(screen.getByText("Pick a table...")).toBeInTheDocument();
   });
 
   it("opens a schema browser by default", async () => {
@@ -216,7 +216,7 @@ describe.skip("Notebook Editor > Join Step", () => {
 
     SAMPLE_DATABASE.tables.forEach(table => {
       const tableName = new RegExp(table.display_name, "i");
-      expect(within(dataSelector).queryByText(tableName)).toBeInTheDocument();
+      expect(within(dataSelector).getByText(tableName)).toBeInTheDocument();
     });
   });
 
@@ -247,11 +247,9 @@ describe.skip("Notebook Editor > Join Step", () => {
     const picker = await screen.findByRole("rowgroup");
     expect(picker).toBeInTheDocument();
     expect(picker).toBeVisible();
-    expect(within(picker).queryByText("Order")).toBeInTheDocument();
+    expect(within(picker).getByText("Order")).toBeInTheDocument();
     ordersFields.forEach(field => {
-      expect(
-        within(picker).queryByText(field.display_name),
-      ).toBeInTheDocument();
+      expect(within(picker).getByText(field.display_name)).toBeInTheDocument();
     });
   });
 
@@ -279,11 +277,9 @@ describe.skip("Notebook Editor > Join Step", () => {
     const picker = await screen.findByRole("rowgroup");
     expect(picker).toBeInTheDocument();
     expect(picker).toBeVisible();
-    expect(within(picker).queryByText("Product")).toBeInTheDocument();
+    expect(within(picker).getByText("Product")).toBeInTheDocument();
     productsFields.forEach(field => {
-      expect(
-        within(picker).queryByText(field.display_name),
-      ).toBeInTheDocument();
+      expect(within(picker).getByText(field.display_name)).toBeInTheDocument();
     });
   });
 
@@ -308,7 +304,7 @@ describe.skip("Notebook Editor > Join Step", () => {
     const picker = await screen.findByRole("rowgroup");
     expect(picker).toBeInTheDocument();
     expect(picker).toBeVisible();
-    expect(within(picker).queryByText("Order")).toBeInTheDocument();
+    expect(within(picker).getByText("Order")).toBeInTheDocument();
   });
 
   it("can select fields to select from a joined table", async () => {
@@ -433,7 +429,7 @@ describe.skip("Notebook Editor > Join Step", () => {
       const picker = await screen.findByRole("rowgroup");
       expect(picker).toBeInTheDocument();
       expect(picker).toBeVisible();
-      expect(within(picker).queryByText("Order")).toBeInTheDocument();
+      expect(within(picker).getByText("Order")).toBeInTheDocument();
     });
 
     it("automatically opens a join dimension picker for new fields pair", async () => {
@@ -446,7 +442,7 @@ describe.skip("Notebook Editor > Join Step", () => {
       picker = await screen.findByRole("rowgroup");
       expect(picker).toBeInTheDocument();
       expect(picker).toBeVisible();
-      expect(within(picker).queryByText("Product")).toBeInTheDocument();
+      expect(within(picker).getByText("Product")).toBeInTheDocument();
     });
 
     it("correctly updates join when adding multiple conditions", async () => {

@@ -22,7 +22,7 @@ describe("DimensionSemanticTypeLabel", () => {
     });
 
     it("should show an icon corresponding to the given semantic type", () => {
-      expect(screen.queryByLabelText("calendar icon")).toBeInTheDocument();
+      expect(screen.getByLabelText("calendar icon")).toBeInTheDocument();
     });
 
     it("should display the name of the semantic type", () => {
@@ -42,7 +42,7 @@ describe("DimensionSemanticTypeLabel", () => {
     });
 
     it("should show an ellipsis icon representing the lack of semantic type", () => {
-      expect(screen.queryByLabelText("ellipsis icon")).toBeInTheDocument();
+      expect(screen.getByLabelText("ellipsis icon")).toBeInTheDocument();
     });
 
     it("should display the given dimension's display name", () => {

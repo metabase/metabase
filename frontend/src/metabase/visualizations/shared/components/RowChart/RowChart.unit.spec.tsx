@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import type { NumberValue } from "d3-scale";
 import userEvent from "@testing-library/user-event";
 import { ChartFont } from "../../types/style";
@@ -60,28 +60,16 @@ const defaultProps = {
 };
 
 const setup = (props?: Partial<RowChartProps<TestDatum>>) => {
-  const {
-    getAllByRole,
-    getByText,
-    getAllByText,
-    queryByText,
-    queryAllByTestId,
-    queryAllByRole,
-  } = render(<RowChart {...defaultProps} {...props} />);
-  const bars = getAllByRole("graphics-symbol").filter(
-    el => el.getAttribute("aria-roledescription") === "bar",
-  );
-  const dataLabels = queryAllByTestId("data-label");
-  const goalLine = queryAllByRole("graphics-symbol").find(
-    el => el.getAttribute("aria-roledescription") === "goal line",
-  );
+  render(<RowChart {...defaultProps} {...props} />);
+  const bars = screen
+    .getAllByRole("graphics-symbol")
+    .filter(el => el.getAttribute("aria-roledescription") === "bar");
+  const dataLabels = screen.queryAllByTestId("data-label");
+  const goalLine = screen
+    .queryAllByRole("graphics-symbol")
+    .find(el => el.getAttribute("aria-roledescription") === "goal line");
 
   return {
-    queryAllByTestId,
-    getAllByText,
-    getByText,
-    queryByText,
-
     bars,
     dataLabels,
     goalLine,
@@ -91,38 +79,40 @@ const setup = (props?: Partial<RowChartProps<TestDatum>>) => {
 describe("RowChart", () => {
   describe("axes", () => {
     it("should render Y-ticks", () => {
-      const { getByText } = setup({ series: [series1] });
+      setup({ series: [series1] });
 
       const ticks = ["foo", "bar", "baz"];
-      ticks.forEach(tick => expect(getByText(tick)).toBeInTheDocument());
+      ticks.forEach(tick => expect(screen.getByText(tick)).toBeInTheDocument());
     });
 
     it("should not render Y-ticks when disabled", () => {
-      const { queryByText } = setup({
+      setup({
         series: [series1],
         hasYAxis: false,
       });
-      expect(queryByText("foo")).not.toBeInTheDocument();
+      expect(screen.queryByText("foo")).not.toBeInTheDocument();
     });
 
     it("should render nice values for X-ticks", () => {
-      const { getAllByText } = setup({ series: [series1] });
+      setup({ series: [series1] });
       const ticks = ["0", "100", "200"];
 
       // visx duplicates certain ticks
-      ticks.forEach(tick => expect(getAllByText(tick)[0]).toBeInTheDocument());
+      ticks.forEach(tick =>
+        expect(screen.getAllByText(tick)[0]).toBeInTheDocument(),
+      );
     });
 
     it("should not render X-ticks when disabled", () => {
-      const { queryByText } = setup({
+      setup({
         series: [series1],
         hasXAxis: false,
       });
-      expect(queryByText("50")).not.toBeInTheDocument();
+      expect(screen.queryByText("50")).not.toBeInTheDocument();
     });
 
     it("should apply formatting", () => {
-      const { getAllByText } = setup({
+      setup({
         series: [series1],
         tickFormatters: {
           xTickFormatter: (value: string) => `x_${value}`,
@@ -133,18 +123,20 @@ describe("RowChart", () => {
       const ticks = ["y_foo", "y_bar", "y_baz", "x_0", "x_100", "x_200"];
 
       // visx duplicates certain ticks
-      ticks.forEach(tick => expect(getAllByText(tick)[0]).toBeInTheDocument());
+      ticks.forEach(tick =>
+        expect(screen.getAllByText(tick)[0]).toBeInTheDocument(),
+      );
     });
 
     it("should render labels when specified", () => {
-      const { getByText } = setup({
+      setup({
         series: [series1],
         xLabel: "X Label",
         yLabel: "Y Label",
       });
 
-      expect(getByText("X Label")).toBeInTheDocument();
-      expect(getByText("Y Label")).toBeInTheDocument();
+      expect(screen.getByText("X Label")).toBeInTheDocument();
+      expect(screen.getByText("Y Label")).toBeInTheDocument();
     });
   });
 

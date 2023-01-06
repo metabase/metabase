@@ -26,26 +26,19 @@ const options = [
 
 describe("PermissionSelect", () => {
   it("shows selected option", () => {
-    const { queryByText } = render(
-      <PermissionsSelect options={options} value="all" />,
-    );
-
-    const selected = queryByText("Allowed");
-    expect(selected).toBeInTheDocument();
+    render(<PermissionsSelect options={options} value="all" />);
+    expect(screen.getByText("Allowed")).toBeInTheDocument();
   });
 
   it("when clicked shows options except selected", () => {
-    const { queryByText, getByRole, getAllByRole } = render(
-      <PermissionsSelect options={options} value="all" />,
-    );
+    render(<PermissionsSelect options={options} value="all" />);
 
-    const selected = queryByText("Allowed");
-    fireEvent.click(selected);
+    fireEvent.click(screen.getByText("Allowed"));
 
-    const optionsList = getByRole("listbox");
+    const optionsList = screen.getByRole("listbox");
     expect(optionsList).toBeInTheDocument();
 
-    const [limited, noAccess, ...rest] = getByRole("option");
+    const [limited, noAccess, ...rest] = screen.getByRole("option");
     expect(rest).not.toBeInTheDocument();
 
     expect(limited).toHaveTextContent("Limited");
@@ -54,7 +47,7 @@ describe("PermissionSelect", () => {
 
   it("selects an option", () => {
     const onChangeMock = jest.fn();
-    const { queryByText, getByRole, getAllByRole } = render(
+    render(
       <PermissionsSelect
         options={options}
         value="all"
@@ -62,27 +55,27 @@ describe("PermissionSelect", () => {
       />,
     );
 
-    const selected = queryByText("Allowed");
+    const selected = screen.queryByText("Allowed");
     fireEvent.click(selected);
 
-    const optionsList = getByRole("listbox");
+    const optionsList = screen.getByRole("listbox");
     expect(optionsList).toBeInTheDocument();
 
-    const [limited] = getAllByRole("option");
+    const [limited] = screen.getAllByRole("option");
     fireEvent.click(limited);
 
     expect(onChangeMock).toHaveBeenCalledWith("controlled", null);
   });
 
   it("does not show options after click when disabled", () => {
-    const { queryByText, queryByRole } = render(
+    render(
       <PermissionsSelect options={options} value="all" isDisabled={true} />,
     );
 
-    const selected = queryByText("Allowed");
+    const selected = screen.queryByText("Allowed");
     fireEvent.click(selected);
 
-    const optionsList = queryByRole("listbox");
+    const optionsList = screen.queryByRole("listbox");
     expect(optionsList).not.toBeInTheDocument();
 
     fireEvent.mouseEnter(selected);

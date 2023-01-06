@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { metadata, ORDERS } from "__support__/sample_database_fixture";
 
 import Dimension from "metabase-lib/Dimension";
@@ -39,14 +39,14 @@ describe("DimensionListItem", () => {
   });
 
   it("renders remove button when selected", () => {
-    const { queryByLabelText } = setup({ isSelected: true });
-    expect(queryByLabelText("Add dimension")).not.toBeInTheDocument();
-    expect(queryByLabelText("Remove dimension")).toBeInTheDocument();
+    setup({ isSelected: true });
+    expect(screen.queryByLabelText("Add dimension")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Remove dimension")).toBeInTheDocument();
   });
 
   it("renders add button when not selected", () => {
-    const { queryByLabelText } = setup({ isSelected: false });
-    expect(queryByLabelText("Remove dimension")).not.toBeInTheDocument();
-    expect(queryByLabelText("Add dimension")).toBeInTheDocument();
+    setup({ isSelected: false });
+    expect(screen.queryByLabelText("Remove dimension")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Add dimension")).toBeInTheDocument();
   });
 });

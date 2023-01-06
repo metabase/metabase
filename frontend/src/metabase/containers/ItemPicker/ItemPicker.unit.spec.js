@@ -183,20 +183,22 @@ describe("ItemPicker", () => {
     ).toBeInTheDocument();
 
     // Content
-    expect(screen.queryByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
-    expect(screen.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
-    expect(screen.queryByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
+    expect(screen.getByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
+    expect(screen.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(screen.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
     expect(screen.queryAllByTestId("item-picker-item")).toHaveLength(3);
   });
 
   it("does not display read-only collections", async () => {
     await setup();
-    expect(screen.queryByText(COLLECTION.READ_ONLY.name)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(COLLECTION.READ_ONLY.name),
+    ).not.toBeInTheDocument();
   });
 
   it("displays read-only collections if they have writable children", async () => {
     await setup({ extraCollections: [COLLECTION_READ_ONLY_CHILD_WRITABLE] });
-    expect(screen.queryByText(COLLECTION.READ_ONLY.name)).toBeInTheDocument();
+    expect(screen.getByText(COLLECTION.READ_ONLY.name)).toBeInTheDocument();
   });
 
   it("can open nested collection", async () => {
@@ -208,13 +210,13 @@ describe("ItemPicker", () => {
     const list = getItemPickerList();
 
     // Breadcrumbs
-    expect(header.queryByText(/Our analytics/i)).toBeInTheDocument();
-    expect(header.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(header.getByText(/Our analytics/i)).toBeInTheDocument();
+    expect(header.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
 
     // Content
-    expect(list.queryByText(COLLECTION.REGULAR_CHILD.name)).toBeInTheDocument();
-    expect(list.queryByText(DASHBOARD.REGULAR_CHILD.name)).toBeInTheDocument();
-    expect(list.queryAllByTestId("item-picker-item")).toHaveLength(2);
+    expect(list.getByText(COLLECTION.REGULAR_CHILD.name)).toBeInTheDocument();
+    expect(list.getByText(DASHBOARD.REGULAR_CHILD.name)).toBeInTheDocument();
+    expect(list.getAllByTestId("item-picker-item")).toHaveLength(2);
   });
 
   it("can navigate back from a currently open nested collection", async () => {
@@ -229,10 +231,10 @@ describe("ItemPicker", () => {
 
     expect(header.queryByText(COLLECTION.REGULAR.name)).not.toBeInTheDocument();
 
-    expect(list.queryByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
-    expect(list.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
-    expect(list.queryByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
-    expect(list.queryAllByTestId("item-picker-item")).toHaveLength(3);
+    expect(list.getByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
+    expect(list.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(list.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
+    expect(list.getAllByTestId("item-picker-item")).toHaveLength(3);
   });
 
   it("calls onChange when selecting an item", async () => {

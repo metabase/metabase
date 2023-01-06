@@ -280,9 +280,9 @@ describe("DatePicker", () => {
         userEvent.click(screen.getByText("On"));
 
         expect(await screen.findByText("May 2020")).toBeInTheDocument();
-        userEvent.click(await screen.getByLabelText(/chevronright/i));
+        userEvent.click(screen.getByLabelText(/chevronright/i));
         expect(await screen.findByText("June 2020")).toBeInTheDocument();
-        userEvent.click(await screen.getByLabelText(/chevronright/i));
+        userEvent.click(screen.getByLabelText(/chevronright/i));
         expect(await screen.findByText("July 2020")).toBeInTheDocument();
       });
     });

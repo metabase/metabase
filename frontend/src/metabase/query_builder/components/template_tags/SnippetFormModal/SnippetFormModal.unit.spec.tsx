@@ -66,7 +66,7 @@ async function setup({
     <SnippetFormModal snippet={snippet} onClose={onClose || undefined} />,
   );
 
-  await waitForElementToBeRemoved(() => screen.getByText(/Loading/i));
+  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
 
   return { onClose };
 }

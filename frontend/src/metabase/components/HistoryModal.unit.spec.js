@@ -71,11 +71,11 @@ function setup({ revisions = REVISIONS } = {}) {
 describe("HistoryModal", () => {
   it("displays revisions", () => {
     setup();
-    expect(screen.queryByText("created this")).toBeInTheDocument();
-    expect(screen.queryByText("added a description")).toBeInTheDocument();
-    expect(screen.queryByText("archived this")).toBeInTheDocument();
+    expect(screen.getByText("created this")).toBeInTheDocument();
+    expect(screen.getByText("added a description")).toBeInTheDocument();
+    expect(screen.getByText("archived this")).toBeInTheDocument();
     expect(
-      screen.queryByText("reverted to an earlier revision"),
+      screen.getByText("reverted to an earlier revision"),
     ).toBeInTheDocument();
     expect(screen.getAllByTestId("revision-history-row")).toHaveLength(4);
   });
@@ -84,7 +84,9 @@ describe("HistoryModal", () => {
     setup({
       revisions: [getRevision({ diff: { before: null, after: null } })],
     });
-    expect(screen.queryByTestId("revision-history-row")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("revision-history-row"),
+    ).not.toBeInTheDocument();
   });
 
   it("calls onClose when close icon is clicked", () => {
