@@ -1,6 +1,11 @@
 import React from "react";
+import nock from "nock";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import {
   SAMPLE_DATABASE,
   ORDERS,
@@ -8,6 +13,8 @@ import {
 } from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+
+import { createMockUser } from "metabase-types/api/mocks";
 
 import Question from "metabase-lib/Question";
 
@@ -60,26 +67,47 @@ function getDataset(card) {
   );
 }
 
-function setup({ question, cachingEnabled = true } = {}) {
+async function setup({ question, cachingEnabled = true } = {}) {
+  const user = createMockUser();
+
   const settings = mockSettings({
     "enable-query-caching": cachingEnabled,
     "query-caching-min-ttl": 10000,
   });
 
+  const id = question.id();
+  nock(location.origin)
+    .get(`/api/card/${id}`)
+    .reply(200, question.card())
+    .get(`/api/revision?entity=card&id=${id}`)
+    .reply(200, [])
+    .get("/api/user")
+    .reply(200, [user])
+    .get(`/api/user/${user.id}`)
+    .reply(200, user);
+
   const onSave = jest.fn();
 
-  return renderWithProviders(
+  renderWithProviders(
     <QuestionInfoSidebar question={question} onSave={onSave} />,
     {
+      currentUser: user,
       withSampleDatabase: true,
       storeInitialState: {
-        settings,
+        settings: settings,
+        currentUser: user,
       },
     },
   );
+
+  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
 }
 
-describe("QuestionDetailsSidebarPanel", () => {
+describe("QuestionInfoSidebar", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   describe("common features", () => {
     [
       { type: "Saved Question", getObject: getQuestion },
@@ -88,8 +116,8 @@ describe("QuestionDetailsSidebarPanel", () => {
       const { type, getObject } = testCase;
 
       describe(type, () => {
-        it("displays description", () => {
-          setup({ question: getObject({ description: "Foo bar" }) });
+        it("displays description", async () => {
+          await setup({ question: getObject({ description: "Foo bar" }) });
           expect(screen.queryByText("Foo bar")).toBeInTheDocument();
         });
       });
@@ -98,8 +126,8 @@ describe("QuestionDetailsSidebarPanel", () => {
 
   describe("cache ttl field", () => {
     describe("oss", () => {
-      it("is not shown", () => {
-        setup({ question: getQuestion() });
+      it("is not shown", async () => {
+        await setup({ question: getQuestion() });
         expect(
           screen.queryByText("Cache Configuration"),
         ).not.toBeInTheDocument();
@@ -111,13 +139,13 @@ describe("QuestionDetailsSidebarPanel", () => {
         setupEnterpriseTest();
       });
 
-      it("is shown if caching is enabled", () => {
-        setup({ question: getQuestion({ cache_ttl: 2 }) });
+      it("is shown if caching is enabled", async () => {
+        await setup({ question: getQuestion({ cache_ttl: 2 }) });
         expect(screen.queryByText("Cache Configuration")).toBeInTheDocument();
       });
 
-      it("is hidden if caching is disabled", () => {
-        setup({ question: getQuestion(), cachingEnabled: false });
+      it("is hidden if caching is disabled", async () => {
+        await setup({ question: getQuestion(), cachingEnabled: false });
         expect(
           screen.queryByText("Cache Configuration"),
         ).not.toBeInTheDocument();
@@ -130,20 +158,20 @@ describe("QuestionDetailsSidebarPanel", () => {
       setupEnterpriseTest();
     });
 
-    it("should not show verification badge if unverified", () => {
-      setup({ question: getQuestion({ moderation_reviews: [] }) });
+    it("should not show verification badge if unverified", async () => {
+      await setup({ question: getQuestion({ moderation_reviews: [] }) });
       expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
     });
 
-    it("should show verification badge if verified", () => {
-      setup({ question: getQuestion() });
+    it("should show verification badge if verified", async () => {
+      await setup({ question: getQuestion() });
       expect(screen.queryByText(/verified this/)).toBeInTheDocument();
     });
   });
 
   describe("read-only permissions", () => {
-    it("should disable input field for description", () => {
-      setup({
+    it("should disable input field for description", async () => {
+      await setup({
         question: getQuestion({ description: "Foo bar", can_write: false }),
       });
       expect(screen.queryByPlaceholderText("Add description")).toHaveValue(
@@ -152,8 +180,8 @@ describe("QuestionDetailsSidebarPanel", () => {
       expect(screen.queryByPlaceholderText("Add description")).toBeDisabled();
     });
 
-    it("should display 'No description' if description is null and user does not have write permissions", () => {
-      setup({
+    it("should display 'No description' if description is null and user does not have write permissions", async () => {
+      await setup({
         question: getQuestion({ description: null, can_write: false }),
       });
       expect(
