@@ -164,6 +164,62 @@
                (assoc-in param [:values_source_config :card_id] (get param-id->card-id id (:card_id values_source_config)))
                param)))))
 
+(defn- should-populate-parameter-query-method?
+  [parameters]
+  (and (seq parameters)
+       (some (comp nil? :query-method) parameters)))
+
+(defn- mappings->field-ids
+  [mappings]
+  (for [{:keys [target]} mappings
+        :when (= (first target) :dimension)]
+    (second (second target))))
+
+(defn- populate-parameter-query-method
+  [resolved-params parameters]
+  (let [field-ids       (flatten (map #(mappings->field-ids (:mappings %1)) (vals resolved-params)))
+        ;; fetch all the needed fields from parameters once to save some CPU cycle
+        field-id->field (->> (hydrate (db/select ['Field :has_field_values :base_type]
+                                                 :id [:in field-ids])
+                                      :has_field_values)
+                             (m/index-by :id))]
+    (for [parameter parameters
+          :let [param             (get resolved-params (:id parameter))
+                mapped-field-ids  (mappings->field-ids (:mappings param))
+                ;; this should returns a subset of #{:search :list :none}
+                has-field-valuess (if (seq mapped-field-ids)
+                                    (->> (map #(get field-id->field %) mapped-field-ids)
+                                         (map :has_field_values)
+                                         set)
+                                    #{})]]
+      (assoc parameter
+             :query-method
+             (cond
+               ;; if at least one is :none, then :none
+               (contains? has-field-valuess :none)
+               :none
+
+               ;; else if at least one is :search, then :search
+               (contains? has-field-valuess :search)
+               :search
+
+               ;; othewise :list
+               :else
+               :list)))))
+
+(defn- maybe-populate-parameter-query-method
+  [{:keys [parameters] :as dashboard}]
+  (if-not (should-populate-parameter-query-method? parameters)
+    dashboard
+    (assoc dashboard :parameters (populate-parameter-query-method (dashboard->resolved-params dashboard) parameters))))
+
+(defn- post-select
+  [dashboard]
+  (-> dashboard
+      public-settings/remove-public-uuid-if-public-sharing-is-disabled
+      populate-card-id-for-parameters
+      maybe-populate-parameter-query-method))
+
 (mi/define-methods
  Dashboard
  {:properties  (constantly {::mi/timestamped? true
@@ -174,7 +230,7 @@
   :post-insert post-insert
   :pre-update  pre-update
   :post-update post-update
-  :post-select (comp populate-card-id-for-parameters public-settings/remove-public-uuid-if-public-sharing-is-disabled)})
+  :post-select post-select})
 
 (defmethod serdes.hash/identity-hash-fields Dashboard
   [_dashboard]
