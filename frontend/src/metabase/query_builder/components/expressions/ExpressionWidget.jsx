@@ -20,6 +20,7 @@ export default class ExpressionWidget extends Component {
     ]),
     name: PropTypes.string,
     query: PropTypes.object.isRequired,
+    reportTimezone: PropTypes.string,
     onChangeExpression: PropTypes.func.isRequired,
     onRemoveExpression: PropTypes.func,
     onClose: PropTypes.func,
@@ -56,7 +57,7 @@ export default class ExpressionWidget extends Component {
   };
 
   render() {
-    const { query } = this.props;
+    const { query, reportTimezone } = this.props;
     const { expression, name } = this.state;
 
     return (
@@ -69,6 +70,7 @@ export default class ExpressionWidget extends Component {
               expression={expression}
               name={name}
               query={query}
+              reportTimezone={reportTimezone}
               onChange={parsedExpression =>
                 this.setState({ expression: parsedExpression, error: null })
               }

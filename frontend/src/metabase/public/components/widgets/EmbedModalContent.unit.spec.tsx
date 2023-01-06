@@ -3,7 +3,6 @@ import { screen, waitFor } from "@testing-library/react";
 import _ from "underscore";
 
 import { renderWithProviders } from "__support__/ui";
-import { createMockSettings } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import EmbedModalContent from "./EmbedModalContent";
@@ -145,10 +144,8 @@ function renderWithConfiguredProviders(element: JSX.Element) {
   renderWithProviders(element, {
     storeInitialState: {
       settings: createMockSettingsState({
-        values: createMockSettings({
-          "enable-embedding": true,
-          "embedding-secret-key": "my_super_secret_key",
-        }),
+        "enable-embedding": true,
+        "embedding-secret-key": "my_super_secret_key",
       }),
     },
   });
