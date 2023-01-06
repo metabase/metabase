@@ -1,46 +1,31 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
+
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-
-import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
-import MetabaseSettings from "metabase/lib/settings";
-
 import {
   SAMPLE_DATABASE,
   ORDERS,
   metadata,
 } from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+
+import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
+
 import Question from "metabase-lib/Question";
 
-function mockCachingEnabled(enabled = true) {
-  const original = MetabaseSettings.get.bind(MetabaseSettings);
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "enable-query-caching") {
-      return enabled;
-    }
-    if (key === "application-name") {
-      return "Metabase Test";
-    }
-    if (key === "version") {
-      return { tag: "" };
-    }
-    if (key === "is-hosted?") {
-      return false;
-    }
-    if (key === "enable-enhancements?") {
-      return false;
-    }
-    return original(key);
-  });
-}
-
-const setup = async (question, originalQuestion) => {
+const setup = async (
+  question,
+  originalQuestion,
+  { isCachingEnabled = false } = {},
+) => {
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
+
+  const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
+
   renderWithProviders(
     <SaveQuestionModal
       card={question.card()}
@@ -50,8 +35,14 @@ const setup = async (question, originalQuestion) => {
       onSave={onSaveMock}
       onClose={onCloseMock}
     />,
+    {
+      storeInitialState: {
+        settings,
+      },
+    },
   );
   await waitFor(() => screen.getByRole("button", { name: "Save" }));
+
   return { onSaveMock, onCreateMock, onCloseMock };
 };
 
@@ -545,10 +536,6 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("Cache TTL field", () => {
-    beforeEach(() => {
-      mockCachingEnabled();
-    });
-
     const question = Question.create({
       databaseId: SAMPLE_DATABASE.id,
       tableId: ORDERS.id,
@@ -560,7 +547,7 @@ describe("SaveQuestionModal", () => {
 
     describe("OSS", () => {
       it("is not shown", async () => {
-        await setup(question);
+        await setup(question, null, { isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -574,7 +561,7 @@ describe("SaveQuestionModal", () => {
       });
 
       it("is not shown", async () => {
-        await setup(question);
+        await setup(question, null, { isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),

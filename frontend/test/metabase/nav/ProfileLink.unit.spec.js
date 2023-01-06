@@ -1,8 +1,9 @@
 import React from "react";
 import { screen, fireEvent } from "@testing-library/react";
-import { renderWithProviders } from "__support__/ui";
 
-import MetabaseSettings from "metabase/lib/settings";
+import { renderWithProviders } from "__support__/ui";
+import { mockSettings } from "__support__/settings";
+
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
 const REGULAR_ITEMS = [
@@ -43,17 +44,12 @@ describe("ProfileLink", () => {
     ["regular", "hosted"].forEach(testCase => {
       describe(`${testCase} instance`, () => {
         beforeEach(() => {
-          jest.spyOn(MetabaseSettings, "isHosted");
-          MetabaseSettings.isHosted = jest.fn(() => false);
-        });
-
-        afterEach(() => {
-          MetabaseSettings.isHosted.mockRestore();
+          mockSettings({ "is-hosted?": false });
         });
 
         if (testCase === "hosted") {
           beforeEach(() => {
-            MetabaseSettings.isHosted = jest.fn(() => true);
+            mockSettings({ "is-hosted?": true });
           });
         }
 
