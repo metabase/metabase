@@ -34,9 +34,9 @@
    [metabase.models.humanization :as humanization]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [trs]]
-   [toucan.db :as db]
-   [metabase.util.honey-sql-2-extensions :as h2x]))
+   [toucan.db :as db]))
 
 (defn- merge-count-maps
   "Merge sequence of maps `ms` by summing counts inside them. Non-integer values are allowed; truthy values are

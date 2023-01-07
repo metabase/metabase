@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
    [metabase.api.search :as api.search]
    [metabase.models
     :refer [Card

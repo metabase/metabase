@@ -33,6 +33,7 @@
 (set! *warn-on-reflection* true)
 
 (defmulti compile
+  "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."
   {:arglists '([query])}
   type)
 

@@ -22,6 +22,9 @@ title: Driver interface changelog
   `metabase.util.honey_sql_1_extensions.TypedHoneySQLForm`, respectively. Code that was referencing these classes
   should be updated to reference the new class names.
 
+- `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; use
+  `metabase.util.honeysql-extensions/at-time-zone` instead.
+
 ## Metabase 0.45.0
 
 - `metabase.driver.sql-jdbc.connection/details->connection-spec-for-testing-connection` has been removed in Metabase

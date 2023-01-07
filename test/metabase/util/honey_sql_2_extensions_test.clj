@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [metabase.db.query :as mdb.query]
    [metabase.test :as mt]
-   [metabase.util.honey-sql-2-extensions :as h2x]
-   [metabase.db.query :as mdb.query]))
+   [metabase.util.honey-sql-2-extensions :as h2x]))
 
 (deftest ^:parallel custom-functions-test
   (testing `::h2x/extract

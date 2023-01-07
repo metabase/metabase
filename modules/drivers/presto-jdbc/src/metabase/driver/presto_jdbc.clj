@@ -82,7 +82,7 @@
              ;; if one has already been set, don't do so again
              (not (::in-report-zone? (meta expr)))
              report-zone)
-      (-> (hx/with-database-type-info (hx/->AtTimeZone expr report-zone) timestamp-with-time-zone-db-type)
+      (-> (hx/with-database-type-info (hx/at-time-zone expr report-zone) timestamp-with-time-zone-db-type)
         (vary-meta assoc ::in-report-zone? true))
       expr)))
 
