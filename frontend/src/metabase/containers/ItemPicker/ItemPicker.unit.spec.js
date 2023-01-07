@@ -149,22 +149,21 @@ async function setup({
 }
 
 function getItemPickerHeader() {
-  return within(screen.getByTestId("item-picker-header"));
+  return screen.getByTestId("item-picker-header");
 }
 
 function getItemPickerList() {
-  return within(screen.getByTestId("item-picker-list"));
+  return screen.getByTestId("item-picker-list");
 }
 
 function queryListItem(itemName) {
-  const node = getItemPickerList()
+  return within(getItemPickerList())
     .queryByText(itemName)
     .closest("[data-testid=item-picker-item]");
-  return within(node);
 }
 
 async function openCollection(itemName) {
-  const collectionNode = queryListItem(itemName);
+  const collectionNode = within(queryListItem(itemName));
   userEvent.click(collectionNode.getByLabelText("chevronright icon"));
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
@@ -179,7 +178,7 @@ describe("ItemPicker", () => {
 
     // Breadcrumbs
     expect(
-      getItemPickerHeader().queryByText(/Our analytics/i),
+      within(getItemPickerHeader()).getByText(/Our analytics/i),
     ).toBeInTheDocument();
 
     // Content
@@ -206,8 +205,8 @@ describe("ItemPicker", () => {
 
     await openCollection(COLLECTION.REGULAR.name);
 
-    const header = getItemPickerHeader();
-    const list = getItemPickerList();
+    const header = within(getItemPickerHeader());
+    const list = within(getItemPickerList());
 
     // Breadcrumbs
     expect(header.getByText(/Our analytics/i)).toBeInTheDocument();
@@ -222,12 +221,12 @@ describe("ItemPicker", () => {
   it("can navigate back from a currently open nested collection", async () => {
     await setup();
     await openCollection(COLLECTION.REGULAR.name);
-    let header = getItemPickerHeader();
+    let header = within(getItemPickerHeader());
 
     userEvent.click(header.getByText(/Our analytics/i));
 
-    header = getItemPickerHeader();
-    const list = getItemPickerList();
+    header = within(getItemPickerHeader());
+    const list = within(getItemPickerList());
 
     expect(header.queryByText(COLLECTION.REGULAR.name)).not.toBeInTheDocument();
 
@@ -259,7 +258,7 @@ describe("ItemPicker", () => {
 
     userEvent.click(screen.getByText(/All personal collections/i));
 
-    const list = getItemPickerList();
+    const list = within(getItemPickerList());
     expect(list.getByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();
     expect(list.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
     expect(list.getAllByTestId("item-picker-item")).toHaveLength(2);
