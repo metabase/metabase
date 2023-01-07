@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent, screen } from "@testing-library/react";
+import { render, fireEvent, screen, getIcon } from "__support__/ui";
 
 import { PermissionsSelect } from "./PermissionsSelect";
 
@@ -38,8 +38,8 @@ describe("PermissionSelect", () => {
     const optionsList = screen.getByRole("listbox");
     expect(optionsList).toBeInTheDocument();
 
-    const [limited, noAccess, ...rest] = screen.getByRole("option");
-    expect(rest).not.toBeInTheDocument();
+    const [limited, noAccess, ...rest] = screen.getAllByRole("option");
+    expect(rest).toEqual([]);
 
     expect(limited).toHaveTextContent("Limited");
     expect(noAccess).toHaveTextContent("No access");
@@ -83,14 +83,13 @@ describe("PermissionSelect", () => {
 
   it("shows warning", () => {
     const WARNING = "warning test";
-    const { container } = render(
+    render(
       <PermissionsSelect options={options} value="all" warning={WARNING} />,
     );
 
-    const warning = container.querySelector(".Icon-warning");
-    expect(warning).not.toBeNull();
+    expect(getIcon("warning")).toBeInTheDocument();
 
-    fireEvent.mouseEnter(warning);
+    fireEvent.mouseEnter(getIcon("warning"));
     const warningTooltip = screen.queryByText(WARNING);
 
     expect(warningTooltip).toBeInTheDocument();
