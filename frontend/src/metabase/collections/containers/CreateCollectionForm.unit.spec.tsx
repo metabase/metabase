@@ -22,7 +22,10 @@ type SetupOpts = {
   onCancel?: (() => void) | null;
 };
 
-function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
+function setup({
+  user = createMockUser({ is_superuser: true }),
+  onCancel = jest.fn(),
+}: SetupOpts = {}) {
   nock(location.origin)
     .post("/api/collection")
     .reply(200, (url, body) => {
@@ -32,8 +35,8 @@ function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
     });
 
   renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
-    currentUser: user,
     storeInitialState: {
+      currentUser: user,
       entities: createMockEntitiesState({
         collections: {
           root: ROOT_COLLECTION,

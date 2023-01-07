@@ -7,17 +7,11 @@ import ValidationError, {
 
 import QueryValidationError from "./QueryValidationError";
 
-const providers = {
-  reducers: {
-    qb: () => ({}),
-  },
-};
-
 describe("QueryValidationError", () => {
   describe("when using an Error", () => {
     const error = new Error("oof");
     beforeEach(() => {
-      renderWithProviders(<QueryValidationError error={error} />, providers);
+      renderWithProviders(<QueryValidationError error={error} />);
     });
 
     it("should render the error message", () => {
@@ -35,10 +29,7 @@ describe("QueryValidationError", () => {
       VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION,
     );
     beforeEach(() => {
-      renderWithProviders(
-        <QueryValidationError error={validationError} />,
-        providers,
-      );
+      renderWithProviders(<QueryValidationError error={validationError} />);
     });
 
     it("should render the error message", () => {
