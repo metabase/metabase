@@ -68,6 +68,6 @@ describe("ChartSettingFieldPicker", () => {
   });
 
   it("should handle 'hasColumnSettings' check when dealing with currency", () => {
-    setup({ semantic_type: "type/Currency" });
+    expect(() => setup({ semantic_type: "type/Currency" })).not.toThrow();
   });
 });
