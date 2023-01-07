@@ -289,19 +289,19 @@
   ([{:keys [archived? user-id]
      :or   {archived? false}}]
    (assert boolean? archived?)
-   (let [query {:select-distinct [:p.* [:%lower.p.name :lower-name]]
-                :from            [[:pulse :p]]
-                :left-join       (when user-id
-                                   [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
-                                    [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
-                :where           [:and
-                                  [:not= :p.alert_condition nil]
-                                  [:= :p.archived archived?]
-                                  (when user-id
-                                    [:or
-                                     [:= :p.creator_id user-id]
-                                     [:= :pcr.user_id user-id]])]
-                :order-by        [[:lower-name :asc]]}]
+   (let [query (merge {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
+                       :from            [[:pulse :p]]
+                       :where           [:and
+                                         [:not= :p.alert_condition nil]
+                                         [:= :p.archived archived?]
+                                         (when user-id
+                                           [:or
+                                            [:= :p.creator_id user-id]
+                                            [:= :pcr.user_id user-id]])]
+                       :order-by        [[:lower-name :asc]]}
+                      (when user-id
+                        {:left-join [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
+                                     [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))]
      (for [alert (hydrate-notifications (query-as Pulse query))
            :let  [alert (notification->alert alert)]
            ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
@@ -314,7 +314,7 @@
   "Fetch all `Pulses`."
   [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}}]
-  (let [query {:select-distinct [:p.* [:%lower.p.name :lower-name]]
+  (let [query {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
                :from            [[:pulse :p]]
                :left-join       (concat
                                  [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
@@ -350,10 +350,10 @@
   (map (comp notification->alert hydrate-notification)
        (query-as Pulse
                  {:select [:p.*]
-                  :from   [[Pulse :p]]
-                  :join   [[PulseCard :pc] [:= :p.id :pc.pulse_id]
-                           [PulseChannel :pchan] [:= :pchan.pulse_id :p.id]
-                           [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]
+                  :from   [[:pulse :p]]
+                  :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
+                           [:pulse_channel :pchan] [:= :pchan.pulse_id :p.id]
+                           [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]
                   :where  [:and
                            [:not= :p.alert_condition nil]
                            [:= :pc.card_id card-id]
@@ -368,8 +368,8 @@
     (map (comp notification->alert hydrate-notification)
          (query-as Pulse
                    {:select [:p.*]
-                    :from   [[Pulse :p]]
-                    :join   [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
+                    :from   [[:pulse :p]]
+                    :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
                     :where  [:and
                              [:not= :p.alert_condition nil]
                              [:in :pc.card_id card-ids]

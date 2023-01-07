@@ -158,8 +158,8 @@
   after a sufficient delay to ensure no queries are running against them and to allow changing mind. Also selects
   persisted info records pointing to cards that are no longer models and archived cards/models."
   []
-  (binding [hx/*honey-sql-version* 2]
-    (->> (mdb.query/query {:select    [:p.*]
+  (->> (mdb.query/query (binding [hx/*honey-sql-version* 2]
+                          {:select    [:p.*]
                            :from      [[:persisted_info :p]]
                            :left-join [[:report_card :c] [:= :c.id :p.card_id]]
                            :where     [:or
@@ -172,8 +172,8 @@
                                         [:< :state_change_at
                                          (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
                                        [:= :c.dataset false]
-                                       [:= :c.archived true]]})
-         (db/do-post-select PersistedInfo))))
+                                       [:= :c.archived true]]}))
+       (db/do-post-select PersistedInfo)))
 
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."

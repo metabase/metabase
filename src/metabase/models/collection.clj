@@ -311,17 +311,19 @@
                               "/"
                               (format "%%/%s/" (str parent-id)))]
     (into
-      ; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
-      ; the [:= 1 1] is to prevent this
-      [:and [:= 1 1]]
-      (if (= collection-ids :all)
-        ; In the case that visible-collection-ids is all, that means there's no invisible collection ids
-        ; meaning, the effective children are always the direct children. So check for being a direct child.
-        [[:like :location (hx/literal child-literal)]]
-        (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
-              disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
-          (for [visible-collection-id disj-collection-ids]
-            [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
+     ;; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
+     ;; the (1 = 1) is to prevent this
+     [:and (case hx/*honey-sql-version*
+             1 [:= 1 1]
+             2 [:= [:inline 1] [:inline 1]])]
+     (if (= collection-ids :all)
+       ;; In the case that visible-collection-ids is all, that means there's no invisible collection ids
+       ;; meaning, the effective children are always the direct children. So check for being a direct child.
+       [[:like :location (hx/literal child-literal)]]
+       (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
+             disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
+         (for [visible-collection-id disj-collection-ids]
+           [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
 
 (s/defn ^:private effective-location-path* :- (s/maybe LocationPath)

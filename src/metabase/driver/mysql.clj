@@ -151,7 +151,7 @@
     (recur driver hsql-form (/ amount 1000.0) :second)
     (case hx/*honey-sql-version*
       1 (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %s %s" amount (name unit))))
-      2 [:call :date_add hsql-form [:raw (format "INTERVAL %s %s" amount (name unit))]])))
+      2 [:date_add hsql-form [:raw (format "INTERVAL %s %s" amount (name unit))]])))
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql

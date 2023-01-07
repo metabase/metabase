@@ -537,7 +537,7 @@
                 id))
             (all-user-perms []
               (mdb.query/query {:select [:object]
-                                :from   [:permissions_group]
+                                :from   [:permissions]
                                 :where  [:= :group_id (all-users-group-id)]}))]
       (impl/test-migrations ["v43.00-020" "v43.00-021"] [migrate!]
         (is (= []

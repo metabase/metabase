@@ -33,7 +33,7 @@
    [metabase.models.timeline :as timeline :refer [Timeline]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -166,23 +166,37 @@
   {:arglists '([model collection options])}
   (fn [model _ _] (keyword model)))
 
+;;; TODO -- in Postgres and H2 at least I think we could just do `true` or `false` here... not sure about MySQL.
+
+(def ^:private always-true-hsql-expr
+  "A Honey SQL expression that is always true.
+
+    1 = 1"
+  [:= [:inline 1] [:inline 1]])
+
+(def ^:private always-false-hsql-expr
+  "A Honey SQL expression that is never true.
+
+    1 = 2"
+  [:= [:inline 1] [:inline 2]])
+
 (defn- pinned-state->clause
   ([pinned-state]
    (pinned-state->clause pinned-state :collection_position))
   ([pinned-state col]
    (case pinned-state
-     :all [:= 1 1]
-     :is_pinned [:<> col nil]
+     :all           always-true-hsql-expr
+     :is_pinned     [:<> col nil]
      :is_not_pinned [:= col nil]
-     [:= 1 1])))
+     always-true-hsql-expr)))
 
 (defn- poison-when-pinned-clause
   "Poison a query to return no results when filtering to pinned items. Use for items that do not have a notion of
   pinning so that no results return when asking for pinned items."
   [pinned-state]
   (if (= pinned-state :is_pinned)
-    [:= 1 2]
-    [:= 1 1]))
+    always-false-hsql-expr
+    always-true-hsql-expr))
 
 (defmulti ^:private post-process-collection-children
   {:arglists '([model rows])}
@@ -199,7 +213,7 @@
                          :p.name
                          :p.entity_id
                          :p.collection_position
-                         [(hx/literal "pulse") :model]]
+                         [(h2x/literal "pulse") :model]]
        :from            [[:pulse :p]]
        :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
        :where           [:and
@@ -220,7 +234,7 @@
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived?]}]
-  {:select [:id :name :entity_id [(hx/literal "snippet") :model]]
+  {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
    :where  [:and
             [:= :collection_id (:id collection)]
@@ -228,7 +242,7 @@
 
 (defmethod collection-children-query :timeline
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :name [(hx/literal "timeline") :model] :description :entity_id :icon]
+  {:select [:id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
    :from   [[:timeline :timeline]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
@@ -253,7 +267,7 @@
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
   (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                    :c.dataset_query
-                   [(hx/literal (if dataset? "dataset" "card")) :model]
+                   [(h2x/literal (if dataset? "dataset" "card")) :model]
                    [:u.id :last_edit_user]
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
@@ -280,7 +294,7 @@
                                                   [:< :r1.id :r2.id]]]
                      :where     [:and
                                  [:= :r2.id nil]
-                                 [:= :r1.model (hx/literal "Card")]]} :r]
+                                 [:= :r1.model (h2x/literal "Card")]]} :r]
                    [:= :r.model_id :c.id]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
@@ -353,7 +367,7 @@
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
-                   [(hx/literal "dashboard") :model]
+                   [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
@@ -368,7 +382,7 @@
                                                   [:< :r1.id :r2.id]]]
                      :where     [:and
                                  [:= :r2.id nil]
-                                 [:= :r1.model (hx/literal "Dashboard")]]} :r]
+                                 [:= :r1.model (h2x/literal "Dashboard")]]} :r]
                    [:= :r.model_id :d.id]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
@@ -400,7 +414,7 @@
                       :description
                       :entity_id
                       :personal_owner_id
-                      [(hx/literal "collection") :model]
+                      [(h2x/literal "collection") :model]
                       :authority_level])
       ;; the nil indicates that collections are never pinned.
       (sql.helpers/where (pinned-state->clause pinned-state nil))))
@@ -491,7 +505,7 @@
     (map (fn [col]
            (let [[col-name typpe] (u/one-or-many col)]
              (get columns col-name (if (and typpe (= (mdb/db-type) :postgres))
-                                     [(hx/cast typpe nil) col-name]
+                                     [(h2x/cast typpe nil) col-name]
                                      [nil col-name]))))
          necessary-columns)))
 
@@ -504,7 +518,7 @@
                   :snippet    5
                   :collection 6
                   :timeline   7}]
-    (conj select-clause [(get rankings model 100)
+    (conj select-clause [[:inline (get rankings model 100)]
                          :model_ranking])))
 
 (comment

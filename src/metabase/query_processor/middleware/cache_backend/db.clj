@@ -31,7 +31,7 @@
                                                     [:= :query_hash [:raw "?"]]
                                                     [:>= :updated_at [:raw "?"]]]
                                          :order-by [[:updated_at :desc]]
-                                         :limit    1}
+                                         :limit    [:inline 1]}
                                         {:quoted  true
                                          :dialect quoting-style}))))]
     (fn []

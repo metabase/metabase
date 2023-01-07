@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase.test :as mt]
-   [metabase.util.honey-sql-2-extensions :as h2x]))
+   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.db.query :as mdb.query]))
 
 (deftest ^:parallel custom-functions-test
   (testing `::h2x/extract
@@ -22,7 +23,7 @@
 (deftest ^:parallel format-test
   (testing "Basic format test not including a specific quoting option"
     (is (= ["SELECT setting"]
-           (sql/format {:select [[:setting]]}))))
+           (sql/format {:select [[:setting]]} {:quoted false}))))
 
   (testing "`:h2` quoting will uppercase and quote the identifier"
     (is (= ["SELECT \"SETTING\""]
@@ -31,28 +32,34 @@
 (deftest ^:parallel literal-test
   (testing "`literal` should be compiled to a single-quoted literal"
     (is (= ["WHERE name = 'Cam'"]
-           (sql/format {:where [:= :name (h2x/literal "Cam")]}))))
+           (sql/format {:where [:= :name (h2x/literal "Cam")]}
+                       {:quoted false}))))
 
   (testing (str "`literal` should properly escape single-quotes inside the literal string double-single-quotes is how "
                 "to escape them in SQL")
     (is (= ["WHERE name = 'Cam''s'"]
-           (sql/format {:where [:= :name (h2x/literal "Cam's")]}))))
+           (sql/format {:where [:= :name (h2x/literal "Cam's")]}
+                       {:quoted false}))))
 
   (testing "`literal` should only escape single quotes that aren't already escaped -- with two single quotes..."
     (is (= ["WHERE name = 'Cam''s'"]
-           (sql/format {:where [:= :name (h2x/literal "Cam''s")]}))))
+           (sql/format {:where [:= :name (h2x/literal "Cam''s")]}
+                       {:quoted false}))))
 
   (testing "...or with a slash"
     (is (= ["WHERE name = 'Cam\\'s'"]
-           (sql/format {:where [:= :name (h2x/literal "Cam\\'s")]}))))
+           (sql/format {:where [:= :name (h2x/literal "Cam\\'s")]}
+                       {:quoted false}))))
 
   (testing "`literal` should escape strings that start with a single quote"
     (is (= ["WHERE name = '''s'"]
-           (sql/format {:where [:= :name (h2x/literal "'s")]}))))
+           (sql/format {:where [:= :name (h2x/literal "'s")]}
+                       {:quoted false}))))
 
   (testing "`literal` should handle namespaced keywords correctly"
     (is (= ["WHERE name = 'ab/c'"]
-           (sql/format {:where [:= :name (h2x/literal :ab/c)]}))))
+           (sql/format {:where [:= :name (h2x/literal :ab/c)]}
+                       {:quoted false}))))
 
   (testing "make sure `identifier` properly handles components with dots and both strings & keywords"
     (is (= ["SELECT `A`.`B`.`C.D`.`E.F`"]
@@ -78,7 +85,6 @@
 
   (testing "`identifier` shouldn't try to change `lisp-case` to `snake-case` or vice-versa"
     (is (= ["SELECT \"A-B\".\"c-d\".\"D_E\".\"f_g\""]
-           (sql/format {:select [[(h2x/identifier :field "A-B" :c-d "D_E" :f_g)]]})
            (sql/format {:select [[(h2x/identifier :field "A-B" :c-d "D_E" :f_g)]]}
                        {:dialect :ansi}))))
 
@@ -116,13 +122,15 @@
              (sql/format {:select [:setting]} {:dialect :h2}))))))
 
 (deftest ^:parallel ratios-test
-  (testing (str "test ToSql behavior for Ratios (#9246). Should convert to a double rather than leaving it as a "
+  (testing (str "test behavior for Ratios (#9246). In Honey SQL 1, we converted this to a double in the query itself. "
+                "As far as I know, there is no way to do that in Honey SQL 2. So instead we convert it to a double
+                in [[metabase.db.jdbc-protocols]]. "
                 "division operation. The double itself should get converted to a numeric literal")
-    (is (= ["SELECT 0.1 AS one_tenth"]
-           (sql/format {:select [[(/ 1 10) :one_tenth]]})))))
+    (is (= [{:one_tenth 0.1}]
+           (mdb.query/query {:select [[(/ 1 10) :one_tenth]]})))))
 
 (defn- ->sql [expr]
-  (sql/format {:select [[expr]]}))
+  (sql/format {:select [[expr]]} {:quoted false}))
 
 (deftest ^:parallel maybe-cast-test
   (testing "maybe-cast should only cast things that need to be cast"

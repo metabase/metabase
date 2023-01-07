@@ -160,7 +160,7 @@
     (let [args [:dateadd (hx/literal unit) (hx/cast :long amount) (hx/cast :datetime hsql-form)]]
       (case hx/*honey-sql-version*
         1 (apply hsql/call args)
-        2 (into [:call] args)))))
+        2 args))))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]

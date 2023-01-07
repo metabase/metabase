@@ -68,12 +68,6 @@
     Number
     (to-sql [x] (str x)))
 
-;; Ratios are represented as the division of two numbers which may cause order-of-operation issues when dealing with
-;; queries. The easiest way around this is to convert them to their decimal representations.
-#_(extend-protocol honeysql.format/ToSql
-  clojure.lang.Ratio
-  (to-sql [x] (hformat/to-sql (double x))))
-
 (def IdentifierType
   "Malli schema for valid Identifier types."
   [:enum
@@ -84,9 +78,9 @@
    ;; Suppose we have a query like:
    ;; SELECT my_field f FROM my_table t
    ;; then:
-   :table          ; is `my_table`
-   :table-alias    ; is `t`
-   :field          ; is `my_field`
+   :table                               ; is `my_table`
+   :table-alias                         ; is `t`
+   :field                               ; is `my_field`
    :field-alias])  ; is `f`
 
 (defn- identifier? [x]
