@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import Label from "metabase/components/type/Label";
-import { color, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const ItemTitle = styled(Label)`
@@ -16,11 +16,11 @@ export const ItemIcon = styled(Icon)`
 `;
 
 const activeItemCss = css`
-  background-color: ${lighten("brand")};
+  background-color: ${color("brand")};
 
   ${ItemIcon},
   ${ItemTitle} {
-    color: ${color("brand")};
+    color: ${color("white")};
   }
 `;
 
