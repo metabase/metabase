@@ -10,6 +10,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import LogoBadge from "./LogoBadge";
@@ -97,7 +98,22 @@ class EmbedFrame extends Component {
         {showFooter && (
           <div className="EmbedFrame-footer p1 md-p2 lg-p3 border-top flex-no-shrink flex align-center">
             {!MetabaseSettings.hideEmbedBranding() && (
-              <LogoBadge dark={theme} />
+              <div className="flex align-center">
+                <LogoBadge dark={theme} />
+                <ExternalLink
+                  href="https://dadosfera.ai"
+                  target="_blank"
+                  className="h4 flex text-bold align-center no-decoration"
+                >
+                  <span className="text-small">
+                    <span className="ml1 md-ml2 text-medium">{`Accelerated By ${(
+                      <span className={theme ? "text-white" : "text-brand"}>
+                        {`Dadosfera`}
+                      </span>
+                    )}`}</span>
+                  </span>
+                </ExternalLink>
+              </div>
             )}
             {actionButtons && (
               <div className="flex-align-right text-medium">
