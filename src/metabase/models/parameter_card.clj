@@ -50,7 +50,7 @@
   ([parameterized-object-type parameterized-object-id parameter-ids-still-in-use]
    (let [conditions (concat [:parameterized_object_type parameterized-object-type
                              :parameterized_object_id parameterized-object-id]
-                            (when-not (empty? parameter-ids-still-in-use)
+                            (when (seq parameter-ids-still-in-use)
                               [:parameter_id [:not-in parameter-ids-still-in-use]]))]
      (apply (partial db/delete! ParameterCard) conditions))))
 

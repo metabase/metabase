@@ -411,7 +411,7 @@
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))
-        parameter-cards    (db/select-field :id ParameterCard :parameterized_object_type "card" :parameterized_object_id id)]
+        parameter-cards    (db/select-ids ParameterCard :parameterized_object_type "card" :parameterized_object_id id)]
     (set/union
       (when (and (string? source-table)
                  (.startsWith ^String source-table "card__"))
