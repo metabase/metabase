@@ -64,7 +64,7 @@ interface ModalStateProps {
 }
 
 interface ModalDispatchProps {
-  onFetchFields: (fields: Field[]) => void;
+  onFetchFieldValues: (fields: Field[]) => void;
 }
 
 type ModalProps = ModalOwnProps &
@@ -79,7 +79,7 @@ const ValuesSourceTypeModal = ({
   question,
   sourceType,
   sourceConfig,
-  onFetchFields,
+  onFetchFieldValues,
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeCard,
@@ -99,8 +99,8 @@ const ValuesSourceTypeModal = ({
   );
 
   useEffect(() => {
-    onFetchFields(fields);
-  }, [fields, onFetchFields]);
+    onFetchFieldValues(fields);
+  }, [fields, onFetchFieldValues]);
 
   return (
     <ModalContent
@@ -351,7 +351,7 @@ const mapStateToProps = (
 
 const mapDispatchToProps = (dispatch: Dispatch): ModalDispatchProps => {
   return {
-    onFetchFields: (fields: Field[]) => {
+    onFetchFieldValues: (fields: Field[]) => {
       fields.forEach(field =>
         dispatch(Fields.actions.fetchFieldValues({ id: field.id })),
       );
