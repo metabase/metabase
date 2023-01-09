@@ -8,6 +8,7 @@ import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { getScrollBarSize } from "metabase/lib/dom";
+import MetabaseSettings from "metabase/lib/settings";
 import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
 import {
@@ -357,8 +358,7 @@ class PivotTable extends Component {
     const { leftHeaderWidths, totalHeaderWidths } = getLeftHeaderWidths({
       rowIndexes: rowIndexes ?? [],
       getColumnTitle: idx => this.getColumnTitle(idx),
-      fontFamily:
-        window?.Metabase?.settings?._settings?.["application-font"] ?? "Lato", // 😬
+      fontFamily: MetabaseSettings.get("application-font") ?? "Lato",
     });
 
     const leftHeaderCellRenderer = ({ index, key, style }) => {
