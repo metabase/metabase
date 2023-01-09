@@ -86,7 +86,7 @@ describe("DataPicker — picking questions", () => {
       userEvent.click(listItem);
 
       expect(listItem.closest("li")).toHaveAttribute("aria-selected", "true");
-      expect(onChange).toBeCalledWith({
+      expect(onChange).toHaveBeenCalledWith({
         type: "questions",
         databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
         schemaId: ROOT_COLLECTION_QUESTIONS_VIRTUAL_SCHEMA_ID,

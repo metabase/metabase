@@ -97,6 +97,7 @@ describe("FilterPopover", () => {
 
       // Note: couldn't get it to work with React Testing library no matter what!
       // Tried to click on checkbox, label, their parent - nothing seems to be working, while it works fine in UI
+      // eslint-disable-next-line jest/no-disabled-tests, jest/expect-expect
       it.skip("should let the user toggle an option", async () => {
         const filter = new Filter(RELATIVE_DAY_FILTER, null, QUERY);
         renderWithProviders(
@@ -112,6 +113,7 @@ describe("FilterPopover", () => {
         userEvent.click(includeToday);
       });
 
+      // eslint-disable-next-line jest/no-disabled-tests
       it.skip("should let the user toggle a date filter type", async () => {
         const filter = new Filter(RELATIVE_DAY_FILTER, null, QUERY);
         renderWithProviders(
@@ -123,9 +125,12 @@ describe("FilterPopover", () => {
         );
         const back = screen.getByLabelText("chevronleft icon");
         userEvent.click(back);
-        await screen.findByTestId("date-picker-shortcuts");
+        expect(
+          await screen.findByTestId("date-picker-shortcuts"),
+        ).toBeInTheDocument();
       });
 
+      // eslint-disable-next-line jest/no-disabled-tests
       it.skip("should let the user toggle a text filter type", async () => {
         const filter = new Filter(STRING_CONTAINS_FILTER, null, QUERY);
         renderWithProviders(

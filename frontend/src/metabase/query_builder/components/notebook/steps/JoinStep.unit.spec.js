@@ -23,6 +23,7 @@ console.warn = jest.fn();
 // (timeouts on CI, with jest.setTimeout varying from 15 to 30 sec)
 // Most likely it'll become more reliable once we update the Popover component
 // which is heavily used in tests
+// eslint-disable-next-line jest/no-disabled-tests
 describe.skip("Notebook Editor > Join Step", () => {
   const TEST_QUERY = {
     type: "query",

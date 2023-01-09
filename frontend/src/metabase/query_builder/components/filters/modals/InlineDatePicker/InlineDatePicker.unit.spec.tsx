@@ -264,6 +264,7 @@ describe("InlineDatePicker", () => {
     expect(clearSpy).toHaveBeenCalledTimes(1);
   });
 
+  // eslint-disable-next-line jest/no-disabled-tests
   it.skip("adds a custom value", async () => {
     const changeSpy = jest.fn();
 
@@ -301,6 +302,7 @@ describe("InlineDatePicker", () => {
     ]);
   });
 
+  // eslint-disable-next-line jest/no-disabled-tests
   it.skip("changes a custom value", async () => {
     const testFilter = new Filter(
       ["between", ["field", dateField.id, null], "1605-11-05", "2005-11-05"],
