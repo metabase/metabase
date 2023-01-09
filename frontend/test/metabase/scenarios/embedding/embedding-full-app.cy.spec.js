@@ -42,9 +42,10 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should hide the top nav when all nav elements are hidden", () => {
-      visitUrl({ url: "/", qs: { breadcrumbs: false, logo: false } });
+      visitUrl({ url: "/", qs: { logo: false } });
       cy.findByText(/Bobby/).should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
+      cy.button("sidebar-toggle").should("be.visible");
       cy.findByTestId("main-logo").should("not.exist");
     });
 

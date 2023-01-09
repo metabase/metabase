@@ -73,10 +73,43 @@ export const getIsQuestionLineageVisible = createSelector(
     PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
 );
 
+export const getIsNavBarEnabled = createSelector(
+  [
+    getUser,
+    getRouterPath,
+    getIsEditingDashboard,
+    getIsEmbedded,
+    getEmbedOptions,
+  ],
+  (currentUser, path, isEditingDashboard, isEmbedded, embedOptions) => {
+    if (!currentUser || isEditingDashboard) {
+      return false;
+    }
+    if (isEmbedded && !embedOptions.side_nav) {
+      return false;
+    }
+    if (isEmbedded && embedOptions.side_nav === "default") {
+      return EMBEDDED_PATHS_WITH_NAVBAR.some(pattern => pattern.test(path));
+    }
+    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
+  },
+);
+
 const getIsEmbeddedAppBarVisible = createSelector(
-  [getEmbedOptions, getIsQuestionLineageVisible, getIsCollectionPathVisible],
-  (embedOptions, isQuestionLineageVisible, isCollectionPathVisible) => {
+  [
+    getEmbedOptions,
+    getIsQuestionLineageVisible,
+    getIsCollectionPathVisible,
+    getIsNavBarEnabled,
+  ],
+  (
+    embedOptions,
+    isQuestionLineageVisible,
+    isCollectionPathVisible,
+    isNavBarEnabled,
+  ) => {
     const anyEmbeddedAppBarElementVisible =
+      isNavBarEnabled ||
       embedOptions.search ||
       embedOptions.new_button ||
       embedOptions.logo ||
@@ -115,28 +148,6 @@ export const getIsAppBarVisible = createSelector(
       isFullscreen
     ) {
       return false;
-    }
-    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
-  },
-);
-
-export const getIsNavBarEnabled = createSelector(
-  [
-    getUser,
-    getRouterPath,
-    getIsEditingDashboard,
-    getIsEmbedded,
-    getEmbedOptions,
-  ],
-  (currentUser, path, isEditingDashboard, isEmbedded, embedOptions) => {
-    if (!currentUser || isEditingDashboard) {
-      return false;
-    }
-    if (isEmbedded && !embedOptions.side_nav) {
-      return false;
-    }
-    if (isEmbedded && embedOptions.side_nav === "default") {
-      return EMBEDDED_PATHS_WITH_NAVBAR.some(pattern => pattern.test(path));
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
   },
