@@ -403,7 +403,7 @@
   (testing ":visualization_settings should be upgraded to v. 3 on select (note these were version 3 changes)"
     (doseq [version [1 2]]
       (mt/with-temp Card [{card-id :id} {:visualization_settings
-                                         {:version 2
+                                         {:version version
                                           :column_settings
                                           {"[\"ref\",[\"field\",1,null]]" {:column_title "ID changed"}}}}]
         (is (= {:column_settings {"[\"ref\",[\"field\",1,null]]"                          {:column_title "ID changed"},
