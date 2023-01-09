@@ -2,6 +2,7 @@ import type {
   DatetimeUnit,
   DimensionReference,
 } from "metabase-types/api/query";
+import { Card } from "./card";
 import { DatabaseId } from "./database";
 import { DownloadPermission } from "./permissions";
 
@@ -40,3 +41,17 @@ export interface Dataset {
   row_count: number;
   running_time: number;
 }
+
+export type SingleSeries = {
+  card: Card;
+  data: DatasetData;
+  error_type?: string;
+  error?: {
+    status: number; // HTTP status code
+    data?: string;
+  };
+};
+
+export type RawSeries = SingleSeries[];
+export type TransformedSeries = RawSeries & { _raw: Series };
+export type Series = RawSeries | TransformedSeries;
