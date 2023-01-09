@@ -4,7 +4,8 @@
    [honey.sql :as sql]
    [metabase.db.query :as mdb.query]
    [metabase.test :as mt]
-   [metabase.util.honey-sql-2-extensions :as h2x]))
+   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honeysql-extensions :as hx]))
 
 (deftest ^:parallel custom-functions-test
   (testing `::h2x/extract
@@ -142,7 +143,7 @@
         (is (= ["SELECT CAST(field AS text)"]
                (maybe-cast (h2x/cast "text" :field)))))
       (testing "should not cast something that's already typed"
-        (let [typed-expr (h2x/with-type-info :field {::h2x/database-type "text"})]
+        (let [typed-expr (h2x/with-type-info :field {::hx/database-type "text"})]
           (is (= ["SELECT field"]
                  (maybe-cast typed-expr)))
           (testing "should work with different string/keyword and case combos"
@@ -160,17 +161,17 @@
   (letfn [(cast-unless-type-in [expr]
             (first (->sql (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz"} expr))))]
     (is (= "SELECT field"
-           (cast-unless-type-in (h2x/with-type-info :field {::h2x/database-type "timestamp"}))))
+           (cast-unless-type-in (h2x/with-type-info :field {::hx/database-type "timestamp"}))))
     (is (= "SELECT field"
-           (cast-unless-type-in (h2x/with-type-info :field {::h2x/database-type "timestamptz"}))))
+           (cast-unless-type-in (h2x/with-type-info :field {::hx/database-type "timestamptz"}))))
     (is (= "SELECT CAST(field AS timestamp)"
-           (cast-unless-type-in (h2x/with-type-info :field {::h2x/database-type "date"}))))))
+           (cast-unless-type-in (h2x/with-type-info :field {::hx/database-type "date"}))))))
 
-(def ^:private typed-form (h2x/with-type-info :field {::h2x/database-type "text"}))
+(def ^:private typed-form (h2x/with-type-info :field {::hx/database-type "text"}))
 
 (deftest ^:parallel type-info-test
   (testing "should let you get info"
-    (is (= {::h2x/database-type "text"}
+    (is (= {::hx/database-type "text"}
            (h2x/type-info typed-form)))
     (is (= nil
            (h2x/type-info :field)
@@ -178,15 +179,15 @@
 
 (deftest ^:parallel with-type-info-test
   (testing "should let you update info"
-    (is (= (h2x/with-type-info :field {::h2x/database-type "date"})
-           (h2x/with-type-info typed-form {::h2x/database-type "date"})))
+    (is (= (h2x/with-type-info :field {::hx/database-type "date"})
+           (h2x/with-type-info typed-form {::hx/database-type "date"})))
     (testing "should normalize :database-type"
-      (is (= (h2x/with-type-info :field {::h2x/database-type "date"})
-             (h2x/with-type-info typed-form {::h2x/database-type "date"}))))))
+      (is (= (h2x/with-type-info :field {::hx/database-type "date"})
+             (h2x/with-type-info typed-form {::hx/database-type "date"}))))))
 
 (deftest ^:parallel with-database-type-info-test
-  (testing "should be the same as calling `with-type-info` with `::h2x/database-type`"
-    (is (= (h2x/with-type-info :field {::h2x/database-type "date"})
+  (testing "should be the same as calling `with-type-info` with `::hx/database-type`"
+    (is (= (h2x/with-type-info :field {::hx/database-type "date"})
            (h2x/with-database-type-info :field "date"))))
   (testing "Passing `nil` should"
     (testing "return untyped clause as-is"

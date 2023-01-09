@@ -183,7 +183,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; Kerberos related definitions
-(def ^:private ^:const kerb-props->url-param-names
+(def ^:private kerb-props->url-param-names
   {:kerberos-principal "KerberosPrincipal"
    :kerberos-remote-service-name "KerberosRemoteServiceName"
    :kerberos-use-canonical-hostname "KerberosUseCanonicalHostname"

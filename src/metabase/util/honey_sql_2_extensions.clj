@@ -156,7 +156,8 @@
   [::at-time-zone expr zone])
 
 (p.types/defprotocol+ TypedHoneySQL
-  "Protocol for a HoneySQL form that has type information such as `::database-type`. See #15115 for background."
+  "Protocol for a HoneySQL form that has type information such as `:metabase.util.honeysql-extensions/database-type`.
+  See #15115 for background."
   (type-info [honeysql-form]
     "Return type information associated with `honeysql-form`, if any (i.e., if it is a `TypedHoneySQLForm`); otherwise
     returns `nil`.")
@@ -173,19 +174,22 @@
 
 (def ^:private NormalizedTypeInfo
   [:map
-   [::database-type {:optional true} [:and
-                                      su/NonBlankString
-                                      [:fn
-                                       {:error/message "lowercased string"}
-                                       (fn [s]
-                                         (= s (u/lower-case-en s)))]]]])
+   [:metabase.util.honeysql-extensions/database-type
+    {:optional true}
+    [:and
+     su/NonBlankString
+     [:fn
+      {:error/message "lowercased string"}
+      (fn [s]
+        (= s (u/lower-case-en s)))]]]])
 
 (mu/defn ^:private normalize-type-info :- NormalizedTypeInfo
   "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
-  `::database-type` to a lower-case string)."
+  `:metabase.util.honeysql-extensions/database-type` to a lower-case string)."
   [type-info]
   (cond-> type-info
-    (::database-type type-info) (update ::database-type (comp u/lower-case-en name))))
+    (:metabase.util.honeysql-extensions/database-type type-info)
+    (update :metabase.util.honeysql-extensions/database-type (comp u/lower-case-en name))))
 
 (defn- typed? [x]
   (and (vector? x)
@@ -229,7 +233,7 @@
   "For a given type-info, returns the `database-type`."
   [type-info]
   {:added "0.39.0"}
-  (::database-type type-info))
+  (:metabase.util.honeysql-extensions/database-type type-info))
 
 (defn database-type
   "Returns the `database-type` from the type-info of `honeysql-form` if present.
@@ -259,7 +263,7 @@
   {:style/indent [:form]}
   [honeysql-form db-type :- [:maybe su/KeywordOrString]]
   (if (some? db-type)
-    (with-type-info honeysql-form {::database-type db-type})
+    (with-type-info honeysql-form {:metabase.util.honeysql-extensions/database-type db-type})
     (unwrap-typed-honeysql-form honeysql-form)))
 
 (def ^:private TypedExpression
@@ -269,7 +273,7 @@
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [db-type expr]
   (-> [:cast expr [:raw (name db-type)]]
-      (with-type-info {::database-type db-type})))
+      (with-type-info {:metabase.util.honeysql-extensions/database-type db-type})))
 
 (mu/defn quoted-cast :- TypedExpression
   "Generate a statement like `cast(expr AS \"sql-type\")`.
@@ -280,7 +284,7 @@
   Returns a typed HoneySQL form."
   [sql-type expr]
   (-> [:cast expr (keyword sql-type)]
-      (with-type-info {::database-type sql-type})))
+      (with-type-info {:metabase.util.honeysql-extensions/database-type sql-type})))
 
 (mu/defn maybe-cast :- TypedExpression
   "Cast `expr` to `sql-type`, unless `expr` is typed and already of that type. Returns a typed HoneySQL form."
