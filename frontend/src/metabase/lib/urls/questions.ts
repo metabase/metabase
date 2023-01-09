@@ -111,7 +111,7 @@ export function newQuestion({
   }
 }
 
-export function dataset(...args: Parameters<typeof question>) {
+export function model(...args: Parameters<typeof question>) {
   return question(...args);
 }
 

@@ -1,5 +1,5 @@
 import { dashboard } from "./dashboards";
-import { question, dataset, tableRowsQuery } from "./questions";
+import { question, model, tableRowsQuery } from "./questions";
 import { pulse } from "./pulses";
 
 export const exportFormats = ["csv", "xlsx", "json"];
@@ -25,7 +25,7 @@ export function modelToUrl(item) {
     case "card":
       return question(modelData);
     case "dataset":
-      return dataset(modelData);
+      return model(modelData);
     case "dashboard":
       return dashboard(modelData);
     case "page":
