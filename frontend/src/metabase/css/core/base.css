@@ -36,6 +36,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html.framed body {
+  background-color: transparent;
+}
+
 /*
   override default padding and margin on lists
   in most cases we won't be using list-style so

@@ -23,6 +23,14 @@
 
     <base href="{{{baseHref}}}" />
 
+    <script>
+      const isIFrame = window.location !== window.parent.location;
+      if (isIFrame) {
+        const htmlElement = document.querySelector('html')
+        htmlElement.classList.add("framed")
+      }
+    </script>
+
     <script type="application/json" id="_metabaseBootstrap">
       {{{bootstrapJSON}}}
     </script>

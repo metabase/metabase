@@ -1,7 +1,3 @@
-.EmbedFrame {
-  background-color: white;
-}
-
 .EmbedFrame-header,
 .EmbedFrame-footer {
   color: var(--color-text-dark);
