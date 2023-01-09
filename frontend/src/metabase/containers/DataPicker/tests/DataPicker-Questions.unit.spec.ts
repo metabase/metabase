@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitForElementToBeRemoved } from "__support__/ui";
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
@@ -36,10 +36,9 @@ describe("DataPicker — picking questions", () => {
     await setup();
 
     userEvent.click(screen.getByText(/Saved Questions/i));
-    await waitFor(() => screen.getByText(SAMPLE_QUESTION.name));
 
+    expect(await screen.findByText(SAMPLE_QUESTION.name)).toBeInTheDocument();
     expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
-    expect(screen.getByText(SAMPLE_QUESTION.name)).toBeInTheDocument();
     expect(screen.queryByText(/Models/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Raw Data/i)).not.toBeInTheDocument();
   });
@@ -64,27 +63,27 @@ describe("DataPicker — picking questions", () => {
       },
     });
 
-    const tableListItem = await screen.findByText(SAMPLE_QUESTION.name);
-    const collectionListItem = screen.getByText(ROOT_COLLECTION.name);
+    const tableListItem = await screen.findByRole("menuitem", {
+      name: SAMPLE_QUESTION.name,
+    });
+    const collectionListItem = screen.getByRole("menuitem", {
+      name: ROOT_COLLECTION.name,
+    });
 
-    expect(tableListItem.closest("li")).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    expect(collectionListItem.closest("li")).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    expect(tableListItem).toHaveAttribute("aria-selected", "true");
+    expect(collectionListItem).toHaveAttribute("aria-selected", "true");
   });
 
   it("allows to pick a single question", async () => {
     const { onChange } = await setup();
 
     userEvent.click(screen.getByText(/Saved Questions/i));
-    const listItem = await screen.findByText(SAMPLE_QUESTION.name);
+    const listItem = await screen.findByRole("menuitem", {
+      name: SAMPLE_QUESTION.name,
+    });
     userEvent.click(listItem);
 
-    expect(listItem.closest("li")).toHaveAttribute("aria-selected", "true");
+    expect(listItem).toHaveAttribute("aria-selected", "true");
     expect(onChange).toHaveBeenCalledWith({
       type: "questions",
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
@@ -118,12 +117,14 @@ describe("DataPicker — picking questions", () => {
     await setup();
 
     userEvent.click(screen.getByText(/Saved Questions/i));
-    await waitFor(() => screen.getByText(SAMPLE_QUESTION.name));
+    await waitForElementToBeRemoved(() =>
+      screen.queryByTestId("loading-spinner"),
+    );
     userEvent.click(screen.getByRole("button", { name: /Back/i }));
 
-    expect(screen.queryByText(/Models/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Raw Data/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Saved Questions/i)).toBeInTheDocument();
+    expect(screen.getByText(/Models/i)).toBeInTheDocument();
+    expect(screen.getByText(/Raw Data/i)).toBeInTheDocument();
+    expect(screen.getByText(/Saved Questions/i)).toBeInTheDocument();
     expect(screen.queryByText(SAMPLE_QUESTION.name)).not.toBeInTheDocument();
     expect(screen.queryByText(ROOT_COLLECTION.name)).not.toBeInTheDocument();
     expect(
@@ -135,7 +136,9 @@ describe("DataPicker — picking questions", () => {
     const { onChange } = await setup();
 
     userEvent.click(screen.getByText(/Saved Questions/i));
-    userEvent.click(await screen.findByText(SAMPLE_QUESTION.name));
+    await waitForElementToBeRemoved(() =>
+      screen.queryByTestId("loading-spinner"),
+    );
     userEvent.click(screen.getByText(SAMPLE_COLLECTION.name));
 
     expect(onChange).toHaveBeenLastCalledWith({
