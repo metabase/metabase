@@ -1,34 +1,38 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [flatland.ordered.map :as ordered-map]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.util :as driver.u]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [monger.operators :refer [$add $addToSet $and $avg $cond
-                                      $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
-                                      $group $gt $gte $hour $limit $lt $lte $match $max $min $minute $mod $month
-                                      $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
-                                      $sum $toLower $year]]
-            [schema.core :as s])
-  (:import org.bson.BsonBinarySubType
-           [org.bson.types Binary ObjectId]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [flatland.ordered.map :as ordered-map]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.util :as driver.u]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.nest-query :as nest-query]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [monger.operators :refer [$add $addToSet $and $avg $cond
+                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
+                             $group $gt $gte $hour $limit $lt $lte $match $max $min $minute $mod $month
+                             $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
+                             $sum $toLower $year]]
+   [schema.core :as s])
+  (:import
+   (org.bson BsonBinarySubType)
+   (org.bson.types Binary ObjectId)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -80,6 +84,17 @@
 ;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
 
+(def ^:dynamic ^:private *field-mappings*
+  "The mapping from the expressions to the projected names created
+  by the nested query."
+  {})
+
+(defn- find-mapped-field-name [field-id]
+  (some (fn [[e n]]
+          (when (and (vector? e) (= (subvec e 0 2) [:field field-id]))
+            n))
+        *field-mappings*))
+
 (defn- get-mongo-version []
   (driver/dbms-version :mongo (qp.store/database)))
 
@@ -117,8 +132,8 @@
   (field->name field \.))
 
 (defmethod ->lvalue :expression
-  [[_ expression-name]]
-  expression-name)
+  [[_ expression-name {::add/keys [desired-alias]}]]
+  (or desired-alias expression-name))
 
 (defmethod ->rvalue :default
   [x]
@@ -181,7 +196,8 @@
 (defmethod ->lvalue :field
   [[_ id-or-name {:keys [temporal-unit]}]]
   (cond-> (if (integer? id-or-name)
-            (->lvalue (qp.store/field id-or-name))
+            (or (find-mapped-field-name id-or-name)
+                (->lvalue (qp.store/field id-or-name)))
             (name id-or-name))
     temporal-unit (with-lvalue-temporal-bucketing temporal-unit)))
 
@@ -285,10 +301,12 @@
           {$year column})))))
 
 (defmethod ->rvalue :field
-  [[_ id-or-name {:keys [temporal-unit]}]]
+  [[_ id-or-name {:keys [temporal-unit] ::add/keys [source-alias]}]]
   (cond-> (if (integer? id-or-name)
-            (->rvalue (qp.store/field id-or-name))
-            (str \$ (name id-or-name)))
+            (if-let [mapped (find-mapped-field-name id-or-name)]
+              (str \$ mapped)
+              (->rvalue (qp.store/field id-or-name)))
+            (str \$ (or source-alias (name id-or-name))))
     temporal-unit (with-rvalue-temporal-bucketing temporal-unit)))
 
 ;; Values clauses below; they only need to implement `->rvalue`
@@ -947,6 +965,7 @@
           post-ags)))
 
 (defn- projection-group-map [fields]
+  #_(dev.portal/log fields)
   (reduce
    (fn [m field-clause]
      (assoc-in
@@ -967,9 +986,10 @@
 (defn- breakouts-and-ags->pipeline-stages
   "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
   [projected-fields breakout-fields aggregations]
+  #_(dev.portal/log [projected-fields breakout-fields aggregations])
   (mapcat
    (partial remove nil?)
-   [;; create the $group clause
+   [ ;; create the $group clause
     (group-and-post-aggregations
      (when (seq breakout-fields)
        (projection-group-map breakout-fields))
@@ -1037,9 +1057,15 @@
 (defn- handle-order-by [{:keys [order-by breakout]} pipeline-ctx]
   (let [breakout-fields (set breakout)
         sort-fields (for [field (remove-parent-fields (map second order-by))
-                          ;; We only care about expressions not added as breakout
+                          ;; We only care about expressions and bucketing not added as breakout
                           :when (and (not (contains? breakout-fields field))
-                                     (= :expression ((.dispatchFn ^clojure.lang.MultiFn ->rvalue) field)))]
+                                     (let [dispatch-value
+                                           ((.dispatchFn ^clojure.lang.MultiFn ->rvalue) field)]
+                                       (or (= :expression dispatch-value)
+                                           (and (= :field dispatch-value)
+                                                (let [[_ _ {:keys [temporal-unit]}] field]
+                                                  (and (some? temporal-unit)
+                                                       (not= temporal-unit :default)))))))]
                       [(->lvalue field) (->rvalue field)])]
     (cond-> pipeline-ctx
       (seq sort-fields) (update :query conj
@@ -1082,12 +1108,11 @@
 ;;; |                                                 Process & Run                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private generate-aggregation-pipeline :- {:projections Projections, :query Pipeline}
-  "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
-  [inner-query :- mbql.s/MBQLQuery]
+(defn- add-aggregation-pipeline
+  [inner-query pipeline-ctx]
   (reduce (fn [pipeline-ctx f]
             (f inner-query pipeline-ctx))
-          {:projections [], :query []}
+          pipeline-ctx
           [handle-filter
            handle-breakout+aggregation
            handle-order-by
@@ -1095,14 +1120,20 @@
            handle-limit
            handle-page]))
 
+(s/defn ^:private generate-aggregation-pipeline :- {:projections Projections, :query Pipeline}
+  "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
+  [inner-query :- mbql.s/MBQLQuery]
+  (add-aggregation-pipeline inner-query {:projections [], :query []}))
+
 (defn- query->collection-name
   "Return `:collection` from a source query, if it exists."
   [query]
   (mbql.u/match-one query
     (_ :guard (every-pred map? :collection))
     ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
-    (when (and (= (last &parents) :source-query)
-               (not (contains? (set &parents) :joins)))
+    (when (let [parents (set &parents)]
+            (and (contains? parents :source-query)
+                 (not (contains? parents :joins))))
       (:collection &match))))
 
 (defn- log-aggregation-pipeline [form]
@@ -1110,16 +1141,127 @@
     (log/tracef "\nMongo aggregation pipeline:\n%s\n"
                 (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 
-(defn mbql->native
-  "Process and run an MBQL query."
+(defn simple-mbql->native
+  "Compile a simple (non-nested) MBQL query."
   [query]
-  (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
-                            (:name (qp.store/table source-table-id))
-                            (query->collection-name query))]
+  #_(dev.portal/log query)
+  (let [{proj :projections, generated-pipeline :query}
+        (generate-aggregation-pipeline (or (:query query) query))]
+    {:projections proj
+     :query       generated-pipeline}))
+
+(defn parse-query-string
+  "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
+  [^String s]
+  (try
+    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument com.mongodb.BasicDBObject.))
+          (org.bson.BsonArray/parse s))
+    (catch Throwable e
+      (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
+               {:type  qp.error-type/invalid-query
+                :query s}
+               e)))))
+
+(defn- mbql->native-rec
+  "Compile a potentially nested MBQL query."
+  [inner-query]
+  #_(dev.portal/log query)
+  (if-let [source-query (-> inner-query :source-query)]
+    (let [compiled (or (when-let [nq (:native source-query)]
+                         (if (string? nq)
+                           (-> source-query
+                               (dissoc :native)
+                               (assoc :query (parse-query-string nq)))
+                           nq))
+                       (mbql->native-rec source-query))
+          field-mappings (zipmap (mapcat #(% source-query) [:fields :breakout :aggregation])
+                                 (:projections compiled))]
+      #_(dev.portal/log field-mappings)
+      (binding [*field-mappings* field-mappings]
+        (-> (merge compiled (add-aggregation-pipeline inner-query compiled))
+            #_(doto dev.portal/log))))
+    (simple-mbql->native inner-query)))
+
+(defn- preprocess
+  [inner-query]
+  (nest-query/nest-expressions (add/add-alias-info inner-query)))
+
+(defn mbql->native
+  "Compile an MBQL query."
+  [query]
+  #_(dev.portal/log query)
+  (let [query (update query :query preprocess)]
+    #_(dev.portal/log query)
     (binding [*query* query]
-      (let [{proj :projections, generated-pipeline :query} (generate-aggregation-pipeline (:query query))]
-        (log-aggregation-pipeline generated-pipeline)
-        {:projections proj
-         :query       generated-pipeline
-         :collection  source-table-name
-         :mbql?       true}))))
+      (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
+                                (:name (qp.store/table source-table-id))
+                                (query->collection-name query))
+            compiled (mbql->native-rec (:query query))]
+        (log-aggregation-pipeline (:query compiled))
+        (-> (assoc compiled
+                   :collection  source-table-name
+                   :mbql?       true)
+            #_(doto dev.portal/log))))))
+
+(comment
+  (metabase.test/with-driver :mongo
+    (metabase.test/with-everything-store
+      (mbql->native {:database 431,
+                     :type :query,
+                     :query
+                     {:filter [:> [:field "sum" {:base-type :type/Float}] [:value 300 {:base_type :type/Float}]],
+                      :limit 2,
+                      :source-metadata
+                      [{:semantic_type nil,
+                        :table_id 636,
+                        :coercion_strategy nil,
+                        :unit :month,
+                        :name "date",
+                        :settings nil,
+                        :field_ref [:field 1526 {:temporal-unit :month}],
+                        :effective_type :type/Instant,
+                        :nfc_path nil,
+                        :parent_id nil,
+                        :id 1526,
+                        :display_name "Date",
+                        :fingerprint
+                        {:global {:distinct-count 383, :nil% 0.0},
+                         :type #:type{:DateTime {:earliest "2013-01-03T00:00:00Z", :latest "2015-12-29T00:00:00Z"}}},
+                        :base_type :type/Instant}
+                       {:name "sum",
+                        :display_name "Sum of User ID",
+                        :base_type :type/Integer,
+                        :semantic_type :type/Category,
+                        :settings nil,
+                        :field_ref [:aggregation 0]}
+                       {:name "sum_2",
+                        :display_name "Sum of Venue ID",
+                        :base_type :type/Integer,
+                        :semantic_type nil,
+                        :settings nil,
+                        :field_ref [:aggregation 1]}],
+                      :fields
+                      [[:field 1526 {:temporal-unit :default}]
+                       [:field "sum" {:base-type :type/Integer}]
+                       [:field "sum_2" {:base-type :type/Integer}]],
+                      :source-query
+                      {:source-table 636,
+                       :aggregation
+                       [[:aggregation-options [:sum [:field 1527 nil]] {:name "sum"}]
+                        [:aggregation-options [:sum [:field 1525 nil]] {:name "sum_2"}]],
+                       :breakout [[:field 1526 {:temporal-unit :month}]],
+                       :order-by [[:asc [:field 1526 {:temporal-unit :month}]]]}}})))
+  :.)
+#_(defn mbql->native
+    "Process and run an MBQL query."
+    [query]
+    (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
+                              (:name (qp.store/table source-table-id))
+                              (query->collection-name query))]
+      (binding [*query* query]
+        (let [{proj :projections, generated-pipeline :query} (generate-aggregation-pipeline (:query query))]
+          (log-aggregation-pipeline generated-pipeline)
+          {:projections proj
+           :query       generated-pipeline
+           :collection  source-table-name
+           :mbql?       true}))))

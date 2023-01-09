@@ -30,12 +30,7 @@
       (is (= nil
              (#'mongo.qp/query->collection-name {:query {:source-query
                                                          {:native []}
-                                                         :joins [{:source-query "wow"}]}}))))
-
-    (testing "should ignore other :collection keys"
-      (is (= nil
-             (#'mongo.qp/query->collection-name {:query {:source-query
-                                                         {:native [{:collection "wow"}]}}}))))))
+                                                         :joins [{:source-query "wow"}]}}))))))
 
 (deftest relative-datetime-test
   (mt/test-driver :mongo

@@ -697,7 +697,12 @@
   [{query-type :type, :as query
     {:keys [:metadata/dataset-metadata]} :info} rff]
   (fn add-column-info-rff* [metadata]
-    (if (= query-type :query)
+    #_(dev.portal/log [query metadata])
+    (if (and (= query-type :query)
+             ;; we should have type metadata eiter in the query fields
+             ;; or in the result metadata for the following code to work
+             (or (->> query :query keys (some #{:aggregation :breakout :fields}))
+                 (every? :base_type (:cols metadata))))
       (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
              (seq dataset-metadata)
              (update :cols qp.util/combine-metadata dataset-metadata)))
