@@ -106,11 +106,12 @@ class EmbedFrame extends Component {
                   className="h4 flex text-bold align-center no-decoration"
                 >
                   <span className="text-small">
-                    <span className="ml2 md-ml2 text-medium">{`/ Accelerated By ${(
+                    <span className="ml1 md-ml2 text-medium">
+                      / Accelerated By{" "}
                       <span className={theme ? "text-white" : "text-brand"}>
-                        {`Dadosfera`}
+                        Dadosfera
                       </span>
-                    )}`}</span>
+                    </span>
                   </span>
                 </ExternalLink>
               </div>
