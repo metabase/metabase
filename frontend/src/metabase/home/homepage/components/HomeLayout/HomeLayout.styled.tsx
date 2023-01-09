@@ -11,6 +11,7 @@ export const LayoutRoot = styled.div`
   min-height: 100%;
   padding: 1rem;
   background-color: ${color("bg-light")};
+  background-color: red;
 
   ${breakpointMinMedium} {
     padding: 3rem 4rem;

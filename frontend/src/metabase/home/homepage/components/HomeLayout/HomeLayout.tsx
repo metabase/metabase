@@ -17,7 +17,6 @@ const HomeLayout = ({
 }: HomeLayoutProps): JSX.Element => {
   return (
     <LayoutRoot>
-      {showIllustration && <LayoutIllustration />}
       <GreetingSection />
       <LayoutBody>{children}</LayoutBody>
     </LayoutRoot>
