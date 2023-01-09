@@ -37,7 +37,7 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
 
   const modelCard = model.card();
 
-  const exploreDataLink = Urls.question(modelCard);
+  const exploreDataLink = Urls.model(modelCard);
 
   const handleNameChange = useCallback(
     name => {

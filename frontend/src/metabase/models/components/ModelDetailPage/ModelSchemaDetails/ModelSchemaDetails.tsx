@@ -23,8 +23,9 @@ interface Props {
 }
 
 function ModelSchemaDetails({ model }: Props) {
-  const baseModelUrl = Urls.question(model.card());
-  const metadataEditorUrl = `${baseModelUrl}/metadata`;
+  const metadataEditorUrl = Urls.modelEditor(model.card(), {
+    type: "metadata",
+  });
 
   const fields = useMemo(() => model.table()?.fields || [], [model]);
 
