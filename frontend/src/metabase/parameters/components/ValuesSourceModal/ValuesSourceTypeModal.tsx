@@ -304,19 +304,19 @@ const getFieldValues = (fieldsValues: string[][][]) => {
   return Array.from(new Set(allValues));
 };
 
+const getStaticValues = (value: string) => {
+  return value
+    .split(NEW_LINE)
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+};
+
 const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
   return fields.find(field => _.isEqual(field.reference(), fieldReference));
 };
 
 const getSupportedFields = (table: Table) => {
   return table.fields.filter(field => field.isString());
-};
-
-const getStaticValues = (value: string) => {
-  return value
-    .split(NEW_LINE)
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
 };
 
 const mapStateToProps = (
