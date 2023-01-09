@@ -55,3 +55,23 @@
             {:a 1, :b [], :c [1]})))
     (is (partial= {:a 1, :b []}
                   {:a 1, :b []}))))
+
+(deftest malli=-test
+  (is (malli= [:maybe int?] 3))
+  (is (malli= [:maybe int?] nil))
+  (let [MyAddress [:map
+                   [:id :string]
+                   [:tags [:set :keyword]]
+                   [:address {:closed true}
+                    [:map {:closed true}
+                     [:street :string]
+                     [:city :string]
+                     [:zip :int]
+                     [:lonlat [:tuple :double :double]]]]]]
+    (is (malli= MyAddress {:id "home"
+                           :tags #{:sea-breeze :sunset :crowded}
+                           :address {:street "1234 46th St."
+                                     :city "Outer Phesantville"
+                                     :zip 12345
+                                     :lonlat [37.750109844302685
+                                              -122.50427012310526]}}))))

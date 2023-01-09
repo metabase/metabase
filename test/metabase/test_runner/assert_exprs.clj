@@ -5,8 +5,11 @@
    [clojure.data :as data]
    [clojure.test :as t]
    [clojure.walk :as walk]
+   [malli.core :as mc]
    [metabase.test-runner.assert-exprs.approximately-equal :as approximately-equal]
-   [schema.core :as s]))
+   [metabase.util.malli.describe :as umd]
+   [schema.core :as s]
+   [malli.error :as me]))
 
 (defmethod t/assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
@@ -34,6 +37,22 @@
        :actual   actual#
        :diffs    (when-not pass?#
                    [[actual# [(s/check schema# actual#) nil]]])})))
+
+(defmethod t/assert-expr 'malli=
+  [message [_ schema actual]]
+  `(let [schema# ~schema
+         actual# ~actual
+         pass?#  (mc/validate schema# actual#)]
+     (t/do-report
+      {:type     (if pass?# :pass :fail)
+       :message  ~message
+       :expected (umd/describe schema#)
+       :actual   actual#
+       :diffs    (when-not pass?#
+                   [[actual#
+                     [(me/humanize
+                       (me/with-spell-checking
+                         (mc/explain schema# actual#))) nil]]])})))
 
 (defn derecordize
   "Convert all record types in `form` to plain maps, so tests won't fail."
