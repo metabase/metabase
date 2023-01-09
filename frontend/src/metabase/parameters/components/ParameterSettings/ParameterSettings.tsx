@@ -1,17 +1,15 @@
-import React, { ChangeEvent, useCallback, useState } from "react";
+import React, { ChangeEvent, useCallback } from "react";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Modal from "metabase/components/Modal";
-import SelectButton from "metabase/core/components/SelectButton";
 import Radio from "metabase/core/components/Radio";
 import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
-import ValuesSourceModal from "../ValuesSourceModal";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import {
   canUseCustomSource,
   isSingleOrMultiSelectable,
 } from "../../utils/parameter-type";
+import ParameterSourceSettings from "../ParameterSourceSettings";
 import {
   SettingLabel,
   SettingRemoveButton,
@@ -44,29 +42,11 @@ const ParameterSettings = ({
   onChangeSourceConfig,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
-  const [isOpened, setIsOpened] = useState(false);
-
   const handleNameChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onChangeName(event.target.value);
     },
     [onChangeName],
-  );
-
-  const handleModalOpen = useCallback(() => {
-    setIsOpened(true);
-  }, []);
-
-  const handleModalClose = useCallback(() => {
-    setIsOpened(false);
-  }, []);
-
-  const handleModalSubmit = useCallback(
-    (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
-      onChangeSourceType(sourceType);
-      onChangeSourceConfig(sourceConfig);
-    },
-    [onChangeSourceType, onChangeSourceConfig],
   );
 
   return (
@@ -80,19 +60,12 @@ const ParameterSettings = ({
       </SettingSection>
       {canUseCustomSource(parameter) && (
         <SettingSection>
-          <SettingLabel>{t`Options to pick from`}</SettingLabel>
-          <SelectButton onClick={handleModalOpen}>
-            {getSourceTypeName(parameter)}
-          </SelectButton>
-          {isOpened && (
-            <Modal medium onClose={handleModalClose}>
-              <ValuesSourceModal
-                parameter={parameter}
-                onSubmit={handleModalSubmit}
-                onClose={handleModalClose}
-              />
-            </Modal>
-          )}
+          <SettingLabel>{t`How should users filter on this column?`}</SettingLabel>
+          <ParameterSourceSettings
+            parameter={parameter}
+            onChangeSourceType={onChangeSourceType}
+            onChangeSourceConfig={onChangeSourceConfig}
+          />
         </SettingSection>
       )}
       <SettingSection>
