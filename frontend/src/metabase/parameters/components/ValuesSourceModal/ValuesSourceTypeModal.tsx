@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button/Button";
 import Radio from "metabase/core/components/Radio/Radio";
+import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
 import Fields from "metabase/entities/fields";
 import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
@@ -26,6 +27,7 @@ const NEW_LINE = "\n";
 
 const SOURCE_TYPE_OPTIONS = [
   { name: t`From this field`, value: null },
+  { name: t`From another model or question`, value: "card" },
   { name: t`Custom list`, value: "static-list" },
 ];
 
@@ -36,6 +38,7 @@ interface ModalOwnProps {
   sourceConfig: ValuesSourceConfig;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+  onSelectCard: () => void;
   onSubmit: () => void;
   onClose: () => void;
 }
@@ -59,6 +62,7 @@ const ValuesSourceTypeModal = ({
   onFetchFields,
   onChangeSourceType,
   onChangeSourceConfig,
+  onSelectCard,
   onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
@@ -89,7 +93,6 @@ const ValuesSourceTypeModal = ({
     <ModalContent
       title={t`Selectable values for ${name}`}
       footer={[
-        <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
         <Button
           key="submit"
           primary
@@ -113,6 +116,14 @@ const ValuesSourceTypeModal = ({
               <ModalHelpText>{t`Enter one value per line.`}</ModalHelpText>
             )}
           </ModalSection>
+          {sourceType === "card" && (
+            <ModalSection>
+              <ModalLabel>{t`Model or question to supply the values`}</ModalLabel>
+              <SelectButton onClick={onSelectCard}>
+                {t`Pick a model or question…`}
+              </SelectButton>
+            </ModalSection>
+          )}
         </ModalPane>
         <ModalMain>
           {sourceType === null && (
