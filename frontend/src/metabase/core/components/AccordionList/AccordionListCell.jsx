@@ -117,6 +117,7 @@ export const AccordionListCell = ({
     content = (
       <ListCellItem
         data-testid={itemTestId}
+        aria-label={name}
         role="option"
         aria-selected={isSelected}
         isClickable={isClickable}
