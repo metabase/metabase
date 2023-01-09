@@ -37,6 +37,7 @@ const ValuesSourceModal = ({
 
   return (
     <ValuesSourceTypeModal
+      name={parameter.name}
       fields={fields}
       sourceType={sourceType}
       sourceConfig={sourceConfig}

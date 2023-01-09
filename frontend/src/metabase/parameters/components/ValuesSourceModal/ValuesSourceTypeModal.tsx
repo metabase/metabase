@@ -30,6 +30,7 @@ const SOURCE_TYPE_OPTIONS = [
 ];
 
 interface ModalOwnProps {
+  name: string;
   fields: Field[];
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
@@ -51,6 +52,7 @@ interface ModalDispatchProps {
 type ModalProps = ModalOwnProps & ModalStateProps & ModalDispatchProps;
 
 const ValuesSourceTypeModal = ({
+  name,
   fields,
   fieldValues,
   sourceType,
@@ -86,7 +88,7 @@ const ValuesSourceTypeModal = ({
 
   return (
     <ModalContent
-      title={t`Selectable values`}
+      title={t`Selectable values for ${name}`}
       footer={[
         <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
         <Button
