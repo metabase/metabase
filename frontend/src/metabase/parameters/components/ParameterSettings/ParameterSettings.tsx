@@ -96,13 +96,4 @@ const ParameterSettings = ({
   );
 };
 
-const getSourceTypeName = (parameter: UiParameter) => {
-  switch (parameter.values_source_type) {
-    case "static-list":
-      return t`Custom list`;
-    default:
-      return t`From this field`;
-  }
-};
-
 export default ParameterSettings;

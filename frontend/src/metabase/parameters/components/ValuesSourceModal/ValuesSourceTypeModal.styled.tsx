@@ -5,6 +5,7 @@ import TextArea from "metabase/core/components/TextArea";
 export const ModalLayout = styled.div`
   display: flex;
   gap: 2rem;
+  min-height: 50vh;
 `;
 
 export const ModalPane = styled.div`
@@ -12,7 +13,9 @@ export const ModalPane = styled.div`
 `;
 
 export const ModalMain = styled.div`
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: row;
 `;
 
 export const ModalSection = styled.div`
@@ -28,7 +31,6 @@ export const ModalLabel = styled.label`
 
 export const ModalTextArea = styled(TextArea)`
   display: block;
-  min-height: 40vh;
   resize: none;
 `;
 
