@@ -35,8 +35,8 @@ describe("scenarios > dashboard > filters", () => {
 
     editDashboard();
     setFilter("Text or Category", "Dropdown");
-    setupCustomList();
     mapFilterToQuestion();
+    setupCustomList();
     saveDashboard();
     filterDashboard();
   });
@@ -48,6 +48,7 @@ const setupCustomList = () => {
 
   modal().within(() => {
     cy.findByText("Custom list").click();
+    cy.findByRole("textbox").should("contain.value", "Gizmo");
     cy.findByRole("textbox").clear().type("Doohickey\nGadget");
     cy.button("Done").click();
   });
