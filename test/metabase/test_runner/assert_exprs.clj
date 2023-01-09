@@ -1,15 +1,15 @@
 (ns metabase.test-runner.assert-exprs
   "Custom implementations of [[clojure.test/is]] expressions (i.e., implementations of [[clojure.test/assert-expr]]).
-  `re=`, `schema=`, `query=`, `sql=`, `=?`, and more."
+  `re=`, `schema=`, `malli=`, `query=`, `sql=`, `=?`, and more."
   (:require
    [clojure.data :as data]
    [clojure.test :as t]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [malli.error :as me]
    [metabase.test-runner.assert-exprs.approximately-equal :as approximately-equal]
    [metabase.util.malli.describe :as umd]
-   [schema.core :as s]
-   [malli.error :as me]))
+   [schema.core :as s]))
 
 (defmethod t/assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
