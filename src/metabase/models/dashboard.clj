@@ -164,10 +164,10 @@
                (assoc-in param [:values_source_config :card_id] (get param-id->card-id id (:card_id values_source_config)))
                param)))))
 
-(defn- should-populate-parameter-query-method?
+(defn- should-populate-parameter-values-query-type?
   [parameters]
   (and (seq parameters)
-       (some (comp nil? :query-method) parameters)))
+       (some (comp nil? :values_query_type) parameters)))
 
 (defn- mappings->field-ids
   [mappings]
@@ -175,7 +175,7 @@
         :when (= (first target) :dimension)]
     (second (second target))))
 
-(defn- populate-parameter-query-method
+(defn- populate-parameter-values-query-type
   [resolved-params parameters]
   (let [field-ids       (flatten (map #(mappings->field-ids (:mappings %1)) (vals resolved-params)))
         ;; fetch all the needed fields from parameters once to save some CPU cycle
@@ -187,13 +187,11 @@
           :let [param             (get resolved-params (:id parameter))
                 mapped-field-ids  (mappings->field-ids (:mappings param))
                 ;; this should returns a subset of #{:search :list :none}
-                has-field-valuess (if (seq mapped-field-ids)
-                                    (->> (map #(get field-id->field %) mapped-field-ids)
-                                         (map :has_field_values)
-                                         set)
-                                    #{})]]
+                has-field-valuess (->> (map #(get field-id->field %) mapped-field-ids)
+                                       (map :has_field_values)
+                                       set)]]
       (assoc parameter
-             :query-method
+             :values_query_type
              (cond
                ;; if at least one is :none, then :none
                (contains? has-field-valuess :none)
@@ -209,18 +207,18 @@
 
 (declare dashboard->resolved-params)
 
-(defn- maybe-populate-parameter-query-method
+(defn- maybe-populate-parameter-values-query-type
   [{:keys [parameters] :as dashboard}]
-  (if-not (should-populate-parameter-query-method? parameters)
+  (if-not (should-populate-parameter-values-query-type? parameters)
     dashboard
-    (assoc dashboard :parameters (populate-parameter-query-method (dashboard->resolved-params dashboard) parameters))))
+    (assoc dashboard :parameters (populate-parameter-values-query-type (dashboard->resolved-params dashboard) parameters))))
 
 (defn- post-select
   [dashboard]
   (-> dashboard
       public-settings/remove-public-uuid-if-public-sharing-is-disabled
       populate-card-id-for-parameters
-      maybe-populate-parameter-query-method))
+      maybe-populate-parameter-values-query-type))
 
 (mi/define-methods
  Dashboard
