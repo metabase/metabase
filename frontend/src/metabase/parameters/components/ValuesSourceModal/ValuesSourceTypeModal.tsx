@@ -26,7 +26,6 @@ const NEW_LINE = "\n";
 
 const SOURCE_TYPE_OPTIONS = [
   { name: t`From this field`, value: null },
-  { name: t`From another model or question`, value: "card" },
   { name: t`Custom list`, value: "static-list" },
 ];
 

@@ -32,7 +32,8 @@ const ValuesSourceModal = ({
 
   const handleSubmit = useCallback(() => {
     onSubmit(sourceType, sourceConfig);
-  }, [sourceType, sourceConfig, onSubmit]);
+    onClose();
+  }, [sourceType, sourceConfig, onSubmit, onClose]);
 
   return (
     <ValuesSourceTypeModal
