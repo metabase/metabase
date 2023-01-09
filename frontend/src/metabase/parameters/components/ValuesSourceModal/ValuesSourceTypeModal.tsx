@@ -42,7 +42,6 @@ interface ModalOwnProps {
 
 interface ModalStateProps {
   fieldValues: string[][][];
-  hasFieldValues: boolean;
 }
 
 interface ModalDispatchProps {
@@ -159,9 +158,6 @@ const mapStateToProps = (
   return {
     fieldValues: fields.map(field =>
       Fields.selectors.getFieldValues(state, { entityId: field.id }),
-    ),
-    hasFieldValues: fields.every(field =>
-      Fields.selectors.getLoaded(state, { entityId: field.id }),
     ),
   };
 };
