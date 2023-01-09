@@ -2,10 +2,10 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import TextArea from "metabase/core/components/TextArea";
 
-export const ModalLayout = styled.div`
+export const ModalBody = styled.div`
   display: flex;
   gap: 2rem;
-  min-height: 50vh;
+  height: 50vh;
 `;
 
 export const ModalPane = styled.div`

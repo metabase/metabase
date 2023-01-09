@@ -20,7 +20,7 @@ import {
 import {
   ModalHelpText,
   ModalLabel,
-  ModalLayout,
+  ModalBody,
   ModalMain,
   ModalPane,
   ModalSection,
@@ -114,7 +114,7 @@ const ValuesSourceTypeModal = ({
       ]}
       onClose={onClose}
     >
-      <ModalLayout>
+      <ModalBody>
         <ModalPane>
           <ModalSection>
             <ModalLabel>{t`Where values should come from`}</ModalLabel>
@@ -153,7 +153,7 @@ const ValuesSourceTypeModal = ({
             />
           )}
         </ModalMain>
-      </ModalLayout>
+      </ModalBody>
     </ModalContent>
   );
 };

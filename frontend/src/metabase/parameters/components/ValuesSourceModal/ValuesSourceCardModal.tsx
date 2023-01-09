@@ -24,6 +24,7 @@ import {
 import {
   DataPickerContainer,
   SearchInputContainer,
+  ModalBody,
 } from "./ValuesSourceCardModal.styled";
 
 interface ModalOwnProps {
@@ -68,22 +69,25 @@ const ValuesSourceCardModal = ({
   }, [value, onChangeSourceConfig, onSubmit]);
 
   return (
-    <ModalContent
-      title={t`Selectable values for ${name}`}
-      footer={[
-        <Button key="submit" primary onClick={handleSubmit}>
-          {t`Done`}
-        </Button>,
-      ]}
-      onClose={onClose}
-    >
-      <DataPicker.Provider>
-        <DataPickerSearchInput />
-        <DataPickerContainer>
-          <DataPicker value={value} onChange={setValue} />
-        </DataPickerContainer>
-      </DataPicker.Provider>
-    </ModalContent>
+    <DataPicker.Provider>
+      <ModalContent
+        title={t`Selectable values for ${name}`}
+        footer={[
+          <Button key="cancel" onClick={onSubmit}>{t`Back`}</Button>,
+          <Button key="submit" primary onClick={handleSubmit}>
+            {t`Done`}
+          </Button>,
+        ]}
+        onClose={onClose}
+      >
+        <ModalBody>
+          <DataPickerSearchInput />
+          <DataPickerContainer>
+            <DataPicker value={value} onChange={setValue} />
+          </DataPickerContainer>
+        </ModalBody>
+      </ModalContent>
+    </DataPicker.Provider>
   );
 };
 
