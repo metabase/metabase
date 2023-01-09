@@ -17,8 +17,12 @@
   [:map
    {:title "Address"}
    [:id string?]
-   ;; TODO it is possible to coerce things like this automatically:
-   ;; [:tags [:set keyword?]]
+   ;; TODO: coerce stuff automatically via:
+   ;; (mc/decode
+   ;;  [:map [:tags [:set keyword?]]]
+   ;;  (json/decode "{\"tags\": [\"a\", \"b\"]}" true)
+   ;;  (mtx/json-transformer))
+   ;; ;; => {:tags #{:b :a}}
    [:tags [:vector string?]]
    [:address
     [:map
