@@ -5,9 +5,10 @@
    [clojure.test :refer :all]
    [metabase.server.handler :as handler]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
-   [metabase.server.middleware.security :as mw.security]
    [ring.mock.request :as ring.mock]
-   [ring.util.response :as response]))
+   [ring.util.response :as response])
+  (:import
+   (java.io PipedInputStream)))
 
 (defn- handler [request]
   (let [handler  (fn [request respond _]
@@ -33,7 +34,6 @@
 (deftest paging-test
   (testing "no paging params"
     (is (=? {:status  200
-             :headers (mw.security/security-headers)
              :body    {"limit"  nil
                        "offset" nil
                        "paged?" false
@@ -41,14 +41,13 @@
             (read-response (handler (ring.mock/request :get "/"))))))
   (testing "w/ paging params"
     (is (=? {:status  200
-             :headers (mw.security/security-headers)
              :body    {"limit"  100
                        "offset" 200
                        "paged?" true
                        "params" {"whatever" "true"}}}
             (read-response (handler (ring.mock/request :get "/" {:offset "200", :limit "100", :whatever "true"}))))))
+
   (testing "invalid params"
     (is (=? {:status  400
-             :headers (mw.security/security-headers)
              :body    {"message" #"Error parsing paging parameters.*"}}
             (read-response (handler (ring.mock/request :get "/" {:offset "abc", :limit "100"})))))))
