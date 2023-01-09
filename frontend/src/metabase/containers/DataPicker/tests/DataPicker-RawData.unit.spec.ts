@@ -4,6 +4,7 @@ import nock from "nock";
 import { screen, waitFor } from "__support__/ui";
 import {
   SAMPLE_DATABASE,
+  ANOTHER_DATABASE,
   MULTI_SCHEMA_DATABASE,
 } from "__support__/sample_database_fixture";
 
@@ -32,6 +33,15 @@ describe("DataPicker — picking raw data", () => {
     });
     expect(screen.queryByText(/Models/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Saved Questions/i)).not.toBeInTheDocument();
+  });
+
+  it("has empty state", async () => {
+    await setup({ hasEmptyDatabase: true });
+
+    userEvent.click(screen.getByText(/Raw Data/i));
+    userEvent.click(screen.getByText(ANOTHER_DATABASE.name));
+
+    expect(await screen.findByText(/Nothing here/i)).toBeInTheDocument();
   });
 
   it("allows to pick multiple tables", async () => {

@@ -13,6 +13,7 @@ import {
 
 import {
   setup,
+  EMPTY_COLLECTION,
   SAMPLE_COLLECTION,
   SAMPLE_QUESTION,
   SAMPLE_QUESTION_2,
@@ -42,6 +43,15 @@ describe("DataPicker — picking questions", () => {
       expect(screen.getByText(SAMPLE_QUESTION.name)).toBeInTheDocument();
       expect(screen.queryByText(/Models/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Raw Data/i)).not.toBeInTheDocument();
+    });
+
+    it("has empty state", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(/Saved Questions/i));
+      userEvent.click(await screen.findByText(EMPTY_COLLECTION.name));
+
+      expect(screen.getByText(/Nothing here/i)).toBeInTheDocument();
     });
 
     it("respects initial value", async () => {

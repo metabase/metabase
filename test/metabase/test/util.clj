@@ -52,7 +52,6 @@
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
-   [metabase.test.util :as tu]
    [metabase.test.util.log :as tu.log]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -920,8 +919,8 @@
                                                 :name     (format "%s [internal remap]" (:display_name original))
                                                 :type     :internal}]]
                   (if preexisting-id
-                    (tu/with-temp-vals-in-db FieldValues preexisting-id {:values (keys values-map)
-                                                                         :human_readable_values (vals values-map)}
+                    (with-temp-vals-in-db FieldValues preexisting-id {:values (keys values-map)
+                                                                      :human_readable_values (vals values-map)}
                       (testing-thunk))
                     (tt/with-temp* [FieldValues [_ {:field_id              (:id original)
                                                     :values                (keys values-map)

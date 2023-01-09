@@ -115,9 +115,13 @@
   "Given a seq of parameter values, returns them as a single comma-separated string. Does not do additional formatting
   on the values."
   [values]
-  (if (= (count values) 1)
-    (str (first values))
-    (trs "{0} and {1}" (str/join ", " (butlast values)) (last values))))
+  (condp = (count values)
+    1 (str (first values))
+    2 (trs "{0} and {1}" (first values) (second values))
+    (trs "{0}, {1}, and {2}"
+         (str/join ", " (drop-last 2 values))
+         (nth values (- (count values) 2))
+         (last values))))
 
 (defmethod formatted-value :default
   [_ value _]
