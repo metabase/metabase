@@ -207,6 +207,8 @@
                :else
                :list)))))
 
+(declare dashboard->resolved-params)
+
 (defn- maybe-populate-parameter-query-method
   [{:keys [parameters] :as dashboard}]
   (if-not (should-populate-parameter-query-method? parameters)
