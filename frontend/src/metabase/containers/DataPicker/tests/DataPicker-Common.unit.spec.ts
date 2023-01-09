@@ -49,8 +49,7 @@ describe("DataPicker", () => {
       filters: { types: type => type !== "questions" },
     });
 
-    await waitFor(() => screen.getByText(/Orders/i));
-
+    expect(await screen.findByText(/Orders/i)).toBeInTheDocument();
     expect(screen.getByText(/Sample Database/i)).toBeInTheDocument();
     SAMPLE_DATABASE.tables.forEach(table => {
       expect(screen.getByText(table.displayName())).toBeInTheDocument();
