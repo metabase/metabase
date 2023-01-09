@@ -5,6 +5,8 @@ export const isValidSourceConfig = (
   sourceConfig: ValuesSourceConfig,
 ) => {
   switch (sourceType) {
+    case "card":
+      return sourceConfig.card_id != null && sourceConfig.value_field != null;
     case "static-list":
       return sourceConfig.values != null && sourceConfig.values.length > 0;
     default:

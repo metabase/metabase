@@ -51,4 +51,5 @@ export type ValuesSourceType = null | "card" | "static-list";
 export interface ValuesSourceConfig {
   values?: string[];
   card_id?: CardId;
+  value_field?: unknown[];
 }

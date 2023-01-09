@@ -2,8 +2,9 @@ import React, { ChangeEvent, useCallback, useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import Button from "metabase/core/components/Button/Button";
-import Radio from "metabase/core/components/Radio/Radio";
+import Button from "metabase/core/components/Button";
+import Radio from "metabase/core/components/Radio";
+import Select from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
 import Fields from "metabase/entities/fields";
@@ -134,6 +135,12 @@ const ValuesSourceTypeModal = ({
               <SelectButton onClick={onChangeCard}>
                 {table ? table.displayName() : t`Pick a model or question…`}
               </SelectButton>
+            </ModalSection>
+          )}
+          {table && (
+            <ModalSection>
+              <ModalLabel>{t`Column to supply the values`}</ModalLabel>
+              <Select placeholder={t`Pick a column…`} />
             </ModalSection>
           )}
         </ModalPane>
