@@ -18,6 +18,7 @@ import {
   RootLayout,
   ModelMain,
   ModelHeader,
+  ModelHeaderButtonsContainer,
   ModelTitle,
   ModelFootnote,
   TabList,
@@ -37,6 +38,7 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
 
   const modelCard = model.card();
 
+  const queryEditorLink = Urls.modelEditor(modelCard, { type: "query" });
   const exploreDataLink = Urls.model(modelCard);
 
   const handleNameChange = useCallback(
@@ -69,7 +71,10 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
             />
             <ModelFootnote>{t`Model`}</ModelFootnote>
           </div>
-          <Button primary as={Link} to={exploreDataLink}>{t`Explore`}</Button>
+          <ModelHeaderButtonsContainer>
+            <Button as={Link} to={queryEditorLink}>{t`Edit definition`}</Button>
+            <Button primary as={Link} to={exploreDataLink}>{t`Explore`}</Button>
+          </ModelHeaderButtonsContainer>
         </ModelHeader>
         <TabContent value={tab} onChange={setTab}>
           <TabList

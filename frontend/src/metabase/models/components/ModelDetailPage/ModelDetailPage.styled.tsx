@@ -42,6 +42,12 @@ export const ModelHeader = styled.div`
   width: 100%;
 `;
 
+export const ModelHeaderButtonsContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;
+
 export const TabList = styled(Radio)`
   margin: 1rem 0;
 `;
