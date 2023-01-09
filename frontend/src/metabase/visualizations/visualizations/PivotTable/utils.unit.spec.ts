@@ -237,7 +237,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         rowIndexes: [0, 1, 2],
         getColumnTitle: () => "test-123",
       });
-      // react-dom thinks all characters are 1px wide, so we get the minimum
+      // jest-dom thinks all characters are 1px wide, so we get the minimum
       expect(leftHeaderWidths).toEqual([
         MIN_HEADER_CELL_WIDTH,
         MIN_HEADER_CELL_WIDTH,
@@ -256,7 +256,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     it("should not exceed the max width", () => {
       const { leftHeaderWidths } = getLeftHeaderWidths({
         rowIndexes: [0, 1, 2],
-        // react dom thinks characters are 1px wide
+        // jest-dom thinks characters are 1px wide
         getColumnTitle: () => "x".repeat(MAX_HEADER_CELL_WIDTH),
       });
 
