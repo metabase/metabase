@@ -85,6 +85,10 @@
       "1\\, 2\\, and 3"
 
       "{{foo}}"
+      {"foo" {:type :number/= :value [1 2 3 4]}}
+      "1\\, 2\\, 3\\, and 4"
+
+      "{{foo}}"
       {"foo" {:type :number/between :value [1 5]}}
       "1 and 5"
 
