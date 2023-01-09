@@ -63,16 +63,16 @@ async function setup({
 describe("ModelCacheManagementSection", () => {
   afterEach(() => {
     nock.cleanAll();
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
   });
 
   it("doesn't show up in 'off' state", async () => {
-    await setup({ state: "off" });
+    await setup({ state: "off", waitForSectionAppearance: false });
     expect(screen.queryByTestId("model-cache-section")).not.toBeInTheDocument();
   });
 
   it("doesn't show up in 'deletable' state", async () => {
-    await setup({ state: "deletable" });
+    await setup({ state: "deletable", waitForSectionAppearance: false });
     expect(screen.queryByTestId("model-cache-section")).not.toBeInTheDocument();
   });
 

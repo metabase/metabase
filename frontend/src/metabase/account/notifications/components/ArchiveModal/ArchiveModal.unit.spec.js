@@ -125,7 +125,7 @@ describe("ArchiveModal", () => {
     screen.getByText("Yes, delete this alert").click();
 
     await waitFor(() => {
-      expect(onArchive).toHaveBeenCalled(alert, true);
+      expect(onArchive).toHaveBeenCalledWith(alert, true);
     });
     expect(onClose).toHaveBeenCalled();
   });
@@ -151,7 +151,7 @@ describe("ArchiveModal", () => {
     await waitFor(() => {
       expect(screen.getByText("An error occurred")).toBeInTheDocument();
     });
-    expect(onArchive).toHaveBeenCalled(alert, true);
+    expect(onArchive).toHaveBeenCalledWith(alert, true);
     expect(onClose).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
 import React from "react";
-import { renderWithProviders, fireEvent } from "__support__/ui";
+import { renderWithProviders, fireEvent, screen } from "__support__/ui";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 

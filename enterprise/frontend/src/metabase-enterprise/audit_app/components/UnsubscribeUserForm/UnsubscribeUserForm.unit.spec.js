@@ -32,7 +32,7 @@ describe("UnsubscribeUserForm", () => {
   it("should display a message on submit failure", async () => {
     const user = getUser();
     const error = { data: { message: "error" } };
-    const onUnsubscribe = jest.fn().mockRejectedValue();
+    const onUnsubscribe = jest.fn().mockRejectedValue(error);
     const onClose = jest.fn();
 
     render(
@@ -45,10 +45,8 @@ describe("UnsubscribeUserForm", () => {
 
     screen.getByText("Unsubscribe").click();
 
-    await waitFor(() => {
-      expect(onUnsubscribe).toHaveBeenCalled();
-    });
+    expect(await screen.findByText(error.data.message)).toBeInTheDocument();
+    expect(onUnsubscribe).toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByText(error.data.message)).toBeInTheDocument();
   });
 });

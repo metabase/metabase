@@ -1,6 +1,6 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 
 // these tests use ChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
@@ -101,7 +101,7 @@ describe("ChartNestedSettingSeries", () => {
     setup("line", 1, true);
 
     const seriesSettings = screen.getByTestId("series-settings");
-    expect(screen.getByText(seriesSettings, "Test 0")).toBeInTheDocument();
+    expect(within(seriesSettings).getByText("Test 0")).toBeInTheDocument();
     expect(screen.getByLabelText("series-name-input")).toHaveValue(
       "Test 0 updated",
     );
@@ -112,7 +112,7 @@ describe("ChartNestedSettingSeries", () => {
 
     const seriesSettings = screen.getByTestId("series-settings");
     expect(
-      screen.queryByText(seriesSettings, "Test 0"),
+      within(seriesSettings).queryByText("Test 0"),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText("series-name-input")).toHaveValue("Test 0");
   });

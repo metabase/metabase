@@ -1,8 +1,10 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { render, screen, waitFor } from "__support__/ui";
 import { AuthProvider } from "metabase/auth/types";
 import PasswordPanel, { PasswordPanelProps } from "./PasswordPanel";
+
+const NO_REDIRECT_URL_PARAM = undefined;
 
 describe("PasswordPanel", () => {
   it("should login successfully", async () => {
@@ -12,9 +14,19 @@ describe("PasswordPanel", () => {
     render(<PasswordPanel {...props} />);
     userEvent.type(screen.getByLabelText("Email address"), data.username);
     userEvent.type(screen.getByLabelText("Password"), data.password);
-    userEvent.click(screen.getByText("Sign in"));
 
-    await waitFor(() => expect(props.onLogin).toHaveBeenCalledWith(data));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+    });
+
+    userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(props.onLogin).toHaveBeenCalledWith(
+        { ...data, remember: true },
+        NO_REDIRECT_URL_PARAM,
+      );
+    });
   });
 
   it("should render a link to reset the password and a list of auth providers", () => {
