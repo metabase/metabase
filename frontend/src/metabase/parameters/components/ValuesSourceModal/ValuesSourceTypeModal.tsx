@@ -56,7 +56,7 @@ interface ModalTableProps {
 }
 
 interface ModalStateProps {
-  fieldValues: string[][][];
+  fieldsValues: string[][][];
 }
 
 interface ModalDispatchProps {
@@ -71,7 +71,7 @@ type ModalProps = ModalOwnProps &
 const ValuesSourceTypeModal = ({
   name,
   fields,
-  fieldValues,
+  fieldsValues,
   table,
   sourceType,
   sourceConfig,
@@ -82,45 +82,16 @@ const ValuesSourceTypeModal = ({
   onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
-  const uniqueValues = useMemo(() => {
-    return getFieldValues(fieldValues);
-  }, [fieldValues]);
-
-  const tableFields = useMemo(() => {
-    return table && getSupportedFields(table);
-  }, [table]);
-
-  const selectedField = useMemo(() => {
-    return (
-      tableFields &&
-      sourceConfig.value_field &&
-      getFieldByReference(tableFields, sourceConfig.value_field)
-    );
-  }, [tableFields, sourceConfig]);
+  const fieldValues = useMemo(() => {
+    return getFieldValues(fieldsValues);
+  }, [fieldsValues]);
 
   const handleTypeChange = useCallback(
     (sourceType: ValuesSourceType) => {
       onChangeSourceType(sourceType);
-      onChangeSourceConfig(getDefaultSourceConfig(sourceType, uniqueValues));
+      onChangeSourceConfig(getDefaultSourceConfig(sourceType, fieldValues));
     },
-    [uniqueValues, onChangeSourceType, onChangeSourceConfig],
-  );
-
-  const handleFieldChange = useCallback(
-    (event: SelectChangeEvent<Field>) => {
-      onChangeSourceConfig({
-        ...sourceConfig,
-        value_field: event.target.value.reference(),
-      });
-    },
-    [sourceConfig, onChangeSourceConfig],
-  );
-
-  const handleValuesChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
-      onChangeSourceConfig({ values: getStaticValues(event.target.value) });
-    },
-    [onChangeSourceConfig],
+    [fieldValues, onChangeSourceType, onChangeSourceConfig],
   );
 
   useEffect(() => {
@@ -140,66 +111,186 @@ const ValuesSourceTypeModal = ({
       ]}
       onClose={onClose}
     >
-      <ModalBody>
-        <ModalPane>
-          <ModalSection>
-            <ModalLabel>{t`Where values should come from`}</ModalLabel>
-            <Radio
-              value={sourceType}
-              options={SOURCE_TYPE_OPTIONS}
-              vertical
-              onChange={handleTypeChange}
-            />
-            {sourceType === "static-list" && (
-              <ModalHelpText>{t`Enter one value per line.`}</ModalHelpText>
-            )}
-          </ModalSection>
-          {sourceType === "card" && (
-            <ModalSection>
-              <ModalLabel>{t`Model or question to supply the values`}</ModalLabel>
-              <SelectButton onClick={onChangeCard}>
-                {table ? table.displayName() : t`Pick a model or question…`}
-              </SelectButton>
-            </ModalSection>
-          )}
-          {table && (
-            <ModalSection>
-              <ModalLabel>{t`Column to supply the values`}</ModalLabel>
-              <Select
-                value={selectedField}
-                placeholder={t`Pick a column…`}
-                onChange={handleFieldChange}
-              >
-                {tableFields?.map((field, index) => (
-                  <Option
-                    key={index}
-                    name={field.displayName()}
-                    value={field}
-                  />
-                ))}
-              </Select>
-            </ModalSection>
-          )}
-        </ModalPane>
-        <ModalMain>
-          {sourceType === null && (
-            <ModalTextArea
-              defaultValue={getValuesText(uniqueValues)}
-              readOnly
-              fullWidth
-            />
-          )}
-          {sourceType === "card" && <ModalTextArea readOnly fullWidth />}
-          {sourceType === "static-list" && (
-            <ModalTextArea
-              defaultValue={getValuesText(sourceConfig.values)}
-              fullWidth
-              onChange={handleValuesChange}
-            />
-          )}
-        </ModalMain>
-      </ModalBody>
+      {sourceType === null ? (
+        <FieldSourceModal
+          sourceType={sourceType}
+          fieldValues={fieldValues}
+          onChangeSourceType={handleTypeChange}
+        />
+      ) : sourceType === "card" ? (
+        <CardSourceModal
+          sourceType={sourceType}
+          sourceConfig={sourceConfig}
+          onChangeCard={onChangeCard}
+          onChangeSourceType={handleTypeChange}
+          onChangeSourceConfig={onChangeSourceConfig}
+        />
+      ) : sourceType === "static-list" ? (
+        <ListSourceModal
+          sourceType={sourceType}
+          sourceConfig={sourceConfig}
+          fieldValues={fieldValues}
+          onChangeSourceType={handleTypeChange}
+          onChangeSourceConfig={onChangeSourceConfig}
+        />
+      ) : null}
     </ModalContent>
+  );
+};
+
+interface FieldSourceModalProps {
+  fieldValues: string[];
+  sourceType: ValuesSourceType;
+  onChangeSourceType: (sourceType: ValuesSourceType) => void;
+}
+
+const FieldSourceModal = ({
+  sourceType,
+  fieldValues,
+  onChangeSourceType,
+}: FieldSourceModalProps) => {
+  return (
+    <ModalBody>
+      <ModalPane>
+        <ModalSection>
+          <ModalLabel>{t`Where values should come from`}</ModalLabel>
+          <Radio
+            value={sourceType}
+            options={SOURCE_TYPE_OPTIONS}
+            vertical
+            onChange={onChangeSourceType}
+          />
+        </ModalSection>
+      </ModalPane>
+      <ModalMain>
+        <ModalTextArea
+          defaultValue={getValuesText(fieldValues)}
+          readOnly
+          fullWidth
+        />
+      </ModalMain>
+    </ModalBody>
+  );
+};
+
+interface CardSourceModalProps {
+  table?: Table;
+  sourceType: ValuesSourceType;
+  sourceConfig: ValuesSourceConfig;
+  onChangeCard: () => void;
+  onChangeSourceType: (sourceType: ValuesSourceType) => void;
+  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+}
+
+const CardSourceModal = ({
+  table,
+  sourceType,
+  sourceConfig,
+  onChangeCard,
+  onChangeSourceType,
+  onChangeSourceConfig,
+}: CardSourceModalProps) => {
+  const fields = useMemo(() => {
+    return table ? getSupportedFields(table) : [];
+  }, [table]);
+
+  const selectedField = useMemo(() => {
+    return getFieldByReference(fields, sourceConfig.value_field);
+  }, [fields, sourceConfig]);
+
+  const handleFieldChange = useCallback(
+    (event: SelectChangeEvent<Field>) => {
+      onChangeSourceConfig({
+        ...sourceConfig,
+        value_field: event.target.value.reference(),
+      });
+    },
+    [sourceConfig, onChangeSourceConfig],
+  );
+
+  return (
+    <ModalBody>
+      <ModalPane>
+        <ModalSection>
+          <ModalLabel>{t`Where values should come from`}</ModalLabel>
+          <Radio
+            value={sourceType}
+            options={SOURCE_TYPE_OPTIONS}
+            vertical
+            onChange={onChangeSourceType}
+          />
+        </ModalSection>
+        <ModalSection>
+          <ModalLabel>{t`Model or question to supply the values`}</ModalLabel>
+          <SelectButton onClick={onChangeCard}>
+            {table ? table.displayName() : t`Pick a model or question…`}
+          </SelectButton>
+        </ModalSection>
+        {table && (
+          <ModalSection>
+            <ModalLabel>{t`Column to supply the values`}</ModalLabel>
+            <Select
+              value={selectedField}
+              placeholder={t`Pick a column…`}
+              onChange={handleFieldChange}
+            >
+              {fields.map((field, index) => (
+                <Option key={index} name={field.displayName()} value={field} />
+              ))}
+            </Select>
+          </ModalSection>
+        )}
+      </ModalPane>
+      <ModalMain>
+        <ModalTextArea readOnly fullWidth />
+      </ModalMain>
+    </ModalBody>
+  );
+};
+
+interface ListSourceModalProps {
+  sourceType: ValuesSourceType;
+  sourceConfig: ValuesSourceConfig;
+  fieldValues: string[];
+  onChangeSourceType: (sourceType: ValuesSourceType) => void;
+  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+}
+
+const ListSourceModal = ({
+  sourceType,
+  sourceConfig,
+  onChangeSourceType,
+  onChangeSourceConfig,
+}: ListSourceModalProps) => {
+  const handleValuesChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      onChangeSourceConfig({ values: getStaticValues(event.target.value) });
+    },
+    [onChangeSourceConfig],
+  );
+
+  return (
+    <ModalBody>
+      <ModalPane>
+        <ModalSection>
+          <ModalLabel>{t`Where values should come from`}</ModalLabel>
+          <Radio
+            value={sourceType}
+            options={SOURCE_TYPE_OPTIONS}
+            vertical
+            onChange={onChangeSourceType}
+          />
+          <ModalHelpText>{t`Enter one value per line.`}</ModalHelpText>
+        </ModalSection>
+      </ModalPane>
+      <ModalMain>
+        <ModalTextArea
+          defaultValue={getValuesText(sourceConfig.values)}
+          fullWidth
+          onChange={handleValuesChange}
+        />
+      </ModalMain>
+    </ModalBody>
   );
 };
 
@@ -212,7 +303,7 @@ const getFieldValues = (fieldsValues: string[][][]) => {
   return Array.from(new Set(allValues));
 };
 
-const getFieldByReference = (fields: Field[], fieldReference: unknown[]) => {
+const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
   return fields.find(field => _.isEqual(field.reference(), fieldReference));
 };
 
@@ -232,7 +323,7 @@ const mapStateToProps = (
   { fields }: ModalOwnProps,
 ): ModalStateProps => {
   return {
-    fieldValues: fields.map(field =>
+    fieldsValues: fields.map(field =>
       Fields.selectors.getFieldValues(state, { entityId: field.id }),
     ),
   };
