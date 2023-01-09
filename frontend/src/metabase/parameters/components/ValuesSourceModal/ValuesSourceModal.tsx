@@ -34,13 +34,12 @@ const ValuesSourceModal = ({
     return getNonVirtualFields(parameter);
   }, [parameter]);
 
-  const handleCardSelect = useCallback(() => {
+  const handlePickerOpen = useCallback(() => {
     setStep("card");
   }, []);
 
-  const handleCardChange = useCallback((cardId: CardId | undefined) => {
+  const handlePickerClose = useCallback((cardId: CardId | undefined) => {
     setStep("main");
-    setSourceConfig({ card_id: cardId });
   }, []);
 
   const handleSubmit = useCallback(() => {
@@ -56,15 +55,16 @@ const ValuesSourceModal = ({
       sourceConfig={sourceConfig}
       onChangeSourceType={setSourceType}
       onChangeSourceConfig={setSourceConfig}
-      onSelectCard={handleCardSelect}
+      onChangeCard={handlePickerOpen}
       onSubmit={handleSubmit}
       onClose={onClose}
     />
   ) : (
     <ValuesSourceCardModal
       name={parameter.name}
-      cardId={sourceConfig.card_id}
-      onChangeCard={handleCardChange}
+      sourceConfig={sourceConfig}
+      onChangeSourceConfig={setSourceConfig}
+      onSubmit={handlePickerClose}
       onClose={onClose}
     />
   );

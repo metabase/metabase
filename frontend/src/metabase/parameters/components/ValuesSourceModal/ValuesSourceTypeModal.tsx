@@ -1,14 +1,18 @@
 import React, { ChangeEvent, useCallback, useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 import Button from "metabase/core/components/Button/Button";
 import Radio from "metabase/core/components/Radio/Radio";
 import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
 import Fields from "metabase/entities/fields";
+import Tables from "metabase/entities/tables";
 import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
 import Field from "metabase-lib/metadata/Field";
+import Table from "metabase-lib/metadata/Table";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   getDefaultSourceConfig,
   isValidSourceConfig,
@@ -38,9 +42,13 @@ interface ModalOwnProps {
   sourceConfig: ValuesSourceConfig;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
-  onSelectCard: () => void;
+  onChangeCard: () => void;
   onSubmit: () => void;
   onClose: () => void;
+}
+
+interface ModalTableProps {
+  table?: Table;
 }
 
 interface ModalStateProps {
@@ -51,18 +59,22 @@ interface ModalDispatchProps {
   onFetchFields: (fields: Field[]) => void;
 }
 
-type ModalProps = ModalOwnProps & ModalStateProps & ModalDispatchProps;
+type ModalProps = ModalOwnProps &
+  ModalTableProps &
+  ModalStateProps &
+  ModalDispatchProps;
 
 const ValuesSourceTypeModal = ({
   name,
   fields,
   fieldValues,
+  table,
   sourceType,
   sourceConfig,
   onFetchFields,
   onChangeSourceType,
   onChangeSourceConfig,
-  onSelectCard,
+  onChangeCard,
   onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
@@ -119,8 +131,8 @@ const ValuesSourceTypeModal = ({
           {sourceType === "card" && (
             <ModalSection>
               <ModalLabel>{t`Model or question to supply the values`}</ModalLabel>
-              <SelectButton onClick={onSelectCard}>
-                {t`Pick a model or question…`}
+              <SelectButton onClick={onChangeCard}>
+                {table ? table.displayName() : t`Pick a model or question…`}
               </SelectButton>
             </ModalSection>
           )}
@@ -183,7 +195,11 @@ const mapDispatchToProps = (dispatch: Dispatch): ModalDispatchProps => {
   };
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
+export default _.compose(
+  Tables.load({
+    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
+      card_id ? getQuestionVirtualTableId(card_id) : undefined,
+    requestType: "fetchMetadata",
+  }),
+  connect(mapStateToProps, mapDispatchToProps),
 )(ValuesSourceTypeModal);

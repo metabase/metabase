@@ -13,7 +13,7 @@ import DataPicker, {
 import Questions from "metabase/entities/questions";
 import Collections from "metabase/entities/collections";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, CardId, Collection } from "metabase-types/api";
+import { Card, Collection, ValuesSourceConfig } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import {
@@ -28,8 +28,9 @@ import {
 
 interface ModalOwnProps {
   name: string;
-  cardId: CardId | undefined;
-  onChangeCard: (cardId: CardId | undefined) => void;
+  sourceConfig: ValuesSourceConfig;
+  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+  onSubmit: () => void;
   onClose: () => void;
 }
 
@@ -54,15 +55,17 @@ const ValuesSourceCardModal = ({
   name,
   question,
   collection,
-  onChangeCard,
+  onChangeSourceConfig,
+  onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
   const initialValue = getInitialValue(question, collection);
   const [value, setValue] = useDataPickerValue(initialValue);
 
   const handleSubmit = useCallback(() => {
-    onChangeCard(getCardIdFromValue(value));
-  }, [value, onChangeCard]);
+    onChangeSourceConfig({ card_id: getCardIdFromValue(value) });
+    onSubmit();
+  }, [value, onChangeSourceConfig, onSubmit]);
 
   return (
     <ModalContent
@@ -136,7 +139,7 @@ const getCardIdFromValue = ({ tableIds }: DataPickerValue) => {
 
 export default _.compose(
   Questions.load({
-    id: (state: State, { cardId }: ModalOwnProps) => cardId,
+    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     entityAlias: "card",
   }),
   Collections.load({
