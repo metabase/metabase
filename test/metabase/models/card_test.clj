@@ -385,16 +385,27 @@
 ;;; ------------------------------------------ Viz Settings Tests  ------------------------------------------
 
 (deftest upgrade-to-v2-db-test
-  (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
+  (testing ":visualization_settings v. 1 should be upgraded to v. 3 on select (note these were version 2 changes)"
     (mt/with-temp Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
-        (is (= {:version 2
+        (is (= {:version 3
                 :pie.show_legend true
                 :pie.percent_visibility "inside"}
                (db/select-one-field :visualization_settings Card :id card-id)))))
-  (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
+  (testing ":visualization_settings v. 1 should be upgraded to v. 3 and persisted on update (note these were version 2 changes)"
     (mt/with-temp Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
       (db/update! Card card-id :name "Favorite Toucan Foods")
-      (is (= {:version 2
+      (is (= {:version 3
               :pie.show_legend true
               :pie.percent_visibility "inside"}
              (:visualization_settings (db/simple-select-one Card {:where [:= :id card-id]})))))))
+
+(deftest upgrade-to-v3-db-test
+  (testing ":visualization_settings should be upgraded to v. 3 on select (note these were version 3 changes)"
+    (doseq [version [1 2]]
+      (mt/with-temp Card [{card-id :id} {:visualization_settings
+                                         {:version 2
+                                          :column_settings
+                                          {"[\"ref\",[\"field\",1,null]]" {:column_title "ID changed"}}}}]
+        (is (= {:column_settings {"[\"ref\",[\"field\",1,null]]"                          {:column_title "ID changed"},
+                                  "[\"ref\",[\"field\",1,{\"join-alias\":\"Checkins\"}]]" {:column_title "ID changed"}}}
+               (db/select-one-field :visualization_settings Card :id card-id)))))))
