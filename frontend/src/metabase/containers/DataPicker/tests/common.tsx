@@ -14,6 +14,7 @@ import {
 } from "__support__/server-mocks";
 import {
   SAMPLE_DATABASE,
+  ANOTHER_DATABASE,
   MULTI_SCHEMA_DATABASE,
 } from "__support__/sample_database_fixture";
 
@@ -31,9 +32,18 @@ import useDataPickerValue from "../useDataPickerValue";
 import DataPicker from "../DataPickerContainer";
 
 export const SAMPLE_COLLECTION = createMockCollection({
+  id: 1,
   name: "Sample Collection",
   location: "/",
   here: ["card", "dataset"],
+});
+
+export const EMPTY_COLLECTION = createMockCollection({
+  id: 2,
+  name: "Empty Collection",
+  location: "/",
+  here: [],
+  below: ["card", "dataset"],
 });
 
 export const SAMPLE_MODEL = createMockCard({
@@ -95,6 +105,7 @@ interface SetupOpts {
   initialValue?: DataPickerValue;
   filters?: DataPickerFiltersProp;
   hasDataAccess?: boolean;
+  hasEmptyDatabase?: boolean;
   hasMultiSchemaDatabase?: boolean;
   hasModels?: boolean;
   hasNestedQueriesEnabled?: boolean;
@@ -104,6 +115,7 @@ export async function setup({
   initialValue = { tableIds: [] },
   filters,
   hasDataAccess = true,
+  hasEmptyDatabase = false,
   hasMultiSchemaDatabase = false,
   hasModels = true,
   hasNestedQueriesEnabled = true,
@@ -119,6 +131,10 @@ export async function setup({
       databases.push(MULTI_SCHEMA_DATABASE);
     }
 
+    if (hasEmptyDatabase) {
+      databases.push(ANOTHER_DATABASE);
+    }
+
     setupDatabasesEndpoints(scope, databases);
   } else {
     scope.get("/api/database").reply(200, []);
@@ -128,7 +144,7 @@ export async function setup({
     .get("/api/search?models=dataset&limit=1")
     .reply(200, { data: hasModels ? [SAMPLE_MODEL] : [] });
 
-  setupCollectionEndpoints(scope, [SAMPLE_COLLECTION]);
+  setupCollectionEndpoints(scope, [SAMPLE_COLLECTION, EMPTY_COLLECTION]);
 
   setupCollectionVirtualSchemaEndpoints(
     scope,
@@ -147,6 +163,8 @@ export async function setup({
     SAMPLE_QUESTION,
     SAMPLE_MODEL,
   ]);
+
+  setupCollectionVirtualSchemaEndpoints(scope, EMPTY_COLLECTION, []);
 
   const settings = createMockSettingsState({
     "enable-nested-queries": hasNestedQueriesEnabled,
