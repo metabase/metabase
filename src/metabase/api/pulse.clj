@@ -39,18 +39,26 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
-  "Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
-  associated with that dashboard. If `user_id` is specified, restricts results to pulses or subscriptions
-  created by the user, or for which the user is a known recipient."
-  [archived dashboard_id user_id]
-  {archived     (s/maybe su/BooleanString)
-   dashboard_id (s/maybe su/IntGreaterThanZero)
-   user_id      (s/maybe su/IntGreaterThanZero)}
-  (as-> (pulse/retrieve-pulses {:archived?    (Boolean/parseBoolean archived)
-                                :dashboard-id dashboard_id
-                                :user-id      user_id}) <>
-    (filter mi/can-read? <>)
-    (hydrate <> :can_write)))
+  "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
+  permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
+
+  If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.
+
+  If `can_read` is `true`, it specifically returns all subscriptions for which the current user
+  created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,
+  and a subset of the default items returned for admins. This is used to power the /account/notifications page."
+  [archived dashboard_id can_read]
+  {archived            (s/maybe su/BooleanString)
+   dashboard_id        (s/maybe su/IntGreaterThanZero)
+   can_read            (s/maybe su/BooleanString)}
+  (let [can-read? (Boolean/parseBoolean can_read)
+        archived? (Boolean/parseBoolean archived)
+        pulses    (->> (pulse/retrieve-pulses {:archived?     archived?
+                                               :dashboard-id  dashboard_id
+                                               :user-id       api/*current-user-id*
+                                               :can-read?     can-read?})
+                       (filter (if can-read? mi/can-read? mi/can-write?)))]
+    (hydrate pulses :can_write)))
 
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
