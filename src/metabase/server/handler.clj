@@ -72,10 +72,10 @@
   "Apply middleware to the given handler."
   [handler]
   (reduce
-    (fn [handler middleware-fn]
-      (middleware-fn handler))
-    handler
-    middleware))
+   (fn [handler middleware-fn]
+     (middleware-fn handler))
+   handler
+   middleware))
 
 (def app
   "The primary entry point to the Ring HTTP server."
