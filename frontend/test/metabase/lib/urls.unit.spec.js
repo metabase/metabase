@@ -4,6 +4,7 @@ import {
   collection,
   dashboard,
   question,
+  model,
   extractQueryParams,
   extractEntityId,
   extractCollectionId,
@@ -111,26 +112,6 @@ describe("urls", () => {
         expect(url).toBe("/question/1-foo/5?a=b#abc");
       });
     });
-
-    describe("model", () => {
-      it("returns /model URLS", () => {
-        expect(question({ id: 1, dataset: true, name: "Foo" })).toEqual(
-          "/model/1-foo",
-        );
-
-        expect(
-          question({ id: 1, card_id: 42, dataset: true, name: "Foo" }),
-        ).toEqual("/model/42-foo");
-
-        expect(
-          question({ id: 1, card_id: 42, model: "dataset", name: "Foo" }),
-        ).toEqual("/model/42-foo");
-
-        expect(
-          question({ id: 1, dataset: true, name: "Foo" }, { objectId: 4 }),
-        ).toEqual("/model/1-foo/4");
-      });
-    });
   });
 
   describe("query", () => {
@@ -157,6 +138,30 @@ describe("urls", () => {
       const extractedParams2 = extractQueryParams({ foo: ["1", "2"] });
       expect(extractedParams2).toContainEqual(["foo", "1"]);
       expect(extractedParams2).toContainEqual(["foo", "2"]);
+    });
+  });
+
+  describe("model", () => {
+    it("should return correct URL", () => {
+      expect(model({ id: 1, dataset: true, name: "Foo" })).toBe("/model/1-foo");
+    });
+
+    it("should prefer card_id when building a URL", () => {
+      expect(model({ id: 1, card_id: 42, dataset: true, name: "Foo" })).toBe(
+        "/model/42-foo",
+      );
+    });
+
+    it("should work with `model: dataset` property", () => {
+      expect(model({ id: 1, card_id: 42, model: "dataset", name: "Foo" })).toBe(
+        "/model/42-foo",
+      );
+    });
+
+    it("should handle object ID", () => {
+      expect(
+        model({ id: 1, dataset: true, name: "Foo" }, { objectId: 4 }),
+      ).toBe("/model/1-foo/4");
     });
   });
 
