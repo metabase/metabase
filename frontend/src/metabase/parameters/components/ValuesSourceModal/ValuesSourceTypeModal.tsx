@@ -41,7 +41,8 @@ interface ModalOwnProps {
 }
 
 interface ModalStateProps {
-  isLoaded: boolean;
+  fieldValues: string[][];
+  hasFieldValues: boolean;
 }
 
 interface ModalDispatchProps {
@@ -52,6 +53,7 @@ type ModalProps = ModalOwnProps & ModalStateProps & ModalDispatchProps;
 
 const ValuesSourceTypeModal = ({
   fields,
+  fieldValues,
   sourceType,
   sourceConfig,
   onFetchFields,
@@ -63,9 +65,9 @@ const ValuesSourceTypeModal = ({
   const handleTypeChange = useCallback(
     (sourceType: ValuesSourceType) => {
       onChangeSourceType(sourceType);
-      onChangeSourceConfig(getDefaultSourceConfig(sourceType, []));
+      onChangeSourceConfig(getDefaultSourceConfig(sourceType, fieldValues));
     },
-    [onChangeSourceType, onChangeSourceConfig],
+    [fieldValues, onChangeSourceType, onChangeSourceConfig],
   );
 
   const handleValuesChange = useCallback(
@@ -108,7 +110,13 @@ const ValuesSourceTypeModal = ({
           </ModalSection>
         </ModalPane>
         <ModalMain>
-          {sourceType === null && <ModalTextArea readOnly fullWidth />}
+          {sourceType === null && (
+            <ModalTextArea
+              defaultValue={getFieldsText(fieldValues)}
+              readOnly
+              fullWidth
+            />
+          )}
           {sourceType === "static-list" && (
             <ModalTextArea
               defaultValue={getValuesText(sourceConfig.values)}
@@ -133,12 +141,19 @@ const getValuesText = (values?: string[]) => {
   return values?.join(NEW_LINE) ?? "";
 };
 
+const getFieldsText = (values?: string[][]) => {
+  return getValuesText(values?.map(([key]) => key));
+};
+
 const mapStateToProps = (
   state: State,
   { fields }: ModalOwnProps,
 ): ModalStateProps => {
   return {
-    isLoaded: fields.every(field =>
+    fieldValues: fields.map(field =>
+      Fields.selectors.getFieldValues(state, { entityId: field.id }),
+    ),
+    hasFieldValues: fields.every(field =>
       Fields.selectors.getLoaded(state, { entityId: field.id }),
     ),
   };
