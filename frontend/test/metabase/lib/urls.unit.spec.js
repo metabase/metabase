@@ -5,6 +5,7 @@ import {
   dashboard,
   question,
   model,
+  modelEditor,
   extractQueryParams,
   extractEntityId,
   extractCollectionId,
@@ -162,6 +163,34 @@ describe("urls", () => {
       expect(
         model({ id: 1, dataset: true, name: "Foo" }, { objectId: 4 }),
       ).toBe("/model/1-foo/4");
+    });
+
+    describe("editor", () => {
+      it("should return correct query editor URL", () => {
+        expect(modelEditor({ id: 1, name: "Order" }, { type: "query" })).toBe(
+          "/model/1-order/query",
+        );
+      });
+
+      it("should return query editor URL if `type` isn't provided explicitly", () => {
+        expect(modelEditor({ id: 1, name: "Order" })).toBe(
+          "/model/1-order/query",
+        );
+      });
+
+      it("should return correct metadata editor URL", () => {
+        expect(
+          modelEditor({ id: 1, name: "Order" }, { type: "metadata" }),
+        ).toBe("/model/1-order/metadata");
+      });
+
+      it("should handle missing name", () => {
+        expect(modelEditor({ id: 1 })).toBe("/model/1/query");
+      });
+
+      it("should prefer card_id over id", () => {
+        expect(modelEditor({ id: 1, card_id: 2 })).toBe("/model/2/query");
+      });
     });
   });
 
