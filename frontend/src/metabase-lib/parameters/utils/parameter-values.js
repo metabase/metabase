@@ -1,8 +1,5 @@
 import _ from "underscore";
-import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
-import { isVirtualFieldId } from "metabase-lib/metadata/utils/fields";
-import { getFieldValues } from "metabase-lib/queries/utils/field";
 
 export function getValuePopulatedParameters(parameters, parameterValues) {
   return parameterValues
@@ -84,13 +81,4 @@ export function getParameterValuesBySlug(
   ]);
 
   return Object.fromEntries(slugValuePairs);
-}
-
-export function getParameterValues(parameter) {
-  const entries = getFields(parameter)
-    .filter(field => !isVirtualFieldId(field.id))
-    .flatMap(field => getFieldValues(field))
-    .map(entry => [entry[0], entry]);
-
-  return Array.from(new Map(entries).values());
 }
