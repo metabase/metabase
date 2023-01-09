@@ -14,11 +14,11 @@ export const isValidSourceConfig = (
 
 export const getDefaultSourceConfig = (
   sourceType: ValuesSourceType,
-  values?: string[],
+  sourceValues?: string[],
 ) => {
   switch (sourceType) {
     case "static-list":
-      return { values };
+      return { values: sourceValues };
     default:
       return {};
   }
