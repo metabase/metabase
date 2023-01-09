@@ -95,7 +95,10 @@ const AppBarSmall = ({
           )}
         </AppBarMainContainer>
         <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
-          <AppBarLogo onLogoClick={handleLogoClick} />
+          <AppBarLogo
+            isLogoVisible={isLogoVisible}
+            onLogoClick={handleLogoClick}
+          />
         </AppBarLogoContainer>
       </AppBarHeader>
       {isSubheaderVisible && (

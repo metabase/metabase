@@ -4,6 +4,7 @@ import AppBarToggle from "./AppBarToggle";
 import { LogoLink, LogoRoot, ToggleContainer } from "./AppBarLogo.styled";
 
 export interface AppBarLogoProps {
+  isLogoVisible?: boolean;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   onLogoClick?: () => void;
@@ -11,6 +12,7 @@ export interface AppBarLogoProps {
 }
 
 const AppBarLogo = ({
+  isLogoVisible,
   isNavBarOpen,
   isNavBarEnabled,
   onLogoClick,
@@ -18,12 +20,19 @@ const AppBarLogo = ({
 }: AppBarLogoProps): JSX.Element => {
   return (
     <LogoRoot>
-      <LogoLink to="/" onClick={onLogoClick} data-metabase-event="Navbar;Logo">
-        <LogoIcon height={32} />
-      </LogoLink>
+      {isLogoVisible && (
+        <LogoLink
+          to="/"
+          onClick={onLogoClick}
+          data-metabase-event="Navbar;Logo"
+        >
+          <LogoIcon height={32} />
+        </LogoLink>
+      )}
       {isNavBarEnabled && (
-        <ToggleContainer>
+        <ToggleContainer isAbsolute={isLogoVisible}>
           <AppBarToggle
+            isLogoVisible={isLogoVisible}
             isNavBarOpen={isNavBarOpen}
             onToggleClick={onToggleClick}
           />

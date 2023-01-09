@@ -52,6 +52,7 @@ const AppBarLarge = ({
         isLogoVisible={isLogoVisible}
       >
         <AppBarLogo
+          isLogoVisible={isLogoVisible}
           isNavBarOpen={isNavBarVisible}
           isNavBarEnabled={isNavBarEnabled}
           onToggleClick={onToggleNavbar}

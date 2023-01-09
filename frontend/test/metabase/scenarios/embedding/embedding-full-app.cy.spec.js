@@ -168,7 +168,7 @@ describe("scenarios > embedding > full app", () => {
         });
         cy.findByRole("banner").within(() => {
           cy.findByText(/Our analytics/i).should("be.visible");
-          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.findByTestId("main-logo").should("not.exist");
           cy.icon("sidebar_closed").should("be.visible");
         });
         // Non-hovered color
@@ -186,7 +186,7 @@ describe("scenarios > embedding > full app", () => {
 
         cy.findByRole("banner").within(() => {
           cy.findByText(/Our analytics/i).should("not.be.visible");
-          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.findByTestId("main-logo").should("not.exist");
           cy.icon("sidebar_open").should("be.visible");
         });
       });
@@ -198,7 +198,7 @@ describe("scenarios > embedding > full app", () => {
         });
         cy.findByRole("banner").within(() => {
           cy.findByText(/Our analytics/i).should("be.visible");
-          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.findByTestId("main-logo").should("not.exist");
           cy.icon("sidebar_closed").should("not.exist");
         });
 
@@ -257,7 +257,7 @@ describe("scenarios > embedding > full app", () => {
         });
         cy.findByRole("banner").within(() => {
           cy.findByText(/Our analytics/i).should("be.visible");
-          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.findByTestId("main-logo").should("not.exist");
           cy.icon("sidebar_closed").should("be.visible");
         });
 
@@ -276,7 +276,7 @@ describe("scenarios > embedding > full app", () => {
 
         cy.findByRole("banner").within(() => {
           cy.findByText(/Our analytics/i).should("not.exist");
-          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.findByTestId("main-logo").should("not.exist");
           cy.icon("sidebar_open").should("be.visible");
         });
       });
@@ -288,7 +288,7 @@ describe("scenarios > embedding > full app", () => {
         });
         cy.findByRole("banner").within(() => {
           cy.findByText(/Our analytics/i).should("be.visible");
-          cy.findByTestId("main-logo").should("not.be.visible");
+          cy.findByTestId("main-logo").should("not.exist");
           cy.icon("sidebar_closed").should("not.exist");
         });
 

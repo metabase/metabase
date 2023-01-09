@@ -47,29 +47,8 @@ export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
     }
   }
 
-  ${props =>
-    !props.isLogoVisible &&
-    css`
-      ${SidebarButton} {
-        opacity: 1;
-      }
-
-      ${SidebarIcon} {
-        color: ${color("text-medium")};
-
-        &:hover {
-          color: ${color("brand")};
-        }
-      }
-
-      padding-left: ${!props.isNavBarEnabled && "1rem"};
-
-      &:hover ${LogoLink}, ${LogoLink} {
-        display: ${!props.isNavBarEnabled && "none"};
-        opacity: 0;
-        pointer-events: none;
-      }
-    `}
+  padding-left: ${({ isLogoVisible, isNavBarEnabled }) =>
+    !isLogoVisible && !isNavBarEnabled && "1rem"};
 `;
 
 export const AppBarRightContainer = styled.div`

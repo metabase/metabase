@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
+import { space } from "metabase/styled-components/theme";
 
 export const LogoRoot = styled.div`
   position: relative;
@@ -20,9 +22,20 @@ export const LogoLink = styled(Link)`
   }
 `;
 
-export const ToggleContainer = styled.div`
-  position: absolute;
-  top: 0.625rem;
-  left: 0.9375rem;
+interface ToggleContainerProps {
+  isAbsolute?: boolean;
+}
+
+export const ToggleContainer = styled.div<ToggleContainerProps>`
+  ${props =>
+    props.isAbsolute
+      ? css`
+          position: absolute;
+          top: 0.625rem;
+          left: 0.9375rem;
+        `
+      : css`
+          padding: ${space(1)} ${space(2)};
+        `}
   transition: opacity 0.3s;
 `;
