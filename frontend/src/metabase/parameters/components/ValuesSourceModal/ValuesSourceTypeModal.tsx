@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useCallback, useEffect } from "react";
+import React, { ChangeEvent, useCallback, useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button/Button";
@@ -40,7 +40,7 @@ interface ModalOwnProps {
 }
 
 interface ModalStateProps {
-  fieldValues: string[][];
+  fieldValues: string[][][];
   hasFieldValues: boolean;
 }
 
@@ -61,17 +61,21 @@ const ValuesSourceTypeModal = ({
   onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
+  const uniqueValues = useMemo(() => {
+    return getFieldValues(fieldValues);
+  }, [fieldValues]);
+
   const handleTypeChange = useCallback(
     (sourceType: ValuesSourceType) => {
       onChangeSourceType(sourceType);
-      onChangeSourceConfig(getDefaultSourceConfig(sourceType, fieldValues));
+      onChangeSourceConfig(getDefaultSourceConfig(sourceType, uniqueValues));
     },
-    [fieldValues, onChangeSourceType, onChangeSourceConfig],
+    [uniqueValues, onChangeSourceType, onChangeSourceConfig],
   );
 
   const handleValuesChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
-      onChangeSourceConfig({ values: getValues(event.target.value) });
+      onChangeSourceConfig({ values: getStaticValues(event.target.value) });
     },
     [onChangeSourceConfig],
   );
@@ -84,6 +88,7 @@ const ValuesSourceTypeModal = ({
     <ModalContent
       title={t`Selectable values`}
       footer={[
+        <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
         <Button
           key="submit"
           primary
@@ -111,7 +116,7 @@ const ValuesSourceTypeModal = ({
         <ModalMain>
           {sourceType === null && (
             <ModalTextArea
-              defaultValue={getFieldsText(fieldValues)}
+              defaultValue={getValuesText(uniqueValues)}
               readOnly
               fullWidth
             />
@@ -129,19 +134,20 @@ const ValuesSourceTypeModal = ({
   );
 };
 
-const getValues = (value: string) => {
-  return value
-    .split(NEW_LINE)
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
-};
-
 const getValuesText = (values?: string[]) => {
   return values?.join(NEW_LINE) ?? "";
 };
 
-const getFieldsText = (values?: string[][]) => {
-  return getValuesText(values?.map(([key]) => key));
+const getFieldValues = (fieldsValues: string[][][]) => {
+  const allValues = fieldsValues.flatMap(values => values.map(([key]) => key));
+  return Array.from(new Set(allValues));
+};
+
+const getStaticValues = (value: string) => {
+  return value
+    .split(NEW_LINE)
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
 };
 
 const mapStateToProps = (
