@@ -28,7 +28,7 @@ describe("issue 27462", () => {
 
     visitQuestionAdhoc(questionDetails, { mode: "notebook" });
 
-    cy.findByRole("button", { name: "Summarize" }).click();
+    cy.button("Summarize").click();
 
     cy.findByRole("option", { name: "Sum of ..." }).click();
 
@@ -36,7 +36,7 @@ describe("issue 27462", () => {
       cy.findByRole("option", { name: "Count" }).click();
     });
 
-    cy.findByRole("button", { name: "Visualize" }).click();
+    cy.button("Visualize").click();
 
     cy.findByText("200").should("be.visible");
   });
