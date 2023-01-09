@@ -6,6 +6,7 @@ import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input";
 import ModalContent from "metabase/components/ModalContent";
 import DataPicker, {
+  DataPickerDataType,
   DataPickerValue,
   useDataPicker,
   useDataPickerValue,
@@ -26,6 +27,11 @@ import {
   SearchInputContainer,
   ModalBody,
 } from "./ValuesSourceCardModal.styled";
+
+const DATA_PICKER_FILTERS = {
+  types: (type: DataPickerDataType) =>
+    type === "questions" || type === "models",
+};
 
 interface ModalOwnProps {
   name: string;
@@ -83,7 +89,11 @@ const ValuesSourceCardModal = ({
         <ModalBody>
           <DataPickerSearchInput />
           <DataPickerContainer>
-            <DataPicker value={value} onChange={setValue} />
+            <DataPicker
+              value={value}
+              filters={DATA_PICKER_FILTERS}
+              onChange={setValue}
+            />
           </DataPickerContainer>
         </ModalBody>
       </ModalContent>

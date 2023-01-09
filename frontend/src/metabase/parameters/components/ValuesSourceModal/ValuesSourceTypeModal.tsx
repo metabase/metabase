@@ -119,6 +119,7 @@ const ValuesSourceTypeModal = ({
         />
       ) : sourceType === "card" ? (
         <CardSourceModal
+          table={table}
           sourceType={sourceType}
           sourceConfig={sourceConfig}
           onChangeCard={onChangeCard}
@@ -174,7 +175,7 @@ const FieldSourceModal = ({
 };
 
 interface CardSourceModalProps {
-  table?: Table;
+  table: Table | undefined;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   onChangeCard: () => void;
