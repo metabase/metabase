@@ -22,7 +22,7 @@ import {
   isValidSourceConfig,
 } from "metabase-lib/parameters/utils/parameter-source";
 import {
-  ModalHelpText,
+  ModalHelpMessage,
   ModalLabel,
   ModalBody,
   ModalMain,
@@ -281,7 +281,7 @@ const ListSourceModal = ({
             vertical
             onChange={onChangeSourceType}
           />
-          <ModalHelpText>{t`Enter one value per line.`}</ModalHelpText>
+          <ModalHelpMessage>{t`Enter one value per line.`}</ModalHelpMessage>
         </ModalSection>
       </ModalPane>
       <ModalMain>

@@ -34,7 +34,7 @@ export const ModalTextArea = styled(TextArea)`
   resize: none;
 `;
 
-export const ModalHelpText = styled.div`
+export const ModalHelpMessage = styled.div`
   color: ${color("text-medium")};
   margin-top: 0.25rem;
   margin-left: 1.25rem;
