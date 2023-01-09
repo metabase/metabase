@@ -18,7 +18,7 @@ type Card = Partial<BaseCard> & {
 
 export const newQuestionFlow = () => "/question/new";
 
-type QuestionUrlBuilderParams = {
+export type QuestionUrlBuilderParams = {
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
@@ -109,10 +109,6 @@ export function newQuestion({
   } else {
     return url;
   }
-}
-
-export function model(...args: Parameters<typeof question>) {
-  return question(...args);
 }
 
 export function publicQuestion(
