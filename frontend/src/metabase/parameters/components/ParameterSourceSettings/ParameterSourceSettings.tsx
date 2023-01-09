@@ -44,7 +44,7 @@ const ParameterSourceSettings = ({
     <>
       <Radio value="list" options={radioOptions} vertical />
       {isModalOpened && (
-        <Modal onClose={handleModalClose}>
+        <Modal medium onClose={handleModalClose}>
           <ValuesSourceModal
             parameter={parameter}
             onSubmit={handleSubmit}

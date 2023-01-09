@@ -9,12 +9,12 @@ export const ModalBody = styled.div`
 `;
 
 export const ModalPane = styled.div`
-  flex: 0 1 auto;
+  flex: 1;
 `;
 
 export const ModalMain = styled.div`
   display: flex;
-  flex: 1 1 auto;
+  flex: 2;
   flex-direction: row;
 `;
 
