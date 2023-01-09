@@ -9,7 +9,7 @@ const questionDetails = {
   },
   display: "bar",
   visualization_settings: {
-    "graph.dimensions": ["EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"],
+    "graph.dimensions": ["YEAR(CURRENT_TIMESTAMP())"],
     "graph.metrics": ["V1", "V2"],
     "graph.series_order_dimension": null,
     "graph.series_order": null,
