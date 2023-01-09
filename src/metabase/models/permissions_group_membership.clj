@@ -26,7 +26,7 @@
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
                {:status-code 400})))))
 
-(defn admin-count
+(defn- admin-count
   "The current number of non-archived admins (superusers)."
   []
   (:count
@@ -37,7 +37,9 @@
                :where  [:and [:= :pgm.group_id (u/the-id (perms-group/admin))]
                              [:= :user.is_active true]]}))))
 
-(defn- check-not-last-admin
+(defn throw-if-last-admin!
+  "Throw an Exception if there is only one admin (superuser) left. The assumption is that the one admin is about to be
+  archived or have their admin status removed."
   []
   (when (<= (admin-count) 1)
     (throw (ex-info (str fail-to-remove-last-admin-msg)
@@ -48,7 +50,7 @@
   ;; Otherwise if this is the Admin group...
   (when (= group_id (:id (perms-group/admin)))
     ;; ...and this is the last membership throw an exception
-    (check-not-last-admin)
+    (throw-if-last-admin!)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
     (db/update! 'User user_id
       :is_superuser false)))
