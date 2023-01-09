@@ -68,8 +68,7 @@
    #'mw.ssl/redirect-to-https-middleware])
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
 
-(defn apply-middleware
-  "Apply middleware to the given handler."
+(defn- apply-middleware
   [handler]
   (reduce
    (fn [handler middleware-fn]

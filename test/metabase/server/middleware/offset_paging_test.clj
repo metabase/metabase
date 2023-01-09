@@ -1,15 +1,13 @@
 (ns metabase.server.middleware.offset-paging-test
   (:require
    [cheshire.core :as json]
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase.server.handler :refer [apply-middleware]]
+   [metabase.server.handler :as handler]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.security :as mw.security]
    [ring.mock.request :as ring.mock]
-   [ring.util.response :as response])
-  (:import
-   (java.io BufferedReader InputStreamReader PipedInputStream)
-   (java.nio.charset StandardCharsets)))
+   [ring.util.response :as response]))
 
 (defn- handler [request]
   (let [handler  (fn [request respond _]
@@ -17,7 +15,7 @@
                                                 :offset mw.offset-paging/*offset*
                                                 :paged? mw.offset-paging/*paged?*
                                                 :params (:params request)})))
-        handler* (apply-middleware handler)
+        handler* (#'handler/apply-middleware handler)
         respond  identity
         raise    (fn [e] (throw e))]
     (handler* request respond raise)))
@@ -28,9 +26,8 @@
   (update response :body
           (fn [body]
             (if (instance? PipedInputStream body)
-              (with-open [input-reader (InputStreamReader. body StandardCharsets/UTF_8)
-                          buffer-reader (BufferedReader. input-reader)]
-                (json/parse-stream buffer-reader))
+              (with-open [r (io/reader body)]
+                (json/parse-stream r))
               body))))
 
 (deftest paging-test
