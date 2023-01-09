@@ -68,11 +68,12 @@ const ValuesSourceCardModal = ({
 }: ModalProps): JSX.Element => {
   const initialValue = getInitialValue(question, collection);
   const [value, setValue] = useDataPickerValue(initialValue);
+  const cardId = getCardIdFromValue(value);
 
   const handleSubmit = useCallback(() => {
-    onChangeSourceConfig({ card_id: getCardIdFromValue(value) });
+    onChangeSourceConfig({ card_id: cardId });
     onSubmit();
-  }, [value, onChangeSourceConfig, onSubmit]);
+  }, [cardId, onChangeSourceConfig, onSubmit]);
 
   return (
     <DataPicker.Provider>
@@ -80,7 +81,12 @@ const ValuesSourceCardModal = ({
         title={t`Selectable values for ${name}`}
         footer={[
           <Button key="cancel" onClick={onSubmit}>{t`Back`}</Button>,
-          <Button key="submit" primary onClick={handleSubmit}>
+          <Button
+            key="submit"
+            primary
+            disabled={!cardId}
+            onClick={handleSubmit}
+          >
             {t`Done`}
           </Button>,
         ]}
