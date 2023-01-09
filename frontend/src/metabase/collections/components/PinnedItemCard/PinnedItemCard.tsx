@@ -65,7 +65,7 @@ function PinnedItemCard({
   };
 
   return (
-    <ItemLink className={className} to={item.getUrl({ isModelDetail: true })}>
+    <ItemLink className={className} to={item.getUrl()}>
       <ItemCard flat>
         <Body>
           <Header>

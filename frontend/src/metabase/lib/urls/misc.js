@@ -25,7 +25,7 @@ export function modelToUrl(item) {
     case "card":
       return question(modelData);
     case "dataset":
-      return dataset(modelData, { isModelDetail: true });
+      return dataset(modelData);
     case "dashboard":
       return dashboard(modelData);
     case "page":

@@ -22,17 +22,11 @@ type QuestionUrlBuilderParams = {
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
-  isModelDetail?: boolean;
 };
 
 export function question(
   card: Card | null,
-  {
-    hash = "",
-    query = "",
-    objectId,
-    isModelDetail = false,
-  }: QuestionUrlBuilderParams = {},
+  { hash = "", query = "", objectId }: QuestionUrlBuilderParams = {},
 ) {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
