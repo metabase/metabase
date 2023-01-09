@@ -17,7 +17,7 @@ import {
   useLicense,
 } from "metabase/admin/settings/hooks/use-license";
 import {
-  ExplorePaidPlansContainer,
+  ExporePaidPlansContainer,
   LoaderContainer,
   SectionDescription,
   SectionHeader,
@@ -40,7 +40,7 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
       <>
         {jt`Your license isn’t valid anymore. If you have a new license, please
         enter it below, otherwise please contact ${(
-          <ExternalLink key="email" href="mailto:support@metabase.com">
+          <ExternalLink href="mailto:support@metabase.com">
             support@metabase.com
           </ExternalLink>
         )}`}
@@ -130,7 +130,7 @@ const LicenseAndBillingSettings = ({
         {!isStoreManagedBilling && (
           <SectionDescription>
             {jt`To manage your billing preferences, please email ${(
-              <ExternalLink key="email" href="mailto:billing@metabase.com">
+              <ExternalLink href="mailto:billing@metabase.com">
                 billing@metabase.com
               </ExternalLink>
             )}`}
@@ -161,14 +161,14 @@ const LicenseAndBillingSettings = ({
           <SectionHeader>{t`Looking for more?`}</SectionHeader>
           <SectionDescription>
             {jt`You can get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers with ${(
-              <ExternalLink key="plans" href={MetabaseSettings.upgradeUrl()}>
+              <ExternalLink href={MetabaseSettings.upgradeUrl()}>
                 {t`our other paid plans.`}
               </ExternalLink>
             )}`}
           </SectionDescription>
-          <ExplorePaidPlansContainer justifyContent="flex-end">
+          <ExporePaidPlansContainer justifyContent="flex-end">
             <ExplorePlansIllustration />
-          </ExplorePaidPlansContainer>
+          </ExporePaidPlansContainer>
         </>
       )}
     </SettingsLicenseContainer>

@@ -73,17 +73,16 @@ describe("CreateDashboardModal", () => {
 
   it("can't submit if name is empty", async () => {
     setup();
-    expect(
-      await screen.findByRole("button", { name: "Create" }),
-    ).toBeDisabled();
+    const submitButton = await waitFor(() =>
+      screen.getByRole("button", { name: "Create" }),
+    );
+    expect(submitButton).toBeDisabled();
   });
 
-  it("calls onClose when Cancel button is clicked", async () => {
+  it("calls onClose when Cancel button is clicked", () => {
     const { onClose } = setup();
     userEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
-    await waitFor(() => {
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   describe("Cache TTL field", () => {

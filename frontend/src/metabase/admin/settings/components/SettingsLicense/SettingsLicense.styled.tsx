@@ -24,11 +24,11 @@ export const SubHeader = styled.h4`
   margin-top: 32px;
 `;
 
-interface ExplorePaidPlansContainerProps {
+interface ExporePaidPlansContainerProps {
   justifyContent?: string;
 }
 
-export const ExplorePaidPlansContainer = styled.div<ExplorePaidPlansContainerProps>`
+export const ExporePaidPlansContainer = styled.div<ExporePaidPlansContainerProps>`
   margin: 16px 0;
   display: flex;
   align-items: flex-start;

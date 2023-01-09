@@ -4,7 +4,7 @@ import { t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import {
-  ExplorePaidPlansContainer,
+  ExporePaidPlansContainer,
   SectionDescription,
   SectionHeader,
   SettingsLicenseContainer,
@@ -23,14 +23,14 @@ const SettingsLicense = () => {
 
       <SubHeader>{t`Want to know more?`}</SubHeader>
 
-      <ExplorePaidPlansContainer>
+      <ExporePaidPlansContainer>
         <ExternalLink
           className="Button Button--primary"
           href={MetabaseSettings.upgradeUrl()}
         >{t`Explore our paid plans`}</ExternalLink>
 
         <ExplorePlansIllustration />
-      </ExplorePaidPlansContainer>
+      </ExporePaidPlansContainer>
     </SettingsLicenseContainer>
   );
 };

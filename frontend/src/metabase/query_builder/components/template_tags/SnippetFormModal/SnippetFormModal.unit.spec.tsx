@@ -3,6 +3,7 @@ import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
@@ -130,9 +131,7 @@ describe("SnippetFormModal", () => {
     it("can't submit if content is empty", async () => {
       await setup();
       userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-      });
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
     it("can't submit if name is empty", async () => {
@@ -141,23 +140,21 @@ describe("SnippetFormModal", () => {
         screen.getByLabelText(LABEL.CONTENT),
         "WHERE discount > 0",
       );
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-      });
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
     it("can submit with name and content", async () => {
       await setup();
 
-      userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
-      userEvent.type(
-        screen.getByLabelText(LABEL.CONTENT),
-        "WHERE discount > 0",
-      );
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
+      await act(async () => {
+        await userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
+        await userEvent.type(
+          screen.getByLabelText(LABEL.CONTENT),
+          "WHERE discount > 0",
+        );
       });
+
+      expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
     });
 
     it("doesn't show cancel button if onClose props is not set", async () => {
@@ -170,9 +167,7 @@ describe("SnippetFormModal", () => {
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setup();
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      await waitFor(() => {
-        expect(onClose).toHaveBeenCalledTimes(1);
-      });
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
 
     it("doesn't show the archive button", async () => {
@@ -233,18 +228,18 @@ describe("SnippetFormModal", () => {
 
     it("can't submit if content is empty", async () => {
       await setupEditing();
-      userEvent.clear(screen.getByLabelText(LABEL.NAME));
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      await act(async () => {
+        await userEvent.clear(screen.getByLabelText(LABEL.NAME));
       });
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
     it("can't submit if name is empty", async () => {
       await setupEditing();
-      userEvent.clear(screen.getByLabelText(LABEL.CONTENT));
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      await act(async () => {
+        await userEvent.clear(screen.getByLabelText(LABEL.CONTENT));
       });
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
     it("can submit with name and content", async () => {
@@ -256,9 +251,7 @@ describe("SnippetFormModal", () => {
         "WHERE discount > 0",
       );
 
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
-      });
+      expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
     });
 
     it("doesn't show cancel button if onClose props is not set", async () => {
@@ -271,9 +264,7 @@ describe("SnippetFormModal", () => {
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setupEditing();
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      await waitFor(() => {
-        expect(onClose).toHaveBeenCalledTimes(1);
-      });
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
 
     it("closes the modal after archiving", async () => {

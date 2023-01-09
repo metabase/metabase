@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
 import {
+  act,
   renderWithProviders,
   screen,
-  waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
 
@@ -122,13 +122,11 @@ describe("SnippetCollectionFormModal", () => {
     it("can submit when name is filled in", async () => {
       await setup();
 
-      userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: "Create" }),
-        ).not.toBeDisabled();
+      await act(async () => {
+        await userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
       });
+
+      expect(screen.getByRole("button", { name: "Create" })).not.toBeDisabled();
     });
 
     it("doesn't show cancel button if onClose props is not set", async () => {
@@ -141,9 +139,7 @@ describe("SnippetCollectionFormModal", () => {
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setup();
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      await waitFor(() => {
-        expect(onClose).toHaveBeenCalledTimes(1);
-      });
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -184,20 +180,16 @@ describe("SnippetCollectionFormModal", () => {
 
     it("can't submit if name is empty", async () => {
       await setupEditing();
-      userEvent.clear(screen.getByLabelText(LABEL.NAME));
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
+      await act(async () => {
+        await userEvent.clear(screen.getByLabelText(LABEL.NAME));
       });
+      expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
     });
 
     it("can submit when have changes", async () => {
       await setupEditing();
       userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
-      await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: "Update" }),
-        ).not.toBeDisabled();
-      });
+      expect(screen.getByRole("button", { name: "Update" })).not.toBeDisabled();
     });
 
     it("doesn't show cancel button if onClose props is not set", async () => {
@@ -210,9 +202,7 @@ describe("SnippetCollectionFormModal", () => {
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setupEditing();
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      await waitFor(() => {
-        expect(onClose).toHaveBeenCalledTimes(1);
-      });
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
   });
 });

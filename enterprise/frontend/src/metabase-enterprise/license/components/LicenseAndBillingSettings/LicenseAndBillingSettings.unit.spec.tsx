@@ -1,8 +1,8 @@
+import { act, fireEvent, screen } from "@testing-library/react";
 import React from "react";
 import nock from "nock";
-import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
 import { createMockAdminState } from "metabase-types/store/mocks";
 
 import LicenseAndBillingSettings from "./LicenseAndBillingSettings";
@@ -146,8 +146,14 @@ describe("LicenseAndBilling", () => {
       ),
     ).toBeInTheDocument();
 
-    userEvent.type(screen.getByTestId("license-input"), "invalid");
-    userEvent.click(screen.getByTestId("activate-button"));
+    const licenseInput = screen.getByTestId("license-input");
+    const activateButton = screen.getByTestId("activate-button");
+
+    const token = "invalid";
+    await act(async () => {
+      await fireEvent.change(licenseInput, { target: { value: token } });
+      await fireEvent.click(activateButton);
+    });
 
     expect(
       await screen.findByText(
@@ -167,7 +173,13 @@ describe("LicenseAndBilling", () => {
       ),
     ).toBeInTheDocument();
 
-    userEvent.type(screen.getByTestId("license-input"), "valid");
-    userEvent.click(screen.getByTestId("activate-button"));
+    const licenseInput = screen.getByTestId("license-input");
+    const activateButton = screen.getByTestId("activate-button");
+
+    const token = "valid";
+    await act(async () => {
+      await fireEvent.change(licenseInput, { target: { value: token } });
+      await fireEvent.click(activateButton);
+    });
   });
 });

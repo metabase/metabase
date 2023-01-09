@@ -2,7 +2,7 @@ import React from "react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 
 import { Collection, User } from "metabase-types/api";
@@ -85,12 +85,10 @@ describe("CreateCollectionForm", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("calls onCancel when cancel button is clicked", async () => {
+  it("calls onCancel when cancel button is clicked", () => {
     const { onCancel } = setup();
     userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    await waitFor(() => {
-      expect(onCancel).toHaveBeenCalledTimes(1);
-    });
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   describe("Collection authority level", () => {
