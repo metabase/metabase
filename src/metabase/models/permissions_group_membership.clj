@@ -49,7 +49,7 @@
   (check-not-all-users-group group_id)
   ;; Otherwise if this is the Admin group...
   (when (= group_id (:id (perms-group/admin)))
-    ;; ...and this is the last membership throw an exception
+    ;; ...and this is the last membership, throw an exception
     (throw-if-last-admin!)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
     (db/update! 'User user_id

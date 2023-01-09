@@ -310,9 +310,9 @@
    login_attributes       (s/maybe user/LoginAttributes)
    locale                 (s/maybe su/ValidLocalePlumatic)}
   (try
-   (check-self-or-superuser id)
-   (catch clojure.lang.ExceptionInfo _e
-     (validation/check-group-manager)))
+    (check-self-or-superuser id)
+    (catch clojure.lang.ExceptionInfo _e
+      (validation/check-group-manager)))
 
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
@@ -327,20 +327,20 @@
         "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
-                "email" (tru "Email address already associated to another user."))
+      "email" (tru "Email address already associated to another user."))
     (db/transaction
-     ;; only superuser or self can update user info
-     ;; implicitly prevent group manager from updating users' info
-     (when (or (= id api/*current-user-id*)
-               api/*is-superuser?*)
-       (api/check-500
-        (db/update! User id (u/select-keys-when body
-                              :present (cond-> #{:first_name :last_name :locale}
-                                         api/*is-superuser?* (conj :login_attributes))
-                              :non-nil (cond-> #{:email}
-                                         api/*is-superuser?* (conj :is_superuser)))))
-       (maybe-update-user-personal-collection-name! user-before-update body))
-     (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
+      ;; only superuser or self can update user info
+      ;; implicitly prevent group manager from updating users' info
+      (when (or (= id api/*current-user-id*)
+                api/*is-superuser?*)
+        (api/check-500
+         (db/update! User id (u/select-keys-when body
+                               :present (cond-> #{:first_name :last_name :locale}
+                                          api/*is-superuser?* (conj :login_attributes))
+                               :non-nil (cond-> #{:email}
+                                          api/*is-superuser?* (conj :is_superuser)))))
+        (maybe-update-user-personal-collection-name! user-before-update body))
+      (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
       (hydrate :user_group_memberships)))
 

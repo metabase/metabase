@@ -985,14 +985,14 @@
     (testing "Check that the last superuser cannot deactivate themselves"
       (mt/with-single-admin-user [{id :id}]
         (is (= "You cannot remove the last member of the 'Admin' group!"
-               (mt/user-http-request :crowberto :delete 400 (format "user/%d" id))))))
+               (mt/user-http-request id :delete 400 (format "user/%d" id))))))
 
     (testing "Check that the last non-archived superuser cannot deactivate themselves"
       (mt/with-single-admin-user [{id :id}]
         (mt/with-temp User [_ {:is_active    false
                                :is_superuser true}]
           (is (= "You cannot remove the last member of the 'Admin' group!"
-                 (mt/user-http-request :crowberto :delete 400 (format "user/%d" id)))))))
+                 (mt/user-http-request id :delete 400 (format "user/%d" id)))))))
 
     (testing "Check that a non-superuser CANNOT deactivate themselves"
       (is (= "You don't have permissions to do that."
