@@ -12,10 +12,12 @@ import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
-import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
+import Questions from "metabase/entities/questions";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Card, ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
+import Question from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
-import Table from "metabase-lib/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   getDefaultSourceConfig,
@@ -29,6 +31,7 @@ import {
   ModalPane,
   ModalSection,
   ModalTextArea,
+  ModalErrorMessage,
 } from "./ValuesSourceTypeModal.styled";
 
 const NEW_LINE = "\n";
@@ -51,11 +54,12 @@ interface ModalOwnProps {
   onClose: () => void;
 }
 
-interface ModalTableProps {
-  table?: Table;
+interface ModalCardProps {
+  card: Card | undefined;
 }
 
 interface ModalStateProps {
+  question: Question | undefined;
   fieldsValues: string[][][];
 }
 
@@ -64,7 +68,7 @@ interface ModalDispatchProps {
 }
 
 type ModalProps = ModalOwnProps &
-  ModalTableProps &
+  ModalCardProps &
   ModalStateProps &
   ModalDispatchProps;
 
@@ -72,7 +76,7 @@ const ValuesSourceTypeModal = ({
   name,
   fields,
   fieldsValues,
-  table,
+  question,
   sourceType,
   sourceConfig,
   onFetchFields,
@@ -119,7 +123,7 @@ const ValuesSourceTypeModal = ({
         />
       ) : sourceType === "card" ? (
         <CardSourceModal
-          table={table}
+          question={question}
           sourceType={sourceType}
           sourceConfig={sourceConfig}
           onChangeCard={onChangeCard}
@@ -175,7 +179,7 @@ const FieldSourceModal = ({
 };
 
 interface CardSourceModalProps {
-  table: Table | undefined;
+  question: Question | undefined;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   onChangeCard: () => void;
@@ -184,7 +188,7 @@ interface CardSourceModalProps {
 }
 
 const CardSourceModal = ({
-  table,
+  question,
   sourceType,
   sourceConfig,
   onChangeCard,
@@ -192,8 +196,8 @@ const CardSourceModal = ({
   onChangeSourceConfig,
 }: CardSourceModalProps) => {
   const fields = useMemo(() => {
-    return table ? getSupportedFields(table) : [];
-  }, [table]);
+    return question ? getSupportedFields(question) : [];
+  }, [question]);
 
   const selectedField = useMemo(() => {
     return getFieldByReference(fields, sourceConfig.value_field);
@@ -224,21 +228,34 @@ const CardSourceModal = ({
         <ModalSection>
           <ModalLabel>{t`Model or question to supply the values`}</ModalLabel>
           <SelectButton onClick={onChangeCard}>
-            {table ? table.displayName() : t`Pick a model or question…`}
+            {question ? question.displayName() : t`Pick a model or question…`}
           </SelectButton>
         </ModalSection>
-        {table && (
+        {question && (
           <ModalSection>
             <ModalLabel>{t`Column to supply the values`}</ModalLabel>
-            <Select
-              value={selectedField}
-              placeholder={t`Pick a column…`}
-              onChange={handleFieldChange}
-            >
-              {fields.map((field, index) => (
-                <Option key={index} name={field.displayName()} value={field} />
-              ))}
-            </Select>
+            {fields.length ? (
+              <Select
+                value={selectedField}
+                placeholder={t`Pick a column…`}
+                onChange={handleFieldChange}
+              >
+                {fields.map((field, index) => (
+                  <Option
+                    key={index}
+                    name={field.displayName()}
+                    value={field}
+                  />
+                ))}
+              </Select>
+            ) : (
+              <ModalErrorMessage>
+                {question.isDataset()
+                  ? t`This model doesn’t have any text columns.`
+                  : t`This question doesn’t have any text columns.`}{" "}
+                {t`Please pick a different model or question.`}
+              </ModalErrorMessage>
+            )}
           </ModalSection>
         )}
       </ModalPane>
@@ -315,15 +332,17 @@ const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
   return fields.find(field => _.isEqual(field.reference(), fieldReference));
 };
 
-const getSupportedFields = (table: Table) => {
-  return table.fields.filter(field => field.isString());
+const getSupportedFields = (question: Question) => {
+  const fields = question.composeThisQuery()?.table()?.fields ?? [];
+  return fields.filter(field => field.isString());
 };
 
 const mapStateToProps = (
   state: State,
-  { fields }: ModalOwnProps,
+  { card, fields }: ModalOwnProps & ModalCardProps,
 ): ModalStateProps => {
   return {
+    question: card ? new Question(card, getMetadata(state)) : undefined,
     fieldsValues: fields.map(field =>
       Fields.selectors.getFieldValues(state, { entityId: field.id }),
     ),
@@ -345,6 +364,10 @@ export default _.compose(
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
       card_id ? getQuestionVirtualTableId(card_id) : undefined,
     requestType: "fetchMetadata",
+  }),
+  Questions.load({
+    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
+    entityAlias: "card",
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(ValuesSourceTypeModal);

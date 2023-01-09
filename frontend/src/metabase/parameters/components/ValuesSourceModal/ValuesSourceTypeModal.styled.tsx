@@ -39,3 +39,10 @@ export const ModalHelpMessage = styled.div`
   margin-top: 0.25rem;
   margin-left: 1.25rem;
 `;
+
+export const ModalErrorMessage = styled.div`
+  color: ${color("text-medium")};
+  padding: 1rem;
+  border: 1px solid ${color("error")};
+  border-radius: 0.5rem;
+`;
