@@ -106,7 +106,7 @@ class EmbedFrame extends Component {
                   className="h4 flex text-bold align-center no-decoration"
                 >
                   <span className="text-small">
-                    <span className="ml1 md-ml2 text-medium">
+                    <span className="ml1 text-medium">
                       / Accelerated By{" "}
                       <span className={theme ? "text-white" : "text-dadosfera"}>
                         Dadosfera
