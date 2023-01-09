@@ -4,7 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
-import Select from "metabase/core/components/Select";
+import Select, {
+  Option,
+  SelectChangeEvent,
+} from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
 import Fields from "metabase/entities/fields";
@@ -83,12 +86,34 @@ const ValuesSourceTypeModal = ({
     return getFieldValues(fieldValues);
   }, [fieldValues]);
 
+  const tableFields = useMemo(() => {
+    return table && getSupportedFields(table);
+  }, [table]);
+
+  const selectedField = useMemo(() => {
+    return (
+      tableFields &&
+      sourceConfig.value_field &&
+      getFieldByReference(tableFields, sourceConfig.value_field)
+    );
+  }, [tableFields, sourceConfig]);
+
   const handleTypeChange = useCallback(
     (sourceType: ValuesSourceType) => {
       onChangeSourceType(sourceType);
       onChangeSourceConfig(getDefaultSourceConfig(sourceType, uniqueValues));
     },
     [uniqueValues, onChangeSourceType, onChangeSourceConfig],
+  );
+
+  const handleFieldChange = useCallback(
+    (event: SelectChangeEvent<Field>) => {
+      onChangeSourceConfig({
+        ...sourceConfig,
+        value_field: event.target.value.reference(),
+      });
+    },
+    [sourceConfig, onChangeSourceConfig],
   );
 
   const handleValuesChange = useCallback(
@@ -140,7 +165,19 @@ const ValuesSourceTypeModal = ({
           {table && (
             <ModalSection>
               <ModalLabel>{t`Column to supply the values`}</ModalLabel>
-              <Select placeholder={t`Pick a column…`} />
+              <Select
+                value={selectedField}
+                placeholder={t`Pick a column…`}
+                onChange={handleFieldChange}
+              >
+                {tableFields?.map((field, index) => (
+                  <Option
+                    key={index}
+                    name={field.displayName()}
+                    value={field}
+                  />
+                ))}
+              </Select>
             </ModalSection>
           )}
         </ModalPane>
@@ -152,6 +189,7 @@ const ValuesSourceTypeModal = ({
               fullWidth
             />
           )}
+          {sourceType === "card" && <ModalTextArea readOnly fullWidth />}
           {sourceType === "static-list" && (
             <ModalTextArea
               defaultValue={getValuesText(sourceConfig.values)}
@@ -172,6 +210,14 @@ const getValuesText = (values?: string[]) => {
 const getFieldValues = (fieldsValues: string[][][]) => {
   const allValues = fieldsValues.flatMap(values => values.map(([key]) => key));
   return Array.from(new Set(allValues));
+};
+
+const getFieldByReference = (fields: Field[], fieldReference: unknown[]) => {
+  return fields.find(field => _.isEqual(field.reference(), fieldReference));
+};
+
+const getSupportedFields = (table: Table) => {
+  return table.fields.filter(field => field.isString());
 };
 
 const getStaticValues = (value: string) => {
