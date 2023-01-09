@@ -1,14 +1,13 @@
-import React, { ChangeEvent, useCallback, useMemo } from "react";
+import React, { ChangeEvent, useCallback, useEffect } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
-import _ from "underscore";
 import Button from "metabase/core/components/Button/Button";
 import Radio from "metabase/core/components/Radio/Radio";
-import Select, { Option } from "metabase/core/components/Select";
-import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
+import Fields from "metabase/entities/fields";
 import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
+import { Dispatch, State } from "metabase-types/store";
 import Field from "metabase-lib/metadata/Field";
-import Table from "metabase-lib/metadata/Table";
 import {
   getDefaultSourceConfig,
   isValidSourceConfig,
@@ -31,43 +30,42 @@ const SOURCE_TYPE_OPTIONS = [
   { name: t`Custom list`, value: "static-list" },
 ];
 
-interface ValuesSourceTypeModalProps {
+interface ModalOwnProps {
+  fields: Field[];
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
-  table?: Table;
-  fieldValues: string[][];
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
-  onChangeCard: () => void;
   onSubmit: () => void;
   onClose: () => void;
 }
 
+interface ModalStateProps {
+  isLoaded: boolean;
+}
+
+interface ModalDispatchProps {
+  onFetchFields: (fields: Field[]) => void;
+}
+
+type ModalProps = ModalOwnProps & ModalStateProps & ModalDispatchProps;
+
 const ValuesSourceTypeModal = ({
+  fields,
   sourceType,
   sourceConfig,
-  table,
-  fieldValues,
+  onFetchFields,
   onChangeSourceType,
   onChangeSourceConfig,
-  onChangeCard,
   onSubmit,
   onClose,
-}: ValuesSourceTypeModalProps): JSX.Element => {
-  const fields = useMemo(() => {
-    return table && getSupportedFields(table);
-  }, [table]);
-
-  const selectedField = useMemo(() => {
-    return fields && getFieldByReference(fields, sourceConfig?.valueField);
-  }, [fields, sourceConfig]);
-
+}: ModalProps): JSX.Element => {
   const handleTypeChange = useCallback(
     (sourceType: ValuesSourceType) => {
       onChangeSourceType(sourceType);
-      onChangeSourceConfig(getDefaultSourceConfig(sourceType, fieldValues));
+      onChangeSourceConfig(getDefaultSourceConfig(sourceType, []));
     },
-    [fieldValues, onChangeSourceType, onChangeSourceConfig],
+    [onChangeSourceType, onChangeSourceConfig],
   );
 
   const handleValuesChange = useCallback(
@@ -76,6 +74,10 @@ const ValuesSourceTypeModal = ({
     },
     [onChangeSourceConfig],
   );
+
+  useEffect(() => {
+    onFetchFields(fields);
+  }, [fields, onFetchFields]);
 
   return (
     <ModalContent
@@ -104,37 +106,9 @@ const ValuesSourceTypeModal = ({
               <ModalHelpText>{t`Enter one value per line.`}</ModalHelpText>
             )}
           </ModalSection>
-          {sourceType === "card" && (
-            <ModalSection>
-              <ModalLabel>{t`Model or question to supply the values`}</ModalLabel>
-              <SelectButton onClick={onChangeCard}>
-                {table ? table.displayName() : t`Pick a model or question…`}
-              </SelectButton>
-            </ModalSection>
-          )}
-          {table && (
-            <ModalSection>
-              <ModalLabel>{t`Column to supply the values`}</ModalLabel>
-              <Select value={selectedField} placeholder={t`Pick a column…`}>
-                {fields?.map((field, index) => (
-                  <Option
-                    key={index}
-                    name={field.displayName()}
-                    value={field}
-                  />
-                ))}
-              </Select>
-            </ModalSection>
-          )}
         </ModalPane>
         <ModalMain>
-          {sourceType === null && (
-            <ModalTextArea
-              defaultValue={getFieldsText(fieldValues)}
-              readOnly
-              fullWidth
-            />
-          )}
+          {sourceType === null && <ModalTextArea readOnly fullWidth />}
           {sourceType === "static-list" && (
             <ModalTextArea
               defaultValue={getValuesText(sourceConfig.values)}
@@ -159,16 +133,28 @@ const getValuesText = (values?: string[]) => {
   return values?.join(NEW_LINE) ?? "";
 };
 
-const getFieldsText = (values?: string[][]) => {
-  return getValuesText(values?.map(([key]) => key));
+const mapStateToProps = (
+  state: State,
+  { fields }: ModalOwnProps,
+): ModalStateProps => {
+  return {
+    isLoaded: fields.every(field =>
+      Fields.selectors.getLoaded(state, { entityId: field.id }),
+    ),
+  };
 };
 
-const getSupportedFields = (table: Table) => {
-  return table.fields.filter(field => field.isString());
+const mapDispatchToProps = (dispatch: Dispatch): ModalDispatchProps => {
+  return {
+    onFetchFields: (fields: Field[]) => {
+      fields.forEach(field =>
+        dispatch(Fields.actions.fetchFieldValues({ id: field.id })),
+      );
+    },
+  };
 };
 
-const getFieldByReference = (fields: Field[], reference?: unknown[]) => {
-  return fields.find(field => _.isEqual(field.reference(), reference));
-};
-
-export default ValuesSourceTypeModal;
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(ValuesSourceTypeModal);
