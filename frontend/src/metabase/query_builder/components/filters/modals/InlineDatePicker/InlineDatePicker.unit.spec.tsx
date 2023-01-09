@@ -288,9 +288,7 @@ describe("InlineDatePicker", () => {
     userEvent.clear(input);
     userEvent.type(input, "88");
     // FIXME: for some reason this button never gets enabled
-    await waitFor(() =>
-      expect(screen.getByText("Add filter")).toBeEnabled(),
-    );
+    await waitFor(() => expect(screen.getByText("Add filter")).toBeEnabled());
     userEvent.click(screen.getByText("Add filter"));
     await waitFor(() => expect(changeSpy).toHaveBeenCalled());
 
