@@ -12,8 +12,12 @@ describe("EntityMenuItem", () => {
         action={() => ({})}
       />,
     );
-    screen.getByRole("img", { name: /pencil icon/i });
-    screen.getByText("A pencil icon");
+
+    expect(
+      screen.getByRole("img", { name: /pencil icon/i }),
+    ).toBeInTheDocument();
+
+    expect(screen.getByText("A pencil icon")).toBeInTheDocument();
   });
 
   describe("actions and links", () => {

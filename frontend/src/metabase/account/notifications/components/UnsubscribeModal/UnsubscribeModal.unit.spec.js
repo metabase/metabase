@@ -22,7 +22,9 @@ describe("UnsubscribeModal", () => {
 
     render(<UnsubscribeModal item={alert} type="alert" />);
 
-    screen.getByText("this alert", { exact: false });
+    expect(
+      screen.getByText("this alert", { exact: false }),
+    ).toBeInTheDocument();
   });
 
   it("should render a pulse", () => {
@@ -30,7 +32,9 @@ describe("UnsubscribeModal", () => {
 
     render(<UnsubscribeModal item={pulse} type="pulse" />);
 
-    screen.getByText("this subscription", { exact: false });
+    expect(
+      screen.getByText("this subscription", { exact: false }),
+    ).toBeInTheDocument();
   });
 
   it("should close if unsubscribed successfully", () => {

@@ -83,11 +83,6 @@ describe("DatabaseEngineWarning", () => {
     expect(screen.queryByText(/driver/)).not.toBeInTheDocument();
   });
 
-  it("should render a warning when the driver is new", () => {
-    render(<DatabaseEngineWarning engineKey="presto-jdbc" engines={engines} />);
-    expect(screen.getByText(/This is our new Presto/)).toBeInTheDocument();
-  });
-
   it("should render nothing when there is no new driver, and the driver is official", () => {
     render(<DatabaseEngineWarning engineKey="postgres" engines={engines} />);
     expect(screen.queryByText(/driver/)).not.toBeInTheDocument();

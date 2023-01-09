@@ -105,7 +105,7 @@ describe("RowChart", () => {
       expect(queryByText("foo")).toBeNull();
     });
 
-    it("should render nice values for X-ticks ", () => {
+    it("should render nice values for X-ticks", () => {
       const { getAllByText } = setup({ series: [series1] });
       const ticks = ["0", "100", "200"];
 

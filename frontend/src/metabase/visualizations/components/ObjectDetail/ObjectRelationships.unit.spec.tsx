@@ -31,10 +31,10 @@ describe("Object Relationships", () => {
       />,
     );
 
-    screen.getByText(/Large Sandstone Socks/i);
-    screen.getByText("771");
-    screen.getByText(/Orders/i);
-    screen.getByText("881");
-    screen.getByText(/Reviews/i);
+    expect(screen.getByText(/Large Sandstone Socks/i)).toBeInTheDocument();
+    expect(screen.getByText("771")).toBeInTheDocument();
+    expect(screen.getByText(/Orders/i)).toBeInTheDocument();
+    expect(screen.getByText("881")).toBeInTheDocument();
+    expect(screen.getByText(/Reviews/i)).toBeInTheDocument();
   });
 });

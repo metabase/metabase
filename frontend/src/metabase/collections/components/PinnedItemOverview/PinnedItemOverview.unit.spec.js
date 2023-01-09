@@ -60,13 +60,6 @@ function setup({ items, collection } = {}) {
 }
 
 describe("PinnedItemOverview", () => {
-  it.skip("should render an empty banner when there are no items", () => {
-    const { container } = setup({ items: [] });
-    expect(container.textContent).toContain(
-      "Save your questions, dashboards, and models in collections — and pin them to feature them at the top.",
-    );
-  });
-
   it("should render items", () => {
     setup();
     expect(screen.getByText(dashboardItem1.name)).toBeInTheDocument();

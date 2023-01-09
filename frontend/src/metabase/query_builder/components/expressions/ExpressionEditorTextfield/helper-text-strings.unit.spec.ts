@@ -38,7 +38,7 @@ describe("getHelpText", () => {
       expect(helpText?.description).not.toMatch(/currently/i);
     });
 
-    it("should use custom reportTimezone in description for supporting database engines ", () => {
+    it("should use custom reportTimezone in description for supporting database engines", () => {
       const helpText = getHelpText(
         "now",
         { ...database, features: ["set-timezone"] },

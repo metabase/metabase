@@ -66,12 +66,12 @@ describe("InlineDatePicker", () => {
       />,
     );
 
-    screen.getByTestId("date-picker");
-    screen.getByText("Today");
-    screen.getByText("Yesterday");
-    screen.getByText("Last Week");
-    screen.getByText("Last Month");
-    screen.getByLabelText("more options");
+    expect(screen.getByTestId("date-picker")).toBeInTheDocument();
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByText("Yesterday")).toBeInTheDocument();
+    expect(screen.getByText("Last Week")).toBeInTheDocument();
+    expect(screen.getByText("Last Month")).toBeInTheDocument();
+    expect(screen.getByLabelText("more options")).toBeInTheDocument();
   });
 
   it("populates an existing shortcut value", () => {
@@ -126,7 +126,9 @@ describe("InlineDatePicker", () => {
       />,
     );
 
-    screen.getByText("between November 5, 1605 November 5, 2005");
+    expect(
+      screen.getByText("between November 5, 1605 November 5, 2005"),
+    ).toBeInTheDocument();
   });
 
   it("populates a complex custom value", () => {
@@ -155,7 +157,9 @@ describe("InlineDatePicker", () => {
       />,
     );
 
-    screen.getByText("Previous 22 Days, starting 66 years ago");
+    expect(
+      screen.getByText("Previous 22 Days, starting 66 years ago"),
+    ).toBeInTheDocument();
   });
 
   it("adds a shortcut value", () => {
@@ -260,6 +264,7 @@ describe("InlineDatePicker", () => {
     expect(clearSpy).toHaveBeenCalledTimes(1);
   });
 
+  // eslint-disable-next-line jest/no-disabled-tests
   it.skip("adds a custom value", async () => {
     const changeSpy = jest.fn();
 
@@ -274,9 +279,9 @@ describe("InlineDatePicker", () => {
       />,
     );
 
-    screen.getByLabelText("more options").click();
+    userEvent.click(screen.getByLabelText("more options"));
     await waitFor(() => screen.getByText("Relative dates..."));
-    screen.getByText("Relative dates...").click();
+    userEvent.click(screen.getByText("Relative dates..."));
     await waitFor(() => screen.getByTestId("relative-datetime-value"));
 
     const input = screen.getByTestId("relative-datetime-value");
@@ -286,7 +291,7 @@ describe("InlineDatePicker", () => {
     await waitFor(() =>
       expect(screen.getByText("Add filter")).not.toBeDisabled(),
     );
-    screen.getByText("Add filter").click();
+    userEvent.click(screen.getByText("Add filter"));
     await waitFor(() => expect(changeSpy).toHaveBeenCalled());
 
     expect(changeSpy).toHaveBeenCalledWith([
@@ -297,6 +302,7 @@ describe("InlineDatePicker", () => {
     ]);
   });
 
+  // eslint-disable-next-line jest/no-disabled-tests
   it.skip("changes a custom value", async () => {
     const testFilter = new Filter(
       ["between", ["field", dateField.id, null], "1605-11-05", "2005-11-05"],
@@ -332,7 +338,7 @@ describe("InlineDatePicker", () => {
 
     screen.getByText("Update filter").click();
 
-    expect(changeSpy).toBeCalledWith([
+    expect(changeSpy).toHaveBeenCalledWith([
       "between",
       ["field", dateField.id, null],
       "1995-09-05",
@@ -363,7 +369,7 @@ describe("InlineDatePicker", () => {
 
     const clearBtn = screen.getByLabelText("close icon");
     userEvent.click(clearBtn);
-    expect(clearSpy).toBeCalledTimes(1);
-    expect(changeSpy).toBeCalledTimes(0);
+    expect(clearSpy).toHaveBeenCalledTimes(1);
+    expect(changeSpy).toHaveBeenCalledTimes(0);
   });
 });

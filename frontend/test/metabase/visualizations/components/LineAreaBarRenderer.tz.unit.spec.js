@@ -117,16 +117,19 @@ describe("LineAreaBarRenderer-bar", () => {
         });
         afterAll(teardownFixture);
 
+        // eslint-disable-next-line jest/expect-expect
         it("should have sequential months in labels", () => {
           // check that the labels are sequential months
           assertSequentialMonths(getXAxisLabelsText());
         });
+
         it("should have sequential months in tooltips", () => {
           // check that the resulting tooltips are sequential
           assertSequentialMonths(getTooltipDimensionValueText());
           // check that the number of tooltips matches the number of rows
           expect(getTooltipDimensionValueText().length).toBe(rows.length);
         });
+
         it("should have tooltips that match source data", () => {
           expect(getTooltipDimensionValueText()).toEqual(
             rows.map(([timestamp]) =>
@@ -134,6 +137,7 @@ describe("LineAreaBarRenderer-bar", () => {
             ),
           );
         });
+
         it("should have labels that match tooltips", () => {
           expect(qsa(".bar").map(getClosestLabelText)).toEqual(
             getTooltipDimensionValueText(),

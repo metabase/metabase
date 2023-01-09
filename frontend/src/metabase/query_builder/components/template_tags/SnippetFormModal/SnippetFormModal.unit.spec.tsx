@@ -280,7 +280,7 @@ describe("SnippetFormModal", () => {
       const { onClose } = await setupEditing();
       userEvent.click(screen.getByText("Archive"));
       await waitFor(() => {
-        expect(onClose).toBeCalledTimes(1);
+        expect(onClose).toHaveBeenCalledTimes(1);
       });
     });
   });

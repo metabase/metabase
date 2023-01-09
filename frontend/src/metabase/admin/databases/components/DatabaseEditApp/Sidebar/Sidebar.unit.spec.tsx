@@ -129,7 +129,7 @@ describe("DatabaseEditApp/Sidebar", () => {
       await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();
-      expect(discardSavedFieldValues).not.toBeCalled();
+      expect(discardSavedFieldValues).not.toHaveBeenCalled();
     });
 
     NOT_SYNCED_DB_STATUSES.forEach(initial_sync_status => {
@@ -193,7 +193,7 @@ describe("DatabaseEditApp/Sidebar", () => {
 
       userEvent.click(screen.getByLabelText(/Model actions/i));
 
-      expect(updateDatabase).toBeCalledWith({
+      expect(updateDatabase).toHaveBeenCalledWith({
         id: database.id,
         settings: { "database-enable-actions": true },
       });
@@ -207,7 +207,7 @@ describe("DatabaseEditApp/Sidebar", () => {
 
       userEvent.click(screen.getByLabelText(/Model actions/i));
 
-      expect(updateDatabase).toBeCalledWith({
+      expect(updateDatabase).toHaveBeenCalledWith({
         id: database.id,
         settings: { "database-enable-actions": false },
       });
@@ -296,7 +296,7 @@ describe("DatabaseEditApp/Sidebar", () => {
       await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();
-      expect(deleteDatabase).not.toBeCalled();
+      expect(deleteDatabase).not.toHaveBeenCalled();
     });
   });
 });

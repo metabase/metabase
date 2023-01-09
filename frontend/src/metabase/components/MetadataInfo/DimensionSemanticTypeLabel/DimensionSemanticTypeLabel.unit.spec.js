@@ -25,7 +25,7 @@ describe("DimensionSemanticTypeLabel", () => {
       expect(screen.queryByLabelText("calendar icon")).toBeInTheDocument();
     });
 
-    it("it should display the name of the semantic type", () => {
+    it("should display the name of the semantic type", () => {
       expect(screen.getByText("Creation date")).toBeInTheDocument();
     });
   });
@@ -45,7 +45,7 @@ describe("DimensionSemanticTypeLabel", () => {
       expect(screen.queryByLabelText("ellipsis icon")).toBeInTheDocument();
     });
 
-    it("it should display the given dimension's display name", () => {
+    it("should display the given dimension's display name", () => {
       expect(screen.getByText("No special type")).toBeInTheDocument();
     });
   });

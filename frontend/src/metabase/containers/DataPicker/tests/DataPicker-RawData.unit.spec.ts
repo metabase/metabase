@@ -94,7 +94,7 @@ describe("DataPicker — picking raw data", () => {
       "aria-selected",
       "true",
     );
-    expect(onChange).toBeCalledWith({
+    expect(onChange).toHaveBeenCalledWith({
       type: "raw-data",
       databaseId: SAMPLE_DATABASE.id,
       schemaId: generateSchemaId(SAMPLE_DATABASE.id, "PUBLIC"),

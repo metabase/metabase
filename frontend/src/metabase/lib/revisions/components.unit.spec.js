@@ -49,7 +49,8 @@ describe("RevisionBatchedDescription", () => {
         changes={["renamed this", ["moved to", <p key="1">Our analytics</p>]]}
       />,
     );
-    expect(screen.queryByText("Renamed this and moved to Our analytics"));
+    expect(screen.getByText("Renamed this and moved to")).toBeInTheDocument();
+    expect(screen.getByText("Our analytics")).toBeInTheDocument();
   });
 
   it("should handle nested messages (metabase#20414)", () => {
