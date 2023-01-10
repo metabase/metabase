@@ -141,12 +141,14 @@
            (pulse-card/bulk-create! new-pulse-cards)))))))
 
 (defn- with-default-parameters-value
-  [dashboard]
-  (update dashboard :parameters (fn [parameters]
-                                  (map #(merge {:values_query_type "list"
-                                                :values_source_type nil
-                                                :values_source_config {}}
-                                               %) parameters))))
+  [{:keys [parameters] :as dashboard}]
+  (cond-> dashboard
+    (seq parameters)
+    (update :parameters (fn [parameters]
+                          (map #(merge {:values_query_type "list"
+                                        :values_source_type nil
+                                        :values_source_config {}}
+                                       %) parameters)))))
 
 (defn- post-update
   [dashboard]
