@@ -1,13 +1,13 @@
 import nock from "nock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen } from "__support__/ui";
 import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
 
-import { setup } from "./common";
+import { setup, setupVirtualizedLists } from "./common";
 
 describe("DataPicker", () => {
   beforeAll(() => {
-    window.HTMLElement.prototype.scrollIntoView = jest.fn();
+    setupVirtualizedLists();
   });
 
   afterEach(() => {
