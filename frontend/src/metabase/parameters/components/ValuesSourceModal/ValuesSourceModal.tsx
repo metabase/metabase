@@ -1,9 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  CardId,
-  ValuesSourceConfig,
-  ValuesSourceType,
-} from "metabase-types/api";
+import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { getSourceConfig, getSourceType } from "../../utils/dashboards";
@@ -38,7 +34,7 @@ const ValuesSourceModal = ({
     setStep("card");
   }, []);
 
-  const handlePickerClose = useCallback((cardId: CardId | undefined) => {
+  const handlePickerClose = useCallback(() => {
     setStep("main");
   }, []);
 
