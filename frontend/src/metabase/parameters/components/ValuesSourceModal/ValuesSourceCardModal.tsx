@@ -22,11 +22,13 @@ import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
-import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
+import {
+  ModalBody,
+  ModalLoadingAndErrorWrapper,
+} from "./ValuesSourceModal.styled";
 import {
   DataPickerContainer,
   SearchInputContainer,
-  ModalBody,
 } from "./ValuesSourceCardModal.styled";
 
 const DATA_PICKER_FILTERS = {
