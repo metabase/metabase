@@ -244,8 +244,8 @@
                      :can_write                  false
                      :param_fields               nil
                      :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
-                     :ordered_cards              [{:size_x                     2
-                                                   :size_y                     2
+                     :ordered_cards              [{:size_x                     4
+                                                   :size_y                     4
                                                    :col                        0
                                                    :row                        0
                                                    :collection_authority_level nil
@@ -293,8 +293,8 @@
                                                                   :has_field_values "search"
                                                                   :name_field       nil
                                                                   :dimensions       []}}
-                           :ordered_cards              [{:size_x                     2
-                                                         :size_y                     2
+                           :ordered_cards              [{:size_x                     4
+                                                         :size_y                     4
                                                          :col                        0
                                                          :row                        0
                                                          :updated_at                 true
@@ -1075,8 +1075,8 @@
                   Card      [{card-id :id}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id]
-        (is (= {:size_x                 2
-                :size_y                 2
+        (is (= {:size_x                 4
+                :size_y                 4
                 :col                    4
                 :row                    4
                 :series                 []
@@ -1096,8 +1096,8 @@
                    (dissoc :id :dashboard_id :action_id :card_id :entity_id)
                    (update :created_at boolean)
                    (update :updated_at boolean))))
-        (is (= [{:size_x                 2
-                 :size_y                 2
+        (is (= [{:size_x                 4
+                 :size_y                 4
                  :col                    4
                  :row                    4
                  :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
@@ -1117,8 +1117,8 @@
                                                     :row    4
                                                     :col    4
                                                     :series [{:id series-id-1}]})]
-          (is (= {:size_x                 2
-                  :size_y                 2
+          (is (= {:size_x                 4
+                  :size_y                 4
                   :col                    4
                   :row                    4
                   :parameter_mappings     []
@@ -1131,8 +1131,8 @@
                   :created_at             true
                   :updated_at             true}
                  (remove-ids-and-booleanize-timestamps dashboard-card)))
-          (is (= [{:size_x 2
-                   :size_y 2
+          (is (= [{:size_x 4
+                   :size_y 4
                    :col    4
                    :row    4}]
                  (map (partial into {})
@@ -1284,8 +1284,8 @@
                     DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
                     Card          [{series-id-1 :id}   {:name "Series Card"}]]
       (with-dashboards-in-writeable-collection [dashboard-id]
-        (is (= {:size_x                 2
-                :size_y                 2
+        (is (= {:size_x                 4
+                :size_y                 4
                 :col                    0
                 :row                    0
                 :series                 []
@@ -1294,8 +1294,8 @@
                 :created_at             true
                 :updated_at             true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-1))))
-        (is (= {:size_x                 2
-                :size_y                 2
+        (is (= {:size_x                 4
+                :size_y                 4
                 :col                    0
                 :row                    0
                 :parameter_mappings     []
@@ -1375,8 +1375,8 @@
                                   :model_id     dashboard-id
                                   :object       {:name         "b"
                                                  :description  nil
-                                                 :cards        [{:size_x   2
-                                                                 :size_y   2
+                                                 :cards        [{:size_x  4
+                                                                 :size_y  4
                                                                  :row     0
                                                                  :col     0
                                                                  :card_id 123
@@ -1387,8 +1387,8 @@
                                   :user_id  (mt/user->id :crowberto)
                                   :object   {:name         "c"
                                              :description  "something"
-                                             :cards        [{:size_x   4
-                                                             :size_y   3
+                                             :cards        [{:size_x  5
+                                                             :size_y  3
                                                              :row     0
                                                              :col     0
                                                              :card_id 123
@@ -1401,10 +1401,10 @@
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         {:before {:name        "b"
                                        :description nil
-                                       :cards       [{:series nil, :size_y 2, :size_x 2}]}
+                                       :cards       [{:series nil, :size_y 4, :size_x 4}]}
                               :after  {:name        "c"
                                        :description "something"
-                                       :cards       [{:series [8 9], :size_y 3, :size_x 4}]}}
+                                       :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
                :description  "renamed it from \"b\" to \"c\", added a description, rearranged the cards and added some series to card 123."}
               {:is_reversion false
                :is_creation  true
