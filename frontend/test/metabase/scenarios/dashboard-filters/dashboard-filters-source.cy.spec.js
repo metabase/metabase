@@ -52,7 +52,7 @@ describe("scenarios > dashboard > filters", () => {
     });
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
+    setFilter("Text or Category", "Is");
     mapFilterToQuestion();
     editDropdown();
     setupStructuredQuestionSource();
@@ -69,7 +69,7 @@ describe("scenarios > dashboard > filters", () => {
     });
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
+    setFilter("Text or Category", "Is");
     mapFilterToQuestion();
     editDropdown();
     setupNativeQuestionSource();
@@ -85,7 +85,7 @@ describe("scenarios > dashboard > filters", () => {
     });
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
+    setFilter("Text or Category", "Is");
     mapFilterToQuestion();
     editDropdown();
     setupCustomList();
