@@ -22,18 +22,18 @@ const Questions = createEntity({
   path: "/api/card",
 
   objectActions: {
-    setArchived: ({ id, model }, archived, opts) =>
+    setArchived: ({ id, dataset, model }, archived, opts) =>
       Questions.actions.update(
         { id },
         { archived },
         undo(
           opts,
-          model === "dataset" ? "model" : "question",
+          dataset || model === "dataset" ? "model" : "question",
           archived ? "archived" : "unarchived",
         ),
       ),
 
-    setCollection: ({ id, model }, collection, opts) => {
+    setCollection: ({ id, dataset, model }, collection, opts) => {
       return async dispatch => {
         const result = await dispatch(
           Questions.actions.update(
@@ -41,7 +41,11 @@ const Questions = createEntity({
             {
               collection_id: canonicalCollectionId(collection && collection.id),
             },
-            undo(opts, model === "dataset" ? "model" : "question", "moved"),
+            undo(
+              opts,
+              dataset || model === "dataset" ? "model" : "question",
+              "moved",
+            ),
           ),
         );
         dispatch(

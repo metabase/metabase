@@ -11,7 +11,7 @@ import * as Urls from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
 
 const mapDispatchToProps = {
-  archive: id => Questions.actions.setArchived({ id }, true),
+  archive: card => Questions.actions.setArchived(card, true),
 };
 
 class ArchiveQuestionModal extends Component {
@@ -19,7 +19,7 @@ class ArchiveQuestionModal extends Component {
     const { question, archive, router } = this.props;
 
     const card = question.card();
-    archive(card.id);
+    archive(card);
     router.push(Urls.collection(card.collection));
   };
 
