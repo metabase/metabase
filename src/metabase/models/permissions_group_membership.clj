@@ -31,7 +31,7 @@
   []
   (:count
    (first
-    (db/query {:select [:%count.*]
+    (db/query {:select [[:%count.* :count]]
                :from   [[:permissions_group_membership :pgm]]
                :join   [[:core_user :user] [:= :user.id :pgm.user_id]]
                :where  [:and [:= :pgm.group_id (u/the-id (perms-group/admin))]
