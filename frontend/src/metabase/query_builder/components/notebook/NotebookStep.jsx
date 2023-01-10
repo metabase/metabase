@@ -238,6 +238,7 @@ const ActionButton = ({
   onClick,
   ...props
 }) => {
+  const label = large ? title : null;
   const button = (
     <ColorButton
       icon={icon}
@@ -247,9 +248,10 @@ const ActionButton = ({
       iconVertical={large}
       iconSize={large ? 18 : 14}
       onClick={onClick}
+      aria-label={label}
       {...props}
     >
-      {large ? title : null}
+      {label}
     </ColorButton>
   );
 
