@@ -1,8 +1,6 @@
 import styled from "@emotion/styled";
 
-import SelectList from "metabase/components/SelectList";
-
-export const StyledSelectList = styled(SelectList)`
+export const ListContainer = styled.div`
   width: 100%;
   padding: 0 1rem;
 `;
