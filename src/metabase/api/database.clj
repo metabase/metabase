@@ -566,16 +566,17 @@
   "Get a list of all `Fields` in `Database`."
   [id]
   (api/read-check Database id)
-  (let [fields (filter mi/can-read? (-> (db/select [Field :id :display_name :table_id :base_type :semantic_type]
+  (let [fields (filter mi/can-read? (-> (db/select [Field :id :name :display_name :table_id :base_type :semantic_type]
                                           :table_id        [:in (db/select-field :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
                                         (hydrate :table)))]
-    (for [{:keys [id display_name table base_type semantic_type]} fields]
+    (for [{:keys [id name display_name table base_type semantic_type]} fields]
       {:id            id
-       :name          display_name
+       :name          name
+       :display_name  display_name
        :base_type     base_type
        :semantic_type semantic_type
-       :table_name    (:display_name table)
+       :table_name    (:name table)
        :schema        (:schema table)})))
 
 

@@ -189,14 +189,14 @@
    DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
   [dashboard-card :- NewDashboardCard]
   (let [{:keys [dashboard_id card_id action_id parameter_mappings visualization_settings size_x size_y row col series]
-         :or   {size_x 2, size_y 2, series []}} dashboard-card]
+         :or   {size_x 4, size_y 4, series []}} dashboard-card]
     (db/transaction
      (let [dashboard-card (db/insert! DashboardCard
                                       :dashboard_id           dashboard_id
                                       :card_id                card_id
                                       :action_id              action_id
-                                      :size_x                  size_x
-                                      :size_y                  size_y
+                                      :size_x                 size_x
+                                      :size_y                 size_y
                                       :row                    (or row 0)
                                       :col                    (or col 0)
                                       :parameter_mappings     (or parameter_mappings [])

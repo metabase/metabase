@@ -9,7 +9,9 @@ interface Settings {
 
 describe("Text", () => {
   it("should be able to render", () => {
-    render(<Text settings={getSettingsWithText(null)} />);
+    expect(() =>
+      render(<Text settings={getSettingsWithText(null)} />),
+    ).not.toThrow();
   });
 
   it("should render plain text", () => {

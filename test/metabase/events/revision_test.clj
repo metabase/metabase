@@ -46,7 +46,6 @@
 (defn- dashboard->revision-object [dashboard]
   {:description  nil
    :cache_ttl    nil
-   :parameters   []
    :name         (:name dashboard)})
 
 (deftest card-create-test
@@ -159,7 +158,7 @@
     (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
                     Card          [{card-id :id}                     (card-properties)]
                     DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
-      (db/update! DashboardCard (:id dashcard), :size_x 4)
+      (db/update! DashboardCard (:id dashcard), :size_x 3)
       (revision/process-revision-event! {:topic :dashboard-reeposition-cards
                                          :item  {:id        dashboard-id
                                                  :actor_id  (mt/user->id :crowberto)
@@ -169,8 +168,8 @@
               :user_id      (mt/user->id :crowberto)
               :object       (assoc (dashboard->revision-object dashboard) :cards [{:id      (:id dashcard)
                                                                                    :card_id card-id
-                                                                                   :size_x  4
-                                                                                   :size_y  2
+                                                                                   :size_x  3
+                                                                                   :size_y  4
                                                                                    :row     0
                                                                                    :col     0
                                                                                    :series  []}])

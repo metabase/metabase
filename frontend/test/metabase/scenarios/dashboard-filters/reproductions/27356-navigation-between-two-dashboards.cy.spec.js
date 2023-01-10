@@ -21,7 +21,7 @@ const regularDashboard = {
   name: "Dashboard Without Params",
 };
 
-describe.skip("issue 27356", () => {
+describe("issue 27356", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     restore();

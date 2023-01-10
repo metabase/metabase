@@ -45,15 +45,45 @@
   (testing "POST /api/mt/gtap"
     (testing "Must have a valid token to use GTAPs"
       (with-redefs [premium-features/enable-sandboxes? (constantly false)]
-        (mt/with-temp* [Table            [{table-id :id}]
-                        PermissionsGroup [{group-id :id}]
-                        Card             [{card-id :id}]]
-          (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
-                 (mt/user-http-request :crowberto :post 402 "mt/gtap"
-                                       {:table_id             table-id
-                                        :group_id             group-id
-                                        :card_id              card-id
-                                        :attribute_remappings {"foo" 1}}))))))))
+        (mt/with-temporary-setting-values [premium-embedding-token nil]
+          (mt/with-temp* [Table            [{table-id :id}]
+                          PermissionsGroup [{group-id :id}]
+                          Card             [{card-id :id}]]
+            (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
+                   (mt/user-http-request :crowberto :post 402 "mt/gtap"
+                                         {:table_id             table-id
+                                          :group_id             group-id
+                                          :card_id              card-id
+                                          :attribute_remappings {"foo" 1}})))))))))
+
+(deftest fetch-gtap-test
+  (testing "GET /api/mt/gtap/"
+    (with-gtap-cleanup
+      (mt/with-temp* [Table                  [{table-id-1 :id}]
+                      Table                  [{table-id-2 :id}]
+                      PermissionsGroup       [{group-id-1 :id}]
+                      PermissionsGroup       [{group-id-2 :id}]
+                      Card                   [{card-id :id}]
+                      GroupTableAccessPolicy [{gtap-id-1 :id} {:table_id table-id-1
+                                                               :group_id group-id-1
+                                                               :card_id  card-id}]
+                      GroupTableAccessPolicy [{gtap-id-2 :id} {:table_id table-id-2
+                                                               :group_id group-id-2
+                                                               :card_id  card-id}]]
+        (testing "Test that we can fetch the list of all GTAPs"
+          (is (partial=
+               [{:id gtap-id-1 :table_id table-id-1 :group_id group-id-1}
+                {:id gtap-id-2 :table_id table-id-2 :group_id group-id-2}]
+               (filter
+                #(#{gtap-id-1 gtap-id-2} (:id %))
+                (mt/user-http-request :crowberto :get 200 "mt/gtap/")))))
+
+        (testing "Test that we can fetch the list of GTAPs for a specific table and group"
+          (is (partial=
+               {:id gtap-id-1 :table_id table-id-1 :group_id group-id-1}
+               (mt/user-http-request :crowberto :get 200 "mt/gtap/"
+                                     :group_id group-id-1 :table_id table-id-1))))))))
+
 (deftest create-gtap-test
   (testing "POST /api/mt/gtap"
     (mt/with-temp* [Table            [{table-id :id}]
@@ -233,6 +263,8 @@
   (testing "PUT /api/permissions/graph"
     (testing "make sure an error is thrown if the :sandboxes key is included in the request, but the :sandboxes feature
              is not enabled"
-      (is (= "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature."
-             (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                   (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))
+      (with-redefs [premium-features/enable-sandboxes? (constantly false)]
+        (mt/with-temporary-setting-values [premium-embedding-token nil]
+          (is (= "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature."
+                 (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                       (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))))

@@ -9,9 +9,9 @@ ARG MB_EDITION=oss
 WORKDIR /home/node
 
 RUN apt-get update && apt-get upgrade -y && apt-get install openjdk-11-jdk curl git -y \
-    && curl -O https://download.clojure.org/install/linux-install-1.11.0.1100.sh \
-    && chmod +x linux-install-1.11.0.1100.sh \
-    && ./linux-install-1.11.0.1100.sh
+    && curl -O https://download.clojure.org/install/linux-install-1.11.1.1280.sh \
+    && chmod +x linux-install-1.11.1.1208.sh \
+    && ./linux-install-1.11.1.1208.sh
 
 COPY . .
 RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build

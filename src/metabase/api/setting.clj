@@ -40,11 +40,10 @@
     (setting/set-many! settings))
   api/generic-204-no-content)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:key"
+(api/defendpoint GET "/:key"
   "Fetch a single `Setting`."
   [key]
-  {key su/NonBlankStringPlumatic}
+  {key [:string {:min 1}]}
   (with-setting-access-control
     (setting/user-facing-value key)))
 

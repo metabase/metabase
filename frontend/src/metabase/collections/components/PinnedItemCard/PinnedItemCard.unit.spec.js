@@ -1,6 +1,6 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { render, screen, getIcon } from "__support__/ui";
 
 import PinnedItemCard from "./PinnedItemCard";
 
@@ -26,8 +26,6 @@ const defaultItem = {
   setPinned: jest.fn(),
 };
 
-const MENU_ICON_SELECTOR = ".Icon-ellipsis";
-
 function setup({ item, collection } = {}) {
   item = item || defaultItem;
   collection = collection || defaultCollection;
@@ -49,11 +47,8 @@ function setup({ item, collection } = {}) {
 
 describe("PinnedItemCard", () => {
   it("should show the item's icon", () => {
-    const { container } = setup();
-
-    expect(
-      container.querySelector(`.Icon-${defaultItem.getIcon().name}`),
-    ).toBeInTheDocument();
+    setup();
+    expect(getIcon(defaultItem.getIcon().name)).toBeInTheDocument();
   });
 
   it("should show the item's name", () => {
@@ -61,7 +56,7 @@ describe("PinnedItemCard", () => {
     expect(screen.getByText(defaultItem.name)).toBeInTheDocument();
   });
 
-  it("it should show the item's description", () => {
+  it("should show the item's description", () => {
     setup();
     expect(screen.getByText(defaultItem.description)).toBeInTheDocument();
   });
@@ -77,8 +72,8 @@ describe("PinnedItemCard", () => {
   });
 
   it("should show an action menu when user clicks on the menu icon in the card", () => {
-    const { container } = setup();
-    userEvent.click(container.querySelector(MENU_ICON_SELECTOR));
+    setup();
+    userEvent.click(getIcon("ellipsis"));
     expect(screen.getByText("Unpin")).toBeInTheDocument();
   });
 });
