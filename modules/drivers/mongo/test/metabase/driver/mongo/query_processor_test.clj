@@ -277,7 +277,7 @@
                ["bob"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                {:filters     [[:expression "bob"]]
                                  :expressions {:bob   [:+ $price 300]}
                                  :limit       5}))))))
     (testing "Should be able to deal with a little indirection"
@@ -286,7 +286,7 @@
                ["bob"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                {:filters     [[:expression "bob"]]
                                  :expressions {:bob   [:abs [:- $price 300]]}
                                  :limit       5}))))))
     (testing "Should be able to deal with a little indirection, with an expression in"
@@ -313,7 +313,15 @@
       (is (= {:collection "venues",
               :mbql? true,
               :projections ["asdf" "count"],
-              :query [{"$group" {"_id" {"asdf" "$price"}, "count" {"$sum" 1}}}
+              :query [{"$project"
+                       {"_id" "$_id",
+                        "name" "$name",
+                        "category_id" "$category_id",
+                        "latitude" "$latitude",
+                        "longitude" "$longitude",
+                        "price" "$price",
+                        "asdf" "$price"}}
+                      {"$group" {"_id" {"asdf" "$asdf"}, "count" {"$sum" 1}}}
                       {"$sort" {"_id" 1}}
                       {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}
                       {"$sort" {"asdf" 1}}]}
@@ -387,9 +395,49 @@
                                                        [:field "date-field"]]
                                                       [:absolute-datetime (t/local-date "2008-05-31")]]))))))
 
+(mt/defdataset mongo-times-mixed
+  [["times" [{:field-name "index"
+              :base-type :type/Integer}
+             {:field-name "dt"
+              :base-type :type/DateTime}
+             {:field-name "dt_tz"
+              :base-type  :type/DateTimeWithTZ}
+             {:field-name "d"
+              :base-type :type/Date}
+             {:field-name "as_dt"
+              :base-type :type/Text
+              :effective-type :type/DateTime
+              :coercion-strategy :Coercion/ISO8601->DateTime}]
+    (for [[idx t]
+          (map-indexed vector [#t "2004-03-19 09:19:09+07:00[Asia/Ho_Chi_Minh]"
+                               #t "2008-06-20 10:20:10+07:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"])]
+      [(inc idx)
+       (t/local-date-time t)                                     ; dt
+       (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")           ; dt_tz
+       (t/local-date t)                                          ; d
+       (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t))])] ; as_dt
+   ["weeks" [{:field-name "index"
+              :base-type :type/Integer}
+             {:field-name "description"
+              :base-type :type/Text}
+             {:field-name "d"
+              :base-type :type/Date}]
+    [[1 "1st saturday"   #t "2000-01-01"]
+     [2 "1st sunday"     #t "2000-01-02"]
+     [3 "1st monday"     #t "2000-01-03"]
+     [4 "1st wednesday"  #t "2000-01-04"]
+     [5 "1st tuesday"    #t "2000-01-05"]
+     [6 "1st thursday"   #t "2000-01-06"]
+     [7 "1st friday"     #t "2000-01-07"]
+     [8 "2nd saturday"   #t "2000-01-08"]
+     [9 "2nd sunday"     #t "2000-01-09"]
+     [10 "2005 saturday" #t "2005-01-01"]]]])
+
 (deftest datetime-math-tests
   (mt/test-driver :mongo
-    (mt/dataset qp.datetime-test/times-mixed
+    (mt/dataset mongo-times-mixed
       ;; date arithmetic doesn't supports until mongo 5+
       (when (driver/database-supports? :mongo :date-arithmetics (mt/db))
         (testing "date arithmetic with datetime columns"
@@ -424,13 +472,13 @@
                                  (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
                                  (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)
                                  (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]
-                       :query   {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                                 :fields      [[:expression "expr"]]}}
+                      :query   {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                :fields      [[:expression "expr"]]}}
                      {:expected (into [] (frequencies
-                                           [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type)
-                                            (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)
-                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
+                                          [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type)
+                                           (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                                           (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)
+                                           (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
                       :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                                  :aggregation [[:count]]
                                  :breakout    [[:expression "expr"]]}}]]

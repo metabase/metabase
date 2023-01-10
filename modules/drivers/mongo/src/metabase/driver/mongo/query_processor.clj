@@ -178,7 +178,7 @@
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
 
-     :else field-name)))
+      :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
 ;;
