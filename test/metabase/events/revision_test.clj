@@ -46,7 +46,6 @@
 (defn- dashboard->revision-object [dashboard]
   {:description  nil
    :cache_ttl    nil
-   :parameters   []
    :name         (:name dashboard)})
 
 (deftest card-create-test

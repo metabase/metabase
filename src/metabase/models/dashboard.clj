@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [medley.core :as m]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.events :as events]
    [metabase.models.card :as card :refer [Card]]
@@ -15,9 +14,7 @@
     :refer [DashboardCard]]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card
-    :as parameter-card
-    :refer [ParameterCard]]
+   [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -143,26 +140,17 @@
                              :collection_id (:collection_id dashboard))
            (pulse-card/bulk-create! new-pulse-cards)))))))
 
+(defn- with-default-parameters-value
+  [dashboard]
+  (update dashboard :parameters (fn [parameters]
+                                  (map #(merge {:values_query_type "list"
+                                                :values_source_type nil
+                                                :values_source_config {}}
+                                               %) parameters))))
+
 (defn- post-update
   [dashboard]
   (update-dashboard-subscription-pulses! dashboard))
-
-(defn- card-ids-by-param-id
-  "Returns a map from parameter IDs to card IDs for the given dashboard (for parameters whose filter values come from a
-  card via a ParameterCard)."
-  [dashboard-id]
-  (->> (db/select ParameterCard :parameterized_object_id dashboard-id :parameterized_object_type "dashboard")
-       (group-by :parameter_id)
-       (m/map-vals (comp :card_id first))))
-
-(defn- populate-card-id-for-parameters
-  [{dashboard-id :id parameters :parameters :as dashboard}]
-  (assoc dashboard :parameters
-         (let [param-id->card-id (card-ids-by-param-id dashboard-id)]
-           (for [{:keys [id values_source_type values_source_config] :as param} parameters]
-             (if (= values_source_type "card")
-               (assoc-in param [:values_source_config :card_id] (get param-id->card-id id (:card_id values_source_config)))
-               param)))))
 
 (mi/define-methods
  Dashboard
@@ -174,7 +162,7 @@
   :post-insert post-insert
   :pre-update  pre-update
   :post-update post-update
-  :post-select (comp populate-card-id-for-parameters public-settings/remove-public-uuid-if-public-sharing-is-disabled)})
+  :post-select (comp public-settings/remove-public-uuid-if-public-sharing-is-disabled with-default-parameters-value)})
 
 (defmethod serdes.hash/identity-hash-fields Dashboard
   [_dashboard]
