@@ -22,11 +22,9 @@ import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
+import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
-  ModalBody,
-  ModalLoadingAndErrorWrapper,
-} from "./ValuesSourceModal.styled";
-import {
+  ModalBodyWithSearch,
   DataPickerContainer,
   SearchInputContainer,
 } from "./ValuesSourceCardModal.styled";
@@ -95,7 +93,7 @@ const ValuesSourceCardModal = ({
         ]}
         onClose={onClose}
       >
-        <ModalBody>
+        <ModalBodyWithSearch>
           <DataPickerSearchInput />
           <DataPickerContainer>
             <DataPicker
@@ -104,7 +102,7 @@ const ValuesSourceCardModal = ({
               onChange={setValue}
             />
           </DataPickerContainer>
-        </ModalBody>
+        </ModalBodyWithSearch>
       </ModalContent>
     </DataPicker.Provider>
   );
