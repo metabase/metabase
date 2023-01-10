@@ -16,3 +16,5 @@ export const MAX_HEADER_CELL_WIDTH =
 
 // the left header has some additional padding on the left to align with the title
 export const LEFT_HEADER_LEFT_SPACING = 24;
+
+export const MAX_ROWS_TO_MEASURE = 100;
