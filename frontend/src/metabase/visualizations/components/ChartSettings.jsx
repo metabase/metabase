@@ -73,7 +73,7 @@ class ChartSettings extends Component {
     super(props);
     this.state = {
       currentSection: (props.initial && props.initial.section) || null,
-      currentWidget: (props.initial && props.initial.widget) || null,
+      popoverWidget: (props.initial && props.initial.widget) || null,
     };
   }
 
@@ -82,23 +82,23 @@ class ChartSettings extends Component {
     if (!_.isEqual(initial, prevProps.initial)) {
       this.setState({
         currentSection: (initial && initial.section) || null,
-        currentWidget: (initial && initial.widget) || null,
+        popoverWidget: (initial && initial.widget) || null,
       });
     }
   }
 
   handleShowSection = section => {
-    this.setState({ currentSection: section, currentWidget: null });
+    this.setState({ currentSection: section, popoverWidget: null });
   };
 
   // allows a widget to temporarily replace itself with a different widget
-  handleShowWidget = (widget, ref) => {
-    this.setState({ popoverRef: ref, currentWidget: widget });
+  handleShowPopoverWidget = (widget, ref) => {
+    this.setState({ popoverRef: ref, popoverWidget: widget });
   };
 
   // go back to previously selected section
   handleEndShowWidget = () => {
-    this.setState({ currentWidget: null, popoverRef: null });
+    this.setState({ popoverWidget: null, popoverRef: null });
   };
 
   handleResetSettings = () => {
@@ -193,24 +193,24 @@ class ChartSettings extends Component {
     const widgets = this._getWidgets();
     const series = this._getTransformedSeries();
     const settings = this._getComputedSettings();
-    const { currentWidget } = this.state;
+    const { popoverWidget } = this.state;
     const seriesSettingsWidget =
-      currentWidget && widgets.find(widget => widget.id === "series_settings");
+      popoverWidget && widgets.find(widget => widget.id === "series_settings");
 
     //We don't want to show series settings widget for waterfall charts
     if (series?.[0]?.card?.display === "waterfall" || !seriesSettingsWidget) {
       return null;
     }
 
-    if (currentWidget.props?.seriesKey !== undefined) {
+    if (popoverWidget.props?.seriesKey !== undefined) {
       return {
         ...seriesSettingsWidget,
         props: {
           ...seriesSettingsWidget.props,
-          initialKey: currentWidget.props.seriesKey,
+          initialKey: popoverWidget.props.seriesKey,
         },
       };
-    } else if (currentWidget.props?.initialKey) {
+    } else if (popoverWidget.props?.initialKey) {
       const hasBreakouts = settings["graph.dimensions"]?.length > 1;
 
       if (hasBreakouts) {
@@ -220,7 +220,7 @@ class ChartSettings extends Component {
       const singleSeriesForColumn = series.find(single => {
         const metricColumn = single.data.cols[1];
         if (metricColumn) {
-          return getColumnKey(metricColumn) === currentWidget.props.initialKey;
+          return getColumnKey(metricColumn) === popoverWidget.props.initialKey;
         }
       });
 
@@ -240,12 +240,12 @@ class ChartSettings extends Component {
 
   getFormattingWidget = () => {
     const widgets = this._getWidgets();
-    const { currentWidget } = this.state;
+    const { popoverWidget } = this.state;
     const widget =
-      currentWidget && widgets.find(widget => widget.id === currentWidget.id);
+      popoverWidget && widgets.find(widget => widget.id === popoverWidget.id);
 
     if (widget) {
-      return { ...widget, props: { ...widget.props, ...currentWidget.props } };
+      return { ...widget, props: { ...widget.props, ...popoverWidget.props } };
     }
 
     return null;
@@ -261,7 +261,7 @@ class ChartSettings extends Component {
       dashcard,
       isDashboard,
     } = this.props;
-    const { currentWidget, popoverRef } = this.state;
+    const { popoverWidget, popoverRef } = this.state;
 
     const settings = this._getSettings();
     const widgets = this._getWidgets();
@@ -321,7 +321,7 @@ class ChartSettings extends Component {
       // NOTE: special props to support adding additional fields
       question: question,
       addField: addField,
-      onShowWidget: this.handleShowWidget,
+      onShowPopoverWidget: this.handleShowPopoverWidget,
       onEndShowWidget: this.handleEndShowWidget,
       currentSectionHasColumnSettings,
       columnHasSettings: col => this.columnHasSettings(col),
@@ -422,7 +422,7 @@ class ChartSettings extends Component {
         )}
         <ChartSettingsWidgetPopover
           currentWidgetKey={
-            currentWidget?.props?.initialKey || currentWidget?.props?.seriesKey
+            popoverWidget?.props?.initialKey || popoverWidget?.props?.seriesKey
           }
           anchor={popoverRef}
           widgets={[this.getFormattingWidget(), this.getStyleWidget()].filter(

@@ -39,7 +39,7 @@ export default class ChartSettingOrderedColumns extends Component {
       columnSetting,
     );
     if (column) {
-      this.props.onShowWidget(
+      this.props.onShowPopoverWidget(
         {
           id: "column_settings",
           props: {

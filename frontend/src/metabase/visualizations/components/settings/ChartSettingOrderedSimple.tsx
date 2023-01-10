@@ -19,7 +19,7 @@ interface SortableItem {
 interface ChartSettingOrderedSimpleProps {
   onChange: (rows: SortableItem[]) => void;
   value: SortableItem[];
-  onShowWidget: (
+  onShowPopoverWidget: (
     widget: { props: { seriesKey: string } },
     ref: HTMLElement | undefined,
   ) => void;
@@ -31,7 +31,7 @@ interface ChartSettingOrderedSimpleProps {
 export const ChartSettingOrderedSimple = ({
   onChange,
   value: orderedItems,
-  onShowWidget,
+  onShowPopoverWidget,
   hasEditSettings = true,
   onChangeSeriesColor,
 }: ChartSettingOrderedSimpleProps) => {
@@ -57,7 +57,7 @@ export const ChartSettingOrderedSimple = ({
   };
 
   const handleOnEdit = (item: SortableItem, ref: HTMLElement | undefined) => {
-    onShowWidget(
+    onShowPopoverWidget(
       {
         props: {
           seriesKey: item.key,
