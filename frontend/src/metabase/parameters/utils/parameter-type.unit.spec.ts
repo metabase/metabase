@@ -11,6 +11,7 @@ describe("isSingleOrMultiSelectable", () => {
 
   it("is false for parameters with acceptable types and rejected subTypes", () => {
     const parameter = createMockParameter({
+      type: "a type",
       sectionId: "string",
     });
     expect(isSingleOrMultiSelectable(parameter)).toBe(false);
@@ -18,8 +19,8 @@ describe("isSingleOrMultiSelectable", () => {
 
   it("is true for parameters with acceptable types and corresponding subTypes", () => {
     const parameter = createMockParameter({
-      sectionId: "location",
       type: "string/=",
+      sectionId: "location",
     });
     expect(isSingleOrMultiSelectable(parameter)).toBe(true);
   });
