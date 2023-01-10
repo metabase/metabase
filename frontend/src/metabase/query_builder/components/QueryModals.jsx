@@ -20,7 +20,6 @@ import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
-import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
@@ -184,17 +183,6 @@ class QueryModals extends React.Component {
           question={question}
           onQueryChange={this.onQueryChange}
           onClose={onCloseModal}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.HISTORY ? (
-      <Modal onClose={onCloseModal}>
-        <QuestionHistoryModal
-          questionId={this.props.card.id}
-          onClose={onCloseModal}
-          onReverted={() => {
-            this.props.reloadCard();
-            onCloseModal();
-          }}
         />
       </Modal>
     ) : modal === MODAL_TYPES.MOVE ? (
