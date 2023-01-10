@@ -32,12 +32,13 @@ import {
   ModalSection,
   ModalTextArea,
   ModalErrorMessage,
+  ModalEmptyState,
 } from "./ValuesSourceTypeModal.styled";
 
 const NEW_LINE = "\n";
 
 const SOURCE_TYPE_OPTIONS = [
-  { name: t`From this field`, value: null },
+  { name: t`From connected fields`, value: null },
   { name: t`From another model or question`, value: "card" },
   { name: t`Custom list`, value: "static-list" },
 ];
@@ -117,8 +118,9 @@ const ValuesSourceTypeModal = ({
     >
       {sourceType === null ? (
         <FieldSourceModal
-          sourceType={sourceType}
+          fields={fields}
           fieldValues={fieldValues}
+          sourceType={sourceType}
           onChangeSourceType={handleTypeChange}
         />
       ) : sourceType === "card" ? (
@@ -144,14 +146,16 @@ const ValuesSourceTypeModal = ({
 };
 
 interface FieldSourceModalProps {
+  fields: Field[];
   fieldValues: string[];
   sourceType: ValuesSourceType;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
 }
 
 const FieldSourceModal = ({
-  sourceType,
+  fields,
   fieldValues,
+  sourceType,
   onChangeSourceType,
 }: FieldSourceModalProps) => {
   return (
@@ -168,11 +172,17 @@ const FieldSourceModal = ({
         </ModalSection>
       </ModalPane>
       <ModalMain>
-        <ModalTextArea
-          defaultValue={getValuesText(fieldValues)}
-          readOnly
-          fullWidth
-        />
+        {!fields.length ? (
+          <ModalEmptyState>
+            {t`You haven’t connected a field to this filter yet, so there aren’t any values.`}
+          </ModalEmptyState>
+        ) : (
+          <ModalTextArea
+            defaultValue={getValuesText(fieldValues)}
+            readOnly
+            fullWidth
+          />
+        )}
       </ModalMain>
     </ModalBody>
   );

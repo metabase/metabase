@@ -46,3 +46,18 @@ export const ModalErrorMessage = styled.div`
   border: 1px solid ${color("error")};
   border-radius: 0.5rem;
 `;
+
+export const ModalEmptyState = styled.div`
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  border: 1px solid ${color("border")};
+  border-radius: 0.5rem;
+  background-color: ${color("bg-light")};
+  color: ${color("text-medium")};
+  font-weight: bold;
+  line-height: 1.5rem;
+  text-align: center;
+`;
