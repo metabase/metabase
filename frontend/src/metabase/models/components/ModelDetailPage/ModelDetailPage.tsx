@@ -1,26 +1,19 @@
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
 import TabContent from "metabase/core/components/TabContent";
-
-import * as Urls from "metabase/lib/urls";
 
 import type { Card } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
 
+import ModelDetailHeader from "./ModelDetailHeader";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
 import ModelSchemaDetails from "./ModelSchemaDetails";
 import ModelUsageDetails from "./ModelUsageDetails";
 import {
   RootLayout,
   ModelMain,
-  ModelHeader,
-  ModelHeaderButtonsContainer,
-  ModelTitle,
-  ModelFootnote,
   TabList,
   TabPanel,
 } from "./ModelDetailPage.styled";
@@ -36,11 +29,6 @@ type ModelTab = "schema" | "usage";
 function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
   const [tab, setTab] = useState<ModelTab>("usage");
 
-  const modelCard = model.card();
-
-  const queryEditorLink = Urls.modelEditor(modelCard, { type: "query" });
-  const exploreDataLink = Urls.model(modelCard);
-
   const handleNameChange = useCallback(
     name => {
       if (name && name !== model.displayName()) {
@@ -50,7 +38,7 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
     [model, onChangeModel],
   );
 
-  const handleChangeDescription = useCallback(
+  const handleDescriptionChange = useCallback(
     description => {
       if (model.description() !== description) {
         onChangeModel(model.setDescription(description).card() as Card);
@@ -62,20 +50,7 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
   return (
     <RootLayout>
       <ModelMain>
-        <ModelHeader>
-          <div>
-            <ModelTitle
-              initialValue={model.displayName()}
-              isDisabled={!model.canWrite()}
-              onChange={handleNameChange}
-            />
-            <ModelFootnote>{t`Model`}</ModelFootnote>
-          </div>
-          <ModelHeaderButtonsContainer>
-            <Button as={Link} to={queryEditorLink}>{t`Edit definition`}</Button>
-            <Button primary as={Link} to={exploreDataLink}>{t`Explore`}</Button>
-          </ModelHeaderButtonsContainer>
-        </ModelHeader>
+        <ModelDetailHeader model={model} onChangeName={handleNameChange} />
         <TabContent value={tab} onChange={setTab}>
           <TabList
             value={tab}
@@ -96,7 +71,7 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
       <ModelInfoSidePanel
         model={model}
         mainTable={mainTable}
-        onChangeDescription={handleChangeDescription}
+        onChangeDescription={handleDescriptionChange}
       />
     </RootLayout>
   );
