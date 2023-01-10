@@ -191,7 +191,7 @@ describe("NotificationCard", () => {
       />,
     );
 
-    expect(screen.queryByLabelText("close icon")).toBeNull();
+    expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
   it("should archive when the user is the creator and not subscribed", () => {

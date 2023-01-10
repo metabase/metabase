@@ -1,7 +1,7 @@
 import React from "react";
 import mockDate from "mockdate";
 import moment from "moment-timezone";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
@@ -68,8 +68,8 @@ describe("LastEditInfoLabel", () => {
   testCases.forEach(({ date, expectedTimestamp }) => {
     it(`should display "${expectedTimestamp}" timestamp correctly`, () => {
       mockDate.set(date.toDate(), 0);
-      const { getByTestId } = setup();
-      expect(getByTestId("revision-history-button")).toHaveTextContent(
+      setup();
+      expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
         new RegExp(`Edited ${expectedTimestamp} by .*`, "i"),
       );
     });
@@ -80,15 +80,15 @@ describe("LastEditInfoLabel", () => {
     // Example: John Doe —> John D.
     const expectedName = `${first_name} ${last_name.charAt(0)}.`;
 
-    const { getByTestId } = setup();
-    expect(getByTestId("revision-history-button")).toHaveTextContent(
+    setup();
+    expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
       new RegExp(`Edited .* by ${expectedName}`),
     );
   });
 
   it("should display if user is the last editor", () => {
-    const { getByTestId } = setup({ isLastEditedByCurrentUser: true });
-    expect(getByTestId("revision-history-button")).toHaveTextContent(
+    setup({ isLastEditedByCurrentUser: true });
+    expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
       new RegExp(`Edited .* by you`),
     );
   });

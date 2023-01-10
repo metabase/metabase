@@ -66,7 +66,7 @@ async function setup({
     <SnippetFormModal snippet={snippet} onClose={onClose || undefined} />,
   );
 
-  await waitForElementToBeRemoved(() => screen.getByText(/Loading/i));
+  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
 
   return { onClose };
 }
@@ -156,7 +156,7 @@ describe("SnippetFormModal", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
+        expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
       });
     });
 
@@ -257,7 +257,7 @@ describe("SnippetFormModal", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
+        expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
       });
     });
 

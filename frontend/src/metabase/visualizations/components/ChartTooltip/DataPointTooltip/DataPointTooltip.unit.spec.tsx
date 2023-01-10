@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import { TooltipModel } from "../types";
 import DataPointTooltip from "./DataPointTooltip";
@@ -34,7 +34,7 @@ const setup = ({
   bodyRows = defaultBodyRows,
   ...rest
 }: Partial<TooltipModel> = {}) => {
-  const { queryAllByTestId, queryByTestId } = render(
+  render(
     <DataPointTooltip
       headerTitle={headerTitle}
       headerRows={headerRows}
@@ -43,10 +43,14 @@ const setup = ({
     />,
   );
 
-  const header = queryByTestId("tooltip-header");
-  const rowNames = queryAllByTestId("row-name").map(el => el.innerHTML);
-  const rowValues = queryAllByTestId("row-value").map(el => el.innerHTML);
-  const rowPercents = queryAllByTestId("row-percent").map(el => el.innerHTML);
+  const header = screen.queryByTestId("tooltip-header");
+  const rowNames = screen.queryAllByTestId("row-name").map(el => el.innerHTML);
+  const rowValues = screen
+    .queryAllByTestId("row-value")
+    .map(el => el.innerHTML);
+  const rowPercents = screen
+    .queryAllByTestId("row-percent")
+    .map(el => el.innerHTML);
 
   return {
     header,

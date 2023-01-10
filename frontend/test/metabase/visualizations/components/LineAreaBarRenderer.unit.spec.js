@@ -307,7 +307,7 @@ describe("LineAreaBarRenderer", () => {
 
       expect(qs(".goal .line")).not.toBe(null);
       expect(qs(".goal text")).not.toBe(null);
-      expect(qs(".goal text").textContent).toEqual("Goal");
+      expect(qs(".goal text")).toHaveTextContent("Goal");
     });
 
     it("should render a goal tooltip with the proper value", () => {

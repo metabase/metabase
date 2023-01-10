@@ -204,8 +204,8 @@ describe.skip("Notebook Editor > Join Step", () => {
 
   it("displays a source table and suggests to pick a join table", async () => {
     await setup();
-    expect(screen.queryByText("Orders")).toBeInTheDocument();
-    expect(screen.queryByText("Pick a table...")).toBeInTheDocument();
+    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(screen.getByText("Pick a table...")).toBeInTheDocument();
   });
 
   it("opens a schema browser by default", async () => {
@@ -216,7 +216,7 @@ describe.skip("Notebook Editor > Join Step", () => {
 
     SAMPLE_DATABASE.tables.forEach(table => {
       const tableName = new RegExp(table.display_name, "i");
-      expect(within(dataSelector).queryByText(tableName)).toBeInTheDocument();
+      expect(within(dataSelector).getByText(tableName)).toBeInTheDocument();
     });
   });
 
@@ -247,11 +247,9 @@ describe.skip("Notebook Editor > Join Step", () => {
     const picker = await screen.findByRole("rowgroup");
     expect(picker).toBeInTheDocument();
     expect(picker).toBeVisible();
-    expect(within(picker).queryByText("Order")).toBeInTheDocument();
+    expect(within(picker).getByText("Order")).toBeInTheDocument();
     ordersFields.forEach(field => {
-      expect(
-        within(picker).queryByText(field.display_name),
-      ).toBeInTheDocument();
+      expect(within(picker).getByText(field.display_name)).toBeInTheDocument();
     });
   });
 
@@ -279,11 +277,9 @@ describe.skip("Notebook Editor > Join Step", () => {
     const picker = await screen.findByRole("rowgroup");
     expect(picker).toBeInTheDocument();
     expect(picker).toBeVisible();
-    expect(within(picker).queryByText("Product")).toBeInTheDocument();
+    expect(within(picker).getByText("Product")).toBeInTheDocument();
     productsFields.forEach(field => {
-      expect(
-        within(picker).queryByText(field.display_name),
-      ).toBeInTheDocument();
+      expect(within(picker).getByText(field.display_name)).toBeInTheDocument();
     });
   });
 
@@ -308,7 +304,7 @@ describe.skip("Notebook Editor > Join Step", () => {
     const picker = await screen.findByRole("rowgroup");
     expect(picker).toBeInTheDocument();
     expect(picker).toBeVisible();
-    expect(within(picker).queryByText("Order")).toBeInTheDocument();
+    expect(within(picker).getByText("Order")).toBeInTheDocument();
   });
 
   it("can select fields to select from a joined table", async () => {
@@ -339,7 +335,7 @@ describe.skip("Notebook Editor > Join Step", () => {
     expect(screen.getByTestId("parent-dimension")).toHaveTextContent(
       "Pick a column...",
     );
-    expect(screen.queryByRole("rowgroup")).toBe(null);
+    expect(screen.queryByRole("rowgroup")).not.toBeInTheDocument();
     expect(onQueryChange).toHaveBeenLastCalledWith(
       expectedJoin({
         joinedTable: PRODUCTS,
@@ -357,7 +353,7 @@ describe.skip("Notebook Editor > Join Step", () => {
     expect(screen.getByTestId("join-dimension")).toHaveTextContent(
       "Pick a column...",
     );
-    expect(screen.queryByRole("rowgroup")).toBe(null);
+    expect(screen.queryByRole("rowgroup")).not.toBeInTheDocument();
     expect(onQueryChange).toHaveBeenLastCalledWith(
       expectedJoin({
         joinedTable: PRODUCTS,
@@ -369,7 +365,7 @@ describe.skip("Notebook Editor > Join Step", () => {
   it("hides icons for removing dimensions if dimensions are not set yet", async () => {
     await setup({ joinTable: "Reviews" });
 
-    expect(screen.queryAllByLabelText("close icon")).toHaveLength(0);
+    expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
   it("shows the fields picker tooltip on control hover", async () => {
@@ -388,7 +384,7 @@ describe.skip("Notebook Editor > Join Step", () => {
     userEvent.click(screen.getByLabelText("table icon"));
     userEvent.hover(screen.getByLabelText("table icon"));
 
-    expect(screen.queryByRole("tooltip")).toBe(null);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
   it("shows temporal unit for date-time fields", async () => {
@@ -414,7 +410,7 @@ describe.skip("Notebook Editor > Join Step", () => {
       await setup({ joinTable: "Reviews" });
 
       expect(screen.queryAllByText("Pick a column...")).toHaveLength(2);
-      expect(screen.queryByLabelText("add icon")).toBe(null);
+      expect(screen.queryByLabelText("add icon")).not.toBeInTheDocument();
     });
 
     it("can add a new dimension pair", async () => {
@@ -433,7 +429,7 @@ describe.skip("Notebook Editor > Join Step", () => {
       const picker = await screen.findByRole("rowgroup");
       expect(picker).toBeInTheDocument();
       expect(picker).toBeVisible();
-      expect(within(picker).queryByText("Order")).toBeInTheDocument();
+      expect(within(picker).getByText("Order")).toBeInTheDocument();
     });
 
     it("automatically opens a join dimension picker for new fields pair", async () => {
@@ -446,7 +442,7 @@ describe.skip("Notebook Editor > Join Step", () => {
       picker = await screen.findByRole("rowgroup");
       expect(picker).toBeInTheDocument();
       expect(picker).toBeVisible();
-      expect(within(picker).queryByText("Product")).toBeInTheDocument();
+      expect(within(picker).getByText("Product")).toBeInTheDocument();
     });
 
     it("correctly updates join when adding multiple conditions", async () => {
@@ -474,7 +470,7 @@ describe.skip("Notebook Editor > Join Step", () => {
 
       userEvent.click(screen.queryByLabelText("add icon"));
 
-      expect(screen.queryByLabelText("add icon")).toBe(null);
+      expect(screen.queryByLabelText("add icon")).not.toBeInTheDocument();
     });
 
     it("can remove an empty dimension pair", async () => {

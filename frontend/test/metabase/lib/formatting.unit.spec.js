@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { isElementOfType } from "react-dom/test-utils";
 import moment from "moment-timezone";
 
@@ -493,7 +493,7 @@ describe("formatting", () => {
     });
 
     describe("when view_as = link", () => {
-      it("should return link component for type/URL and  view_as = link", () => {
+      it("should return link component for type/URL and view_as = link", () => {
         const formatted = formatUrl("http://whatever", {
           jsx: true,
           rich: true,
@@ -512,10 +512,14 @@ describe("formatting", () => {
           view_as: "link",
           clicked: {},
         });
+        render(formatted);
 
         expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
-        expect(formatted.props.children).toEqual("metabase link");
-        expect(formatted.props.href).toEqual("http://metabase.com");
+        expect(screen.getByText("metabase link")).toBeInTheDocument();
+        expect(screen.getByText("metabase link")).toHaveAttribute(
+          "href",
+          "http://metabase.com",
+        );
       });
 
       it("should return link component using link_text and the value as url when link_url is empty", () => {
@@ -527,10 +531,14 @@ describe("formatting", () => {
           view_as: "link",
           clicked: {},
         });
+        render(formatted);
 
         expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
-        expect(formatted.props.children).toEqual("metabase link");
-        expect(formatted.props.href).toEqual("http://metabase.com");
+        expect(screen.getByText("metabase link")).toBeInTheDocument();
+        expect(screen.getByText("metabase link")).toHaveAttribute(
+          "href",
+          "http://metabase.com",
+        );
       });
 
       it("should return link component using link_url and the value as text when link_text is empty", () => {
@@ -542,10 +550,14 @@ describe("formatting", () => {
           view_as: "link",
           clicked: {},
         });
+        render(formatted);
 
         expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
-        expect(formatted.props.children).toEqual("metabase link");
-        expect(formatted.props.href).toEqual("http://metabase.com");
+        expect(screen.getByText("metabase link")).toBeInTheDocument();
+        expect(screen.getByText("metabase link")).toHaveAttribute(
+          "href",
+          "http://metabase.com",
+        );
       });
 
       it("should not return an ExternalLink in jsx + rich mode if there's click behavior", () => {

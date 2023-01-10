@@ -495,7 +495,7 @@ describe("InlineCategoryPicker", () => {
       );
 
       expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("value-picker")).toBeInTheDocument();
+      expect(screen.getByTestId("value-picker")).toBeInTheDocument();
     });
   });
 });

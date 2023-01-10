@@ -64,7 +64,7 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
   );
 
   if (folder.id) {
-    await waitForElementToBeRemoved(() => screen.getByText(/Loading/i));
+    await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
   }
 
   return { onClose };
@@ -125,9 +125,7 @@ describe("SnippetCollectionFormModal", () => {
       userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
 
       await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: "Create" }),
-        ).not.toBeDisabled();
+        expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
       });
     });
 
@@ -194,9 +192,7 @@ describe("SnippetCollectionFormModal", () => {
       await setupEditing();
       userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
       await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: "Update" }),
-        ).not.toBeDisabled();
+        expect(screen.getByRole("button", { name: "Update" })).toBeEnabled();
       });
     });
 
