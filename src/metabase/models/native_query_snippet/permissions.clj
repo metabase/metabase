@@ -1,7 +1,8 @@
 (ns metabase.models.native-query-snippet.permissions
   "NativeQuerySnippets have different permissions implementations. In Metabase CE, anyone can read/edit/create all
   NativeQuerySnippets. EE has a more advanced implementation."
-  (:require [metabase.public-settings.premium-features :refer [defenterprise]]))
+  (:require
+   [metabase.public-settings.premium-features :refer [defenterprise]]))
 
 (defenterprise can-read?
   "Can the current User read this `snippet`?"

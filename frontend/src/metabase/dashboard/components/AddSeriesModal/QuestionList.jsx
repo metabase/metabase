@@ -83,17 +83,38 @@ export const QuestionList = React.memo(function QuestionList({
 
   const compatibleQuestions = useMemo(
     () =>
-      filteredQuestions?.filter(question =>
-        isQuestionCompatible(visualization, dashcard, dashcardData, question),
-      ),
+      filteredQuestions?.filter(question => {
+        try {
+          return isQuestionCompatible(
+            visualization,
+            dashcard,
+            dashcardData,
+            question,
+          );
+        } catch (e) {
+          console.warn(
+            `Could not check question compatibility for a question with id=${question?.id?.()}`,
+            e,
+          );
+          return false;
+        }
+      }),
     [dashcard, dashcardData, filteredQuestions, visualization],
   );
 
   const questionsWithoutMetadata = useMemo(
     () =>
-      filteredQuestions.filter(
-        question => question.isStructured() && !question.query().hasMetadata(),
-      ),
+      filteredQuestions.filter(question => {
+        try {
+          return question.isStructured() && !question.query().hasMetadata();
+        } catch (e) {
+          console.warn(
+            `Could not check question metadata existence for a question with id=${question?.id?.()}`,
+            e,
+          );
+          return false;
+        }
+      }),
     [filteredQuestions],
   );
 
@@ -124,12 +145,13 @@ export const QuestionList = React.memo(function QuestionList({
     <>
       <SearchContainer>
         <SearchInput
+          fullWidth
           value={searchText}
           colorScheme="transparent"
           icon={<Icon name="search" size={16} pt="0.25rem" />}
           placeholder={t`Search for a question`}
           onFocus={handleSearchFocus}
-          onChange={value => setSearchText(value)}
+          onChange={e => setSearchText(e.target.value)}
         />
       </SearchContainer>
       <QuestionListWrapper

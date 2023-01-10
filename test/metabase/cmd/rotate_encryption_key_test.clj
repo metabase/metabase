@@ -1,27 +1,29 @@
 (ns metabase.cmd.rotate-encryption-key-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.cmd :as cmd]
-            [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
-            [metabase.cmd.load-from-h2 :as load-from-h2]
-            [metabase.cmd.rotate-encryption-key :refer [rotate-encryption-key!]]
-            [metabase.cmd.test-util :as cmd.test-util]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Database Secret Setting User]]
-            [metabase.models.interface :as mi]
-            [metabase.models.setting :as setting]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.encryption :as encryption]
-            [metabase.util.encryption-test :as encryption-test]
-            [metabase.util.i18n :as i18n]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import java.nio.charset.StandardCharsets))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.cmd :as cmd]
+   [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
+   [metabase.cmd.load-from-h2 :as load-from-h2]
+   [metabase.cmd.rotate-encryption-key :refer [rotate-encryption-key!]]
+   [metabase.cmd.test-util :as cmd.test-util]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.driver :as driver]
+   [metabase.models :refer [Database Secret Setting User]]
+   [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
+   [metabase.util.i18n :as i18n]
+   [toucan.db :as db]
+   [toucan.models :as models])
+  (:import
+   (java.nio.charset StandardCharsets)))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -41,7 +43,9 @@
 
 (defn- raw-value [keyy]
   (:value (first (jdbc/query {:datasource (mdb.connection/data-source)}
-                             ["select value from setting where setting.key=?;" keyy]))))
+                             [(if (= driver/*driver* :h2)
+                                "select \"VALUE\" from setting where setting.\"KEY\"=?;"
+                                "select value from setting where setting.key=?;") keyy]))))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
   (with-redefs [rotate-encryption-key! #(throw "err")

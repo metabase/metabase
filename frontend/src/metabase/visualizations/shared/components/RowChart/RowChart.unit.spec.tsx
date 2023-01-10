@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import type { NumberValue } from "d3-scale";
 import userEvent from "@testing-library/user-event";
 import { ChartFont } from "../../types/style";
@@ -25,7 +25,7 @@ const theme: RowChartTheme = {
   },
 };
 
-const measureText: TextMeasurer = (text: string, style: FontStyle) =>
+const measureText: TextMeasurer = (text: string, _style: FontStyle) =>
   text.length * 10;
 
 const series1 = {
@@ -60,28 +60,16 @@ const defaultProps = {
 };
 
 const setup = (props?: Partial<RowChartProps<TestDatum>>) => {
-  const {
-    getAllByRole,
-    getByText,
-    getAllByText,
-    queryByText,
-    queryAllByTestId,
-    queryAllByRole,
-  } = render(<RowChart {...defaultProps} {...props} />);
-  const bars = getAllByRole("graphics-symbol").filter(
-    el => el.getAttribute("aria-roledescription") === "bar",
-  );
-  const dataLabels = queryAllByTestId("data-label");
-  const goalLine = queryAllByRole("graphics-symbol").find(
-    el => el.getAttribute("aria-roledescription") === "goal line",
-  );
+  render(<RowChart {...defaultProps} {...props} />);
+  const bars = screen
+    .getAllByRole("graphics-symbol")
+    .filter(el => el.getAttribute("aria-roledescription") === "bar");
+  const dataLabels = screen.queryAllByTestId("data-label");
+  const goalLine = screen
+    .queryAllByRole("graphics-symbol")
+    .find(el => el.getAttribute("aria-roledescription") === "goal line");
 
   return {
-    queryAllByTestId,
-    getAllByText,
-    getByText,
-    queryByText,
-
     bars,
     dataLabels,
     goalLine,
@@ -91,38 +79,40 @@ const setup = (props?: Partial<RowChartProps<TestDatum>>) => {
 describe("RowChart", () => {
   describe("axes", () => {
     it("should render Y-ticks", () => {
-      const { getByText } = setup({ series: [series1] });
+      setup({ series: [series1] });
 
       const ticks = ["foo", "bar", "baz"];
-      ticks.forEach(tick => expect(getByText(tick)).toBeInTheDocument());
+      ticks.forEach(tick => expect(screen.getByText(tick)).toBeInTheDocument());
     });
 
     it("should not render Y-ticks when disabled", () => {
-      const { queryByText } = setup({
+      setup({
         series: [series1],
         hasYAxis: false,
       });
-      expect(queryByText("foo")).toBeNull();
+      expect(screen.queryByText("foo")).not.toBeInTheDocument();
     });
 
-    it("should render nice values for X-ticks ", () => {
-      const { getAllByText } = setup({ series: [series1] });
-      const ticks = ["0", "50", "100", "150", "200", "250"];
+    it("should render nice values for X-ticks", () => {
+      setup({ series: [series1] });
+      const ticks = ["0", "100", "200"];
 
       // visx duplicates certain ticks
-      ticks.forEach(tick => expect(getAllByText(tick)[0]).toBeInTheDocument());
+      ticks.forEach(tick =>
+        expect(screen.getAllByText(tick)[0]).toBeInTheDocument(),
+      );
     });
 
     it("should not render X-ticks when disabled", () => {
-      const { queryByText } = setup({
+      setup({
         series: [series1],
         hasXAxis: false,
       });
-      expect(queryByText("50")).toBeNull();
+      expect(screen.queryByText("50")).not.toBeInTheDocument();
     });
 
     it("should apply formatting", () => {
-      const { getAllByText } = setup({
+      setup({
         series: [series1],
         tickFormatters: {
           xTickFormatter: (value: string) => `x_${value}`,
@@ -130,31 +120,23 @@ describe("RowChart", () => {
         },
       });
 
-      const ticks = [
-        "y_foo",
-        "y_bar",
-        "y_baz",
-        "x_0",
-        "x_50",
-        "x_100",
-        "x_150",
-        "x_200",
-        "x_250",
-      ];
+      const ticks = ["y_foo", "y_bar", "y_baz", "x_0", "x_100", "x_200"];
 
       // visx duplicates certain ticks
-      ticks.forEach(tick => expect(getAllByText(tick)[0]).toBeInTheDocument());
+      ticks.forEach(tick =>
+        expect(screen.getAllByText(tick)[0]).toBeInTheDocument(),
+      );
     });
 
     it("should render labels when specified", () => {
-      const { getByText } = setup({
+      setup({
         series: [series1],
         xLabel: "X Label",
         yLabel: "Y Label",
       });
 
-      expect(getByText("X Label")).toBeInTheDocument();
-      expect(getByText("Y Label")).toBeInTheDocument();
+      expect(screen.getByText("X Label")).toBeInTheDocument();
+      expect(screen.getByText("Y Label")).toBeInTheDocument();
     });
   });
 
@@ -162,9 +144,9 @@ describe("RowChart", () => {
     it("should render chart bars for a single series chart", () => {
       const { bars } = setup({ series: [series1] });
       expect(bars).toHaveLength(3);
-      expect(bars[0].getAttribute("aria-label")).toBe("100");
-      expect(bars[1].getAttribute("aria-label")).toBe("200");
-      expect(bars[2].getAttribute("aria-label")).toBe("300");
+      expect(bars[0]).toHaveAttribute("aria-label", "100");
+      expect(bars[1]).toHaveAttribute("aria-label", "200");
+      expect(bars[2]).toHaveAttribute("aria-label", "300");
     });
 
     it("should render chart bars for a multi-series chart", () => {
@@ -172,14 +154,14 @@ describe("RowChart", () => {
       expect(bars).toHaveLength(6);
 
       // Series 1
-      expect(bars[0].getAttribute("aria-label")).toBe("100");
-      expect(bars[1].getAttribute("aria-label")).toBe("200");
-      expect(bars[2].getAttribute("aria-label")).toBe("300");
+      expect(bars[0]).toHaveAttribute("aria-label", "100");
+      expect(bars[1]).toHaveAttribute("aria-label", "200");
+      expect(bars[2]).toHaveAttribute("aria-label", "300");
 
       // Series 2
-      expect(bars[3].getAttribute("aria-label")).toBe("200");
-      expect(bars[4].getAttribute("aria-label")).toBe("400");
-      expect(bars[5].getAttribute("aria-label")).toBe("600");
+      expect(bars[3]).toHaveAttribute("aria-label", "200");
+      expect(bars[4]).toHaveAttribute("aria-label", "400");
+      expect(bars[5]).toHaveAttribute("aria-label", "600");
     });
   });
 
@@ -232,8 +214,15 @@ describe("RowChart", () => {
 
       expect(onClick).toHaveBeenCalledWith(
         expect.objectContaining({ currentTarget: expect.anything() }),
-        0, // first series
-        0, // first bar
+        expect.objectContaining({
+          datum: expect.objectContaining({ x: 100, x1: 200, y: "foo" }),
+          series: expect.objectContaining({
+            seriesKey: "series 1",
+            seriesName: "Series 1",
+          }),
+          datumIndex: 0,
+          isNegative: false,
+        }),
       );
 
       onClick.mockClear();
@@ -243,12 +232,19 @@ describe("RowChart", () => {
 
       expect(onClick).toHaveBeenCalledWith(
         expect.objectContaining({ currentTarget: expect.anything() }),
-        1, // second series
-        2, // third bar
+        expect.objectContaining({
+          datum: expect.objectContaining({ x: 300, x1: 600, y: "baz" }),
+          series: expect.objectContaining({
+            seriesKey: "series 2",
+            seriesName: "Series 2",
+          }),
+          datumIndex: 2,
+          isNegative: false,
+        }),
       );
     });
 
-    it("should call onClick with the clicked datum info", () => {
+    it("should call onHover with the clicked datum info", () => {
       const onHover = jest.fn();
 
       const { bars } = setup({ onHover });
@@ -256,8 +252,15 @@ describe("RowChart", () => {
 
       expect(onHover).toHaveBeenCalledWith(
         expect.objectContaining({ currentTarget: expect.anything() }),
-        0, // first series
-        0, // first bar
+        expect.objectContaining({
+          datum: expect.objectContaining({ x: 100, x1: 200, y: "foo" }),
+          series: expect.objectContaining({
+            seriesKey: "series 1",
+            seriesName: "Series 1",
+          }),
+          datumIndex: 0,
+          isNegative: false,
+        }),
       );
 
       onHover.mockClear();
@@ -267,8 +270,15 @@ describe("RowChart", () => {
 
       expect(onHover).toHaveBeenCalledWith(
         expect.objectContaining({ currentTarget: expect.anything() }),
-        1, // second series
-        2, // third bar
+        expect.objectContaining({
+          datum: expect.objectContaining({ x: 300, x1: 600, y: "baz" }),
+          series: expect.objectContaining({
+            seriesKey: "series 2",
+            seriesName: "Series 2",
+          }),
+          datumIndex: 2,
+          isNegative: false,
+        }),
       );
     });
 
@@ -283,11 +293,11 @@ describe("RowChart", () => {
       const secondSeriesBars = bars.slice(3);
 
       firstSeriesBars.forEach(bar =>
-        expect(bar.getAttribute("opacity")).toBe("0.4"),
+        expect(bar).toHaveAttribute("opacity", "0.4"),
       );
 
       secondSeriesBars.forEach(bar =>
-        expect(bar.getAttribute("opacity")).toBe("1"),
+        expect(bar).toHaveAttribute("opacity", "1"),
       );
     });
 

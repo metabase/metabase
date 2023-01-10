@@ -11,25 +11,25 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import { Timeline, TimelineEventData } from "metabase-types/api";
+import * as Errors from "metabase/core/utils/errors";
+import {
+  FormattingSettings,
+  Timeline,
+  TimelineEventData,
+} from "metabase-types/api";
 import FormArchiveButton from "../FormArchiveButton";
 import { EventFormFooter } from "./EventForm.styled";
 
-const EventSchema = Yup.object({
-  name: Yup.string()
-    .required(t`required`)
-    .max(255, ({ max }) => t`must be ${max} characters or less`),
-  description: Yup.string().max(
-    255,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
-  timestamp: Yup.string().required(`required`),
+const EVENT_SCHEMA = Yup.object({
+  name: Yup.string().required(Errors.required).max(255, Errors.maxLength),
+  description: Yup.string().nullable().max(255, Errors.maxLength),
+  timestamp: Yup.string().required(Errors.required),
   time_matters: Yup.boolean(),
-  icon: Yup.string().required(`required`),
+  icon: Yup.string().required(Errors.required),
   timeline_id: Yup.number(),
 });
 
-export interface EventFormProps {
+export interface EventFormOwnProps {
   initialValues: TimelineEventData;
   timelines?: Timeline[];
   onSubmit: (data: TimelineEventData) => void;
@@ -37,14 +37,22 @@ export interface EventFormProps {
   onCancel?: () => void;
 }
 
+export interface EventFormStateProps {
+  formattingSettings?: FormattingSettings;
+}
+
+export type EventFormProps = EventFormOwnProps & EventFormStateProps;
+
 const EventForm = ({
   initialValues,
   timelines = [],
+  formattingSettings,
   onSubmit,
   onArchive,
   onCancel,
 }: EventFormProps): JSX.Element => {
   const isNew = initialValues.id == null;
+  const dateSettings = formattingSettings?.["type/Temporal"];
 
   const iconOptions = useMemo(() => {
     return getTimelineIcons();
@@ -57,7 +65,7 @@ const EventForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={EventSchema}
+      validationSchema={EVENT_SCHEMA}
       onSubmit={onSubmit}
     >
       {({ dirty, values, setFieldValue }) => (
@@ -72,6 +80,8 @@ const EventForm = ({
             name="timestamp"
             title={t`Date`}
             hasTime={values.time_matters}
+            dateFormat={dateSettings?.date_style}
+            timeFormat={dateSettings?.time_style}
             onHasTimeChange={value => setFieldValue("time_matters", value)}
           />
           <FormTextArea
@@ -79,7 +89,7 @@ const EventForm = ({
             title={t`Description`}
             infoLabel={t`Markdown supported`}
             infoTooltip={t`Add links and formatting via markdown`}
-            fullWidth
+            nullable
           />
           <FormSelect name="icon" title={t`Icon`} options={iconOptions} />
           {timelines.length > 1 && (

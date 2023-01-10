@@ -31,10 +31,7 @@ import {
   maybeUsePivotEndpoint,
   MetabaseApi,
 } from "metabase/services";
-import {
-  Parameter as ParameterObject,
-  ParameterValues,
-} from "metabase-types/types/Parameter";
+import { ParameterValues } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { Column, Dataset, Value } from "metabase-types/types/Dataset";
@@ -46,11 +43,11 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId } from "metabase-types/api";
+import { CollectionId, Parameter as ParameterObject } from "metabase-types/api";
 
 import {
-  normalizeParameterValue,
   getParameterValuesBySlug,
+  normalizeParameters,
 } from "metabase-lib/parameters/utils/parameter-values";
 import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
@@ -194,7 +191,7 @@ class QuestionInner {
       }
     }
 
-    throw new Error("Unknown query type: " + datasetQuery.type);
+    console.warn("Unknown query type: " + datasetQuery?.type);
   }
 
   isNative(): boolean {
@@ -271,10 +268,6 @@ class QuestionInner {
     return this._card && this._card.persisted;
   }
 
-  isAction() {
-    return this._card && this._card.is_write;
-  }
-
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
   }
@@ -287,10 +280,6 @@ class QuestionInner {
     return this.setCard(
       assoc(this.card(), "collection_position", pinned ? 1 : null),
     );
-  }
-
-  setIsAction(isAction) {
-    return this.setCard(assoc(this.card(), "is_write", isAction));
   }
 
   // locking the display prevents auto-selection
@@ -527,7 +516,10 @@ class QuestionInner {
     return filter(this, operator, column, value) || this;
   }
 
-  pivot(breakouts = [], dimensions = []): Question {
+  pivot(
+    breakouts: (Breakout | Dimension | Field)[] = [],
+    dimensions = [],
+  ): Question {
     return pivot(this, breakouts, dimensions) || this;
   }
 
@@ -588,7 +580,7 @@ class QuestionInner {
           type: "query",
           database: this.databaseId(),
           query: {
-            "source-table": getQuestionVirtualTableId(this.card()),
+            "source-table": getQuestionVirtualTableId(this.id()),
           },
         },
       };
@@ -605,7 +597,7 @@ class QuestionInner {
       type: "query",
       database: this.databaseId(),
       query: {
-        "source-table": getQuestionVirtualTableId(this.card()),
+        "source-table": getQuestionVirtualTableId(this.id()),
       },
     });
   }
@@ -1013,7 +1005,7 @@ class QuestionInner {
     if (this.isDataset() && this.isSaved()) {
       dependencies.push({
         type: "table",
-        id: getQuestionVirtualTableId(this.card()),
+        id: getQuestionVirtualTableId(this.id()),
       });
     }
 
@@ -1074,19 +1066,7 @@ class QuestionInner {
   } = {}): Promise<[Dataset]> {
     // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
     const canUseCardApiEndpoint = !isDirty && this.isSaved();
-    const parameters = this.parameters()
-      // include only parameters that have a value applied
-      .filter(param => _.has(param, "value"))
-      // only the superset of parameters object that API expects
-      .map(param => _.pick(param, "type", "target", "value", "id"))
-      .map(({ type, value, target, id }) => {
-        return {
-          type,
-          value: normalizeParameterValue(type, value),
-          target,
-          id,
-        };
-      });
+    const parameters = normalizeParameters(this.parameters());
 
     if (canUseCardApiEndpoint) {
       const dashboardId = this._card.dashboardId;

@@ -1,14 +1,15 @@
 (ns metabase.test.data.one-off-dbs
   "Test utility functions for using one-off temporary in-memory H2 databases, including completely blank ones and the
   infamous `blueberries_consumed` database, used by sync tests in several different namespaces."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.models.database :refer [Database]]
-            [metabase.sync :as sync]
-            [metabase.test.data :as data]
-            [metabase.test.util :as tu]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.models.database :refer [Database]]
+   [metabase.sync :as sync]
+   [metabase.test.data :as data]
+   [metabase.test.util :as tu]
+   [toucan.util.test :as tt]))
 
 (def ^:dynamic *conn*
   "Bound to a JDBC connection spec when using one of the `with-db` macros below."

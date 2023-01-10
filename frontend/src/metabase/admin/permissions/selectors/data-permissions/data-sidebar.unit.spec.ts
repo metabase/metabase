@@ -2,7 +2,7 @@ import { RawDataRouteParams } from "../../types";
 import { state } from "./data-permissions.unit.spec.fixtures";
 import { getDataFocusSidebar } from ".";
 
-export const getRouteProps = ({
+const getRouteProps = ({
   databaseId,
   schemaName,
   tableId,

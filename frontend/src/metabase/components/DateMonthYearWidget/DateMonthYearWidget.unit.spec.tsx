@@ -5,7 +5,7 @@ import DateMonthYearWidget from "./DateMonthYearWidget";
 
 describe("DateMonthYearWidget", () => {
   it("should render correctly", () => {
-    const { container } = render(
+    render(
       <DateMonthYearWidget
         value={"2021-07"}
         setValue={jest.fn()}
@@ -18,8 +18,7 @@ describe("DateMonthYearWidget", () => {
 
     // 07 = July and year 2021
     expect(screen.getByTestId("select-button")).toHaveTextContent("2021");
-    expect(
-      container.querySelector("div[aria-selected='true']"),
-    ).toHaveTextContent("July");
+    expect(screen.getByText("July")).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("June")).toHaveAttribute("aria-selected", "false");
   });
 });

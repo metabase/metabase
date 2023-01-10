@@ -423,8 +423,8 @@
                        (catch Exception e
                          (when-not raw-setting?
                            (throw e))))]
-    (if-let [env-var-value (and (not raw-setting?) (#'setting/env-var-value setting-k))]
-      (do-with-temp-env-var-value setting env-var-value thunk)
+    (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
+      (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (db/select-one-field :value Setting :key setting-k)
                              (#'setting/get setting-k))]
@@ -821,6 +821,25 @@
            :namespace (name ~collection-namespace))
     (fn [] ~@body)))
 
+(defn do-with-all-users-permission
+  "Call `f` without arguments in a context where the ''All Users'' group
+  is granted the permission specified by `permission-path`.
+
+  For most use cases see the macro [[with-all-users-permission]]."
+  [permission-path f]
+  (tt/with-temp Permissions [_ {:group_id (:id (perms-group/all-users))
+                                :object permission-path}]
+    (f)))
+
+(defmacro with-all-users-permission
+  "Run `body` with the ''All Users'' group being granted the permission
+  specified by `permission-path`.
+
+  (mt/with-all-users-permission (perms/app-root-collection-permission :read)
+    ...)"
+  [permission-path & body]
+  `(do-with-all-users-permission ~permission-path (fn [] ~@body)))
+
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
   Useful for tests when you need the entire object to be realized in the body of a `binding`, `with-redefs`, or
@@ -889,15 +908,24 @@
                                      remap)
                              remap)]
             (fn []
-              (tt/with-temp* [Dimension   [_ {:field_id (:id original)
-                                              :name     (format "%s [internal remap]" (:display_name original))
-                                              :type     :internal}]
-                              FieldValues [_ {:field_id              (:id original)
-                                              :values                (keys values-map)
-                                              :human_readable_values (vals values-map)}]]
-                (testing (format "With human readable values remapping %s -> %s\n"
-                                 (describe-field original) (pr-str values-map))
-                  (thunk)))))))))
+              (let [preexisting-id (db/select-one-id FieldValues
+                                                     :field_id (:id original)
+                                                     :type :full)
+                    testing-thunk (fn []
+                                    (testing (format "With human readable values remapping %s -> %s\n"
+                                                     (describe-field original) (pr-str values-map))
+                                      (thunk)))]
+                (tt/with-temp* [Dimension   [_ {:field_id (:id original)
+                                                :name     (format "%s [internal remap]" (:display_name original))
+                                                :type     :internal}]]
+                  (if preexisting-id
+                    (with-temp-vals-in-db FieldValues preexisting-id {:values (keys values-map)
+                                                                      :human_readable_values (vals values-map)}
+                      (testing-thunk))
+                    (tt/with-temp* [FieldValues [_ {:field_id              (:id original)
+                                                    :values                (keys values-map)
+                                                    :human_readable_values (vals values-map)}]]
+                      (testing-thunk)))))))))))
    orig->remapped))
 
 (defn- col-remappings-arg [x]

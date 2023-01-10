@@ -1,30 +1,32 @@
 (ns metabase.api.metric
   "/api/metric endpoints."
-  (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.api.common :as api]
-            [metabase.api.query-description :as api.qd]
-            [metabase.events :as events]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.interface :as mi]
-            [metabase.models.metric :as metric :refer [Metric]]
-            [metabase.models.revision :as revision]
-            [metabase.models.table :refer [Table]]
-            [metabase.related :as related]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.data :as data]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [metabase.api.common :as api]
+   [metabase.api.query-description :as api.qd]
+   [metabase.events :as events]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :as metric :refer [Metric]]
+   [metabase.models.revision :as revision]
+   [metabase.models.table :refer [Table]]
+   [metabase.related :as related]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Create a new `Metric`."
   [:as {{:keys [name description table_id definition], :as body} :body}]
-  {name        su/NonBlankString
-   table_id    su/IntGreaterThanZero
-   definition  su/Map
+  {name        su/NonBlankStringPlumatic
+   table_id    su/IntGreaterThanZeroPlumatic
+   definition  su/MapPlumatic
    description (s/maybe s/Str)}
   ;; TODO - why can't set the other properties like `show_in_getting_started` when you create a Metric?
   (api/create-check Metric body)
@@ -38,7 +40,7 @@
     (-> (events/publish-event! :metric-create metric)
         (hydrate :creator))))
 
-(s/defn ^:private hydrated-metric [id :- su/IntGreaterThanZero]
+(s/defn ^:private hydrated-metric [id :- su/IntGreaterThanZeroPlumatic]
   (-> (api/read-check (db/select-one Metric :id id))
       (hydrate :creator)))
 
@@ -51,7 +53,8 @@
                :query_description
                (api.qd/generate-query-description table (:definition metric)))))))
 
-(api/defendpoint GET "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id"
   "Fetch `Metric` with ID."
   [id]
   (first (add-query-descriptions [(hydrated-metric id)])))
@@ -64,7 +67,8 @@
       (for [metric metrics]
         (assoc metric :database_id (table-id->db-id (:table_id metric)))))))
 
-(api/defendpoint GET "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/"
   "Fetch *all* `Metrics`."
   []
   (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
@@ -94,14 +98,15 @@
       (events/publish-event! (if archive? :metric-delete :metric-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
 
-(api/defendpoint PUT "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id"
   "Update a `Metric` with ID."
   [id :as {{:keys [name definition revision_message archived caveats description how_is_this_calculated
                    points_of_interest show_in_getting_started]
             :as   body} :body}]
-  {name                    (s/maybe su/NonBlankString)
-   definition              (s/maybe su/Map)
-   revision_message        su/NonBlankString
+  {name                    (s/maybe su/NonBlankStringPlumatic)
+   definition              (s/maybe su/MapPlumatic)
+   revision_message        su/NonBlankStringPlumatic
    archived                (s/maybe s/Bool)
    caveats                 (s/maybe s/Str)
    description             (s/maybe s/Str)
@@ -110,11 +115,12 @@
    show_in_getting_started (s/maybe s/Bool)}
   (write-check-and-update-metric! id body))
 
-(api/defendpoint PUT "/:id/important_fields"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id/important_fields"
   "Update the important `Fields` for a `Metric` with ID.
    (This is used for the Getting Started guide)."
   [id :as {{:keys [important_field_ids]} :body}]
-  {important_field_ids [su/IntGreaterThanZero]}
+  {important_field_ids [su/IntGreaterThanZeroPlumatic]}
   (api/check-superuser)
   (api/write-check Metric id)
   (api/check (<= (count important_field_ids) 3)
@@ -131,27 +137,30 @@
     {:success true}))
 
 
-(api/defendpoint DELETE "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/:id"
   "Archive a Metric. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [id revision_message]
-  {revision_message su/NonBlankString}
+  {revision_message su/NonBlankStringPlumatic}
   (log/warn
    (trs "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id."))
   (write-check-and-update-metric! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 
 
-(api/defendpoint GET "/:id/revisions"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for `Metric` with ID."
   [id]
   (api/read-check Metric id)
   (revision/revisions+details Metric id))
 
 
-(api/defendpoint POST "/:id/revert"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/revert"
   "Revert a `Metric` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
-  {revision_id su/IntGreaterThanZero}
+  {revision_id su/IntGreaterThanZeroPlumatic}
   (api/write-check Metric id)
   (revision/revert!
     :entity      Metric
@@ -159,7 +168,8 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id))
 
-(api/defendpoint GET "/:id/related"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Metric :id id) api/read-check related/related))

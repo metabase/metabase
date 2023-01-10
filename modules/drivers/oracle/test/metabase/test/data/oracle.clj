@@ -38,24 +38,32 @@
 (defn- connection-details []
   (let [details* {:host         (tx/db-test-env-var-or-throw :oracle :host "localhost")
                   :port         (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
-                  :user         (tx/db-test-env-var-or-throw :oracle :user "system")
-                  :password     (tx/db-test-env-var-or-throw :oracle :password "password")
+                  :user         (tx/db-test-env-var :oracle :user)
+                  :password     (tx/db-test-env-var :oracle :password)
                   :sid          (tx/db-test-env-var :oracle :sid)
                   :service-name (tx/db-test-env-var :oracle :service-name (when-not (tx/db-test-env-var :oracle :sid) "XEPDB1"))
                   :ssl          (tx/db-test-env-var :oracle :ssl false)}
         ssl-keys [:ssl-use-truststore :ssl-truststore-options :ssl-truststore-path :ssl-truststore-value
                   :ssl-truststore-password-value
-                  :ssl-use-keystore :ssl-use-keystore-options :ssl-keystore-path :ssl-keystore-value
-                  :ssl-keystore-password-value]]
-    (merge details*
-      (m/filter-vals some?
-        (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))))
+                  :ssl-use-keystore :ssl-keystore-options :ssl-keystore-path :ssl-keystore-value
+                  :ssl-keystore-password-value]
+        details* (merge details*
+                        (m/filter-vals some?
+                                       (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))]
+    ;; if user or password are not set and we cannot possibly be using SSL auth, set the defaults
+    (cond-> details*
+      (and (nil? (:user details*)) (not (:ssl-use-keystore details*)))
+      (assoc :user "system")
+
+      (and (nil? (:password details*)) (not (:ssl-use-keystore details*)))
+      (assoc :password "password"))))
 
 (defmethod tx/dbdef->connection-details :oracle [& _]
-  (let [conn-details (connection-details)]
-    (identity conn-details)))
+  (connection-details))
 
 (defmethod tx/sorts-nil-first? :oracle [_ _] false)
+
+(defmethod tx/supports-time-type? :oracle [_driver] false)
 
 (doseq [[base-type sql-type] {:type/BigInteger             "NUMBER(*,0)"
                               :type/Boolean                "NUMBER(1)"

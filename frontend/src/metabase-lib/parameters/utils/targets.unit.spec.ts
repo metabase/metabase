@@ -4,11 +4,11 @@ import {
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
 import { ParameterDimensionTarget } from "metabase-types/types/Parameter";
-import { SavedCard } from "metabase-types/types/Card";
+import { isDimensionTarget } from "metabase-types/guards";
+import type { Card } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
 import {
   getParameterTargetField,
-  isDimensionTarget,
   isVariableTarget,
   getTemplateTagFromTarget,
   getTargetFieldFromCard,
@@ -72,7 +72,6 @@ describe("parameters/utils/targets", () => {
 
   describe("getParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
-      // @ts-expect-error - SAMPLE_DATABASE is defined
       const question = SAMPLE_DATABASE.nativeQuestion({
         query: "select * from PRODUCTS where CATEGORY = {{foo}}",
         "template-tags": {
@@ -96,7 +95,6 @@ describe("parameters/utils/targets", () => {
         "dimension",
         ["template-tag", "foo"],
       ];
-      // @ts-expect-error - SAMPLE_DATABASE is defined
       const question = SAMPLE_DATABASE.nativeQuestion({
         query: "select * from PRODUCTS where {{foo}}",
         "template-tags": {
@@ -119,7 +117,6 @@ describe("parameters/utils/targets", () => {
         "dimension",
         ["field", PRODUCTS.CATEGORY.id, null],
       ];
-      // @ts-expect-error - SAMPLE_DATABASE is defined
       const question = SAMPLE_DATABASE.question({
         "source-table": PRODUCTS.id,
       });
@@ -140,7 +137,7 @@ describe("parameters/utils/targets", () => {
     it("should return null when given a card without a `dataset_query`", () => {
       const card = {
         id: 1,
-      } as SavedCard;
+      } as Card;
 
       expect(getTargetFieldFromCard(target, card, metadata)).toBe(null);
     });
@@ -157,7 +154,7 @@ describe("parameters/utils/targets", () => {
             "source-table": PRODUCTS.id,
           },
         },
-      } as SavedCard;
+      } as Card;
 
       expect(getTargetFieldFromCard(target, card, metadata)).toEqual(
         expect.objectContaining({ id: field.id }),

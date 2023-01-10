@@ -1,30 +1,34 @@
 (ns metabase.api.timeline-event
   "/api/timeline-event endpoints."
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.common :as api]
-            [metabase.models.collection :as collection]
-            [metabase.models.timeline :as timeline :refer [Timeline]]
-            [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
+   [metabase.models.collection :as collection]
+   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.models.timeline-event
+    :as timeline-event
+    :refer [TimelineEvent]]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Create a new [[TimelineEvent]]."
   [:as {{:keys [name description timestamp time_matters timezone icon timeline_id source question_id archived] :as body} :body}]
-  {name         su/NonBlankString
+  {name         su/NonBlankStringPlumatic
    description  (s/maybe s/Str)
-   timestamp    su/TemporalString
+   timestamp    su/TemporalStringPlumatic
    time_matters (s/maybe s/Bool)
    timezone     s/Str
    icon         (s/maybe timeline/Icons)
-   timeline_id  su/IntGreaterThanZero
+   timeline_id  su/IntGreaterThanZeroPlumatic
    source       (s/maybe timeline-event/Sources)
-   question_id  (s/maybe su/IntGreaterThanZero)
+   question_id  (s/maybe su/IntGreaterThanZeroPlumatic)
    archived     (s/maybe s/Bool)}
   ;; deliberately not using api/check-404 so we can have a useful error message.
   (let [timeline (db/select-one Timeline :id timeline_id)]
@@ -35,7 +39,7 @@
     ;; todo: revision system
     (let [parsed   (if (nil? timestamp)
                      (throw (ex-info (tru "Timestamp cannot be null") {:status-code 400}))
-                   (u.date/parse timestamp))
+                     (u.date/parse timestamp))
           tl-event (merge (dissoc body :source :question_id)
                           {:creator_id api/*current-user-id*
                            :timestamp  parsed}
@@ -49,22 +53,24 @@
                                (boolean question_id) (assoc :question_id question_id)))
       (db/insert! TimelineEvent tl-event))))
 
-(api/defendpoint GET "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
   [id]
   (api/read-check TimelineEvent id))
 
-(api/defendpoint PUT "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id"
   "Update a [[TimelineEvent]]."
   [id :as {{:keys [name description timestamp time_matters timezone icon timeline_id archived]
             :as   timeline-event-updates} :body}]
-  {name         (s/maybe su/NonBlankString)
+  {name         (s/maybe su/NonBlankStringPlumatic)
    description  (s/maybe s/Str)
-   timestamp    (s/maybe su/TemporalString)
+   timestamp    (s/maybe su/TemporalStringPlumatic)
    time_matters (s/maybe s/Bool)
    timezone     (s/maybe s/Str)
    icon         (s/maybe timeline/Icons)
-   timeline_id  (s/maybe su/IntGreaterThanZero)
+   timeline_id  (s/maybe su/IntGreaterThanZeroPlumatic)
    archived     (s/maybe s/Bool)}
   (let [existing (api/write-check TimelineEvent id)
         timeline-event-updates (cond-> timeline-event-updates
@@ -77,7 +83,8 @@
         :non-nil #{:name}))
     (db/select-one TimelineEvent :id id)))
 
-(api/defendpoint DELETE "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/:id"
   "Delete a [[TimelineEvent]]."
   [id]
   (api/write-check TimelineEvent id)

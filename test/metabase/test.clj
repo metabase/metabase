@@ -4,51 +4,53 @@
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
   (:refer-clojure :exclude [compile])
-  (:require clojure.data
-            [clojure.test :refer :all]
-            [environ.core :as env]
-            [humane-are.core :as humane-are]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-            [metabase.email-test :as et]
-            [metabase.http-client :as client]
-            [metabase.models.action :as action]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
-            [metabase.test-runner.init :as test-runner.init]
-            [metabase.test-runner.parallel :as test-runner.parallel]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.test.data.env :as tx.env]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.initialize :as initialize]
-            [metabase.test.persistence :as test.persistence]
-            metabase.test.redefs
-            [metabase.test.util :as tu]
-            [metabase.test.util.async :as tu.async]
-            [metabase.test.util.i18n :as i18n.tu]
-            [metabase.test.util.log :as tu.log]
-            [metabase.test.util.timezone :as test.tz]
-            [metabase.util :as u]
-            [pjstadig.humane-test-output :as humane-test-output]
-            [potemkin :as p]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.data]
+   [clojure.test :refer :all]
+   [environ.core :as env]
+   [humane-are.core :as humane-are]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.email-test :as et]
+   [metabase.http-client :as client]
+   [metabase.models :refer [PermissionsGroupMembership User]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
+   [metabase.test-runner.init :as test-runner.init]
+   [metabase.test-runner.parallel :as test-runner.parallel]
+   [metabase.test.data :as data]
+   [metabase.test.data.datasets :as datasets]
+   [metabase.test.data.env :as tx.env]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.initialize :as initialize]
+   [metabase.test.persistence :as test.persistence]
+   [metabase.test.redefs]
+   [metabase.test.util :as tu]
+   [metabase.test.util.async :as tu.async]
+   [metabase.test.util.i18n :as i18n.tu]
+   [metabase.test.util.log :as tu.log]
+   [metabase.test.util.timezone :as test.tz]
+   [metabase.util :as u]
+   [pjstadig.humane-test-output :as humane-test-output]
+   [potemkin :as p]
+   [toucan.db :as db]
+   [toucan.models :as models]
+   [toucan.util.test :as tt]))
 
 (humane-are/install!)
 (humane-test-output/activate!)
-(alter-var-root #'action/*data-apps-enabled* (constantly true))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
@@ -154,6 +156,7 @@
   with-bigquery-fks]
 
  [qp.test-util
+  card-with-source-metadata-for-query
   store-contents
   with-database-timezone-id
   with-everything-store
@@ -204,6 +207,7 @@
   secret-value-equals?
   select-keys-sequentially
   throw-if-called
+  with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes
   with-env-keys-renamed-by
@@ -221,7 +225,6 @@
   with-user-in-groups]
 
  [tu.async
-  wait-for-close
   wait-for-result
   with-open-channels]
 
@@ -248,7 +251,9 @@
   has-questionable-timezone-support?
   has-test-extensions?
   metabase-instance
-  sorts-nil-first?]
+  sorts-nil-first?
+  supports-time-type?
+  supports-timestamptz-type?]
 
  [tx.env
   set-test-drivers!
@@ -284,6 +289,39 @@
       ...)"
   [clock & body]
   `(do-with-clock ~clock (fn [] ~@body)))
+
+(defn do-with-single-admin-user
+  [attributes thunk]
+  (let [existing-admin-memberships (db/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
+        _                          (db/simple-delete! PermissionsGroupMembership :group_id (:id (perms-group/admin)))
+        existing-admin-ids         (db/select-ids User :is_superuser true)
+        _                          (when (seq existing-admin-ids)
+                                     (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser false))
+        temp-admin                 (db/insert! User (merge (with-temp-defaults User)
+                                                           attributes
+                                                           {:is_superuser true}))
+        primary-key                (models/primary-key User)]
+    (try
+      (thunk temp-admin)
+      (finally
+        (db/delete! User primary-key (primary-key temp-admin))
+        (when (seq existing-admin-ids)
+          (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser true))
+        (db/insert-many! PermissionsGroupMembership existing-admin-memberships)))))
+
+(defmacro with-single-admin-user
+  "Creates an admin user (with details described in the `options-map`) and (temporarily) removes the administrative
+  powers of all other users in the database.
+
+  Example:
+
+  (testing \"Check that the last superuser cannot deactivate themselves\"
+    (mt/with-single-admin-user [{id :id}]
+      (is (= \"You cannot remove the last member of the 'Admin' group!\"
+             (mt/user-http-request :crowberto :delete 400 (format \"user/%d\" id))))))"
+  [[binding-form & [options-map]] & body]
+  `(do-with-single-admin-user ~options-map (fn [~binding-form]
+                                             ~@body)))
 
 ;;;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
 

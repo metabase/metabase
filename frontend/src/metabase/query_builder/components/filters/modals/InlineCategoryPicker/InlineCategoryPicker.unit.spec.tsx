@@ -160,9 +160,9 @@ describe("InlineCategoryPicker", () => {
       />,
     );
 
-    screen.getByTestId("category-picker");
+    expect(screen.getByTestId("category-picker")).toBeInTheDocument();
     smallCategoryField.values.forEach(([value]) => {
-      screen.getByText(value);
+      expect(screen.getByText(value)).toBeInTheDocument();
     });
   });
 
@@ -232,9 +232,9 @@ describe("InlineCategoryPicker", () => {
       />,
     );
 
-    screen.getByTestId("category-picker");
+    expect(screen.getByTestId("category-picker")).toBeInTheDocument();
     smallCategoryField.values.forEach(([value]) => {
-      screen.getByText(value);
+      expect(screen.getByText(value)).toBeInTheDocument();
     });
   });
 
@@ -495,7 +495,7 @@ describe("InlineCategoryPicker", () => {
       );
 
       expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("value-picker")).toBeInTheDocument();
+      expect(screen.getByTestId("value-picker")).toBeInTheDocument();
     });
   });
 });

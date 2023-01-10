@@ -1,15 +1,17 @@
 (ns metabase.query-processor.middleware.cache-backend.db
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [metabase.db :as mdb]
-            [metabase.models.query-cache :refer [QueryCache]]
-            [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
-  (:import [java.sql Connection PreparedStatement ResultSet Types]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.tools.logging :as log]
+   [honeysql.core :as hsql]
+   [java-time :as t]
+   [metabase.db :as mdb]
+   [metabase.models.query-cache :refer [QueryCache]]
+   [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db])
+  (:import
+   (java.sql Connection PreparedStatement ResultSet Types)))
 
 (defn- seconds-ago [n]
   (let [[unit n] (if-not (integer? n)

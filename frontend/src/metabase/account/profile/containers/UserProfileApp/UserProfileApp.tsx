@@ -1,12 +1,17 @@
 import { connect } from "react-redux";
+
+import { checkNotNull } from "metabase/core/utils/types";
+
 import { getUser } from "metabase/selectors/user";
-import { State } from "metabase-types/store";
+
+import type { State } from "metabase-types/store";
+
 import UserProfileForm from "../../components/UserProfileForm";
 import { updateUser } from "../../actions";
 import { getIsSsoUser, getLocales } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
-  user: getUser(state),
+  user: checkNotNull(getUser(state)),
   locales: getLocales(state),
   isSsoUser: getIsSsoUser(state),
 });

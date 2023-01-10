@@ -1,12 +1,13 @@
 (ns metabase.util-test
   "Tests for functions in `metabase.util`."
-  (:require [clojure.test :refer :all]
-            [clojure.test.check.clojure-test :refer [defspec]]
-            [clojure.test.check.generators :as gen]
-            [clojure.test.check.properties :as prop]
-            [flatland.ordered.map :refer [ordered-map]]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.test.check.clojure-test :refer [defspec]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [flatland.ordered.map :refer [ordered-map]]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
@@ -17,16 +18,6 @@
          (u/add-period "What about this one?")))
   (is (= "   "
          (u/add-period "   "))))
-
-(deftest ^:parallel decolorize-test
-  (is (= "[31mmessage[0m"
-         (u/colorize 'red "message")))
-  (is (= "message"
-         (u/decolorize "[31mmessage[0m")))
-  (is (= "message"
-         (u/decolorize (u/colorize 'red "message"))))
-  (is (= nil
-         (u/decolorize nil))))
 
 (deftest ^:parallel host-up?-test
   (testing "host-up?"
@@ -122,7 +113,7 @@
 
            "check that diactrics get removed"
            {"Cam Saul's Toucannery"      "cam_saul_s_toucannery"
-            "toucans dislike piñatas :(" "toucans_dislike_pinatas___" }
+            "toucans dislike piñatas :(" "toucans_dislike_pinatas___"}
 
            "check that non-ASCII characters get URL-encoded (so we can support non-Latin alphabet languages; see #3818)"
            {"勇士" "%E5%8B%87%E5%A3%AB"}}]
@@ -131,6 +122,25 @@
         (testing (list 'u/slugify s)
           (is (= expected
                  (u/slugify s))))))))
+
+(deftest ^:parallel slugify-unicode-test
+  (doseq [[group s->expected]
+          {nil
+           {"ToucanFest 2017"               "toucanfest_2017"
+            "Cam's awesome toucan emporium" "cam_s_awesome_toucan_emporium"
+            "Frequently-Used Cards"         "frequently_used_cards"}
+
+           "check that diactrics get removed"
+           {"Cam Saul's Toucannery"      "cam_saul_s_toucannery"
+            "toucans dislike piñatas :(" "toucans_dislike_pinatas___"}
+
+           "check that non-ASCII characters are preserved"
+           {"勇士" "勇士"}}]
+    (testing group
+      (doseq [[s expected] s->expected]
+        (testing (list 'u/slugify s {:unicode? true})
+          (is (= expected
+                 (u/slugify s {:unicode? true}))))))))
 
 (deftest ^:parallel full-exception-chain-test
   (testing "Not an Exception"
@@ -350,16 +360,6 @@
     true  "cam@metabase.com"          "metabase.com"
     false "cam.saul+1@metabase.co.uk" "metabase.com"
     true  "cam.saul+1@metabase.com"   "metabase.com"))
-
-(deftest ^:parallel round-to-precision-test
-  (are [exp figs n] (= exp
-                       (u/round-to-precision figs n))
-       1.0     1 1.234
-       1.2     2 1.234
-       1.3     2 1.278
-       1.3     2 1.251
-       12300.0 3 12345.67
-       0.00321 3 0.003209817))
 
 (defspec pick-first-test 100
   (prop/for-all [coll (gen/list gen/int)]

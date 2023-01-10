@@ -784,7 +784,7 @@ describeEE("formatting > sandboxes", () => {
         .should("be.visible")
         .within(() => {
           // Remove the "Subtotal" column from within sidebar
-          cy.findByText("Subtotal").parent().find(".Icon-eye_filled").click();
+          cy.findByText("Subtotal").parent().find(".Icon-eye_outline").click();
         });
       cy.button("Done").click();
       // Rerun the query

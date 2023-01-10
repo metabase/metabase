@@ -1,14 +1,15 @@
 (ns metabase-enterprise.enhancements.models.native-query-snippet.permissions
   "EE implementation of NativeQuerySnippet permissions."
-  (:require [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (s/defn ^:private has-parent-collection-perms?
-  [snippet       :- {:collection_id (s/maybe su/IntGreaterThanZero), s/Keyword s/Any}
+  [snippet       :- {:collection_id (s/maybe su/IntGreaterThanZeroPlumatic), s/Keyword s/Any}
    read-or-write :- (s/enum :read :write)]
   (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" snippet read-or-write)))
 

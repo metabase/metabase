@@ -1,11 +1,12 @@
 (ns metabase.cmd.compare-h2-dbs
   "Utility functions for comparing the contents of two H2 DBs, for testing the `load-from-h2 and `dump-to-h2` commands."
-  (:require [clojure.data :as data]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            metabase.db.jdbc-protocols
-            [metabase.util :as u]))
+  (:require
+   [clojure.data :as data]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.db.jdbc-protocols]
+   [metabase.util :as u]))
 
 (comment metabase.db.jdbc-protocols/keep-me)
 
@@ -42,7 +43,7 @@
   [spec]
   (jdbc/with-db-metadata [metadata spec]
     (let [result (jdbc/metadata-result
-                  (.getTables metadata nil nil nil
+                  (.getTables metadata nil "PUBLIC" nil
                               (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"])))]
       (sort (remove ignored-table-names (map :table_name result))))))
 

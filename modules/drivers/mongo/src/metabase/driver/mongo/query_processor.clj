@@ -8,9 +8,11 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
@@ -19,12 +21,14 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [monger.operators :refer [$add $addToSet $and $avg $cond $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
+            [monger.operators :refer [$add $addToSet $and $avg $cond
+                                      $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
                                       $group $gt $gte $hour $limit $lt $lte $match $max $min $minute $mod $month
                                       $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
                                       $sum $toLower $year]]
             [schema.core :as s])
-  (:import org.bson.types.ObjectId))
+  (:import org.bson.BsonBinarySubType
+           [org.bson.types Binary ObjectId]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -33,22 +37,22 @@
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
 
-(def ^:private $ProjectStage   {(s/eq $project)    {su/NonBlankString s/Any}})
-(def ^:private $SortStage      {(s/eq $sort)       {su/NonBlankString (s/enum -1 1)}})
-(def ^:private $MatchStage     {(s/eq $match)      {(s/constrained (s/cond-pre su/NonBlankString s/Keyword)
+(def ^:private $ProjectStage   {(s/eq $project)    {su/NonBlankStringPlumatic s/Any}})
+(def ^:private $SortStage      {(s/eq $sort)       {su/NonBlankStringPlumatic (s/enum -1 1)}})
+(def ^:private $MatchStage     {(s/eq $match)      {(s/constrained (s/cond-pre su/NonBlankStringPlumatic s/Keyword)
                                                                    #(not (#{:$not "$not"} %)))
                                                     s/Any}})
-(def ^:private $GroupStage     {(s/eq $group)      {su/NonBlankString s/Any}})
-(def ^:private $AddFieldsStage {(s/eq :$addFields) {su/NonBlankString s/Any}})
-(def ^:private $LimitStage     {(s/eq $limit)      su/IntGreaterThanZero})
-(def ^:private $SkipStage      {(s/eq $skip)       su/IntGreaterThanZero})
+(def ^:private $GroupStage     {(s/eq $group)      {su/NonBlankStringPlumatic s/Any}})
+(def ^:private $AddFieldsStage {(s/eq :$addFields) {su/NonBlankStringPlumatic s/Any}})
+(def ^:private $LimitStage     {(s/eq $limit)      su/IntGreaterThanZeroPlumatic})
+(def ^:private $SkipStage      {(s/eq $skip)       su/IntGreaterThanZeroPlumatic})
 
 (defn- is-stage? [stage]
   (fn [m] (= (first (keys m)) stage)))
 
 (def ^:private Stage
   (s/both
-   (s/constrained su/Map #(= (count (keys %)) 1) "map with a single key")
+   (s/constrained su/MapPlumatic #(= (count (keys %)) 1) "map with a single key")
    (s/conditional
     (is-stage? $project)    $ProjectStage
     (is-stage? $sort)       $SortStage
@@ -75,6 +79,9 @@
 
 ;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
+
+(defn- get-mongo-version []
+  (driver/dbms-version :mongo (qp.store/database)))
 
 (defmulti ^:private ->rvalue
   "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
@@ -136,10 +143,27 @@
 
       (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
       {"$dateFromString" {:dateString field-name
-                          :format "%Y%m%d%H%M%S"
-                          :onError field-name}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
 
-      :else field-name)))
+      ;; mongo only supports datetime
+      (isa? coercion :Coercion/ISO8601->DateTime)
+      {"$dateFromString" {:dateString field-name
+                          :onError    field-name}}
+
+
+      (isa? coercion :Coercion/ISO8601->Date)
+      (throw (ex-info (tru "MongoDB does not support parsing strings as dates. Try parsing to a datetime instead")
+                      {:type              qp.error-type/unsupported-feature
+                       :coercion-strategy coercion}))
+
+
+      (isa? coercion :Coercion/ISO8601->Time)
+      (throw (ex-info (tru "MongoDB does not support parsing strings as times. Try parsing to a datetime instead")
+                      {:type              qp.error-type/unsupported-feature
+                       :coercion-strategy coercion}))
+
+     :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
 ;;
@@ -271,15 +295,32 @@
 
 (defmethod ->rvalue nil [_] nil)
 
+(defn- uuid->bsonbinary
+  [u]
+  (let [lo (.getLeastSignificantBits ^java.util.UUID u)
+        hi (.getMostSignificantBits  ^java.util.UUID u)
+        ba (-> (java.nio.ByteBuffer/allocate 16) ; UUID is 128 bits-long
+               (.putLong hi)
+               (.putLong lo)
+               (.array))]
+    (Binary. BsonBinarySubType/UUID_STANDARD ba)))
+
 (defmethod ->rvalue :value
   [[_ value {base-type :base_type}]]
-  (if (and (isa? base-type :type/MongoBSONID)
-           (some? value))
-    ;; Passing nil or "" to the ObjectId constructor throws an exception
-    ;; "invalid hexadecimal representation of an ObjectId: []" so, just treat it as nil
-    (when (not= value "")
-      (ObjectId. (str value)))
-    value))
+  (cond
+    ;; Passing nil or "" to the ObjectId or Binary constructor throws an exception
+    (or (nil? value) (= value ""))
+    value
+
+    (isa? base-type :type/MongoBSONID)
+    (ObjectId. (str value))
+
+    (isa? base-type :type/UUID)
+    (-> (str value)
+        java.util.UUID/fromString
+        uuid->bsonbinary)
+
+    :else value))
 
 (defn- $date-from-string [s]
   {:$dateFromString {:dateString (str s)}})
@@ -289,12 +330,12 @@
   (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
                                    "UTC"))
         t           (condp = (class t)
-                      java.time.LocalDate      t
-                      java.time.LocalTime      t
-                      java.time.LocalDateTime  t
-                      java.time.OffsetTime     (t/with-offset-same-instant t report-zone)
-                      java.time.OffsetDateTime (t/with-offset-same-instant t report-zone)
-                      java.time.ZonedDateTime  (t/offset-date-time (t/with-zone-same-instant t report-zone)))]
+                     java.time.LocalDate      t
+                     java.time.LocalTime      t
+                     java.time.LocalDateTime  t
+                     java.time.OffsetTime     (t/offset-time t report-zone)
+                     java.time.OffsetDateTime (t/offset-date-time t report-zone)
+                     java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
     (letfn [(extract [unit]
               (u.date/extract t unit))
             (bucket [unit]
@@ -336,6 +377,7 @@
 
 (defmethod ->lvalue :avg       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :stddev    [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :var       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :sum       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :min       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :max       [[_ inp]] (->lvalue inp))
@@ -368,11 +410,11 @@
 
 (defmethod ->lvalue :coalesce [[_ & args]] (->lvalue (first args)))
 
-(defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})
-(defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevPop" (->rvalue inp)})
+(defmethod ->rvalue :avg       [[_ inp]] {$avg (->rvalue inp)})
+(defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevSamp" (->rvalue inp)})
 (defmethod ->rvalue :sum       [[_ inp]] {"$sum" (->rvalue inp)})
-(defmethod ->rvalue :min       [[_ inp]] {"$min" (->rvalue inp)})
-(defmethod ->rvalue :max       [[_ inp]] {"$max" (->rvalue inp)})
+(defmethod ->rvalue :min       [[_ inp]] {$min (->rvalue inp)})
+(defmethod ->rvalue :max       [[_ inp]] {$max (->rvalue inp)})
 
 (defmethod ->rvalue :floor     [[_ inp]] {"$floor" (->rvalue inp)})
 (defmethod ->rvalue :ceil      [[_ inp]] {"$ceil" (->rvalue inp)})
@@ -383,20 +425,61 @@
 (defmethod ->rvalue :exp       [[_ inp]] {"$exp" (->rvalue inp)})
 (defmethod ->rvalue :sqrt      [[_ inp]] {"$sqrt" (->rvalue inp)})
 
-(defmethod ->rvalue :trim      [[_ inp]] {"$trim" (->rvalue inp)})
-(defmethod ->rvalue :ltrim     [[_ inp]] {"$ltrim" (->rvalue inp)})
-(defmethod ->rvalue :rtrim     [[_ inp]] {"$rtrim" (->rvalue inp)})
+(defmethod ->rvalue :trim      [[_ inp]] {"$trim" {"input" (->rvalue inp)}})
+(defmethod ->rvalue :ltrim     [[_ inp]] {"$ltrim" {"input" (->rvalue inp)}})
+(defmethod ->rvalue :rtrim     [[_ inp]] {"$rtrim" {"input" (->rvalue inp)}})
 (defmethod ->rvalue :upper     [[_ inp]] {"$toUpper" (->rvalue inp)})
 (defmethod ->rvalue :lower     [[_ inp]] {"$toLower" (->rvalue inp)})
 (defmethod ->rvalue :length    [[_ inp]] {"$strLenCP" (->rvalue inp)})
 
 (defmethod ->rvalue :power     [[_ & args]] {"$pow" (mapv ->rvalue args)})
-(defmethod ->rvalue :replace   [[_ & args]] {"$replaceAll" (mapv ->rvalue args)})
 (defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
-(defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
-
 (defmethod ->rvalue :temporal-extract [[_ inp unit]]
   (with-rvalue-temporal-bucketing (->rvalue inp) unit))
+
+(defmethod ->rvalue :replace
+  [[_ & args]]
+  (let [version (get-mongo-version)]
+    (if (driver.u/semantic-version-gte (:semantic-version version) [4 4])
+      (let [[expr fnd replacement] (mapv ->rvalue args)]
+        {"$replaceAll" {"input" expr "find" fnd "replacement" replacement}})
+      (throw (ex-info "Replace requires MongoDB 4.4 or above"
+                      {:database-version version})))))
+
+(defmethod ->rvalue :substring
+  [[_ & [expr idx cnt]]]
+  (let [expr-val (->rvalue expr)
+        idx-val {"$subtract" [(->rvalue idx) 1]}]
+    {"$substrCP" [expr-val
+                  idx-val
+                  ;; The last argument is not optional in mongo
+                  (if (some? cnt)
+                    (->rvalue cnt)
+                    {"$subtract" [{"$strLenCP" expr-val} idx-val]})]}))
+
+(defmethod ->rvalue :/
+  [[_ & [_ & divisors :as args]]]
+  ;; division works outside in (/ 1 2 3) => (/ (/ 1 2) 3)
+  (let [division (reduce
+                   (fn [accum head]
+                     {"$divide" [accum head]})
+                   (map ->rvalue args))
+        literal-zero? (some #(and (number? %) (zero? %)) divisors)
+        non-literal-nil-checks (mapv (fn [divisor] {"$eq" [(->rvalue divisor) 0]}) (remove number? divisors))]
+    (cond
+      literal-zero?
+      nil
+
+      (empty? non-literal-nil-checks)
+      division
+
+      (= 1 (count non-literal-nil-checks))
+      {"$cond" [(first non-literal-nil-checks) nil
+                division]}
+
+      :else
+      {"$cond" [{"$or" non-literal-nil-checks} nil
+                division]})))
 
 ;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
 ;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
@@ -406,15 +489,8 @@
 ;;; Because of this, whenever we translate date arithmetic with intervals, we check the major
 ;;; version of the database and throw a nice exception if it's less than 5.
 
-(defn- get-mongo-version []
-  (:version (driver/describe-database :mongo (qp.store/database))))
-
-(defn- get-major-version [version]
-  (some-> version (str/split #"\.") first parse-long))
-
 (defn- check-date-operations-supported []
-  (let [mongo-version (get-mongo-version)
-        major-version (get-major-version mongo-version)]
+  (let [{mongo-version :version, [major-version] :semantic-version} (get-mongo-version)]
     (when (and major-version (< major-version 5))
       (throw (ex-info "Date arithmetic not supported in versions before 5"
                       {:database-version mongo-version})))))
@@ -461,20 +537,76 @@
     {"$subtract" (mapv ->rvalue args)}))
 
 (defmethod ->rvalue :* [[_ & args]] {"$multiply" (mapv ->rvalue args)})
-(defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
-(defmethod ->rvalue :datetime-add        [[_ inp amount unit]] (do
-                                                                 (check-date-operations-supported)
-                                                                 {"$dateAdd" {:startDate (->rvalue inp)
-                                                                              :unit      unit
-                                                                              :amount    amount}}))
-(defmethod ->rvalue :datetime-subtract   [[_ inp amount unit]] (do
-                                                                 (check-date-operations-supported)
-                                                                 {"$dateSubtract" {:startDate (->rvalue inp)
-                                                                                   :unit      unit
-                                                                                   :amount    amount}}))
+(defmethod ->rvalue :now [[_]]
+  (if (driver/database-supports? :mongo :now (qp.store/database))
+    "$$NOW"
+    (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
+                    {:database-version (:version (get-mongo-version))}))))
+
+(defmethod ->rvalue :datetime-add [[_ inp amount unit]]
+  (check-date-operations-supported)
+  {"$dateAdd" {:startDate (->rvalue inp)
+               :unit      unit
+               :amount    amount}})
+
+(defmethod ->rvalue :datetime-subtract
+  [[_ inp amount unit]]
+  (check-date-operations-supported)
+  {"$dateSubtract" {:startDate (->rvalue inp)
+                    :unit      unit
+                    :amount    amount}})
+
+(defmulti datetime-diff
+  "Helper function for ->rvalue for `datetime-diff` clauses."
+  {:arglists '([x y unit])}
+  (fn [_ _ unit] unit))
+
+(defmethod datetime-diff :year
+  [x y _unit]
+  {$divide [(datetime-diff x y :month) 12]})
+
+(defmethod datetime-diff :quarter
+  [x y _unit]
+  {$divide [(datetime-diff x y :month) 3]})
+
+(defmethod datetime-diff :month
+  [x y _unit]
+  {$add [{"$dateDiff" {:startDate x, :endDate y, :unit "month"}}
+           ;; dateDiff counts month boundaries not whole months, so we need to adjust
+           ;; if x<y but x>y in the month calendar then subtract one month
+           ;; if x>y but x<y in the month calendar then add one month
+         {:$switch {:branches [{:case {:$and [{$lt [x y]}
+                                              {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                :then -1}
+                               {:case {:$and [{$gt [x y]}
+                                              {$lt [{$dayOfMonth x} {$dayOfMonth y}]}]}
+                                :then 1}]
+                    :default  0}}]})
+
+(defmethod datetime-diff :week
+  [x y _unit]
+  {$divide [(datetime-diff x y :day) 7]})
+
+(defn- simple-datediff
+  [x y unit]
+  {"$dateDiff" {:startDate x, :endDate y, :unit unit}})
+
+(defmethod datetime-diff :day    [x y unit] (simple-datediff x y unit))
+(defmethod datetime-diff :minute [x y unit] (simple-datediff x y unit))
+(defmethod datetime-diff :second [x y unit] (simple-datediff x y unit))
+
+(defmethod datetime-diff :hour
+  [x y _unit]
+  ;; mongo's dateDiff with hour isn't accurate to the millisecond
+  {$divide [{"$dateDiff" {:startDate x, :endDate y, :unit "millisecond"}}
+            3600000]})
+
+(defmethod ->rvalue :datetime-diff [[_ x y unit]]
+  (check-date-operations-supported)
+  (datetime-diff (->rvalue x) (->rvalue y) unit))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
@@ -636,6 +768,10 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
+(def ^:private aggregation-op
+  "The set of operators handled by [[aggregation->rvalue]] and [[expand-aggregation]]."
+  #{:avg :count :count-where :distinct :max :min :share :stddev :sum :sum-where :var})
+
 (defmethod ->rvalue :case [[_ cases options]]
   {:$switch {:branches (for [[pred expr] cases]
                          {:case (compile-cond pred)
@@ -644,8 +780,8 @@
 
 (defn- aggregation->rvalue [ag]
   (mbql.u/match-one ag
-    [:aggregation-options ag _]
-    (recur ag)
+    [:aggregation-options ag' _]
+    (recur ag')
 
     [:count]
     {$sum 1}
@@ -654,21 +790,14 @@
     {$sum {$cond {:if   (->rvalue arg)
                   :then 1
                   :else 0}}}
-    [:avg arg]
-    {$avg (->rvalue arg)}
 
+    ;; these aggregation types can all be used in expressions as well so their implementations live above in the
+    ;; general [[->rvalue]] implementations
+    #{:avg :stddev :sum :min :max}
+    (->rvalue &match)
 
     [:distinct arg]
     {$addToSet (->rvalue arg)}
-
-    [:sum arg]
-    {$sum (->rvalue arg)}
-
-    [:min arg]
-    {$min (->rvalue arg)}
-
-    [:max arg]
-    {$max (->rvalue arg)}
 
     [:sum-where arg pred]
     {$sum {$cond {:if   (compile-cond pred)
@@ -681,14 +810,14 @@
     :else
     (throw
      (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
-       {:type :invalid-query, :clause ag}))))
+              {:type :invalid-query, :clause ag}))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :aggregation-options)
     (recur arg)
     ag))
 
-(s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankString "projected-field-name"
+(s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankStringPlumatic "projected-field-name"
                                                                   s/Any             "source")]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."
@@ -702,36 +831,120 @@
                 {$size (str \$ ag-name)}
                 true)])))
 
-(defmulti ^:private expand-aggregation (comp first unwrap-named-ag))
+(defmulti ^:private expand-aggregation
+  "Expand aggregations like `:share` and `:var` that can't be done as top-level aggregations in the `$group` stage
+  alone. See [[group-and-post-aggregations]] for more info. See also
+  https://www.mongodb.com/docs/manual/reference/operator/aggregation/group/#accumulator-operator for a list of what
+  aggregation operators are allowed inside `$group` (vs the ones that have to be done in a later stage)."
+  {:arglists '([mbql-clause])}
+  (comp first unwrap-named-ag))
+
+;;; * `:group` = stuff to do in the `$group` stage
+;;;
+;;; * `:post` = stuff to do in the `$addFields` stage immediately following it
+;;;
+;;; both of these are maps of LHS column name => RHS definition
+;;;
+;;; Note that this code doesn't handle expression aggregations, but that's ok because we do not support
+;;; `:expression-aggregations` for Mongo DB.
 
 (defmethod expand-aggregation :share
   [[_ pred :as ag]]
-  (let [count-where-name (name (gensym "count-where"))
-        count-name       (name (gensym "count-"))
+  (let [count-where-expr (name (gensym "$count-where-"))
+        count-expr       (name (gensym "$count-"))
         pred             (if (= (first pred) :share)
                            (second pred)
                            pred)]
-    [[[count-where-name (aggregation->rvalue [:count-where pred])]
-      [count-name (aggregation->rvalue [:count])]]
-     [[(annotate/aggregation-name ag) {$divide [(str "$" count-where-name) (str "$" count-name)]}]]]))
+    {:group {(subs count-where-expr 1) (aggregation->rvalue [:count-where pred])
+             (subs count-expr 1)       (aggregation->rvalue [:count])}
+     :post  [{(annotate/aggregation-name ag) {$divide [count-where-expr count-expr]}}]}))
+
+;; MongoDB doesn't have a variance operator, but you calculate it by taking the square of the standard deviation.
+;; However, `$pow` is not allowed in the `$group` stage. So calculate standard deviation in the
+(defmethod expand-aggregation :var
+  [ag]
+  (let [[_ expr]    (unwrap-named-ag ag)
+        stddev-expr (name (gensym "$stddev-"))]
+    {:group {(subs stddev-expr 1) (aggregation->rvalue [:stddev expr])}
+     :post  [{(annotate/aggregation-name ag) {:$pow [stddev-expr 2]}}]}))
 
 (defmethod expand-aggregation :default
   [ag]
-  [[[(annotate/aggregation-name ag) (aggregation->rvalue ag)]]])
+  {:group {(annotate/aggregation-name ag) (aggregation->rvalue ag)}})
+
+(defn- extract-aggregation
+  "Separate the expression `aggregation` named `aggr-name` into two parts:
+  an simple expression and an aggregation expression, where the simple expression
+  references the result of the aggregation expression such that first evaluating
+  the aggregation expression and binding its result to `aggr-name` and then
+  evaluating the simple expression in this context, the result is the same as
+  evaluating the whole expression `aggregation`.
+  This separation is necessary, because MongoDB doesn't support embedding
+  aggregations in `normal' expressions.
+
+  For example the aggregation
+    [:aggregation-options
+     [:+ [:/ [:sum
+              [:case [[[:< [:field 12 nil] [:field 7 nil]]
+                       [:field 12 nil]]]
+               {:default 0}]]
+             2]
+         1]
+     {:name \"expression\"}]
+  is transformed into the simple expression
+    [:+ [:/ \"$expression\" 2] 1]
+  and the aggregation expression
+    [:aggregation-options
+     [:sum
+      [:case [[[:< [:field 12 nil] [:field 7 nil]]
+               [:field 12 nil]]]
+       {:default 0}]]
+     {:name \"expression\"}]"
+  [aggregation aggr-name]
+  (when (and (vector? aggregation) (seq aggregation))
+    (let [[op & args] aggregation]
+      (cond
+        (= op :aggregation-options)
+        (let [[embedding-expr aggregation'] (extract-aggregation (first args) aggr-name)]
+          [embedding-expr (into [:aggregation-options aggregation'] (rest args))])
+
+        (aggregation-op op)
+        [(str \$ aggr-name) aggregation]
+
+        :else
+        (let [ges (map #(extract-aggregation % aggr-name) args)
+              [embedding-expr aggregation'] (first (filter some? ges))]
+          (when-not aggregation'
+            (throw
+             (ex-info (tru "Don''t know how to handle aggregation {0}" aggregation)
+                      {:type :invalid-query, :clause aggregation})))
+          [(into [op] (map (fn [arg ge] (if ge embedding-expr arg)) args ges))
+           aggregation'])))))
+
+(defn- expand-embedded-aggregation [aggregation]
+  (let [aggr-name (annotate/aggregation-name aggregation)
+        [embedding-expr aggregation-expr] (extract-aggregation aggregation aggr-name)
+        expanded (expand-aggregation aggregation-expr)]
+    (cond-> expanded
+      (not (string? embedding-expr))
+      (update :post conj {aggr-name (->rvalue embedding-expr)}))))
 
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
    though [:/ [:count-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
    more complex aggregations are split in two: the reductions are done in `$group` stage after which
-   we do postprocessing in `$addFields` stage to arrive at the final result. The intermittent results
-   accrued in `$group` stage are discarded in the final `$project` stage."
+   we do postprocessing in `$addFields` stage to arrive at the final result.
+   The groups are assumed to be independent an collapsed into a single stage, but separate
+   `$addFields` stages are created for post processing so that stages can refer to the results
+   of preceding stages.
+   The intermittent results accrued in `$group` stage are discarded in the final `$project` stage."
   [id aggregations]
-  (let [expanded-ags (map expand-aggregation aggregations)
-        group-ags    (mapcat first expanded-ags)
-        post-ags     (mapcat second expanded-ags)]
-    [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}
-     (when (not-empty post-ags)
-       {:$addFields (into (ordered-map/ordered-map) post-ags)})]))
+  (let [expanded-ags (map expand-embedded-aggregation aggregations)
+        group-ags    (mapcat :group expanded-ags)
+        post-ags     (mapcat :post expanded-ags)]
+    (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
+          (map (fn [p] {:$addFields p}))
+          post-ags)))
 
 (defn- projection-group-map [fields]
   (reduce
@@ -797,10 +1010,6 @@
                                 :asc   1
                                 :desc -1)]))})
 
-(defn- handle-order-by [{:keys [order-by]} pipeline-ctx]
-  (cond-> pipeline-ctx
-    (seq order-by) (update :query conj (order-by->$sort order-by))))
-
 ;;; ----------------------------------------------------- fields -----------------------------------------------------
 
 (defn- remove-parent-fields
@@ -811,8 +1020,9 @@
   To preserve the previous behavior, we will include only the child fields (since the parent field always appears first
   in the projection/field order list, and that is the stated behavior according to the link above)."
   [fields]
-  (let [parent->child-id (reduce (fn [acc [_ field-id & _]]
-                                   (if (integer? field-id)
+  (let [parent->child-id (reduce (fn [acc [agg-type field-id & _]]
+                                   (if (and (= agg-type :field)
+                                            (integer? field-id))
                                      (let [field (qp.store/field field-id)]
                                        (if-let [parent-id (:parent_id field)]
                                          (update acc parent-id conj (u/the-id field))
@@ -823,6 +1033,20 @@
     (remove (fn [[_ field-id & _]]
               (and (integer? field-id) (contains? parent->child-id field-id)))
             fields)))
+
+(defn- handle-order-by [{:keys [order-by breakout]} pipeline-ctx]
+  (let [breakout-fields (set breakout)
+        sort-fields (for [field (remove-parent-fields (map second order-by))
+                          ;; We only care about expressions not added as breakout
+                          :when (and (not (contains? breakout-fields field))
+                                     (= :expression ((.dispatchFn ^clojure.lang.MultiFn ->rvalue) field)))]
+                      [(->lvalue field) (->rvalue field)])]
+    (cond-> pipeline-ctx
+      (seq sort-fields) (update :query conj
+                                ;; We $addFields before sorting, otherwise expressions will not be available for the sort
+                                {:$addFields (into (ordered-map/ordered-map) sort-fields)})
+      (seq order-by) (update :query conj
+                             (order-by->$sort order-by)))))
 
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
   (if-not (seq fields)

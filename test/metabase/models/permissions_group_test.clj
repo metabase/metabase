@@ -1,18 +1,23 @@
 (ns metabase.models.permissions-group-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.user :refer [User]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import metabase.models.permissions_group.PermissionsGroupInstance))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.permissions-group
+    :as perms-group
+    :refer [PermissionsGroup]]
+   [metabase.models.permissions-group-membership
+    :refer [PermissionsGroupMembership]]
+   [metabase.models.user :refer [User]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (metabase.models.permissions_group PermissionsGroupInstance)))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -65,7 +70,7 @@
 
 (s/defn ^:private group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
-  [group-id :- su/IntGreaterThanOrEqualToZero object :- perms/Path]
+  [group-id :- su/IntGreaterThanOrEqualToZeroPlumatic object :- perms/Path]
   ;; e.g. WHERE (object || '%') LIKE '/db/1000/'
   (db/exists? Permissions
     :group_id group-id

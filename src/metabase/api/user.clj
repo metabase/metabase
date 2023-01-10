@@ -1,29 +1,30 @@
 (ns metabase.api.user
   "/api/user endpoints"
-  (:require [clojure.string :as str]
-            [compojure.core :refer [DELETE GET POST PUT]]
-            [honeysql.helpers :as hh]
-            [java-time :as t]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.ldap :as api.ldap]
-            [metabase.email.messages :as messages]
-            [metabase.integrations.google :as google]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.login-history :refer [LoginHistory]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.password :as u.password]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.string :as str]
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [honeysql.helpers :as hh]
+   [java-time :as t]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.ldap :as api.ldap]
+   [metabase.email.messages :as messages]
+   [metabase.integrations.google :as google]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.login-history :refer [LoginHistory]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.password :as u.password]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
                                           'metabase-enterprise.advanced-permissions.common
@@ -134,7 +135,8 @@
                                               [:= :core_user.id :permissions_group_membership.user_id])
         (some? group_id) (hh/merge-where [:= :permissions_group_membership.group_id group_id])))
 
-(api/defendpoint GET "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/"
   "Fetch a list of `Users`. By default returns every active user but only active users.
 
    - If `status` is `deactivated`, include deactivated users only.
@@ -152,8 +154,8 @@
   [status query group_id include_deactivated]
   {status                 (s/maybe s/Str)
    query                  (s/maybe s/Str)
-   group_id               (s/maybe su/IntGreaterThanZero)
-   include_deactivated    (s/maybe su/BooleanString)}
+   group_id               (s/maybe su/IntGreaterThanZeroPlumatic)
+   include_deactivated    (s/maybe su/BooleanStringPlumatic)}
   (when (or status include_deactivated)
     (validation/check-group-manager))
   (let [include_deactivated (Boolean/parseBoolean include_deactivated)]
@@ -212,7 +214,8 @@
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
-(api/defendpoint GET "/current"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
@@ -222,7 +225,8 @@
       maybe-add-advanced-permissions
       maybe-add-sso-source))
 
-(api/defendpoint GET "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [id]
   (try
@@ -237,12 +241,13 @@
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
   [:as {{:keys [first_name last_name email user_group_memberships login_attributes] :as body} :body}]
-  {first_name             (s/maybe su/NonBlankString)
-   last_name              (s/maybe su/NonBlankString)
-   email                  su/Email
+  {first_name             (s/maybe su/NonBlankStringPlumatic)
+   last_name              (s/maybe su/NonBlankStringPlumatic)
+   email                  su/EmailPlumatic
    user_group_memberships (s/maybe [user/UserGroupMembership])
    login_attributes       (s/maybe user/LoginAttributes)}
   (api/check-superuser)
@@ -289,24 +294,25 @@
     (not google_auth)
     (not ldap_auth))))
 
-(api/defendpoint PUT "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
   [id :as {{:keys [email first_name last_name user_group_memberships
                    is_superuser is_group_manager login_attributes locale] :as body} :body}]
-  {email                  (s/maybe su/Email)
-   first_name             (s/maybe su/NonBlankString)
-   last_name              (s/maybe su/NonBlankString)
+  {email                  (s/maybe su/EmailPlumatic)
+   first_name             (s/maybe su/NonBlankStringPlumatic)
+   last_name              (s/maybe su/NonBlankStringPlumatic)
    user_group_memberships (s/maybe [user/UserGroupMembership])
    is_superuser           (s/maybe s/Bool)
    is_group_manager       (s/maybe s/Bool)
    login_attributes       (s/maybe user/LoginAttributes)
-   locale                 (s/maybe su/ValidLocale)}
+   locale                 (s/maybe su/ValidLocalePlumatic)}
   (try
-   (check-self-or-superuser id)
-   (catch clojure.lang.ExceptionInfo _e
-     (validation/check-group-manager)))
+    (check-self-or-superuser id)
+    (catch clojure.lang.ExceptionInfo _e
+      (validation/check-group-manager)))
 
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
@@ -321,20 +327,20 @@
         "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
-                "email" (tru "Email address already associated to another user."))
+      "email" (tru "Email address already associated to another user."))
     (db/transaction
-     ;; only superuser or self can update user info
-     ;; implicitly prevent group manager from updating users' info
-     (when (or (= id api/*current-user-id*)
-               api/*is-superuser?*)
-       (api/check-500
-        (db/update! User id (u/select-keys-when body
-                              :present (cond-> #{:first_name :last_name :locale}
-                                         api/*is-superuser?* (conj :login_attributes))
-                              :non-nil (cond-> #{:email}
-                                         api/*is-superuser?* (conj :is_superuser)))))
-       (maybe-update-user-personal-collection-name! user-before-update body))
-     (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
+      ;; only superuser or self can update user info
+      ;; implicitly prevent group manager from updating users' info
+      (when (or (= id api/*current-user-id*)
+                api/*is-superuser?*)
+        (api/check-500
+         (db/update! User id (u/select-keys-when body
+                               :present (cond-> #{:first_name :last_name :locale}
+                                          api/*is-superuser?* (conj :login_attributes))
+                               :non-nil (cond-> #{:email}
+                                          api/*is-superuser?* (conj :is_superuser)))))
+        (maybe-update-user-personal-collection-name! user-before-update body))
+      (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
       (hydrate :user_group_memberships)))
 
@@ -355,7 +361,8 @@
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
-(api/defendpoint PUT "/:id/reactivate"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id/reactivate"
   "Reactivate user at `:id`"
   [id]
   (api/check-superuser)
@@ -371,10 +378,11 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(api/defendpoint PUT "/:id/password"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id/password"
   "Update a user's password."
   [id :as {{:keys [password old_password]} :body}]
-  {password su/ValidPassword}
+  {password su/ValidPasswordPlumatic}
   (check-self-or-superuser id)
   (api/let-404 [user (db/select-one [User :password_salt :password], :id id, :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
@@ -392,7 +400,8 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(api/defendpoint DELETE "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
   (api/check-superuser)
@@ -404,7 +413,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
-(api/defendpoint PUT "/:id/modal/:modal"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [id modal]
   (check-self-or-superuser id)
@@ -417,7 +427,8 @@
     (api/check-500 (db/update! User id, k false)))
   {:success true})
 
-(api/defendpoint POST "/:id/send_invite"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/:id/send_invite"
   "Resend the user invite email for a given user."
   [id]
   (api/check-superuser)

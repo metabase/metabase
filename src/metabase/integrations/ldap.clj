@@ -1,17 +1,19 @@
 (ns metabase.integrations.ldap
-  (:require [cheshire.core :as json]
-            [clj-ldap.client :as ldap]
-            [metabase.integrations.ldap.default-implementation :as default-impl]
-            [metabase.integrations.ldap.interface :as i]
-            [metabase.models.interface :as mi]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.models.user :refer [User]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import [com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException]))
+  (:require
+   [cheshire.core :as json]
+   [clj-ldap.client :as ldap]
+   [metabase.integrations.ldap.default-implementation :as default-impl]
+   [metabase.integrations.ldap.interface :as i]
+   [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.user :refer [User]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException)))
 
 ;; Load the EE namespace up front so that the extra Settings it defines are available immediately.
 ;; Otherwise, this would only happen the first time `find-user` or `fetch-or-create-user!` is called.
@@ -96,7 +98,8 @@
   :visibility :public
   :setter     :none
   :getter     (fn [] (boolean (and (ldap-host)
-                                   (ldap-user-base)))))
+                                   (ldap-user-base))))
+  :doc        false)
 
 (def mb-settings->ldap-details
   "Mappings from Metabase setting names to keys to use for LDAP connections"
@@ -220,11 +223,11 @@
 
 (s/defn find-user :- (s/maybe i/UserInfo)
   "Get user information for the supplied username."
-  ([username :- su/NonBlankString]
+  ([username :- su/NonBlankStringPlumatic]
    (with-ldap-connection [conn]
      (find-user conn username)))
 
-  ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankString]
+  ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankStringPlumatic]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
 (s/defn fetch-or-create-user! :- (mi/InstanceOf User)

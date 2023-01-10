@@ -1,6 +1,7 @@
 (ns release.common-test
-  (:require [clojure.test :refer :all]
-            [release.common :as c]))
+  (:require
+   [clojure.test :refer :all]
+   [release.common :as c]))
 
 (deftest version-greater-than-test
   (doseq [[x y expected] [["1.37.0" "1.36.0" true]

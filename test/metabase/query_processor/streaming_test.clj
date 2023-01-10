@@ -1,22 +1,24 @@
 (ns metabase.query-processor.streaming-test
-  (:require [cheshire.core :as json]
-            [clojure.data.csv :as csv]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.embed-test :as embed-test]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.streaming.test-util :as streaming.test-util]
-            [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
-            [metabase.server.protocols :as server.protocols]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clojure.data.csv :as csv]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.embed-test :as embed-test]
+   [metabase.models.card :as card :refer [Card]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.streaming.test-util :as streaming.test-util]
+   [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
+   [metabase.server.protocols :as server.protocols]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
 
 (defn- maybe-remove-checksum
   "remove metadata checksum if present because it can change between runs if encryption is in play"
@@ -131,7 +133,7 @@
 ;; see also `metabase.query-processor.streaming.xlsx-test/report-timezone-test`
 ;; TODO this test doesn't seem to run?
 (deftest report-timezone-test
-  (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)\n"
+  (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)"
     (mt/test-driver :postgres
       (let [query     (mt/dataset attempted-murders
                         (mt/mbql-query attempts

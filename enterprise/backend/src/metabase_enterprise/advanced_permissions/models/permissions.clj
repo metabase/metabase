@@ -1,8 +1,9 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions
-  (:require [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Shared Util Functions                                                 |
@@ -90,7 +91,7 @@
     - Permissions have three levels: full, limited, and none.
     - Native query download permissions are fully inferred from the non-native download permissions. For more details,
       see the docstring for [[metabase.models.permissions/update-native-download-permissions!]]."
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-download-perms :- perms/DownloadPermissionsGraph]
+  [group-id :- su/IntGreaterThanZeroPlumatic db-id :- su/IntGreaterThanZeroPlumatic new-download-perms :- perms/DownloadPermissionsGraph]
   (when-not (premium-features/enable-advanced-permissions?)
     (throw (perms/ee-permissions-exception :download)))
   (when-let [schemas (:schemas new-download-perms)]
@@ -156,7 +157,7 @@
 
 (s/defn update-db-data-model-permissions!
   "Update the data model permissions graph for a database."
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-data-model-perms :- perms/DataModelPermissionsGraph]
+  [group-id :- su/IntGreaterThanZeroPlumatic db-id :- su/IntGreaterThanZeroPlumatic new-data-model-perms :- perms/DataModelPermissionsGraph]
   (when-not (premium-features/enable-advanced-permissions?)
     (throw (perms/ee-permissions-exception :data-model)))
   (when-let [schemas (:schemas new-data-model-perms)]
@@ -187,7 +188,7 @@
 
 (s/defn update-db-details-permissions!
   "Update the DB details permissions for a database."
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-perms :- perms/DetailsPermissions]
+  [group-id :- su/IntGreaterThanZeroPlumatic db-id :- su/IntGreaterThanZeroPlumatic new-perms :- perms/DetailsPermissions]
   (when-not (premium-features/enable-advanced-permissions?)
     (throw (perms/ee-permissions-exception :details)))
   (case new-perms
@@ -198,3 +199,12 @@
 
     :no
     (revoke-permissions! :details :yes group-id db-id)))
+
+(s/defn update-db-execute-permissions!
+  "Update the DB details permissions for a database."
+  [group-id :- su/IntGreaterThanZeroPlumatic db-id :- su/IntGreaterThanZeroPlumatic new-perms :- perms/ExecutePermissions]
+  (when-not (premium-features/enable-advanced-permissions?)
+    (throw (perms/ee-permissions-exception :execute)))
+  (revoke-permissions! :execute :all group-id db-id)
+  (when (= new-perms :all)
+    (grant-permissions! :execute :all group-id db-id)))

@@ -38,21 +38,22 @@
 
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
-  (:require [metabase.models.table :as table]
-            [metabase.sync.interface :as i]
-            [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
-            [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
-            [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
-            [metabase.sync.util :as sync-util]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.models.table :as table]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
+   [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
+   [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
+   [metabase.sync.util :as sync-util]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private sync-and-update! :- su/IntGreaterThanOrEqualToZero
+(s/defn ^:private sync-and-update! :- su/IntGreaterThanOrEqualToZeroPlumatic
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
   [table :- i/TableInstance, db-metadata :- #{i/TableMetadataField}]
@@ -74,8 +75,8 @@
         :updated-fields (sync-and-update! table db-metadata)}))))
 
 
-(s/defn sync-fields! :- (s/maybe {:updated-fields su/IntGreaterThanOrEqualToZero
-                                  :total-fields   su/IntGreaterThanOrEqualToZero})
+(s/defn sync-fields! :- (s/maybe {:updated-fields su/IntGreaterThanOrEqualToZeroPlumatic
+                                  :total-fields   su/IntGreaterThanOrEqualToZeroPlumatic})
   "Sync the Fields in the Metabase application database for all the Tables in a `database`."
   [database :- i/DatabaseInstance]
   (->> database

@@ -1,14 +1,15 @@
 (ns metabase.models.persisted-info
-  (:require [buddy.core.codecs :as codecs]
-            [clojure.string :as str]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (defn- field-metadata->field-defintion
   "Map containing the type and name of fields for dll. The type is :base-type and uses the effective_type else base_type
@@ -24,8 +25,8 @@
 
 (def Definition
   "Definition spec for a cached table."
-  {:table-name su/NonBlankString
-   :field-definitions [{:field-name su/NonBlankString
+  {:table-name su/NonBlankStringPlumatic
+   :field-definitions [{:field-name su/NonBlankStringPlumatic
                         ;; TODO check (isa? :type/Integer :type/*)
                         :base-type  s/Keyword}]})
 
@@ -64,14 +65,13 @@
 
 (models/defmodel PersistedInfo :persisted_info)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PersistedInfo)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types (constantly {:definition ::definition})}))
+(mi/define-methods
+ PersistedInfo
+ {:types (constantly {:definition ::definition})})
 
-(defn persisted?
+(mi/define-batched-hydration-method persisted?
+  :persisted
   "Hydrate a card :is_persisted for the frontend."
-  {:batched-hydrate :persisted}
   [cards]
   (when (seq cards)
     (let [existing-ids (db/select-field :card_id PersistedInfo

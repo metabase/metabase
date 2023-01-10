@@ -197,22 +197,22 @@
       :read  (perms/data-perms-path db-id)
       :write (perms/db-details-write-perms-path db-id))})
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Database)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:database :db])
-          :types          (constantly {:details                     :encrypted-json
-                                       :options                     :json
-                                       :engine                      :keyword
-                                       :metadata_sync_schedule      :cron-string
-                                       :cache_field_values_schedule :cron-string
-                                       :start_of_week               :keyword
-                                       :settings                    :encrypted-json})
-          :post-insert    post-insert
-          :post-select    post-select
-          :pre-insert     pre-insert
-          :pre-update     pre-update
-          :pre-delete     pre-delete}))
+(mi/define-methods
+ Database
+ {:hydration-keys (constantly [:database :db])
+  :types          (constantly {:details                     :encrypted-json
+                               :options                     :json
+                               :engine                      :keyword
+                               :metadata_sync_schedule      :cron-string
+                               :cache_field_values_schedule :cron-string
+                               :start_of_week               :keyword
+                               :settings                    :encrypted-json
+                               :dbms_version                :json})
+  :post-insert    post-insert
+  :post-select    post-select
+  :pre-insert     pre-insert
+  :pre-update     pre-update
+  :pre-delete     pre-delete})
 
 (defmethod serdes.hash/identity-hash-fields Database
   [_database]
@@ -221,19 +221,12 @@
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
-(defn ^:hydrate tables
+(mi/define-simple-hydration-method tables
+  :tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
   (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
-
-(defn schema-names
-  "Return a *sorted set* of schema names (as strings) associated with this `Database`."
-  [{:keys [id]}]
-  (when id
-    (apply sorted-set (db/select-field :schema 'Table
-                        :db_id id
-                        {:modifiers [:DISTINCT]}))))
 
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
@@ -241,11 +234,6 @@
   (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
     (when (seq table-ids)
       (db/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
-
-(defn schema-exists?
-  "Does `database` have any tables with `schema`?"
-  ^Boolean [{:keys [id]}, schema]
-  (db/exists? 'Table :db_id id, :schema (some-> schema name)))
 
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
@@ -304,7 +292,7 @@
 
 (defmethod serdes.base/load-find-local "Database"
   [[{:keys [id]}]]
-  (db/select-one-field :id Database :name id))
+  (db/select-one Database :name id))
 
 (defmethod serdes.base/load-xform "Database"
   [database]
@@ -324,3 +312,16 @@
     (m "Database"
        (update ingested :details #(or % (:details local) {}))
        local)))
+
+(defmethod serdes.base/storage-path "Database" [{:keys [name]} _]
+  ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
+  ["databases" name name])
+
+(serdes.base/register-ingestion-path!
+  "Database"
+  ;; ["databases" "my-db" "my-db"]
+  (fn [[a b c :as path]]
+    (when (and (= (count path) 3)
+               (= a "databases")
+               (= b c))
+      [{:model "Database" :id c}])))

@@ -1,13 +1,15 @@
 (ns metabase.email
-  (:require [clojure.tools.logging :as log]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [postal.core :as postal]
-            [postal.support :refer [make-props]]
-            [schema.core :as s])
-  (:import javax.mail.Session))
+  (:require
+   [clojure.tools.logging :as log]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.schema :as su]
+   [postal.core :as postal]
+   [postal.support :refer [make-props]]
+   [schema.core :as s])
+  (:import
+   (javax.mail Session)))
 
 ;; https://github.com/metabase/metabase/issues/11879#issuecomment-713816386
 (when-not *compile-files*
@@ -17,13 +19,15 @@
 
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
-  :default "notifications@metabase.com")
+  :default    "notifications@metabase.com"
+  :visibility :settings-manager)
 
 (defsetting email-from-name
-  (deferred-tru "The name you want to use for the sender of emails."))
+  (deferred-tru "The name you want to use for the sender of emails.")
+  :visibility :settings-manager)
 
 (def ^:private ReplyToAddresses
-  (s/maybe [su/Email]))
+  (s/maybe [su/EmailPlumatic]))
 
 (def ^:private ^{:arglists '([reply-to-addresses])} validate-reply-to-addresses
   (s/validator ReplyToAddresses))
@@ -31,29 +35,35 @@
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")
   :type :json
+  :visibility :settings-manager
   :setter (fn [new-value]
             (->> new-value
                  validate-reply-to-addresses
                  (setting/set-value-of-type! :json :email-reply-to))))
 
 (defsetting email-smtp-host
-  (deferred-tru "The address of the SMTP server that handles your emails."))
+  (deferred-tru "The address of the SMTP server that handles your emails.")
+  :visibility :settings-manager)
 
 (defsetting email-smtp-username
-  (deferred-tru "SMTP username."))
+  (deferred-tru "SMTP username.")
+  :visibility :settings-manager)
 
 (defsetting email-smtp-password
   (deferred-tru "SMTP password.")
+  :visibility :settings-manager
   :sensitive? true)
 
 (defsetting email-smtp-port
   (deferred-tru "The port your SMTP server uses for outgoing emails.")
-  :type :integer)
+  :type       :integer
+  :visibility :settings-manager)
 
 (defsetting email-smtp-security
   (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
-  :type    :keyword
-  :default :none
+  :type       :keyword
+  :default    :none
+  :visibility :settings-manager
   :setter  (fn [new-value]
              (when (some? new-value)
                (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
@@ -71,7 +81,8 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     #(boolean (email-smtp-host)))
+  :getter     #(boolean (email-smtp-host))
+  :doc        false)
 
 (defn- add-ssl-settings [m ssl-setting]
   (merge
@@ -95,7 +106,7 @@
    {:subject      s/Str
     :recipients   [(s/pred u/email?)]
     :message-type (s/enum :text :html :attachments)
-    :message      (s/cond-pre s/Str [su/Map])} ; TODO - what should this be a sequence of?
+    :message      (s/cond-pre s/Str [su/MapPlumatic])} ; TODO - what should this be a sequence of?
    (fn [{:keys [message-type message]}]
      (if (= message-type :attachments)
        (and (sequential? message) (every? map? message))
@@ -152,8 +163,8 @@
       {::error e})))
 
 (def ^:private SMTPSettings
-  {:host                         su/NonBlankString
-   :port                         su/IntGreaterThanZero
+  {:host                         su/NonBlankStringPlumatic
+   :port                         su/IntGreaterThanZeroPlumatic
      ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
    (s/optional-key :user)        (s/maybe s/Str)
    (s/optional-key :security)    (s/maybe (s/enum :tls :ssl :none :starttls))

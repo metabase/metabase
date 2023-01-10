@@ -1,23 +1,27 @@
 (ns metabase.query-processor-test.timezones-test
-  (:require [clojure.set :as set]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models :refer [Field Table]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [honeysql.core :as hsql]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models :refer [Field Table]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan.db :as db]))
 
 ;; TIMEZONE FIXME
 (def broken-drivers
   "The following drivers are broken to some extent -- details listed in the Google Doc, or can be see here:
   https://circleci.com/workflow-run/856f6dd0-3d95-4732-a56e-1af59e3ae4ba. The goal is to gradually remove these
   one-by-one as they are fixed."
-  #{:bigquery-cloud-sdk
+  ;; I think some of these are only in here because they don't support the TIME type -- in that case we
+  ;; should be checking [[mt/supports-time-type?]] instead.
+  #{:athena
+    :bigquery-cloud-sdk
     :oracle
     :presto
     :redshift

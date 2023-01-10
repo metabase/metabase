@@ -3,19 +3,21 @@
   which has charting library. This namespace has some wrapper functions to invoke those functions. Interop is very
   strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [metabase.config :as config]
-            [metabase.public-settings :as public-settings]
-            [metabase.pulse.render.js-engine :as js]
-            [metabase.pulse.render.style :as style])
-  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
-           java.nio.charset.StandardCharsets
-           [org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument]
-           [org.apache.batik.transcoder TranscoderInput TranscoderOutput]
-           org.apache.batik.transcoder.image.PNGTranscoder
-           org.graalvm.polyglot.Context
-           [org.w3c.dom Element Node]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [metabase.config :as config]
+   [metabase.public-settings :as public-settings]
+   [metabase.pulse.render.js-engine :as js]
+   [metabase.pulse.render.style :as style])
+  (:import
+   (java.io ByteArrayInputStream ByteArrayOutputStream)
+   (java.nio.charset StandardCharsets)
+   (org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument)
+   (org.apache.batik.transcoder TranscoderInput TranscoderOutput)
+   (org.apache.batik.transcoder.image PNGTranscoder)
+   (org.graalvm.polyglot Context)
+   (org.w3c.dom Element Node)))
 
 ;; the bundle path goes through webpack. Changes require a `yarn build-static-viz`
 (def ^:private bundle-path
@@ -133,27 +135,28 @@
   Series should be list of dicts of {rows: rows, cols: cols, type: type}, where types is 'line' or 'bar' or 'area'.
   Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [series settings]
+  [series-seqs settings]
   (svg-string->bytes
    (.asString (js/execute-fn-name (context)
                                   "combo_chart"
-                                  (json/generate-string series)
+                                  (json/generate-string series-seqs)
                                   (json/generate-string settings)
-                                  (json/generate-string (:colors settings))))))
+                                  (json/generate-string (public-settings/application-colors))))))
 
 (defn row-chart
   "Clojure entrypoint to render a row chart."
   [settings data]
   (let [svg-string (.asString (js/execute-fn-name (context) "row_chart"
                                                   (json/generate-string settings)
-                                                  (json/generate-string data)))]
+                                                  (json/generate-string data)
+                                                  (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"
-  [rows colors settings]
-  (let [svg-string (.asString (js/execute-fn-name (context) "categorical_donut" rows (seq colors) (json/generate-string settings)))]
+  [rows legend-colors settings]
+  (let [svg-string (.asString (js/execute-fn-name (context) "categorical_donut" rows (seq legend-colors) (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn gauge
@@ -170,7 +173,8 @@
   [value goal settings]
   (let [js-res (js/execute-fn-name (context) "progress"
                                    (json/generate-string {:value value :goal goal})
-                                   (json/generate-string settings))
+                                   (json/generate-string settings)
+                                   (json/generate-string (public-settings/application-colors)))
         svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 

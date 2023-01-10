@@ -135,7 +135,7 @@ describe("parameters/utils/mbql", () => {
         date().quarter(1).format("YYYY-MM-DD"),
       ]);
     });
-    it.skip("should parse exclude-quarters-1-2", () => {
+    it("should parse exclude-quarters-1-2", () => {
       expect(dateParameterValueToMBQL("exclude-quarters-1-2", null)).toEqual([
         "!=",
         ["field", null, { "temporal-unit": "quarter-of-year" }],

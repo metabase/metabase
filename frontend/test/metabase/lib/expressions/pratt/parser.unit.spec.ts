@@ -126,6 +126,9 @@ describe("metabase-lib/expressions/parser", () => {
     it("should accept the function upper", () => {
       expect(() => parseExpression("Upper([Title])")).not.toThrow();
     });
+    it("should accept the function now", () => {
+      expect(() => parseExpression("now")).not.toThrow();
+    });
 
     it("should accept the function CASE", () => {
       expect(() => parseExpression("Case([Z]>7, 'X', 'Y')")).not.toThrow();
@@ -147,10 +150,6 @@ describe("metabase-lib/expressions/parser", () => {
       expect(() =>
         parseExpression("case(isempty([Discount]),[P])"),
       ).not.toThrow();
-    });
-    // TODO: This should be handled by a separate pass
-    xit("should reject CASE with only one argument", () => {
-      expect(() => parseExpression("case([Deal])")).toThrow();
     });
     it("should accept CASE with two arguments", () => {
       expect(() => parseExpression("case([Deal],x)")).not.toThrow();
@@ -229,11 +228,6 @@ describe("metabase-lib/expressions/parser", () => {
     });
     it("should accept a function", () => {
       expect(() => parseFilter("between([Subtotal], 1, 2)")).not.toThrow();
-    });
-
-    // TODO: This should be handled by a separate pass
-    xit("should reject CASE with only one argument", () => {
-      expect(() => parseFilter("case([Deal])")).toThrow();
     });
   });
 });

@@ -1,9 +1,10 @@
 (ns metabase-enterprise.enhancements.integrations.google-test
-  (:require [clojure.test :refer :all]
-            [metabase.integrations.google :as google]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.integrations.google :as google]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.test :as mt]))
 
 (deftest google-auth-create-new-user!-test
   (with-redefs [premium-features/enable-sso? (constantly true)]

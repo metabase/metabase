@@ -2,18 +2,20 @@
   "Utility functions for converting frontend schedule dictionaries to cron strings and vice versa.
    See http://www.quartz-scheduler.org/documentation/quartz-2.x/tutorials/crontrigger.html#format for details on cron
    format."
-  (:require [clojure.string :as str]
-            [metabase.util.i18n :as i18n]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import net.redhogs.cronparser.CronExpressionDescriptor
-           org.quartz.CronExpression))
+  (:require
+   [clojure.string :as str]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (net.redhogs.cronparser CronExpressionDescriptor)
+   (org.quartz CronExpression)))
 
 (def CronScheduleString
   "Schema for a valid cron schedule string."
   (su/with-api-error-message
       (s/constrained
-       su/NonBlankString
+       su/NonBlankStringPlumatic
        (fn [^String s]
          (try (CronExpression/validateExpression s)
               true
@@ -146,7 +148,7 @@
      :schedule_hour   (cron->digit hours)
      :schedule_type   (cron->schedule-type hours day-of-month day-of-week)}))
 
-(s/defn describe-cron-string :- su/NonBlankString
+(s/defn describe-cron-string :- su/NonBlankStringPlumatic
   "Return a human-readable description of a cron expression, localized for the current User."
   [cron-string :- CronScheduleString]
   (CronExpressionDescriptor/getDescription ^String cron-string, ^java.util.Locale (i18n/user-locale)))

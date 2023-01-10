@@ -1,29 +1,26 @@
 (ns release
-  (:require [clojure.string :as str]
-            [environ.core :as env]
-            [flatland.ordered.map :as ordered-map]
-            [metabuild-common.core :as u]
-            [release
-             [check-prereqs :as check-prereqs]
-             [common :as c]
-             [docker :as docker]
-             [draft-release :as draft-release]
-             [elastic-beanstalk :as eb]
-             [git-tags :as git-tags]
-             [set-build-options :as set-build-options]
-             [uberjar :as uberjar]
-             [version-info :as version-info]]
-            [release.common.slack :as slack]))
+  (:require
+   [clojure.string :as str]
+   [environ.core :as env]
+   [flatland.ordered.map :as ordered-map]
+   [metabuild-common.core :as u]
+   [release.check-prereqs :as check-prereqs]
+   [release.common :as c]
+   [release.common.slack :as slack]
+   [release.draft-release :as draft-release]
+   [release.elastic-beanstalk :as eb]
+   [release.git-tags :as git-tags]
+   [release.set-build-options :as set-build-options]
+   [release.uberjar :as uberjar]
+   [release.version-info :as version-info]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private steps*
   (ordered-map/ordered-map
    :build-uberjar                       uberjar/build-uberjar!
-   :build-docker                        docker/build-docker-image!
-   :push-git-tags                       git-tags/push-tags!
    :upload-uberjar                      uberjar/upload-uberjar!
-   :push-docker-image                   docker/push-docker-image!
+   :push-git-tags                       git-tags/push-tags!
    :publish-draft-release               draft-release/create-draft-release!
    :publish-elastic-beanstalk-artifacts eb/publish-elastic-beanstalk-artifacts!
    :update-version-info                 version-info/update-version-info!))

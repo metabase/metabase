@@ -1,6 +1,7 @@
 (ns build.version-info-test
-  (:require [build.version-info :as version-info]
-            [clojure.test :refer :all]))
+  (:require
+   [build.version-info :as version-info]
+   [clojure.test :refer :all]))
 
 (deftest tag-parts-test
   (doseq [[tag expected] {nil          nil

@@ -26,7 +26,6 @@ import { formatUrl } from "./url";
 import { formatDateTimeWithUnit, formatRange } from "./date";
 import { formatNumber } from "./numbers";
 import { formatCoordinate } from "./geography";
-import { formatStringFallback } from "./strings";
 import { formatImage } from "./image";
 
 import { OptionsType } from "./types";
@@ -109,6 +108,20 @@ export function getRemappedValue(
     }
     // TODO: get rid of one of these two code paths?
   }
+}
+
+// fallback for formatting a string without a column semantic_type
+function formatStringFallback(value: any, options: OptionsType = {}) {
+  if (options.view_as !== null) {
+    value = formatUrl(value, options);
+    if (typeof value === "string") {
+      value = formatEmail(value, options);
+    }
+    if (typeof value === "string") {
+      value = formatImage(value, options);
+    }
+  }
+  return value;
 }
 
 export function formatValueRaw(

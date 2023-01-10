@@ -4,8 +4,10 @@ import React from "react";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorSelector from "metabase/core/components/ColorSelector";
 import IconWrapper from "metabase/components/IconWrapper";
-import InputBlurChange from "metabase/components/InputBlurChange";
-import { OptionsIcon } from "./ChartNestedSettingSeries.styled";
+import {
+  OptionsIcon,
+  SeriesNameInput,
+} from "./ChartNestedSettingSeries.styled";
 
 // various props injected by chartSettingNestedSettings HOC
 export default class ChartNestedSettingSeriesMultiple extends React.Component {
@@ -18,21 +20,18 @@ export default class ChartNestedSettingSeriesMultiple extends React.Component {
       objectSettingsWidgets,
       object,
       allComputedSettings,
+      seriesCardNames,
     } = this.props;
     const objectKey = object && getObjectKey(object);
     const isSelected = single => objectKey === getObjectKey(single);
 
-    const display = object && object.card.display;
-    const isLineAreaBar = ["line", "area", "bar", "combo"].includes(display);
-
-    console.log(isLineAreaBar);
-
     return (
-      <div>
+      <div data-testid="series-settings">
         {objects.length < 100 &&
           objects.map(single => {
             const key = getObjectKey(single);
             const settings = allComputedSettings[key] || {};
+            const seriesCardName = seriesCardNames?.[key];
             return (
               <div
                 key={key}
@@ -46,12 +45,15 @@ export default class ChartNestedSettingSeriesMultiple extends React.Component {
                       onChangeObjectSettings(single, { color: value })
                     }
                   />
-                  <InputBlurChange
-                    className="input flex-full ml1 align-self-stretch"
+                  <SeriesNameInput
+                    className="flex-full ml1 align-self-stretch"
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
-                    size={1}
+                    aria-label="series-name-input"
                     value={settings.title}
+                    subtitle={
+                      seriesCardName === settings.title ? "" : seriesCardName
+                    }
                     onBlurChange={e =>
                       onChangeObjectSettings(single, { title: e.target.value })
                     }

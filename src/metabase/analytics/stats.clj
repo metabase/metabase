@@ -1,22 +1,40 @@
 (ns metabase.analytics.stats
   "Functions which summarize the usage of an instance"
-  (:require [clj-http.client :as http]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.email :as email]
-            [metabase.integrations.google :as google]
-            [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric PermissionsGroup Pulse PulseCard PulseChannel QueryCache QueryExecution Segment Table User]]
-            [metabase.models.humanization :as humanization]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.email :as email]
+   [metabase.integrations.google :as google]
+   [metabase.integrations.slack :as slack]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCard
+            Database
+            Field
+            Metric
+            PermissionsGroup
+            Pulse
+            PulseCard
+            PulseChannel
+            QueryCache
+            QueryExecution
+            Segment
+            Table
+            User]]
+   [metabase.models.humanization :as humanization]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db]))
 
 (defn- merge-count-maps
   "Merge sequence of maps `ms` by summing counts inside them. Non-integer values are allowed; truthy values are
@@ -274,9 +292,16 @@
 (defn- database-metrics
   "Get metrics based on Databases."
   []
-  {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} (db/select [Database :is_full_sync])]
-                                  {:total    1
-                                   :analyzed is-full-sync?}))})
+  (let [databases (db/select [Database :is_full_sync :engine :dbms_version])]
+    {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
+                                    {:total    1
+                                     :analyzed is-full-sync?}))
+     :dbms_versions (frequencies (map (fn [db]
+                                        (-> db
+                                            :dbms_version
+                                            (assoc :engine (:engine db))
+                                            json/generate-string))
+                                      databases))}))
 
 
 (defn- table-metrics

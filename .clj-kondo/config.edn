@@ -6,7 +6,7 @@
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [partial= query= re= schema= sql=])
+    (clojure.test/is [partial= query= re= schema= sql= =?])
     (clojure.tools.macro/macrolet)
     (metabase.async.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
@@ -51,64 +51,37 @@
   ;; :shadowed-var                          {:level :warning}
   :deprecated-var
   {:exclude
-   {metabase.query-processor.util/normalize-token
-    {:namespaces ["metabase.*"]}
-    metabase.db.data-migrations/data-migrations
-    {:namespaces ["metabase.db.data-migrations"]}
-    metabase.db.data-migrations/defmigration
-    {:namespaces ["metabase.db.data-migrations"]}
-    metabase.db.data-migrations/run-migration-if-needed!
-    {:namespaces ["metabase.db.data-migrations"]}
-    metabase.driver/supports?
-    {:namespaces ["metabase.*"]}
-    metabase.driver/current-db-time
-    {:namespaces ["metabase.*"]}
-    metabase.driver.common/current-db-time-native-query
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/current-db-time-date-formatters
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute.old-impl/read-column
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/first-successful-parse
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/ThreadSafeSimpleDateFormat
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/create-db-time-formatters
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/current-db-time
-    {:namespaces ["metabase.*"]}
-    metabase.driver.sql.query-processor.deprecated/*field-options*
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*source-query*
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/field->identifier
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/field->alias
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/prefix-field-alias
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table
-    {:namespaces ["metabase.*"]}
-    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sq
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*table-alias*
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.public-settings.premium-features/enable-enhancements?
-    {:namespaces ["metabase\\.models.*"]}
-    metabase.driver.sql.query-processor.deprecated/escape-alias
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.sync.interface/syncable-schemas
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.util/key-by
-    {:namespaces ["metabase(?:-enterprise)?.*"]}
-    schema.core/either
-    {:namespaces ["metabase.*"]}
-    schema.core/both
-    {:namespaces ["metabase.*"]}}}
+   {metabase.cmd/dump                                                            {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
+    metabase.cmd/load                                                            {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
+    metabase.db.data-migrations/data-migrations                                  {:namespaces ["metabase\\.db\\.data-migrations"]}
+    metabase.db.data-migrations/defmigration                                     {:namespaces ["metabase\\.db\\.data-migrations"]}
+    metabase.db.data-migrations/run-migration-if-needed!                         {:namespaces ["metabase\\.db\\.data-migrations"]}
+    metabase.driver.common/ThreadSafeSimpleDateFormat                            {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.common/create-db-time-formatters                             {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.common/current-db-time                                       {:namespaces ["metabase.*"]}
+    metabase.driver.common/current-db-time-date-formatters                       {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.common/current-db-time-native-query                          {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.common/first-successful-parse                                {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.execute.old-impl/read-column                        {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sq                    {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.sync.interface/syncable-schemas                     {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/*field-options*               {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/*source-query*                {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/*table-alias*                 {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/escape-alias                  {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/field->alias                  {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/field->identifier             {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/prefix-field-alias            {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
+    metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
+    metabase.public-settings.premium-features/enable-enhancements?               {:namespaces ["metabase\\.models.*"]}
+    metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
+    metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}
+    metabase.util/key-by                                                         {:namespaces ["metabase(?:-enterprise)?.*"]}
+    schema.core/both                                                             {:namespaces ["metabase.*"]}
+    schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :unresolved-var               {:exclude [colorize.core
                                            metabase.test/with-gtaps
@@ -146,6 +119,14 @@
     honeysql.helpers                                                hh
     honeysql.types                                                  htypes
     java-time                                                       t
+    malli.core                                                      mc
+    malli.error                                                     me
+    malli.experimental                                              mx
+    malli.generator                                                 mg
+    malli.provider                                                  mp
+    malli.transform                                                 mtx
+    malli.util                                                      mut
+    medley.core                                                     m
     metabase-enterprise.audit-app.pages.common                      common
     metabase-enterprise.sandbox.api.table                           table
     metabase.analytics.stats                                        stats
@@ -224,13 +205,14 @@
     metabase.driver.mongo.parameters                                mongo.params
     metabase.driver.mongo.query-processor                           mongo.qp
     metabase.driver.mongo.util                                      mongo.util
+    metabase.driver.sql-jdbc.common                                 sql-jdbc.common
     metabase.driver.sql-jdbc.connection                             sql-jdbc.conn
     metabase.driver.sql-jdbc.execute                                sql-jdbc.execute
     metabase.driver.sql-jdbc.execute.diagnostic                     sql-jdbc.execute.diagnostic
     metabase.driver.sql-jdbc.execute.legacy-impl                    sql-jdbc.legacy
     metabase.driver.sql-jdbc.execute.old-impl                       sql-jdbc.execute.old
     metabase.driver.sql-jdbc.sync                                   sql-jdbc.sync
-    metabase.driver.sql-jdbc.sync.common                            sql-jdbc.common
+    metabase.driver.sql-jdbc.sync.common                            sql-jdbc.sync.common
     metabase.driver.sql-jdbc.sync.describe-database                 sql-jdbc.describe-database
     metabase.driver.sql-jdbc.sync.describe-table                    sql-jdbc.describe-table
     metabase.driver.sql-jdbc.sync.interface                         sql-jdbc.sync.interface
@@ -316,6 +298,8 @@
     metabase.server.middleware.ssl                                  mw.ssl
     metabase.server.middleware.util                                 mw.util
     metabase.server.protocols                                       server.protocols
+    metabase.shared.util                                            shared.u
+    metabase.shared.util.currency                                   currency
     metabase.sync.analyze.classifiers.category                      classifiers.category
     metabase.sync.analyze.classifiers.name                          classifiers.name
     metabase.sync.analyze.classifiers.no-preview-display            classifiers.no-preview-display
@@ -357,6 +341,7 @@
     metabase.util.files                                             u.files
     metabase.util.i18n                                              i18n
     metabase.util.i18n.impl                                         i18n.impl
+    metabase.util.malli                                             mu
     metabase.util.password                                          u.password
     metabase.util.schema                                            su
     metabase.util.ui-logic                                          ui-logic
@@ -364,6 +349,7 @@
     metabuild-common.core                                           u
     metabuild-common.output                                         out
     metabuild-common.shell                                          shell
+    monger.collection                                               mcoll
     ring.mock.request                                               ring.mock
     ring.util.codec                                                 codec
     ring.util.response                                              response
@@ -382,7 +368,7 @@
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
   honeysql.util/defalias                                                               clojure.core/def
   metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
-  metabase.actions.test-util/with-action                                               clojure.core/let
+  metabase.actions.test-util/with-actions                                              clojure.core/let
   metabase.actions.test-util/with-card-emitter                                         clojure.core/let
   metabase.actions.test-util/with-dashboard-emitter                                    clojure.core/let
   metabase.api.common/let-404                                                          clojure.core/let
@@ -401,6 +387,7 @@
   metabase.integrations.ldap/with-ldap-connection                                      clojure.core/fn
   metabase.mbql.schema.macros/defclause                                                clj-kondo.lint-as/def-catch-all
   metabase.models.collection-test/with-collection-in-location                          clojure.core/let
+  metabase.models.json-migration/def-json-migration                                    clj-kondo.lint-as/def-catch-all
   metabase.models.setting.multi-setting/define-multi-setting                           clojure.core/def
   metabase.models.setting/defsetting                                                   clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/defenterprise                              clj-kondo.lint-as/def-catch-all
@@ -416,10 +403,12 @@
   metabase.test.data.interface/defdataset-edn                                          clojure.core/def
   metabase.test/defdataset                                                             clojure.core/def
   metabase.test/with-open-channels                                                     clojure.core/let
+  metabase.test/with-single-admin-user                                                 clojure.core/fn
   metabase.test/with-temp-dir                                                          clojure.core/let
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
+  metabase.util.malli/defn                                                             schema.core/defn
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   monger.operators/defoperator                                                         clojure.core/def
   potemkin.types/defprotocol+                                                          clojure.core/defprotocol
@@ -443,8 +432,10 @@
    metabase.api.card-test/with-temp-native-card                                                                              hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params                                                                  hooks.common/with-two-bindings
    metabase.api.collection-test/with-french-user-and-personal-collection                                                     hooks.common/with-two-top-level-bindings
+   metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
+   metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings
    metabase.api.embed-test/with-chain-filter-fixtures                                                                        hooks.common/let-one-with-optional-value
@@ -486,6 +477,8 @@
    metabase.models.emitter/Emitter                                                                                           hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.field-values/FieldValues                                                                                  hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.field/Field                                                                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
+   metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.login-history/LoginHistory                                                                                hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.metric-important-field/MetricImportantField                                                               hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.metric/Metric                                                                                             hooks.metabase.models.disallow-invoking-model/hook
@@ -572,14 +565,13 @@
    metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache                                                            hooks.common/with-two-bindings
-   metabase.sample-database-test/with-temp-sample-database-db                                                                hooks.common/with-one-binding
+   metabase.sample-data-test/with-temp-sample-database-db                                                                    hooks.common/with-one-binding
    metabase.test.data.datasets/test-drivers                                                                                  hooks.common/do*
    metabase.test.data.users/with-group                                                                                       hooks.common/let-one-with-optional-value
    metabase.test.data/$ids                                                                                                   hooks.metabase.test.data/$ids
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
    metabase.test.data/mbql-query                                                                                             hooks.metabase.test.data/mbql-query
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
-   metabase.test.util.async/with-chans                                                                                       hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
    metabase.test.util.log/with-log-messages-for-level                                                                        hooks.common/with-ignored-first-arg

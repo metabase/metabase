@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import { color } from "metabase/lib/colors";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
@@ -34,16 +33,6 @@ interface InputContainerProps {
 }
 export const InputContainer = styled.div<InputContainerProps>`
   padding-bottom: ${props => (props.lessBottomPadding ? "1.5rem" : "2rem")};
-`;
-
-export const WidgetLabelInput = styled(InputBlurChange)`
-  font-weight: 700;
-  padding: 0.5rem;
-  border: 1px solid ${color("border-dark")};
-  border-radius: 0.5rem;
-  width: 100%;
-  color: ${color("text-dark")};
-  font-size: 0.875rem;
 `;
 
 export const DefaultParameterValueWidget = styled(ParameterValueWidget)`

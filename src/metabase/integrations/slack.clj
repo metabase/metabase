@@ -1,24 +1,27 @@
 (ns metabase.integrations.slack
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.email.messages :as messages]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.email.messages :as messages]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (defsetting slack-token
   (deferred-tru
     (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
          "Please use a new Slack app integration instead."))
-  :deprecated "0.42.0")
+  :deprecated "0.42.0"
+  :visibility :settings-manager
+  :doc        false)
 
 (defsetting slack-app-token
   (deferred-tru
@@ -29,7 +32,9 @@
   (deferred-tru
     (str "Whether the current Slack app token, if set, is valid. "
          "Set to 'false' if a Slack API request returns an auth error."))
-  :type :boolean)
+  :type       :boolean
+  :visibility :settings-manager
+  :doc        false)
 
 (defn process-files-channel-name
   "Converts empty strings to `nil`, and removes leading `#` from the channel name if present."
@@ -40,7 +45,8 @@
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
   :visibility :internal
-  :type :json)
+  :type :json
+  :doc  false)
 
 (def ^:private zoned-time-epoch (t/zoned-date-time 1970 1 1 0))
 
@@ -49,11 +55,13 @@
   :visibility :internal
   :cache?     false
   :type       :timestamp
-  :default    zoned-time-epoch)
+  :default    zoned-time-epoch
+  :doc        false)
 
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :default "metabase_files"
+  :visibility :settings-manager
   :setter (fn [channel-name]
             (setting/set-value-of-type! :string :slack-files-channel (process-files-channel-name channel-name))))
 
@@ -191,7 +199,7 @@
 
 (s/defn valid-token?
   "Check whether a Slack token is valid by checking if the `conversations.list` Slack api accepts it."
-  [token :- su/NonBlankString]
+  [token :- su/NonBlankStringPlumatic]
   (try
     (binding [*send-token-error-emails?* false]
       (boolean (take 1 (:channels (GET "conversations.list" :limit 1, :token token)))))
@@ -278,7 +286,7 @@
 (s/defn join-channel!
   "Given a channel ID, calls Slack API `conversations.join` endpoint to join the channel as the Metabase Slack app.
   This must be done before uploading a file to the channel, if using a Slack app integration."
-  [channel-id :- su/NonBlankString]
+  [channel-id :- su/NonBlankStringPlumatic]
   (POST "conversations.join" {:form-params {:channel channel-id}}))
 
 (defn- maybe-lookup-id
@@ -295,7 +303,7 @@
 
 (s/defn upload-file!
   "Calls Slack API `files.upload` endpoint and returns the URL of the uploaded file."
-  [file :- NonEmptyByteArray, filename :- su/NonBlankString, channel-id :- su/NonBlankString]
+  [file :- NonEmptyByteArray, filename :- su/NonBlankStringPlumatic, channel-id :- su/NonBlankStringPlumatic]
   {:pre [(slack-configured?)]}
   (let [request  {:multipart [{:name "file",     :content file}
                               {:name "filename", :content filename}
@@ -317,7 +325,7 @@
 (s/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` should be serialized
   JSON."
-  [channel-id :- su/NonBlankString, text-or-nil :- (s/maybe s/Str) & [attachments]]
+  [channel-id :- su/NonBlankStringPlumatic, text-or-nil :- (s/maybe s/Str) & [attachments]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (POST "chat.postMessage"
         {:form-params

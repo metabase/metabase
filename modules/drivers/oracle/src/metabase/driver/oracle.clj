@@ -1,35 +1,49 @@
 (ns metabase.driver.oracle
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.impl :as driver.impl]
-            [metabase.driver.sql :as sql]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.secret :as secret]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.ssh :as ssh])
-  (:import com.mchange.v2.c3p0.C3P0ProxyConnection
-           [java.sql Connection ResultSet Types]
-           [java.time Instant OffsetDateTime ZonedDateTime]
-           [oracle.jdbc OracleConnection OracleTypes]
-           oracle.sql.TIMESTAMPTZ))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.driver.sql :as sql]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.models.secret :as secret]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.ssh :as ssh])
+  (:import
+   (com.mchange.v2.c3p0 C3P0ProxyConnection)
+   (java.security KeyStore)
+   (java.sql Connection DatabaseMetaData ResultSet Types)
+   (java.time Instant OffsetDateTime ZonedDateTime)
+   (oracle.jdbc OracleConnection OracleTypes)
+   (oracle.sql TIMESTAMPTZ)))
+
+(defmethod driver/database-supports? [:oracle :now] [_driver _feat _db] true)
 
 (driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
+
+(defmethod driver/database-supports? [:oracle :datetime-diff] [_driver _feat _db] true)
+
+(defmethod driver/database-supports? [:oracle :convert-timezone]
+  [_driver _feat _db]
+  true)
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
@@ -60,6 +74,7 @@
     ;; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
     [#"^SDO_"       :type/*]
     [#"STRUCT"      :type/*]
+    [#"TIMESTAMP(\(\d\))? WITH TIME ZONE" :type/DateTimeWithTZ]
     [#"TIMESTAMP"   :type/DateTime]
     [#"URI"         :type/Text]
     [#"XML"         :type/*]]))
@@ -89,31 +104,47 @@
   "The connection property used by the Oracle JDBC Thin Driver to control the program name."
   "v$session.program")
 
-(defn- handle-ssl-options [{:keys [ssl ssl-use-keystore ssl-use-truststore] :as details}]
+(defn- guess-keystore-type [^java.io.File keystore-file ^String password]
+  (try
+    (.getType (KeyStore/getInstance keystore-file (.toCharArray password)))
+    (catch Exception _
+      ;; Before the introduction of type recognition we always used "JKS",
+      ;; so this ensures backwards compatibility.
+      "JKS")))
+
+(defn- handle-keystore-options [details]
+  (let [keystore (-> (secret/db-details-prop->secret-map details "ssl-keystore")
+                     (secret/value->file! :oracle))
+        password (or (-> (secret/db-details-prop->secret-map details "ssl-keystore-password")
+                         secret/value->string)
+                     (secret/get-secret-string details "ssl-keystore-password"))]
+    (-> details
+        (assoc :javax.net.ssl.keyStoreType (guess-keystore-type keystore password)
+               :javax.net.ssl.keyStore keystore
+               :javax.net.ssl.keyStorePassword password)
+        (dissoc :ssl-use-keystore :ssl-keystore-value :ssl-keystore-path :ssl-keystore-password-value
+                :ssl-keystore-created-at :ssl-keystore-password-created-at))))
+
+(defn- handle-truststore-options [details]
+  (let [truststore (-> (secret/db-details-prop->secret-map details "ssl-truststore")
+                       (secret/value->file! :oracle))
+        password (or (-> (secret/db-details-prop->secret-map details "ssl-truststore-password")
+                         secret/value->string)
+                     (secret/get-secret-string details "ssl-truststore-password"))]
+    (-> details
+        (assoc :javax.net.ssl.trustStoreType (guess-keystore-type truststore password)
+               :javax.net.ssl.trustStore truststore
+               :javax.net.ssl.trustStorePassword password)
+        (dissoc :ssl-use-truststore :ssl-truststore-value :ssl-truststore-path :ssl-truststore-password-value
+                :ssl-truststore-created-at :ssl-truststore-password-created-at))))
+
+(defn- handle-ssl-options [{:keys [password ssl ssl-use-keystore ssl-use-truststore] :as details}]
   (if ssl
     (cond-> details
-
-      ssl-use-keystore
-      (-> ; from outer cond->
-        (assoc :javax.net.ssl.keyStoreType "JKS"
-               :javax.net.ssl.keyStore (-> (secret/db-details-prop->secret-map details "ssl-keystore")
-                                           (secret/value->file! :oracle))
-               :javax.net.ssl.keyStorePassword (-> (secret/db-details-prop->secret-map details "ssl-keystore-password")
-                                                   secret/value->string))
-        (dissoc :ssl-use-keystore :ssl-keystore-value :ssl-keystore-path :ssl-keystore-password-value))
-
-      ssl-use-truststore
-      (-> ; from outer cond->
-        (assoc :javax.net.ssl.trustStoreType "JKS"
-               :javax.net.ssl.trustStore (-> (secret/db-details-prop->secret-map details "ssl-truststore")
-                                             (secret/value->file! :oracle))
-               :javax.net.ssl.trustStorePassword (-> (secret/db-details-prop->secret-map details
-                                                                                         "ssl-truststore-password")
-                                                     secret/value->string))
-        (dissoc :ssl-use-truststore :ssl-truststore-value :ssl-truststore-path :ssl-truststore-password-value))
-
-      true
-      (dissoc :ssl))
+      ssl-use-keystore handle-keystore-options
+      (and ssl-use-keystore (nil? password)) (assoc :oracle.net.authentication_services "(TCPS)")
+      ssl-use-truststore handle-truststore-options
+      true (dissoc :ssl))
     details))
 
 (defmethod sql-jdbc.conn/connection-details->spec :oracle
@@ -205,9 +236,21 @@
    (driver.common/start-of-week-offset driver)
    (partial hsql/call (u/qualified-name ::mod))))
 
-(def ^:private now (hsql/raw "SYSDATE"))
+(defmethod sql.qp/current-datetime-honeysql-form :oracle
+  [_]
+  (-> (hsql/raw "CURRENT_TIMESTAMP")
+      (hx/with-database-type-info "timestamp with time zone")))
 
-(defmethod sql.qp/current-datetime-honeysql-form :oracle [_] now)
+(defmethod sql.qp/->honeysql [:oracle :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr          (sql.qp/->honeysql driver arg)
+        has-timezone? (hx/is-of-type? expr #"timestamp(\(\d\))? with time zone")]
+   (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
+   (-> (if has-timezone?
+         expr
+         (hsql/call :from_tz expr (or source-timezone (qp.timezone/results-timezone-id))))
+       (hx/->AtTimeZone target-timezone)
+       hx/->timestamp)))
 
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
@@ -294,6 +337,53 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :microseconds]
   [driver _ field-or-value]
   (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000000))))
+
+(defn- time-zoned-trunc
+  "Same as [[trunc]], but truncates `x` to `unit` in the results timezone
+   if `x` is a timestamp with time zone."
+  [unit x]
+  (let [x (cond-> x
+             (hx/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")
+             (hx/->AtTimeZone (qp.timezone/results-timezone-id)))]
+    (trunc unit x)))
+
+(defmethod sql.qp/datetime-diff [:oracle :year]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 12))
+
+(defmethod sql.qp/datetime-diff [:oracle :quarter]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 3))
+
+(defmethod sql.qp/datetime-diff [:oracle :month]
+  [_driver _unit x y]
+  (hsql/call :MONTHS_BETWEEN (time-zoned-trunc :dd y) (time-zoned-trunc :dd x)))
+
+(defmethod sql.qp/datetime-diff [:oracle :week]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :day x y) 7))
+
+(defmethod sql.qp/datetime-diff [:oracle :day]
+  [_driver _unit x y]
+  (hx/- (time-zoned-trunc :dd y) (time-zoned-trunc :dd x)))
+
+(defn- utc-days-diff
+  "Calculates the number of fractional days between `x` and `y`, converting to UTC if the
+   args are timestamps with time zones. This is needed because some time zones don't have
+   24 hours in every day, which can cause incorrect results if we calculate the number of
+   hours, minutes, or seconds between two timestamps with naive subtraction."
+  [x y]
+  (let [x (cond-> x
+            (hx/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")
+            (hx/->AtTimeZone "UTC"))
+        y (cond-> y
+            (hx/is-of-type? y #"(?i)timestamp(\(\d\))? with time zone")
+            (hx/->AtTimeZone "UTC"))]
+    (hx/- (hx/->date y) (hx/->date x))))
+
+(defmethod sql.qp/datetime-diff [:oracle :hour] [_driver _unit x y] (hx/* (utc-days-diff x y) 24))
+(defmethod sql.qp/datetime-diff [:oracle :minute] [_driver _unit x y] (hx/* (utc-days-diff x y) 1440))
+(defmethod sql.qp/datetime-diff [:oracle :second] [_driver _unit x y] (hx/* (utc-days-diff x y) 86400))
 
 ;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
 ;; supported on Oracle versions older than 12). This has to wrap the actual query, e.g.
@@ -428,6 +518,13 @@
 (defmethod driver/escape-entity-name-for-metadata :oracle
   [_ entity-name]
   (str/replace entity-name "/" "//"))
+
+(defmethod sql-jdbc.describe-table/get-table-pks :oracle
+  [_driver ^Connection conn _ table]
+  (let [^DatabaseMetaData metadata (.getMetaData conn)]
+    (into #{} (sql-jdbc.sync.common/reducible-results
+               #(.getPrimaryKeys metadata nil nil (:name table))
+               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle
   [_]

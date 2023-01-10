@@ -1,14 +1,17 @@
 (ns metabase.driver.sql.util
   "Utility functions for writing SQL drivers."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s])
-  (:import metabase.util.honeysql_extensions.Identifier))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [honeysql.core :as hsql]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs tru]]
+   [schema.core :as s])
+  (:import
+   (metabase.util.honeysql_extensions Identifier)))
 
 (s/defn quote-name
   "Quote unqualified string or keyword identifier(s) by passing them to `hx/identifier`, then calling HoneySQL `format`
@@ -123,3 +126,19 @@
       :backslashes (-> s
                        (str/replace "\\" "\\\\")
                        (str/replace "'" "\\'")))))
+
+(defn validate-convert-timezone-args
+  "Validate the arguments of convert-timezone.
+  - if input column has timezone only target-timezone is required, throw exception if source-timezone is provided.
+  - if input column doesn't have a timezone both target-timezone and source-timezone are required."
+  [has-timezone? target-timezone source-timezone]
+  (when (and has-timezone? source-timezone)
+      (throw (ex-info (tru "input column already has a set timezone. Please remove the source parameter in convertTimezone.")
+                      {:type            qp.error-type/invalid-query
+                       :target-timezone target-timezone
+                       :source-timezone source-timezone})))
+  (when (and (not has-timezone?) (not source-timezone))
+    (throw (ex-info (tru "input column doesn't have a set timezone. Please set the source parameter in convertTimezone to convert it.")
+                    {:type            qp.error-type/invalid-query
+                     :target-timezone target-timezone
+                     :source-timezone source-timezone}))))

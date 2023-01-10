@@ -1,13 +1,14 @@
 (ns metabase-enterprise.audit-app.pages.query-detail
   "Queries to show details about a (presumably ad-hoc) query."
-  (:require [cheshire.core :as json]
-            [honeysql.core :as hsql]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase-enterprise.audit-app.pages.common.cards :as cards]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as s]))
+  (:require
+   [cheshire.core :as json]
+   [honeysql.core :as hsql]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase-enterprise.audit-app.pages.common.cards :as cards]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [schema.core :as s]))
 
 (defmethod audit.i/internal-query ::bad-card
   [_ card-id]
@@ -56,11 +57,11 @@
                            :latest_qe                         [:= :card.id :latest_qe.card_id]
                            :query_runs                        [:= :card.id :query_runs.card_id]
                            :dash_card                         [:= :card.id :dash_card.card_id]]
-               :where     [:= :card.id card-id] })})
+               :where     [:= :card.id card-id]})})
 
 ;; Details about a specific query (currently just average execution time).
 (s/defmethod audit.i/internal-query ::details
-  [_ query-hash :- su/NonBlankString]
+  [_ query-hash :- su/NonBlankStringPlumatic]
   {:metadata [[:query                  {:display_name "Query",                :base_type :type/Dictionary}]
               [:average_execution_time {:display_name "Avg. Exec. Time (ms)", :base_type :type/Number}]]
    :results  (common/reducible-query

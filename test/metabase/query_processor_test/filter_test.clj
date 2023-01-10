@@ -1,13 +1,13 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor-test.timezones-test :as timezones-test]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.test :as mt]))
 
 (deftest and-test
   (mt/test-drivers (mt/normal-drivers)
@@ -112,26 +112,17 @@
                    {:aggregation [[:count]]
                     :filter      [:between !day.date "2015-04-01" "2015-05-01"]}))))))))
 
-(defn- mongo-major-version [db]
-  (when (= driver/*driver* :mongo)
-    (-> (driver/describe-database :mongo db)
-        :version (str/split #"\.") first parse-long)))
-
 (defn- timezone-arithmetic-drivers []
   (set/intersection
-   ;; we also want to test this against MongoDB but [[mt/normal-drivers-with-feature]] would normally not include that
-   ;; since MongoDB only supports expressions if version is 4.0 or above and [[mt/normal-drivers-with-feature]]
-   ;; currently uses [[driver/supports?]] rather than [[driver/database-supports?]] (TODO FIXME, see #23422)
-   (conj (mt/normal-drivers-with-feature :expressions) :mongo)
-   (timezones-test/timezone-aware-column-drivers)))
+    (mt/normal-drivers-with-feature :expressions)
+    (mt/normal-drivers-with-feature :date-arithmetics)
+    (timezones-test/timezone-aware-column-drivers)))
 
 (deftest temporal-arithmetic-test
   (testing "Should be able to use temporal arithmetic expressions in filters (#22531)"
     (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
-        (when-not (some-> (mongo-major-version (mt/db))
-                          (< 5))
-          (doseq [offset-unit [:year :day]
+        (doseq [offset-unit [:year :day]
                   interval-unit [:year :day]
                   compare-op [:between := :< :<= :> :>=]
                   compare-order (cond-> [:field-first]
@@ -155,15 +146,13 @@
                   (if (= driver/*driver* :mongo)
                     (is (or (nil? result)
                             (pos-int? result)))
-                    (is (nat-int? result))))))))))))
+                    (is (nat-int? result)))))))))))
 
 (deftest nonstandard-temporal-arithmetic-test
   (testing "Nonstandard temporal arithmetic should also be supported"
     (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
-        (when-not (some-> (mongo-major-version (mt/db))
-                          (< 5))
-          (doseq [offset-unit [:year :day]
+        (doseq [offset-unit [:year :day]
                   interval-unit [:year :day]
                   compare-op [:between := :< :<= :> :>=]
                   add-op [:+ #_:-] ; TODO support subtraction like sql.qp/add-interval-honeysql-form (#23423)
@@ -192,7 +181,7 @@
                   (if (= driver/*driver* :mongo)
                     (is (or (nil? result)
                             (pos-int? result)))
-                    (is (nat-int? result))))))))))))
+                    (is (nat-int? result)))))))))))
 
 (deftest or-test
   (mt/test-drivers (mt/normal-drivers)

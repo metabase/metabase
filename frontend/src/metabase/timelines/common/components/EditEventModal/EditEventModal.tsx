@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { Timeline, TimelineEvent, TimelineEventData } from "metabase-types/api";
-import EventForm from "../EventForm";
+import EventForm from "../../containers/EventForm";
 import ModalBody from "../ModalBody";
 import ModalHeader from "../ModalHeader";
 
@@ -26,13 +26,9 @@ const EditEventModal = ({
   onCancel,
   onClose,
 }: EditEventModalProps): JSX.Element => {
-  const initialValues = useMemo(() => {
-    return getInitialValues(event);
-  }, [event]);
-
   const handleSubmit = useCallback(
     async (values: TimelineEventData) => {
-      await onSubmit(getSubmitValues(event, values), timeline);
+      await onSubmit({ ...event, ...values }, timeline);
       onSubmitSuccess?.();
     },
     [event, timeline, onSubmit, onSubmitSuccess],
@@ -48,7 +44,7 @@ const EditEventModal = ({
       <ModalHeader title={t`Edit event`} onClose={onClose} />
       <ModalBody>
         <EventForm
-          initialValues={initialValues}
+          initialValues={event}
           onSubmit={handleSubmit}
           onArchive={handleArchive}
           onCancel={onCancel}
@@ -57,19 +53,5 @@ const EditEventModal = ({
     </div>
   );
 };
-
-const getInitialValues = (event: TimelineEvent): TimelineEventData => ({
-  ...event,
-  description: event.description || "",
-});
-
-const getSubmitValues = (
-  event: TimelineEvent,
-  values: TimelineEventData,
-): TimelineEvent => ({
-  ...event,
-  ...values,
-  description: values.description || null,
-});
 
 export default EditEventModal;

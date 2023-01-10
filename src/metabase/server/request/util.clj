@@ -1,17 +1,18 @@
 (ns metabase.server.request.util
   "Utility functions for Ring requests."
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [user-agent :as user-agent]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [user-agent :as user-agent]))
 
 (defn api-call?
   "Is this ring request an API call (does path start with `/api`)?"
@@ -68,11 +69,6 @@
     scheme
     (= scheme :https)))
 
-(defn protocol
-  "Protocol of this request, either `:http` or `:https`."
-  [request]
-  (if (https? request) :https :http))
-
 (defn embedded?
   "Whether this frontend client that made this request is embedded inside an `<iframe>`."
   [request]
@@ -93,9 +89,9 @@
 
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
-  {:device_id          su/NonBlankString
-   :device_description su/NonBlankString
-   :ip_address         su/NonBlankString})
+  {:device_id          su/NonBlankStringPlumatic
+   :device_description su/NonBlankStringPlumatic
+   :ip_address         su/NonBlankStringPlumatic})
 
 (s/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
@@ -141,10 +137,10 @@
   5000)
 
 (def ^:private IPAddress
-  (s/constrained su/NonBlankString u/ip-address? "valid IP address string"))
+  (s/constrained su/NonBlankStringPlumatic u/ip-address? "valid IP address string"))
 
 ;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
-(s/defn geocode-ip-addresses :- (s/maybe {IPAddress {:description su/NonBlankString
+(s/defn geocode-ip-addresses :- (s/maybe {IPAddress {:description su/NonBlankStringPlumatic
                                                      :timezone    (s/maybe java.time.ZoneId)}})
   "Geocode multiple IP addresses, returning a map of IP address -> info, with each info map containing human-friendly
   `:description` of the location and a `java.time.ZoneId` `:timezone`, if that information is available."

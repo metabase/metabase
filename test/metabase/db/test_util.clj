@@ -1,9 +1,10 @@
 (ns metabase.db.test-util
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.test :as mt]
-            [potemkin :as p]
-            [pretty.core :as pretty]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [metabase.test :as mt]
+   [potemkin :as p]
+   [pretty.core :as pretty]))
 
 (p/deftype+ ClojureJDBCSpecDataSource [jdbc-spec]
   pretty/PrettyPrintable

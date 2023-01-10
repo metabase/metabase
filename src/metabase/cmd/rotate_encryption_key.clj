@@ -1,15 +1,16 @@
 (ns metabase.cmd.rotate-encryption-key
-  (:require [cheshire.core :as json]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [metabase.db :as mdb]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.env :as mdb.env]
-            [metabase.models :refer [Database Secret Setting]]
-            [metabase.models.setting.cache :as setting.cache]
-            [metabase.util.encryption :as encryption]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.tools.logging :as log]
+   [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.env :as mdb.env]
+   [metabase.models :refer [Database Secret Setting]]
+   [metabase.models.setting.cache :as setting.cache]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db]))
 
 (defn rotate-encryption-key!
   "Rotate the current configured db using the current MB_ENCRYPTION_SECRET_KEY env var and `to-key` argument."
@@ -23,7 +24,14 @@
                               (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))
                               identity))
         encrypt-str-fn    (make-encrypt-fn encryption/maybe-encrypt)
-        encrypt-bytes-fn  (make-encrypt-fn encryption/maybe-encrypt-bytes)]
+        encrypt-bytes-fn  (make-encrypt-fn encryption/maybe-encrypt-bytes)
+        is-h2             (= :h2 (mdb/db-type))
+        value-column      (if is-h2
+                            "\"VALUE\""
+                            :value)
+        setting-where     (if is-h2
+                            "setting.\"KEY\" = ?"
+                            "setting.key = ?")]
     (jdbc/with-db-transaction [t-conn {:datasource (mdb.connection/data-source)}]
       (doseq [[id details] (db/select-id->field :details Database)]
         (when (encryption/possibly-encrypted-string? details)
@@ -37,8 +45,8 @@
           (setting.cache/update-settings-last-updated!)
           (jdbc/update! t-conn
                         :setting
-                        {:value (encrypt-str-fn value)}
-                        ["setting.key = ?" key])))
+                        {value-column (encrypt-str-fn value)}
+                        [setting-where key])))
       ;; update all secret values according to the new encryption key
       ;; fortunately, we don't need to fetch the latest secret instance per ID, as we would need to in order to update
       ;; a secret value through the regular database save API path; instead, ALL secret values in the app DB (regardless
@@ -47,6 +55,6 @@
         (when (encryption/possibly-encrypted-string? value)
           (throw (ex-info (trs "Can't decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
         (jdbc/update! t-conn
-          :secret
-          {:value (encrypt-bytes-fn value)}
-          ["secret.id = ?" id])))))
+                      :secret
+                      {value-column (encrypt-bytes-fn value)}
+                      ["secret.id = ?" id])))))

@@ -11,6 +11,7 @@ import Radio from "metabase/core/components/Radio";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
@@ -92,8 +93,7 @@ class ChartSettings extends Component {
 
   // allows a widget to temporarily replace itself with a different widget
   handleShowWidget = (widget, ref) => {
-    this.setState({ popoverRef: ref });
-    this.setState({ currentWidget: widget });
+    this.setState({ popoverRef: ref, currentWidget: widget });
   };
 
   // go back to previously selected section
@@ -112,6 +112,12 @@ class ChartSettings extends Component {
     this.props.onChange(updateSettings(this._getSettings(), changedSettings));
   };
 
+  handleChangeSeriesColor = (seriesKey, color) => {
+    this.props.onChange(
+      updateSeriesColor(this._getSettings(), seriesKey, color),
+    );
+  };
+
   handleDone = () => {
     this.props.onDone(this._getSettings());
     this.props.onClose();
@@ -125,6 +131,10 @@ class ChartSettings extends Component {
     return (
       this.props.settings || this.props.series[0].card.visualization_settings
     );
+  }
+
+  _getComputedSettings() {
+    return this.props.computedSettings || {};
   }
 
   _getWidgets() {
@@ -182,6 +192,7 @@ class ChartSettings extends Component {
   getStyleWidget = () => {
     const widgets = this._getWidgets();
     const series = this._getTransformedSeries();
+    const settings = this._getComputedSettings();
     const { currentWidget } = this.state;
     const seriesSettingsWidget =
       currentWidget && widgets.find(widget => widget.id === "series_settings");
@@ -200,15 +211,20 @@ class ChartSettings extends Component {
         },
       };
     } else if (currentWidget.props?.initialKey) {
-      const settings = this._getSettings();
+      const hasBreakouts = settings["graph.dimensions"]?.length > 1;
+
+      if (hasBreakouts) {
+        return null;
+      }
+
       const singleSeriesForColumn = series.find(single => {
         const metricColumn = single.data.cols[1];
-        return getColumnKey(metricColumn) === currentWidget.props.initialKey;
+        if (metricColumn) {
+          return getColumnKey(metricColumn) === currentWidget.props.initialKey;
+        }
       });
 
-      const isBreakout = settings?.["graph.dimensions"]?.length > 1;
-
-      if (singleSeriesForColumn && !isBreakout) {
+      if (singleSeriesForColumn) {
         return {
           ...seriesSettingsWidget,
           props: {
@@ -302,6 +318,8 @@ class ChartSettings extends Component {
       onEndShowWidget: this.handleEndShowWidget,
       currentSectionHasColumnSettings,
       columnHasSettings: col => this.columnHasSettings(col),
+      onChangeSeriesColor: (seriesKey, color) =>
+        this.handleChangeSeriesColor(seriesKey, color),
     };
 
     const sectionPicker = (

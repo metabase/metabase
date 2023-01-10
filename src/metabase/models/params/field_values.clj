@@ -1,12 +1,13 @@
 (ns metabase.models.params.field-values
   "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
-  (:require [metabase.models.field-values :as field-values :refer [FieldValues]]
-            [metabase.models.interface :as mi]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.interface :as mi]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn default-get-or-create-field-values-for-current-user!
   "OSS implementation; used as a fallback for the EE implementation if the field isn't sandboxed."

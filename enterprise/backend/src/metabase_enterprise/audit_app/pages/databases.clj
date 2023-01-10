@@ -1,9 +1,10 @@
 (ns metabase-enterprise.audit-app.pages.databases
-  (:require [honeysql.core :as hsql]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.util.cron :as u.cron]
-            [schema.core :as s]))
+  (:require
+   [honeysql.core :as hsql]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.util.cron :as u.cron]
+   [schema.core :as s]))
 
 ;; SELECT
 ;;   db.id AS database_id,

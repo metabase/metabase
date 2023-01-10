@@ -1,16 +1,17 @@
 (ns metabase.models.native-query-snippet
-  (:require [metabase.models.collection :as collection]
-            [metabase.models.interface :as mi]
-            [metabase.models.native-query-snippet.permissions :as snippet.perms]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
+   [metabase.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -32,14 +33,12 @@
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
     (collection/check-collection-namespace NativeQuerySnippet (:collection_id updates))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class NativeQuerySnippet)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:properties (constantly {:timestamped? true
-                             :entity_id    true})
-    :pre-insert pre-insert
-    :pre-update pre-update}))
+(mi/define-methods
+ NativeQuerySnippet
+ {:properties (constantly {::mi/timestamped? true
+                           ::mi/entity-id    true})
+  :pre-insert pre-insert
+  :pre-update pre-update})
 
 (defmethod serdes.hash/identity-hash-fields NativeQuerySnippet
   [_snippet]
@@ -75,14 +74,8 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes.base/extract-query "NativeQuerySnippet" [_ {:keys [collection-set]}]
-  (eduction cat [(db/select-reducible NativeQuerySnippet :collection_id nil)
-                 (when (seq collection-set)
-                   (db/select-reducible NativeQuerySnippet :collection_id [:in collection-set]))]))
-
-(defmethod serdes.base/serdes-generate-path "NativeQuerySnippet" [_ snippet]
-  [(assoc (serdes.base/infer-self-path "NativeQuerySnippet" snippet)
-          :label (:name snippet))])
+(defmethod serdes.base/extract-query "NativeQuerySnippet" [_ opts]
+  (serdes.base/extract-query-collections NativeQuerySnippet opts))
 
 (defmethod serdes.base/extract-one "NativeQuerySnippet"
   [_model-name _opts snippet]
@@ -101,3 +94,21 @@
   (if collection_id
     [[{:model "Collection" :id collection_id}]]
     []))
+
+(defmethod serdes.base/storage-path "NativeQuerySnippet" [snippet ctx]
+  ;; Intended path here is ["snippets" "nested" "collections" "snippet_eid_and_slug"]
+  ;; We just the default path, then pull it apart.
+  ;; The default is ["collections" "nested" collections" "nativequerysnippets" "base_name"]
+  (let [basis  (serdes.base/storage-default-collection-path snippet ctx)
+        file   (last basis)
+        colls  (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
+    (concat ["snippets"] colls [file])))
+
+(serdes.base/register-ingestion-path!
+  "NativeQuerySnippet"
+  (fn [path]
+    (when-let [[id slug] (and (= (first path) "snippets")
+                              (serdes.base/split-leaf-file-name (last path)))]
+      (cond-> {:model "NativeQuerySnippet" :id id}
+        slug (assoc :label slug)
+        true vector))))

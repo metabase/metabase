@@ -1,8 +1,9 @@
 (ns metabase.mbql.util-test
-  (:require [clojure.string :as str]
-            [clojure.test :as t]
-            [metabase.mbql.util :as mbql.u]
-            metabase.types))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :as t]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.types]))
 
 (comment metabase.types/keep-me)
 
@@ -716,14 +717,6 @@
         (t/testing (pr-str (list 'query->max-rows-limit query))
           (t/is (= expected
                    (mbql.u/query->max-rows-limit query))))))))
-
-(t/deftest ^:parallel datetime-arithmetics?-test
-  (t/is (mbql.u/datetime-arithmetics?
-         [:+ [:field-id 13] [:interval -1 :month]]))
-  (t/is (mbql.u/datetime-arithmetics?
-         [:field "a" {:temporal-unit :month}]))
-  (t/is (not (mbql.u/datetime-arithmetics?
-              [:+ [:field-id 13] 3]))))
 
 (t/deftest ^:parallel expression-with-name-test
   (t/is (= [:+ 1 1]

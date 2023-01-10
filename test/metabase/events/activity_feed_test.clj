@@ -1,11 +1,13 @@
 (ns metabase.events.activity-feed-test
-  (:require [clojure.test :refer :all]
-            [metabase.events.activity-feed :as events.activity-feed]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.events.activity-feed :as events.activity-feed]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models
+    :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn- activity
   ([topic]

@@ -1,19 +1,20 @@
 (ns metabase.api.automagic-dashboards-test
-  (:require [clojure.test :refer :all]
-            [metabase.automagic-dashboards.core :as magic]
-            [metabase.models :refer [Card Collection Metric Segment]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
-            [metabase.test.domain-entities :as test.de]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.transforms :as transforms.test]
-            [metabase.transforms.core :as tf]
-            [metabase.transforms.materialize :as tf.materialize]
-            [metabase.transforms.specs :as tf.specs]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.automagic-dashboards.core :as magic]
+   [metabase.models :refer [Card Collection Metric Segment]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
+   [metabase.test.domain-entities :as test.de]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.transforms :as transforms.test]
+   [metabase.transforms.core :as tf]
+   [metabase.transforms.materialize :as tf.materialize]
+   [metabase.transforms.specs :as tf.specs]
+   [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
 
@@ -151,7 +152,7 @@
   (testing "Ad-hoc X-Rays should work for queries have Card source queries (#15655)"
     (mt/dataset sample-dataset
       (let [card-query      (mt/native-query {:query "select * from people"})
-            result-metadata (get-in (qp/process-query card-query) [:data :results_metadata :columns]) ]
+            result-metadata (get-in (qp/process-query card-query) [:data :results_metadata :columns])]
         (mt/with-temp* [Collection [{collection-id :id}]
                         Card       [{card-id :id} {:name            "15655_Q1"
                                                    :collection_id   collection-id
@@ -184,18 +185,18 @@
         (test.de/with-test-domain-entity-specs
           (mt/with-model-cleanup [Card Collection]
             (tf/apply-transform! (mt/id) "PUBLIC" (first @tf.specs/transform-specs))
-            (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 1.5 4 3 2 1]
-                    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0 11 2 1 1]
-                    [3 "The Apple Pan" 11 34.0406 -118.428 2 2.0 11 2 1 1]]
-                   (api-call "transform/%s" ["Test transform"]
-                             #(revoke-collection-permissions!
-                               (tf.materialize/get-collection "Test transform"))
-                             (fn [dashboard]
-                               (->> dashboard
-                                    :ordered_cards
-                                    (sort-by (juxt :row :col))
-                                    last
-                                    :card
-                                    :dataset_query
-                                    qp/process-query
-                                    mt/rows)))))))))))
+            (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
+                    [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
+                    [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
+                   (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
+                     (api-call "transform/%s" ["Test transform"]
+                               #(revoke-collection-permissions!
+                                 (tf.materialize/get-collection "Test transform"))
+                               (fn [dashboard]
+                                 (->> dashboard
+                                      :ordered_cards
+                                      (sort-by (juxt :row :col))
+                                      last
+                                      :card
+                                      :dataset_query
+                                      qp/process-query))))))))))))

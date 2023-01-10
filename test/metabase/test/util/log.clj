@@ -1,11 +1,12 @@
 (ns metabase.test.util.log
   "Utils for controlling the logging that goes on when running tests."
-  (:require [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [clojure.tools.logging.impl :as log.impl]
-            [metabase.test-runner.parallel :as test-runner.parallel]
-            [potemkin :as p]
-            [schema.core :as s])
+  (:require
+   [clojure.test :refer :all]
+   [clojure.tools.logging :as log]
+   [clojure.tools.logging.impl :as log.impl]
+   [metabase.test-runner.parallel :as test-runner.parallel]
+   [potemkin :as p]
+   [schema.core :as s])
   (:import [org.apache.logging.log4j Level LogManager]
            [org.apache.logging.log4j.core Appender LifeCycle LogEvent Logger LoggerContext]
            [org.apache.logging.log4j.core.config Configuration LoggerConfig]))
@@ -112,11 +113,21 @@
 
 (defn do-with-log-level [a-namespace level thunk]
   (test-runner.parallel/assert-test-is-not-parallel "with-log-level")
-  (let [original-log-level (ns-log-level a-namespace)]
+  (ensure-unique-logger! a-namespace)
+  (let [original-log-level (ns-log-level a-namespace)
+        logger             (exact-ns-logger a-namespace)
+        is-additive        (.isAdditive logger)
+        parent-is-root?    (= "" (-> logger .getParent .getName))]
     (try
+      ;; prevent events to be passed to the root logger's appenders which will log to the Console
+      ;; https://logging.apache.org/log4j/2.x/manual/configuration.html#Additivity
+      (when parent-is-root?
+        (.setAdditive logger false))
       (set-ns-log-level! a-namespace level)
       (thunk)
       (finally
+        (when parent-is-root?
+          (.setAdditive logger is-additive))
         (set-ns-log-level! a-namespace original-log-level)))))
 
 (defmacro with-log-level

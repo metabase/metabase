@@ -1,14 +1,15 @@
 (ns metabase.api.native-query-snippet-test
   "Tests for /api/native-query-snippet endpoints."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.models :refer [Collection]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.test :as mt]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.models :refer [Collection]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.test :as mt]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (def ^:private test-snippet-fields [:content :creator_id :description :name])
 
@@ -73,7 +74,7 @@
         (try
           (let [snippet-input    {:name "test-snippet", :description "Just null", :content "NULL"}
                 snippet-from-api (mt/user-http-request user :post 200 (snippet-url) snippet-input)]
-            (is (schema= {:id          su/IntGreaterThanZero
+            (is (schema= {:id          su/IntGreaterThanZeroPlumatic
                           :name        (s/eq "test-snippet")
                           :description (s/eq "Just null")
                           :content     (s/eq "NULL")

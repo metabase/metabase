@@ -1,20 +1,21 @@
 (ns metabase-enterprise.sandbox.api.table
-  (:require [clojure.set :as set]
-            [compojure.core :refer [GET]]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.api.common :as api]
-            [metabase.api.table :as api.table]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.set :as set]
+   [compojure.core :refer [GET]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase.api.common :as api]
+   [metabase.api.table :as api.table]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (s/defn ^:private find-gtap-question :- (s/maybe (mi/InstanceOf Card))
   "Find the associated GTAP question (if there is one) for the given `table-or-table-id` and
@@ -52,16 +53,17 @@
     (update query-metadata-response :fields #(filter (comp (set gtap-field-ids) u/the-id) %))
     query-metadata-response))
 
-(api/defendpoint GET "/:id/query_metadata"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has segmented permissions
   that only gives them access to a subset of columns for a given table, those inaccessable columns should also be
   excluded from what is show in the query builder. When the user has full permissions (or no permissions) this route
   doesn't add/change anything from the OSS version. See the docs on the OSS version of the endpoint for more
   information."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
-  {include_sensitive_fields    (s/maybe su/BooleanString)
-   include_hidden_fields       (s/maybe su/BooleanString)
-   include_editable_data_model (s/maybe su/BooleanString)}
+  {include_sensitive_fields    (s/maybe su/BooleanStringPlumatic)
+   include_hidden_fields       (s/maybe su/BooleanStringPlumatic)
+   include_editable_data_model (s/maybe su/BooleanStringPlumatic)}
   (let [table            (api/check-404 (db/select-one Table :id id))
         segmented-perms? (only-segmented-perms? table)
         thunk            (fn []

@@ -37,15 +37,16 @@
     {:metadata ...
      :results  (fn [context] ...)
      :xform    ...}"
-  (:require [clojure.data :as data]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase.api.common.validation :as validation]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.data :as data]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase.api.common.validation :as validation]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (defn- check-results-and-metadata-keys-match
   "Primarily for dev and debugging purposes. We can probably take this out when shipping the finished product."
@@ -67,7 +68,7 @@
   (for [[k v] metadata]
     (assoc v :name (name k))))
 
-(s/defn ^:private format-results [{:keys [results metadata]} :- {:results  [su/Map]
+(s/defn ^:private format-results [{:keys [results metadata]} :- {:results  [su/MapPlumatic]
                                                                  :metadata audit.i/ResultsMetadata}]
   (check-results-and-metadata-keys-match results metadata)
   {:cols (metadata->cols metadata)

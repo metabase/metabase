@@ -1,21 +1,23 @@
 (ns metabase.models.table
-  (:require [honeysql.core :as hsql]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.util :as mdb.u]
-            [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :refer [FieldValues]]
-            [metabase.models.humanization :as humanization]
-            [metabase.models.interface :as mi]
-            [metabase.models.metric :refer [Metric retrieve-metrics]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.segment :refer [retrieve-segments Segment]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [honeysql.core :as hsql]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.util :as mdb.u]
+   [metabase.driver :as driver]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :refer [FieldValues]]
+   [metabase.models.humanization :as humanization]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
@@ -68,16 +70,15 @@
       :read  (perms/table-read-path table)
       :write (perms/data-model-write-perms-path db-id schema table-id))})
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Table)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:table])
-          :types          (constantly {:entity_type     :keyword
-                                       :visibility_type :keyword
-                                       :field_order     :keyword})
-          :properties     (constantly {:timestamped? true})
-          :pre-insert     pre-insert
-          :pre-delete     pre-delete}))
+(mi/define-methods
+ Table
+ {:hydration-keys (constantly [:table])
+  :types          (constantly {:entity_type     :keyword
+                               :visibility_type :keyword
+                               :field_order     :keyword})
+  :properties     (constantly {::mi/timestamped? true})
+  :pre-insert     pre-insert
+  :pre-delete     pre-delete})
 
 (defmethod serdes.hash/identity-hash-fields Table
   [_table]
@@ -133,7 +134,8 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(defn ^:hydrate fields
+(mi/define-simple-hydration-method fields
+  :fields
   "Return the Fields belonging to a single `table`."
   [{:keys [id]}]
   (db/select Field
@@ -142,19 +144,9 @@
     :visibility_type [:not= "retired"]
     {:order-by field-order-rule}))
 
-(defn metrics
-  "Retrieve the Metrics for a single `table`."
-  [{:keys [id]}]
-  (retrieve-metrics id :all))
-
-(defn segments
-  "Retrieve the Segments for a single `table`."
-  [{:keys [id]}]
-  (retrieve-segments id :all))
-
-(defn field-values
+(mi/define-simple-hydration-method ^{:arglists '([table])} field-values
+  :field_values
   "Return the FieldValues for all Fields belonging to a single `table`."
-  {:hydrate :field_values, :arglists '([table])}
   [{:keys [id]}]
   (let [field-ids (db/select-ids Field
                     :table_id        id
@@ -163,9 +155,9 @@
     (when (seq field-ids)
       (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
 
-(defn pk-field-id
+(mi/define-simple-hydration-method ^{:arglists '([table])} pk-field-id
+  :pk_field
   "Return the ID of the primary key `Field` for `table`."
-  {:hydrate :pk_field, :arglists '([table])}
   [{:keys [id]}]
   (db/select-one-id Field
     :table_id        id
@@ -180,18 +172,18 @@
     (for [table tables]
       (assoc table hydration-key (get table-id->objects (:id table) [])))))
 
-(defn with-segments
+(mi/define-batched-hydration-method with-segments
+  :segments
   "Efficiently hydrate the Segments for a collection of `tables`."
-  {:batched-hydrate :segments}
   [tables]
   (with-objects :segments
     (fn [table-ids]
       (db/select Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
-(defn with-metrics
+(mi/define-batched-hydration-method with-metrics
+  :metrics
   "Efficiently hydrate the Metrics for a collection of `tables`."
-  {:batched-hydrate :metrics}
   [tables]
   (with-objects :metrics
     (fn [table-ids]
@@ -211,14 +203,6 @@
     tables))
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
-
-(defn qualified-identifier
-  "Return a keyword identifier for `table` in the form `:schema.table-name` (if the Table has a non-empty `:schema` field)
-  or `:table-name` (if the Table has no `:schema`)."
-  ^clojure.lang.Keyword [{schema :schema, table-name :name}]
-  (keyword (str (when (seq schema)
-                  (str schema \.))
-                table-name)))
 
 (defn database
   "Return the `Database` associated with this `Table`."
@@ -252,8 +236,8 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (db/select-one-field :id Database :name db-name)]
-    (db/select-one-field :id Table :name table-name :db_id db-id :schema schema-name)))
+        db-id       (db/select-one-id Database :name db-name)]
+    (db/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes.base/extract-one "Table"
   [_model-name _opts {:keys [db_id] :as table}]
@@ -264,3 +248,23 @@
   [{:keys [db_id] :as table}]
   (-> (serdes.base/load-xform-basics table)
       (assoc :db_id (db/select-one-field :id 'Database :name db_id))))
+
+(defmethod serdes.base/storage-path "Table" [table _ctx]
+  (concat (serdes.util/storage-table-path-prefix (serdes.base/serdes-path table))
+          [(:name table)]))
+
+(serdes.base/register-ingestion-path!
+  "Table"
+  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "customers"]
+  ;; ["databases" "my-db" "tables" "customers" "customers"]
+  ;; Note that the last 2 must match, they're the table's directory and its file.
+  (fn [path]
+    (when-let [{db     "databases"
+                schema "schemas"
+                table  "tables"}   (and (#{5 7} (count path))
+                                        (apply = (take-last 2 path))
+                                        (serdes.base/ingestion-matcher-pairs path [["databases" "schemas" "tables"]
+                                                                                   ["databases" "tables"]]))]
+      (filterv identity [{:model "Database" :id db}
+                         (when schema {:model "Schema" :id schema})
+                         {:model "Table" :id table}]))))

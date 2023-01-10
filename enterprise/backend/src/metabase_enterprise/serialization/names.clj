@@ -1,26 +1,27 @@
 (ns metabase-enterprise.serialization.names
   "Consistent instance-independent naming scheme that replaces IDs with human-readable paths."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.database :as database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :refer [User]]
-            [metabase.util.i18n :as i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :refer [User]]
+   [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private root-collection-path "/collections/root")
 
@@ -128,18 +129,18 @@
 
 ;; All the references in the dumps should resolved to entities already loaded.
 (def ^:private Context
-  {(s/optional-key :database)   su/IntGreaterThanZero
-   (s/optional-key :table)      su/IntGreaterThanZero
+  {(s/optional-key :database)   su/IntGreaterThanZeroPlumatic
+   (s/optional-key :table)      su/IntGreaterThanZeroPlumatic
    (s/optional-key :schema)     (s/maybe s/Str)
-   (s/optional-key :field)      su/IntGreaterThanZero
-   (s/optional-key :metric)     su/IntGreaterThanZero
-   (s/optional-key :segment)    su/IntGreaterThanZero
-   (s/optional-key :card)       su/IntGreaterThanZero
-   (s/optional-key :dashboard)  su/IntGreaterThanZero
-   (s/optional-key :collection) (s/maybe su/IntGreaterThanZero) ; root collection
-   (s/optional-key :pulse)      su/IntGreaterThanZero
-   (s/optional-key :user)       su/IntGreaterThanZero
-   (s/optional-key :snippet)    (s/maybe su/IntGreaterThanZero)})
+   (s/optional-key :field)      su/IntGreaterThanZeroPlumatic
+   (s/optional-key :metric)     su/IntGreaterThanZeroPlumatic
+   (s/optional-key :segment)    su/IntGreaterThanZeroPlumatic
+   (s/optional-key :card)       su/IntGreaterThanZeroPlumatic
+   (s/optional-key :dashboard)  su/IntGreaterThanZeroPlumatic
+   (s/optional-key :collection) (s/maybe su/IntGreaterThanZeroPlumatic) ; root collection
+   (s/optional-key :pulse)      su/IntGreaterThanZeroPlumatic
+   (s/optional-key :user)       su/IntGreaterThanZeroPlumatic
+   (s/optional-key :snippet)    (s/maybe su/IntGreaterThanZeroPlumatic)})
 
 (defmulti ^:private path->context* (fn [_ model _ _]
                                      model))

@@ -1,5 +1,4 @@
 import { t, ngettext, msgid } from "ttag";
-// NOTE: extending Error with Babel requires babel-plugin-transform-builtin-extend
 
 export class MinColumnsError extends Error {
   constructor(minColumns, actualColumns) {
@@ -48,4 +47,12 @@ export class ChartSettingsError extends Error {
     this.initial = initial;
     this.buttonText = buttonText || t`Edit Settings`;
   }
+}
+
+export function getGenericErrorMessage() {
+  return t`There was a problem displaying this chart.`;
+}
+
+export function getPermissionErrorMessage() {
+  return t`Sorry, you don't have permission to see this card.`;
 }

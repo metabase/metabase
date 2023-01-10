@@ -1,16 +1,17 @@
 (ns metabase.models.login-history-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.models :refer [LoginHistory User]]
-            [metabase.models.login-history :as login-history]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.request.util :as request.u]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.models :refer [LoginHistory User]]
+   [metabase.models.login-history :as login-history]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.request.util :as request.u]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (deftest first-login-on-this-device?-test
   (let [device-1 (str (java.util.UUID/randomUUID))
@@ -33,7 +34,7 @@
               (is (= false
                      (#'login-history/first-login-on-this-device? history-1)))
               (is (= false
-                 (#'login-history/first-login-ever? history-1))))))))))
+                   (#'login-history/first-login-ever? history-1))))))))))
 
 (deftest send-email-on-first-login-from-new-device-test
   (testing "User should get an email the first time they log in from a new device (#14313, #15603, #17495)"
@@ -61,7 +62,7 @@
                                                :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]]
 
                 (is (schema= {(s/eq email)
-                              [{:from    su/Email
+                              [{:from    su/EmailPlumatic
                                 :to      (s/eq [email])
                                 :subject (s/eq (format "We've Noticed a New Metabase Login, %s" first-name))
                                 :body    [(s/one {:type    (s/eq "text/html; charset=utf-8")

@@ -1,66 +1,51 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
 
-export interface ItemRootProps {
-  canSelect: boolean;
-  isSelected: boolean;
-  hasChildren: boolean;
-}
-
-export const ItemRoot = styled.div<ItemRootProps>`
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-
-  ${({ isSelected }) =>
-    isSelected &&
+export const ScrollAwareLoadingAndErrorWrapper = styled(
+  LoadingAndErrorWrapper,
+)<{ hasScroll?: boolean }>`
+  ${props =>
+    props.hasScroll &&
     css`
-      color: ${color("white")};
-      background-color: ${color("brand")};
-    `}
-
-  ${({ canSelect, hasChildren }) =>
-    (canSelect || hasChildren) &&
-    css`
-      cursor: pointer;
-
-      &:hover {
-        color: ${color("white")};
-        background-color: ${color("brand")};
-      }
+      overflow-y: auto;
     `}
 `;
 
-export const ItemContent = styled.div`
-  display: flex;
-  align-items: center;
+export const ItemPickerRoot = styled.div`
+  overflow-y: auto;
 `;
 
 export const ItemPickerHeader = styled.div`
+  display: flex;
+  align-items: center;
+
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
+
+  border-bottom: 1px solid ${color("border")};
 `;
 
 export const ItemPickerList = styled.div`
   overflow-y: auto;
 `;
 
-export interface ExpandItemIconProps {
-  canSelect: boolean;
-}
+export const SearchInput = styled.input`
+  flex: 1 0 auto;
+  border-radius: 8px;
+`;
 
-export const ExpandItemIcon = styled(Icon)<ExpandItemIconProps>`
-  padding: 0.5rem;
+export const SearchToggle = styled(IconButtonWrapper)`
   margin-left: auto;
-  border-radius: 99px;
+  padding-left: 1rem;
+
   color: ${color("text-light")};
-  border: 1px solid ${color("border")};
-  cursor: pointer;
 
   &:hover {
-    background-color: ${props =>
-      props.canSelect ? color("white") : color("brand")};
+    color: ${color("text-medium")};
   }
 `;

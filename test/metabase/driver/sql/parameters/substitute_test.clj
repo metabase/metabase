@@ -1,20 +1,21 @@
 (ns metabase.driver.sql.parameters.substitute-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters.parse :as params.parse]
-            [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models :refer [Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.parameters.native :as qp.native]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test :as mt]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models :refer [Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.parameters.native :as qp.native]
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.test :as mt]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))
@@ -518,7 +519,7 @@
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
-(s/defn ^:private checkins-identifier :- su/NonBlankString
+(s/defn ^:private checkins-identifier :- su/NonBlankStringPlumatic
   "Get the identifier used for `checkins` for the current driver by looking at what the driver uses when converting MBQL
   to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
   []
@@ -618,11 +619,6 @@
               ;; TIMEZONE FIXME — Busted
               (= driver/*driver* :vertica)
               "2018-04-17T00:00:00-07:00"
-
-              ;; TIMEZONE FIXME - bigquery doesn't support SET TIMEZONE, so the CAST to date below is going to make a UTC date,
-              ;; and then get converted back to reporting TZ (TODO: where?). But it's not clear if this behavior is actually relevant/an issue.
-              (= driver/*driver* :bigquery-cloud-sdk)
-              "2018-04-17T17:00:00-07:00"
 
               (qp.test/supports-report-timezone? driver/*driver*)
               "2018-04-18T00:00:00-07:00"

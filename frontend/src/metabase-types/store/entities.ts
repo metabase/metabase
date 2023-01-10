@@ -1,15 +1,21 @@
 import {
   Collection,
   CollectionId,
-  DataApp,
-  DataAppId,
   Database,
+  Field,
+  FieldId,
+  NativeQuerySnippet,
+  NativeQuerySnippetId,
   Table,
+  User,
+  UserId,
 } from "metabase-types/api";
 
 export interface EntitiesState {
   collections?: Record<CollectionId, Collection>;
-  dataApps?: Record<DataAppId, DataApp>;
   databases?: Record<number, Database>;
+  fields?: Record<FieldId, Field>;
   tables?: Record<number | string, Table>;
+  snippets?: Record<NativeQuerySnippetId, NativeQuerySnippet>;
+  users?: Record<UserId, User>;
 }

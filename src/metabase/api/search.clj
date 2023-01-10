@@ -1,36 +1,39 @@
 (ns metabase.api.search
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [GET]]
-            [flatland.ordered.map :as ordered-map]
-            [honeysql.core :as hsql]
-            [honeysql.helpers :as hh]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.db :as mdb]
-            [metabase.models :refer [App Database]]
-            [metabase.models.bookmark :refer [CardBookmark CollectionBookmark DashboardBookmark]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.interface :as mi]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.search.config :as search-config]
-            [metabase.search.scoring :as scoring]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [GET]]
+   [flatland.ordered.map :as ordered-map]
+   [honeysql.core :as hsql]
+   [honeysql.helpers :as hh]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.db :as mdb]
+   [metabase.models :refer [Database]]
+   [metabase.models.bookmark
+    :refer [CardBookmark CollectionBookmark DashboardBookmark]]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.search.config :as search-config]
+   [metabase.search.scoring :as scoring]
+   [metabase.search.util :as search-util]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
-  {:search-string                (s/maybe su/NonBlankString)
+  {:search-string                (s/maybe su/NonBlankStringPlumatic)
    :archived?                    s/Bool
    :current-user-perms           #{perms/Path}
-   (s/optional-key :models)      (s/maybe #{su/NonBlankString})
+   (s/optional-key :models)      (s/maybe #{su/NonBlankStringPlumatic})
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)
    (s/optional-key :offset-int)  (s/maybe s/Int)})
@@ -74,7 +77,6 @@
    :archived            :boolean
    ;; returned for Card, Dashboard, Pulse, and Collection
    :collection_id       :integer
-   :collection_app_id   :integer
    :collection_name     :text
    :collection_authority_level :text
    ;; returned for Card and Dashboard
@@ -86,8 +88,6 @@
    :dashboardcard_count :integer
    :dataset_query       :text
    :moderated_status    :text
-   ;; returned for Collection only
-   :app_id              :integer
    ;; returned for Metric and Segment
    :table_id            :integer
    :database_id         :integer
@@ -190,7 +190,7 @@
   (when query
     (into [:or]
           (for [column searchable-columns
-                token (scoring/tokenize (scoring/normalize query))]
+                token (search-util/tokenize (search-util/normalize query))]
             (if (and (= model "card") (= column (hsql/qualify (model->alias model) :dataset_query)))
               [:and
                [:= (hsql/qualify (model->alias model) :query_type) "native"]
@@ -223,7 +223,7 @@
 (s/defn ^:private add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`."
-  [honeysql-query :- su/Map, collection-id-column :- s/Keyword, {:keys [current-user-perms]} :- SearchContext]
+  [honeysql-query :- su/MapPlumatic, collection-id-column :- s/Keyword, {:keys [current-user-perms]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
                                   collection-id-column
@@ -235,14 +235,12 @@
     (cond-> honeysql-query
       (not= collection-id-column :collection.id)
       (hh/merge-left-join [Collection :collection]
-                          [:= collection-id-column :collection.id]
-                          [App :collection_app]
-                          [:= :collection.id :collection_app.collection_id]))))
+                          [:= collection-id-column :collection.id]))))
 
 (s/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- su/Map, id :- (s/maybe s/Int)]
+  [query :- su/MapPlumatic, id :- (s/maybe s/Int)]
   (if (some? id)
     (hh/merge-where query [:= id :db_id])
     query))
@@ -250,7 +248,7 @@
 (s/defn ^:private add-card-db-id-clause
   "Add a WHERE clause to only return cards with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- su/Map, id :- (s/maybe s/Int)]
+  [query :- su/MapPlumatic, id :- (s/maybe s/Int)]
   (if (some? id)
     (hh/merge-where query [:= id :database_id])
     query))
@@ -283,51 +281,27 @@
       (update :select (fn [columns]
                         (cons [(hx/literal "dataset") :model] (rest columns))))))
 
-(defn- shared-collection-impl
-  [model search-ctx]
+(s/defmethod search-query-for-model "collection"
+  [_model search-ctx :- SearchContext]
   (-> (base-query-for-model "collection" search-ctx)
-      (update :where (fn [where] [:and [(if (= model "app") :<> :=) :app.id nil] where]))
       (hh/left-join [CollectionBookmark :bookmark]
                     [:and
                      [:= :bookmark.collection_id :collection.id]
-                     [:= :bookmark.user_id api/*current-user-id*]]
-                    [App :app]
-                    [:= :app.collection_id :collection.id])
+                     [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
-
-(s/defmethod search-query-for-model "collection"
-  [model search-ctx :- SearchContext]
-  (shared-collection-impl model search-ctx))
-
-(s/defmethod search-query-for-model "app"
-  [model search-ctx :- SearchContext]
-  (-> (shared-collection-impl model search-ctx)
-      (update :select (fn [columns]
-                        (cons [(hx/literal model) :model] (rest columns))))))
 
 (s/defmethod search-query-for-model "database"
   [model search-ctx :- SearchContext]
   (base-query-for-model model search-ctx))
 
-(defn- shared-dashboard-impl
-  [model search-ctx]
-  (-> (base-query-for-model "dashboard" search-ctx)
-      (update :where (fn [where] [:and [:= :dashboard.is_app_page (= model "page")] where]))
-      (hh/left-join [DashboardBookmark :bookmark]
-                    [:and
-                     [:= :bookmark.dashboard_id :dashboard.id ]
-                     [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
-
 (s/defmethod search-query-for-model "dashboard"
   [model search-ctx :- SearchContext]
-  (shared-dashboard-impl model search-ctx))
-
-(s/defmethod search-query-for-model "page"
-  [model search-ctx :- SearchContext]
-  (-> (shared-dashboard-impl model search-ctx)
-      (update :select (fn [columns]
-                        (cons [(hx/literal model) :model] (rest columns))))))
+  (-> (base-query-for-model model search-ctx)
+      (hh/left-join [DashboardBookmark :bookmark]
+                    [:and
+                     [:= :bookmark.dashboard_id :dashboard.id]
+                     [:= :bookmark.user_id api/*current-user-id*]])
+      (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 
 (s/defmethod search-query-for-model "pulse"
   [model search-ctx :- SearchContext]
@@ -380,7 +354,7 @@
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
   [query]
-  (let [match             (wildcard-match (scoring/normalize query))
+  (let [match             (wildcard-match (search-util/normalize query))
         columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
@@ -472,15 +446,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional vector? [su/NonBlankString] :else su/NonBlankString))
+(def ^:private models-schema (s/conditional vector? [su/NonBlankStringPlumatic] :else su/NonBlankStringPlumatic))
 
 (s/defn ^:private search-context :- SearchContext
-  [search-string :-   (s/maybe su/NonBlankString),
-   archived-string :- (s/maybe su/BooleanString)
-   table-db-id :-     (s/maybe su/IntGreaterThanZero)
+  [search-string :-   (s/maybe su/NonBlankStringPlumatic),
+   archived-string :- (s/maybe su/BooleanStringPlumatic)
+   table-db-id :-     (s/maybe su/IntGreaterThanZeroPlumatic)
    models :-          (s/maybe models-schema)
-   limit :-           (s/maybe su/IntGreaterThanZero)
-   offset :-          (s/maybe su/IntGreaterThanOrEqualToZero)]
+   limit :-           (s/maybe su/IntGreaterThanZeroPlumatic)
+   offset :-          (s/maybe su/IntGreaterThanOrEqualToZeroPlumatic)]
   (cond-> {:search-string      search-string
            :archived?          (Boolean/parseBoolean archived-string)
            :current-user-perms @api/*current-user-permissions-set*}
@@ -490,11 +464,13 @@
     (some? limit)       (assoc :limit-int limit)
     (some? offset)      (assoc :offset-int offset)))
 
-(api/defendpoint GET "/models"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/models"
   "Get the set of models that a search query will return"
   [q archived-string table-db-id] (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
-(api/defendpoint GET "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/"
   "Search within a bunch of models for the substring `q`.
   For the list of models, check `metabase.search.config/all-models.
 
@@ -504,9 +480,9 @@
   To specify a list of models, pass in an array to `models`.
   "
   [q archived table_db_id models]
-  {q            (s/maybe su/NonBlankString)
-   archived     (s/maybe su/BooleanString)
-   table_db_id  (s/maybe su/IntGreaterThanZero)
+  {q            (s/maybe su/NonBlankStringPlumatic)
+   archived     (s/maybe su/BooleanStringPlumatic)
+   table_db_id  (s/maybe su/IntGreaterThanZeroPlumatic)
    models       (s/maybe models-schema)}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (search (search-context

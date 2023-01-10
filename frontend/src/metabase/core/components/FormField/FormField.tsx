@@ -1,5 +1,6 @@
 import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
-import Tooltip from "metabase/components/Tooltip";
+import { t } from "ttag";
+import Tooltip from "metabase/core/components/Tooltip";
 import { FieldAlignment, FieldOrientation } from "./types";
 import {
   FieldCaption,
@@ -10,6 +11,7 @@ import {
   FieldLabelContainer,
   FieldLabelError,
   FieldRoot,
+  OptionalTag,
 } from "./FormField.styled";
 
 export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
@@ -17,6 +19,7 @@ export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   description?: ReactNode;
   alignment?: FieldAlignment;
   orientation?: FieldOrientation;
+  optional?: boolean;
   error?: string;
   htmlFor?: string;
   infoLabel?: string;
@@ -34,6 +37,7 @@ const FormField = forwardRef(function FormField(
     infoLabel,
     infoTooltip,
     children,
+    optional,
     ...props
   }: FormFieldProps,
   ref: Ref<HTMLDivElement>,
@@ -41,21 +45,19 @@ const FormField = forwardRef(function FormField(
   const hasError = Boolean(error);
 
   return (
-    <FieldRoot
-      {...props}
-      ref={ref}
-      orientation={orientation}
-      hasError={hasError}
-    >
+    <FieldRoot {...props} ref={ref} orientation={orientation}>
       {alignment === "start" && children}
       {(title || description) && (
         <FieldCaption alignment={alignment} orientation={orientation}>
           <FieldLabelContainer>
             {title && (
-              <FieldLabel htmlFor={htmlFor}>
+              <FieldLabel hasError={hasError} htmlFor={htmlFor}>
                 {title}
                 {hasError && <FieldLabelError>: {error}</FieldLabelError>}
               </FieldLabel>
+            )}
+            {!!optional && !hasError && (
+              <OptionalTag>{t`(optional)`}</OptionalTag>
             )}
             {(infoLabel || infoTooltip) && (
               <Tooltip tooltip={infoTooltip} maxWidth="100%">

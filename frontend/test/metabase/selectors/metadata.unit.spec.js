@@ -6,6 +6,7 @@ import {
 } from "__support__/sample_database_fixture";
 import {
   copyObjects,
+  getMetadata,
   instantiateDatabase,
   instantiateSchema,
   instantiateTable,
@@ -154,5 +155,26 @@ describe("instantiateQuestion", () => {
     expect(instance).toBeInstanceOf(Question);
     expect(instance.card()).toHaveProperty("id", 123);
     expect(instance.metadata()).toBe(metadata);
+  });
+});
+
+describe("databasesList", () => {
+  it("should filter out saved questions", () => {
+    const metadata = getMetadata(state);
+    const savedQuestionDb = {
+      id: "saved-question-id",
+      name: "Saved Questions",
+      is_saved_questions: true,
+    };
+    metadata.databases[savedQuestionDb.id] = savedQuestionDb;
+
+    expect(
+      metadata.databasesList().find(d => d.name === "Saved Questions"),
+    ).toEqual(savedQuestionDb);
+    expect(
+      metadata
+        .databasesList({ savedQuestions: false })
+        .find(d => d.name === "Saved Questions"),
+    ).toBeUndefined();
   });
 });

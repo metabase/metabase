@@ -1,12 +1,13 @@
 (ns metabase.api.revision
-  (:require [compojure.core :refer [GET POST]]
-            [metabase.api.card :as api.card]
-            [metabase.api.common :as api]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.revision :as revision :refer [Revision]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [GET POST]]
+   [metabase.api.card :as api.card]
+   [metabase.api.common :as api]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.revision :as revision :refer [Revision]]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private ^:const valid-entity-names
   #{"card" "dashboard"})
@@ -20,7 +21,8 @@
     "card"      [Card (db/select-one Card :id id)]
     "dashboard" [Dashboard (db/select-one Dashboard :id id)]))
 
-(api/defendpoint GET "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/"
   "Get revisions of an object."
   [entity id]
   {entity Entity, id s/Int}
@@ -28,7 +30,8 @@
     (when (api/read-check instance)
       (revision/revisions+details model id))))
 
-(api/defendpoint POST "/revert"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/revert"
   "Revert an object to a prior revision."
   [:as {{:keys [entity id revision_id]} :body}]
   {entity Entity, id s/Int, revision_id s/Int}

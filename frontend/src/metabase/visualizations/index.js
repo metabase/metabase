@@ -106,7 +106,7 @@ export function getMaxDimensionsSupported(display) {
 }
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
-const extractRemappedColumns = data => {
+export const extractRemappedColumns = data => {
   const cols = data.cols.map(col => ({
     ...col,
     remapped_from_index:

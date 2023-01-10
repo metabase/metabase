@@ -5,8 +5,9 @@ import moment from "moment-timezone";
 import { getIn } from "icepick";
 
 import { formatValue } from "metabase/lib/formatting";
+import { formatNullable } from "metabase/lib/formatting/nullable";
 
-import { isNormalized, isStacked, formatNull } from "./renderer_utils";
+import { isNormalized, isStacked } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
 
@@ -169,14 +170,17 @@ export function getClickHoverObject(
             value: formatValue(d.data.value, {
               number_style: "percent",
               column: cols[1],
-              decimals: cols[1].decimals,
+              minimum_fraction_digits:
+                cols[1].minimum_fraction_digits || cols[1].decimals,
+              maximum_fraction_digits:
+                cols[1].maximum_fraction_digits || cols[1].decimals,
             }),
             col: col,
           };
         }
         return {
           key: getColumnDisplayName(col, colVizSettingsKeys[i]),
-          value: formatNull(aggregatedRow[i]),
+          value: formatNullable(aggregatedRow[i]),
           col: col,
         };
       });

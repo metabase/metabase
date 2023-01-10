@@ -1,6 +1,6 @@
 /* eslint-disable react/display-name, react/prop-types */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   SAMPLE_DATABASE,
   MULTI_SCHEMA_DATABASE,
@@ -211,7 +211,7 @@ class ErrorBoundary extends React.Component {
 
 function setup({ question, subHead = false, isObjectDetail = false } = {}) {
   const onError = jest.fn();
-  render(
+  renderWithProviders(
     <ErrorBoundary onError={onError}>
       <QuestionDataSource
         question={question}
@@ -337,7 +337,9 @@ describe("QuestionDataSource", () => {
           question.query().database = () => null;
 
           setup({ question });
-          expect(screen.getByTestId("head-crumbs-container")).toBeEmpty();
+          expect(
+            screen.getByTestId("head-crumbs-container"),
+          ).toBeEmptyDOMElement();
 
           question.query().database = originalMethod;
         });
@@ -468,51 +470,17 @@ describe("QuestionDataSource", () => {
   });
 
   // Enable when HTTP requests mocking is more reliable than xhr-mock
-  describe.skip("Nested", () => {
+  describe("Nested", () => {
     Object.values(NESTED_TEST_CASES).forEach(testCase => {
       const { question, questionType } = testCase;
 
       describe(questionType, () => {
-        it("displays source question (metabase#12616)", () => {
-          setup({ question, subHead: true });
-          const node = screen.queryByText(SOURCE_QUESTION_NAME);
-          expect(node).toBeInTheDocument();
-          expect(node.closest("a")).toHaveAttribute(
-            "href",
-            Urls.question({
-              id: SOURCE_QUESTION_ID,
-              name: SOURCE_QUESTION_NAME,
-            }),
-          );
-        });
-
         it("does not display virtual schema (metabase#12616)", () => {
           setup({ question, subHead: true });
           const node = screen.queryByText(
             SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,
           );
           expect(node).not.toBeInTheDocument();
-        });
-      });
-    });
-  });
-
-  describe.skip("Object Detail", () => {
-    // these tests do not apply to the new modal object detail view
-    // but will be useful when we implement the new version of full page
-    // object detail
-    [
-      GUI_TEST_CASE.SAVED_OBJECT_DETAIL,
-      GUI_TEST_CASE.AD_HOC_OBJECT_DETAIL,
-    ].forEach(testCase => {
-      const { question, questionType } = testCase;
-
-      describe(questionType, () => {
-        it("displays object PK in object detail mode", () => {
-          setup({ question, isObjectDetail: true });
-          expect(
-            screen.queryByText(String(RANDOM_ORDER_ID)),
-          ).toBeInTheDocument();
         });
       });
     });

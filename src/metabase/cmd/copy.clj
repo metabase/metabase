@@ -2,59 +2,61 @@
   "Shared lower-level implementation of the `dump-to-h2` and `load-from-h2` commands. The `copy!` function implemented
   here supports loading data from an application database to any empty application database for all combinations of
   supported application database types."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.format :as hformat]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.data-migrations :refer [DataMigrations]]
-            [metabase.db.setup :as mdb.setup]
-            [metabase.models :refer [Activity
-                                     App
-                                     ApplicationPermissionsRevision
-                                     BookmarkOrdering
-                                     Card
-                                     CardBookmark
-                                     Collection
-                                     CollectionBookmark
-                                     CollectionPermissionGraphRevision
-                                     Dashboard
-                                     DashboardBookmark
-                                     DashboardCard
-                                     DashboardCardSeries
-                                     Database
-                                     Dimension
-                                     Field
-                                     FieldValues
-                                     LoginHistory
-                                     Metric
-                                     MetricImportantField
-                                     ModelAction
-                                     ModerationReview
-                                     NativeQuerySnippet
-                                     Permissions
-                                     PermissionsGroup
-                                     PermissionsGroupMembership
-                                     PermissionsRevision
-                                     PersistedInfo
-                                     Pulse
-                                     PulseCard
-                                     PulseChannel
-                                     PulseChannelRecipient
-                                     Revision
-                                     Secret
-                                     Segment
-                                     Session
-                                     Setting
-                                     Table
-                                     Timeline
-                                     TimelineEvent
-                                     User
-                                     ViewLog]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s])
-  (:import java.sql.SQLException))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [honeysql.format :as hformat]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.data-migrations :refer [DataMigrations]]
+   [metabase.db.setup :as mdb.setup]
+   [metabase.models
+    :refer [Activity
+            ApplicationPermissionsRevision
+            BookmarkOrdering
+            Card
+            CardBookmark
+            Collection
+            CollectionBookmark
+            CollectionPermissionGraphRevision
+            Dashboard
+            DashboardBookmark
+            DashboardCard
+            DashboardCardSeries
+            Database
+            Dimension
+            Field
+            FieldValues
+            LoginHistory
+            Metric
+            MetricImportantField
+            ModerationReview
+            NativeQuerySnippet
+            ParameterCard
+            Permissions
+            PermissionsGroup
+            PermissionsGroupMembership
+            PermissionsRevision
+            PersistedInfo
+            Pulse
+            PulseCard
+            PulseChannel
+            PulseChannelRecipient
+            Revision
+            Secret
+            Segment
+            Session
+            Setting
+            Table
+            Timeline
+            TimelineEvent
+            User
+            ViewLog]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [schema.core :as s])
+  (:import
+   (java.sql SQLException)))
 
 (defn- log-ok []
   (log/info (u/colorize 'green "[OK]")))
@@ -98,13 +100,11 @@
    Card
    CardBookmark
    DashboardBookmark
-   ModelAction
    CollectionBookmark
    BookmarkOrdering
    DashboardCard
    DashboardCardSeries
    Activity
-   App
    Pulse
    PulseCard
    PulseChannel
@@ -121,6 +121,7 @@
    Timeline
    TimelineEvent
    Secret
+   ParameterCard
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])
@@ -325,6 +326,19 @@
                      sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val"
                                         seq-name (name table-name))]]
         (jdbc/db-query-with-resultset target-db-conn [sql] :val)))))
+
+
+(defmethod update-sequence-values! :h2
+  [_ data-source]
+  (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
+    (step (trs "Setting H2 sequence ids to proper values...")
+          (doseq [e     entities
+                  :when (not (contains? entities-without-autoinc-ids e))
+                  :let  [table-name (name (:table e))
+                         sql        (format "ALTER TABLE %s ALTER COLUMN ID RESTART WITH COALESCE((SELECT MAX(ID) + 1 FROM %s), 1)"
+                                            table-name table-name)]]
+            (jdbc/execute! target-db-conn sql)))))
+
 
 (s/defn copy!
   "Copy data from a source application database into an empty destination application database."

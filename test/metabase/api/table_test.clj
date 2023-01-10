@@ -1,21 +1,22 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.table :as api.table]
-            [metabase.driver.util :as driver.u]
-            [metabase.http-client :as client]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Card Database Field FieldValues Table]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.table :as table]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.table :as api.table]
+   [metabase.driver.util :as driver.u]
+   [metabase.http-client :as client]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Card Database Field FieldValues Table]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.table :as table]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 ;; ## /api/org/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -29,7 +30,7 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -158,7 +159,7 @@
                                      :table_id                 (mt/id :users)
                                      :name                     "NAME"
                                      :display_name             "Name"
-                                     :database_type            "VARCHAR"
+                                     :database_type            "CHARACTER VARYING"
                                      :base_type                "type/Text"
                                      :effective_type           "type/Text"
                                      :visibility_type          "normal"
@@ -187,7 +188,7 @@
                                      :table_id         (mt/id :users)
                                      :name             "PASSWORD"
                                      :display_name     "Password"
-                                     :database_type    "VARCHAR"
+                                     :database_type    "CHARACTER VARYING"
                                      :base_type        "type/Text"
                                      :effective_type   "type/Text"
                                      :visibility_type  "sensitive"
@@ -224,7 +225,7 @@
                                      :semantic_type     "type/Name"
                                      :name             "NAME"
                                      :display_name     "Name"
-                                     :database_type    "VARCHAR"
+                                     :database_type    "CHARACTER VARYING"
                                      :base_type        "type/Text"
                                      :effective_type   "type/Text"
                                      :has_field_values "list"
@@ -447,7 +448,7 @@
                               :semantic_type            "type/Name"
                               :name                     "NAME"
                               :display_name             "Name"
-                              :database_type            "VARCHAR"
+                              :database_type            "CHARACTER VARYING"
                               :base_type                "type/Text"
                               :effective_type           "type/Text"
                               :dimension_options        []
@@ -745,7 +746,7 @@
                    (dimension-options-for-field response "timestamp"))))))
 
       (testing "time columns"
-        (mt/test-drivers (mt/normal-drivers-except #{:sparksql :mongo :oracle :redshift})
+        (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers))
           (mt/dataset test-data-with-time
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
               (is (= @#'api.table/time-dimension-indexes

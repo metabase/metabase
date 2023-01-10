@@ -1,16 +1,18 @@
 (ns metabase.models.secret.keystore-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.models :refer [Database Secret]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [toucan.db :as db])
-  (:import [java.io ByteArrayOutputStream File]
-           java.nio.charset.StandardCharsets
-           [java.security KeyStore KeyStore$PasswordProtection KeyStore$SecretKeyEntry]
-           javax.crypto.SecretKey
-           javax.crypto.spec.SecretKeySpec))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.models :refer [Database Secret]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [toucan.db :as db])
+  (:import
+   (java.io ByteArrayOutputStream File)
+   (java.nio.charset StandardCharsets)
+   (java.security KeyStore KeyStore$PasswordProtection KeyStore$SecretKeyEntry)
+   (javax.crypto SecretKey)
+   (javax.crypto.spec SecretKeySpec)))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 

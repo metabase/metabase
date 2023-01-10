@@ -9,12 +9,13 @@
 
   There used to also be `:advanced`, which was the default until enough customers
   complained that we first fixed it and then the fix wasn't good enough so we removed it."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (declare humanization-strategy)
 
@@ -51,9 +52,12 @@
   ([_ ^String s]
    ;; explode on hyphens, underscores, and spaces
    (when (seq s)
-     (str/join " " (for [part  (str/split s #"[-_\s]+")
-                         :when (not (str/blank? part))]
-                     (capitalize-word part))))))
+     (let [humanized (str/join " " (for [part  (str/split s #"[-_\s]+")
+                                         :when (not (str/blank? part))]
+                                     (capitalize-word part)))]
+       (if (str/blank? humanized)
+         s
+         humanized)))))
 
 ;; actual advanced method has been excised. this one just calls out to simple
 (defmethod name->human-readable-name :advanced
@@ -107,6 +111,7 @@
   (deferred-tru
     (str "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them "
          "with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."))
-  :type    :keyword
-  :default :simple
-  :setter  set-humanization-strategy!)
+  :type       :keyword
+  :default    :simple
+  :visibility :settings-manager
+  :setter     set-humanization-strategy!)

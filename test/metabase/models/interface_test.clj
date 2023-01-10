@@ -6,6 +6,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [schema.core :as s]
    [toucan.models :as models]))
@@ -98,3 +99,27 @@
                         :updated_at t-schema
                         s/Keyword   s/Any}
                        field)))))))
+
+(deftest upgrade-to-v2-viz-settings-test
+  (let [migrate #(select-keys (#'mi/migrate-viz-settings %)
+                              [:version :pie.percent_visibility])]
+    (testing "show_legend -> inside"
+      (is (= {:version 2
+              :pie.percent_visibility "inside"}
+             (migrate {:pie.show_legend          true
+                       :pie.show_legend_perecent true
+                       :pie.show_data_labels     true}))))
+    (testing "show_legend_percent -> legend"
+      (is (= {:version 2
+              :pie.percent_visibility "legend"}
+             (migrate {:pie.show_legend          false
+                       :pie.show_legend_perecent true
+                       :pie.show_data_labels     true}))))
+    (testing "anything else -> nothing"
+      (doseq [legend  [false nil]
+              percent [false nil]
+              labels  [true false nil]]
+        (is (= {}
+               (migrate {:pie.show_legend          legend
+                         :pie.show_legend_perecent percent
+                         :pie.show_data_labels     labels})))))))

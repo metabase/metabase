@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { getRelativeTime } from "metabase/lib/time";
 
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import {
   TimelineContainer,

@@ -1,7 +1,8 @@
 (ns metabase.mbql.normalize-test
-  (:require [clojure.set :as set]
-            [clojure.test :as t]
-            [metabase.mbql.normalize :as mbql.normalize]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :as t]
+   [metabase.mbql.normalize :as mbql.normalize]))
 
 (defn- tests {:style/indent 2} [f-symb f group->input->expected]
   (doseq [[group input->expected] group->input->expected]
@@ -566,6 +567,9 @@
 
     {:query {:expressions {:prev_month ["-" ["field-id" 13] ["interval" 1 "month"] ["interval" 1 "day"]]}}}
     {:query {:expressions {"prev_month" [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}
+
+    {:query {:expressions {:datetime-diff ["datetime-diff" ["field" 1 nil] ["field" 2 nil] "month"]}}}
+    {:query {:expressions {"datetime-diff" [:datetime-diff [:field 1 nil] [:field 2 nil] :month]}}}
 
     {:query {:expressions {:datetime-add ["datetime-add" ["field" 1 nil] 1 "month"]}}}
     {:query {:expressions {"datetime-add" [:datetime-add [:field 1 nil] 1 :month]}}}

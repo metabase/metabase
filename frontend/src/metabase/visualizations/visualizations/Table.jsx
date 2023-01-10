@@ -249,6 +249,7 @@ export default class Table extends Component {
       settings["show_mini_bar"] = {
         title: t`Show a mini bar chart`,
         widget: "toggle",
+        inline: true,
       };
     }
 

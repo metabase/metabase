@@ -1,21 +1,22 @@
 (ns metabase-enterprise.audit-app.pages.user-detail
-  (:require [honeysql.core :as hsql]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase-enterprise.audit-app.pages.common.cards :as cards]
-            [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [metabase.util.urls :as urls]
-            [ring.util.codec :as codec]
-            [schema.core :as s]))
+  (:require
+   [honeysql.core :as hsql]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase-enterprise.audit-app.pages.common.cards :as cards]
+   [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [metabase.util.urls :as urls]
+   [ring.util.codec :as codec]
+   [schema.core :as s]))
 
 ;; Query that probides a single row of information about a given User, similar to the `users/table` query but
 ;; restricted to a single result.
 ;;
 ;; (TODO - in the designs, this is pivoted; should we do that here in Clojure-land?)
 (s/defmethod audit.i/internal-query ::table
-  [_ user-id :- su/IntGreaterThanZero]
+  [_ user-id :- su/IntGreaterThanZeroPlumatic]
   {:metadata [[:name             {:display_name "Name",             :base_type :type/Name}]
               [:role             {:display_name "Role",             :base_type :type/Text}]
               [:groups           {:display_name "Groups",           :base_type :type/Text}]
@@ -78,7 +79,7 @@
 
 ;; Return the 10 most-viewed Dashboards for a given User, in descending order.
 (s/defmethod audit.i/internal-query ::most-viewed-dashboards
-  [_ user-id :- su/IntGreaterThanZero]
+  [_ user-id :- su/IntGreaterThanZeroPlumatic]
   {:metadata [[:dashboard_id   {:display_name "Dashboard ID", :base_type :type/Integer, :remapped_to   :dashboard_name}]
               [:dashboard_name {:display_name "Dashboard",    :base_type :type/Name,    :remapped_from :dashboard_id}]
               [:count          {:display_name "Views",        :base_type :type/Integer}]]
@@ -97,7 +98,7 @@
 
 ;; Return the 10 most-viewed Questions for a given User, in descending order.
 (s/defmethod audit.i/internal-query ::most-viewed-questions
-  [_ user-id :- su/IntGreaterThanZero]
+  [_ user-id :- su/IntGreaterThanZeroPlumatic]
   {:metadata [[:card_id   {:display_name "Card ID", :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name {:display_name "Query",   :base_type :type/Name,    :remapped_from :card_id}]
               [:count     {:display_name "Views",   :base_type :type/Integer}]]
@@ -116,7 +117,7 @@
 
 ;; Query views by a specific User.
 (s/defmethod audit.i/internal-query ::query-views
-  [_ user-id :- su/IntGreaterThanZero]
+  [_ user-id :- su/IntGreaterThanZeroPlumatic]
   {:metadata [[:viewed_on     {:display_name "Viewed On",      :base_type :type/DateTime}]
               [:card_id       {:display_name "Card ID"         :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name     {:display_name "Query",          :base_type :type/Text,    :remapped_from :card_id}]
@@ -156,7 +157,7 @@
 
 ;; Dashboard views by a specific User.
 (s/defmethod audit.i/internal-query ::dashboard-views
-  [_ user-id :- su/IntGreaterThanZero]
+  [_ user-id :- su/IntGreaterThanZeroPlumatic]
   {:metadata [[:timestamp       {:display_name "Viewed on",     :base_type :type/DateTime}]
               [:dashboard_id    {:display_name "Dashboard ID",  :base_type :type/Integer, :remapped_to   :dashboard_name}]
               [:dashboard_name  {:display_name "Dashboard",     :base_type :type/Text,    :remapped_from :dashboard_id}]
@@ -179,7 +180,7 @@
 ;; Timeseries chart that shows the number of Question or Dashboard views for a User, broken out by `datetime-unit`.
 (s/defmethod audit.i/internal-query ::object-views-by-time
   [_
-   user-id       :- su/IntGreaterThanZero
+   user-id       :- su/IntGreaterThanZeroPlumatic
    model         :- (s/enum "card" "dashboard")
    datetime-unit :- common/DateTimeUnitStr]
   {:metadata [[:date {:display_name "Date",   :base_type (common/datetime-unit-str->base-type datetime-unit)}]
@@ -198,12 +199,12 @@
 (s/defmethod audit.i/internal-query ::created-dashboards
   ([query-type user-id]
    (audit.i/internal-query query-type user-id nil))
-  ([_ user-id :- su/IntGreaterThanZero query-string :- (s/maybe s/Str)]
+  ([_ user-id :- su/IntGreaterThanZeroPlumatic query-string :- (s/maybe s/Str)]
    (dashboards/table query-string [:= :u.id user-id])))
 
 ;; Questions created by a specific User.
 (s/defmethod audit.i/internal-query ::created-questions
-  [_ user-id :- su/IntGreaterThanZero]
+  [_ user-id :- su/IntGreaterThanZeroPlumatic]
   {:metadata [[:card_id             {:display_name "Card ID",              :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name           {:display_name "Title",                :base_type :type/Name,    :remapped_from :card_id}]
               [:collection_id       {:display_name "Collection ID",        :base_type :type/Integer, :remapped_to   :collection_name}]
@@ -248,7 +249,7 @@
 ;; Table of query downloads (i.e., queries whose results are returned as CSV/JSON/XLS) done by this user, ordered by
 ;; most recent.
 (s/defmethod audit.i/internal-query ::downloads
-  [_ user-id :- su/IntGreaterThanZero]
+  [_ user-id :- su/IntGreaterThanZeroPlumatic]
   {:metadata [[:downloaded_at   {:display_name "Downloaded At",   :base_type :type/DateTime}]
               [:rows_downloaded {:display_name "Rows Downloaded", :base_type :type/Integer}]
               [:card_id         {:display_name "Card ID",         :base_type :type/Integer, :remapped_to :card_name}]

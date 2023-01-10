@@ -53,6 +53,10 @@ How to use an RDS instance as your application database.
 
 Monitor your Metabase with JMX.
 
+## [Observability with Prometheus](./observability-with-prometheus.md)
+
+Export Metabase metrics for viewing with Prometheus.
+
 ## [Java versions](./java-versions.md)
 
 Some notes on Java versions.

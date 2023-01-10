@@ -1,4 +1,6 @@
 import {
+  modal,
+  popover,
   restore,
   setupLdap,
   typeAndBlurUsingLabel,
@@ -11,6 +13,7 @@ describe(
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      cy.intercept("PUT", "/api/setting").as("updateSettings");
       cy.intercept("PUT", "/api/setting/*").as("updateSetting");
       cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
     });
@@ -34,18 +37,34 @@ describe(
       cy.wait("@updateLdapSettings");
 
       cy.findAllByRole("link", { name: "Authentication" }).first().click();
-      cy.findByRole("switch", { name: "LDAP" }).should("be.checked");
+      getLdapCard().findByText("Active").should("exist");
     });
 
-    it("should toggle ldap via the authentication page", () => {
+    it("should allow to disable and enable ldap", () => {
       setupLdap();
       cy.visit("/admin/settings/authentication");
 
-      cy.findByRole("switch", { name: "LDAP" }).click();
+      getLdapCard().icon("ellipsis").click();
+      popover().findByText("Pause").click();
       cy.wait("@updateSetting");
+      getLdapCard().findByText("Paused").should("exist");
 
-      cy.findByRole("switch", { name: "LDAP" }).should("not.be.checked");
-      cy.findByText("Saved").should("exist");
+      getLdapCard().icon("ellipsis").click();
+      popover().findByText("Resume").click();
+      cy.wait("@updateSetting");
+      getLdapCard().findByText("Active").should("exist");
+    });
+
+    it("should allow to reset ldap settings", () => {
+      setupLdap();
+      cy.visit("/admin/settings/authentication");
+
+      getLdapCard().icon("ellipsis").click();
+      popover().findByText("Deactivate").click();
+      modal().button("Deactivate").click();
+      cy.wait("@updateSettings");
+
+      getLdapCard().findByText("Set up").should("exist");
     });
 
     it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
@@ -89,6 +108,10 @@ describe(
     });
   },
 );
+
+const getLdapCard = () => {
+  return cy.findByText("LDAP").parent().parent();
+};
 
 const enterLdapPort = value => {
   typeAndBlurUsingLabel("LDAP Port", value);

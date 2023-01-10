@@ -1,20 +1,21 @@
 (ns metabase.query-processor.middleware.binning
   "Middleware that handles `:binning` strategy in `:field` clauses. This adds extra info to the `:binning` options maps
   that contain the information Query Processors will need in order to perform binning."
-  (:require [clojure.math.numeric-tower :refer [ceil expt floor]]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.math.numeric-tower :refer [ceil expt floor]]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 ;;; ----------------------------------------------- Extracting Bounds ------------------------------------------------
 
-(def ^:private FieldID->Filters {su/IntGreaterThanZero [mbql.s/Filter]})
+(def ^:private FieldID->Filters {su/IntGreaterThanZeroPlumatic [mbql.s/Filter]})
 
 (s/defn ^:private filter->field-map :- FieldID->Filters
   "Find any comparison or `:between` filter and return a map of referenced Field ID -> all the clauses the reference
@@ -31,7 +32,7 @@
   "Given query criteria, find a min/max value for the binning strategy using the greatest user specified min value and
   the smallest user specified max value. When a user specified min or max is not found, use the global min/max for the
   given field."
-  [field-id :- (s/maybe su/IntGreaterThanZero), fingerprint :- (s/maybe su/Map), field-id->filters :- FieldID->Filters]
+  [field-id :- (s/maybe su/IntGreaterThanZeroPlumatic), fingerprint :- (s/maybe su/MapPlumatic), field-id->filters :- FieldID->Filters]
   (let [{global-min :min, global-max :max} (get-in fingerprint [:type :type/Number])
         filter-clauses                     (get field-id->filters field-id)
         ;; [:between <field> <min> <max>] or [:< <field> <x>]
@@ -57,11 +58,11 @@
 
 (s/defn ^:private calculate-bin-width :- s/Num
   "Calculate bin width required to cover interval [`min-value`, `max-value`] with `num-bins`."
-  [min-value :- s/Num, max-value :- s/Num, num-bins :- su/IntGreaterThanZero]
+  [min-value :- s/Num, max-value :- s/Num, num-bins :- su/IntGreaterThanZeroPlumatic]
   (u/round-to-decimals 5 (/ (- max-value min-value)
                             num-bins)))
 
-(s/defn ^:private calculate-num-bins :- su/IntGreaterThanZero
+(s/defn ^:private calculate-num-bins :- su/IntGreaterThanZeroPlumatic
   "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."
   [min-value :- s/Num
    max-value :- s/Num
@@ -71,9 +72,9 @@
        1))
 
 (s/defn ^:private resolve-default-strategy :- [(s/one (s/enum :bin-width :num-bins) "strategy")
-                                               (s/one {:bin-width s/Num, :num-bins su/IntGreaterThanZero} "opts")]
+                                               (s/one {:bin-width s/Num, :num-bins su/IntGreaterThanZeroPlumatic} "opts")]
   "Determine the approprate strategy & options to use when `:default` strategy was specified."
-  [metadata  :- {(s/optional-key :semantic_type) (s/maybe su/FieldSemanticOrRelationType), s/Any s/Any}
+  [metadata  :- {(s/optional-key :semantic_type) (s/maybe su/FieldSemanticOrRelationTypePlumatic), s/Any s/Any}
    min-value :- s/Num
    max-value :- s/Num]
   (if (isa? (:semantic_type metadata) :type/Coordinate)
@@ -102,7 +103,7 @@
 (def ^:private ^:const pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
 
 (s/defn ^:private nicer-bin-width
-  [min-value :- s/Num, max-value :- s/Num, num-bins :- su/IntGreaterThanZero]
+  [min-value :- s/Num, max-value :- s/Num, num-bins :- su/IntGreaterThanZeroPlumatic]
   (let [min-bin-width (calculate-bin-width min-value max-value num-bins)
         scale         (expt 10 (u/order-of-magnitude min-bin-width))]
     (->> pleasing-numbers
@@ -125,11 +126,11 @@
          (drop-while (partial apply not=))
          ffirst)))
 
-(s/defn ^:private nicer-breakout* :- su/Map
+(s/defn ^:private nicer-breakout* :- su/MapPlumatic
   "Humanize binning: extend interval to start and end on a \"nice\" number and, when number of bins is fixed, have a
   \"nice\" step (bin width)."
   [strategy                                         :- mbql.s/BinningStrategyName
-   {:keys [min-value max-value bin-width num-bins]} :- su/Map]
+   {:keys [min-value max-value bin-width num-bins]} :- su/MapPlumatic]
   (let [bin-width             (if (= strategy :num-bins)
                                 (nicer-bin-width min-value max-value num-bins)
                                 bin-width)
@@ -141,8 +142,8 @@
                   (calculate-num-bins min-value max-value bin-width))
      :bin-width bin-width}))
 
-(s/defn ^:private nicer-breakout :- (s/maybe su/Map)
-  [strategy :- mbql.s/BinningStrategyName, opts :- su/Map]
+(s/defn ^:private nicer-breakout :- (s/maybe su/MapPlumatic)
+  [strategy :- mbql.s/BinningStrategyName, opts :- su/MapPlumatic]
   (let [f (partial nicer-breakout* strategy)]
     ((fixed-point f) opts)))
 
@@ -165,7 +166,7 @@
     (resolve-default-strategy metadata min-value max-value)))
 
 (s/defn ^:private matching-metadata
-  [field-id-or-name :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString) source-metadata]
+  [field-id-or-name :- (s/cond-pre su/IntGreaterThanZeroPlumatic su/NonBlankStringPlumatic) source-metadata]
   (if (integer? field-id-or-name)
     ;; for Field IDs, just fetch the Field from the Store
     (qp.store/field field-id-or-name)

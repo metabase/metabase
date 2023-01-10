@@ -66,12 +66,8 @@ export const HeaderContainer = styled.header`
   position: relative;
   z-index: 2;
 
-  ${({ isDataApp }) =>
-    !isDataApp &&
-    css`
-      background-color: ${color("bg-white")};
-      border-bottom: 1px solid ${color("border")};
-    `}
+  background-color: ${color("bg-white")};
+  border-bottom: 1px solid ${color("border")};
 
   ${({ isFullscreen }) =>
     isFullscreen &&
@@ -130,7 +126,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   ${({ isSticky, isNavbarOpen }) =>
     isSticky &&
     isNavbarOpen &&
-    !IFRAMED &&
     css`
       left: ${parseInt(NAV_SIDEBAR_WIDTH) + 1 + "px"};
       width: calc(100% - ${NAV_SIDEBAR_WIDTH});

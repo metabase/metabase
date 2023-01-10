@@ -1,17 +1,18 @@
 (ns metabase.sync.field-values
   "Logic for updating FieldValues for fields in a database."
-  (:require [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.db :as mdb]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.db :as mdb]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (s/defn ^:private clear-field-values-for-field! [field :- i/FieldInstance]
   (when (db/exists? FieldValues :field_id (u/the-id field))
@@ -23,7 +24,11 @@
 
 (s/defn ^:private update-field-values-for-field! [field :- i/FieldInstance]
   (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
-  (field-values/create-or-update-full-field-values! field))
+  (let [field-values (db/select-one FieldValues :field_id (u/the-id field) :type :full)]
+    (if (field-values/inactive? field-values)
+      (log/debug (trs "Field {0} has not been used since {1}. Skipping..."
+                      (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values)))))
+      (field-values/create-or-update-full-field-values! field))))
 
 (defn- update-field-value-stats-count [counts-map result]
   (if (instance? Exception result)

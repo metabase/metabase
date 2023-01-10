@@ -141,6 +141,16 @@ You can manually change the user interface for the filter to:
 
 ![Filter options](./images/filter-options.png)
 
+## Changing a search box filter to a dropdown filter
+
+1. Go to **Settings** > **Admin settings** > **Data Model**.
+2. Select the database, schema, table, and field in question.
+3. Click the **gear** icon to view all the field’s settings.
+4. Set **Field Type** to “Category”.
+5. Set **Filtering on this field** to “A list of all values".
+
+This setting will run a query against your database to get the first 1,000 distinct values (ordered ascending) for that field and cache the first 100kB of text to display in the dropdown menu. If you have columns with more than 1,000 distinct values, or columns with text-heavy data, we recommend setting **Filtering on this field** to "Search box" instead. For more info, see [How database scans work](../databases/connecting.md#how-database-scans-work).
+
 ## Column order
 
 Metabase will default to the column order native to the database.

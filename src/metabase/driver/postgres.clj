@@ -1,41 +1,45 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [java-time :as t]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.postgres.actions :as postgres.actions]
-            [metabase.driver.postgres.ddl :as postgres.ddl]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.field :as field]
-            [metabase.models.secret :as secret]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
-            [potemkin :as p]
-            [pretty.core :refer [PrettyPrintable]])
-  (:import [java.sql ResultSet ResultSetMetaData Time Types]
-           [java.time LocalDateTime OffsetDateTime OffsetTime]
-           [java.util Date UUID]
-           metabase.util.honeysql_extensions.Identifier))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [java-time :as t]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.postgres.actions :as postgres.actions]
+   [metabase.driver.postgres.ddl :as postgres.ddl]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-table
+    :as sql-jdbc.describe-table]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.models.field :as field]
+   [metabase.models.secret :as secret]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]]
+   [potemkin :as p]
+   [pretty.core :refer [PrettyPrintable]])
+  (:import
+   (java.sql ResultSet ResultSetMetaData Time Types)
+   (java.time LocalDateTime OffsetDateTime OffsetTime)
+   (java.util Date UUID)
+   (metabase.util.honeysql_extensions Identifier)))
 
 (comment
   ;; method impls live in these namespaces.
@@ -56,6 +60,10 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
+(defmethod driver/database-supports? [:postgres :datetime-diff]
+  [_driver _feat _db]
+  true)
+
 (defmethod driver/database-supports? [:postgres :persist-models]
   [_driver _feat _db]
   true)
@@ -63,6 +71,14 @@
 (defmethod driver/database-supports? [:postgres :persist-models-enabled]
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
+
+(defmethod driver/database-supports? [:postgres :convert-timezone]
+  [_driver _feat _db]
+  true)
+
+(defmethod driver/database-supports? [:postgres :now]
+  [_driver _feat _db]
+  true)
 
 (doseq [feature [:actions :actions/custom]]
   (defmethod driver/database-supports? [:postgres feature]
@@ -281,6 +297,19 @@
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
 
+(defmethod sql.qp/->honeysql [:postgres :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr         (sql.qp/->honeysql driver (cond-> arg
+                                                 (string? arg) u.date/parse))
+        timestamptz? (hx/is-of-type? expr "timestamptz")
+        _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+        expr         (cond->> expr
+                       (not timestamptz?)
+                       (hsql/call :timezone source-timezone)
+                       :always
+                       (hsql/call :timezone target-timezone))]
+    (hx/with-database-type-info expr "timestamp")))
+
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
   (let [[_ value {base-type :base_type, database-type :database_type}] value]
@@ -297,6 +326,44 @@
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
+(defmethod sql.qp/datetime-diff [:postgres :year]
+  [_driver _unit x y]
+  (let [interval (hsql/call :age (date-trunc :day y) (date-trunc :day x))]
+    (hx/->integer (hsql/call :extract :year interval))))
+
+(defmethod sql.qp/datetime-diff [:postgres :quarter]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 3))
+
+(defmethod sql.qp/datetime-diff [:postgres :month]
+  [_driver _unit x y]
+  (let [interval           (hsql/call :age (date-trunc :day y) (date-trunc :day x))
+        year-diff          (hsql/call :extract :year interval)
+        month-of-year-diff (hsql/call :extract :month interval)]
+    (hx/->integer (hx/+ month-of-year-diff (hx/* year-diff 12)))))
+
+(defmethod sql.qp/datetime-diff [:postgres :week]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :day x y) 7))
+
+(defmethod sql.qp/datetime-diff [:postgres :day]
+  [_driver _unit x y]
+  (let [interval (hx/- (date-trunc :day y) (date-trunc :day x))]
+    (hx/->integer (hsql/call :extract :day interval))))
+
+(defmethod sql.qp/datetime-diff [:postgres :hour]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :second x y) 3600))
+
+(defmethod sql.qp/datetime-diff [:postgres :minute]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :second x y) 60))
+
+(defmethod sql.qp/datetime-diff [:postgres :second]
+  [_driver _unit x y]
+  (let [seconds (hx/- (extract :epoch y) (extract :epoch x))]
+    (hx/->integer (hsql/call :trunc seconds))))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
   hformat/ToSql
@@ -477,8 +544,10 @@
    (keyword "double precision")           :type/Float
    (keyword "time with time zone")        :type/Time
    (keyword "time without time zone")     :type/Time
-   (keyword "timestamp with timezone")    :type/DateTime
-   (keyword "timestamp without timezone") :type/DateTime})
+   ;; TODO postgres also supports `timestamp(p) with time zone` where p is the precision
+   ;; maybe we should switch this to use `sql-jdbc.sync/pattern-based-database-type->base-type`
+   (keyword "timestamp with time zone")    :type/DateTimeWithTZ
+   (keyword "timestamp without time zone") :type/DateTime})
 
 (doseq [[base-type db-type] {:type/BigInteger          "BIGINT"
                              :type/Boolean             "BOOL"
@@ -593,7 +662,7 @@
 ;; bug with the JDBC driver?
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [^Class klass (if (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+  (let [^Class klass (if (= (u/lower-case-en (.getColumnTypeName rsmeta i)) "timestamptz")
                        OffsetDateTime
                        LocalDateTime)]
     (fn []

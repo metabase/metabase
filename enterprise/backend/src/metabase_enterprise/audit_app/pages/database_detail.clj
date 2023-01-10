@@ -1,13 +1,14 @@
 (ns metabase-enterprise.audit-app.pages.database-detail
-  (:require [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as s]))
+  (:require
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [schema.core :as s]))
 
 ;; Query execution history for queries against this Database.
 (s/defmethod audit.i/internal-query ::audit-log
-  [_ database-id :- su/IntGreaterThanZero]
+  [_ database-id :- su/IntGreaterThanZeroPlumatic]
   {:metadata [[:started_at {:display_name "Viewed on",  :base_type :type/DateTime}]
               [:card_id    {:display_name "Card ID",    :base_type :type/Integer, :remapped_to   :query}]
               [:query_hash {:display_name "Query Hash", :base_type :type/Text}]

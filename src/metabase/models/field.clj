@@ -1,23 +1,25 @@
 (ns metabase.models.field
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
-            [metabase.models.humanization :as humanization]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.humanization :as humanization]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs tru]]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 (comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
@@ -179,21 +181,20 @@
   :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
 
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Field)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
-          :types          (constantly {:base_type         ::base-type
-                                       :effective_type    ::effective-type
-                                       :coercion_strategy ::coercion-strategy
-                                       :semantic_type     ::semantic-type
-                                       :visibility_type   :keyword
-                                       :has_field_values  :keyword
-                                       :fingerprint       :json-for-fingerprints
-                                       :settings          :json
-                                       :nfc_path          :json})
-          :properties     (constantly {:timestamped? true})
-          :pre-insert     pre-insert}))
+(mi/define-methods
+ Field
+ {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
+  :types          (constantly {:base_type         ::base-type
+                               :effective_type    ::effective-type
+                               :coercion_strategy ::coercion-strategy
+                               :semantic_type     ::semantic-type
+                               :visibility_type   :keyword
+                               :has_field_values  :keyword
+                               :fingerprint       :json-for-fingerprints
+                               :settings          :json
+                               :nfc_path          :json})
+  :properties     (constantly {::mi/timestamped? true})
+  :pre-insert     pre-insert})
 
 (defmethod serdes.hash/identity-hash-fields Field
   [_field]
@@ -201,13 +202,6 @@
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
-
-(defn target
-  "Return the FK target `Field` that this `Field` points to."
-  [{:keys [semantic_type fk_target_field_id]}]
-  (when (and (isa? semantic_type :type/FK)
-             fk_target_field_id)
-    (db/select-one Field :id fk_target_field_id)))
 
 (defn values
   "Return the `FieldValues` associated with this `field`."
@@ -247,9 +241,9 @@
                               (conj (first nfc-path)))]
     (apply hx/identifier (cons :field parent-components))))
 
-(defn with-values
+(mi/define-batched-hydration-method with-values
+  :values
   "Efficiently hydrate the `FieldValues` for a collection of `fields`."
-  {:batched-hydrate :values}
   [fields]
   ;; In 44 we added a new concept of Advanced FieldValues, so FieldValues are no longer have an one-to-one relationship
   ;; with Field. See the doc in [[metabase.models.field-values]] for more.
@@ -259,9 +253,9 @@
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
-(defn with-normal-values
+(mi/define-batched-hydration-method with-normal-values
+  :normal_values
   "Efficiently hydrate the `FieldValues` for visibility_type normal `fields`."
-  {:batched-hydrate :normal_values}
   [fields]
   (let [id->field-values (select-field-id->instance (filter field-values/field-should-have-field-values? fields)
                                                     [FieldValues :id :human_readable_values :values :field_id]
@@ -269,9 +263,9 @@
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
-(defn with-dimensions
+(mi/define-batched-hydration-method with-dimensions
+  :dimensions
   "Efficiently hydrate the `Dimension` for a collection of `fields`."
-  {:batched-hydrate :dimensions}
   [fields]
   ;; TODO - it looks like we obviously thought this code would return *all* of the Dimensions for a Field, not just
   ;; one! This code is obviously wrong! It will either assoc a single Dimension or an empty vector under the
@@ -307,10 +301,10 @@
      :search
      :none)))
 
-(defn with-has-field-values
+(mi/define-batched-hydration-method with-has-field-values
+  :has_field_values
   "Infer what the value of the `has_field_values` should be for Fields where it's not set. See documentation for
-  `has-field-values-options` above for a more detailed explanation of what these values mean."
-  {:batched-hydrate :has_field_values}
+  [[has-field-values-options]] above for a more detailed explanation of what these values mean."
   [fields]
   (for [field fields]
     (when field
@@ -323,9 +317,9 @@
         :when (mi/can-read? field)]
     (dissoc field :table)))
 
-(defn with-targets
+(mi/define-batched-hydration-method with-targets
+  :target
   "Efficiently hydrate the FK target fields for a collection of `fields`."
-  {:batched-hydrate :target}
   [fields]
   (let [target-field-ids (set (for [field fields
                                     :when (and (isa? (:semantic_type field) :type/FK)
@@ -400,21 +394,83 @@
 (defmethod serdes.base/serdes-entity-id "Field" [_ {:keys [name]}]
   name)
 
+(defmethod serdes.base/extract-query "Field" [_model-name _opts]
+  (let [dimensions (->> (db/select Dimension)
+                        (group-by :field_id))]
+    (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
+              (db/select-reducible Field))))
+
 (defmethod serdes.base/serdes-dependencies "Field" [field]
+  ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
   ;; Take the path, but drop the Field section to get the parent Table's path instead.
-  [(pop (serdes.base/serdes-path field))])
+  (let [this  (serdes.base/serdes-path field)
+        table (pop this)
+        fks   (some->> field :fk_target_field_id serdes.util/field->path)
+        human (->> (:dimensions field)
+                   (keep :human_readable_field_id)
+                   (map serdes.util/field->path)
+                   set)]
+    (cond-> (set/union #{table} human)
+      fks   (set/union #{fks})
+      true  (disj this))))
+
+(defn- extract-dimensions [dimensions]
+  (->> (for [dim dimensions]
+         (-> (into (sorted-map) dim)
+             (dissoc :field_id :updated_at) ; :field_id is implied by the nesting under that field.
+             (update :human_readable_field_id serdes.util/export-field-fk)))
+       (sort-by :created_at)))
 
 (defmethod serdes.base/extract-one "Field"
   [_model-name _opts field]
-  (-> (serdes.base/extract-one-basics "Field" field)
-      (update :table_id serdes.util/export-table-fk)))
+  (let [field (if (contains? field :dimensions)
+                field
+                (assoc field :dimensions (db/select Dimension :field_id (:id field))))]
+    (-> (serdes.base/extract-one-basics "Field" field)
+        (update :dimensions         extract-dimensions)
+        (update :table_id           serdes.util/export-table-fk)
+        (update :fk_target_field_id serdes.util/export-field-fk))))
 
 (defmethod serdes.base/load-xform "Field"
   [field]
   (-> (serdes.base/load-xform-basics field)
-      (update :table_id serdes.util/import-table-fk)))
+      (update :table_id           serdes.util/import-table-fk)
+      (update :fk_target_field_id serdes.util/import-field-fk)))
 
 (defmethod serdes.base/load-find-local "Field"
   [path]
-  (let [table-id (serdes.base/load-find-local (pop path))]
-    (db/select-one-field :id Field :name (-> path last :id) :table_id table-id)))
+  (let [table (serdes.base/load-find-local (pop path))]
+    (db/select-one Field :name (-> path last :id) :table_id (:id table))))
+
+(defmethod serdes.base/load-one! "Field" [ingested maybe-local]
+  (let [field ((get-method serdes.base/load-one! :default) (dissoc ingested :dimensions) maybe-local)]
+    (doseq [dim (:dimensions ingested)]
+      (let [local (db/select-one Dimension :entity_id (:entity_id dim))
+            dim   (assoc dim
+                         :field_id    (:id field)
+                         :serdes/meta [{:model "Dimension" :id (:entity_id dim)}])]
+        (serdes.base/load-one! dim local)))))
+
+(defmethod serdes.base/storage-path "Field" [field _]
+  (-> field
+      serdes.base/serdes-path
+      drop-last
+      serdes.util/storage-table-path-prefix
+      (concat ["fields" (:name field)])))
+
+(serdes.base/register-ingestion-path!
+  "Field"
+  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id"]
+  ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id"]
+  (fn [path]
+    (when-let [{db     "databases"
+                schema "schemas"
+                table  "tables"
+                field  "fields"}   (and (#{6 8} (count path))
+                                        (serdes.base/ingestion-matcher-pairs
+                                          path [["databases" "schemas" "tables" "fields"]
+                                                ["databases" "tables" "fields"]]))]
+      (filterv identity [{:model "Database" :id db}
+                         (when schema {:model "Schema" :id schema})
+                         {:model "Table" :id table}
+                         {:model "Field" :id field}]))))

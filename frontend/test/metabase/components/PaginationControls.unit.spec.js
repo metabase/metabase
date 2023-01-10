@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, screen } from "@testing-library/react";
 
 import PaginationControls from "metabase/components/PaginationControls";
 
@@ -12,12 +12,12 @@ const DEFAULT_PROPS = {
 };
 
 const setup = props => {
-  const { container, queryByTestId } = render(
+  const { container } = render(
     <PaginationControls {...DEFAULT_PROPS} {...props} />,
   );
 
-  const previousPageButton = queryByTestId("previous-page-btn");
-  const nextPageButton = queryByTestId("next-page-btn");
+  const previousPageButton = screen.queryByTestId("previous-page-btn");
+  const nextPageButton = screen.queryByTestId("next-page-btn");
 
   return {
     container,
@@ -44,7 +44,7 @@ describe("PaginationControls", () => {
     });
 
     expect(previousPageButton).toBeDisabled();
-    expect(nextPageButton).not.toBeDisabled();
+    expect(nextPageButton).toBeEnabled();
   });
 
   it("should disable pagination button on the last page when total is provided", () => {
@@ -56,7 +56,7 @@ describe("PaginationControls", () => {
       onPreviousPage: () => {},
     });
 
-    expect(previousPageButton).not.toBeDisabled();
+    expect(previousPageButton).toBeEnabled();
     expect(nextPageButton).toBeDisabled();
   });
 

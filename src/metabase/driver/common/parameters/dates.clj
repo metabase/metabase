@@ -1,17 +1,19 @@
 (ns metabase.driver.common.parameters.dates
   "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
-  (:require [clojure.string :as str]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.params :as params]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import java.time.temporal.Temporal))
+  (:require
+   [clojure.string :as str]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.params :as params]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (java.time.temporal Temporal)))
 
 (s/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
@@ -401,7 +403,7 @@
 (s/defn date-string->filter :- mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and
    returns a corresponding MBQL filter clause for a given field reference."
-  [date-string :- s/Str field :- (s/cond-pre su/IntGreaterThanZero mbql.s/Field)]
+  [date-string :- s/Str field :- (s/cond-pre su/IntGreaterThanZeroPlumatic mbql.s/Field)]
   (or (execute-decoders all-date-string-decoders :filter (params/wrap-field-id-if-needed field) date-string)
       (throw (ex-info (tru "Don''t know how to parse date string {0}" (pr-str date-string))
                       {:type        qp.error-type/invalid-parameter

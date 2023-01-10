@@ -3,28 +3,30 @@
 
   There always UpdateFieldValues and SyncAndAnalyzeDatabase jobs present. Databases add triggers to these jobs. And
   those triggers include a database id."
-  (:require [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite.conversion :as qc]
-            [clojurewerkz.quartzite.jobs :as jobs]
-            [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            [java-time :as t]
-            [metabase.models.database :as database :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.sync.analyze :as analyze]
-            [metabase.sync.field-values :as field-values]
-            [metabase.sync.schedules :as sync.schedules]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.task :as task]
-            [metabase.util :as u]
-            [metabase.util.cron :as u.cron]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import metabase.models.database.DatabaseInstance
-           [org.quartz CronTrigger JobDetail JobKey TriggerKey]))
+  (:require
+   [clojure.tools.logging :as log]
+   [clojurewerkz.quartzite.conversion :as qc]
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.cron :as cron]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time :as t]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.field-values :as field-values]
+   [metabase.sync.schedules :as sync.schedules]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.task :as task]
+   [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models])
+  (:import
+   (metabase.models.database DatabaseInstance)
+   (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   JOB LOGIC                                                    |
@@ -32,7 +34,7 @@
 
 (declare unschedule-tasks-for-db!)
 
-(s/defn ^:private job-context->database-id :- (s/maybe su/IntGreaterThanZero)
+(s/defn ^:private job-context->database-id :- (s/maybe su/IntGreaterThanZeroPlumatic)
   "Get the Database ID referred to in `job-context`."
   [job-context]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))

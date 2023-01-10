@@ -1,11 +1,12 @@
 (ns metabase.query-processor-test.failure-test
   "Tests for how the query processor as a whole handles failures."
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.test :as mt]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.test :as mt]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (use-fixtures :each (fn [thunk]
                       (mt/with-log-level :fatal
@@ -34,7 +35,7 @@
    s/Keyword                s/Any})
 
 (def ^:private bad-query-native-schema
-  {:query  (s/eq (str "SELECT parsedatetime(formatdatetime(\"PUBLIC\".\"VENUES\".\"ID\", 'yyyyMM'), 'yyyyMM') AS \"ID\" "
+  {:query  (s/eq (str "SELECT date_trunc('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\" "
                       "FROM \"PUBLIC\".\"VENUES\" "
                       "LIMIT 1048575"))
    :params (s/eq nil)})
@@ -44,7 +45,7 @@
     (is (schema= {:status       (s/eq :failed)
                   :class        Class
                   :error        s/Str
-                  :stacktrace   [su/NonBlankString]
+                  :stacktrace   [su/NonBlankStringPlumatic]
                   ;; `:database` is removed by the catch-exceptions middleware for historical reasons
                   :json_query   (bad-query-schema)
                   :preprocessed (bad-query-preprocessed-schema)
@@ -60,9 +61,9 @@
                   :native       bad-query-native-schema
                   :status       (s/eq :failed)
                   :class        Class
-                  :stacktrace   [su/NonBlankString]
+                  :stacktrace   [su/NonBlankStringPlumatic]
                   :context      (s/eq :question)
-                  :error        su/NonBlankString
+                  :error        su/NonBlankStringPlumatic
                   :row_count    (s/eq 0)
                   :running_time (s/constrained s/Int (complement neg?))
                   :preprocessed (bad-query-preprocessed-schema)

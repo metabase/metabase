@@ -115,8 +115,8 @@ class Dashboard extends Component {
   );
 
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
-  componentDidMount() {
-    this.loadDashboard(this.props.dashboardId);
+  async componentDidMount() {
+    await this.loadDashboard(this.props.dashboardId);
 
     const main = getMainElement();
     main.addEventListener("scroll", this.throttleParameterWidgetStickiness, {
@@ -127,9 +127,10 @@ class Dashboard extends Component {
     });
   }
 
-  componentDidUpdate(prevProps) {
+  async componentDidUpdate(prevProps) {
     if (prevProps.dashboardId !== this.props.dashboardId) {
-      this.loadDashboard(this.props.dashboardId);
+      await this.loadDashboard(this.props.dashboardId);
+      this.throttleParameterWidgetStickiness();
     } else if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       (!prevProps.dashboard && this.props.dashboard)
@@ -263,7 +264,6 @@ class Dashboard extends Component {
               <HeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
-                isDataApp={false}
               >
                 <DashboardHeader
                   {...this.props}
@@ -313,7 +313,6 @@ class Dashboard extends Component {
                     />
                   ) : (
                     <DashboardEmptyState
-                      isDataApp={false}
                       isNightMode={shouldRenderAsNightMode}
                     />
                   )}
