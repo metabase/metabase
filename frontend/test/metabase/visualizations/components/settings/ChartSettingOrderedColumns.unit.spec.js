@@ -21,8 +21,10 @@ describe("ChartSettingOrderedColumns", () => {
         { name: "Bar", enabled: false },
       ],
     });
-    screen.getByRole("img", { name: /add/i });
-    screen.getByRole("img", { name: /eye_outline/i });
+    expect(screen.getByRole("img", { name: /add/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /eye_outline/i }),
+    ).toBeInTheDocument();
   });
 
   it("should add a column", () => {
@@ -67,20 +69,6 @@ describe("ChartSettingOrderedColumns", () => {
         ],
       ],
     ]);
-  });
-
-  // TODO: Test this in Cypress
-  xit("should reorder columns", () => {
-    // const onChange = jest.fn();
-    // const setting = renderChartSettingOrderedColumns({
-    //   value: [{ name: "Foo", enabled: true }, { name: "Bar", enabled: true }],
-    //   onChange,
-    // });
-    // // just call handleSortEnd directly for now as it's difficult to simulate drag and drop
-    // setting.instance().handleSortEnd({ oldIndex: 1, newIndex: 0 });
-    // expect(onChange.mock.calls).toEqual([
-    //   [[{ name: "Bar", enabled: true }, { name: "Foo", enabled: true }]],
-    // ]);
   });
 
   describe("for structured queries", () => {

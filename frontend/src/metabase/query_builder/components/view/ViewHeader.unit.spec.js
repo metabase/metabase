@@ -237,7 +237,7 @@ describe("ViewHeader", () => {
           expect(
             screen.queryByLabelText("notebook icon"),
           ).not.toBeInTheDocument();
-          expect(screen.queryByLabelText("refresh icon")).toBeInTheDocument();
+          expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
 
           question.query().database = originalMethod;
         });
@@ -255,8 +255,8 @@ describe("ViewHeader", () => {
           const databaseName = question.database().displayName();
           const tableName = question.table().displayName();
 
-          expect(screen.queryByText(databaseName)).toBeInTheDocument();
-          expect(screen.queryByText(tableName)).toBeInTheDocument();
+          expect(screen.getByText(databaseName)).toBeInTheDocument();
+          expect(screen.getByText(tableName)).toBeInTheDocument();
         });
 
         it("offers to filter query results", () => {
@@ -372,7 +372,7 @@ describe("ViewHeader", () => {
         it("shows bookmark and action buttons", () => {
           setup({ question });
           expect(
-            screen.queryByTestId("qb-header-info-button"),
+            screen.getByTestId("qb-header-info-button"),
           ).toBeInTheDocument();
         });
       });
@@ -402,8 +402,8 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
 
     it("shows all filters by default", () => {
       setup({ question, queryBuilderMode: "view" });
-      expect(screen.queryByText("Total is less than 50")).toBeInTheDocument();
-      expect(screen.queryByText("Tax is not empty")).toBeInTheDocument();
+      expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
     });
 
     it("can collapse and expand filters", () => {
@@ -418,8 +418,8 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
 
       fireEvent.click(screen.getByTestId("filters-visibility-control"));
 
-      expect(screen.queryByText("Total is less than 50")).toBeInTheDocument();
-      expect(screen.queryByText("Tax is not empty")).toBeInTheDocument();
+      expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
     });
 
     it("does not show filters in notebook mode", () => {
@@ -444,7 +444,7 @@ describe("View Header | Saved GUI question", () => {
       setup({ question, queryBuilderMode: "view" });
 
       expect(
-        screen.queryByTestId("filters-visibility-control"),
+        screen.getByTestId("filters-visibility-control"),
       ).toBeInTheDocument();
       expect(
         screen.queryByText("Total is less than 50"),
@@ -457,8 +457,8 @@ describe("View Header | Saved GUI question", () => {
 
       fireEvent.click(screen.getByTestId("filters-visibility-control"));
 
-      expect(screen.queryByText("Total is less than 50")).toBeInTheDocument();
-      expect(screen.queryByText("Tax is not empty")).toBeInTheDocument();
+      expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
 
       fireEvent.click(screen.getByTestId("filters-visibility-control"));
 
@@ -526,12 +526,12 @@ describe("View Header | Saved native question", () => {
   it("displays database a question is using", () => {
     const { question } = setupSavedNative();
     const databaseName = question.database().displayName();
-    expect(screen.queryByText(databaseName)).toBeInTheDocument();
+    expect(screen.getByText(databaseName)).toBeInTheDocument();
   });
 
   it("offers to explore query results", () => {
     setupSavedNative();
-    expect(screen.queryByText("Explore results")).toBeInTheDocument();
+    expect(screen.getByText("Explore results")).toBeInTheDocument();
   });
 
   it("doesn't offer to explore results if nested queries are disabled", () => {

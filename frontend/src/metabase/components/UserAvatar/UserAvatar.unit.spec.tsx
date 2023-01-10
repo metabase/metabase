@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import UserAvatar from "./UserAvatar";
 
 describe("UserAvatar", () => {
@@ -12,9 +12,9 @@ describe("UserAvatar", () => {
         email: "user@metabase.test",
       };
 
-      const { findByText } = render(<UserAvatar user={revisionUser} />);
+      render(<UserAvatar user={revisionUser} />);
 
-      expect(await findByText("TT")).toBeInTheDocument();
+      expect(await screen.findByText("TT")).toBeInTheDocument();
     });
 
     test("render user without name", async () => {
@@ -25,9 +25,9 @@ describe("UserAvatar", () => {
         email: "user@metabase.test",
       };
 
-      const { findByText } = render(<UserAvatar user={revisionUser} />);
+      render(<UserAvatar user={revisionUser} />);
 
-      expect(await findByText("US")).toBeInTheDocument();
+      expect(await screen.findByText("US")).toBeInTheDocument();
     });
   });
 
@@ -39,9 +39,9 @@ describe("UserAvatar", () => {
         common_name: "Testy Tableton",
       };
 
-      const { findByText } = render(<UserAvatar user={revisionUser} />);
+      render(<UserAvatar user={revisionUser} />);
 
-      expect(await findByText("TT")).toBeInTheDocument();
+      expect(await screen.findByText("TT")).toBeInTheDocument();
     });
 
     test("render user without name", async () => {
@@ -51,9 +51,9 @@ describe("UserAvatar", () => {
         common_name: "user@metabase.test",
       };
 
-      const { findByText } = render(<UserAvatar user={revisionUser} />);
+      render(<UserAvatar user={revisionUser} />);
 
-      expect(await findByText("US")).toBeInTheDocument();
+      expect(await screen.findByText("US")).toBeInTheDocument();
     });
   });
 
@@ -63,9 +63,9 @@ describe("UserAvatar", () => {
         first_name: "Admin",
       };
 
-      const { findByText } = render(<UserAvatar user={revisionUser} />);
+      render(<UserAvatar user={revisionUser} />);
 
-      expect(await findByText("A")).toBeInTheDocument();
+      expect(await screen.findByText("A")).toBeInTheDocument();
     });
   });
 });

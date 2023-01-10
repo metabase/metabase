@@ -75,7 +75,7 @@ describe("DatabaseEditApp", () => {
         await setup({ cachingEnabled: true });
 
         expect(
-          screen.queryByText("Default result cache duration"),
+          screen.getByText("Default result cache duration"),
         ).toBeInTheDocument();
       });
 

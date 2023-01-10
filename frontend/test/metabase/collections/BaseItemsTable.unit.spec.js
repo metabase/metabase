@@ -1,7 +1,7 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import moment from "moment-timezone";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import {
   DEFAULT_DATE_STYLE,
@@ -40,21 +40,21 @@ describe("Collections BaseItemsTable", () => {
   }
 
   it("displays item data", () => {
-    const { getByText } = setup();
+    setup();
     const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
 
-    expect(getByText(ITEM.name)).toBeInTheDocument();
-    expect(getByText("John Doe")).toBeInTheDocument();
-    expect(getByText(lastEditedAt)).toBeInTheDocument();
+    expect(screen.getByText(ITEM.name)).toBeInTheDocument();
+    expect(screen.getByText("John Doe")).toBeInTheDocument();
+    expect(screen.getByText(lastEditedAt)).toBeInTheDocument();
   });
 
   it("displays last edit time on hover", () => {
-    const { getByText, getByRole } = setup();
+    setup();
     const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
 
-    userEvent.hover(getByText(lastEditedAt));
+    userEvent.hover(screen.getByText(lastEditedAt));
 
-    expect(getByRole("tooltip")).toHaveTextContent(
+    expect(screen.getByRole("tooltip")).toHaveTextContent(
       moment(timestamp).format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
     );
   });

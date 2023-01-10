@@ -253,9 +253,9 @@ describe("metabase-lib/expressions/resolve", () => {
 
     it("should handle Distinct/Min/Max aggregating over non-numbers", () => {
       // DISTINCT(COALESCE("F")) also for MIN and MAX
-      expect(() => aggregation(["distinct", ["coalesce", "F"]]).not.toThrow());
-      expect(() => aggregation(["min", ["coalesce", "F"]]).not.toThrow());
-      expect(() => aggregation(["max", ["coalesce", "F"]]).not.toThrow());
+      expect(() => aggregation(["distinct", ["coalesce", "F"]])).not.toThrow();
+      expect(() => aggregation(["min", ["coalesce", "F"]])).not.toThrow();
+      expect(() => aggregation(["max", ["coalesce", "F"]])).not.toThrow();
     });
   });
 

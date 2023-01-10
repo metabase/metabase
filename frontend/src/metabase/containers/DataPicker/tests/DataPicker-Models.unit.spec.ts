@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitForElementToBeRemoved } from "__support__/ui";
 import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -13,6 +13,7 @@ import {
 
 import {
   setup,
+  setupVirtualizedLists,
   EMPTY_COLLECTION,
   SAMPLE_COLLECTION,
   SAMPLE_MODEL,
@@ -27,7 +28,7 @@ const ROOT_COLLECTION_MODEL_VIRTUAL_SCHEMA_ID = getCollectionVirtualSchemaId(
 
 describe("DataPicker — picking models", () => {
   beforeAll(() => {
-    window.HTMLElement.prototype.scrollIntoView = jest.fn();
+    setupVirtualizedLists();
   });
 
   afterEach(() => {
@@ -38,10 +39,9 @@ describe("DataPicker — picking models", () => {
     await setup();
 
     userEvent.click(screen.getByText(/Models/i));
-    await waitFor(() => screen.getByText(SAMPLE_MODEL.name));
 
-    expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
-    expect(screen.getByText(SAMPLE_MODEL.name)).toBeInTheDocument();
+    expect(await screen.findByText(ROOT_COLLECTION.name)).toBeInTheDocument();
+    expect(await screen.findByText(SAMPLE_MODEL.name)).toBeInTheDocument();
     expect(screen.queryByText(/Raw Data/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Saved Questions/i)).not.toBeInTheDocument();
   });
@@ -66,28 +66,28 @@ describe("DataPicker — picking models", () => {
       },
     });
 
-    const tableListItem = await screen.findByText(SAMPLE_MODEL.name);
-    const collectionListItem = screen.getByText(ROOT_COLLECTION.name);
+    const tableListItem = await screen.findByRole("menuitem", {
+      name: SAMPLE_MODEL.name,
+    });
+    const collectionListItem = screen.getByRole("menuitem", {
+      name: ROOT_COLLECTION.name,
+    });
 
-    expect(tableListItem.closest("li")).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    expect(collectionListItem.closest("li")).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    expect(tableListItem).toHaveAttribute("aria-selected", "true");
+    expect(collectionListItem).toHaveAttribute("aria-selected", "true");
   });
 
   it("allows to pick a single model", async () => {
     const { onChange } = await setup();
 
     userEvent.click(screen.getByText(/Models/i));
-    const listItem = await screen.findByText(SAMPLE_MODEL.name);
+    const listItem = await screen.findByRole("menuitem", {
+      name: SAMPLE_MODEL.name,
+    });
     userEvent.click(listItem);
 
-    expect(listItem.closest("li")).toHaveAttribute("aria-selected", "true");
-    expect(onChange).toBeCalledWith({
+    expect(listItem).toHaveAttribute("aria-selected", "true");
+    expect(onChange).toHaveBeenCalledWith({
       type: "models",
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
       schemaId: ROOT_COLLECTION_MODEL_VIRTUAL_SCHEMA_ID,
@@ -120,7 +120,9 @@ describe("DataPicker — picking models", () => {
     await setup();
 
     userEvent.click(screen.getByText(/Models/i));
-    await waitFor(() => screen.getByText(SAMPLE_MODEL.name));
+    await waitForElementToBeRemoved(() =>
+      screen.queryByTestId("loading-spinner"),
+    );
     userEvent.click(screen.getByRole("button", { name: /Back/i }));
 
     expect(screen.getByText(/Models/i)).toBeInTheDocument();
@@ -171,8 +173,8 @@ describe("DataPicker — picking models", () => {
     await setup({ hasModels: false });
 
     expect(screen.queryByText(/Models/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Raw Data/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Saved Questions/i)).toBeInTheDocument();
+    expect(screen.getByText(/Raw Data/i)).toBeInTheDocument();
+    expect(screen.getByText(/Saved Questions/i)).toBeInTheDocument();
   });
 
   it("hides section if nested queries are disabled", async () => {
