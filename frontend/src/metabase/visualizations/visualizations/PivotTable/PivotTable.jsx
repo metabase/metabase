@@ -8,7 +8,7 @@ import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { getScrollBarSize } from "metabase/lib/dom";
-import MetabaseSettings from "metabase/lib/settings";
+import { getSetting } from "metabase/selectors/settings";
 import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
 import {
@@ -50,6 +50,7 @@ import { CELL_WIDTH, CELL_HEIGHT, LEFT_HEADER_LEFT_SPACING } from "./constants";
 
 const mapStateToProps = state => ({
   hasCustomColors: PLUGIN_SELECTORS.getHasCustomColors(state),
+  fontFamily: getSetting(state, "application-font"),
 });
 
 class PivotTable extends Component {
@@ -313,6 +314,7 @@ class PivotTable extends Component {
       onUpdateVisualizationSettings,
       isNightMode,
       isDashboard,
+      fontFamily,
     } = this.props;
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
@@ -358,7 +360,7 @@ class PivotTable extends Component {
     const { leftHeaderWidths, totalHeaderWidths } = getLeftHeaderWidths({
       rowIndexes: rowIndexes ?? [],
       getColumnTitle: idx => this.getColumnTitle(idx),
-      fontFamily: MetabaseSettings.get("application-font") ?? "Lato",
+      fontFamily: fontFamily,
     });
 
     const leftHeaderCellRenderer = ({ index, key, style }) => {
