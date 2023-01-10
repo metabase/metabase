@@ -1168,10 +1168,16 @@
   #_(dev.portal/log query)
   (if-let [source-query (-> inner-query :source-query)]
     (let [compiled (or (when-let [nq (:native source-query)]
-                         (if (string? nq)
+                         (cond
+                           (string? nq)
                            (-> source-query
                                (dissoc :native)
                                (assoc :query (parse-query-string nq)))
+
+                           (vector? nq)
+                           {:query nq}
+
+                           :else
                            nq))
                        (mbql->native-rec source-query))
           field-mappings (zipmap (mapcat #(% source-query) [:fields :breakout :aggregation])
