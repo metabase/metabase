@@ -8,7 +8,6 @@ import {
   ValuesSourceType,
 } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
-import { getQueryType } from "../../utils/dashboards";
 import ValuesSourceModal from "../ValuesSourceModal";
 import {
   RadioLabelButton,
@@ -29,7 +28,7 @@ const ValuesSourceSettings = ({
   onChangeSourceType,
   onChangeSourceConfig,
 }: ValuesSourceSettingsProps): JSX.Element => {
-  const queryType = getQueryType(parameter);
+  const queryType = parameter.values_query_type;
   const [isModalOpened, setIsModalOpened] = useState(false);
 
   const radioOptions = useMemo(() => {
