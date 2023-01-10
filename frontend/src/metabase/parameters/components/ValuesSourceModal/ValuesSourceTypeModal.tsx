@@ -23,10 +23,11 @@ import {
   getDefaultSourceConfig,
   isValidSourceConfig,
 } from "metabase-lib/parameters/utils/parameter-source";
+import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
   ModalHelpMessage,
   ModalLabel,
-  ModalBody,
+  ModalBodyWithPane,
   ModalMain,
   ModalPane,
   ModalSection,
@@ -171,7 +172,7 @@ const FieldSourceModal = ({
   }, [fieldValues]);
 
   return (
-    <ModalBody>
+    <ModalBodyWithPane>
       <ModalPane>
         <ModalSection>
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
@@ -196,7 +197,7 @@ const FieldSourceModal = ({
           <ModalTextArea value={fieldValuesText} readOnly fullWidth />
         )}
       </ModalMain>
-    </ModalBody>
+    </ModalBodyWithPane>
   );
 };
 
@@ -236,7 +237,7 @@ const CardSourceModal = ({
   );
 
   return (
-    <ModalBody>
+    <ModalBodyWithPane>
       <ModalPane>
         <ModalSection>
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
@@ -290,7 +291,7 @@ const CardSourceModal = ({
           <ModalTextArea readOnly fullWidth />
         )}
       </ModalMain>
-    </ModalBody>
+    </ModalBodyWithPane>
   );
 };
 
@@ -316,7 +317,7 @@ const ListSourceModal = ({
   );
 
   return (
-    <ModalBody>
+    <ModalBodyWithPane>
       <ModalPane>
         <ModalSection>
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
@@ -336,7 +337,7 @@ const ListSourceModal = ({
           onChange={handleValuesChange}
         />
       </ModalMain>
-    </ModalBody>
+    </ModalBodyWithPane>
   );
 };
 
@@ -398,10 +399,12 @@ export default _.compose(
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
       card_id ? getQuestionVirtualTableId(card_id) : undefined,
     requestType: "fetchMetadata",
+    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     entityAlias: "card",
+    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(ValuesSourceTypeModal);
