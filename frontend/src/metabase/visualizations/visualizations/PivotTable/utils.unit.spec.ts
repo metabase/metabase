@@ -365,7 +365,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
       ]);
     });
 
-    it("handles null values ", () => {
+    it("handles null values", () => {
       const data = [
         { depth: 0, value: "foo1", hasSubtotal: false },
         { depth: 0, value: null, hasSubtotal: true },
