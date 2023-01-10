@@ -67,40 +67,39 @@ const AppBarSmall = ({
 
   return (
     <AppBarRoot>
-      <AppBarHeader
-        isSubheaderVisible={isSubheaderVisible}
-        isHeaderVisible={isHeaderVisible}
-      >
-        <AppBarMainContainer>
-          <AppBarToggleContainer>
-            {isNavBarEnabled && (
-              <AppBarToggle
-                isNavBarOpen={isNavBarVisible}
-                onToggleClick={onToggleNavbar}
-              />
+      {isHeaderVisible && (
+        <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
+          <AppBarMainContainer>
+            <AppBarToggleContainer>
+              {isNavBarEnabled && (
+                <AppBarToggle
+                  isNavBarOpen={isNavBarVisible}
+                  onToggleClick={onToggleNavbar}
+                />
+              )}
+            </AppBarToggleContainer>
+            <AppBarSearchContainer>
+              {isSearchVisible && (
+                <SearchBar
+                  onSearchActive={handleSearchActive}
+                  onSearchInactive={handleSearchInactive}
+                />
+              )}
+            </AppBarSearchContainer>
+            {isProfileLinkVisible && (
+              <AppBarProfileLinkContainer>
+                <ProfileLink user={currentUser} onLogout={onLogout} />
+              </AppBarProfileLinkContainer>
             )}
-          </AppBarToggleContainer>
-          <AppBarSearchContainer>
-            {isSearchVisible && (
-              <SearchBar
-                onSearchActive={handleSearchActive}
-                onSearchInactive={handleSearchInactive}
-              />
-            )}
-          </AppBarSearchContainer>
-          {isProfileLinkVisible && (
-            <AppBarProfileLinkContainer>
-              <ProfileLink user={currentUser} onLogout={onLogout} />
-            </AppBarProfileLinkContainer>
-          )}
-        </AppBarMainContainer>
-        <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
-          <AppBarLogo
-            isLogoVisible={isLogoVisible}
-            onLogoClick={handleLogoClick}
-          />
-        </AppBarLogoContainer>
-      </AppBarHeader>
+          </AppBarMainContainer>
+          <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
+            <AppBarLogo
+              isLogoVisible={isLogoVisible}
+              onLogoClick={handleLogoClick}
+            />
+          </AppBarLogoContainer>
+        </AppBarHeader>
+      )}
       {isSubheaderVisible && (
         <AppBarSubheader isNavBarOpen={isNavBarVisible}>
           {isQuestionLineageVisible ? (

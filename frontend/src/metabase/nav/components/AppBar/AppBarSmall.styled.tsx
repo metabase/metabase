@@ -8,11 +8,9 @@ export const AppBarRoot = styled.div`
 
 export interface AppBarHeaderProps {
   isSubheaderVisible?: boolean;
-  isHeaderVisible?: boolean;
 }
 
 export const AppBarHeader = styled.div<AppBarHeaderProps>`
-  display: ${props => !props.isHeaderVisible && "none"};
   position: relative;
   height: ${APP_BAR_HEIGHT};
   padding: 0 1rem;
