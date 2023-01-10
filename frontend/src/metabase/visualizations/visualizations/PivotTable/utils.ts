@@ -93,17 +93,17 @@ export function isFormattablePivotColumn(column: Column) {
 interface GetLeftHeaderWidthsProps {
   rowIndexes: number[];
   getColumnTitle: (columnIndex: number) => string;
-  leftHeaderItems?: LeftHeaderItem[];
+  leftHeaderItems: LeftHeaderItem[];
   fontFamily?: string;
 }
 
 export function getLeftHeaderWidths({
   rowIndexes,
   getColumnTitle,
-  leftHeaderItems = [],
+  leftHeaderItems,
   fontFamily = "Lato",
 }: GetLeftHeaderWidthsProps) {
-  const cellValues = getColumnValues(leftHeaderItems);
+  const cellValues = getColumnValues(leftHeaderItems, rowIndexes);
 
   const widths = rowIndexes.map((rowIndex, depthIndex) => {
     const computedHeaderWidth = Math.ceil(
@@ -117,15 +117,14 @@ export function getLeftHeaderWidths({
     const computedCellWidth = Math.ceil(
       Math.max(
         // we need to use the depth index because the data is in depth order, not row index order
-        ...(cellValues[depthIndex]?.values?.map(
+        ...cellValues[depthIndex].values.map(
           value =>
             measureText(value, {
               weight: "normal",
               family: fontFamily,
               size: PIVOT_TABLE_FONT_SIZE,
-            }) +
-            (cellValues[rowIndex]?.hasSubtotal ? ROW_TOGGLE_ICON_WIDTH : 0),
-        ) ?? [0]),
+            }) + (cellValues[rowIndex].hasSubtotal ? ROW_TOGGLE_ICON_WIDTH : 0),
+        ),
       ),
     );
 
@@ -153,7 +152,10 @@ type ColumnValueInfo = {
   hasSubtotal: boolean;
 };
 
-export function getColumnValues(leftHeaderItems: LeftHeaderItem[]) {
+function getColumnValues(
+  leftHeaderItems: LeftHeaderItem[],
+  rowIndexes: number[],
+) {
   const columnValues: ColumnValueInfo[] = [];
 
   leftHeaderItems
@@ -163,7 +165,7 @@ export function getColumnValues(leftHeaderItems: LeftHeaderItem[]) {
         leftHeaderItem;
 
       // don't size based on subtotals or grand totals
-      if (!isSubtotal && !isGrandTotal) {
+      if (!isSubtotal && !isGrandTotal && value !== null) {
         if (!columnValues[depth]) {
           columnValues[depth] = {
             values: [value],
