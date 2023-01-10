@@ -11,10 +11,7 @@ interface QuestionMoveToastProps {
   collectionId: number;
 }
 
-export default function QuestionMoveToast({
-  isModel,
-  collectionId,
-}: QuestionMoveToastProps) {
+function QuestionMoveToast({ isModel, collectionId }: QuestionMoveToastProps) {
   return (
     <ToastRoot>
       <StyledIcon name="all" color="white" />
@@ -38,3 +35,5 @@ export default function QuestionMoveToast({
     </ToastRoot>
   );
 }
+
+export default QuestionMoveToast;

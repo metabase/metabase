@@ -31,7 +31,7 @@ import EditEventModal from "metabase/timelines/questions/containers/EditEventMod
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
 import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
-import QuestionMoveToast from "./QuestionMoveToast";
+import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
