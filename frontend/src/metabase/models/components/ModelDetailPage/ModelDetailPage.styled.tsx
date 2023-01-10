@@ -24,6 +24,7 @@ export const ModelMain = styled.div`
 
 export const TabList = styled(Radio)`
   margin: 1rem 0;
+  border-bottom: 1px solid ${color("border")};
 `;
 
 TabList.defaultProps = { variant: "underlined" };
