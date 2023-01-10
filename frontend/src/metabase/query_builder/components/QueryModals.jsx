@@ -17,7 +17,7 @@ import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
-import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
+import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
 import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
