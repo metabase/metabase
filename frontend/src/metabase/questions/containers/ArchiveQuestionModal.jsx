@@ -34,7 +34,7 @@ class ArchiveQuestionModal extends Component {
       ? t`This model will be removed from any dashboards or pulses using it.`
       : t`This question will be removed from any dashboards or pulses using it.`;
 
-    const widgetCount = question.getDropdownWidgetCountForValues();
+    const widgetCount = question.getParameterUsageCount();
 
     const additionalWarning =
       widgetCount > 0

@@ -39,8 +39,8 @@
 
 (deftest dropdown-widget-values-usage-count-test
   (let [hydrated-count (fn [card] (-> card
-                                      (hydrate/hydrate :dropdown_widget_values_usage_count)
-                                      :dropdown_widget_values_usage_count))
+                                      (hydrate/hydrate :parameter_usage_count)
+                                      :parameter_usage_count))
         default-params {:name       "Category Name"
                         :slug       "category_name"
                         :id         "_CATEGORY_NAME_"

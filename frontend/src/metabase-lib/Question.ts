@@ -446,8 +446,8 @@ class QuestionInner {
   /**
    * How many filters or other widgets are this question's values used for?
    */
-  getDropdownWidgetCountForValues(): number {
-    return this.card().dropdown_widget_values_usage_count || 0;
+  getParameterUsageCount(): number {
+    return this.card().parameter_usage_count || 0;
   }
 
   /**
