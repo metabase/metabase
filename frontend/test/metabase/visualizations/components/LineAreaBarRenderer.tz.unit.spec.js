@@ -97,8 +97,8 @@ describe("LineAreaBarRenderer-bar", () => {
     );
     sharedMonthTests(rows, "all months");
 
-    sharedIntervalTests("hour", "MMMM D, YYYY, h:mm A");
-    sharedIntervalTests("day", "MMMM D, YYYY");
+    sharedIntervalTests("hour", "ddd, MMMM D, YYYY, h:mm A");
+    sharedIntervalTests("day", "ddd, MMMM D, YYYY");
     // sharedIntervalTests("week", "wo - gggg"); // weeks have differing formats for ticks and tooltips, disable this test for now
     sharedIntervalTests("month", "MMMM, YYYY");
     sharedIntervalTests("quarter", "[Q]Q - YYYY");
@@ -177,8 +177,9 @@ describe("LineAreaBarRenderer-bar", () => {
           );
         });
         it("should have labels that match tooltips", () => {
-          expect(qsa(".bar").map(getClosestLabelText)).toEqual(
-            getTooltipDimensionValueText(),
+          const labels = qsa(".bar").map(getClosestLabelText);
+          getTooltipDimensionValueText().map((tooltipValue, index) =>
+            expect(tooltipValue).toContain(labels[index]),
           );
         });
       });
