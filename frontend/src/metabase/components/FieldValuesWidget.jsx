@@ -457,16 +457,17 @@ function showRemapping(fields) {
 }
 
 function shouldList({ parameter, fields, disableSearch }) {
-  // Virtual fields come from questions that are based on other questions.
-  // Currently, the back end does not return `has_field_values` in their metadata,
-  // so we ignore them for now.
-  const nonVirtualFields = fields.filter(field => typeof field.id === "number");
-
-  return (
-    !disableSearch &&
-    (parameter == null || parameter.values_query_type === "list") &&
-    nonVirtualFields.every(field => field.has_field_values === "list")
-  );
+  if (disableSearch) {
+    return false;
+  } else if (parameter && parameter.values_query_type !== "list") {
+    return false;
+  } else if (parameter && parameter.values_source_type != null) {
+    return true;
+  } else {
+    return fields
+      .filter(field => !field.isVirtual())
+      .every(field => field.has_field_values === "list");
+  }
 }
 
 function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
@@ -560,26 +561,27 @@ export function isSearchable({
   disablePKRemappingForSearch,
   valuesMode,
 }) {
-  function everyFieldIsSearchable() {
-    return fields.every(field =>
+  if (disableSearch) {
+    return false;
+  } else if (parameter && parameter.values_query_type === "none") {
+    return false;
+  } else if (parameter && parameter.values_source_type !== null) {
+    return true;
+  } else if (valuesMode === "search") {
+    return true;
+  } else {
+    const everyFieldIsSearchable = fields.every(field =>
       searchField(field, disablePKRemappingForSearch),
     );
-  }
 
-  function someFieldIsConfiguredForSearch() {
-    return fields.some(
-      f =>
-        f.has_field_values === "search" ||
-        (f.has_field_values === "list" && f.has_more_values === true),
+    const someFieldIsConfiguredForSearch = fields.some(
+      field =>
+        field.has_field_values === "search" ||
+        (field.has_field_values === "list" && field.has_more_values === true),
     );
-  }
 
-  return (
-    !disableSearch &&
-    (parameter == null || parameter.values_query_type !== "none") &&
-    (valuesMode === "search" ||
-      (everyFieldIsSearchable() && someFieldIsConfiguredForSearch()))
-  );
+    return everyFieldIsSearchable && someFieldIsConfiguredForSearch;
+  }
 }
 
 function getTokenFieldPlaceholder({
