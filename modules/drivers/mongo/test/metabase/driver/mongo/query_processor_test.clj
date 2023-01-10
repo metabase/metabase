@@ -483,6 +483,134 @@
               (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
                 (is (= (set expected) (set (qp.datetime-test/test-datetime-math query))))))))))))
 
+(deftest extraction-function-tests
+  (mt/test-driver :mongo
+    (mt/dataset mongo-times-mixed
+      (testing "with datetime columns"
+        (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
+                op                  [:get-year :get-quarter :get-month :get-day
+                                     :get-day-of-week :get-hour :get-minute :get-second]
+                {:keys [expected-fn query-fn]}
+                qp.datetime-test/extraction-test-cases]
+          (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
+            (is (= (set (expected-fn op)) (set (qp.datetime-test/test-temporal-extract (query-fn op field-id))))))))
+
+      (testing "works with literal value"
+        (let [ops [:get-year :get-quarter :get-month :get-day
+                   :get-day-of-week :get-hour :get-minute :get-second]]
+          (is (= {:get-day         3
+                  :get-day-of-week 2
+                  :get-hour        7
+                  :get-minute      10
+                  :get-month       10
+                  :get-quarter     4
+                  :get-second      20
+                  :get-year        2022}
+                 (->> (mt/run-mbql-query times
+                        {:expressions (into {} (for [op ops]
+                                                 [(name op) [op "2022-10-03T07:10:20"]]))
+                         :fields      (into [] (for [op ops] [:expression (name op)]))})
+                      (mt/formatted-rows (repeat int))
+                      first
+                      (zipmap ops))))))
+
+      (testing "with timestamptz columns"
+        (mt/with-report-timezone-id "Asia/Kabul"
+          (is (= (if (or (= driver/*driver* :sqlserver)
+                         (driver/supports? driver/*driver* :set-timezone))
+                   {:get-year        2004,
+                    :get-quarter     1,
+                    :get-month       1,
+                    :get-day         1,
+                    :get-day-of-week 5,
+                    ;; TIMEZONE FIXME these drivers are returning the extracted hours in
+                    ;; the timezone that they were inserted in
+                    ;; maybe they need explicit convert-timezone to the report-tz before extraction?
+                    :get-hour        (case driver/*driver*
+                                       (:sqlserver :presto :presto-jdbc :snowflake :oracle) 5
+                                       2),
+                    :get-minute      (case driver/*driver*
+                                       (:sqlserver :presto :presto-jdbc :snowflake :oracle) 19
+                                       49),
+                    :get-second      9}
+                   {:get-year        2003,
+                    :get-quarter     4,
+                    :get-month       12,
+                    :get-day         31,
+                    :get-day-of-week 4,
+                    :get-hour        22,
+                    :get-minute      19,
+                    :get-second      9})
+                 (let [ops [:get-year :get-quarter :get-month :get-day
+                            :get-day-of-week :get-hour :get-minute :get-second]]
+                   (->> (mt/mbql-query times {:expressions (into {"shifted-day"  [:datetime-subtract $dt_tz 78 :day]
+                                                                  ;; the idea is to extract a column with value = 2004-01-01 02:49:09 +04:30
+                                                                  ;; this way the UTC value is 2003-12-31 22:19:09 +00:00 which will make sure
+                                                                  ;; the year, quarter, month, day, week is extracted correctly
+                                                                  ;; TODO: it's better to use a literal for this, but the function is not working properly
+                                                                  ;; with OffsetDatetime for all drivers, so we'll go wit this for now
+                                                                  "shifted-hour" [:datetime-subtract [:expression "shifted-day"] 4 :hour]}
+                                                                 (for [op ops]
+                                                                   [(name op) [op [:expression "shifted-hour"]]]))
+                                              :fields      (into [] (for [op ops] [:expression (name op)]))
+                                              :filter      [:= $index 1]
+                                              :limit       1})
+                        mt/process-query
+                        (mt/formatted-rows (repeat int))
+                        first
+                        (zipmap ops))))))))))
+
+(deftest temporal-extraction-with-filter-expresion-tests
+  (mt/test-driver :mongo
+    (mt/dataset mongo-times-mixed
+      (doseq [{:keys [title expected query]}
+              [{:title    "Nested expression"
+                :expected [2004]
+                :query    {:expressions {"expr" [:abs [:get-year [:field (mt/id :times :dt) nil]]]}
+                           :filter      [:= [:field (mt/id :times :index) nil] 1]
+                           :fields      [[:expression "expr"]]}}
+
+               {:title     "Nested with arithmetic"
+                :expected  [4008]
+                :query     {:expressions {"expr" [:* [:get-year [:field (mt/id :times :dt) nil]] 2]}
+                            :filter      [:= [:field (mt/id :times :index) nil] 1]
+                            :fields      [[:expression "expr"]]}}
+
+               {:title    "Filter using the extracted result - equality"
+                :expected [1]
+                :query    {:filter [:= [:get-year [:field (mt/id :times :dt) nil]] 2004]
+                           :fields [[:field (mt/id :times :index) nil]]}}
+
+               {:title    "Filter using the extracted result - comparable"
+                :expected [1]
+                :query    {:filter [:< [:get-year [:field (mt/id :times :dt) nil]] 2005]
+                           :fields [[:field (mt/id :times :index) nil]]}}
+
+               {:title    "Nested expression in fitler"
+                :expected [1]
+                :query    {:filter [:= [:* [:get-year [:field (mt/id :times :dt) nil]] 2] 4008]
+                           :fields [[:field (mt/id :times :index) nil]]}}]]
+        (testing title
+          (is (= expected (qp.datetime-test/test-temporal-extract query))))))))
+
+(deftest temporal-extraction-with-datetime-arithmetic-expression-tests
+  (mt/test-driver :mongo
+    (mt/dataset mongo-times-mixed
+      (doseq [{:keys [title expected query]}
+              [{:title    "Nested interval addition expression"
+                :expected [2005]
+                :query    {:expressions {"expr" [:abs [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]]]}
+                           :filter      [:= [:field (mt/id :times :index) nil] 1]
+                           :fields      [[:expression "expr"]]}}
+
+               {:title    "Interval addition nested in numeric addition"
+                :expected [2006]
+                :query    {:expressions {"expr" [:+ [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]] 1]}
+                           :filter      [:= [:field (mt/id :times :index) nil] 1]
+                           :fields      [[:expression "expr"]]}}]]
+        (testing title
+          (is (= expected (qp.datetime-test/test-temporal-extract query))))))))
+
 (deftest expr-test
   (mt/test-driver
     :mongo
