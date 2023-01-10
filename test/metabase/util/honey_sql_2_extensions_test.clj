@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2-extensions :as h2x]
@@ -91,14 +92,16 @@
 
   (testing "`identifier` should ignore `nil` or empty components."
     (is (= ["SELECT \"A\".\"B\".\"C\""]
-           (sql/format {:select [[(h2x/identifier :field "A" "B" nil "C")]]}))))
+           (sql/format {:select [[(h2x/identifier :field "A" "B" nil "C")]]}
+                       {:dialect :ansi}))))
 
   (testing "`identifier` should handle nested identifiers"
     (is (= (h2x/identifier :field "A" "B" "C" "D")
            (h2x/identifier :field "A" (h2x/identifier :field "B" "C") "D")))
 
     (is (= ["SELECT \"A\".\"B\".\"C\".\"D\""]
-           (sql/format {:select [[(h2x/identifier :field "A" (h2x/identifier :field "B" "C") "D")]]}))))
+           (sql/format {:select [[(h2x/identifier :field "A" (h2x/identifier :field "B" "C") "D")]]}
+                       {:dialect :ansi}))))
 
   (testing "the `identifier` function should unnest identifiers for you so drivers that manipulate `:components` don't need to worry about that"
     (is (= (h2x/identifier :field "A" "B" "C" "D")
@@ -127,7 +130,9 @@
                 "As far as I know, there is no way to do that in Honey SQL 2. So instead we convert it to a double
                 in [[metabase.db.jdbc-protocols]]. "
                 "division operation. The double itself should get converted to a numeric literal")
-    (is (= [{:one_tenth 0.1}]
+    (is (= [{:one_tenth (case (mdb.connection/db-type)
+                          (:h2 :postgres) 0.1
+                          :mysql          0.1M)}]
            (mdb.query/query {:select [[(/ 1 10) :one_tenth]]})))))
 
 (defn- ->sql [expr]

@@ -112,7 +112,12 @@
                           (for [table [:card :dashboard :collection]
                                 :let  [field (keyword (str (name table) "." "archived"))]]
                             [:or [:= field false] [:= field nil]]))
-         :order-by  [[:bookmark_ordering.ordering :asc-nulls-last] [:created_at :desc]]})
+         :order-by  [[:bookmark_ordering.ordering (case (mdb.connection/db-type)
+                                                    ;; NULLS LAST is not supported by MySQL, but this is default
+                                                    ;; behavior for MySQL anyway
+                                                    (:postgres :h2) :asc-nulls-last
+                                                    :mysql          :asc)]
+                     [:created_at :desc]]})
        (map normalize-bookmark-result)))
 
 (defn save-ordering

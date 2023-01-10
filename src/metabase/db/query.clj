@@ -24,13 +24,28 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [honey.sql :as sql]
+   [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.honeysql-extensions :as hx]
    [toucan.db :as db])
   (:import
-   (com.github.vertical_blank.sqlformatter SqlFormatter)))
+   (com.github.vertical_blank.sqlformatter SqlFormatter)
+   (com.github.vertical_blank.sqlformatter.languages Dialect)))
 
 (set! *warn-on-reflection* true)
+
+(defn format-sql
+  "Return a nicely-formatted version of a `sql` string."
+  (^String [sql]
+   (format-sql sql (mdb.connection/db-type)))
+
+  (^String [^String sql db-type]
+   (when sql
+     (let [formatter (SqlFormatter/of (case db-type
+                                        :mysql    Dialect/MySql
+                                        :postgres Dialect/PostgreSql
+                                        :h2       Dialect/StandardSql))]
+       (.format formatter sql)))))
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."
@@ -61,7 +76,7 @@
                                      {:honey-sql honey-sql}
                                      e))))]
     (log/tracef "Compiled SQL:\n%s\nparameters: %s"
-                (SqlFormatter/format (first sql-args))
+                (format-sql (first sql-args))
                 (pr-str (rest sql-args)))
     sql-args))
 
@@ -88,7 +103,7 @@
     (try
       (jdbc/query (db/connection) sql-args (merge (default-jbc-options) jdbc-options))
       (catch Throwable e
-        (let [formatted-sql (SqlFormatter/format (first sql-args))]
+        (let [formatted-sql (format-sql (first sql-args))]
           (throw (ex-info (str "Error executing SQL query: " (ex-message e)
                                \newline
                                \newline
