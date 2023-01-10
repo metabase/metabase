@@ -10,6 +10,7 @@ import Select, {
 } from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
+import Collections from "metabase/entities/collections";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
@@ -23,7 +24,6 @@ import {
   getDefaultSourceConfig,
   isValidSourceConfig,
 } from "metabase-lib/parameters/utils/parameter-source";
-import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
   ModalHelpMessage,
   ModalLabel,
@@ -369,42 +369,43 @@ const getSupportedFields = (question: Question) => {
 const mapStateToProps = (
   state: State,
   { card, fields }: ModalOwnProps & ModalCardProps,
-): ModalStateProps => {
-  return {
-    question: card ? new Question(card, getMetadata(state)) : undefined,
-    fieldValues: fields.map(field =>
-      Fields.selectors.getFieldValues(state, { entityId: field.id }),
-    ),
-    isLoadingFieldValues: fields.every(field =>
-      Fields.selectors.getLoading(state, {
-        entityId: field.id,
-        requestType: "values",
-      }),
-    ),
-  };
-};
+): ModalStateProps => ({
+  question: card ? new Question(card, getMetadata(state)) : undefined,
+  fieldValues: fields.map(field =>
+    Fields.selectors.getFieldValues(state, { entityId: field.id }),
+  ),
+  isLoadingFieldValues: fields.every(field =>
+    Fields.selectors.getLoading(state, {
+      entityId: field.id,
+      requestType: "values",
+    }),
+  ),
+});
 
-const mapDispatchToProps = (dispatch: Dispatch): ModalDispatchProps => {
-  return {
-    onFetchFieldValues: (fields: Field[]) => {
-      fields.forEach(field =>
-        dispatch(Fields.actions.fetchFieldValues({ id: field.id })),
-      );
-    },
-  };
-};
+const mapDispatchToProps = (dispatch: Dispatch): ModalDispatchProps => ({
+  onFetchFieldValues: (fields: Field[]) => {
+    fields.forEach(field =>
+      dispatch(Fields.actions.fetchFieldValues({ id: field.id })),
+    );
+  },
+});
 
 export default _.compose(
   Tables.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
       card_id ? getQuestionVirtualTableId(card_id) : undefined,
     requestType: "fetchMetadata",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
+    loadingAndErrorWrapper: false,
   }),
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     entityAlias: "card",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
+    loadingAndErrorWrapper: false,
+  }),
+  Collections.load({
+    id: (state: State, { card }: ModalCardProps) =>
+      card?.collection_id ?? "root",
+    loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(ValuesSourceTypeModal);

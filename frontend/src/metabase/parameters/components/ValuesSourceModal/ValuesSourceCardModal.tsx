@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useCallback } from "react";
+import React, { ChangeEvent, useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -13,8 +13,14 @@ import DataPicker, {
 } from "metabase/containers/DataPicker";
 import Questions from "metabase/entities/questions";
 import Collections from "metabase/entities/collections";
+import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Collection, ValuesSourceConfig } from "metabase-types/api";
+import {
+  Card,
+  CardId,
+  Collection,
+  ValuesSourceConfig,
+} from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import {
@@ -22,10 +28,9 @@ import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
-import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
-  ModalBodyWithSearch,
   DataPickerContainer,
+  ModalBodyWithSearch,
   SearchInputContainer,
 } from "./ValuesSourceCardModal.styled";
 
@@ -54,15 +59,23 @@ interface ModalStateProps {
   question: Question | undefined;
 }
 
+interface ModalDispatchProps {
+  onFetchCard: (cardId: CardId) => void;
+  onFetchMetadata: (cardId: CardId) => void;
+}
+
 type ModalProps = ModalOwnProps &
   ModalCardProps &
   ModalCollectionProps &
-  ModalStateProps;
+  ModalStateProps &
+  ModalDispatchProps;
 
 const ValuesSourceCardModal = ({
   name,
   question,
   collection,
+  onFetchCard,
+  onFetchMetadata,
   onChangeSourceConfig,
   onSubmit,
   onClose,
@@ -75,6 +88,13 @@ const ValuesSourceCardModal = ({
     onChangeSourceConfig({ card_id: cardId });
     onSubmit();
   }, [cardId, onChangeSourceConfig, onSubmit]);
+
+  useEffect(() => {
+    if (cardId) {
+      onFetchCard(cardId);
+      onFetchMetadata(cardId);
+    }
+  }, [cardId, onFetchCard, onFetchMetadata]);
 
   return (
     <DataPicker.Provider>
@@ -158,18 +178,29 @@ const getCardIdFromValue = ({ tableIds }: DataPickerValue) => {
   }
 };
 
+const mapStateToProps = (
+  state: State,
+  { card }: ModalCardProps,
+): ModalStateProps => ({
+  question: card ? new Question(card, getMetadata(state)) : undefined,
+});
+
+const mapDispatchToProps: ModalDispatchProps = {
+  onFetchCard: (cardId: CardId) => Questions.actions.fetch({ id: cardId }),
+  onFetchMetadata: (cardId: CardId) =>
+    Tables.actions.fetchMetadata({ id: getQuestionVirtualTableId(cardId) }),
+};
+
 export default _.compose(
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     entityAlias: "card",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
+    loadingAndErrorWrapper: false,
   }),
   Collections.load({
     id: (state: State, { card }: ModalCardProps) =>
       card?.collection_id ?? "root",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
+    loadingAndErrorWrapper: false,
   }),
-  connect((state: State, { card }: ModalCardProps) => ({
-    question: card ? new Question(card, getMetadata(state)) : undefined,
-  })),
+  connect(mapStateToProps, mapDispatchToProps),
 )(ValuesSourceCardModal);
