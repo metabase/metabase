@@ -697,7 +697,6 @@
   [{query-type :type, :as query
     {:keys [:metadata/dataset-metadata]} :info} rff]
   (fn add-column-info-rff* [metadata]
-    #_(dev.portal/log [query metadata])
     (if (and (= query-type :query)
              ;; we should have type metadata eiter in the query fields
              ;; or in the result metadata for the following code to work

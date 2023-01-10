@@ -965,7 +965,6 @@
           post-ags)))
 
 (defn- projection-group-map [fields]
-  #_(dev.portal/log fields)
   (reduce
    (fn [m field-clause]
      (assoc-in
@@ -986,7 +985,6 @@
 (defn- breakouts-and-ags->pipeline-stages
   "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
   [projected-fields breakout-fields aggregations]
-  #_(dev.portal/log [projected-fields breakout-fields aggregations])
   (mapcat
    (partial remove nil?)
    [ ;; create the $group clause
@@ -1144,7 +1142,6 @@
 (defn simple-mbql->native
   "Compile a simple (non-nested) MBQL query."
   [query]
-  #_(dev.portal/log query)
   (let [{proj :projections, generated-pipeline :query}
         (generate-aggregation-pipeline (or (:query query) query))]
     {:projections proj
@@ -1165,7 +1162,6 @@
 (defn- mbql->native-rec
   "Compile a potentially nested MBQL query."
   [inner-query]
-  #_(dev.portal/log query)
   (if-let [source-query (-> inner-query :source-query)]
     (let [compiled (or (when-let [nq (:native source-query)]
                          (cond
@@ -1182,10 +1178,8 @@
                        (mbql->native-rec source-query))
           field-mappings (zipmap (mapcat #(% source-query) [:fields :breakout :aggregation])
                                  (:projections compiled))]
-      #_(dev.portal/log field-mappings)
       (binding [*field-mappings* field-mappings]
-        (-> (merge compiled (add-aggregation-pipeline inner-query compiled))
-            #_(doto dev.portal/log))))
+        (merge compiled (add-aggregation-pipeline inner-query compiled))))
     (simple-mbql->native inner-query)))
 
 (defn- preprocess
@@ -1195,19 +1189,16 @@
 (defn mbql->native
   "Compile an MBQL query."
   [query]
-  #_(dev.portal/log query)
   (let [query (update query :query preprocess)]
-    #_(dev.portal/log query)
     (binding [*query* query]
       (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
                                 (:name (qp.store/table source-table-id))
                                 (query->collection-name query))
             compiled (mbql->native-rec (:query query))]
         (log-aggregation-pipeline (:query compiled))
-        (-> (assoc compiled
-                   :collection  source-table-name
-                   :mbql?       true)
-            #_(doto dev.portal/log))))))
+        (assoc compiled
+               :collection  source-table-name
+               :mbql?       true)))))
 
 (comment
   (metabase.test/with-driver :mongo

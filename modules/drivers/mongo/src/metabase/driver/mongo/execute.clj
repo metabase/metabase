@@ -72,7 +72,6 @@
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
   thr query result metadata."
   [{:keys [mbql? projections]} query first-row-col-names]
-  #_(dev.portal/log [mbql? projections first-row-col-names])
   ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.
   ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
   (if-not (and mbql? projections)
@@ -173,7 +172,6 @@
   "Process and run a native MongoDB query."
   [{{:keys [collection query], :as native-query} :native} context respond]
   {:pre [(string? collection) (fn? respond)]}
-  #_(dev.portal/log native-query)
   (let [query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)
         cursor (aggregate *mongo-connection* collection query (qp.context/timeout context))]
