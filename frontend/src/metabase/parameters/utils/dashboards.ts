@@ -11,6 +11,7 @@ import type {
   ValuesSourceType,
   ValuesSourceConfig,
   Parameter,
+  ValuesQueryType,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
@@ -64,6 +65,10 @@ export function setParameterName(
     name: name,
     slug: slug,
   };
+}
+
+export function getQueryType(parameter: Parameter): ValuesQueryType {
+  return parameter.values_query_type ?? "list";
 }
 
 export function getSourceType(parameter: Parameter): ValuesSourceType {

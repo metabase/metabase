@@ -2,31 +2,39 @@ import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio/Radio";
 import Modal from "metabase/components/Modal";
-import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
+import {
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
+import { getQueryType } from "../../utils/dashboards";
 import ValuesSourceModal from "../ValuesSourceModal";
 import {
   RadioLabelButton,
   RadioLabelRoot,
   RadioLabelTitle,
-} from "./ParameterSourceSettings.styled";
+} from "./ValuesSourceSettings.styled";
 
-export interface ParameterSourceSettingsProps {
+export interface ValuesSourceSettingsProps {
   parameter: UiParameter;
+  onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
 }
 
-const ParameterSourceSettings = ({
+const ValuesSourceSettings = ({
   parameter,
+  onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
-}: ParameterSourceSettingsProps): JSX.Element => {
+}: ValuesSourceSettingsProps): JSX.Element => {
+  const queryType = getQueryType(parameter);
   const [isModalOpened, setIsModalOpened] = useState(false);
 
   const radioOptions = useMemo(() => {
-    return getRadioOptions(() => setIsModalOpened(true));
-  }, []);
+    return getRadioOptions(queryType, () => setIsModalOpened(true));
+  }, [queryType]);
 
   const handleSubmit = useCallback(
     (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
@@ -42,7 +50,12 @@ const ParameterSourceSettings = ({
 
   return (
     <>
-      <Radio value="list" options={radioOptions} vertical />
+      <Radio
+        value={queryType}
+        options={radioOptions}
+        vertical
+        onChange={onChangeQueryType}
+      />
       {isModalOpened && (
         <Modal medium onClose={handleModalClose}>
           <ValuesSourceModal
@@ -58,25 +71,49 @@ const ParameterSourceSettings = ({
 
 interface RadioLabelProps {
   title: string;
-  onEditClick: () => void;
+  isSelected?: boolean;
+  onEditClick?: () => void;
 }
 
-const RadioLabel = ({ title, onEditClick }: RadioLabelProps): JSX.Element => {
+const RadioLabel = ({
+  title,
+  isSelected,
+  onEditClick,
+}: RadioLabelProps): JSX.Element => {
   return (
     <RadioLabelRoot>
       <RadioLabelTitle>{title}</RadioLabelTitle>
-      <RadioLabelButton onClick={onEditClick}>{t`Edit`}</RadioLabelButton>
+      {isSelected && (
+        <RadioLabelButton onClick={onEditClick}>{t`Edit`}</RadioLabelButton>
+      )}
     </RadioLabelRoot>
   );
 };
 
-const getRadioOptions = (onEditClick: () => void) => {
+const getRadioOptions = (
+  queryType: ValuesQueryType,
+  onEditClick: () => void,
+) => {
   return [
     {
-      name: <RadioLabel title={t`Dropdown list`} onEditClick={onEditClick} />,
+      name: (
+        <RadioLabel
+          title={t`Dropdown list`}
+          isSelected={queryType === "list"}
+          onEditClick={onEditClick}
+        />
+      ),
       value: "list",
+    },
+    {
+      name: <RadioLabel title={t`Search box`} />,
+      value: "search",
+    },
+    {
+      name: <RadioLabel title={t`Input box`} />,
+      value: "none",
     },
   ];
 };
 
-export default ParameterSourceSettings;
+export default ValuesSourceSettings;
