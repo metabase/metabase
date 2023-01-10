@@ -53,8 +53,9 @@ describe("scenarios > dashboard > filters", () => {
 
     editDashboard();
     setFilter("Text or Category", "Dropdown");
-    setupStructuredQuestionSource();
     mapFilterToQuestion();
+    editDropdown();
+    setupStructuredQuestionSource();
     saveDashboard();
     filterDashboard();
   });
@@ -69,8 +70,9 @@ describe("scenarios > dashboard > filters", () => {
 
     editDashboard();
     setFilter("Text or Category", "Dropdown");
-    setupNativeQuestionSource();
     mapFilterToQuestion();
+    editDropdown();
+    setupNativeQuestionSource();
     saveDashboard();
     filterDashboard();
   });
@@ -84,53 +86,73 @@ describe("scenarios > dashboard > filters", () => {
 
     editDashboard();
     setFilter("Text or Category", "Dropdown");
-    setupCustomList();
     mapFilterToQuestion();
+    editDropdown();
+    setupCustomList();
     saveDashboard();
     filterDashboard();
   });
 });
 
+const editDropdown = () => {
+  cy.findByText("Dropdown list").click();
+  cy.findByText("Edit").click();
+};
+
 const setupStructuredQuestionSource = () => {
-  cy.findByText("Values from a model or question").click();
+  modal().within(() => {
+    cy.findByText("From another model or question").click();
+    cy.findByText("Pick a model or question…").click();
+  });
+
   modal().within(() => {
     cy.findByPlaceholderText(/Search for a question/).type("Categories");
     cy.findByText("Categories").click();
-    cy.button("Select column").click();
+    cy.button("Done").click();
   });
+
   modal().within(() => {
-    cy.findByText("Pick a column").click();
+    cy.findByText("Pick a column…").click();
   });
+
   popover().within(() => {
     cy.findByText("Category").click();
   });
+
   modal().within(() => {
     cy.button("Done").click();
   });
 };
 
 const setupNativeQuestionSource = () => {
-  cy.findByText("Values from a model or question").click();
   modal().within(() => {
-    cy.findByText("Saved Questions").click();
+    cy.findByText("From another model or question").click();
+    cy.findByText("Pick a model or question…").click();
+  });
+
+  modal().within(() => {
     cy.findByText("Categories").click();
-    cy.button("Select column").click();
+    cy.button("Done").click();
   });
+
   modal().within(() => {
-    cy.findByText("Pick a column").click();
+    cy.findByText("Pick a column…").click();
   });
+
   popover().within(() => {
     cy.findByText("CATEGORY").click();
   });
+
   modal().within(() => {
     cy.button("Done").click();
   });
 };
 
 const setupCustomList = () => {
-  cy.findByText("Custom list").click();
   modal().within(() => {
-    cy.findByPlaceholderText(/banana/).type("Doohickey\nGadget");
+    cy.findByText("Custom list").click();
+    cy.findByRole("textbox").should("contain.value", "Gizmo");
+    cy.findByRole("textbox").clear().type("Doohickey\nGadget");
     cy.button("Done").click();
   });
 };
@@ -142,6 +164,7 @@ const mapFilterToQuestion = () => {
 
 const filterDashboard = () => {
   cy.findByText("Text").click();
+
   popover().within(() => {
     cy.findByText("Doohickey").should("be.visible");
     cy.findByText("Gadget").should("be.visible");
@@ -151,6 +174,6 @@ const filterDashboard = () => {
     cy.findByText("Doohickey").should("not.exist");
     cy.findByText("Gadget").click();
     cy.button("Add filter").click();
+    cy.wait("@getCardQuery");
   });
-  cy.wait("@getCardQuery");
 };

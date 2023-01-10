@@ -114,6 +114,9 @@ describe("DataPicker — picking raw data", () => {
           schemaId: generateSchemaId(SAMPLE_DATABASE.id, "PUBLIC"),
           tableIds: [SAMPLE_DATABASE.PRODUCTS.id],
         },
+        filters: {
+          types: type => type === "raw-data",
+        },
       });
 
       const tableListItem = await screen.findByRole("menuitem", {
