@@ -82,16 +82,18 @@ async function searchFieldValues(
 class FieldValuesWidgetInner extends Component {
   constructor(props) {
     super(props);
-    const { fields, disableSearch, disablePKRemappingForSearch } = props;
+    const { parameter, fields, disableSearch, disablePKRemappingForSearch } =
+      props;
     this.state = {
       options: [],
       loadingState: "INIT",
       lastValue: "",
-      valuesMode: getValuesMode(
+      valuesMode: getValuesMode({
+        parameter,
         fields,
         disableSearch,
         disablePKRemappingForSearch,
-      ),
+      }),
     };
   }
 
@@ -108,7 +110,9 @@ class FieldValuesWidgetInner extends Component {
   };
 
   componentDidMount() {
-    if (shouldList(this.props.fields, this.props.disableSearch)) {
+    const { parameter, fields, disableSearch } = this.props;
+
+    if (shouldList({ parameter, fields, disableSearch })) {
       this.fetchValues();
     }
   }
@@ -129,13 +133,18 @@ class FieldValuesWidgetInner extends Component {
         valuesMode = has_more_values ? "search" : valuesMode;
       } else {
         options = await this.fetchFieldValues(query);
-        const { fields, disableSearch, disablePKRemappingForSearch } =
-          this.props;
-        valuesMode = getValuesMode(
+        const {
+          parameter,
           fields,
           disableSearch,
           disablePKRemappingForSearch,
-        );
+        } = this.props;
+        valuesMode = getValuesMode({
+          parameter,
+          fields,
+          disableSearch,
+          disablePKRemappingForSearch,
+        });
       }
     } finally {
       this.updateRemappings(options);
@@ -307,11 +316,16 @@ class FieldValuesWidgetInner extends Component {
 
     const isListMode =
       !disableList &&
-      shouldList(fields, disableSearch) &&
+      shouldList({ parameter, fields, disableSearch }) &&
       valuesMode === "list" &&
       !forceTokenField;
     const isLoading = loadingState === "LOADING";
-    const hasListValues = hasList({ fields, disableSearch, options });
+    const hasListValues = hasList({
+      parameter,
+      fields,
+      disableSearch,
+      options,
+    });
 
     const parseFreeformValue = value => {
       return isNumeric(fields[0], parameter)
@@ -442,7 +456,7 @@ function showRemapping(fields) {
   return fields.length === 1;
 }
 
-function shouldList(fields, disableSearch) {
+function shouldList({ parameter, fields, disableSearch }) {
   // Virtual fields come from questions that are based on other questions.
   // Currently, the back end does not return `has_field_values` in their metadata,
   // so we ignore them for now.
@@ -450,6 +464,7 @@ function shouldList(fields, disableSearch) {
 
   return (
     !disableSearch &&
+    (parameter == null || parameter.values_query_type === "list") &&
     nonVirtualFields.every(field => field.has_field_values === "list")
   );
 }
@@ -521,8 +536,10 @@ function getSearchableTokenFieldPlaceholder(
   return placeholder;
 }
 
-function hasList({ fields, disableSearch, options }) {
-  return shouldList(fields, disableSearch) && !_.isEmpty(options);
+function hasList({ parameter, fields, disableSearch, options }) {
+  return (
+    shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)
+  );
 }
 
 // if this search is just an extension of the previous search, and the previous search
@@ -537,6 +554,7 @@ function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
 }
 
 export function isSearchable({
+  parameter,
   fields,
   disableSearch,
   disablePKRemappingForSearch,
@@ -558,6 +576,7 @@ export function isSearchable({
 
   return (
     !disableSearch &&
+    (parameter == null || parameter.values_query_type !== "none") &&
     (valuesMode === "search" ||
       (everyFieldIsSearchable() && someFieldIsConfiguredForSearch()))
   );
@@ -580,6 +599,7 @@ function getTokenFieldPlaceholder({
 
   if (
     hasList({
+      parameter,
       fields,
       disableSearch,
       options,
@@ -588,6 +608,7 @@ function getTokenFieldPlaceholder({
     return t`Search the list`;
   } else if (
     isSearchable({
+      parameter,
       fields,
       disableSearch,
       disablePKRemappingForSearch,
@@ -611,6 +632,7 @@ function renderOptions(
 ) {
   const {
     alwaysShowOptions,
+    parameter,
     fields,
     disableSearch,
     disablePKRemappingForSearch,
@@ -622,6 +644,7 @@ function renderOptions(
       return optionsList;
     } else if (
       hasList({
+        parameter,
         fields,
         disableSearch,
         options,
@@ -633,6 +656,7 @@ function renderOptions(
       }
     } else if (
       isSearchable({
+        parameter,
         fields,
         disableSearch,
         disablePKRemappingForSearch,
@@ -667,17 +691,19 @@ function renderValue(fields, formatOptions, value, options) {
   );
 }
 
-export function getValuesMode(
+export function getValuesMode({
+  parameter,
   fields,
   disableSearch,
   disablePKRemappingForSearch,
-) {
+}) {
   if (fields.length === 0) {
     return "none";
   }
 
   if (
     isSearchable({
+      parameter,
       fields,
       disableSearch,
       disablePKRemappingForSearch,
@@ -687,7 +713,7 @@ export function getValuesMode(
     return "search";
   }
 
-  if (shouldList(fields, disableSearch)) {
+  if (shouldList({ parameter, fields, disableSearch })) {
     return "list";
   }
 
