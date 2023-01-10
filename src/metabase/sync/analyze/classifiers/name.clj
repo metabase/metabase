@@ -39,7 +39,7 @@
    [#"^.*_longitude$"              float-type       :type/Longitude]
    [#"^.*_type$"                   int-or-text-type :type/Category]
    [#"^.*_url$"                    text-type        :type/URL]
-   [#"^_latitude$"                 float-type       :type/Latitude]
+   [#"^.*_latitude$"               float-type       :type/Latitude]
    [#"^active$"                    bool-or-int-type :type/Category]
    [#"^city$"                      text-type        :type/City]
    [#"^country"                    text-type        :type/Country]
