@@ -25,6 +25,7 @@
    [clojure.tools.logging :as log]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.setup :as mdb.setup]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.honeysql-extensions :as hx]
    [toucan.db :as db])
@@ -33,6 +34,8 @@
    (com.github.vertical_blank.sqlformatter.languages Dialect)))
 
 (set! *warn-on-reflection* true)
+
+(comment mdb.setup/keep-me) ; ensure that the default Toucan connection is loaded etc.
 
 (defn format-sql
   "Return a nicely-formatted version of a `sql` string."
