@@ -1,14 +1,15 @@
 (ns metabase-enterprise.enhancements.integrations.ldap-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
-            [metabase.integrations.ldap :as ldap]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.test :as mt]
-            [metabase.test.integrations.ldap :as ldap.test]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
+   [metabase.integrations.ldap :as ldap]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.test :as mt]
+   [metabase.test.integrations.ldap :as ldap.test]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (deftest find-test
   (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
@@ -174,7 +175,7 @@
                             s/Keyword s/Any}
                            (ldap/fetch-or-create-user! user-info))))
             (testing "Call fetch-or-create-user! again to trigger update"
-              (is (schema= {:id su/IntGreaterThanZero,  s/Keyword s/Any}
+              (is (schema= {:id su/IntGreaterThanZeroPlumatic,  s/Keyword s/Any}
                            (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
             (is (= {:first_name       "John"
                     :last_name        "Smith"
@@ -200,7 +201,7 @@
                               s/Keyword s/Any}
                              (ldap/fetch-or-create-user! user-info))))
               (testing "Call fetch-or-create-user! again to trigger update"
-                (is (schema= {:id su/IntGreaterThanZero,  s/Keyword s/Any}
+                (is (schema= {:id su/IntGreaterThanZeroPlumatic,  s/Keyword s/Any}
                              (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
               (is (= {:first_name       "John"
                       :last_name        "Smith"

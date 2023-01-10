@@ -1,18 +1,19 @@
 (ns metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
-  (:require [clj-time.core :as time]
-            [clojure.set :as set]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.models :refer [Card Collection]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]))
+  (:require
+   [clj-time.core :as time]
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.models :refer [Card Collection]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]))
 
 (deftest group-bitmask-test
   (doseq [[indices expected] {[0]     6

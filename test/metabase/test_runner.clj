@@ -1,27 +1,28 @@
 (ns metabase.test-runner
   "Simple wrapper to let us use eftest with the Clojure CLI. Pass `:only` to specify where to look for tests (see dox
   for [[find-tests]] for more info.)"
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.java.io :as io]
-            [clojure.pprint :as pprint]
-            [clojure.test :as t]
-            [clojure.tools.namespace.find :as ns.find]
-            eftest.report.pretty
-            eftest.report.progress
-            eftest.runner
-            [environ.core :as env]
-            [humane-are.core :as humane-are]
-            [metabase.config :as config]
-            [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
-            [metabase.test-runner.init :as test-runner.init]
-            [metabase.test-runner.junit :as test-runner.junit]
-            [metabase.test-runner.parallel :as test-runner.parallel]
-            [metabase.test.data.env :as tx.env]
-            metabase.test.redefs
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n.impl :as i18n.impl]
-            [pjstadig.humane-test-output :as humane-test-output]))
+  (:require
+   [clojure.java.classpath :as classpath]
+   [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
+   [clojure.test :as t]
+   [clojure.tools.namespace.find :as ns.find]
+   [eftest.report.pretty]
+   [eftest.report.progress]
+   [eftest.runner]
+   [environ.core :as env]
+   [humane-are.core :as humane-are]
+   [metabase.config :as config]
+   [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
+   [metabase.test-runner.init :as test-runner.init]
+   [metabase.test-runner.junit :as test-runner.junit]
+   [metabase.test-runner.parallel :as test-runner.parallel]
+   [metabase.test.data.env :as tx.env]
+   [metabase.test.redefs]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n.impl :as i18n.impl]
+   [pjstadig.humane-test-output :as humane-test-output]))
 
 ;; initialize Humane Test Output if it's not already initialized.
 (humane-test-output/activate!)
@@ -93,7 +94,8 @@
       ;; a actual test var e.g. `metabase.whatever-test/my-test`
       (do
         (load-test-namespace symbol-namespace)
-        [(resolve symb)])
+        [(or (resolve symb)
+             (throw (ex-info (format "Unable to resolve test named %s" symb) {:test-symbol symb})))])
       ;; a namespace e.g. `metabase.whatever-test`
       (do
         (load-test-namespace symb)
@@ -156,6 +158,8 @@
    (run test-vars nil))
 
   ([test-vars options]
+   (when-not (every? var? test-vars)
+     (throw (ex-info "Invalid test vars" {:test-vars test-vars, :options options})))
    ;; don't randomize test order for now please, thanks anyway
    (with-redefs [eftest.runner/deterministic-shuffle (fn [_ test-vars] test-vars)]
      (binding [*parallel-test-counter* (atom {})]

@@ -1,30 +1,30 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.data :as data]
-            [clojure.java.classpath :as classpath]
-            [clojure.math.numeric-tower :as math]
-            [clojure.pprint :refer [pprint]]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns.find]
-            [clojure.walk :as walk]
-            [colorize.core :as colorize]
-            [flatland.ordered.map :refer [ordered-map]]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.shared.util :as shared.u]
-            [metabase.util.i18n :refer [trs tru]]
-            [nano-id.core :as nano-id]
-            [potemkin :as p]
-            [ring.util.codec :as codec]
-            [weavejester.dependency :as dep])
-  (:import [java.math MathContext RoundingMode]
-           [java.net InetAddress InetSocketAddress Socket]
-           [java.text Normalizer Normalizer$Form]
-           [java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue]
-           java.util.concurrent.TimeoutException
-           [org.apache.commons.validator.routines RegexValidator UrlValidator]))
+  (:require
+   [clojure.java.classpath :as classpath]
+   [clojure.math.numeric-tower :as math]
+   [clojure.pprint :refer [pprint]]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.tools.namespace.find :as ns.find]
+   [clojure.walk :as walk]
+   [colorize.core :as colorize]
+   [flatland.ordered.map :refer [ordered-map]]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.shared.util :as shared.u]
+   [metabase.util.i18n :refer [trs tru]]
+   [nano-id.core :as nano-id]
+   [potemkin :as p]
+   [ring.util.codec :as codec]
+   [weavejester.dependency :as dep])
+  (:import
+   (java.net InetAddress InetSocketAddress Socket)
+   (java.text Normalizer Normalizer$Form)
+   (java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue)
+   (java.util.concurrent TimeoutException)
+   (org.apache.commons.validator.routines RegexValidator UrlValidator)))
 
 (comment shared.u/keep-me)
 
@@ -32,13 +32,22 @@
  [shared.u
   qualified-name])
 
-(defn add-period
-  "Fixes strings that don't terminate in a period."
+(defn screaming-snake-case
+  "Turns `strings-that-look-like-deafening-vipers` into `STRINGS_THAT_LOOK_LIKE_DEAFENING_VIPERS`."
   [s]
-  (if (or (str/blank? s)
-          (#{\. \? \!} (last s)))
-    s
-    (str s ".")))
+  (str/upper-case (str/replace s "-" "_")))
+
+(defn add-period
+  "Fixes strings that don't terminate in a period; also accounts for strings
+  that end in `:`. Used for formatting docs."
+  [s]
+  (let [text (str s)]
+    (if (or (str/blank? text)
+            (#{\. \? \!} (last text)))
+      text
+      (if (str/ends-with? text ":")
+        (str (subs text 0 (- (count text) 1)) ".")
+        (str text ".")))))
 
 (defn capitalize-first-char
   "Like string/capitalize, only it ignores the rest of the string
@@ -232,11 +241,6 @@
     (fn [_ x]
       (str x))))
 
-(defn decolorize
-  "Remove ANSI escape sequences from a String `s`."
-  ^String [s]
-  (some-> s (str/replace #"\[[;\d]*m" "")))
-
 (defn format-color
   "With one arg, converts something to a string and colorizes it. With two args, behaves like `format`, but colorizes
   the output.
@@ -337,49 +341,12 @@
   {:pre [(integer? decimal-place) (number? number)]}
   (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
 
-(defn round-to-precision
-  "Round (presumably floating-point) `number` to a precision of `sig-figures`. Returns a `Double`.
-
-  This rounds by significant figures, not decimal places. See [[round-to-decimals]] for that.
-
-    (round-to-precision 4 1234567.89) -> 123500.0"
-  ^Double [^Integer sig-figures ^Number number]
-  {:pre [(integer? sig-figures) (number? number)]}
-  (-> number
-      bigdec
-      (.round (MathContext. sig-figures RoundingMode/HALF_EVEN))
-      double))
-
 (defn real-number?
   "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"
   [x]
   (and (number? x)
        (not (Double/isNaN x))
        (not (Double/isInfinite x))))
-
-(defn- check-protocol-impl-method-map
-  "Check that the methods expected for `protocol` are all implemented by `method-map`, and that no extra methods are
-   provided. Used internally by `strict-extend`."
-  [protocol method-map]
-  (let [[missing-methods extra-methods] (data/diff (set (keys (:method-map protocol))) (set (keys method-map)))]
-    (when missing-methods
-      (throw (Exception. (format "Missing implementations for methods in %s: %s" (:var protocol) missing-methods))))
-    (when extra-methods
-      (throw (Exception. (format "Methods implemented that are not in %s: %s " (:var protocol) extra-methods))))))
-
-(defn strict-extend
-  "A strict version of `extend` that throws an exception if any methods declared in the protocol are missing or any
-  methods not declared in the protocol are provided.
-
-  Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and
-  to `extend-protocol`/ `extend-type` going forward."
-  ;; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
-  {:style/indent :defn}
-  [atype protocol method-map & more]
-  (check-protocol-impl-method-map protocol method-map)
-  (extend atype protocol method-map)
-  (when (seq more)
-    (apply strict-extend atype more)))
 
 (defn remove-diacritical-marks
   "Return a version of `s` with diacritical marks removed."
@@ -403,25 +370,36 @@
     \_})
 
 ;; unfortunately it seems that this doesn't fully-support Emoji :(, they get encoded as "??"
-(defn- slugify-char [^Character c]
-  (cond
-    (> (int c) 128)                   (codec/url-encode c) ; for non-ASCII characters, URL-encode them
-    (contains? slugify-valid-chars c) c                    ; for ASCII characters, if they're in the allowed set of characters, keep them
-    :else                             \_))                 ; otherwise replace them with underscores
+(defn- slugify-char [^Character c url-encode?]
+  (if (< (int c) 128)
+    ;; ASCII characters must be in the valid list, or they get replaced with underscores.
+    (if (contains? slugify-valid-chars c)
+      c
+      \_)
+    ;; Non-ASCII characters are URL-encoded or preserved, based on the option.
+    (if url-encode?
+      (codec/url-encode c)
+      c)))
 
 (defn slugify
   "Return a version of String `s` appropriate for use as a URL slug.
-   Downcase the name, remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores;
-   URL-encode non-ASCII characters. (Non-ASCII characters are encoded rather than replaced with underscores in order
-   to support languages that don't use the Latin alphabet; see metabase#3818).
+  Downcase the name and remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores.
 
-   Optionally specify `max-length` which will truncate the slug after that many characters."
+  If `unicode?` is falsy (the default), URL-encode non-ASCII characters. With `unicode?` truthy, non-ASCII characters
+  are preserved.
+  (Even when we want full ASCII output for eg. URL slugs, non-ASCII characters should be encoded rather than
+  replaced with underscores in order to support languages that don't use the Latin alphabet; see metabase#3818).
+
+  Optionally specify `:max-length` which will truncate the slug after that many characters."
   (^String [^String s]
+   (slugify s {}))
+  (^String [s {:keys [max-length unicode?]}]
    (when (seq s)
-     (str/join (for [c (remove-diacritical-marks (str/lower-case s))]
-                 (slugify-char c)))))
-  (^String [s max-length]
-   (str/join (take max-length (slugify s)))))
+     (let [slug (str/join (for [c (remove-diacritical-marks (str/lower-case s))]
+                            (slugify-char c (not unicode?))))]
+       (if max-length
+         (str/join (take max-length slug))
+         slug)))))
 
 (defn full-exception-chain
   "Gather the full exception chain into a sequence."
@@ -567,6 +545,7 @@
   ^bytes [^String string]
   (.decode base64-decoder string))
 
+;;; TODO -- this is only used [[metabase.analytics.snowplow-test]] these days
 (defn decode-base64
   "Decodes the Base64 string `input` to a UTF-8 string."
   [input]

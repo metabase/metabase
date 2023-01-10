@@ -1,9 +1,10 @@
 (ns metabase.db.util
   "Utility functions for querying the application database."
-  (:require [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.
@@ -17,7 +18,7 @@
 (def ^:private NamespacedKeyword
   (s/constrained s/Keyword (comp seq namespace) "namespaced keyword"))
 
-(s/defn ^:private type-keyword->descendants :- (su/non-empty #{su/NonBlankString})
+(s/defn ^:private type-keyword->descendants :- (su/non-empty #{su/NonBlankStringPlumatic})
   "Return a set of descendents of Metabase `type-keyword`. This includes `type-keyword` itself, so the set will always
   have at least one element.
 

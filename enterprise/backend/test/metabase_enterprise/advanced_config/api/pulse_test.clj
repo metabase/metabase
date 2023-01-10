@@ -1,9 +1,10 @@
 (ns metabase-enterprise.advanced-config.api.pulse-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Card]]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Card]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest test-pulse-endpoint-should-respect-email-domain-allow-list-test
   (testing "POST /api/pulse/test"

@@ -5,28 +5,29 @@
   functionality allows us to easily test with multiple datasets.
 
   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.tools.reader.edn :as edn]
-            [environ.core :refer [env]]
-            [medley.core :as m]
-            [metabase.db :as mdb]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor :as qp]
-            [metabase.test-runner.init :as test-runner.init]
-            [metabase.test.initialize :as initialize]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.schema :as su]
-            [potemkin.types :as p.types]
-            [pretty.core :as pretty]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.tools.reader.edn :as edn]
+   [environ.core :refer [env]]
+   [medley.core :as m]
+   [metabase.db :as mdb]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor :as qp]
+   [metabase.test-runner.init :as test-runner.init]
+   [metabase.test.initialize :as initialize]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.schema :as su]
+   [potemkin.types :as p.types]
+   [pretty.core :as pretty]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
@@ -39,40 +40,40 @@
 (p.types/defrecord+ DatabaseDefinition [database-name table-definitions])
 
 (def ^:private FieldDefinitionSchema
-  {:field-name                         su/NonBlankString
+  {:field-name                         su/NonBlankStringPlumatic
    :base-type                          (s/conditional
                                         #(and (map? %) (contains? % :natives))
-                                        {:natives {s/Keyword su/NonBlankString}}
+                                        {:natives {s/Keyword su/NonBlankStringPlumatic}}
                                         #(and (map? %) (contains? % :native))
-                                        {:native su/NonBlankString}
+                                        {:native su/NonBlankStringPlumatic}
                                         :else
-                                        su/FieldType)
+                                        su/FieldTypePlumatic)
    ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
    ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
    ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
    ;; datasets e.g. [[metabase.actions.test-util/with-actions-test-data]]
    (s/optional-key :not-null?)         (s/maybe s/Bool)
-   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
-   (s/optional-key :effective-type)    (s/maybe su/FieldType)
-   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
+   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationTypePlumatic)
+   (s/optional-key :effective-type)    (s/maybe su/FieldTypePlumatic)
+   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategyPlumatic)
    (s/optional-key :visibility-type)   (s/maybe (apply s/enum field/visibility-types))
-   (s/optional-key :fk)                (s/maybe su/KeywordOrString)
-   (s/optional-key :field-comment)     (s/maybe su/NonBlankString)})
+   (s/optional-key :fk)                (s/maybe su/KeywordOrStringPlumatic)
+   (s/optional-key :field-comment)     (s/maybe su/NonBlankStringPlumatic)})
 
 (def ^:private ValidFieldDefinition
   (s/constrained FieldDefinitionSchema (partial instance? FieldDefinition)))
 
 (def ^:private ValidTableDefinition
   (s/constrained
-   {:table-name                     su/NonBlankString
+   {:table-name                     su/NonBlankStringPlumatic
     :field-definitions              [ValidFieldDefinition]
     :rows                           [[s/Any]]
-    (s/optional-key :table-comment) (s/maybe su/NonBlankString)}
+    (s/optional-key :table-comment) (s/maybe su/NonBlankStringPlumatic)}
    (partial instance? TableDefinition)))
 
 (def ^:private ValidDatabaseDefinition
   (s/constrained
-   {:database-name     su/NonBlankString
+   {:database-name     su/NonBlankStringPlumatic
     :table-definitions [ValidTableDefinition]}
    (partial instance? DatabaseDefinition)))
 
@@ -290,10 +291,12 @@
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.
 
+  `connection-type` is either:
+
   *  `:server` - Return details for making the connection in a way that isn't DB-specific (e.g., for
                  creating/destroying databases)
   *  `:db`     - Return details for connecting specifically to the DB."
-  {:arglists '([driver context database-definition])}
+  {:arglists '([driver connection-type database-definition])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -356,6 +359,21 @@
 
 (defmethod sorts-nil-first? ::test-extensions [_ _] true)
 
+(defmulti supports-time-type?
+  "Whether this database supports a `TIME` data type or equivalent."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod supports-time-type? ::test-extensions [_driver] true)
+
+(defmulti supports-timestamptz-type?
+  "Whether this database supports a `timestamp with time zone` data type or equivalent."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod supports-timestamptz-type? ::test-extensions [_driver] true)
 
 (defmulti aggregate-column-info
   "Return the expected type information that should come back for QP results as part of `:cols` for an aggregation of a
@@ -410,7 +428,7 @@
 
 (def ^:private DatasetTableDefinition
   "Schema for a Table in a test dataset defined by a `defdataset` form or in a dataset defnition EDN file."
-  [(s/one su/NonBlankString "table name")
+  [(s/one su/NonBlankStringPlumatic "table name")
    (s/one [DatasetFieldDefinition] "fields")
    (s/one [[s/Any]] "rows")])
 
@@ -429,7 +447,7 @@
   ([tabledef :- DatasetTableDefinition]
    (apply dataset-table-definition tabledef))
 
-  ([table-name :- su/NonBlankString, field-definition-maps, rows]
+  ([table-name :- su/NonBlankStringPlumatic, field-definition-maps, rows]
    (map->TableDefinition
     {:table-name        table-name
      :rows              rows
@@ -438,7 +456,7 @@
 (s/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
-  [database-name :- su/NonBlankString & table-definitions]
+  [database-name :- su/NonBlankStringPlumatic & table-definitions]
   (s/validate
    DatabaseDefinition
    (map->DatabaseDefinition
@@ -490,7 +508,7 @@
 (s/defn edn-dataset-definition
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
   directory. (Filename should be `dataset-name` + `.edn`.)"
-  [dataset-name :- su/NonBlankString]
+  [dataset-name :- su/NonBlankStringPlumatic]
   (let [get-def (delay
                   (let [file-contents (edn/read-string
                                        {:eof nil, :readers {'t #'u.date/parse}}
@@ -518,7 +536,7 @@
 (s/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  [new-name :- su/NonBlankString wrapped-definition & transform-fns :- [(s/pred fn?)]]
+  [new-name :- su/NonBlankStringPlumatic wrapped-definition & transform-fns :- [(s/pred fn?)]]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                       (transform-fn
@@ -567,7 +585,7 @@
 
 (s/defn ^:private tabledef-with-name :- ValidTableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."
-  [{:keys [table-definitions]} :- DatabaseDefinition, table-name :- su/NonBlankString]
+  [{:keys [table-definitions]} :- DatabaseDefinition, table-name :- su/NonBlankStringPlumatic]
   (some
    (fn [{this-name :table-name, :as tabledef}]
      (when (= table-name this-name)
@@ -576,23 +594,23 @@
 
 (s/defn ^:private fielddefs-for-table-with-name :- [ValidFieldDefinition]
   "Return the `FieldDefinitions` associated with table with `table-name` in `dbdef`."
-  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankStringPlumatic]
   (:field-definitions (tabledef-with-name dbdef table-name)))
 
-(s/defn ^:private tabledef->id->row :- {su/IntGreaterThanZero {su/NonBlankString s/Any}}
+(s/defn ^:private tabledef->id->row :- {su/IntGreaterThanZeroPlumatic {su/NonBlankStringPlumatic s/Any}}
   [{:keys [field-definitions rows]} :- TableDefinition]
   (let [field-names (map :field-name field-definitions)]
     (into {} (for [[i values] (m/indexed rows)]
                [(inc i) (zipmap field-names values)]))))
 
-(s/defn ^:private dbdef->table->id->row :- {su/NonBlankString {su/IntGreaterThanZero {su/NonBlankString s/Any}}}
+(s/defn ^:private dbdef->table->id->row :- {su/NonBlankStringPlumatic {su/IntGreaterThanZeroPlumatic {su/NonBlankStringPlumatic s/Any}}}
   "Return a map of table name -> map of row ID -> map of column key -> value."
   [{:keys [table-definitions]} :- DatabaseDefinition]
   (into {} (for [{:keys [table-name] :as tabledef} table-definitions]
              [table-name (tabledef->id->row tabledef)])))
 
 (s/defn ^:private nest-fielddefs
-  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankStringPlumatic]
   (let [nest-fielddef (fn nest-fielddef [{:keys [fk field-name], :as fielddef}]
                         (if-not fk
                           [fielddef]
@@ -601,7 +619,7 @@
                               (update nested-fielddef :field-name (partial vector field-name fk))))))]
     (mapcat nest-fielddef (fielddefs-for-table-with-name dbdef table-name))))
 
-(s/defn ^:private flatten-rows [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+(s/defn ^:private flatten-rows [dbdef :- DatabaseDefinition, table-name :- su/NonBlankStringPlumatic]
   (let [nested-fielddefs (nest-fielddefs dbdef table-name)
         table->id->k->v  (dbdef->table->id->row dbdef)
         resolve-field    (fn resolve-field [table id field-name]
@@ -626,7 +644,7 @@
 (s/defn flattened-dataset-definition
   "Create a flattened version of `dbdef` by following resolving all FKs and flattening all rows into the table with
   `table-name`. For use with timeseries databases like Druid."
-  [dataset-definition, table-name :- su/NonBlankString]
+  [dataset-definition, table-name :- su/NonBlankStringPlumatic]
   (transformed-dataset-definition table-name dataset-definition
     (fn [dbdef]
       (assoc dbdef

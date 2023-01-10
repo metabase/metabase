@@ -6,17 +6,18 @@
 
    TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
    At some point this ought to be reworked to be case-insensitive and cleaned up."
-  (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    SEGMENTS                                                    |
@@ -50,15 +51,15 @@
   (mbql.u/match query [:metric (_ :guard (complement mbql.u/ga-id?))]))
 
 (def ^:private MetricInfo
-  {:id         su/IntGreaterThanZero
-   :name       su/NonBlankString
+  {:id         su/IntGreaterThanZeroPlumatic
+   :name       su/NonBlankStringPlumatic
    :definition {:aggregation             [(s/one mbql.s/Aggregation "aggregation clause")]
                 (s/optional-key :filter) (s/maybe mbql.s/Filter)
                 s/Keyword                s/Any}})
 
 (def ^:private ^{:arglists '([metric-info])} metric-info-validation-errors (s/checker MetricInfo))
 
-(s/defn ^:private metric-clauses->id->info :- {su/IntGreaterThanZero MetricInfo}
+(s/defn ^:private metric-clauses->id->info :- {su/IntGreaterThanZeroPlumatic MetricInfo}
   [metric-clauses :- [mbql.s/metric]]
   (when (seq metric-clauses)
     (m/index-by :id (for [metric (db/select [Metric :id :name :definition] :id [:in (set (map second metric-clauses))])
@@ -69,7 +70,7 @@
                       metric))))
 
 (s/defn ^:private add-metrics-filters-this-level :- mbql.s/MBQLQuery
-  [inner-query :- mbql.s/MBQLQuery this-level-metric-id->info :- {su/IntGreaterThanZero MetricInfo}]
+  [inner-query :- mbql.s/MBQLQuery this-level-metric-id->info :- {su/IntGreaterThanZeroPlumatic MetricInfo}]
   (let [filters (for [{{filter-clause :filter} :definition} (vals this-level-metric-id->info)
                       :when filter-clause]
                   filter-clause)]
@@ -94,7 +95,7 @@
       [:aggregation-options &match {:display-name metric-name}])))
 
 (s/defn ^:private replace-metrics-aggregations-this-level :- mbql.s/MBQLQuery
-  [inner-query :- mbql.s/MBQLQuery this-level-metric-id->info :- {su/IntGreaterThanZero MetricInfo}]
+  [inner-query :- mbql.s/MBQLQuery this-level-metric-id->info :- {su/IntGreaterThanZeroPlumatic MetricInfo}]
   (letfn [(metric [metric-id]
             (or (get this-level-metric-id->info metric-id)
                 (throw (ex-info (tru "Metric {0} does not exist, or is invalid." metric-id)
@@ -118,7 +119,7 @@
       [:metric (metric-id :guard (complement mbql.u/ga-id?))]
       (metric-info->ag-clause (metric metric-id) {:use-metric-name-as-display-name? true}))))
 
-(s/defn ^:private metric-ids-this-level :- (s/maybe #{su/IntGreaterThanZero})
+(s/defn ^:private metric-ids-this-level :- (s/maybe #{su/IntGreaterThanZeroPlumatic})
   [inner-query]
   (when (map? inner-query)
     (when-let [aggregations (:aggregation inner-query)]
@@ -132,19 +133,19 @@
                                                         mbql.s/MBQLQuery
                                                         (complement metric-ids-this-level)
                                                         "Inner MBQL query with no :metric clauses at this level")
-  [inner-query :- mbql.s/MBQLQuery metric-id->info :- {su/IntGreaterThanZero MetricInfo}]
+  [inner-query :- mbql.s/MBQLQuery metric-id->info :- {su/IntGreaterThanZeroPlumatic MetricInfo}]
   (let [this-level-metric-ids      (metric-ids-this-level inner-query)
         this-level-metric-id->info (select-keys metric-id->info this-level-metric-ids)]
     (-> inner-query
         (add-metrics-filters-this-level this-level-metric-id->info)
         (replace-metrics-aggregations-this-level this-level-metric-id->info))))
 
-(s/defn ^:private expand-metrics-clauses :- su/Map
+(s/defn ^:private expand-metrics-clauses :- su/MapPlumatic
   "Add appropriate `filter` and `aggregation` clauses for a sequence of Metrics.
 
     (expand-metrics-clauses {:query {}} [[:metric 10]])
     ;; -> {:query {:aggregation [[:count]], :filter [:= [:field-id 10] 20]}}"
-  [query :- su/Map metric-id->info :- (su/non-empty {su/IntGreaterThanZero MetricInfo})]
+  [query :- su/MapPlumatic metric-id->info :- (su/non-empty {su/IntGreaterThanZeroPlumatic MetricInfo})]
   (mbql.u/replace query
     (m :guard metric-ids-this-level)
     (-> m

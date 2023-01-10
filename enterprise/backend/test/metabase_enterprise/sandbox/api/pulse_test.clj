@@ -1,8 +1,9 @@
 (ns metabase-enterprise.sandbox.api.pulse-test
   "Tests that would logically be included in `metabase.api.pulse-test` but are separate as they are enterprise only."
-  (:require [clojure.test :refer :all]
-            metabase.integrations.slack
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.integrations.slack]
+   [metabase.test :as mt]))
 
 (comment metabase.integrations.slack/keep-me) ; so the Setting exists
 

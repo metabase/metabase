@@ -72,9 +72,9 @@
       (.write w html-str))
     (.deleteOnExit tmp-file)
     (open tmp-file)))
-    
+
 (comment
-  (render-card-to-png 1) 
+  (render-card-to-png 1)
   ;; open viz in your browser
   (-> [["A" "B"]
        [1 2]

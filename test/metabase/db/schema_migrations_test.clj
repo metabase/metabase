@@ -14,13 +14,16 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time :as t]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.db.setup :as db.setup]
    [metabase.driver :as driver]
    [metabase.models
     :refer [Card
             Collection
             Dashboard
             Database
+            Dimension
             Field
             Permissions
             PermissionsGroup
@@ -40,6 +43,27 @@
    (java.util UUID)))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(deftest rollback-test
+  (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
+    ;; using test-migrations to excercise all drivers
+    (impl/test-migrations [1] [_]
+      (let [{:keys [db-type data-source]} mdb.connection/*application-db*
+            migrate!    (partial db.setup/migrate! db-type data-source)
+            get-last-id (fn []
+                          (-> {:connection (.getConnection data-source)}
+                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
+                              first
+                              :id))]
+        (migrate! :up)
+        (let [latest-id (get-last-id)]
+          ;; This is an unusual usage of db.setup/migrate! with an explicit version, which is not currently
+          ;; available via the CLI, but is used here to rollback to the lowest version we support.
+          (migrate! :down 44)
+            ;; will always be the last v44 migration
+          (is (= "v44.00-044" (get-last-id)))
+          (migrate! :up)
+          (is (= latest-id (get-last-id))))))))
 
 (deftest database-position-test
   (testing "Migration 165: add `database_position` to Field"
@@ -266,7 +290,7 @@
           (doseq [[tbl-nm col-nms] (group-by first all-text-cols)]
             (let [^String exp-type (case driver/*driver*
                                      :mysql "longtext"
-                                     :h2    "CLOB"
+                                     :h2    "CHARACTER LARGE OBJECT"
                                      "text")
                   name-fn          (case driver/*driver*
                                      :h2 str/upper-case
@@ -294,7 +318,7 @@
         (migrate!)                      ; run migrations, then check the new type
         (let [^String exp-type (case driver/*driver*
                                  :mysql    "longblob"
-                                 :h2       "BLOB"
+                                 :h2       "BINARY LARGE OBJECT"
                                  :postgres "bytea")
               name-fn          (case driver/*driver*
                                  :h2 str/upper-case
@@ -747,3 +771,52 @@
                       empty-collection-created-at))
             (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
                       empty-collection-created-at))))))))
+
+(deftest deduplicate-dimensions-test
+  (testing "Migrations v46.00-029 thru v46.00-031: make Dimension field_id unique instead of field_id + name"
+    (impl/test-migrations ["v46.00-029" "v46.00-031"] [migrate!]
+      (let [database-id (db/simple-insert! Database {:details   "{}"
+                                                     :engine    "h2"
+                                                     :is_sample false
+                                                     :name      "populate-collection-created-at-test-db"})
+            table-id    (db/simple-insert! Table {:db_id      database-id
+                                                  :name       "Table"
+                                                  :created_at :%now
+                                                  :updated_at :%now
+                                                  :active     true})
+            field-1-id  (db/simple-insert! Field {:name          "F1"
+                                                  :table_id      table-id
+                                                  :base_type     "type/Text"
+                                                  :database_type "TEXT"
+                                                  :created_at    :%now
+                                                  :updated_at    :%now})
+            field-2-id  (db/simple-insert! Field {:name          "F2"
+                                                  :table_id      table-id
+                                                  :base_type     "type/Text"
+                                                  :database_type "TEXT"
+                                                  :created_at    :%now
+                                                  :updated_at    :%now})
+            _           (db/simple-insert! Dimension {:field_id   field-1-id
+                                                      :name       "F1 D1"
+                                                      :type       "internal"
+                                                      :created_at #t "2022-12-07T18:30:30.000-08:00"
+                                                      :updated_at #t "2022-12-07T18:30:30.000-08:00"})
+            _           (db/simple-insert! Dimension {:field_id   field-1-id
+                                                      :name       "F1 D2"
+                                                      :type       "internal"
+                                                      :created_at #t "2022-12-07T18:45:30.000-08:00"
+                                                      :updated_at #t "2022-12-07T18:45:30.000-08:00"})
+            _           (db/simple-insert! Dimension {:field_id   field-2-id
+                                                      :name       "F2 D1"
+                                                      :type       "internal"
+                                                      :created_at #t "2022-12-07T18:45:30.000-08:00"
+                                                      :updated_at #t "2022-12-07T18:45:30.000-08:00"})]
+        (is (= #{"F1 D1"
+                 "F1 D2"
+                 "F2 D1"}
+               (db/select-field :name Dimension {:order-by [[:id :asc]]})))
+        (migrate!)
+        (testing "Keep the newest Dimensions"
+          (is (= #{"F1 D2"
+                   "F2 D1"}
+                 (db/select-field :name Dimension {:order-by [[:id :asc]]}))))))))

@@ -1,8 +1,9 @@
 (ns metabase.driver.common.parameters.operators-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver.common.parameters.operators :as params.ops]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [schema.core :as s]))
 
 (deftest ^:parallel to-clause-test
   (testing "number operations"

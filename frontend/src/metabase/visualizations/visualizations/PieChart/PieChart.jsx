@@ -122,18 +122,20 @@ export default class PieChart extends Component {
       title: t`Show legend`,
       widget: "toggle",
       default: true,
+      inline: true,
     },
-    "pie.show_legend_perecent": {
+    "pie.percent_visibility": {
       section: t`Display`,
-      title: t`Show percentages in legend`,
-      widget: "toggle",
-      default: true,
-    },
-    "pie.show_data_labels": {
-      section: t`Display`,
-      title: t`Show data labels`,
-      widget: "toggle",
-      default: false,
+      title: t`Show percentages`,
+      widget: "radio",
+      default: "legend",
+      props: {
+        options: [
+          { name: t`Off`, value: "off" },
+          { name: t`In legend`, value: "legend" },
+          { name: t`On the chart`, value: "inside" },
+        ],
+      },
     },
     "pie.slice_threshold": {
       section: t`Display`,
@@ -369,12 +371,13 @@ export default class PieChart extends Component {
         jsx: true,
         majorWidth: 0,
         number_style: "percent",
-        decimals,
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
       });
 
     const legendTitles = slices.map(slice => [
       slice.key === "Other" ? slice.key : formatDimension(slice.key, true),
-      settings["pie.show_legend_perecent"]
+      settings["pie.percent_visibility"] === "legend"
         ? formatPercent(slice.percentage, legendDecimals)
         : undefined,
     ]);
@@ -490,7 +493,7 @@ export default class PieChart extends Component {
     const getSliceIsClickable = index =>
       isClickable && slices[index] !== otherSlice;
 
-    const shouldRenderLabels = settings["pie.show_data_labels"];
+    const shouldRenderLabels = settings["pie.percent_visibility"] === "inside";
 
     return (
       <ChartWithLegend
@@ -506,7 +509,7 @@ export default class PieChart extends Component {
         showLegend={settings["pie.show_legend"]}
         isDashboard={this.props.isDashboard}
       >
-        <div className={styles.ChartAndDetail}>
+        <div>
           <div ref={this.chartDetail} className={styles.Detail}>
             <div
               data-testid="detail-value"
@@ -573,6 +576,7 @@ export default class PieChart extends Component {
                               })
                           : undefined
                       }
+                      data-testid="slice"
                     />
                   );
                 })}

@@ -2,8 +2,8 @@ import { ngettext, msgid } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
 import {
-  getParameterType,
   isFieldFilterParameter,
+  getParameterType,
 } from "metabase-lib/parameters/utils/parameter-type";
 
 import { UiParameter } from "metabase-lib/parameters/types";

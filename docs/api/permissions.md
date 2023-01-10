@@ -108,6 +108,11 @@ Do a batch update of Permissions by passing in a modified graph. This should ret
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that.
 
+  The optional `sandboxes` key contains a list of sandboxes that should be created or modified in conjunction with
+  this permissions graph update. Since data sandboxing is an Enterprise Edition-only feature, a 402 (Payment Required)
+  response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the
+  `:sandboxes` feature flag is not present.
+
 You must be a superuser to do this.
 
 ### PARAMS:
@@ -123,6 +128,14 @@ Update the name of a `PermissionsGroup`.
 *  **`group-id`** 
 
 *  **`name`** value must be a non-blank string.
+
+## `PUT /api/permissions/membership/:group-id/clear`
+
+Remove all members from a `PermissionsGroup`.
+
+### PARAMS:
+
+*  **`group-id`**
 
 ## `PUT /api/permissions/membership/:id`
 

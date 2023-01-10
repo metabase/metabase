@@ -1,17 +1,19 @@
 (ns metabase.automagic-dashboards.rules
   "Validation, transformation to cannonical form, and loading of heuristics."
-  (:require [clojure.string :as str]
-            [metabase.automagic-dashboards.populate :as populate]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.files :as u.files]
-            [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
-            [metabase.util.schema :as su]
-            [metabase.util.yaml :as yaml]
-            [schema.coerce :as sc]
-            [schema.core :as s]
-            [schema.spec.core :as spec])
-  (:import [java.nio.file Files Path]))
+  (:require
+   [clojure.string :as str]
+   [metabase.automagic-dashboards.populate :as populate]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.files :as u.files]
+   [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
+   [metabase.util.schema :as su]
+   [metabase.util.yaml :as yaml]
+   [schema.coerce :as sc]
+   [schema.core :as s]
+   [schema.spec.core :as spec])
+  (:import
+   (java.nio.file Files Path)))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
@@ -78,7 +80,7 @@
 
 (def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
 
-(def ^:private Visualization [(s/one s/Str "visualization") su/Map])
+(def ^:private Visualization [(s/one s/Str "visualization") su/MapPlumatic])
 
 (def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
                                      (deferred-trs "1 <= width <= {0}" populate/grid-width)))
@@ -94,7 +96,7 @@
                (s/optional-key :dimensions)    [CardDimension]
                (s/optional-key :filters)       [s/Str]
                (s/optional-key :metrics)       [s/Str]
-               (s/optional-key :limit)         su/IntGreaterThanZero
+               (s/optional-key :limit)         su/IntGreaterThanZeroPlumatic
                (s/optional-key :order_by)      [OrderByPair]
                (s/optional-key :description)   LocalizedString
                (s/optional-key :query)         s/Str
@@ -125,7 +127,7 @@
   [(s/one (s/constrained (s/cond-pre s/Str s/Keyword) (comp #{:dimension} qp.util/normalize-token))
           "dimension")
    (s/one s/Str "identifier")
-   su/Map])
+   su/MapPlumatic])
 
 (def ^{:arglists '([form])} dimension-form?
   "Does form denote a dimension referece?"

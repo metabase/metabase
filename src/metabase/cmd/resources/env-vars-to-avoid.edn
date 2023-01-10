@@ -1,0 +1,26 @@
+;; We should avoid including documentation for these environment variables,
+;; as setting these env vars manually can cause issues.
+;; This list is temporary; ideally we define an inline way to exclude these env vars,
+;; like setting the defsetting `:doc` key to `false`, and remove this list entirely.
+["MB_APP_ID_STRING"
+ "MB_DB_LOGGING"
+ "MB_DB_POPULATED"
+ "MB_DEFAULT_DOMAIN"
+ "MB_DESCRIPTIONS"
+ "MB_DOCSTRINGS"
+ "MB_ENTITIES"
+ "MB_FRAME"
+ "MB_GROUP_IDS"
+ "MB_HASH_STR"
+ "MB_MACRO"
+ "MB_MANDRILL_API_KEY"
+ "MB_MAX_RESULTS_BARE_ROWS"
+ "MB_OTHER_SSO_CONFIGURED"
+ "MB_PREMIUM_FEATURES"
+ "MB_RUN_MODE"
+ "MB_SETTING"
+ "MB_TO_SMTP_SETTINGS"
+ "MB_TRACE_STR"
+ "MB_TYPES"
+ "MB_USER_DEFAULTS"
+ "MB_VERSION_STRING"]

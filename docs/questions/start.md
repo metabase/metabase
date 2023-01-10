@@ -32,10 +32,6 @@ Also known as the SQL editor (we say native because you can also query databases
 
 Write native code (like SQL) to query your data source.
 
-### [Viewing metadata](./native-editor/data-model-reference.md)
-
-Metabase's data model reference can help you understand your tables and fields.
-
 ### [SQL templates](./native-editor/sql-parameters.md)
 
 Pass parameters into variables in your SQL templates.
@@ -60,6 +56,6 @@ Choose from a variety of visualization types.
 
 Get results via email or Slack, either on a schedule, or only when something interesting happens.
 
-### [Public links](./sharing/public-links.md)
+### [Public sharing](./sharing/public-links.md)
 
-Share your data with the good people of the internet.
+Create links or embeds for the good people of the internet.

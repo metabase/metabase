@@ -6,6 +6,7 @@ import Form from "metabase/core/components/Form";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import * as Errors from "metabase/core/utils/errors";
 import { ForgotPasswordData } from "../../types";
 import {
   PasswordFormFooter,
@@ -13,10 +14,8 @@ import {
   PasswordFormTitle,
 } from "./ForgotPasswordForm.styled";
 
-const ForgotPasswordSchema = Yup.object({
-  email: Yup.string()
-    .required(t`required`)
-    .email(t`must be a valid email address`),
+const FORGOT_PASSWORD_SCHEMA = Yup.object({
+  email: Yup.string().required(Errors.required).email(Errors.email),
 });
 
 export interface ForgotPasswordFormProps {
@@ -43,7 +42,7 @@ const ForgotPasswordForm = ({
       <PasswordFormTitle>{t`Forgot password`}</PasswordFormTitle>
       <FormProvider
         initialValues={initialValues}
-        validationSchema={ForgotPasswordSchema}
+        validationSchema={FORGOT_PASSWORD_SCHEMA}
         onSubmit={handleSubmit}
       >
         <Form>

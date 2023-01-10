@@ -14,19 +14,20 @@ function toJSMap(m) {
   return o;
 }
 
-function row_chart(settings, data) {
+function row_chart(settings, data, colors) {
   return StaticViz.RenderChart("row", {
     settings: JSON.parse(settings),
     data: JSON.parse(data),
+    colors: JSON.parse(colors),
   });
 }
 
-function combo_chart(series, settings, colors) {
+function combo_chart(series, settings, instanceColors) {
   // Thinking of combo as similar to multiple, although they're different in BE
   return StaticViz.RenderChart("combo-chart", {
-    series: JSON.parse(series),
+    multipleSeries: JSON.parse(series),
     settings: JSON.parse(settings),
-    colors: JSON.parse(colors),
+    colors: JSON.parse(instanceColors),
   });
 }
 
@@ -54,17 +55,18 @@ function funnel(data, settings) {
   });
 }
 
-function categorical_donut(rows, colors, settings) {
+function categorical_donut(rows, legendColors, settings) {
   return StaticViz.RenderChart("categorical/donut", {
     data: toJSArray(rows),
-    colors: toJSMap(colors),
-    settings: JSON.parse(settings)
+    colors: toJSMap(legendColors),
+    settings: JSON.parse(settings),
   });
 }
 
-function progress(data, settings) {
+function progress(data, settings, instanceColors) {
   return StaticViz.RenderChart("progress", {
     data: JSON.parse(data),
     settings: JSON.parse(settings),
+    colors: JSON.parse(instanceColors),
   });
 }

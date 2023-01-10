@@ -12,24 +12,29 @@
   * Life cycle
   - Full FieldValues are created by the fingerprint or scanning process.
     Once it's created the values will be updated by the scanning process that runs daily.
+    Only active FieldValues that have a last_used_at within [[active-field-values-cutoff]] will be updated on sync.
+    FieldValues get a new last_used_at when going through [[get-or-create-full-field-values!]].
   - Advanced FieldValues are created on demand: for example the Sandbox FieldValues are created when a user with
     sandboxed permission try to get values of a Field.
     Normally these FieldValues will be deleted after [[advanced-field-values-max-age]] days by the scanning process.
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
-  (:require [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (def ^Integer category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
@@ -55,6 +60,11 @@
   After this time, these field values should be deleted by the `delete-expired-advanced-field-values` job."
   (t/days 30))
 
+(def ^:private active-field-values-cutoff
+  "How many days until a FieldValues is considered inactive. Inactive FieldValues will not be synced until
+   they are used again."
+  (t/days 14))
+
 (def advanced-field-values-types
   "A class of fieldvalues that has additional constraints/filters."
   #{:sandbox         ;; are fieldvalues but filtered by sandbox permissions
@@ -72,7 +82,7 @@
 (models/defmodel FieldValues :metabase_fieldvalues)
 
 (defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
-  (when (s/check (s/maybe [(s/maybe su/NonBlankString)]) human-readable-values)
+  (when (s/check (s/maybe [(s/maybe su/NonBlankStringPlumatic)]) human-readable-values)
     (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
                     {:human-readable-values human-readable-values
                      :status-code           400}))))
@@ -155,16 +165,15 @@
                                        :else
                                        [])))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class FieldValues)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:human_readable_values :json-no-keywordization
-                                    :values                :json
-                                    :type                  :keyword})
-          :pre-insert  pre-insert
-          :pre-update  pre-update
-          :post-select post-select}))
+(mi/define-methods
+ FieldValues
+ {:properties  (constantly {::mi/timestamped? true})
+  :types       (constantly {:human_readable_values :json-no-keywordization
+                            :values                :json
+                            :type                  :keyword})
+  :pre-insert  pre-insert
+  :pre-update  pre-update
+  :post-select post-select})
 
 (defmethod serdes.hash/identity-hash-fields FieldValues
   [_field-values]
@@ -173,6 +182,12 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Utils fns                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn inactive?
+  "If FieldValues have not been accessed recently they are considered inactive."
+  [field-values]
+  (and field-values (t/before? (:last_used_at field-values)
+                               (t/minus (t/offset-date-time) active-field-values-cutoff))))
 
 (defn field-should-have-field-values?
   "Should this `field` be backed by a corresponding FieldValues object?"
@@ -186,9 +201,9 @@
            visibility-type  :visibility_type
            has-field-values :has_field_values
            :as              field} field-or-field-id]
-      (s/check {:visibility_type  su/KeywordOrString
-                :base_type        (s/maybe su/KeywordOrString)
-                :has_field_values (s/maybe su/KeywordOrString)
+      (s/check {:visibility_type  su/KeywordOrStringPlumatic
+                :base_type        (s/maybe su/KeywordOrStringPlumatic)
+                :has_field_values (s/maybe su/KeywordOrStringPlumatic)
                 s/Keyword         s/Any}
                field)
       (boolean
@@ -373,14 +388,20 @@
 
 (defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
-  created FieldValues for `Field`."
+  created FieldValues for `Field`. Updates :last_used_at so sync will know this is active."
   {:arglists '([field] [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (or (db/select-one FieldValues :field_id field-id :type :full)
-        (when (#{::fv-created ::fv-updated} (create-or-update-full-field-values! field human-readable-values))
-          (db/select-one FieldValues :field_id field-id :type :full)))))
+    (let [existing (db/select-one FieldValues :field_id field-id :type :full)]
+      (if (or (not existing) (inactive? existing))
+        (when-let [result (#{::fv-created ::fv-updated} (create-or-update-full-field-values! field human-readable-values))]
+          (when (= result ::fv-updated)
+            (db/update! FieldValues (:id existing) :last_used_at :%now))
+          (db/select-one FieldValues :field_id field-id :type :full))
+        (do
+          (db/update! FieldValues (:id existing) :last_used_at :%now)
+          existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  On Demand                                                     |
@@ -445,8 +466,8 @@
 
 (defmethod serdes.base/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
-  (let [field-id (serdes.base/load-find-local (pop path))]
-    (db/select-one-id FieldValues :field_id field-id)))
+  (let [field (serdes.base/load-find-local (pop path))]
+    (db/select-one FieldValues :field_id (:id field))))
 
 (defmethod serdes.base/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
@@ -456,3 +477,34 @@
                    (= (:type ingested)     (:type local))     (dissoc :type)
                    (= (:hash_key ingested) (:hash_key local)) (dissoc :hash_key))]
     ((get-method serdes.base/load-update! "") "FieldValues" ingested local)))
+
+(def ^:private field-values-slug "___fieldvalues")
+
+(defmethod serdes.base/storage-path "FieldValues" [fv _]
+  ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
+  ;; don't have their own directories.
+  (let [hierarchy    (serdes.base/serdes-path fv)
+        field        (last (drop-last hierarchy))
+        table-prefix (serdes.util/storage-table-path-prefix (drop-last 2 hierarchy))]
+    (concat table-prefix
+            ["fields" (str (:id field) field-values-slug)])))
+
+(serdes.base/register-ingestion-path!
+  "FieldValues"
+  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id___fieldvalues"]
+  ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id___fieldvalues"]
+  (fn [path]
+    (when-let [{db     "databases"
+                schema "schemas"
+                table  "tables"
+                field  "fields"}   (and (#{6 8} (count path))
+                                        (str/ends-with? (last path) field-values-slug)
+                                        (serdes.base/ingestion-matcher-pairs
+                                          path [["databases" "schemas" "tables" "fields"]
+                                                ["databases" "tables" "fields"]]))]
+      (filterv identity [{:model "Database" :id db}
+                         (when schema {:model "Schema" :id schema})
+                         {:model "Table" :id table}
+                         {:model "Field" :id (subs field 0 (- (count field) (count field-values-slug)))}
+                         ;; FieldValues is always just ID 0, since there's at most one as part of the field.
+                         {:model "FieldValues" :id "0"}]))))

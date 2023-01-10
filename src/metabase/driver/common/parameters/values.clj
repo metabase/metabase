@@ -8,26 +8,28 @@
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver.common.parameters :as params]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.persisted-info :refer [PersistedInfo]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util.persisted-cache :as qp.persistence]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import clojure.lang.ExceptionInfo
-           java.text.NumberFormat
-           java.util.UUID
-           [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues ReferencedCardQuery ReferencedQuerySnippet]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.driver.common.parameters :as params]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.persisted-info :refer [PersistedInfo]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.persisted-cache :as qp.persistence]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (clojure.lang ExceptionInfo)
+   (java.text NumberFormat)
+   (java.util UUID)
+   (metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues ReferencedCardQuery ReferencedQuerySnippet)))
 
 (defmulti ^:private parse-tag
   "Parse a tag by its `:type`, returning an appropriate record type such as
@@ -52,7 +54,7 @@
 
 (def ^:private ParsedParamValue
   "Schema for valid param value(s). Params can have one or more values."
-  (s/named (s/maybe (s/cond-pre params/SingleValue MultipleValues su/Map))
+  (s/named (s/maybe (s/cond-pre params/SingleValue MultipleValues su/MapPlumatic))
            "Valid param value(s)"))
 
 (s/defn ^:private tag-targets
@@ -89,7 +91,7 @@
                 param-display-name)
            {:type qp.error-type/missing-required-parameter}))
 
-(s/defn ^:private field-filter->field-id :- su/IntGreaterThanZero
+(s/defn ^:private field-filter->field-id :- su/IntGreaterThanZeroPlumatic
   [field-filter]
   (second field-filter))
 
@@ -261,7 +263,7 @@
   to parse it as appropriate based on the base type and semantic type of the Field associated with it). These are
   special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
   UUID fields."
-  [effective-type :- su/FieldType value]
+  [effective-type :- su/FieldTypePlumatic value]
   (cond
     (isa? effective-type :type/UUID)
     (UUID/fromString value)
@@ -338,7 +340,7 @@
                        :type (or (:type (ex-data e)) qp.error-type/invalid-parameter)}
                       e)))))
 
-(s/defn query->params-map :- {su/NonBlankString ParsedParamValue}
+(s/defn query->params-map :- {su/NonBlankStringPlumatic ParsedParamValue}
   "Extract parameters info from `query`. Return a map of parameter name -> value.
 
     (query->params-map some-query)

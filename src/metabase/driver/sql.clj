@@ -1,15 +1,17 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
-  (:require [metabase.driver :as driver]
-            [metabase.driver.common.parameters.parse :as params.parse]
-            [metabase.driver.common.parameters.values :as params.values]
-            [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
-            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.util.schema :as su]
-            [potemkin :as p]
-            [schema.core :as s]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
+   [metabase.driver.sql.parameters.substitution
+    :as sql.params.substitution]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.util.schema :as su]
+   [potemkin :as p]
+   [schema.core :as s]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
@@ -40,7 +42,7 @@
   (sql.qp/mbql->native driver query))
 
 (s/defmethod driver/substitute-native-parameters :sql
-  [_ {:keys [query] :as inner-query} :- {:query su/NonBlankString, s/Keyword s/Any}]
+  [_ {:keys [query] :as inner-query} :- {:query su/NonBlankStringPlumatic, s/Keyword s/Any}]
   (let [[query params] (-> query
                            params.parse/parse
                            (sql.params.substitute/substitute (params.values/query->params-map inner-query)))]

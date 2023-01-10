@@ -1,19 +1,20 @@
 (ns metabase.api.field-test
   "Tests for `/api/field` endpoints."
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.field :as api.field]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database Field FieldValues Table]]
-            [metabase.sync :as sync]
-            [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]
-            [ring.util.codec :as codec]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.field :as api.field]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database Field FieldValues Table]]
+   [metabase.sync :as sync]
+   [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util :as u]
+   [ring.util.codec :as codec]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 
@@ -22,7 +23,7 @@
 (defn- db-details []
   (merge
    (select-keys (mt/db) [:id :timezone :initial_sync_status])
-   (dissoc (mt/object-defaults Database) :details :initial_sync_status)
+   (dissoc (mt/object-defaults Database) :details :initial_sync_status :dbms_version)
    {:engine        "h2"
     :name          "test-data"
     :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -57,7 +58,7 @@
                  :position         1
                  :id               (mt/id :users :name)
                  :visibility_type  "normal"
-                 :database_type    "VARCHAR"
+                 :database_type    "CHARACTER VARYING"
                  :base_type        "type/Text"
                  :effective_type   "type/Text"
                  :has_field_values "list"
@@ -66,7 +67,7 @@
                  :name_field       nil})
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone] [:table :db :settings]))
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
-               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))))))
+               (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))))
 
 (deftest get-field-summary-test
   (testing "GET /api/field/:id/summary"

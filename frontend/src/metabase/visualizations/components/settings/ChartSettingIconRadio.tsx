@@ -1,5 +1,5 @@
 import React from "react";
-import { RadioIcon } from "./ChartSettingIconRadio.styled";
+import { IconButton } from "./ChartSettingIconRadio.styled";
 
 interface ChartSettingIconRadioProps {
   value: string;
@@ -23,10 +23,10 @@ export const ChartSettingIconRadio = ({
   return (
     <div>
       {options.map(option => (
-        <RadioIcon
-          name={option.iconName}
+        <IconButton
+          icon={option.iconName}
           onClick={() => handleClick(option.value)}
-          isSelected={option.value === value}
+          primary={option.value === value}
           key={`radio-icon-${option.iconName}`}
         />
       ))}

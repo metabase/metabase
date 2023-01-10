@@ -6,11 +6,14 @@
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
             [metabase.test.data.interface :as tx]
-            [monger.collection :as mc]
+            [monger.collection :as mcoll]
             [monger.core :as mg])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
 (tx/add-test-extensions! :mongo)
+
+(defmethod tx/supports-time-type? :mongo [_driver] false)
+(defmethod tx/supports-timestamptz-type? :mongo [_driver] false)
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
@@ -33,11 +36,15 @@
     (ssl-required?) (merge (ssl-params))))
 
 (defmethod tx/dbdef->connection-details :mongo
-  [_ _ dbdef]
-  (conn-details {:dbname (tx/escaped-database-name dbdef)
-                 :user   "metabase"
-                 :pass   "metasample123"
-                 :host   "localhost"}))
+  [_driver _connection-type dbdef]
+  (conn-details (merge
+                 {:dbname (tx/escaped-database-name dbdef)
+                  :host   (tx/db-test-env-var :mongo :host "localhost")
+                  :port   (Integer/parseUnsignedInt (tx/db-test-env-var :mongo :port "27017"))}
+                 (when-let [user (tx/db-test-env-var :mongo :user)]
+                   {:user user})
+                 (when-let [password (tx/db-test-env-var :mongo :password)]
+                   {:pass password}))))
 
 (defn- destroy-db! [driver dbdef]
   (with-mongo-connection [mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
@@ -55,7 +62,7 @@
         (doseq [[i row] (map-indexed vector rows)]
           (try
             ;; Insert each row
-            (mc/insert mongo-db (name table-name) (into {:_id (inc i)}
+            (mcoll/insert mongo-db (name table-name) (into {:_id (inc i)}
                                                         (zipmap field-names row)))
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))

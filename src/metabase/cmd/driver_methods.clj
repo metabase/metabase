@@ -1,9 +1,10 @@
 (ns metabase.cmd.driver-methods
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.string :as str]
-            [clojure.tools.namespace.find :as ns.find]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]))
+  (:require
+   [clojure.java.classpath :as classpath]
+   [clojure.string :as str]
+   [clojure.tools.namespace.find :as ns.find]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]))
 
 (defn- driver-ns-symbs []
   (sort

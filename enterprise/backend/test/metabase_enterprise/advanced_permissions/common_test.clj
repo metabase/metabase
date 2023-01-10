@@ -1,18 +1,19 @@
 (ns metabase-enterprise.advanced-permissions.common-test
-  (:require [cheshire.core :as json]
-            [clojure.core.memoize :as memoize]
-            [clojure.test :refer :all]
-            [metabase.api.database :as api.database]
-            [metabase.models :refer [Database Field FieldValues Permissions Table]]
-            [metabase.models.database :as database]
-            [metabase.models.field :as field]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.memoize :as memoize]
+   [clojure.test :refer :all]
+   [metabase.api.database :as api.database]
+   [metabase.models :refer [Database Field FieldValues Permissions Table]]
+   [metabase.models.database :as database]
+   [metabase.models.field :as field]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn- do-with-all-user-data-perms
   [graph f]
@@ -30,7 +31,7 @@
            (@#'perms/update-group-permissions! all-users-group-id current-graph)))))))
 
 (defmacro ^:private with-all-users-data-perms
-  "Runs `f` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
+  "Runs `body` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
   permissions feature flag, and clears the (5 second TTL) cache used for Field permissions, for convenience."
   [graph & body]
   `(do-with-all-user-data-perms ~graph (fn [] ~@body)))

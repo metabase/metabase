@@ -98,7 +98,7 @@ You can refer to a model in a SQL query just like you can refer to a saved quest
 
 ```
 {% raw %}
-SELECT * FROM {{#1}}
+SELECT * FROM {{#1-customer-model}}
 {% endraw %}
 ```
 
@@ -106,15 +106,21 @@ Or as a [common table expression (CTE)][cte]:
 
 ```
 {% raw %}
-WITH model AS {{#3807}}
+WITH model AS {{#3807-invoice-model}}
 SELECT *
 FROM model;
 {% endraw %}
 ```
 
-## Model history
+Simply typing `{% raw %}{{#}} {% endraw %}` will allow you to search for models (for example, you could type in `{% raw %}{{#customer}}{% endraw %}` to search models, questions, and tables with the word "customer" in the title.
 
-Just like with saved questions, you can click on the model name with the down arrow to bring up the model's sidebar, then click on **History** at the bottom to bring up a list of the changes made to the model over time, and by whom.
+You can also use the data reference sidebar to browse the models available. To open the data reference sidebar, click on the **book** icon.
+
+## Model version history
+
+For [questions](../questions/start.md), [dashboards](../dashboards/start.md), and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes, revert to previous versions, and archive outdated items.
+
+See [History](../exploration-and-organization/history.md).
 
 ## Verifying a model
 

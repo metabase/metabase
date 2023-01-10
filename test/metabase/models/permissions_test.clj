@@ -1,14 +1,17 @@
 (ns metabase.models.permissions-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
-            [metabase.models.table :refer [Table]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.permissions-group
+    :as perms-group
+    :refer [PermissionsGroup]]
+   [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
@@ -49,6 +52,8 @@
    "/data-model/db/1/schema/PUBLIC/table/1/"
    ;; db details permissions
    "/details/db/1/"
+   ;; execution permissions
+   "/execute/"
    ;; full admin (everything) root permissions
    "/"])
 
@@ -393,6 +398,16 @@
 
 ;;; ---------------------------------------------- is-permissions-set? -----------------------------------------------
 
+;;; This originally lived in [[metabase.models.permissions]] but it is only used in tests these days so I moved it here.
+(defn is-permissions-set?
+  "Is `permissions-set` a valid set of permissions object paths?"
+  ^Boolean [permissions-set]
+  (and (set? permissions-set)
+       (every? (fn [path]
+                 (or (= path "/")
+                     (perms/valid-path? path)))
+               permissions-set)))
+
 (deftest is-permissions-set?-test
   (testing "valid permissions sets"
     (doseq [perms-set [#{}
@@ -407,9 +422,9 @@
                        #{"/db/1/schema/" "/db/2/schema/public/"}
                        #{"/db/1/schema/public/" "/db/2/schema/public/table/3/"}
                        #{"/db/1/schema/public/table/2/" "/db/3/schema/public/table/4/"}]]
-      (testing (pr-str (list 'perms/is-permissions-set? perms-set))
+      (testing (pr-str (list 'is-permissions-set? perms-set))
         (is (= true
-               (perms/is-permissions-set? perms-set))))))
+               (is-permissions-set? perms-set))))))
 
   (testing "invalid permissions sets"
     (doseq [[group sets] {"things that aren't sets"
@@ -420,13 +435,13 @@
                            #{"/db/1/" "//"}
                            #{"/db/1/" "/db/1/table/2/"}
                            #{"/db/1/native/schema/"}
-                           #{"/db/1/schema/public/" "/kanye/"}
+                           #{"/db/1/schema/public/" "/parroty/"}
                            #{"/db/1/schema/public/table/1/" "/ocean/"}]}]
       (testing group
         (doseq [perms-set sets]
-          (testing (pr-str (list 'perms/is-permissions-set? perms-set))
+          (testing (pr-str (list 'is-permissions-set? perms-set))
             (is (= false
-                   (perms/is-permissions-set? perms-set)))))))))
+                   (is-permissions-set? perms-set)))))))))
 
 
 ;;; ------------------------------------------- set-has-full-permissions? --------------------------------------------
@@ -680,7 +695,7 @@
                        :details    :yes}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
-                   (select-keys [db-id]))))))))
+                   (select-keys [db-id :execute]))))))))
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"

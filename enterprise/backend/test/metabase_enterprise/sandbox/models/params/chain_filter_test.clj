@@ -1,11 +1,12 @@
 (ns metabase-enterprise.sandbox.models.params.chain-filter-test
-  (:require [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.models :refer [FieldValues]]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.params.chain-filter :as chain-filter]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.models :refer [FieldValues]]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.params.chain-filter :as chain-filter]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain-filter would normally return cached FieldValues (#13832), make sure sandboxing is respected"

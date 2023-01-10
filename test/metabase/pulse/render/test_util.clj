@@ -9,17 +9,19 @@
   1. build a minimal card and query result dataset for different visualization types and settings (scenarios)
   2. run the real rendering pipeline, but, return a hiccup tree instead of png bytes
   3. provide quick ways to 'query' the tree for different content, to confirm that elements are properly rendered."
-  (:require [clojure.string :as str]
-            [clojure.zip :as zip]
-            [metabase.pulse.render :as render]
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.render.datetime :as datetime]
-            [metabase.pulse.render.image-bundle :as image-bundle]
-            [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.util :as u])
-  (:import [org.apache.batik.anim.dom SVGOMDocument]
-           [org.w3c.dom Element Node]))
+  (:require
+   [clojure.string :as str]
+   [clojure.zip :as zip]
+   [metabase.pulse.render :as render]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.render.datetime :as datetime]
+   [metabase.pulse.render.image-bundle :as image-bundle]
+   [metabase.pulse.render.js-svg :as js-svg]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.util :as u])
+  (:import
+   (org.apache.batik.anim.dom SVGOMDocument)
+   (org.w3c.dom Element Node)))
 
 (def test-card
   {:visualization_settings
@@ -79,6 +81,25 @@
      :unit         :default
      :base_type    (guess-type col-sample)}))
 
+(defn- fingerprint
+  [vals]
+  {:global {:distinct-count (-> vals distinct count) :nil% 0.0}
+   :type   {:type/Number {:min (apply min vals)
+                          :max (apply max vals)
+                          :avg (double (/ (reduce + vals) (count vals)))}}})
+
+(defn- base-results-metadata
+  "Create a basic metadata map for a column, which ends up in a vector at [:data :results_metadata :columns].
+  This mimics the shape of column-settings data returned from the query processor."
+  [idx col-name col-vals]
+  (let [ttype (guess-type (first col-vals))]
+    {:name           col-name
+     :display_name   col-name
+     :field_ref      [:field idx {:base-type ttype}]
+     :base_type      ttype
+     :effective_type ttype
+     :fingerprint (when (= :type/Number ttype) (fingerprint col-vals))}))
+
 (defn base-viz-settings
   [display-type rows]
   (let [header-row (first rows)
@@ -107,13 +128,18 @@
       :pivot       {}} display-type)))
 
 (defn make-card-and-data
-  "Make a basic `card-and-data` map for a given `display-type` key. Useful for buildng up test viz data without the need for `viz-scenarios`."
-  [rows display-type]
-  {:card {:display display-type
-          :visualization_settings (base-viz-settings display-type rows)}
-   :data {:viz-settings {}
-          :cols (mapv base-cols-settings (range (count (first rows))) (first rows) (second rows))
-          :rows (vec (rest rows))}})
+  "Make a basic `card-and-data` map for a given `display-type` key. Useful for buildng up test viz data without the need for `viz-scenarios`.
+  The `rows` should be a vector of vectors, where the first row is the header row."
+  [header-and-rows display-type]
+  (let [[header & rows] header-and-rows
+        indices (range (count (first header-and-rows)))
+        cols (mapv (fn [idx] (mapv #(nth % idx) (vec rows))) indices)]
+    {:card {:display display-type
+            :visualization_settings (base-viz-settings display-type header-and-rows)}
+     :data {:viz-settings {}
+            :cols (mapv base-cols-settings indices header (first rows))
+            :rows (vec rows)
+            :results_metadata {:columns (mapv base-results-metadata indices header cols)}}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;    validate-viz-scenarios
@@ -431,7 +457,7 @@
 (defn- wrapped-node?
   [loc]
   (let [node (zip/node loc)]
-    (and (= 1 (count node ))
+    (and (= 1 (count node))
          (seqable? node))))
 
 (def ^:private parse-svg #'js-svg/parse-svg-string)

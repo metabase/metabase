@@ -1,18 +1,19 @@
 (ns metabase-enterprise.sandbox.api.permissions-test
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.models :refer [Card Database PermissionsGroup
-                                     PersistedInfo Table]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.persisted-info :as persisted-info]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase.models :refer [Card Database PermissionsGroup
+                            PersistedInfo Table]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.persisted-info :as persisted-info]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn- db-graph-keypath [group]
   [:groups (u/the-id group) (mt/id) :data])
@@ -68,7 +69,7 @@
                        (get-in (mt/user-http-request :crowberto :get 200 "permissions/graph")
                                (venues-perms-graph-keypath &group)))))
               (testing "GTAP should exist in application DB"
-                (is (schema= [(s/one {:id                   su/IntGreaterThanZero
+                (is (schema= [(s/one {:id                   su/IntGreaterThanZeroPlumatic
                                       :group_id             (s/eq (u/the-id &group))
                                       :table_id             (s/eq (mt/id :venues))
                                       :card_id              (s/eq nil)
@@ -100,7 +101,7 @@
                            :group_id (u/the-id &group)
                            :table_id (mt/id :venues)))))
                 (testing "GTAP for same group, other database should not be affected"
-                  (is (schema= [(s/one {:id                   su/IntGreaterThanZero
+                  (is (schema= [(s/one {:id                   su/IntGreaterThanZeroPlumatic
                                         :group_id             (s/eq (u/the-id &group))
                                         :table_id             (s/eq (u/the-id db-2-table))
                                         :card_id              (s/eq nil)
@@ -110,7 +111,7 @@
                                  :group_id (u/the-id &group)
                                  :table_id (u/the-id db-2-table)))))
                 (testing "GTAP for same table, other group should not be affected"
-                  (is (schema= [(s/one {:id                   su/IntGreaterThanZero
+                  (is (schema= [(s/one {:id                   su/IntGreaterThanZeroPlumatic
                                         :group_id             (s/eq (u/the-id other-group))
                                         :table_id             (s/eq (mt/id :venues))
                                         :card_id              (s/eq nil)

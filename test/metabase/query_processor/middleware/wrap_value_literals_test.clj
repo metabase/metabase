@@ -1,10 +1,12 @@
 (ns metabase.query-processor.middleware.wrap-value-literals-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.query-processor.middleware.wrap-value-literals
+    :as qp.wrap-value-literals]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.test :as mt]))
 
 (driver/register! ::tz-driver, :abstract? true)
 
@@ -78,6 +80,19 @@
              wrap-value-literals
              :query))
       "do datetime literal strings get wrapped in `absolute-datetime` clauses when in appropriate filters?")
+
+  (is (= [:datetime-diff
+          [:absolute-datetime #t "2018-10-01" :default]
+          [:absolute-datetime #t "2019-10-01T01:02:03" :default]
+          :month]
+         (-> (mt/mbql-query checkins
+               {:fields      [[:expression "a"]]
+                :expressions {"a" [:datetime-diff "2018-10-01" "2019-10-01T01:02:03" :month]}})
+             wrap-value-literals
+             :query
+             :expressions
+             (get "a")))
+      "do datetime literal strings get wrapped in `absolute-datetime` clauses when in datetime-diff clauses")
 
   (is (= (:query
           (mt/mbql-query checkins

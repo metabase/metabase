@@ -1,36 +1,35 @@
 (ns metabase.sync.interface
   "Schemas and constants used by the sync code."
-  (:require [clj-time.core :as time]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :refer [Table]]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
-  {:name                         su/NonBlankString
-   :schema                       (s/maybe su/NonBlankString)
+  {:name                         su/NonBlankStringPlumatic
+   :schema                       (s/maybe su/NonBlankStringPlumatic)
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
    (s/optional-key :description) (s/maybe s/Str)})
 
 (def DatabaseMetadata
   "Schema for the expected output of `describe-database`."
   {:tables                   #{DatabaseMetadataTable}
-   (s/optional-key :version) (s/maybe su/NonBlankString)})
+   (s/optional-key :version) (s/maybe su/NonBlankStringPlumatic)})
 
 (def TableMetadataField
   "Schema for a given Field as provided in `describe-table`."
-  {:name                               su/NonBlankString
-   :database-type                      (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
-   :base-type                          su/FieldType
-   :database-position                  su/IntGreaterThanOrEqualToZero
-   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
-   (s/optional-key :effective-type)    (s/maybe su/FieldType)
-   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
-   (s/optional-key :field-comment)     (s/maybe su/NonBlankString)
+  {:name                               su/NonBlankStringPlumatic
+   :database-type                      (s/maybe su/NonBlankStringPlumatic) ; blank if the Field is all NULL & untyped, i.e. in Mongo
+   :base-type                          su/FieldTypePlumatic
+   :database-position                  su/IntGreaterThanOrEqualToZeroPlumatic
+   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationTypePlumatic)
+   (s/optional-key :effective-type)    (s/maybe su/FieldTypePlumatic)
+   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategyPlumatic)
+   (s/optional-key :field-comment)     (s/maybe su/NonBlankStringPlumatic)
    (s/optional-key :pk?)               s/Bool
    (s/optional-key :nested-fields)     #{(s/recursive #'TableMetadataField)}
    (s/optional-key :nfc-path)          [s/Any]
@@ -41,8 +40,8 @@
 
 (def TableMetadata
   "Schema for the expected output of `describe-table`."
-  {:name                         su/NonBlankString
-   :schema                       (s/maybe su/NonBlankString)
+  {:name                         su/NonBlankStringPlumatic
+   :schema                       (s/maybe su/NonBlankStringPlumatic)
    :fields                       #{TableMetadataField}
    (s/optional-key :description) (s/maybe s/Str)})
 
@@ -52,20 +51,14 @@
 
 (def FKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."
-  {:fk-column-name   su/NonBlankString
-   :dest-table       {:name   su/NonBlankString
-                      :schema (s/maybe su/NonBlankString)}
-   :dest-column-name su/NonBlankString})
+  {:fk-column-name   su/NonBlankStringPlumatic
+   :dest-table       {:name   su/NonBlankStringPlumatic
+                      :schema (s/maybe su/NonBlankStringPlumatic)}
+   :dest-column-name su/NonBlankStringPlumatic})
 
 (def FKMetadata
   "Schema for the expected output of `describe-table-fks`."
   (s/maybe #{FKMetadataEntry}))
-
-(def TimeZoneId
-  "Schema predicate ensuring a valid time zone string"
-  (s/pred (fn [tz-str]
-            (u/ignore-exceptions (time/time-zone-for-id tz-str)))
-          'time/time-zone-for-id))
 
 ;; These schemas are provided purely as conveniences since adding `:import` statements to get the corresponding
 ;; classes from the model namespaces also requires a `:require`, which `clj-refactor` seems more than happy to strip
@@ -75,31 +68,12 @@
 (def DatabaseInstance             "Schema for a valid instance of a Metabase Database." (mi/InstanceOf Database))
 (def TableInstance                "Schema for a valid instance of a Metabase Table."    (mi/InstanceOf Table))
 (def FieldInstance                "Schema for a valid instance of a Metabase Field."    (mi/InstanceOf Field))
-(def ResultColumnMetadataInstance "Schema for result column metadata."                  su/Map)
+(def ResultColumnMetadataInstance "Schema for result column metadata."                  su/MapPlumatic)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            SAMPLING & FINGERPRINTS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def FieldSample
-  "Schema for a sample of values returned by the `sample` sub-stage of analysis and passed into the `fingerprint`
-   stage. Guaranteed to be non-empty and non-nil."
-  ;; Validating against this is actually pretty quick, in the order of microseconds even for a 10,000 value sequence
-  (s/constrained [(s/pred (complement nil?))] seq "Non-empty sequence of non-nil values."))
-
-(def TableSample
-  "Schema for a sample of values of certain Fields for a TABLE. This should basically just be a sequence of rows where
-   each row is a sequence of values in the same order as the Fields passed in (basically the format you get from JDBC
-   when `:as-arrays?` is `false`).
-
-   e.g. if Fields passed in were `ID` and `Name` the Table sample should look something like:
-
-     [[1 \"Rasta Toucan\"]
-      [2 \"Lucky Pigeon\"]
-      [3 \"Kanye Nest\"]]"
-  [[s/Any]])
-
 
 (def Percent
   "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."

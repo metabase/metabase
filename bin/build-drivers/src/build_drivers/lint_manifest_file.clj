@@ -1,6 +1,7 @@
 (ns build-drivers.lint-manifest-file
-  (:require [clojure.spec.alpha :as s]
-            [spell-spec.alpha :as spell]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [spell-spec.alpha :as spell]))
 
 (s/def ::init-step (spell/keys :req-un [::step]))
 
@@ -23,7 +24,7 @@
 (s/def ::contact-info (spell/keys :req-un [::name]
                                   :opt-un [::address]))
 
-(def ^:private property-types #{"string" "text" "textFile" "boolean" "secret" "info" "schema-filters"})
+(def ^:private property-types #{"string" "text" "textFile" "boolean" "secret" "info" "schema-filters" "section"})
 
 (s/def ::display-name string?)
 (s/def ::default any?)

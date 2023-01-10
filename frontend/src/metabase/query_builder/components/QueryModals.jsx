@@ -17,10 +17,9 @@ import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
-import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
+import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
-import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
@@ -29,7 +28,9 @@ import BulkFilterModal from "metabase/query_builder/components/filters/modals/Bu
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
-import QuestionMoveToast from "./QuestionMoveToast";
+import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
+import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
+import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
@@ -67,6 +68,7 @@ class QueryModals extends React.Component {
       initialCollectionId,
       onCloseModal,
       onOpenModal,
+      updateQuestion,
       setQueryBuilderMode,
     } = this.props;
 
@@ -183,17 +185,6 @@ class QueryModals extends React.Component {
           onClose={onCloseModal}
         />
       </Modal>
-    ) : modal === MODAL_TYPES.HISTORY ? (
-      <Modal onClose={onCloseModal}>
-        <QuestionHistoryModal
-          questionId={this.props.card.id}
-          onClose={onCloseModal}
-          onReverted={() => {
-            this.props.reloadCard();
-            onCloseModal();
-          }}
-        />
-      </Modal>
     ) : modal === MODAL_TYPES.MOVE ? (
       <Modal onClose={onCloseModal}>
         <CollectionMoveModal
@@ -275,6 +266,17 @@ class QueryModals extends React.Component {
         <MoveEventModal
           eventId={modalContext}
           collectionId={question.collectionId()}
+          onClose={onCloseModal}
+        />
+      </Modal>
+    ) : modal === MODAL_TYPES.PREVIEW_QUERY ? (
+      <Modal fit onClose={onCloseModal}>
+        <PreviewQueryModal onClose={onCloseModal} />
+      </Modal>
+    ) : modal === MODAL_TYPES.CONVERT_QUERY ? (
+      <Modal fit onClose={onCloseModal}>
+        <ConvertQueryModal
+          onUpdateQuestion={updateQuestion}
           onClose={onCloseModal}
         />
       </Modal>

@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
-import { State, DatabaseInfo, InviteInfo } from "metabase-types/store";
+import { DatabaseData } from "metabase-types/api";
+import { State, InviteInfo } from "metabase-types/store";
 import DatabaseStep from "../../components/DatabaseStep";
 import {
   setDatabaseEngine,
@@ -48,7 +49,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   onStepSelect: () => {
     dispatch(setStep(DATABASE_STEP));
   },
-  onDatabaseSubmit: async (database: DatabaseInfo) => {
+  onDatabaseSubmit: async (database: DatabaseData) => {
     await dispatch(submitDatabase(database));
     dispatch(setInvite(null));
     dispatch(setStep(PREFERENCES_STEP));

@@ -6892,7 +6892,6 @@ databaseChangeLog:
                     referencedTableName: collection
                     referencedColumnNames: id
                     foreignKeyName: fk_snippet_collection_id
-                    deleteCascade: true
         - createIndex:
             tableName: native_query_snippet
             indexName: idx_snippet_collection_id
@@ -8699,22 +8698,10 @@ databaseChangeLog:
 
 
   - changeSet:
-      id: 310
-      author: howonlee
-      comment: Added 0.40.0 Migrate friendly field names
-      changes:
-        - update:
-            tableName: setting
-            columns:
-              - column:
-                  name: value
-                  value: 'simple'
-            where: "'key'='humanization-strategy' AND value='advanced'"
-
-  - changeSet:
       id: 311
       author: howonlee
       comment: Added 0.40.0 Migrate friendly field names, not noop
+      validCheckSum: ANY # Quoting changes for H2.
       changes:
         - sql:
             dbms: mariadb,mysql
@@ -8722,10 +8709,15 @@ databaseChangeLog:
                 UPDATE setting SET value='simple' WHERE `key`='humanization-strategy'
                 AND value='advanced'
         - sql:
-            dbms: postgresql,h2
+            dbms: postgresql
             sql: |
                 UPDATE setting SET value='simple' WHERE key='humanization-strategy'
                 AND value='advanced'
+        - sql:
+            dbms: h2
+            sql: |
+                UPDATE setting SET "VALUE"='simple' WHERE "KEY"='humanization-strategy'
+                AND "VALUE"='advanced'
 
   - changeSet:
       id: 312
@@ -10332,15 +10324,22 @@ databaseChangeLog:
       author: camsaul
       comment: >-
         Added 0.43.0. Migrate legacy '-site-url' Setting to 'site-url'. Trim trailing slashes.
+      validCheckSum: ANY # Quoting changes in H2 don't need to be re-run
       preConditions:
         - onFail: MARK_RAN
         - or:
             - and:
                 - dbms:
-                    type: postgresql,h2
+                    type: postgresql
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM setting WHERE key = 'site-url';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'site-url';
             - and:
                 - dbms:
                     type: mysql,mariadb
@@ -10349,7 +10348,16 @@ databaseChangeLog:
                     sql: SELECT count(*) FROM setting WHERE `key` = 'site-url';
       changes:
         - sql:
-            dbms: h2,postgresql
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT
+                'site-url' AS "KEY",
+                regexp_replace("VALUE", '/$', '') AS "VALUE"
+              FROM setting
+              WHERE "KEY" = '-site-url';
+        - sql:
+            dbms: postgresql
             sql: >-
               INSERT INTO setting (key, value)
               SELECT
@@ -10386,14 +10394,22 @@ databaseChangeLog:
       author: camsaul
       comment: >-
         Added 0.43.0. Make sure 'site-url' Setting includes protocol.
+      validCheckSum: ANY # Quoting changes in H2 don't need to be re-run
       changes:
         - sql:
-            dbms: h2,postgresql
+            dbms: postgresql
             sql: >-
               UPDATE setting
               SET value = concat('http://', value)
               WHERE key = 'site-url'
                 AND value NOT LIKE 'http%';
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE setting
+              SET "VALUE" = concat('http://', "VALUE")
+              WHERE "KEY" = 'site-url'
+                AND "VALUE" NOT LIKE 'http%';
         - sql:
             dbms: mysql,mariadb
             sql: >-
@@ -10416,15 +10432,22 @@ databaseChangeLog:
       author: camsaul
       comment: >-
         Added 0.43.0. Migrates value of legacy enable-advanced-humanization Setting to humanization-strategy Setting added in 0.28.0.
+      validCheckSum: ANY # Quoting changes in H2 don't need to be re-run
       preConditions:
         - onFail: MARK_RAN
         - or:
             - and:
                 - dbms:
-                    type: postgresql,h2
+                    type: postgresql
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM setting WHERE key = 'humanization-strategy';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'humanization-strategy';
             - and:
                 - dbms:
                     type: mysql,mariadb
@@ -10433,7 +10456,7 @@ databaseChangeLog:
                     sql: SELECT count(*) FROM setting WHERE `key` = 'humanization-strategy';
       changes:
         - sql:
-            dbms: h2,postgresql
+            dbms: postgresql
             sql: >-
               INSERT INTO setting (key, value)
               SELECT
@@ -10441,6 +10464,16 @@ databaseChangeLog:
                 (CASE WHEN value = 'true' THEN 'advanced' ELSE 'simple' END) AS value
               FROM setting
               WHERE key = 'enable-advanced-humanization';
+        # key and value have to be quoted in H2
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT
+                'humanization-strategy'                                      AS "KEY",
+                (CASE WHEN "VALUE" = 'true' THEN 'advanced' ELSE 'simple' END) AS "VALUE"
+              FROM setting
+              WHERE "KEY" = 'enable-advanced-humanization';
         # key has to be quoted in MySQL/MariaDB
         - sql:
             dbms: mysql,mariadb
@@ -10458,11 +10491,17 @@ databaseChangeLog:
       author: camsaul
       comment: >-
         Added 0.43.0. Remove legacy enable-advanced-humanization Setting.
+      validCheckSum: ANY # Quoting changes in H2 don't need to be re-run
       changes:
         - sql:
-            dbms: h2,postgresql
+            dbms: postgresql
             sql: >-
               DELETE FROM setting WHERE key = 'enable-advanced-humanization';
+        # key has to be quoted in H2
+        - sql:
+            dbms: h2
+            sql: >-
+              DELETE FROM setting WHERE "KEY" = 'enable-advanced-humanization';
         # key has to be quoted in MySQL/MariaDB
         - sql:
             dbms: mysql,mariadb
@@ -12016,6 +12055,11 @@ databaseChangeLog:
 ## Metabase 45
 ##
 
+# Note on rollback: migrations for v45 onwards should always include a rollback key unless they are supported
+# by Liquibase Auto Rollback. Most common changes are supported. See docs here:
+#
+#  https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
+
   - changeSet:
       id: v45.00-001
       author: snoe
@@ -12143,283 +12187,9 @@ databaseChangeLog:
             tableName: query_action
             columnNames: action_id, card_id
             constraintName: pk_query_action
+      rollback: # will be deleted when table is deleted
 
-  - changeSet:
-      id: v45.00-004
-      author: snoe
-      comment: Added 0.44.0 - writeback
-      # This migration was previously numbered v44.00-015 but ultimately was not shipped with 44.
-      preConditions:
-        - onFail: MARK_RAN
-        - or:
-            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
-            - and:
-                - dbms:
-                    type: postgresql,h2
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-015';
-            - and:
-                - dbms:
-                    type: mysql,mariadb
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-015';
-      changes:
-        - createTable:
-            tableName: emitter
-            remarks: An Emitter reperents the fact an Action can act upon the given object
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  remarks: The timestamp of when the emitter was created
-                  name: created_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: The timestamp of when the emitter was updated
-                  name: updated_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: JSON for vis settings and other things frontend related
-                  name: options
-                  type: ${text.type}
-              - column:
-                  remarks: JSON that has a mapping of columns to parameters in the query
-                  name: parameter_mappings
-                  type: ${text.type}
-
-  - changeSet:
-      id: v45.00-005
-      author: snoe
-      comment: Added 0.44.0 - writeback
-      # This migration was previously numbered v44.00-016 but ultimately was not shipped with 44.
-      preConditions:
-        - onFail: MARK_RAN
-        - or:
-            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
-            - and:
-                - dbms:
-                    type: postgresql,h2
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-016';
-            - and:
-                - dbms:
-                    type: mysql,mariadb
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-016';
-      changes:
-        - createTable:
-            tableName: emitter_action
-            remarks: Join table for emitter and actions
-            columns:
-              - column:
-                  name: emitter_id
-                  type: int
-                  remarks: The related emitter
-                  constraints:
-                    nullable: false
-                    referencedTableName: emitter
-                    referencedColumnNames: id
-                    foreignKeyName: fk_emitter_action_ref_emitter_id
-                    deleteCascade: true
-              - column:
-                  name: action_id
-                  type: int
-                  remarks: The related action
-                  constraints:
-                    nullable: false
-                    referencedTableName: action
-                    referencedColumnNames: id
-                    foreignKeyName: fk_emitter_action_ref_action_id
-                    deleteCascade: true
-
-  - changeSet:
-      id: v45.00-006
-      author: snoe
-      comment: Added 0.44.0 - writeback
-      # This migration was previously numbered v44.00-017 but ultimately was not shipped with 44.
-      preConditions:
-        - onFail: MARK_RAN
-        - or:
-            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
-            - and:
-                - dbms:
-                    type: postgresql,h2
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-017';
-            - and:
-                - dbms:
-                    type: mysql,mariadb
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-017';
-      changes:
-        - addPrimaryKey:
-            tableName: emitter_action
-            columnNames: emitter_id, action_id
-            constraintName: pk_emitter_action
-
-  - changeSet:
-      id: v45.00-007
-      author: snoe
-      comment: Added 0.44.0 - writeback
-      # This migration was previously numbered v44.00-018 but ultimately was not shipped with 44.
-      preConditions:
-        - onFail: MARK_RAN
-        - or:
-            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
-            - and:
-                - dbms:
-                    type: postgresql,h2
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-018';
-            - and:
-                - dbms:
-                    type: mysql,mariadb
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-018';
-      changes:
-        - createTable:
-            tableName: dashboard_emitter
-            remarks: Emitter for this dashboard
-            columns:
-              - column:
-                  name: emitter_id
-                  type: int
-                  remarks: The related emitter
-                  constraints:
-                    nullable: false
-                    referencedTableName: emitter
-                    referencedColumnNames: id
-                    foreignKeyName: fk_dashboard_emitter_ref_emitter_id
-                    deleteCascade: true
-              - column:
-                  name: dashboard_id
-                  type: int
-                  remarks: The related dashboard
-                  constraints:
-                    nullable: false
-                    referencedTableName: report_dashboard
-                    referencedColumnNames: id
-                    foreignKeyName: fk_dashboard_emitter_ref_dashboard_id
-                    deleteCascade: true
-
-  - changeSet:
-      id: v45.00-008
-      author: snoe
-      comment: Added 0.44.0 - writeback
-      # This migration was previously numbered v44.00-019 but ultimately was not shipped with 44.
-      preConditions:
-        - onFail: MARK_RAN
-        - or:
-            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
-            - and:
-                - dbms:
-                    type: postgresql,h2
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-019';
-            - and:
-                - dbms:
-                    type: mysql,mariadb
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-019';
-      changes:
-        - addPrimaryKey:
-            tableName: dashboard_emitter
-            columnNames: dashboard_id, emitter_id
-            constraintName: pk_dashboard_emitter
-
-  - changeSet:
-      id: v45.00-009
-      author: snoe
-      comment: Added 0.44.0 - writeback
-      # This migration was previously numbered v44.00-020 but ultimately was not shipped with 44.
-      preConditions:
-        - onFail: MARK_RAN
-        - or:
-            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
-            - and:
-                - dbms:
-                    type: postgresql,h2
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-020';
-            - and:
-                - dbms:
-                    type: mysql,mariadb
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-020';
-      changes:
-        - createTable:
-            tableName: card_emitter
-            remarks: Emitter for this card
-            columns:
-              - column:
-                  name: emitter_id
-                  type: int
-                  remarks: The related emitter
-                  constraints:
-                    nullable: false
-                    referencedTableName: emitter
-                    referencedColumnNames: id
-                    foreignKeyName: fk_card_emitter_ref_emitter_id
-                    deleteCascade: true
-              - column:
-                  name: card_id
-                  type: int
-                  remarks: The related card
-                  constraints:
-                    nullable: false
-                    referencedTableName: report_card
-                    referencedColumnNames: id
-                    foreignKeyName: fk_card_emitter_ref_card_id
-                    deleteCascade: true
-  - changeSet:
-      id: v45.00-010
-      author: snoe
-      comment: Added 0.44.0 - writeback
-      # This migration was previously numbered v44.00-021 but ultimately was not shipped with 44.
-      preConditions:
-        - onFail: MARK_RAN
-        - or:
-            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
-            - and:
-                - dbms:
-                    type: postgresql,h2
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-021';
-            - and:
-                - dbms:
-                    type: mysql,mariadb
-                - sqlCheck:
-                    expectedResult: 0
-                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-021';
-      changes:
-        - addPrimaryKey:
-            tableName: card_emitter
-            columnNames: card_id, emitter_id
-            constraintName: pk_card_emitter
+  # note: some migrations which only added and deleted tables within v45 were removed, hence an ID gap here
 
   - changeSet:
       id: v45.00-011
@@ -12541,69 +12311,10 @@ databaseChangeLog:
             tableName: http_action
             columnNames: action_id
             constraintName: pk_http_action
+      rollback: # no rollback needed, will be deleted with table
 
-  - changeSet:
-      id: v45.00-014
-      author: snoe
-      comment: Added 0.45.0 - writeback add action_id to emitter
-      changes:
-        - addColumn:
-            columns:
-              - column:
-                  name: action_id
-                  type: int
-                  remarks: The related action
-            tableName: emitter
 
-  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
-  - changeSet:
-      id: v45.00-015
-      author: snoe
-      comment: Added 0.45.0 - writeback add fk for action_id to emitter
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: emitter
-            baseColumnNames: action_id
-            referencedTableName: action
-            referencedColumnNames: id
-            constraintName: fk_emitter_ref_action_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v45.00-016
-      author: snoe
-      comment: Added 0.45.0 - writeback Move foreign keys from emitter_action and dashboard_emitter
-      changes:
-        - sql:
-              sql: >-
-                update emitter set
-                action_id = (select action_id from emitter_action where emitter_id = id);
-
-  - changeSet:
-      id: v45.00-017
-      author: snoe
-      comment: Added 0.45.0 - writeback remove any emitters that were orphaned to be safe.
-      changes:
-        - sql:
-              sql: delete from emitter where action_id is null;
-
-  - changeSet:
-      id: v45.00-018
-      author: snoe
-      comment: Added 0.45.0 - writeback Make emitter action_id not nullable
-      changes:
-        - addNotNullConstraint:
-            columnDataType: int
-            tableName: emitter
-            columnName: action_id
-
-  - changeSet:
-      id: v45.00-019
-      author: snoe
-      comment: Added 0.45.0 - writeback drop emitter_action
-      changes:
-        - dropTable:
-            tableName: emitter_action
+  # note: some migrations which only added and deleted tables within v45 were removed, hence an ID gap here
 
   - changeSet:
       id: v45.00-022
@@ -12794,6 +12505,7 @@ databaseChangeLog:
               ALTER TABLE report_dashboardcard
               CHANGE created_at
               created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do, but required for sql
 
   - changeSet:
       id: v45.00-034
@@ -12824,6 +12536,7 @@ databaseChangeLog:
               ALTER TABLE report_dashboardcard
               CHANGE updated_at
               updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do
 
   - changeSet:
       id: v45.00-036
@@ -12898,6 +12611,7 @@ databaseChangeLog:
             tableName: model_action
             columnNames: card_id, slug
             constraintName: unique_model_action_card_id_slug
+      rollback: # will be deleted with table
 
   # The next 4 values add default values for Database `created_at` and `updated_at`; previously this was handled by
   # Toucan but it's more convenient to do this at the application database level instead -- it facilitates stuff like
@@ -12932,6 +12646,7 @@ databaseChangeLog:
               ALTER TABLE metabase_database
               CHANGE created_at
               created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do
 
   - changeSet:
       id: v45.00-040
@@ -12962,6 +12677,7 @@ databaseChangeLog:
               ALTER TABLE metabase_database
               CHANGE updated_at
               updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do
 
   # It was probably an oversight, but while we validated Database `details` in the API layer it was not a required/NOT
   # NULL column in the application Database itself. No problem; let's add it now that we've noticed it.
@@ -12982,6 +12698,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               UPDATE metabase_database SET details = '{}' WHERE details IS NULL;
+      rollback: # nothing to do, since a '{}' is okay for v44
 
   - changeSet:
       id: v45.00-043
@@ -13042,29 +12759,7 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: 'Optional remarks explaining why these changes were made.'
 
-  - changeSet:
-      id: v45.00-045
-      author: snoe
-      comment: Added 0.45.0 - writeback drop card_emitter
-      changes:
-        - dropTable:
-            tableName: card_emitter
-
-  - changeSet:
-      id: v45.00-046
-      author: snoe
-      comment: Added 0.45.0 - writeback drop dashboard_emitter
-      changes:
-        - dropTable:
-            tableName: dashboard_emitter
-
-  - changeSet:
-      id: v45.00-047
-      author: snoe
-      comment: Added 0.45.0 - writeback drop emitter
-      changes:
-        - dropTable:
-            tableName: emitter
+  # note: some migrations which only added and deleted tables within v45 were removed, hence an ID gap here
 
   # Add created_at to Collection
   - changeSet:
@@ -13113,6 +12808,7 @@ databaseChangeLog:
                 WHERE c.personal_owner_id = u.id
               )
               WHERE c.personal_owner_id IS NOT NULL;
+      rollback: # nothing to roll back, but required for sql change types
 
   # seed Collection created_at based on the max created at of child objects
   #
@@ -13199,6 +12895,8 @@ databaseChangeLog:
                 WHERE c.id = created_ats.collection_id
                   AND c.personal_owner_id IS NULL
               );
+      rollback: # rollback is a no-op for most seed migrations, but required for sql change type
+
   - changeSet:
       id: v45.00-051
       author: qnkhuat
@@ -13210,6 +12908,11 @@ databaseChangeLog:
             tableName: collection_permission_graph_revision
             columnName: after
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: after
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13226,6 +12929,11 @@ databaseChangeLog:
             tableName: collection_permission_graph_revision
             columnName: before
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: before
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13242,6 +12950,11 @@ databaseChangeLog:
             tableName: collection_permission_graph_revision
             columnName: remark
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: remark
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13258,6 +12971,11 @@ databaseChangeLog:
             tableName: permissions_revision
             columnName: after
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: after
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13274,6 +12992,11 @@ databaseChangeLog:
             tableName: permissions_revision
             columnName: before
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: before
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13290,6 +13013,11 @@ databaseChangeLog:
             tableName: permissions_revision
             columnName: remark
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: remark
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13306,10 +13034,880 @@ databaseChangeLog:
             tableName: secret
             columnName: value
             newDataType: longblob
+      rollback:
+        - modifyDataType:
+            tableName: secret
+            columnName: value
+            newDataType: ${blob.type}
       preConditions:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
+  - changeSet:
+      id: v46.00-000
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - createTable:
+            tableName: implicit_action
+            remarks: An action with dynamic parameters based on the underlying model
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The associated action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_implicit_action_action_id
+                    deleteCascade: true
+              - column:
+                  name: kind
+                  type: ${text.type}
+                  remarks: The kind of implicit action create/update/delete
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v46.00-001
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: model_id
+                  remarks: The associated model
+                  type: int
+
+  - changeSet:
+      id: v46.00-002
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: name
+                  remarks: The name of the action
+                  type: varchar(254)
+
+  - changeSet:
+      id: v46.00-003
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: description
+                  remarks: The description of the action
+                  type: ${text.type}
+
+  - changeSet:
+      id: v46.00-004
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: parameters
+                  remarks: The saved parameters for this action
+                  type: ${text.type}
+
+  - changeSet:
+      id: v46.00-005
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: parameter_mappings
+                  remarks: The saved parameter mappings for this action
+                  type: ${text.type}
+  - changeSet:
+      id: v46.00-006
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: visualization_settings
+                  remarks: The UI visualization_settings for this action
+                  type: ${text.type}
+
+  - changeSet:
+      id: v46.00-007
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_action_model_id
+
+  - changeSet:
+      id: v46.00-008
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: query_action
+            columns:
+              - column:
+                  name: database_id
+                  remarks: The associated database
+                  type: int
+
+  - changeSet:
+      id: v46.00-009
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: query_action
+            columns:
+              - column:
+                  name: dataset_query
+                  remarks: The MBQL writeback query
+                  type: ${text.type}
+
+  - changeSet:
+      id: v46.00-010
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: query_action
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_query_action_database_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v46.00-011
+      author: snoe
+      validCheckSum: ANY
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE query_action DROP PRIMARY KEY, ADD PRIMARY KEY pk_query_action (action_id);
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE query_action DROP PRIMARY KEY;
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id);
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE query_action DROP CONSTRAINT pk_query_action;
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id);
+      rollback:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE query_action DROP PRIMARY KEY, ADD PRIMARY KEY pk_query_action (action_id, card_id);
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE query_action DROP CONSTRAINT fk_query_action_ref_action_id;
+              ALTER TABLE query_action DROP PRIMARY KEY;
+              ALTER TABLE query_action ADD CONSTRAINT fk_query_action_ref_action_id FOREIGN KEY (action_id) REFERENCES action(id) ON DELETE CASCADE;
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id, card_id);
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE query_action DROP CONSTRAINT pk_query_action;
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id, card_id);
+
+  - changeSet:
+      id: v46.00-012
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropNotNullConstraint:
+            tableName: query_action
+            columnDataType: int
+            columnName: card_id
+
+  # migration for developers and internal use of actions created in 45 during a short period.
+  - changeSet:
+      id: v46.00-013
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      validCheckSum: ANY
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO action (type, model_id, name)
+              SELECT 'implicit', card_id, slug
+              FROM model_action
+              WHERE action_id is null AND slug in ('insert','update','delete');
+
+              INSERT INTO implicit_action (action_id, kind)
+              SELECT
+                id,
+                case name
+                  when 'insert' then 'row/create'
+                  when 'update' then 'row/update'
+                  when 'delete' then 'row/delete'
+                end
+              FROM action
+              WHERE type = 'implicit';
+
+              UPDATE action
+              SET model_id = (SELECT card_id
+                              FROM model_action
+                              WHERE model_action.action_id = action.id)
+              WHERE model_id is null;
+
+              DELETE FROM action WHERE model_id is null;
+
+              UPDATE report_dashboardcard
+              SET action_id = (SELECT action.id
+                               FROM action
+                               LEFT JOIN implicit_action ON implicit_action.action_id = action.id
+                               WHERE action.model_id = report_dashboardcard.card_id
+                               AND coalesce((
+                                  CASE implicit_action.kind
+                                     WHEN 'row/create' THEN 'insert'
+                                     WHEN 'row/delete' THEN 'delete'
+                                     WHEN 'row/update' THEN 'update'
+                                  END), ('action_' || action.id)) =
+                                  substring(report_dashboardcard.visualization_settings,
+                                    position('"action_slug":"' in report_dashboardcard.visualization_settings)+15,
+                                    position('"' in
+                                      substring(report_dashboardcard.visualization_settings,
+                                        position('"action_slug":"' in visualization_settings)+15)) - 1))
+              WHERE report_dashboardcard.visualization_settings like '%action_slug%';
+
+              UPDATE query_action SET
+                dataset_query = (select dataset_query from report_card where report_card.id = query_action.card_id),
+                database_id = (select database_id from report_card where report_card.id = query_action.card_id);
+
+              UPDATE action SET
+                name = (
+                  select name
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id),
+                description = (
+                  select description
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id),
+                parameters = (
+                  select parameters
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id),
+                parameter_mappings = (
+                  select parameter_mappings
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id),
+                visualization_settings = (
+                  select visualization_settings
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id)
+              WHERE type = 'query';
+      rollback: # no-op, we do not care to preserve actions from 46->45
+
+  - changeSet:
+      id: v46.00-014
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_action
+            constraintName: fk_query_action_ref_card_id
+      rollback:
+
+  - changeSet:
+      id: v46.00-015
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropColumn:
+            tableName: query_action
+            columnName: card_id
+
+      rollback:
+        - addColumn:
+            tableName: query_action
+            columns:
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The related card
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_action_ref_card_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v46.00-016
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM report_card
+              WHERE is_write = true;
+
+              DELETE FROM model_action;
+      rollback: # we do not care to preserve actions from 46->45
+        - sql:
+            sql: >-
+              DELETE FROM report_dashboardcard WHERE action_id is not null;
+              DELETE FROM action;
+
+  - changeSet:
+      id: v46.00-017
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropColumn:
+            tableName: http_action
+            columnName: name
+      rollback:
+        - addColumn:
+            tableName: http_action
+            columns:
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name of this action
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v46.00-018
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropColumn:
+            tableName: http_action
+            columnName: description
+      rollback:
+        - addColumn:
+            tableName: http_action
+            columns:
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: An optional description for this action
+
+  - changeSet:
+      id: v46.00-019
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: is_write
+      rollback:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_write
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this query will perform writes to a db
+                  constraints:
+                    nullable: false
+            tableName: report_card
+
+  - changeSet:
+      id: v46.00-020
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: query_action
+            columnName: database_id
+            columnDataType: int
+
+  - changeSet:
+      id: v46.00-021
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: query_action
+            columnName: dataset_query
+            columnDataType: ${text.type}
+
+  - changeSet:
+      id: v46.00-022
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: query_action
+            columnName: dataset_query
+            columnDataType: ${text.type}
+
+  - changeSet:
+      id: v46.00-023
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: action
+            columnName: model_id
+            columnDataType: int
+
+  - changeSet:
+      id: v46.00-024
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: action
+            columnName: name
+            columnDataType: varchar(254)
+
+  - changeSet:
+      id: v46.00-025
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropTable:
+            tableName: model_action
+      rollback:
+        - createTable:
+            tableName: model_action
+            remarks: Ties actions to models
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: slug
+                  type: varchar(254)
+                  remarks: The referenceable name for this action
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The associated model
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_card_id
+                    deleteCascade: true
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The associated action
+                  constraints:
+                    nullable: true
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: requires_pk
+                  remarks: Indicates that the primary key(s) need to be passed in as parameters
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parameter_mappings
+                  type: ${text.type}
+                  remarks: Mappings for primary keys to action parameters
+              - column:
+                  name: visualization_settings
+                  type: ${text.type}
+                  remarks: Settings for rendering the action
+
+  - changeSet:
+      id: v46.00-026
+      author: metamben
+      comment: Added 0.46.0 -- add field for tracking DBMS versions
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: dbms_version
+                  type: ${text.type}
+                  remarks: 'A JSON object describing the flavor and version of the DBMS.'
+
+  - changeSet:
+      id: v46.00-027
+      author: snoe
+      comment: Added 0.46.0 -- add last_used_at to FieldValues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of when these FieldValues were last used.
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v46.00-028
+      author: tsmacdonald
+      comment: Added 0.46.0 -- Join table connecting cards to dashboards/cards's parameters that need custom filter values from the card
+      changes:
+        - createTable:
+            tableName: parameter_card
+            remarks: "Join table connecting cards to entities (dashboards, other cards, etc.) that use the values generated by the card for filter values"
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: "most recent modification time"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: "creation time"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: "ID of the card generating the values"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parameterized_object_type
+                  type: varchar(32)
+                  remarks: "Type of the entity consuming the values (dashboard, card, etc.)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parameterized_object_id
+                  type: int
+                  remarks: "ID of the entity consuming the values"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parameter_id
+                  type: varchar(32)
+                  remarks: "The parameter ID"
+                  constraints:
+                    nullable: false
+
+  # Make Dimension <=> Field a 1t1 relationship. Replace unique field_id + name with unique field_id.
+  # See issue #27054.
+  - changeSet:
+      id: v46.00-029
+      author: camsaul
+      comment: Make Dimension <=> Field a 1t1 relationship. Drop unique constraint on field_id + name. (1/3)
+      changes:
+        - dropUniqueConstraint:
+            tableName: dimension
+            constraintName: unique_dimension_field_id_name
+      rollback:
+        - addUniqueConstraint:
+            tableName: dimension
+            constraintName: unique_dimension_field_id_name
+            columnNames: field_id, name
+
+  - changeSet:
+      id: v46.00-030
+      author: camsaul
+      comment: Make Dimension <=> Field a 1t1 relationship. Delete duplicate entries. (2/3)
+      changes:
+        - sql:
+            # Which rows to keep is not 100% clear. I decided to keep newer entries, by ID. I considered keeping new
+            # entries by `updated_at` but the SQL for doing that across the three databases was such a hairball and
+            # having duplicates in the first place was such an edge case I decided this approach is fine for now. The
+            # `row_number()` window function would have made this easier to do but we haven't merged H2 v2 yet.
+            #
+            # Writing the query with these unnecessary subselects is stupid, but MySQL 5.7 doesn't work without them.
+            # See https://metaboat.slack.com/archives/CKZEMT1MJ/p1670624514320419 for more info
+            sql: >-
+              DELETE FROM dimension
+              WHERE field_id IN (
+                SELECT field_id
+                FROM (
+                  SELECT field_id
+                  FROM dimension
+                  GROUP BY field_id
+                  HAVING COUNT(*) > 1
+                ) duplicates
+              )
+              AND id NOT IN (
+                SELECT id FROM (
+                  SELECT max(id) AS id
+                  FROM dimension
+                  GROUP BY field_id
+                ) most_recents
+              );
+      rollback: # don't need to roll back anything, deleting duplicate entries doesn't need to be reversed.
+
+  - changeSet:
+      id: v46.00-031
+      author: camsaul
+      comment: Make Dimension <=> Field a 1t1 relationship. Add unique constraint on field_id. (3/3)
+      changes:
+        - addUniqueConstraint:
+            tableName: dimension
+            columnNames: field_id
+            constraintName: unique_dimension_field_id
+        # this change can roll back automatically.
+
+  - changeSet:
+      id: v46.00-032
+      author: tsmacdonald
+      comment: Added 0.46.0 -- Unique parameter_card
+      changes:
+        - addUniqueConstraint:
+            tableName: parameter_card
+            columnNames: parameterized_object_id, parameterized_object_type, parameter_id
+            constraintName: unique_parameterized_object_card_parameter
+
+  - changeSet:
+      id: v46.00-033
+      author: tsmacdonald
+      comment: Added 0.46.0 -- parameter_card index on connected object
+      changes:
+        - createIndex:
+            tableName: parameter_card
+            columns:
+              - column:
+                  name: parameterized_object_id
+            indexName: idx_parameter_card_parameterized_object_id
+
+  - changeSet:
+      id: v46.00-034
+      author: tsmacdonald
+      comment: Added 0.46.0 -- parameter_card index on connected card
+      changes:
+        - createIndex:
+            tableName: parameter_card
+            columns:
+              - column:
+                  name: card_id
+            indexName: idx_parameter_card_card_id
+
+  - changeSet:
+      id: v46.00-035
+      author: tsmacdonald
+      comment: Added 0.46.0 - parameter_card.card_id foreign key
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: parameter_card
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_parameter_card_ref_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v46.00-036
+      author: metamben
+      comment: App containers are removed in 0.46.0
+      changes:
+        - dropTable:
+            tableName: app_permission_graph_revision
+      rollback:
+        - createTable:
+            tableName: app_permission_graph_revision
+            remarks: 'Used to keep track of changes made to app permissions.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: before
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the apps graph before the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: after
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the apps graph after the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the admin who made this set of changes.'
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_permission_graph_revision_user_id
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: 'The timestamp of when these changes were made.'
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: remark
+                  type: ${text.type}
+                  remarks: 'Optional remarks explaining why these changes were made.'
+
+  - changeSet:
+      id: v46.00-037
+      author: metamben
+      comment: App pages are removed in 0.46.0
+      changes:
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: is_app_page
+      rollback:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_app_page
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this dashboard serves as a page of an app
+                  constraints:
+                    nullable: false
+            tableName: report_dashboard
+
+  - changeSet:
+      id: v46.00-038
+      author: metamben
+      comment: App containers are removed in 0.46.0
+      changes:
+        - dropTable:
+            tableName: app
+      rollback:
+        - createTable:
+            tableName: app
+            remarks: Defines top level concerns for App
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The associated collection
+                  constraints:
+                    nullable: false
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_ref_collection_id
+                    deleteCascade: true
+                    unique: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The homepage of the app
+              - column:
+                  remarks: JSON for the navigation items of the app
+                  name: nav_items
+                  type: ${text.type}
+              - column:
+                  remarks: JSON for frontend related additions, such as styling
+                  name: options
+                  type: ${text.type}
+              - column:
+                  remarks: The timestamp of when the app was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: app
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_app_ref_dashboard_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v46.00-040
+      author: tsmacdonald
+      comment: Added 0.46.0 -- Bump default dashcard size to 4x4
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+            defaultValue: 4
+
+  - changeSet:
+      id: v46.00-041
+      author: tsmacdonald
+      comment: Added 0.46.0 -- Bump default dashcard size to 4x4
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+            defaultValue: 4
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
@@ -13320,6 +13918,11 @@ databaseChangeLog:
 # 1) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
+#
+#   1a) Ensure your changes are compatible with Liquibase rollback. See comments starting with
+#       0.45 migrations for more notes. Rollback to 0.44 and forwards to the latest migration is tested
+#       automatically and the migrations linter will check for the presence of rollback where required as
+#       much as possible.
 #
 # 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
 #    migration so someone else doesn't steal your ID number

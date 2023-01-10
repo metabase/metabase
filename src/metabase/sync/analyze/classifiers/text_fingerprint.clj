@@ -1,11 +1,12 @@
 (ns metabase.sync.analyze.classifiers.text-fingerprint
   "Logic for inferring the semantic types of *Text* fields based on their TextFingerprints.
    These tests only run against Fields that *don't* have existing semantic types."
-  (:require [clojure.tools.logging :as log]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.tools.logging :as log]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ^:private ^:const ^Double percent-valid-threshold
   "Fields that have at least this percent of values that are satisfy some predicate (such as `u/email?`)
@@ -32,7 +33,7 @@
    :percent-email [:type/Email          percent-valid-threshold]
    :percent-state [:type/State          lower-percent-valid-threshold]})
 
-(s/defn ^:private infer-semantic-type-for-text-fingerprint :- (s/maybe su/FieldType)
+(s/defn ^:private infer-semantic-type-for-text-fingerprint :- (s/maybe su/FieldTypePlumatic)
   "Check various percentages inside the TEXT-FINGERPRINT and return the corresponding semantic type to mark the Field
   as if the percent passes the threshold."
   [text-fingerprint :- i/TextFingerprint]

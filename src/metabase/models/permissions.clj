@@ -167,26 +167,31 @@
     /db/:id/schema/:name/table/:id/query/segmented/ ; allow ad-hoc MBQL queries. Sandbox all queries against this Table.
     /block/db/:id/                                  ; disallow queries against this DB unless User has data perms.
     /                                               ; full root perms"
-  (:require [clojure.data :as data]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.api.common :refer [*current-user-id*]]
-            [metabase.config :as config]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.permissions-revision :as perms-revision :refer [PermissionsRevision]]
-            [metabase.models.permissions.parse :as perms-parse]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.regex :as u.regex]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.data :as data]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.api.common :refer [*current-user-id*]]
+   [metabase.config :as config]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.permissions-revision
+    :as perms-revision
+    :refer [PermissionsRevision]]
+   [metabase.models.permissions.parse :as perms-parse]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.regex :as u.regex]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |
@@ -264,6 +269,10 @@
                ;; any path starting with /details/ is a DATABASE CONNECTION DETAILS permissions path
                ;; /details/db/:id/ -> permissions to edit the connection details and settings for the DB
                (and "details/" #"db/\d+/")
+               ;; .../execute/ -> permissions to run query actions in the DB
+               (and "execute/"
+                    (or ""
+                        #"db/\d+/"))
                ;; any path starting with /collection/ is a COLLECTION permissions path
                (and "collection/"
                     (or
@@ -364,7 +373,7 @@
 ;;; ------------------------------------------------- Path Util Fns --------------------------------------------------
 
 (def ^:private MapOrID
-  (s/cond-pre su/Map su/IntGreaterThanZero))
+  (s/cond-pre su/MapPlumatic su/IntGreaterThanZeroPlumatic))
 
 (s/defn data-perms-path :- Path
   "Return the [readwrite] permissions path for a Database, schema, or Table. (At the time of this writing, DBs and
@@ -439,6 +448,12 @@
   ([database-or-id schema-name table-or-id]
    (str (data-perms-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/segmented/")))
 
+(s/defn execute-query-perms-path :- Path
+  "Return the execute query action permissions path for a database.
+   This grants you permissions to run arbitary query actions."
+  [database-or-id :- MapOrID]
+  (str "/execute" (data-perms-path database-or-id)))
+
 (s/defn database-block-perms-path :- Path
   "Return the permissions path for the Block 'anti-permissions'. Block anti-permissions means a User cannot run a query
   against a Database unless they have data permissions, regardless of whether segmented permissions would normally give
@@ -462,7 +477,10 @@
     (str "/data-model" base-path)
 
     [:details :yes]
-    (str "/details" base-path)))
+    (str "/details" base-path)
+
+    [:execute :all]
+    (str "/execute" base-path)))
 
 (s/defn feature-perms-path :- Path
   "Returns the permissions path to use for a given feature-level permission type (e.g. download) and value (e.g. full
@@ -526,15 +544,6 @@
   (or (is-permissions-for-object? permissions-path path)
       (str/starts-with? permissions-path path)))
 
-(defn is-permissions-set?
-  "Is `permissions-set` a valid set of permissions object paths?"
-  ^Boolean [permissions-set]
-  (and (set? permissions-set)
-       (every? (fn [path]
-                 (or (= path "/")
-                     (valid-path? path)))
-               permissions-set)))
-
 (defn set-has-full-permissions?
   "Does `permissions-set` grant *full* access to object with `path`?"
   ^Boolean [permissions-set path]
@@ -570,8 +579,8 @@
   ([this read-or-write]
    (perms-objects-set-for-parent-collection nil this read-or-write))
 
-  ([collection-namespace :- (s/maybe su/KeywordOrString)
-    this                 :- {:collection_id (s/maybe su/IntGreaterThanZero) s/Keyword s/Any}
+  ([collection-namespace :- (s/maybe su/KeywordOrStringPlumatic)
+    this                 :- {:collection_id (s/maybe su/IntGreaterThanZeroPlumatic) s/Keyword s/Any}
     read-or-write        :- (s/enum :read :write)]
    ;; based on value of read-or-write determine the approprite function used to calculate the perms path
    (let [path-fn (case read-or-write
@@ -614,11 +623,11 @@
                                    (:object permissions))))
   (assert-not-admin-group permissions))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Permissions)
-  models/IModel (merge models/IModelDefaults
-                       {:pre-insert pre-insert
-                        :pre-update pre-update
-                        :pre-delete pre-delete}))
+(mi/define-methods
+ Permissions
+ {:pre-insert pre-insert
+  :pre-update pre-update
+  :pre-delete pre-delete})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -644,13 +653,19 @@
 (def ^:private SchemaPermissionsGraph
   (s/named
    (s/cond-pre (s/enum :none :all)
-               {su/IntGreaterThanZero TablePermissionsGraph})
+               {su/IntGreaterThanZeroPlumatic TablePermissionsGraph})
    "Valid perms graph for a schema"))
 
 (def ^:private NativePermissionsGraph
   (s/named
    (s/enum :write :none)
    "Valid native perms option for a database"))
+
+(def ExecutePermissions
+  "Schema for execution permission values."
+  (s/named
+   (s/enum :all :none)
+   "Valid execute perms option type"))
 
 (def ^:private DataPermissionsGraph
   (s/named
@@ -689,7 +704,7 @@
 (def ^:private DownloadSchemaPermissionsGraph
   (s/named
    (s/cond-pre (s/enum :full :limited :none)
-               {su/IntGreaterThanZero DownloadTablePermissionsGraph})
+               {su/IntGreaterThanZeroPlumatic DownloadTablePermissionsGraph})
    "Valid download perms graph for a schema"))
 
 (def ^:private DownloadNativePermissionsGraph
@@ -713,7 +728,7 @@
 (def ^:private DataModelSchemaPermissionsGraph
   (s/named
     (s/cond-pre (s/enum :all :none)
-                {su/IntGreaterThanZero DataModelTablePermissionsGraph})
+                {su/IntGreaterThanZeroPlumatic DataModelTablePermissionsGraph})
    "Valid data model perms graph for a schema"))
 
 (def DataModelPermissionsGraph
@@ -731,15 +746,22 @@
    "Valid details perms graph for a database"))
 
 (def ^:private StrictDBPermissionsGraph
-  {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
-                          (s/optional-key :download) DownloadPermissionsGraph
-                          (s/optional-key :data-model) DataModelPermissionsGraph
-                          (s/optional-key :details) DetailsPermissions}})
+  {su/IntGreaterThanZeroPlumatic {(s/optional-key :data) StrictDataPermissionsGraph
+                                  (s/optional-key :download) DownloadPermissionsGraph
+                                  (s/optional-key :data-model) DataModelPermissionsGraph
+                                  (s/optional-key :details) DetailsPermissions}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
-   :groups   {su/IntGreaterThanZero StrictDBPermissionsGraph}})
+   :groups   {su/IntGreaterThanZeroPlumatic StrictDBPermissionsGraph}})
 
+(def ^:private ExecutionGroupPermissionsGraph
+  (s/cond-pre ExecutePermissions
+              {su/IntGreaterThanZeroPlumatic ExecutePermissions}))
+
+(def ^:private ExecutionPermissionsGraph
+  {:revision s/Int
+   :groups   {su/IntGreaterThanZeroPlumatic ExecutionGroupPermissionsGraph}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH FETCH                                                   |
@@ -758,30 +780,48 @@
           {}
           db-ids))
 
+(defn- permissions-by-group-ids [where-clause]
+  (let [permissions (db/select [Permissions [:group_id :group-id] [:object :path]]
+                      {:where where-clause})]
+    (reduce (fn [m {:keys [group-id path]}]
+              (update m group-id conj path))
+            {}
+            permissions)))
+
 (s/defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
-  (let [permissions     (db/select [Permissions [:group_id :group-id] [:object :path]]
-                                   {:where [:or
-                                            [:= :object (hx/literal "/")]
-                                            [:like :object (hx/literal "%/db/%")]]})
+  (let [group-id->paths (permissions-by-group-ids [:or
+                                                   [:= :object (hx/literal "/")]
+                                                   [:like :object (hx/literal "%/db/%")]])
         db-ids          (delay (db/select-ids 'Database))
-        group-id->paths (reduce
-                         (fn [m {:keys [group-id path]}]
-                           (update m group-id conj path))
-                         {}
-                         permissions)
         group-id->graph (m/map-vals
                          (fn [paths]
                            (let [permissions-graph (perms-parse/permissions->graph paths)]
-                             (if (= :all permissions-graph)
+                             (if (= permissions-graph :all)
                                (all-permissions @db-ids)
                                (:db permissions-graph))))
                          group-id->paths)]
     {:revision (perms-revision/latest-id)
      :groups   group-id->graph}))
 
+(s/defn execution-perms-graph
+  "Fetch a graph representing the current *execution* permissions status for
+  every Group and all permissioned databases."
+  []
+  (let [group-id->paths (permissions-by-group-ids [:or
+                                                   [:= :object (hx/literal "/")]
+                                                   [:like :object (hx/literal "/execute/%")]])
+        group-id->graph (m/map-vals
+                         (fn [paths]
+                           (let [permissions-graph (perms-parse/permissions->graph paths)]
+                             (if (#{:all {:execute :all}} permissions-graph)
+                               :all
+                               (:execute permissions-graph))))
+                         group-id->paths)]
+    {:revision (perms-revision/latest-id)
+     :groups   group-id->graph}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH UPDATE                                                  |
@@ -808,7 +848,7 @@
   NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
   `revoke-data-perms!` elsewhere instead of calling this directly."
   {:style/indent 2}
-  [group-or-id :- (s/cond-pre su/Map su/IntGreaterThanZero) path :- Path & other-conditions]
+  [group-or-id :- (s/cond-pre su/MapPlumatic su/IntGreaterThanZeroPlumatic) path :- Path & other-conditions]
   (let [where {:where (apply list
                              :and
                              [:= :group_id (u/the-id group-or-id)]
@@ -997,7 +1037,7 @@
   This lives in non-EE code because it needs to be called during sync, in case a new table was discovered or a
   table was deleted. This ensures that native download perms are always up to date, even on OSS instances, in case
   they are upgraded to EE."
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero]
+  [group-id :- su/IntGreaterThanZeroPlumatic db-id :- su/IntGreaterThanZeroPlumatic]
   (let [permissions-set (download-permissions-set group-id)
         table-ids-and-schemas (db/select-id->field :schema 'Table :db_id db-id :active [:= true])
         native-perm-level (reduce (fn [lowest-seen-perm-level [table-id table-schema]]
@@ -1026,31 +1066,31 @@
       (grant-permissions! group-id (native-feature-perms-path :download native-perm-level db-id)))))
 
 (s/defn ^:private update-table-read-permissions!
-  [group-id       :- su/IntGreaterThanZero
-   db-id          :- su/IntGreaterThanZero
+  [group-id       :- su/IntGreaterThanZeroPlumatic
+   db-id          :- su/IntGreaterThanZeroPlumatic
    schema         :- s/Str
-   table-id       :- su/IntGreaterThanZero
+   table-id       :- su/IntGreaterThanZeroPlumatic
    new-read-perms :- (s/enum :all :none)]
   ((case new-read-perms
      :all  grant-permissions!
      :none revoke-data-perms!) group-id (table-read-path db-id schema table-id)))
 
 (s/defn ^:private update-table-query-permissions!
-  [group-id        :- su/IntGreaterThanZero
-   db-id           :- su/IntGreaterThanZero
+  [group-id        :- su/IntGreaterThanZeroPlumatic
+   db-id           :- su/IntGreaterThanZeroPlumatic
    schema          :- s/Str
-   table-id        :- su/IntGreaterThanZero
+   table-id        :- su/IntGreaterThanZeroPlumatic
    new-query-perms :- (s/enum :all :segmented :none)]
   (case new-query-perms
-    :all       (grant-permissions!  group-id (table-query-path           db-id schema table-id))
-    :segmented (grant-permissions!  group-id (table-segmented-query-path db-id schema table-id))
+    :all       (grant-permissions! group-id (table-query-path           db-id schema table-id))
+    :segmented (grant-permissions! group-id (table-segmented-query-path db-id schema table-id))
     :none      (revoke-data-perms! group-id (table-query-path           db-id schema table-id))))
 
 (s/defn ^:private update-table-data-access-permissions!
-  [group-id        :- su/IntGreaterThanZero
-   db-id           :- su/IntGreaterThanZero
+  [group-id        :- su/IntGreaterThanZeroPlumatic
+   db-id           :- su/IntGreaterThanZeroPlumatic
    schema          :- s/Str
-   table-id        :- su/IntGreaterThanZero
+   table-id        :- su/IntGreaterThanZeroPlumatic
    new-table-perms :- TablePermissionsGraph]
   (cond
     (= new-table-perms :all)
@@ -1070,8 +1110,8 @@
       (when new-query-perms (update-table-query-permissions! group-id db-id schema table-id new-query-perms)))))
 
 (s/defn ^:private update-schema-data-access-permissions!
-  [group-id         :- su/IntGreaterThanZero
-   db-id            :- su/IntGreaterThanZero
+  [group-id         :- su/IntGreaterThanZeroPlumatic
+   db-id            :- su/IntGreaterThanZeroPlumatic
    schema           :- s/Str
    new-schema-perms :- SchemaPermissionsGraph]
   (cond
@@ -1082,7 +1122,7 @@
                                  (update-table-data-access-permissions! group-id db-id schema table-id table-perms))))
 
 (s/defn ^:private update-native-data-access-permissions!
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-native-perms :- NativePermissionsGraph]
+  [group-id :- su/IntGreaterThanZeroPlumatic db-id :- su/IntGreaterThanZeroPlumatic new-native-perms :- NativePermissionsGraph]
   ;; revoke-native-permissions! will delete all entries that would give permissions for native access. Thus if you had
   ;; a root DB entry like `/db/11/` this will delete that too. In that case we want to create a new full schemas entry
   ;; so you don't lose access to all schemas when we modify native access.
@@ -1095,7 +1135,7 @@
     :none  nil))
 
 (s/defn ^:private update-db-data-access-permissions!
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-db-perms :- StrictDataPermissionsGraph]
+  [group-id :- su/IntGreaterThanZeroPlumatic db-id :- su/IntGreaterThanZeroPlumatic new-db-perms :- StrictDataPermissionsGraph]
   (when-let [new-native-perms (:native new-db-perms)]
     (update-native-data-access-permissions! group-id db-id new-native-perms))
   (when-let [schemas (:schemas new-db-perms)]
@@ -1126,28 +1166,47 @@
 
 (defn- update-feature-level-permission!
   [group-id db-id new-perms perm-type]
-  (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-  (if-let [update-fn (resolve (symbol "metabase-enterprise.advanced-permissions.models.permissions"
-                                      (str "update-db-" (name perm-type) "-permissions!")))]
+  (if-let [update-fn (u/ignore-exceptions
+                       (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+                       (resolve (symbol "metabase-enterprise.advanced-permissions.models.permissions"
+                                        (str "update-db-" (name perm-type) "-permissions!"))))]
     (update-fn group-id db-id new-perms)
     (throw (ee-permissions-exception perm-type))))
 
 (s/defn ^:private update-group-permissions!
-  [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
-  (doseq [[db-id new-db-perms] new-group-perms]
-    (doseq [[perm-type new-perms] new-db-perms]
-      (case perm-type
-        :data
-        (update-db-data-access-permissions! group-id db-id new-perms)
+  [group-id :- su/IntGreaterThanZeroPlumatic new-group-perms :- StrictDBPermissionsGraph]
+  (doseq [[db-id new-db-perms] new-group-perms
+          [perm-type new-perms] new-db-perms]
+    (case perm-type
+      :data
+      (update-db-data-access-permissions! group-id db-id new-perms)
 
-        :download
-        (update-feature-level-permission! group-id db-id new-perms :download)
+      :download
+      (update-feature-level-permission! group-id db-id new-perms :download)
 
-        :data-model
-        (update-feature-level-permission! group-id db-id new-perms :data-model)
+      :data-model
+      (update-feature-level-permission! group-id db-id new-perms :data-model)
 
-        :details
-        (update-feature-level-permission! group-id db-id new-perms :details)))))
+      :details
+      (update-feature-level-permission! group-id db-id new-perms :details))))
+
+(defn update-global-execution-permission!
+  "Set the global execution permission (\"/execute/\") for the group
+  with ID `group-id` to `new-perms`."
+  [group-id new-perms]
+  (when-not (or (= group-id (:id (perms-group/all-users)))
+                (premium-features/has-feature? :advanced-permissions))
+    (throw (ee-permissions-exception :execute)))
+  (delete-related-permissions! group-id "/execute/")
+  (when (= new-perms :all)
+    (grant-permissions! group-id "/execute/")))
+
+(s/defn ^:private update-execution-permissions!
+  [group-id :- su/IntGreaterThanZeroPlumatic new-group-perms :- ExecutionGroupPermissionsGraph]
+  (if (map? new-group-perms)
+    (doseq [[db-id new-db-perms] new-group-perms]
+      (update-feature-level-permission! group-id db-id new-db-perms :execute))
+    (update-global-execution-permission! group-id new-group-perms)))
 
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
@@ -1210,3 +1269,27 @@
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any] new-value]
    (update-data-perms-graph! (assoc-in (data-perms-graph) (cons :groups ks) new-value))))
+
+(s/defn update-execution-perms-graph!
+  "Update the *execution* permissions graph, making any changes necessary to make it match `new-graph`.
+   This should take in a graph that is exactly the same as the one obtained by `graph` with any changes made as
+   needed. The graph is revisioned, so if it has been updated by a third party since you fetched it this function will
+   fail and return a 409 (Conflict) exception. If nothing needs to be done, this function returns `nil`; otherwise it
+   returns the newly created `PermissionsRevision` entry.
+
+  Code for updating the Collection permissions graph is in [[metabase.models.collection.graph]]."
+  ([new-graph :- ExecutionPermissionsGraph]
+   (let [old-graph (execution-perms-graph)
+         [old new] (data/diff (:groups old-graph) (:groups new-graph))
+         old       (or old {})]
+     (when (or (seq old) (seq new))
+       (log-permissions-changes old new)
+       (check-revision-numbers old-graph new-graph)
+       (db/transaction
+         (doseq [[group-id changes] new]
+           (update-execution-permissions! group-id changes))
+         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)))))
+
+  ;; The following arity is provided soley for convenience for tests/REPL usage
+  ([ks :- [s/Any] new-value]
+   (update-execution-perms-graph! (assoc-in (execution-perms-graph) (cons :groups ks) new-value))))

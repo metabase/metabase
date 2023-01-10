@@ -21,7 +21,7 @@ import Search from "metabase/entities/search";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getHasDataAccess } from "metabase/new_query/selectors";
+import { getHasDataAccess } from "metabase/selectors/data";
 import { getSchemaName } from "metabase-lib/metadata/utils/schema";
 import {
   isVirtualCardId,
@@ -43,6 +43,7 @@ import {
   CollectionDatasetSelectList,
   CollectionDatasetAllDataLink,
   EmptyStateContainer,
+  TableSearchContainer,
 } from "./DataSelector.styled";
 
 import { DATA_BUCKET } from "./constants";
@@ -953,7 +954,7 @@ export class UnconnectedDataSelector extends Component {
     });
 
   handleCollectionDatasetSelect = async dataset => {
-    const tableId = getQuestionVirtualTableId(dataset);
+    const tableId = getQuestionVirtualTableId(dataset.id);
     await this.props.fetchFields(tableId);
     if (this.props.setSourceTableFn) {
       this.props.setSourceTableFn(tableId);
@@ -1050,14 +1051,16 @@ export class UnconnectedDataSelector extends Component {
       return (
         <>
           {this.showTableSearch() && (
-            <ListSearchField
-              hasClearButton
-              className="bg-white m1"
-              onChange={this.handleSearchTextChange}
-              value={searchText}
-              placeholder={this.getSearchInputPlaceholder()}
-              autoFocus
-            />
+            <TableSearchContainer>
+              <ListSearchField
+                fullWidth
+                autoFocus
+                value={searchText}
+                placeholder={this.getSearchInputPlaceholder()}
+                onChange={e => this.handleSearchTextChange(e.target.value)}
+                onResetClick={() => this.handleSearchTextChange("")}
+              />
+            </TableSearchContainer>
           )}
           {isSearchActive && (
             <SearchResults

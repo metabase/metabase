@@ -1,16 +1,19 @@
 (ns metabase.api.revision-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.revision :as revision :refer [push-revision! Revision revisions]]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.revision
+    :as revision
+    :refer [push-revision! Revision revisions]]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
@@ -117,13 +120,13 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         {:before {:cards nil}
-                              :after  {:cards [{:size_x 2, :size_y 2, :row 0, :col 0, :card_id card-id, :series []}]}}
+                              :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
                :description  "added a card."}
               {:is_reversion false
                :is_creation  false
                :message      nil
                :user         @rasta-revision-info
-               :diff         {:before {:cards [{:size_x 2, :size_y 2, :row 0, :col 0, :card_id card-id, :series []}]}
+               :diff         {:before {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}
                               :after  {:cards nil}}
                :description "removed a card."}
               {:is_reversion false
@@ -131,7 +134,7 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         {:before {:cards nil}
-                              :after  {:cards [{:size_x 2, :size_y 2, :row 0, :col 0, :card_id card-id, :series []}]}}
+                              :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
                :description "added a card."}
               {:is_reversion false
                :is_creation  true

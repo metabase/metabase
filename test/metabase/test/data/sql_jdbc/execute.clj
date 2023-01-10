@@ -1,11 +1,13 @@
 (ns metabase.test.data.sql-jdbc.execute
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql-jdbc.spec :as spec])
-  (:import java.sql.SQLException))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.driver :as driver]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql-jdbc.spec :as spec])
+  (:import
+   (java.sql SQLException)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Impl                                                      |
@@ -42,7 +44,7 @@
 
   Since there are some cases were you might want to execute compound statements without splitting, an upside-down
   ampersand (`⅋`) is understood as an \"escaped\" semicolon in the resulting SQL statement."
-  [driver context dbdef sql  & {:keys [execute!] :or {execute! default-execute-sql!}}]
+  [driver context dbdef sql & {:keys [execute!] :or {execute! default-execute-sql!}}]
   (when sql
     (doseq [statement (map str/trim (str/split sql #";+"))]
       (when (seq statement)

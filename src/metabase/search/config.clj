@@ -1,9 +1,11 @@
 (ns metabase.search.config
-  (:require [cheshire.core :as json]
-            [honeysql.core :as hsql]
-            [metabase.models :refer [Card Collection Dashboard Database Metric Pulse Segment Table]]
-            [metabase.models.setting :refer [defsetting]]
-            [metabase.util.i18n :refer [deferred-tru]]))
+  (:require
+   [cheshire.core :as json]
+   [honeysql.core :as hsql]
+   [metabase.models
+    :refer [Card Collection Dashboard Database Metric Pulse Segment Table]]
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting search-typeahead-enabled
   (deferred-tru "Enable typeahead search in the Metabase navbar?")
@@ -43,13 +45,11 @@
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
   {"dashboard"  Dashboard
-   "page"       Dashboard
    "metric"     Metric
    "segment"    Segment
    "card"       Card
    "dataset"    Card
    "collection" Collection
-   "app"        Collection
    "table"      Table
    "pulse"      Pulse
    "database"   Database})
@@ -57,7 +57,7 @@
 (def all-models
   "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "page" "metric" "segment" "card" "dataset" "collection" "app" "table" "pulse" "database"])
+  ["dashboard" "metric" "segment" "card" "dataset" "collection" "table" "pulse" "database"])
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
@@ -132,7 +132,6 @@
 (defmethod columns-for-model "card"
   [_]
   (conj default-columns :collection_id :collection_position :dataset_query
-        [:collection_app.id :collection_app_id]
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
         [{:select   [:status]
@@ -151,7 +150,6 @@
 (defmethod columns-for-model "dashboard"
   [_]
   (conj default-columns :collection_id :collection_position bookmark-col
-        [:collection_app.id :collection_app_id]
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]))
 
@@ -162,7 +160,6 @@
 (defmethod columns-for-model "pulse"
   [_]
   [:id :name :collection_id
-   [:collection_app.id :collection_app_id]
    [:collection.name :collection_name]])
 
 (defmethod columns-for-model "collection"
@@ -171,8 +168,6 @@
         [:collection.id :collection_id]
         [:name :collection_name]
         [:authority_level :collection_authority_level]
-        [:app.id :app_id]
-        [:app.id :collection_app_id]
         bookmark-col))
 
 (defmethod columns-for-model "segment"

@@ -6,19 +6,20 @@
   All nested Fields recursion is handled in one place, by the main entrypoint (`sync-instances!`) and helper
   functions `sync-nested-field-instances!` and `sync-nested-fields-of-one-field!`. All other functions in this
   namespace should ignore nested fields entirely; the will be invoked with those Fields as appropriate."
-  (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.humanization :as humanization]
-            [metabase.sync.interface :as i]
-            [metabase.sync.sync-metadata.fields.common :as common]
-            [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.humanization :as humanization]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.fields.common :as common]
+   [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
@@ -97,7 +98,7 @@
   "Schema for the value returned by `sync-active-instances!`. Because we need to know about newly-inserted/reactivated
   parent Fields when recursively syncing nested Fields, we need to propogate the updates to `our-metadata` made by
   this function and pass them to other steps of the `sync-instances!` process."
-  {:num-updates  su/IntGreaterThanOrEqualToZero
+  {:num-updates  su/IntGreaterThanOrEqualToZeroPlumatic
    :our-metadata #{common/TableMetadataFieldWithID}})
 
 (s/defn ^:private sync-active-instances! :- Updates
@@ -140,7 +141,7 @@
   (when (db/update! Field (u/the-id metabase-field) :active false)
     1))
 
-(s/defn ^:private retire-fields! :- su/IntGreaterThanOrEqualToZero
+(s/defn ^:private retire-fields! :- su/IntGreaterThanOrEqualToZeroPlumatic
   "Mark inactive any Fields in the application database that are no longer present in the DB being synced. These
   Fields are ones that are in `our-metadata`, but not in `db-metadata`. Does *NOT* recurse over nested Fields.
   Returns `1` if a Field was marked inactive."
@@ -161,7 +162,7 @@
 
 (declare sync-instances!)
 
-(s/defn ^:private sync-nested-fields-of-one-field! :- (s/maybe su/IntGreaterThanOrEqualToZero)
+(s/defn ^:private sync-nested-fields-of-one-field! :- (s/maybe su/IntGreaterThanOrEqualToZeroPlumatic)
   "Recursively sync Field instances (i.e., rows in application DB) for nested Fields of a single Field, one or both
   `field-metadata` (from synced DB) and `metabase-field` (from application DB)."
   [table          :- i/TableInstance
@@ -177,7 +178,7 @@
        (set metabase-nested-fields)
        (some-> metabase-field u/the-id)))))
 
-(s/defn ^:private sync-nested-field-instances! :- (s/maybe su/IntGreaterThanOrEqualToZero)
+(s/defn ^:private sync-nested-field-instances! :- (s/maybe su/IntGreaterThanOrEqualToZeroPlumatic)
   "Recursively sync Field instances (i.e., rows in application DB) for *all* the nested Fields of all Fields in
   `db-metadata` and `our-metadata`.
   Not for the flattened nested fields for JSON columns in normal RDBMSes (nested field columns)"
@@ -193,7 +194,7 @@
                               metabase-field (get name->metabase-field field-name)]]
       (sync-nested-fields-of-one-field! table field-metadata metabase-field))))
 
-(s/defn sync-instances! :- su/IntGreaterThanOrEqualToZero
+(s/defn sync-instances! :- su/IntGreaterThanOrEqualToZeroPlumatic
   "Sync rows in the Field table with `db-metadata` describing the current schema of the Table currently being synced,
   creating Field objects or marking them active/inactive as needed."
   ([table        :- i/TableInstance

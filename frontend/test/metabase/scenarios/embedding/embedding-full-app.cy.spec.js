@@ -11,37 +11,49 @@ describe("scenarios > embedding > full app", () => {
   });
 
   describe("navigation", () => {
-    it("should hide the top nav by default", () => {
+    it("should show the top nav and breadcrumbs by default", () => {
       visitUrl({ url: "/" });
       cy.findByText("Our analytics").should("be.visible");
+      cy.findByTestId("main-logo").should("be.visible");
+    });
+
+    it("should hide the top nav by a param", () => {
+      visitUrl({ url: "/", qs: { top_nav: false } });
+      cy.findByText("Our analytics").should("not.exist");
+      cy.findByTestId("main-logo").should("not.exist");
+    });
+
+    it("should hide the top nav when all nav elements are hidden", () => {
+      visitUrl({ url: "/", qs: { breadcrumbs: false } });
+      cy.findByText("Our analytics").should("not.exist");
       cy.findByTestId("main-logo").should("not.exist");
     });
 
     it("should show the top nav by a param", () => {
-      visitUrl({ url: "/", qs: { top_nav: true } });
+      visitUrl({ url: "/" });
       cy.findByTestId("main-logo").should("be.visible");
       cy.button(/New/).should("not.exist");
       cy.findByPlaceholderText("Search").should("not.exist");
     });
 
     it("should hide the side nav by a param", () => {
-      visitUrl({ url: "/", qs: { top_nav: true, side_nav: false } });
+      visitUrl({ url: "/", qs: { side_nav: false } });
       cy.findByTestId("main-logo").should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
     });
 
     it("should show question creation controls by a param", () => {
-      visitUrl({ url: "/", qs: { top_nav: true, new_button: true } });
+      visitUrl({ url: "/", qs: { new_button: true } });
       cy.button(/New/).should("be.visible");
     });
 
     it("should show search controls by a param", () => {
-      visitUrl({ url: "/", qs: { top_nav: true, search: true } });
+      visitUrl({ url: "/", qs: { search: true } });
       cy.findByPlaceholderText("Search…").should("be.visible");
     });
 
     it("should preserve params when navigating", () => {
-      visitUrl({ url: "/", qs: { top_nav: true } });
+      visitUrl({ url: "/" });
       cy.findByTestId("main-logo").should("be.visible");
 
       cy.findByText("Our analytics").click();
@@ -73,7 +85,7 @@ describe("scenarios > embedding > full app", () => {
     it("should hide the question's additional info by a param", () => {
       visitQuestionUrl({ url: "/question/1", qs: { additional_info: false } });
 
-      cy.findByText("Our analytics").should("not.exist");
+      cy.findByText("Our analytics").should("be.visible");
       cy.findByText(/Edited/).should("not.exist");
     });
 
@@ -109,7 +121,7 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByText(/Edited/).should("not.exist");
-      cy.findByText("Our analytics").should("not.exist");
+      cy.findByText("Our analytics").should("be.visible");
     });
 
     it("should preserve embedding options with click behavior (metabase#24756)", () => {
@@ -119,7 +131,6 @@ describe("scenarios > embedding > full app", () => {
       });
       visitDashboardUrl({
         url: "/dashboard/1",
-        qs: { top_nav: true },
       });
 
       cy.findAllByRole("cell").first().click();

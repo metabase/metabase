@@ -2,24 +2,25 @@
   "Middleware for automatically bucketing unbucketed `:type/Temporal` (but not `:type/Time`) Fields with `:day`
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
-  (:require [clojure.set :as set]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.mbql.predicates :as mbql.preds]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.mbql.predicates :as mbql.preds]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private FieldTypeInfo
-  {:base-type                      (s/maybe su/FieldType)
-   (s/optional-key :semantic-type) (s/maybe su/FieldSemanticOrRelationType)
+  {:base-type                      (s/maybe su/FieldTypePlumatic)
+   (s/optional-key :semantic-type) (s/maybe su/FieldSemanticOrRelationTypePlumatic)
    s/Keyword                       s/Any})
 
 (def ^:private FieldIDOrName->TypeInfo
-  {(s/cond-pre su/NonBlankString su/IntGreaterThanZero) (s/maybe FieldTypeInfo)})
+  {(s/cond-pre su/NonBlankStringPlumatic su/IntGreaterThanZeroPlumatic) (s/maybe FieldTypeInfo)})
 
 ;; Unfortunately these Fields won't be in the store yet since Field resolution can't happen before we add the implicit
 ;; `:fields` clause, which happens after this
@@ -69,8 +70,9 @@
       ;; *  shouldn't assume they want to bucket by day
       (let [[_ _ & vs] x]
         (not (every? auto-bucketable-value? vs)))))
-   ;; do not auto-bucket fields inside a `:time-interval` filter -- it already supplies its own unit
-   (mbql.u/is-clause? :time-interval x)
+   ;; do not auto-bucket fields inside a `:time-interval` filter: it already supplies its own unit
+   ;; do not auto-bucket fields inside a `:datetime-diff` clause: the precise timestamp is needed for the difference
+   (mbql.u/is-clause? #{:time-interval :datetime-diff} x)
    ;; do not autobucket Fields that already have a temporal unit, or have a binning strategy
    (and (mbql.u/is-clause? :field x)
         (let [[_ _ opts] x]

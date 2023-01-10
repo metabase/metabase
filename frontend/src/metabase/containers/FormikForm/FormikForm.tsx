@@ -15,6 +15,12 @@ import {
 } from "metabase-types/forms";
 
 import { OptionalFormViewProps } from "metabase/components/form/FormikCustomForm/types";
+
+import {
+  getResponseErrorMessage,
+  GenericErrorResponse,
+} from "metabase/core/utils/errors";
+
 import { makeFormObject, cleanObject, isNestedFieldName } from "../formUtils";
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
 import useInlineFields from "./useInlineFields";
@@ -33,6 +39,7 @@ interface FormContainerProps<Values extends BaseFieldValues>
   initial?: () => void;
   normalize?: () => void;
 
+  onValuesChange?: (newValues: Record<string, any>) => void;
   onSubmit: (
     values: Values,
     formikHelpers?: FormikHelpers<Values>,
@@ -48,38 +55,10 @@ interface FormContainerProps<Values extends BaseFieldValues>
   children?: ReactNode | ((opts: any) => any);
 }
 
-type ServerErrorResponse = {
-  data?:
-    | {
-        message?: string;
-        errors?: Record<string, string>;
-      }
-    | string;
-  errors?: Record<string, string>;
-  message?: string;
-};
-
 function maybeBlurActiveElement() {
   // HACK: blur the current element to ensure we show the error
   if (document.activeElement && "blur" in document.activeElement) {
     (document.activeElement as HTMLInputElement).blur();
-  }
-}
-
-function getGeneralErrorMessage(error: ServerErrorResponse) {
-  if (typeof error.data === "object") {
-    if (error.data.message) {
-      return error.data.message;
-    }
-    if (error.data?.errors?._error) {
-      return error.data.errors._error;
-    }
-  }
-  if (error.message) {
-    return error.message;
-  }
-  if (typeof error.data === "string") {
-    return error.data;
   }
 }
 
@@ -95,12 +74,18 @@ function Form<Values extends BaseFieldValues>({
   validate,
   initial,
   normalize,
+  onValuesChange,
   onSubmit,
   onSubmitSuccess,
   ...props
 }: FormContainerProps<Values>) {
   const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState({});
+
+  const handleValuesChange = (newValues: any) => {
+    onValuesChange?.(newValues);
+    setValues(newValues);
+  };
 
   const { inlineFields, registerFormField, unregisterFormField } =
     useInlineFields();
@@ -187,7 +172,7 @@ function Form<Values extends BaseFieldValues>({
   );
 
   const handleError = useCallback(
-    (error: ServerErrorResponse, formikHelpers: FormikHelpers<Values>) => {
+    (error: GenericErrorResponse, formikHelpers: FormikHelpers<Values>) => {
       maybeBlurActiveElement();
       const DEFAULT_ERROR_MESSAGE = t`An error occurred`;
 
@@ -198,9 +183,8 @@ function Form<Values extends BaseFieldValues>({
         );
 
         if (hasUnknownFields) {
-          const generalMessage =
-            getGeneralErrorMessage(error) || DEFAULT_ERROR_MESSAGE;
-          setError(generalMessage);
+          const generalMessage = getResponseErrorMessage(error);
+          setError(generalMessage ?? DEFAULT_ERROR_MESSAGE);
         }
 
         formikHelpers.setErrors(error.data.errors as FormikErrors<Values>);
@@ -208,8 +192,8 @@ function Form<Values extends BaseFieldValues>({
       }
 
       if (error) {
-        const message = getGeneralErrorMessage(error) || DEFAULT_ERROR_MESSAGE;
-        setError(message);
+        const message = getResponseErrorMessage(error);
+        setError(message ?? DEFAULT_ERROR_MESSAGE);
         return message;
       }
 
@@ -227,7 +211,7 @@ function Form<Values extends BaseFieldValues>({
         setError(null); // clear any previous errors
         return result;
       } catch (e) {
-        const error = handleError(e as ServerErrorResponse, formikHelpers);
+        const error = handleError(e as GenericErrorResponse, formikHelpers);
         // Need to throw, so e.g. submit button can react to an error
         throw error;
       }
@@ -252,7 +236,7 @@ function Form<Values extends BaseFieldValues>({
           error={error}
           registerFormField={registerFormField}
           unregisterFormField={unregisterFormField}
-          onValuesChange={setValues}
+          onValuesChange={handleValuesChange}
         />
       )}
     </Formik>

@@ -1,10 +1,12 @@
 (ns metabase.util.honeysql-extensions-test
-  (:require [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [metabase.test :as mt]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import metabase.util.honeysql_extensions.Identifier))
+  (:require
+   [clojure.test :refer :all]
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [metabase.test :as mt]
+   [metabase.util.honeysql-extensions :as hx])
+  (:import
+   (metabase.util.honeysql_extensions Identifier)))
 
 (deftest ^:parallel format-test
   (testing "Basic format test not including a specific quoting option"
@@ -184,15 +186,18 @@
 
 (deftest ^:parallel is-of-type?-test
   (are [expr tyype expected] (= expected (hx/is-of-type? expr tyype))
-    typed-form     "text" true
-    typed-form     "TEXT" true
-    typed-form     :text  true
-    typed-form     :TEXT  true
-    typed-form     :te/xt false
-    typed-form     "date" false
-    typed-form     nil    false
-    nil            "date" false
-    :%current_date "date" false
+    typed-form     "text"   true
+    typed-form     "TEXT"   true
+    typed-form     :text    true
+    typed-form     :TEXT    true
+    typed-form     :te/xt   false
+    typed-form     "date"   false
+    typed-form     nil      false
+    typed-form     #"tex.*" true
+    nil            #"tex.*" false
+    typed-form     #"int*"  false
+    nil            "date"   false
+    :%current_date "date"   false
     ;; I guess this behavior makes sense? I guess untyped = "is of type nil"
     nil            nil    true
     :%current_date nil    true))

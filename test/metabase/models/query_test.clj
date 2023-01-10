@@ -1,8 +1,9 @@
 (ns metabase.models.query-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Card]]
-            [metabase.models.query :as query]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Card]]
+   [metabase.models.query :as query]
+   [metabase.test :as mt]))
 
 (deftest query->database-and-table-ids-test
   (mt/with-temp Card [card {:dataset_query {:database (mt/id)

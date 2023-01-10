@@ -1,18 +1,19 @@
 (ns metabase.api.segment-test
   "Tests for /api/segment endpoints."
-  (:require [clojure.test :refer :all]
-            [metabase.http-client :as client]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.revision :refer [Revision]]
-            [metabase.models.segment :as segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.http-client :as client]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.revision :refer [Revision]]
+   [metabase.models.segment :as segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;; ## Helper Fns
 

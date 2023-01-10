@@ -8,19 +8,21 @@
        the JWT token itself.
 
    Refer to the documentation for those endpoints for further details."
-  (:require [compojure.core :refer [GET]]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.embed :as api.embed]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.util.embed :as embed]))
+  (:require
+   [compojure.core :refer [GET]]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.embed :as api.embed]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.util.embed :as embed]))
 
 (defn- check-and-unsign [token]
   (api/check-superuser)
   (validation/check-embedding-enabled)
   (embed/unsign token))
 
-(api/defendpoint GET "/card/:token"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:token"
   "Fetch a Card you're considering embedding by passing a JWT `token`."
   [token]
   (let [unsigned-token (check-and-unsign token)]
@@ -31,7 +33,8 @@
   "Embedding previews need to be limited in size to avoid performance issues (#20938)."
   2000)
 
-(api/defendpoint ^:streaming GET "/card/:token/query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [token & query-params]
   (let [unsigned-token (check-and-unsign token)
@@ -44,14 +47,16 @@
       :constraints      {:max-results max-results}
       :query-params     query-params)))
 
-(api/defendpoint GET "/dashboard/:token"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
   [token]
   (let [unsigned-token (check-and-unsign token)]
     (api.embed/dashboard-for-unsigned-token unsigned-token
       :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
 
-(api/defendpoint ^:streaming GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [token dashcard-id card-id & query-params]
   (let [unsigned-token   (check-and-unsign token)
@@ -67,7 +72,8 @@
       :token-params     token-params
       :query-params     query-params)))
 
-(api/defendpoint ^:streaming GET "/pivot/card/:token/query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/pivot/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [token & query-params]
   (let [unsigned-token (check-and-unsign token)
@@ -80,7 +86,8 @@
       :query-params     query-params
       :qp-runner        qp.pivot/run-pivot-query)))
 
-(api/defendpoint ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [token dashcard-id card-id & query-params]
   (let [unsigned-token   (check-and-unsign token)

@@ -1,12 +1,14 @@
 (ns metabase.driver.impl
   "Internal implementation functions for [[metabase.driver]]. These functions live in a separate namespace to reduce the
   clutter in [[metabase.driver]] itself."
-  (:require [clojure.tools.logging :as log]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [schema.core :as s])
-  (:import java.util.concurrent.locks.ReentrantReadWriteLock))
+  (:require
+   [clojure.tools.logging :as log]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [schema.core :as s])
+  (:import
+   (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 ;;; --------------------------------------------------- Hierarchy ----------------------------------------------------
 

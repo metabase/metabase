@@ -33,7 +33,10 @@ import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
-import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
+import {
+  normalizeParameters,
+  normalizeParameterValue,
+} from "metabase-lib/parameters/utils/parameter-values";
 import { isPK } from "metabase-lib/types/utils/isa";
 import Mode from "metabase-lib/Mode";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -83,7 +86,8 @@ export const getParameterValues = state => state.qb.parameterValues;
 export const getMetadataDiff = state => state.qb.metadataDiff;
 
 export const getEntities = state => state.entities;
-export const getVisibleTimelineIds = state => state.qb.visibleTimelineIds;
+export const getVisibleTimelineEventIds = state =>
+  state.qb.visibleTimelineEventIds;
 export const getSelectedTimelineEventIds = state =>
   state.qb.selectedTimelineEventIds;
 
@@ -166,9 +170,6 @@ export const getPKRowIndexMap = createSelector(
     return map;
   },
 );
-
-// get instance settings, used for determining whether to display certain actions
-export const getSettings = state => state.settings.values;
 
 export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
@@ -276,6 +277,10 @@ const getNextRunParameterValues = createSelector([getParameters], parameters =>
       normalizeParameterValue(parameter.type, parameter.value),
     )
     .filter(p => p !== undefined),
+);
+
+const getNextRunParameters = createSelector([getParameters], parameters =>
+  normalizeParameters(parameters),
 );
 
 export const getQueryBuilderMode = createSelector(
@@ -771,19 +776,13 @@ export const getFilteredTimelines = createSelector(
   },
 );
 
-export const getVisibleTimelines = createSelector(
-  [getFilteredTimelines, getVisibleTimelineIds],
-  (timelines, timelineIds) => {
-    return timelines.filter(t => timelineIds.includes(t.id));
-  },
-);
-
 export const getVisibleTimelineEvents = createSelector(
-  [getVisibleTimelines],
-  timelines =>
+  [getFilteredTimelines, getVisibleTimelineEventIds],
+  (timelines, visibleTimelineEventIds) =>
     _.chain(timelines)
       .map(timeline => timeline.events)
       .flatten()
+      .filter(event => visibleTimelineEventIds.includes(event.id))
       .sortBy(event => event.timestamp)
       .value(),
 );
@@ -954,4 +953,16 @@ export const getDataReferenceStack = createSelector(
       : dbId
       ? [{ type: "database", item: { id: dbId } }]
       : [],
+);
+
+export const getNativeQueryFn = createSelector(
+  [getNextRunDatasetQuery, getNextRunParameters],
+  (datasetQuery, parameters) => {
+    let lastResult = undefined;
+
+    return async () => {
+      lastResult ??= await MetabaseApi.native({ ...datasetQuery, parameters });
+      return lastResult;
+    };
+  },
 );

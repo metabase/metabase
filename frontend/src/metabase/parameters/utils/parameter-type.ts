@@ -1,21 +1,12 @@
-import _ from "underscore";
-import { Parameter } from "metabase-types/types/Parameter";
-import { FieldFilterUiParameter } from "metabase-lib/parameters/types";
+import { Parameter } from "metabase-types/api";
 import {
-  FIELD_FILTER_PARAMETER_TYPES,
+  CUSTOM_SOURCE_PARAMETER_TYPES,
   SINGLE_OR_MULTI_SELECTABLE_TYPES,
 } from "metabase-lib/parameters/constants";
 import {
   getParameterType,
   getParameterSubType,
 } from "metabase-lib/parameters/utils/parameter-type";
-
-export function isFieldFilterParameter(
-  parameter: Parameter,
-): parameter is FieldFilterUiParameter {
-  const type = getParameterType(parameter);
-  return FIELD_FILTER_PARAMETER_TYPES.includes(type);
-}
 
 export function isSingleOrMultiSelectable(parameter: Parameter): boolean {
   const type: string = getParameterType(parameter);
@@ -29,3 +20,13 @@ export function isSingleOrMultiSelectable(parameter: Parameter): boolean {
   }
   return SINGLE_OR_MULTI_SELECTABLE_TYPES[type].includes(subType);
 }
+
+export const canUseCustomSource = (parameter: Parameter) => {
+  const type = getParameterType(parameter);
+  const subType = getParameterSubType(parameter);
+
+  return (
+    CUSTOM_SOURCE_PARAMETER_TYPES[type] != null &&
+    CUSTOM_SOURCE_PARAMETER_TYPES[type].includes(subType)
+  );
+};

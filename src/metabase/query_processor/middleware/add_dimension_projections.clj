@@ -23,38 +23,39 @@
   appropriate `:remapped_from` and `:remapped_to` attributes in the result `:cols` in post-processing.
   `:remapped_from` and `:remapped_to` are the names of the columns, e.g. `category_id` is `:remapped_to` `name`, and
   `name` is `:remapped_from` `:category_id`."
-  (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.data :as data]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private ExternalRemappingDimensionInitialInfo
   "External remapping dimensions when they're first fetched from the app DB. We'll add extra info to this."
-  {:id                      su/IntGreaterThanZero   ; unique ID for the remapping
-   :name                    su/NonBlankString       ; display name for the remapping
-   :field_id                su/IntGreaterThanZero   ; ID of the Field being remapped
-   :human_readable_field_id su/IntGreaterThanZero}) ; ID of the FK Field to remap values to
+  {:id                      su/IntGreaterThanZeroPlumatic   ; unique ID for the remapping
+   :name                    su/NonBlankStringPlumatic       ; display name for the remapping
+   :field_id                su/IntGreaterThanZeroPlumatic   ; ID of the Field being remapped
+   :human_readable_field_id su/IntGreaterThanZeroPlumatic}) ; ID of the FK Field to remap values to
 
 (def ^:private ExternalRemappingDimension
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
   by the pre-processing portion of the middleware, and passed along to the post-processing portion."
   (assoc ExternalRemappingDimensionInitialInfo
-         :field_name                su/NonBlankString   ; Name of the Field being remapped
-         :human_readable_field_name su/NonBlankString)) ; Name of the FK field to remap values to
+         :field_name                su/NonBlankStringPlumatic   ; Name of the Field being remapped
+         :human_readable_field_name su/NonBlankStringPlumatic)) ; Name of the FK field to remap values to
 
 ;;;; Pre-processing
 
-(s/defn ^:private fields->field-id->remapping-dimension :- (s/maybe {su/IntGreaterThanZero ExternalRemappingDimensionInitialInfo})
+(s/defn ^:private fields->field-id->remapping-dimension :- (s/maybe {su/IntGreaterThanZeroPlumatic ExternalRemappingDimensionInitialInfo})
   "Given a sequence of field clauses (from the `:fields` clause), return a map of `:field-id` clause (other clauses
   are ineligable) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
   [fields :- [mbql.s/Field]]
@@ -234,29 +235,29 @@
   {;; index of original column
    :col-index       s/Int
    ;; names
-   :from            su/NonBlankString
+   :from            su/NonBlankStringPlumatic
    ;; I'm not convinced this works if there's already a column with the same name in the results.
-   :to              su/NonBlankString
+   :to              su/NonBlankStringPlumatic
    ;; map of original value -> human readable value
-   :value->readable su/Map
+   :value->readable su/MapPlumatic
    ;; Info about the new column we will tack on to end of `:cols`
-   :new-column      su/Map})
+   :new-column      su/MapPlumatic})
 
 (def ^:private InternalColumnsInfo
   {:internal-only-dims (s/maybe [InternalDimensionInfo])
    ;; this is just (map :new-column internal-only-dims)
-   :internal-only-cols (s/maybe [su/Map])})
+   :internal-only-cols (s/maybe [su/MapPlumatic])})
 
 
 ;;;; Metadata
 
-(s/defn ^:private merge-metadata-for-internally-remapped-column :- [su/Map]
+(s/defn ^:private merge-metadata-for-internally-remapped-column :- [su/MapPlumatic]
   "If one of the internal remapped columns says it's remapped from this column, merge in the `:remapped_to` info."
-  [columns :- [su/Map] {:keys [col-index to]} :- InternalDimensionInfo]
+  [columns :- [su/MapPlumatic] {:keys [col-index to]} :- InternalDimensionInfo]
   (update (vec columns) col-index assoc :remapped_to to))
 
-(s/defn ^:private merge-metadata-for-internal-remaps :- [su/Map]
-  [columns :- [su/Map] {:keys [internal-only-dims]} :- (s/maybe InternalColumnsInfo)]
+(s/defn ^:private merge-metadata-for-internal-remaps :- [su/MapPlumatic]
+  [columns :- [su/MapPlumatic] {:keys [internal-only-dims]} :- (s/maybe InternalColumnsInfo)]
   (reduce
    merge-metadata-for-internally-remapped-column
    columns
@@ -285,7 +286,7 @@
 ;;     :options       {::new-field-dimension-id 1000}
 ;;     :name          "NAME"
 ;;     :display_name  "Sender ID"}
-(s/defn ^:private merge-metadata-for-externally-remapped-column* :- su/Map
+(s/defn ^:private merge-metadata-for-externally-remapped-column* :- su/MapPlumatic
   [columns
    {{::keys [original-field-dimension-id new-field-dimension-id]} :options
     :as                                          column}
@@ -329,27 +330,27 @@
     (when (not= column <>)
       (log/tracef "Added metadata:\n%s" (u/pprint-to-str 'green (second (data/diff column <>)))))))
 
-(s/defn ^:private merge-metadata-for-externally-remapped-column :- [su/Map]
-  [columns :- [su/Map] dimension :- ExternalRemappingDimension]
+(s/defn ^:private merge-metadata-for-externally-remapped-column :- [su/MapPlumatic]
+  [columns :- [su/MapPlumatic] dimension :- ExternalRemappingDimension]
   (log/tracef "Merging metadata for external dimension\n%s" (u/pprint-to-str 'yellow (into {} dimension)))
   (mapv #(merge-metadata-for-externally-remapped-column* columns % dimension)
         columns))
 
-(s/defn ^:private merge-metadata-for-external-remaps :- [su/Map]
-  [columns :- [su/Map] remapping-dimensions :- (s/maybe [ExternalRemappingDimension])]
+(s/defn ^:private merge-metadata-for-external-remaps :- [su/MapPlumatic]
+  [columns :- [su/MapPlumatic] remapping-dimensions :- (s/maybe [ExternalRemappingDimension])]
   (reduce
    merge-metadata-for-externally-remapped-column
    columns
    remapping-dimensions))
 
-(s/defn ^:private add-remapping-info :- [su/Map]
+(s/defn ^:private add-remapping-info :- [su/MapPlumatic]
   "Add `:display_name`, `:remapped_to`, and `:remapped_from` keys to columns for the results, needed by the frontend.
   To get this critical information, this uses the `remapping-dimensions` info saved by the pre-processing portion of
   this middleware for external remappings, and the internal-only remapped columns handled by post-processing
   middleware below for internal columns."
-  [columns              :- [su/Map]
+  [columns              :- [su/MapPlumatic]
    remapping-dimensions :- (s/maybe [ExternalRemappingDimension])
-  internal-cols-info    :- (s/maybe InternalColumnsInfo)]
+   internal-cols-info    :- (s/maybe InternalColumnsInfo)]
   (-> columns
       (merge-metadata-for-internal-remaps internal-cols-info)
       (merge-metadata-for-external-remaps remapping-dimensions)))

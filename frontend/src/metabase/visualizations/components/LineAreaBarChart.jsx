@@ -20,6 +20,7 @@ import {
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
+import { getOrderedSeries } from "metabase/visualizations/lib/series";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import {
   isNumeric,
@@ -348,12 +349,7 @@ export default class LineAreaBarChart extends Component {
       settings,
     } = this.props;
 
-    const orderedSeries =
-      (settings["graph.dimensions"]?.length > 1 &&
-        settings["graph.series_order"]
-          ?.filter(orderedItem => orderedItem.enabled)
-          .map(orderedItem => series[orderedItem.originalIndex])) ||
-      series;
+    const orderedSeries = getOrderedSeries(series, settings);
 
     const {
       title,

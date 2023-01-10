@@ -1,10 +1,5 @@
-import {
-  DatabaseInfo,
-  InviteInfo,
-  Locale,
-  State,
-  UserInfo,
-} from "metabase-types/store";
+import { DatabaseData } from "metabase-types/api";
+import { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import { COMPLETED_STEP } from "./constants";
 
 export const getStep = (state: State): number => {
@@ -23,7 +18,7 @@ export const getUserEmail = (state: State): string | undefined => {
   return getUser(state)?.email;
 };
 
-export const getDatabase = (state: State): DatabaseInfo | undefined => {
+export const getDatabase = (state: State): DatabaseData | undefined => {
   return state.setup.database;
 };
 

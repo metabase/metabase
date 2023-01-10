@@ -1,4 +1,4 @@
-import { restore, describeEE } from "__support__/e2e/helpers";
+import { restore, isEE } from "__support__/e2e/helpers";
 
 const TOOLS_ERRORS_URL = "/admin/tools/errors";
 
@@ -22,11 +22,18 @@ const brokenQuestionDetails = {
 
 // Quarantine the whole spec because it is most likely causing the H2 timeouts and the chained failures!
 // NOTE: it will be quarantined on PRs, but will still run on `master`!
-describeEE(
+
+// UDATE:
+// We need to skip this completely! CI on `master` is almost constantly red.
+// TODO:
+// Once the underlying problem with H2 is solved, replace `describe.skip` with `describeEE`.
+describe.skip(
   "admin > tools > erroring questions ",
   { tags: "@quarantine" },
   () => {
     beforeEach(() => {
+      cy.onlyOn(isEE);
+
       restore();
       cy.signInAsAdmin();
 

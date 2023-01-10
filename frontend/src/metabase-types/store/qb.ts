@@ -56,7 +56,6 @@ export interface QueryBuilderState {
   zoomedRowObjectId: number | string | null;
   tableForeignKeyReferences: Record<number, ForeignKeyReference> | null;
 
-  visibleTimelineIds: number[];
   selectedTimelineEventIds: number[];
 
   metadataDiff: Record<string, Partial<Field>>;

@@ -1,15 +1,15 @@
 (ns metabase.models.bookmark
-  (:require [clojure.string :as str]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.models.app :refer [App]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.string :as str]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel CardBookmark :card_bookmark)
 (models/defmodel DashboardBookmark :dashboard_bookmark)
@@ -26,14 +26,12 @@
   although the compound key can be inferred from it."
   {:id                               s/Str
    :type                             (s/enum "card" "collection" "dashboard")
-   :item_id                          su/IntGreaterThanZero
-   :name                             su/NonBlankString
+   :item_id                          su/IntGreaterThanZeroPlumatic
+   :name                             su/NonBlankStringPlumatic
    (s/optional-key :dataset)         (s/maybe s/Bool)
    (s/optional-key :display)         (s/maybe s/Str)
    (s/optional-key :authority_level) (s/maybe s/Str)
-   (s/optional-key :description)     (s/maybe s/Str)
-   (s/optional-key :app_id)          (s/maybe su/IntGreaterThanOrEqualToZero)
-   (s/optional-key :is_app_page)     (s/maybe s/Bool)})
+   (s/optional-key :description)     (s/maybe s/Str)})
 
 (s/defn ^:private normalize-bookmark-result :- BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, and dashboard tables, but only
@@ -48,7 +46,7 @@
         id-str            (str (:type normalized-result) "-" (:item_id normalized-result))]
     (-> normalized-result
         (select-keys [:item_id :type :name :dataset :description :display
-                      :authority_level :app_id :is_app_page])
+                      :authority_level])
         (assoc :id id-str))))
 
 (defn- bookmarks-union-query
@@ -95,18 +93,15 @@
                      [:dashboard.name (db/qualify 'Dashboard :name)]
                      [:dashboard.description (db/qualify 'Dashboard :description)]
                      [:dashboard.archived (db/qualify 'Dashboard :archived)]
-                     [:dashboard.is_app_page (db/qualify 'Dashboard :is_app_page)]
                      [:collection.name (db/qualify 'Collection :name)]
                      [:collection.authority_level (db/qualify 'Collection :authority_level)]
                      [:collection.description (db/qualify 'Collection :description)]
-                     [:collection.archived (db/qualify 'Collection :archived)]
-                     [:app.id (db/qualify 'Collection :app_id)]]
+                     [:collection.archived (db/qualify 'Collection :archived)]]
          :from      [[(bookmarks-union-query user-id) :bookmark]]
          :left-join [[Card :card] [:= :bookmark.card_id :card.id]
                      [Dashboard :dashboard] [:= :bookmark.dashboard_id :dashboard.id]
                      [Collection :collection] [:in :collection.id [:bookmark.collection_id
                                                                    :dashboard.collection_id]]
-                     [App :app] [:= :app.collection_id :collection.id]
                      [BookmarkOrdering :bookmark_ordering] [:and
                                                             [:= :bookmark_ordering.user_id user-id]
                                                             [:= :bookmark_ordering.type :bookmark.type]

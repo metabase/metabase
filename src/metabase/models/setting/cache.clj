@@ -1,16 +1,18 @@
 (ns metabase.models.setting.cache
   "Settings cache. Cache is a 1:1 mapping of what's in the DB. Cached lookup time is ~60µs, compared to ~1800µs for DB
   lookup."
-  (:require [clojure.core :as core]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
-  (:import java.util.concurrent.locks.ReentrantLock))
+  (:require
+   [clojure.core :as core]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.tools.logging :as log]
+   [honeysql.core :as hsql]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db])
+  (:import
+   (java.util.concurrent.locks ReentrantLock)))
 
 (defmulti call-on-change
   "Whenever something changes in the Settings cache it will invoke

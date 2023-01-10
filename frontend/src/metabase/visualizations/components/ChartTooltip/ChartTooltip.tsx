@@ -1,8 +1,9 @@
 import React, { MouseEvent, useMemo } from "react";
 import _ from "underscore";
 import { getEventTarget } from "metabase/lib/dom";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import DataPointTooltip from "./DataPointTooltip";
+import DataPointTooltipOld from "./DataPointTooltipOld";
 import TimelineEventTooltip from "./TimelineEventTooltip";
 import {
   HoveredObject,
@@ -23,7 +24,12 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
     if (!_.isEmpty(hovered.timelineEvents)) {
       return <TimelineEventTooltip hovered={hovered as HoveredTimelineEvent} />;
     }
-    return <DataPointTooltip hovered={hovered} settings={settings} />;
+
+    if (hovered.dataTooltip) {
+      return <DataPointTooltip {...hovered.dataTooltip} />;
+    }
+
+    return <DataPointTooltipOld hovered={hovered} settings={settings} />;
   }, [hovered, settings]);
 
   const isNotEmpty = useMemo(() => {
@@ -33,6 +39,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
     return (
       hovered.value !== undefined ||
       !_.isEmpty(hovered.timelineEvents) ||
+      !_.isEmpty(hovered.dataTooltip) ||
       !_.isEmpty(hovered.data) ||
       !_.isEmpty(hovered.dimensions)
     );
@@ -54,6 +61,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
       preventOverflow
       reference={target}
       isOpen={isOpen}
+      isPadded={false}
       tooltip={tooltip}
       maxWidth="unset"
     />

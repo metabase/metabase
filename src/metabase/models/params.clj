@@ -1,18 +1,20 @@
 (ns metabase.models.params
   "Utility functions for dealing with parameters for Dashboards and Cards."
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.db.util :as mdb.u]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.db.util :as mdb.u]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -21,14 +23,14 @@
 (defn assert-valid-parameters
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
-  (when (s/check (s/maybe [su/Parameter]) parameters)
+  (when (s/check (s/maybe [su/ParameterPlumatic]) parameters)
     (throw (ex-info (tru ":parameters must be a sequence of maps with :id and :type keys")
                     {:parameters parameters}))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameter_mappings]}]
-  (when (s/check (s/maybe [su/ParameterMapping]) parameter_mappings)
+  (when (s/check (s/maybe [su/ParameterMappingPlumatic]) parameter_mappings)
     (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
                     {:parameter_mappings parameter_mappings}))))
 
@@ -104,12 +106,12 @@
                               ;; `list` instead of `auto-list`.)
                               (hydrate :has_field_values)))))
 
-(defn add-name-field
+(mi/define-batched-hydration-method add-name-field
+  :name_field
   "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
   Field, if a matching name Field exists, add it under the `:name_field` key. This is so the Fields can be used in
   public/embedded field values search widgets. This only includes the information needed to power those widgets, and
   no more."
-  {:batched-hydrate :name_field}
   [fields]
   (let [table-id->name-field (fields->table-id->name-field (pk-fields fields))]
     (for [field fields]
@@ -151,16 +153,23 @@
   "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
+  [field-ids :- (s/maybe #{su/IntGreaterThanZeroPlumatic})]
   (when (seq field-ids)
     (m/index-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
                         (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
                         remove-dimensions-nonpublic-columns))))
 
-(defmulti ^:private ^{:hydrate :param_fields} param-fields
+(defmulti ^:private param-fields
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
   Dashboard. Implementations are below in respective sections."
   name)
+
+#_{:clj-kondo/ignore [:unused-private-var]}
+(mi/define-simple-hydration-method ^:private hydrate-param-fields
+  :param_fields
+  "Hydration method for `:param_fields`."
+  [instance]
+  (param-fields instance))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -189,7 +198,7 @@
    (for [{card :card} (:ordered_cards dashboard)]
      (card->template-tag-field-ids card))))
 
-(s/defn dashboard->param-field-ids :- #{su/IntGreaterThanZero}
+(s/defn dashboard->param-field-ids :- #{su/IntGreaterThanZeroPlumatic}
   "Return a set of Field IDs referenced by parameters in Cards in this `dashboard`, or `nil` if none are referenced. This
   also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters."
   [dashboard]
@@ -216,7 +225,7 @@
              :when                      field]
          field)))
 
-(s/defn card->template-tag-field-ids :- #{su/IntGreaterThanZero}
+(s/defn card->template-tag-field-ids :- #{su/IntGreaterThanZeroPlumatic}
   "Return a set of Field IDs referenced in template tag parameters in `card`. This is mostly used for determining
   Fields referenced by Cards for purposes other than processing queries. Filters out `:field` clauses using names."
   [card]

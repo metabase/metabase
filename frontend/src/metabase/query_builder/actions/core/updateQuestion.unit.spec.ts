@@ -19,7 +19,6 @@ import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Join from "metabase-lib/queries/structured/Join";
-import Field from "metabase-lib/metadata/Field";
 import {
   getAdHocQuestion,
   getSavedStructuredQuestion,
@@ -76,7 +75,7 @@ async function setup({
 
   const queryResult = createMockDataset({
     data: {
-      cols: ORDERS.fields.map((field: Field) => field.column()),
+      cols: ORDERS.fields.map(field => field.column()),
     },
   });
 
@@ -213,11 +212,6 @@ describe("QB Actions > updateQuestion", () => {
   const SAVED_QUESTION_TEST_CASES = [
     TEST_CASE.SAVED_STRUCTURED_QUESTION,
     TEST_CASE.SAVED_NATIVE_QUESTION,
-  ];
-
-  const UNSAVED_QUESTION_TEST_CASES = [
-    TEST_CASE.UNSAVED_STRUCTURED_QUESTION,
-    TEST_CASE.UNSAVED_NATIVE_QUESTION,
   ];
 
   const MODEL_TEST_CASES = [

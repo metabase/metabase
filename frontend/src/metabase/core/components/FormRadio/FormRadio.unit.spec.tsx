@@ -5,7 +5,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FormRadio from "./FormRadio";
 
-const TestSchema = Yup.object().shape({
+const TEST_SCHEMA = Yup.object({
   value: Yup.string().notOneOf(["bar"], "error"),
 });
 
@@ -24,7 +24,7 @@ const TestFormRadio = ({ initialValue, onSubmit }: TestFormRadioProps) => {
   return (
     <Formik
       initialValues={{ value: initialValue }}
-      validationSchema={TestSchema}
+      validationSchema={TEST_SCHEMA}
       onSubmit={onSubmit}
     >
       <Form>

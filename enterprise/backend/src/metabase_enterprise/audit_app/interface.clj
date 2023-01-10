@@ -1,14 +1,15 @@
 (ns metabase-enterprise.audit-app.interface
-  (:require [metabase.plugins.classloader :as classloader]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ResultsMetadata
   "Schema for the expected format for `:metadata` returned by an internal query function."
   (su/non-empty
-   [[(s/one su/KeywordOrString "field name")
-     (s/one {:base_type su/FieldType, :display_name su/NonBlankString, s/Keyword s/Any}
+   [[(s/one su/KeywordOrStringPlumatic "field name")
+     (s/one {:base_type su/FieldTypePlumatic, :display_name su/NonBlankStringPlumatic, s/Keyword s/Any}
             "field metadata")]]))
 
 (defmulti internal-query

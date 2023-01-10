@@ -8,7 +8,7 @@ import {
   TimelineEventData,
   TimelineEventSource,
 } from "metabase-types/api";
-import EventForm from "../EventForm";
+import EventForm from "../../containers/EventForm";
 import ModalBody from "../ModalBody";
 import ModalHeader from "../ModalHeader";
 
@@ -48,7 +48,7 @@ const NewEventModal = ({
   const handleSubmit = useCallback(
     async (values: TimelineEventData) => {
       const timeline = timelines.find(t => t.id === values.timeline_id);
-      await onSubmit(getSubmitValues(values), collection, timeline);
+      await onSubmit(values, collection, timeline);
       onSubmitSuccess?.();
     },
     [collection, timelines, onSubmit, onSubmitSuccess],
@@ -79,8 +79,8 @@ const getInitialValues = (
 
   return {
     name: "",
-    description: "",
-    timestamp: undefined,
+    description: null,
+    timestamp: "",
     timeline_id: defaultTimeline?.id,
     icon: hasOneTimeline ? defaultTimeline.icon : getDefaultTimelineIcon(),
     timezone: moment.tz.guess(),
@@ -90,10 +90,5 @@ const getInitialValues = (
     question_id: cardId,
   };
 };
-
-const getSubmitValues = (values: TimelineEventData): TimelineEventData => ({
-  ...values,
-  description: values.description || null,
-});
 
 export default NewEventModal;

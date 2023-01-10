@@ -24,24 +24,37 @@ describe("CategoricalDonutChart", () => {
       <CategoricalDonutChart data={data} colors={colors} settings={settings} />,
     );
 
-    screen.getByText("$5,100.00");
-    screen.getAllByText("TOTAL");
+    expect(screen.getByText("$5,100.00")).toBeInTheDocument();
+    expect(screen.getAllByText("TOTAL")).toHaveLength(2);
   });
 
-  it("should render data labels when show_labels=true", () => {
+  it("should render data labels when percent_visibility=inside", () => {
     render(
       <CategoricalDonutChart
         data={data}
         colors={colors}
-        settings={{ show_values: true }}
+        settings={{ percent_visibility: "inside" }}
       />,
     );
-    screen.getByText("39.22 %");
-    screen.getByText("60.78 %");
+    expect(screen.getByText("39.22 %")).toBeInTheDocument();
+    expect(screen.getByText("60.78 %")).toBeInTheDocument();
   });
 
-  it("should render data labels when show_labels is falsy", () => {
-    render(<CategoricalDonutChart data={data} colors={colors} />);
+  it("should render data labels when percent_visibility is `off` or `legend`", () => {
+    render(
+      <>
+        <CategoricalDonutChart
+          data={data}
+          colors={colors}
+          settings={{ percent_visibility: "off" }}
+        />
+        <CategoricalDonutChart
+          data={data}
+          colors={colors}
+          settings={{ percent_visibility: "legend" }}
+        />
+      </>,
+    );
     expect(screen.queryByText("60.78 %")).not.toBeInTheDocument();
   });
 });

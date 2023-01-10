@@ -1,12 +1,13 @@
 (ns metabase.pulse.parameters
   "Utilities for processing parameters for inclusion in dashboard subscriptions."
-  (:require [clojure.string :as str]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
-            [metabase.shared.parameters.parameters :as shared.params]
-            [metabase.util :as u]
-            [metabase.util.urls :as urls]
-            [ring.util.codec :as codec]))
+  (:require
+   [clojure.string :as str]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.shared.parameters.parameters :as shared.params]
+   [metabase.util :as u]
+   [metabase.util.urls :as urls]
+   [ring.util.codec :as codec]))
 
 (defenterprise the-parameters
   "OSS way of getting filter parameters for a dashboard subscription"

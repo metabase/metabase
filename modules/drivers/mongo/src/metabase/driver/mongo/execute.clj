@@ -1,19 +1,22 @@
 (ns metabase.driver.mongo.execute
-  (:require [clojure.core.async :as a]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver.mongo.query-processor :as mongo.qp]
-            [metabase.driver.mongo.util :refer [*mongo-connection*]]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.util.i18n :refer [tru]]
-            [monger.conversion :as m.conversion]
-            [monger.util :as m.util]
-            [schema.core :as s])
-  (:import [com.mongodb AggregationOptions AggregationOptions$OutputMode BasicDBObject Cursor DB DBObject]
-           java.util.concurrent.TimeUnit))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.driver.mongo.util :refer [*mongo-connection*]]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.util.i18n :refer [tru]]
+   [monger.conversion :as m.conversion]
+   [monger.util :as m.util]
+   [schema.core :as s])
+  (:import
+   (com.mongodb AggregationOptions AggregationOptions$OutputMode BasicDBObject Cursor DB DBObject)
+   (java.util.concurrent TimeUnit)
+   (org.bson BsonInt32 BsonBoolean)))
 
 ;;; ---------------------------------------------------- Metadata ----------------------------------------------------
 
@@ -46,14 +49,37 @@
                          :actual   actual-cols
                          :expected expected-cols}))))))
 
+(def ^:private suppressing-values
+  "The values in the $project stage which suppress the column."
+  #{0 (BsonInt32. 0) false BsonBoolean/FALSE})
+
+(defn- merge-col-names
+  "Returns a vector containing `projected-names` with any elements of
+  `first-row-col-names` not in `projected-names` appended.
+  \"_id\" is handled specially, since it is returned unless specifically
+  suppressed. If it is not suppressed and not included in `projected-names`
+  it is returned at the first position.
+  Both arguments can be nil, although `first-row-col-names` shouldn't."
+  [projected-names first-row-col-names]
+  (let [projected-set (set projected-names)
+        projected-vec (vec (cond->> projected-names
+                             (and (not (projected-set "_id"))
+                                  (contains? first-row-col-names "_id"))
+                             (cons "_id")))]
+    (into projected-vec (remove (conj projected-set "_id")) first-row-col-names)))
+
 (s/defn ^:private result-col-names :- {:row [s/Str], :unescaped [s/Str]}
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
   thr query result metadata."
-  [{:keys [mbql? projections]} first-row-col-names]
+  [{:keys [mbql? projections]} query first-row-col-names]
   ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.
   ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
   (if-not mbql?
-    (zipmap [:row :unescaped] (repeat 2 (into [] first-row-col-names)))
+    (let [project-stage (->> query (filter #(contains? % "$project")) last)
+          projected (keep (fn [[k v]] (when-not (contains? suppressing-values v) k))
+                          (get project-stage "$project"))
+          col-names (merge-col-names projected first-row-col-names)]
+      {:row col-names, :unescaped col-names})
     (do
       ;; ...but, on the other hand, if columns come back that we weren't expecting, our code is broken.
       ;; Check to make sure that didn't happen.
@@ -128,12 +154,12 @@
                 (remaining-rows-thunk)))]
       (qp.reducible/reducible-rows row-thunk (qp.context/canceled-chan context)))))
 
-(defn- reduce-results [native-query context ^Cursor cursor respond]
+(defn- reduce-results [native-query query context ^Cursor cursor respond]
   (try
     (let [first-row                        (when (.hasNext cursor)
                                              (.next cursor))
           {row-col-names       :row
-           unescaped-col-names :unescaped} (result-col-names native-query (row-keys first-row))]
+           unescaped-col-names :unescaped} (result-col-names native-query query (row-keys first-row))]
       (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
       (respond (result-metadata unescaped-col-names)
                (if-not first-row
@@ -166,4 +192,4 @@
         ;; Eastwood seems to get confused here and not realize there's already a tag on `cursor` (returned by
         ;; `aggregate`)
         (.close ^Cursor cursor)))
-    (reduce-results native-query context cursor respond)))
+    (reduce-results native-query query context cursor respond)))

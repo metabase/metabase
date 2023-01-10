@@ -8,6 +8,7 @@ import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
   getTimeFormatFromStyle,
+  hasDay,
   hasHour,
 } from "./datetime-utils";
 
@@ -65,6 +66,7 @@ export function getDateFormatFromStyle(
   style: string,
   unit: DatetimeUnit,
   separator: string,
+  includeWeekday?: boolean,
 ) {
   const replaceSeparators = (format: string) =>
     separator && format ? format.replace(/\//g, separator) : format;
@@ -73,17 +75,27 @@ export function getDateFormatFromStyle(
     unit = "default";
   }
 
+  let format = null;
+
   if (DATE_STYLE_TO_FORMAT[style]) {
     if (DATE_STYLE_TO_FORMAT[style][unit]) {
-      return replaceSeparators(DATE_STYLE_TO_FORMAT[style][unit]);
+      format = replaceSeparators(DATE_STYLE_TO_FORMAT[style][unit]);
     }
   } else {
     console.warn("Unknown date style", style);
   }
-  if (DEFAULT_DATE_FORMATS[unit]) {
-    return replaceSeparators(DEFAULT_DATE_FORMATS[unit]);
+
+  if (format == null) {
+    format = DEFAULT_DATE_FORMATS[unit]
+      ? replaceSeparators(DEFAULT_DATE_FORMATS[unit])
+      : replaceSeparators(style);
   }
-  return replaceSeparators(style);
+
+  if (includeWeekday && hasDay(unit)) {
+    format = `ddd, ${format}`;
+  }
+
+  return format;
 }
 
 export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
@@ -295,6 +307,7 @@ export function formatDateTimeWithUnit(
       options.date_style as string,
       unit,
       options.date_separator as string,
+      options.weekday_enabled,
     );
   }
 

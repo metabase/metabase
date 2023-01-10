@@ -1,26 +1,28 @@
 (ns metabase.driver.common.parameters.values-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters.values :as params.values]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models :refer [Card Collection NativeQuerySnippet]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import clojure.lang.ExceptionInfo
-           java.util.UUID
-           metabase.driver.common.parameters.ReferencedCardQuery))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.models :refer [Card Collection NativeQuerySnippet]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (clojure.lang ExceptionInfo)
+   (java.util UUID)
+   (metabase.driver.common.parameters ReferencedCardQuery)))
 
 (def ^:private test-uuid (str (UUID/randomUUID)))
 
@@ -527,7 +529,7 @@
                                                   :breakout    [!month.created_at]})}]
         (let [card-tag (str "#" (u/the-id card))]
           (is (schema= {:card-id  (s/eq (u/the-id card))
-                        :query    su/NonBlankString
+                        :query    su/NonBlankStringPlumatic
                         :params   (s/eq ["G%"])
                         s/Keyword s/Any}
                        (#'params.values/parse-tag

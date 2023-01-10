@@ -9,12 +9,14 @@ import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 import ErrorMessage from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
-import Icon from "metabase/components/Icon";
 import {
   QueryError,
+  QueryErrorHeader,
   QueryErrorIcon,
+  QueryErrorTitle,
+  QueryErrorLink,
   QueryErrorMessage,
-  QueryLink,
+  QueryErrorContent,
 } from "./VisualizationError.styled";
 
 const EmailAdmin = () => {
@@ -145,11 +147,18 @@ class VisualizationError extends Component {
       }
       return (
         <QueryError className={className}>
-          <QueryErrorIcon>
-            <Icon name="warning" size="40" />
-          </QueryErrorIcon>
-          <QueryErrorMessage>{processedError}</QueryErrorMessage>
-          <QueryLink href="https://www.metabase.com/learn/debugging-sql/sql-syntax.html">{t`Learn how to debug SQL errors`}</QueryLink>
+          <QueryErrorContent>
+            <QueryErrorHeader>
+              <QueryErrorIcon name="warning" />
+              <QueryErrorTitle>{t`An error occurred in your query`}</QueryErrorTitle>
+            </QueryErrorHeader>
+            <QueryErrorMessage>{processedError}</QueryErrorMessage>
+            <QueryErrorLink
+              href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
+            >
+              {t`Learn how to debug SQL errors`}
+            </QueryErrorLink>
+          </QueryErrorContent>
         </QueryError>
       );
     } else {

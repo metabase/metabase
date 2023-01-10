@@ -5,16 +5,20 @@ import React, {
   ReactNode,
   Ref,
 } from "react";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
+import { InputSize } from "../../style/types";
 import {
   InputField,
   InputLeftButton,
   InputRightButton,
   InputRoot,
   InputSubtitle,
+  InputResetButton,
 } from "./Input.styled";
-import { InputSize } from "./types";
+
+export type InputColorScheme = "brand" | "filter";
 
 export type InputAttributes = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -31,8 +35,10 @@ export interface InputProps extends InputAttributes {
   rightIcon?: string;
   rightIconTooltip?: ReactNode;
   subtitle?: string;
+  colorScheme?: InputColorScheme;
   onLeftIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onRightIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onResetClick?: () => void;
 }
 
 const Input = forwardRef(function Input(
@@ -47,13 +53,20 @@ const Input = forwardRef(function Input(
     leftIconTooltip,
     rightIcon,
     rightIconTooltip,
+    subtitle,
+    colorScheme = "brand",
+    value,
     onLeftIconClick,
     onRightIconClick,
-    subtitle,
+    onResetClick,
+    onChange,
     ...props
   }: InputProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const showResetButton =
+    onResetClick && value != null && String(value).length > 0;
+
   return (
     <InputRoot
       ref={ref}
@@ -72,19 +85,46 @@ const Input = forwardRef(function Input(
         hasSubtitle={Boolean(subtitle)}
         hasLeftIcon={Boolean(leftIcon)}
         hasRightIcon={Boolean(rightIcon)}
+        hasClearButton={showResetButton}
+        colorScheme={colorScheme}
+        value={value}
+        onChange={onChange}
       />
       {leftIcon && (
         <Tooltip tooltip={leftIconTooltip} placement="left">
-          <InputLeftButton tabIndex={-1} onClick={onLeftIconClick}>
+          <InputLeftButton
+            data-testid="input-left-icon-button"
+            size={size}
+            onClick={onLeftIconClick}
+            disabled={!leftIconTooltip && !onLeftIconClick}
+          >
             <Icon name={leftIcon} />
           </InputLeftButton>
         </Tooltip>
       )}
       {rightIcon && (
         <Tooltip tooltip={rightIconTooltip} placement="right">
-          <InputRightButton tabIndex={-1} onClick={onRightIconClick}>
+          <InputRightButton
+            data-testid="input-right-icon-button"
+            size={size}
+            onClick={onRightIconClick}
+            disabled={!rightIconTooltip && !onRightIconClick}
+          >
             <Icon name={rightIcon} />
           </InputRightButton>
+        </Tooltip>
+      )}
+
+      {showResetButton && (
+        <Tooltip tooltip={t`Clear`} placement="right">
+          <InputResetButton
+            data-testid="input-reset-button"
+            size={size}
+            hasRightIcon={!!rightIcon}
+            onClick={onResetClick}
+          >
+            <Icon name="close" />
+          </InputResetButton>
         </Tooltip>
       )}
     </InputRoot>
@@ -94,4 +134,5 @@ const Input = forwardRef(function Input(
 export default Object.assign(Input, {
   Root: InputRoot,
   Field: InputField,
+  Subtitle: InputSubtitle,
 });

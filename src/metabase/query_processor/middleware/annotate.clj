@@ -1,23 +1,25 @@
 (ns metabase.query-processor.middleware.annotate
   "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.mbql.predicates :as mbql.preds]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.humanization :as humanization]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.mbql.predicates :as mbql.preds]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.mbql.util.match :as mbql.match]
+   [metabase.models.humanization :as humanization]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -27,7 +29,7 @@
   {:name                           s/Str
    :display_name                   s/Str
    ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
-   :base_type                      su/FieldType
+   :base_type                      su/FieldTypePlumatic
    ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
    ;; from the metadata but that's for another day
    ;; where this column came from in the original query.
@@ -98,7 +100,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private join-with-alias :- (s/maybe mbql.s/Join)
-  [{:keys [joins source-query]} :- su/Map, join-alias :- su/NonBlankString]
+  [{:keys [joins source-query]} :- su/MapPlumatic, join-alias :- su/NonBlankStringPlumatic]
   (or (some
        (fn [{:keys [alias], :as join}]
          (when (= alias join-alias)
@@ -120,6 +122,21 @@
                                  "")
                     join-alias)]
     (format "%s → %s" qualifier field-display-name)))
+
+(defn- datetime-arithmetics?
+  "Helper for [[infer-expression-type]]. Returns true if a given clause returns a :type/DateTime type."
+  [clause]
+  (mbql.match/match-one clause
+    #{:datetime-add :datetime-subtract :relative-datetime}
+    true
+
+    [:field _ (_ :guard :temporal-unit)]
+    true
+
+    :+
+    (some (partial mbql.u/is-clause? :interval) (rest clause))
+
+    _ false))
 
 (declare col-info-for-field-clause)
 
@@ -159,13 +176,27 @@
            (select-keys (infer-expression-type expression) type-info-columns)))
        clauses))
 
-    (mbql.u/datetime-arithmetics? expression)
-    {:base_type :type/DateTime}
+    (mbql.u/is-clause? :convert-timezone expression)
+    {:converted_timezone (nth expression 2)
+     :base_type          :type/DateTime}
 
-    (mbql.u/is-clause? mbql.s/string-expressions expression)
+    (datetime-arithmetics? expression)
+    ;; make sure converted_timezone survived if we do nested datetime operations
+    ;; FIXME: this does not preverse converted_timezone for cases nested expressions
+    ;; i.e:
+    ;; {"expression" {"converted-exp" [:convert-timezone "created-at" "Asia/Ho_Chi_Minh"]
+    ;;                "date-add-exp"  [:datetime-add [:expression "converted-exp"] 2 :month]}}
+    ;; The converted_timezone metadata added for "converted-exp" will not be brought over
+    ;; to ["date-add-exp"].
+    ;; maybe this `infer-expression-type` should takes an `inner-query` and look up the
+    ;; source expresison as well?
+    (merge (select-keys (infer-expression-type (second expression)) [:converted_timezone])
+     {:base_type :type/DateTime})
+
+    (mbql.u/is-clause? mbql.s/string-functions expression)
     {:base_type :type/Text}
 
-    (mbql.u/is-clause? mbql.s/arithmetic-expressions expression)
+    (mbql.u/is-clause? mbql.s/numeric-functions expression)
     {:base_type :type/Float}
 
     :else
@@ -261,7 +292,7 @@
 
 (s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
-  [inner-query :- su/Map, clause :- mbql.s/Field]
+  [inner-query :- su/MapPlumatic, clause :- mbql.s/Field]
   (mbql.u/match-one clause
     :expression
     (col-info-for-expression inner-query &match)
@@ -295,7 +326,7 @@
     ;; otherwise for things like numbers just use that directly
     _ &match))
 
-(s/defn aggregation-name :- su/NonBlankString
+(s/defn aggregation-name :- su/NonBlankStringPlumatic
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
@@ -334,7 +365,7 @@
 
 (declare aggregation-display-name)
 
-(s/defn ^:private aggregation-arg-display-name :- su/NonBlankString
+(s/defn ^:private aggregation-arg-display-name :- su/NonBlankStringPlumatic
   "Name to use for an aggregation clause argument such as a Field when constructing the complete aggregation name."
   [inner-query, ag-arg :- Object]
   (or (when (mbql.preds/Field? ag-arg)
@@ -342,7 +373,7 @@
           (some info [:display_name :name])))
       (aggregation-display-name inner-query ag-arg)))
 
-(s/defn aggregation-display-name :- su/NonBlankString
+(s/defn aggregation-display-name :- su/NonBlankStringPlumatic
   "Return an appropriate user-facing display name for an aggregation clause."
   [inner-query ag-clause]
   (mbql.u/match-one ag-clause
@@ -393,7 +424,7 @@
   "Return appropriate column metadata for an `:aggregation` clause."
   ;; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
   ;; `match` pattern for field clauses below
-  [inner-query :- su/Map, clause]
+  [inner-query :- su/MapPlumatic, clause]
   (mbql.u/match-one clause
     ;; ok, if this is a aggregation w/ options recurse so we can get information about the ag it wraps
     [:aggregation-options ag _]
@@ -466,13 +497,13 @@
                    :actual   (:cols results)}))))))
 
 (s/defn ^:private cols-for-fields
-  [{:keys [fields], :as inner-query} :- su/Map]
+  [{:keys [fields], :as inner-query} :- su/MapPlumatic]
   (for [field fields]
     (assoc (col-info-for-field-clause inner-query field)
            :source :fields)))
 
 (s/defn ^:private cols-for-ags-and-breakouts
-  [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- su/Map]
+  [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- su/MapPlumatic]
   (concat
    (for [breakout breakouts]
      (assoc (col-info-for-field-clause inner-query breakout)
@@ -484,15 +515,15 @@
 
 (s/defn cols-for-mbql-query
   "Return results metadata about the expected columns in an 'inner' MBQL query."
-  [inner-query :- su/Map]
+  [inner-query :- su/MapPlumatic]
   (concat
    (cols-for-ags-and-breakouts inner-query)
    (cols-for-fields inner-query)))
 
 
 
-(s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
-  [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
+(s/defn ^:private merge-source-metadata-col :- (s/maybe su/MapPlumatic)
+  [source-metadata-col :- (s/maybe su/MapPlumatic) col :- (s/maybe su/MapPlumatic)]
   (merge
     {} ;; ensure the type is not FieldInstance
     (when-let [field-id (:id source-metadata-col)]

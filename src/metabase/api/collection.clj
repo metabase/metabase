@@ -4,51 +4,55 @@
   `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
   To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
   `?namespace=snippet`)."
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [compojure.core :refer [GET POST PUT]]
-            [honeysql.core :as hsql]
-            [honeysql.helpers :as hh]
-            [medley.core :as m]
-            [metabase.api.card :as api.card]
-            [metabase.api.common :as api]
-            [metabase.api.timeline :as api.timeline]
-            [metabase.db :as mdb]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters.parse :as params.parse]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.collection.graph :as graph]
-            #_:clj-kondo/ignore ;; bug: when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
-            [metabase.models.collection.root :as collection.root]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as mi]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.revision.last-edit :as last-edit]
-            [metabase.models.timeline :as timeline :refer [Timeline]]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [compojure.core :refer [GET POST PUT]]
+   [honeysql.core :as hsql]
+   [honeysql.helpers :as hh]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
+   [medley.core :as m]
+   [metabase.api.card :as api.card]
+   [metabase.api.common :as api]
+   [metabase.api.timeline :as api.timeline]
+   [metabase.db :as mdb]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection.graph :as graph]
+   #_:clj-kondo/ignore ;; bug: when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
+   [metabase.models.collection.root :as collection.root]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.revision.last-edit :as last-edit]
+   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (declare root-collection)
 
-(api/defendpoint GET "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
 
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`."
   [archived namespace]
-  {archived  (s/maybe su/BooleanString)
-   namespace (s/maybe su/NonBlankString)}
+  {archived  (s/maybe su/BooleanStringPlumatic)
+   namespace (s/maybe su/NonBlankStringPlumatic)}
   (let [archived? (Boolean/parseBoolean archived)]
     (as-> (db/select Collection
             {:where    [:and
@@ -65,7 +69,7 @@
           (cond->> collections
             (mi/can-read? root)
             (cons root))))
-      (hydrate collections :can_write :app_id)
+      (hydrate collections :can_write)
       ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
       ;; and for personal collections we translate the name to user's locale
       (for [collection collections]
@@ -73,7 +77,8 @@
             (dissoc ::collection.root/is-root?)
             collection/personal-collection-with-ui-details)))))
 
-(api/defendpoint GET "/tree"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
   ```
@@ -95,8 +100,8 @@
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
   [exclude-archived namespace]
-  {exclude-archived (s/maybe su/BooleanString)
-   namespace        (s/maybe su/NonBlankString)}
+  {exclude-archived (s/maybe su/BooleanStringPlumatic)
+   namespace        (s/maybe su/NonBlankStringPlumatic)}
   (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
                                 (update acc (if dataset :dataset :card) conj collection_id))
                               {:dataset #{}
@@ -113,8 +118,7 @@
                          (collection/visible-collection-ids->honeysql-filter-clause
                           :id
                           (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-        colls (map collection/personal-collection-with-ui-details colls)
-        colls (hydrate colls :app_id)]
+        colls (map collection/personal-collection-with-ui-details colls)]
     (collection/collections->tree coll-type-ids colls)))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -122,12 +126,12 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "dataset" "collection" "app" "dashboard" "page" "pulse" "snippet" "no_models" "timeline"})
+  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
 
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
 
-; This is basically a union type. defendpoint splits the string if it only gets one
+; This is basically a union type. defendpoint-schema splits the string if it only gets one
 (def ^:private models-schema (s/conditional vector? [ModelString] :else ModelString))
 
 (def ^:private valid-pinned-state-values
@@ -281,7 +285,6 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :is_write false]
                    [:= :dataset dataset?]]}
       (hh/merge-where (pinned-state->clause pinned-state))))
 
@@ -347,9 +350,9 @@
   [_ rows]
   (map post-process-card-row rows))
 
-(defn- dashboard-query [collection {:keys [page? archived? pinned-state]}]
+(defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
-                   [(hx/literal (if page? "page" "dashboard")) :model]
+                   [(hx/literal "dashboard") :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
@@ -366,14 +369,13 @@
                    [:= :r.model_id :d.id]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   [:= :is_app_page page?]
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]]}
       (hh/merge-where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
   [_ collection options]
-  (dashboard-query collection (assoc options :page? false)))
+  (dashboard-query collection options))
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
@@ -382,16 +384,8 @@
                 :dataset_query)
        rows))
 
-(defmethod collection-children-query :page
-  [_ collection options]
-  (dashboard-query collection (assoc options :page? true)))
-
-(defmethod post-process-collection-children :page
-  [_ rows]
-  (post-process-collection-children :dashboard rows))
-
 (defn- collection-query
-  [collection {:keys [app? archived? collection-namespace pinned-state]}]
+  [collection {:keys [archived? collection-namespace pinned-state]}]
   (-> (assoc (collection/effective-children-query
               collection
               [:= :archived archived?]
@@ -403,22 +397,14 @@
                       :description
                       :entity_id
                       :personal_owner_id
-                      [(hx/literal (if app? "app" "collection")) :model]
-                      :authority_level
-                      :app_id]
-             ;; A simple left join would force us qualifying :id from
-             ;; collection and that doesn't work with effective-children-query.
-             ;; The sub-query makes sure that :app.id is only visible as :app_id.
-             :left-join [[{:select [[:id :app_id] :collection_id]
-                           :from [:app]} :app]
-                         [:= :app.collection_id :col.id]])
-      (hh/merge-where [(if app? :<> :=) :app_id nil])
+                      [(hx/literal "collection") :model]
+                      :authority_level])
       ;; the nil indicates that collections are never pinned.
       (hh/merge-where (pinned-state->clause pinned-state nil))))
 
 (defmethod collection-children-query :collection
   [_ collection options]
-  (collection-query collection (assoc options :app? false)))
+  (collection-query collection options))
 
 (defmethod post-process-collection-children :collection
   [_ rows]
@@ -430,18 +416,9 @@
     (cond-> row
       ;; when fetching root collection, we might have personal collection
       (:personal_owner_id row) (assoc :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
-      (nil? (:app_id row))     (dissoc :app_id)
       true                     (assoc :can_write (mi/can-write? Collection (:id row)))
       true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id
                                        :collection_preview :dataset_query))))
-
-(defmethod collection-children-query :app
-  [_ collection options]
-  (collection-query collection (assoc options :app? true)))
-
-(defmethod post-process-collection-children :app
-  [_ rows]
-  (post-process-collection-children :collection rows))
 
 (s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
@@ -476,11 +453,9 @@
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
     :collection Collection
-    :app        Collection
     :card       Card
     :dataset    Card
     :dashboard  Dashboard
-    :page       Dashboard
     :pulse      Pulse
     :snippet    NativeQuerySnippet
     :timeline   Timeline))
@@ -502,7 +477,7 @@
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
-   :model :collection_position :authority_level [:app_id :integer] [:personal_owner_id :integer]
+   :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
@@ -618,7 +593,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:app :collection :dataset :card :page :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -640,32 +615,36 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :app_id)))
+      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
 
-(api/defendpoint GET "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id"
   "Fetch a specific Collection with standard details added"
   [id]
   (collection-detail (api/read-check Collection id)))
 
-(api/defendpoint GET "/root/timelines"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/root/timelines"
   "Fetch the root Collection's timelines."
   [include archived]
   {include  (s/maybe api.timeline/Include)
-   archived (s/maybe su/BooleanString)}
+   archived (s/maybe su/BooleanStringPlumatic)}
   (let [archived? (Boolean/parseBoolean archived)]
     (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                             :timeline/archived? archived?})))
 
-(api/defendpoint GET "/:id/timelines"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   [id include archived]
   {include  (s/maybe api.timeline/Include)
-   archived (s/maybe su/BooleanString)}
+   archived (s/maybe su/BooleanStringPlumatic)}
   (let [archived? (Boolean/parseBoolean archived)]
     (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                            :timeline/archived? archived?})))
 
-(api/defendpoint GET "/:id/items"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
   *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
@@ -675,7 +654,7 @@
                    when `all`, return everything. By default returns everything"
   [id models archived pinned_state sort_column sort_direction]
   {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanString)
+   archived       (s/maybe su/BooleanStringPlumatic)
    pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
    sort_column    (s/maybe (apply s/enum valid-sort-columns))
    sort_direction (s/maybe (apply s/enum valid-sort-directions))}
@@ -693,10 +672,11 @@
 (defn- root-collection [collection-namespace]
   (collection-detail (collection/root-collection-with-ui-details collection-namespace)))
 
-(api/defendpoint GET "/root"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/root"
   "Return the 'Root' Collection object with standard details added"
   [namespace]
-  {namespace (s/maybe su/NonBlankString)}
+  {namespace (s/maybe su/NonBlankStringPlumatic)}
   (-> (root-collection namespace)
       (api/read-check)
       (dissoc ::collection.root/is-root?)))
@@ -713,7 +693,8 @@
       #{:collection}
       #{:no_models})))
 
-(api/defendpoint GET "/root/items"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
   `collection_id` exist. It does, however, have its own set of Permissions.
@@ -729,8 +710,8 @@
   `snippets`, you can pass the `?namespace=` parameter."
   [models archived namespace pinned_state sort_column sort_direction]
   {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanString)
-   namespace      (s/maybe su/NonBlankString)
+   archived       (s/maybe su/BooleanStringPlumatic)
+   namespace      (s/maybe su/NonBlankStringPlumatic)
    pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
    sort_column    (s/maybe (apply s/enum valid-sort-columns))
    sort_direction (s/maybe (apply s/enum valid-sort-directions))}
@@ -753,16 +734,17 @@
 (defn- write-check-collection-or-root-collection
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
-  [collection-id]
+  [collection-id collection-namespace]
   (api/write-check (if collection-id
                      (db/select-one Collection :id collection-id)
-                     collection/root-collection)))
+                     (cond-> collection/root-collection
+                       collection-namespace (assoc :namespace collection-namespace)))))
 
 (defn create-collection!
   "Create a new collection."
   [{:keys [name color description parent_id namespace authority_level]}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
-  (write-check-collection-or-root-collection parent_id)
+  (write-check-collection-or-root-collection parent_id namespace)
   ;; Now create the new Collection :)
   (api/check-403 (or (nil? authority_level)
                      (and api/*is-superuser?* authority_level)))
@@ -776,14 +758,15 @@
      (when parent_id
        {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Create a new Collection."
   [:as {{:keys [name color description parent_id namespace authority_level] :as body} :body}]
-  {name            su/NonBlankString
+  {name            su/NonBlankStringPlumatic
    color           collection/hex-color-regex
-   description     (s/maybe su/NonBlankString)
-   parent_id       (s/maybe su/IntGreaterThanZero)
-   namespace       (s/maybe su/NonBlankString)
+   description     (s/maybe su/NonBlankStringPlumatic)
+   parent_id       (s/maybe su/IntGreaterThanZeroPlumatic)
+   namespace       (s/maybe su/NonBlankStringPlumatic)
    authority_level collection/AuthorityLevel}
   (create-collection! body))
 
@@ -809,10 +792,6 @@
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
            (collection/perms-for-moving collection-before-update new-parent)))
-        (when (not= new-parent collection/root-collection)
-          ;; apps are not allowed to be moved away from the root collection
-          (api/check-403
-           (nil? (:app_id (hydrate collection-before-update :app_id)))))
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 
@@ -838,14 +817,15 @@
                             {:card-ids (db/select-ids Card :collection_id (u/the-id collection-before-update))}))]
       (api.card/delete-alert-and-notify-archived! alerts))))
 
-(api/defendpoint PUT "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
-  {name                                   (s/maybe su/NonBlankString)
+  {name                                   (s/maybe su/NonBlankStringPlumatic)
    color                                  (s/maybe collection/hex-color-regex)
-   description                            (s/maybe su/NonBlankString)
+   description                            (s/maybe su/NonBlankStringPlumatic)
    archived                               (s/maybe s/Bool)
-   parent_id                              (s/maybe su/IntGreaterThanZero)
+   parent_id                              (s/maybe su/IntGreaterThanZeroPlumatic)
    authority_level                        collection/AuthorityLevel}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
@@ -873,40 +853,58 @@
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
-(api/defendpoint GET "/graph"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/graph"
   "Fetch a graph of all Collection Permissions."
   [namespace]
-  {namespace (s/maybe su/NonBlankString)}
+  {namespace (s/maybe su/NonBlankStringPlumatic)}
   (api/check-superuser)
   (graph/graph namespace))
 
-(defn- ->int [id] (Integer/parseInt (name id)))
+(def CollectionID "an id for a [[Collection]]."
+  [pos-int? {:title "Collection ID"}])
 
-(defn- dejsonify-collections [collections]
-  (into {} (for [[collection-id perms] collections]
-             [(if (= (keyword collection-id) :root)
-                :root
-                (->int collection-id))
-              (keyword perms)])))
+(def GroupID "an id for a [[PermissionsGroup]]."
+  [pos-int? {:title "Group ID"}])
 
-(defn- dejsonify-groups [groups]
-  (into {} (for [[group-id collections] groups]
-             {(->int group-id) (dejsonify-collections collections)})))
+(def CollectionPermissions
+  "Malli enum for what sort of collection permissions we have. (:write :read or :none)"
+  [:and keyword? [:enum :write :read :none]])
 
-(defn- dejsonify-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
-  parsing object keys as integers."
-  [graph]
-  (update graph :groups dejsonify-groups))
+(def GroupPermissionsGraph
+  "Map describing permissions for a (Group x Collection)"
+  [:map-of
+   [:or
+    ;; We need the [:and keyword ...] piece to make decoding "root" work. There's a merged fix for this, but it hasn't
+    ;; been released as of malli 0.9.2. When the malli version gets bumped, we should remove this.
+    [:and keyword? [:= :root]]
+    CollectionID]
+   CollectionPermissions])
 
-(api/defendpoint PUT "/graph"
-  "Do a batch update of Collections Permissions by passing in a modified graph."
+(def PermissionsGraph
+  "Map describing permissions for 1 or more groups.
+  Revision # is used for consistency"
+  [:map
+   [:revision int?]
+   [:groups [:map-of GroupID GroupPermissionsGraph]]])
+
+(def ^:private graph-decoder
+  "Building it this way is a lot faster then calling mc/decode <value> <schema> <transformer>"
+  (mc/decoder PermissionsGraph (mtx/string-transformer)))
+
+(defn- decode-graph [permission-graph]
+  (graph-decoder permission-graph))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/graph"
+  "Do a batch update of Collections Permissions by passing in a modified graph.
+  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
   [:as {{:keys [namespace], :as body} :body}]
-  {body      su/Map
-   namespace (s/maybe su/NonBlankString)}
+  {body      su/MapPlumatic
+   namespace (s/maybe su/NonBlankStringPlumatic)}
   (api/check-superuser)
   (->> (dissoc body :namespace)
-       dejsonify-graph
+       decode-graph
        (graph/update-graph! namespace))
   (graph/graph namespace))
 

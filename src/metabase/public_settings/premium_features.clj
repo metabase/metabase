@@ -1,36 +1,41 @@
 (ns metabase.public-settings.premium-features
   "Settings related to checking premium token validity and which premium features it allows."
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.core.memoize :as memoize]
-            #_:clj-kondo/ignore
-            [clojure.spec.alpha :as spec]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :refer [env]]
-            [metabase.config :as config]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as schema]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
+   #_:clj-kondo/ignore
+   [clojure.spec.alpha :as spec]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [environ.core :refer [env]]
+   [metabase.config :as config]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as schema]
+   [toucan.db :as db]))
 
 (def ^:private ValidToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
   #"^[0-9a-f]{64}$")
 
-(def store-url
-  "URL to the MetaStore. Hardcoded by default but for development purposes you can use a local server. Specify the env
-  var `METASTORE_DEV_SERVER_URL`."
+(def token-check-url
+  "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
+  Specify the env var `METASTORE_DEV_SERVER_URL`."
   (or
-   ;; only enable the changing the store url during dev because we don't want people switching it out in production!
+   ;; only enable the changing the token check url during dev because we don't want people switching it out in production!
    (when config/is-dev?
      (some-> (env :metastore-dev-server-url)
              ;; remove trailing slashes
              (str/replace  #"/$" "")))
-   "https://store.metabase.com"))
+   "https://token-check.metabase.com"))
+
+(def store-url
+  "Store URL, used as a fallback for token checks and for fetching the list of cloud gateway IPs."
+  "https://store.metabase.com")
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -44,21 +49,29 @@
   ;; so we can't import the User model here.
   (db/count 'User :is_active true))
 
-(defn- token-status-url [token]
+(defn- token-status-url [token base-url]
   (when (seq token)
-    (format "%s/api/%s/v2/status" store-url token)))
+    (format "%s/api/%s/v2/status" base-url token)))
 
 (def ^:private ^:const fetch-token-status-timeout-ms 10000) ; 10 seconds
 
 (def ^:private TokenStatus
   {:valid                               schema/Bool
-   :status                              su/NonBlankString
-   (schema/optional-key :error-details) (schema/maybe su/NonBlankString)
-   (schema/optional-key :features)      [su/NonBlankString]
+   :status                              su/NonBlankStringPlumatic
+   (schema/optional-key :error-details) (schema/maybe su/NonBlankStringPlumatic)
+   (schema/optional-key :features)      [su/NonBlankStringPlumatic]
    (schema/optional-key :trial)         schema/Bool
-   (schema/optional-key :valid_thru)    su/NonBlankString ; ISO 8601 timestamp
+   (schema/optional-key :valid_thru)    su/NonBlankStringPlumatic ; ISO 8601 timestamp
    ;; don't explode in the future if we add more to the response! lol
    schema/Any                           schema/Any})
+
+(defn- fetch-token-and-parse-body
+  [token base-url]
+  (some-> (token-status-url token base-url)
+          (http/get {:query-params {:users     (active-user-count)
+                                    :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
+          :body
+          (json/parse-string keyword)))
 
 (schema/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
@@ -70,22 +83,22 @@
                  (str (subs token 0 4) "..." (subs token 60 64))))
   (deref
    (future
-     (try (some-> (token-status-url token)
-                  (http/get {:query-params {:users     (active-user-count)
-                                            :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
-                  :body
-                  (json/parse-string keyword))
-          ;; if there was an error fetching the token, log it and return a generic message about the
-          ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
-          ;; we do not want something complicated
-          (catch Exception e
-            (log/error e (trs "Error fetching token status:"))
-            (let [body (u/ignore-exceptions (some-> (ex-data e) :body (json/parse-string keyword)))]
-              (or
-               body
-               {:valid         false
-                :status        (tru "Unable to validate token")
-                :error-details (.getMessage e)})))))
+     (try (fetch-token-and-parse-body token token-check-url)
+       (catch Exception e1
+         (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
+         ;; Try the fallback URL, which was the default URL prior to 45.2
+         (try (fetch-token-and-parse-body token store-url)
+           ;; if there was an error fetching the token from both the normal and fallback URLs, log the first error and
+           ;; return a generic message about the token being invalid. This message will get displayed in the Settings
+           ;; page in the admin panel so we do not want something complicated
+           (catch Exception e2
+             (log/error e2 (trs "Error fetching token status from {0}:" store-url))
+             (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+               (or
+                body
+                {:valid         false
+                 :status        (tru "Unable to validate token")
+                 :error-details (.getMessage e1)})))))))
    fetch-token-status-timeout-ms
    {:valid         false
     :status        (tru "Unable to validate token")
@@ -100,13 +113,13 @@
    fetch-token-status*
    :ttl/threshold (* 1000 60 5)))
 
-(schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
+(schema/defn ^:private valid-token->features* :- #{su/NonBlankStringPlumatic}
   [token :- ValidToken]
   (let [{:keys [valid status features error-details]} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
     (when-not valid
       (throw (ex-info status
-               {:status-code 400, :error-details error-details})))
+                      {:status-code 400, :error-details error-details})))
     ;; otherwise return the features this token supports
     (set features)))
 
@@ -118,7 +131,7 @@
   "Check whether `token` is valid. Throws an Exception if not. Returns a set of supported features if it is."
   ;; this is just `valid-token->features*` with some light caching
   (memoize/ttl valid-token->features*
-    :ttl/threshold valid-token-recheck-interval-ms))
+               :ttl/threshold valid-token-recheck-interval-ms))
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
@@ -140,7 +153,7 @@
       (when (seq new-value)
         (when (schema/check ValidToken new-value)
           (throw (ex-info (tru "Token format is invalid.")
-                   {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
+                          {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
         (log/info (trs "Token is valid.")))
       (setting/set-value-of-type! :string :premium-embedding-token new-value)
@@ -157,7 +170,7 @@
                        (log/debug e (trs "Error validating token")))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
-  (schema/defn ^:private token-features :- #{su/NonBlankString}
+  (schema/defn ^:private token-features :- #{su/NonBlankStringPlumatic}
     "Get the features associated with the system's premium features token."
     []
     (try
@@ -246,7 +259,8 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "hosting"))))
+  :getter     (fn [] (boolean ((token-features) "hosting")))
+  :doc        false)
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
@@ -261,7 +275,6 @@
   "Should we various other enhancements, e.g. NativeQuerySnippet collection permissions?"
   nil
   :getter #(and config/ee-available? (has-any-features?)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Defenterprise Macro                                                |

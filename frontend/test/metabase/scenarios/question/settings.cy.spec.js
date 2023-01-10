@@ -38,7 +38,7 @@ describe("scenarios > question > settings", () => {
       cy.get("@tableOptions")
         .contains("Total")
         .scrollIntoView()
-        .nextAll(".Icon-eye_filled")
+        .nextAll(".Icon-eye_outline")
         .click();
 
       // Add people.category
@@ -117,7 +117,7 @@ describe("scenarios > question > settings", () => {
       getSidebarColumns()
         .contains("Total")
         .closest("[data-testid^=draggable-item]")
-        .find(".Icon-eye_filled")
+        .find(".Icon-eye_outline")
         .click();
 
       reloadResults();
@@ -231,8 +231,8 @@ describe("scenarios > question > settings", () => {
 
       cy.findByText("In every table cell").click();
 
-      cy.findByText("₿ 2.07");
-      cy.findByText("₿ 6.10");
+      cy.findByText("₿2.07");
+      cy.findByText("₿6.10");
     });
   });
 

@@ -1,10 +1,13 @@
 (ns metabase.query-processor.streaming.common
   "Shared util fns for various export (download) streaming formats."
-  (:require [java-time :as t]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util.date-2 :as u.date])
-  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
+  (:require
+   [java-time :as t]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util.date-2 :as u.date])
+  (:import
+   (clojure.lang ISeq)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
 (defn in-result-time-zone
   "Set the time zone of a temporal value `t` to result timezone without changing the actual moment in time. e.g.
@@ -28,6 +31,10 @@
 
   Object
   (format-value [this] this)
+
+  ISeq
+  (format-value [this]
+    (mapv format-value this))
 
   LocalDate
   (format-value [t]

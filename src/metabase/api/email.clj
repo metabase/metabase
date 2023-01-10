@@ -1,17 +1,18 @@
 (ns metabase.api.email
   "/api/email endpoints"
-  (:require [clojure.data :as data]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE POST PUT]]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.email :as email]
-            [metabase.models.setting :as setting]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]))
+  (:require
+   [clojure.data :as data]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [compojure.core :refer [DELETE POST PUT]]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.email :as email]
+   [metabase.models.setting :as setting]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]))
 
 (def ^:private mb-to-smtp-settings
   {:email-smtp-host     :host
@@ -87,10 +88,11 @@
               :when        (some? value)]
           [setting-name value])))
 
-(api/defendpoint PUT "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/"
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
-  {settings su/Map}
+  {settings su/MapPlumatic}
   (validation/check-has-application-permission :setting)
   (let [;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
         ;; the obfuscated version
@@ -122,14 +124,16 @@
       {:status 400
        :body   (humanize-error-messages response)})))
 
-(api/defendpoint DELETE "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
   []
   (validation/check-has-application-permission :setting)
   (setting/set-many! (zipmap (keys mb-to-smtp-settings) (repeat nil)))
   api/generic-204-no-content)
 
-(api/defendpoint POST "/test"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/test"
   "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.
   Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
   []

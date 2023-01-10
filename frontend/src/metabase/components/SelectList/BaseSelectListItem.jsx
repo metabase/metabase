@@ -6,14 +6,14 @@ import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 import { BaseItemRoot } from "./SelectListItem.styled";
 
 const propTypes = {
-  id: PropTypes.string.isRequired,
+  id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   name: PropTypes.string.isRequired,
   onSelect: PropTypes.func.isRequired,
   isSelected: PropTypes.bool,
   size: PropTypes.oneOf(["small", "medium"]),
   className: PropTypes.string,
   children: PropTypes.node.isRequired,
-  as: PropTypes.element,
+  as: PropTypes.any,
 };
 
 export function BaseSelectListItem({
@@ -32,6 +32,7 @@ export function BaseSelectListItem({
     <Root
       ref={isSelected ? ref : undefined}
       isSelected={isSelected}
+      aria-selected={isSelected}
       role="menuitem"
       tabIndex={0}
       size={size}
@@ -46,3 +47,4 @@ export function BaseSelectListItem({
 }
 
 BaseSelectListItem.propTypes = propTypes;
+BaseSelectListItem.Root = BaseItemRoot;

@@ -1,11 +1,12 @@
 (ns metabase.cmd.copy.h2
   "Functions for working with H2 databases shared between the `load-from-h2` and `dump-to-h2` commands."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.db.data-source :as mdb.data-source]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]))
 
 (defn- add-file-prefix-if-needed [h2-filename]
   (letfn [(prepend-protocol [s]

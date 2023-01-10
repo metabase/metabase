@@ -1,12 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { useMemo } from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { getFullName } from "metabase/lib/user";
 import Icon from "metabase/components/Icon";
-import AdminEmptyText from "metabase/components/AdminEmptyText";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import PaginationControls from "metabase/components/PaginationControls";
 
@@ -15,7 +13,7 @@ import User from "metabase/entities/users";
 import { Group, Member, User as IUser } from "metabase-types/api";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { State } from "metabase-types/store";
-import { isNotNull } from "metabase/core/utils/array";
+import { isNotNull } from "metabase/core/utils/types";
 import AddMemberRow from "../AddMemberRow";
 
 const canEditMembership = (group: Group) =>
@@ -127,9 +125,7 @@ function GroupMembersTable({
       )}
       {!hasMembers && (
         <div className="mt4 pt4 flex layout-centered">
-          <AdminEmptyText
-            message={t`A group is only as good as its members.`}
-          />
+          <h2 className="text-medium">{t`A group is only as good as its members.`}</h2>
         </div>
       )}
     </React.Fragment>

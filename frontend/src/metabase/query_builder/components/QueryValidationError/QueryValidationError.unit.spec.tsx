@@ -7,24 +7,17 @@ import ValidationError, {
 
 import QueryValidationError from "./QueryValidationError";
 
-const providers = {
-  reducers: {
-    qb: () => ({}),
-  },
-};
-
 describe("QueryValidationError", () => {
   describe("when using an Error", () => {
     const error = new Error("oof");
-    beforeEach(() => {
-      renderWithProviders(<QueryValidationError error={error} />, providers);
-    });
 
     it("should render the error message", () => {
+      renderWithProviders(<QueryValidationError error={error} />);
       expect(screen.getByText("oof")).toBeInTheDocument();
     });
 
     it("should not render an action button because there is no associated action", () => {
+      renderWithProviders(<QueryValidationError error={error} />);
       expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
   });
@@ -34,18 +27,14 @@ describe("QueryValidationError", () => {
       "oof",
       VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION,
     );
-    beforeEach(() => {
-      renderWithProviders(
-        <QueryValidationError error={validationError} />,
-        providers,
-      );
-    });
 
     it("should render the error message", () => {
+      renderWithProviders(<QueryValidationError error={validationError} />);
       expect(screen.getByText("oof")).toBeInTheDocument();
     });
 
     it("should render an action button", () => {
+      renderWithProviders(<QueryValidationError error={validationError} />);
       expect(screen.getByRole("button")).toBeInTheDocument();
     });
   });
