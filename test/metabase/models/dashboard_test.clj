@@ -350,13 +350,53 @@
                                                                    :slug   "category_name"
                                                                    :id     "_CATEGORY_NAME_"
                                                                    :type   "category"
+                                                                   :values_query_type    "list"
+                                                                   :values_source_type   "card"
+                                                                   :values_source_config {:card_id 1
+                                                                                          :value_field [:field 2 nil]}
                                                                    :target target}]}]
           (is (= [{:name   "Category Name"
                    :slug   "category_name"
                    :id     "_CATEGORY_NAME_"
                    :type   :category
-                   :target expected}]
+                   :target expected
+                   :values_query_type "list",
+                   :values_source_type "card",
+                   :values_source_config {:card_id 1, :value_field [:field 2 nil]}}]
                  (db/select-one-field :parameters Dashboard :id dashboard-id))))))))
+
+(deftest should-add-default-values-source-test
+  (testing "shoudld add default if not exists"
+    (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                               :slug   "category_name"
+                                                               :id     "_CATEGORY_NAME_"
+                                                               :type   "category"}]}]
+      (is (=? [{:name                 "Category Name"
+                :slug                 "category_name"
+                :id                   "_CATEGORY_NAME_"
+                :type                 :category
+                :values_query_type    "list",
+                :values_source_type   nil,
+                :values_source_config {}}]
+              (db/select-one-field :parameters Dashboard :id dashboard-id)))))
+
+  (testing "shoudld not override if existsed "
+    (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                               :slug   "category_name"
+                                                               :id     "_CATEGORY_NAME_"
+                                                               :type   "category"
+                                                               :values_query_type    "list"
+                                                               :values_source_type   "card"
+                                                               :values_source_config {:card_id 1
+                                                                                      :value_field [:field 2 nil]}}]}]
+      (is (=? [{:name                 "Category Name"
+                :slug                 "category_name"
+                :id                   "_CATEGORY_NAME_"
+                :type                 :category
+                :values_query_type    "list",
+                :values_source_type   "card",
+                :values_source_config {:card_id 1, :value_field [:field 2 nil]}}]
+              (db/select-one-field :parameters Dashboard :id dashboard-id))))))
 
 (deftest identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"
