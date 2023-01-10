@@ -61,11 +61,11 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     setFilter("Text or Category", "Is");
 
     cy.findByText("Select…").click();
-    popover().contains("Dropdown").click();
+    popover().contains("Is").click();
 
     cy.findByText("Default value").next().click();
 
-    applyFilterByType("Dropdown", "Gizmo");
+    applyFilterByType("Is", "Gizmo");
 
     saveDashboard();
 
@@ -79,7 +79,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     filterWidget().click();
 
-    applyFilterByType("Dropdown", "Doohickey");
+    applyFilterByType("Is", "Doohickey");
 
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });

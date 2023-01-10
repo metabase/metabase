@@ -55,7 +55,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
 
     cy.findByText("Default value").next().click();
 
-    applyFilterByType("Dropdown", "Organic");
+    applyFilterByType("Is", "Organic");
 
     // We need to add another filter only to reproduce metabase#13960
     setFilter("ID");
