@@ -45,7 +45,7 @@ export function createParameter(
     id: generateParameterId(),
     type: option.type,
     sectionId: option.sectionId,
-    values_query_type: "none",
+    values_query_type: "list",
     values_source_type: null,
     values_source_config: {},
   };
