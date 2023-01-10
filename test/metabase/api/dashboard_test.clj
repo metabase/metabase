@@ -1026,6 +1026,7 @@
                                                           :parameters [{:name "Category ID"
                                                                         :slug "category_id"
                                                                         :id   "_CATEGORY_ID_"
+                                                                        :values_query_type "list"
                                                                         :type :category}]}]
                       Card          [{card-id :id}]
                       Card          [{card-id2 :id}]
@@ -1039,7 +1040,7 @@
           (try
             (is (= 2
                    (count (db/select-ids DashboardCard, :dashboard_id copy-id))))
-            (is (= [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
+            (is (= [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category, :values_query_type "list"}]
                    (db/select-one-field :parameters Dashboard :id copy-id)))
             (is (= [{:parameter_id "random-id"
                      :card_id      card-id
