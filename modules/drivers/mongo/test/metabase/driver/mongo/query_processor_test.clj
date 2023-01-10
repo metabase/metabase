@@ -91,7 +91,7 @@
 
             (testing "should still work even with bucketing bucketing"
               (let [query (mt/with-everything-store
-                            (mongo.qp/mbql->native
+                            (qp/compile
                              (mt/mbql-query attempts
                                {:aggregation [[:count]]
                                 :breakout    [[:field %datetime {:temporal-unit :month}]
@@ -99,13 +99,9 @@
                                 :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
                 (is (= {:projections ["datetime~~~month" "datetime~~~day" "count"]
                         :query       [{"$match"
-                                       {:$expr
-                                        {"$eq"
-                                         [{:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
-                                                  :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month"
-                                                                                :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}
-                                          {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}}
+                                       {"$and"
+                                        [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
+                                         {:$expr {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
                                       {"$group" {"_id"   {"datetime~~~month" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
                                                                                                                    :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
                                                                                      :in   {:$dateFromParts {:year  "$$parts.year"
@@ -122,7 +118,8 @@
                                       {"$project" {"_id"              false
                                                    "datetime~~~month" "$_id.datetime~~~month"
                                                    "datetime~~~day"   "$_id.datetime~~~day"
-                                                   "count"            true}}],
+                                                   "count"            true}}
+                                      {"$sort" {"datetime~~~month" 1}}]
                         :collection  "attempts"
                         :mbql?       true}
                        query))
@@ -197,7 +194,7 @@
                                 {"$project" {"_id" false, "count" true}}],
                   :collection  "tips",
                   :mbql?       true}
-                 (mongo.qp/mbql->native
+                 (qp/compile
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :filter      [:= $tips.source.username "tupac"]}))))
@@ -207,10 +204,11 @@
                                            "count" {"$sum" 1}}}
                                 {"$sort" {"_id" 1}}
                                 ;; Or should this be {"source" {"username" "$_id.source.username"}} ?
-                                {"$project" {"_id" false, "source.username" "$_id.source.username", "count" true}}]
+                                {"$project" {"_id" false, "source.username" "$_id.source.username", "count" true}}
+                                {"$sort" {"source.username" 1}}]
                   :collection  "tips"
                   :mbql?       true}
-                 (mongo.qp/mbql->native
+                 (qp/compile
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :breakout    [$tips.source.username]}))))

@@ -243,7 +243,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest e2e-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+  ;; ->honeysql is not implemented for mongo
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries) :mongo)
     (testing "When querying with full permissions, no changes should be made"
       (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" 50}}
@@ -335,11 +336,11 @@
                 (is (= 1
                        (count
                         (mt/rows
-                          (qp/process-query
-                           {:database (mt/id)
-                            :type     :query
-                            :query    {:source-table (mt/id :venues)
-                                       :limit        1}})))))))))))
+                         (qp/process-query
+                          {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :venues)
+                                      :limit        1}})))))))))))
 
     (testing (str "This test isn't covering a row level restrictions feature, but rather checking it it doesn't break "
                   "querying of a card as a nested query. Part of the row level perms check is looking at the table (or "
@@ -350,11 +351,11 @@
           (is (= [[100]]
                  (mt/format-rows-by [int]
                    (mt/rows
-                     (qp/process-query
-                      {:database (mt/id)
-                       :type     :query
-                       :query    {:source-table (format "card__%s" (u/the-id card))
-                                  :aggregation  [["count"]]}}))))))))))
+                    (qp/process-query
+                     {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table (format "card__%s" (u/the-id card))
+                                 :aggregation  [["count"]]}}))))))))))
 
 ;; Test that we can follow FKs to related tables and breakout by columns on those related tables. This test has
 ;; several things wrapped up which are detailed below
