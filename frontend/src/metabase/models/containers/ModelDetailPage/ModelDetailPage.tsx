@@ -9,7 +9,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 
-import { loadMetadataForCard } from "metabase/query_builder/actions";
+import { loadMetadataForCard } from "metabase/questions/actions";
 
 import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
