@@ -32,7 +32,8 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
   const handleNameChange = useCallback(
     name => {
       if (name && name !== model.displayName()) {
-        onChangeModel(model.setDisplayName(name).card() as Card);
+        const nextCard = model.setDisplayName(name).card();
+        onChangeModel(nextCard as Card);
       }
     },
     [model, onChangeModel],
@@ -41,7 +42,8 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
   const handleDescriptionChange = useCallback(
     description => {
       if (model.description() !== description) {
-        onChangeModel(model.setDescription(description).card() as Card);
+        const nextCard = model.setDescription(description).card();
+        onChangeModel(nextCard as Card);
       }
     },
     [model, onChangeModel],
