@@ -17,7 +17,7 @@ import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
-import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
+import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
 import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
@@ -31,7 +31,7 @@ import EditEventModal from "metabase/timelines/questions/containers/EditEventMod
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
 import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
-import QuestionMoveToast from "./QuestionMoveToast";
+import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,

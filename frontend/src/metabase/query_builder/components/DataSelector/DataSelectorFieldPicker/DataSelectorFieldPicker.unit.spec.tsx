@@ -57,13 +57,11 @@ describe("DataSelectorFieldPicker", () => {
         display_name: tableDisplayName,
       };
 
-      const fields = [ORDERS.PRODUCT_ID];
-
       render(
         <DataSelectorFieldPicker
           {...props}
           selectedTable={selectedTable as Table}
-          fields={fields}
+          fields={[ORDERS.PRODUCT_ID]}
         />,
       );
 

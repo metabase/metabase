@@ -52,7 +52,6 @@
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
-   [metabase.test.util :as tu]
    [metabase.test.util.log :as tu.log]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -424,8 +423,8 @@
                        (catch Exception e
                          (when-not raw-setting?
                            (throw e))))]
-    (if-let [env-var-value (and (not raw-setting?) (#'setting/env-var-value setting-k))]
-      (do-with-temp-env-var-value setting env-var-value thunk)
+    (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
+      (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (db/select-one-field :value Setting :key setting-k)
                              (#'setting/get setting-k))]
@@ -920,8 +919,8 @@
                                                 :name     (format "%s [internal remap]" (:display_name original))
                                                 :type     :internal}]]
                   (if preexisting-id
-                    (tu/with-temp-vals-in-db FieldValues preexisting-id {:values (keys values-map)
-                                                                         :human_readable_values (vals values-map)}
+                    (with-temp-vals-in-db FieldValues preexisting-id {:values (keys values-map)
+                                                                      :human_readable_values (vals values-map)}
                       (testing-thunk))
                     (tt/with-temp* [FieldValues [_ {:field_id              (:id original)
                                                     :values                (keys values-map)

@@ -169,23 +169,6 @@ describe("parameters/utils/parameter-values", () => {
       ).toBe("");
     });
 
-    it("should parse the parameter value as a float when it is a number parameter without fields", () => {
-      const numberParameter = {
-        id: 111,
-        slug: "numberParameter",
-        type: "number/=",
-      };
-      expect(
-        getParameterValueFromQueryParams(
-          numberParameter,
-          {
-            [numberParameter.slug]: "123.456",
-          },
-          metadata,
-        ),
-      ).toEqual([123.456]);
-    });
-
     it("should not parse numeric values that are dates as floats", () => {
       field1.isNumeric = () => true;
       field1.isDate = () => true;
@@ -362,6 +345,55 @@ describe("parameters/utils/parameter-values", () => {
       expect(getParameterValueFromQueryParams(parameter2, {}, metadata)).toBe(
         "parameter2 default value",
       );
+    });
+
+    describe("for number filter type", () => {
+      const numberParameter = {
+        id: 111,
+        slug: "numberParameter",
+        type: "number/=",
+      };
+
+      const runGetParameterValueFromQueryParams = value =>
+        getParameterValueFromQueryParams(
+          numberParameter,
+          {
+            [numberParameter.slug]: value,
+          },
+          metadata,
+        );
+
+      it("should parse the parameter value as a float when it is a number parameter without fields", () => {
+        expect(runGetParameterValueFromQueryParams("123.456")).toEqual([
+          123.456,
+        ]);
+      });
+
+      describe("when parsing parameter value that is a comma-separated list of numbers", () => {
+        it("should return list when every item is a number", () => {
+          expect(runGetParameterValueFromQueryParams("1,,2,3,4")).toEqual([
+            "1,2,3,4",
+          ]);
+          expect(runGetParameterValueFromQueryParams("1, ,2,3,4")).toEqual([
+            "1,2,3,4",
+          ]);
+          expect(runGetParameterValueFromQueryParams(",1,2,3,")).toEqual([
+            "1,2,3",
+          ]);
+        });
+
+        it("should return undefined when list is not formatted properly", () => {
+          expect(runGetParameterValueFromQueryParams(",,,")).toEqual([
+            undefined,
+          ]);
+          expect(runGetParameterValueFromQueryParams(" ")).toEqual([undefined]);
+        });
+
+        it("should return first parseable float if value includes non-numeric characters", () => {
+          expect(runGetParameterValueFromQueryParams("1,a,3,")).toEqual([1]);
+          expect(runGetParameterValueFromQueryParams("1a,b,3,")).toEqual([1]);
+        });
+      });
     });
   });
 

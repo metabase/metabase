@@ -47,7 +47,11 @@ const ScalarValue = ({
   );
 
   return (
-    <ScalarValueWrapper className="ScalarValue" fontSize={fontSize}>
+    <ScalarValueWrapper
+      className="ScalarValue"
+      fontSize={fontSize}
+      data-testid="scalar-value"
+    >
       {value}
     </ScalarValueWrapper>
   );

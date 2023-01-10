@@ -30,6 +30,7 @@ export function SelectListItem(props) {
     <BaseSelectListItem
       as={ItemRoot}
       {...props}
+      aria-label={name}
       hasLeftIcon={!!icon}
       hasRightIcon={!!rightIcon}
     >

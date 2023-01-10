@@ -38,6 +38,7 @@ interface CollectionsLoaderProps {
   collectionTree: Collection[];
   collections: Collection[];
   rootCollection: Collection;
+  allLoading: boolean;
 }
 
 interface SchemaLoaderProps {
@@ -63,6 +64,7 @@ function CardPickerContainer({
   schema: selectedSchema,
   currentUser,
   targetModel,
+  allLoading,
   onChange,
   onBack,
 }: CardPickerProps) {
@@ -133,6 +135,7 @@ function CardPickerContainer({
       virtualTables={selectedSchema?.tables}
       selectedItems={selectedItems}
       targetModel={targetModel}
+      isLoading={allLoading}
       onSelectCollection={handleSelectedCollectionChange}
       onSelectedVirtualTable={handleSelectedTablesChange}
       onBack={onBack}

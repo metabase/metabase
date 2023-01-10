@@ -41,8 +41,8 @@
     (is (= {:name         "Test Dashboard"
             :description  nil
             :cache_ttl    nil
-            :cards        [{:size_x   2
-                            :size_y   2
+            :cards        [{:size_x  4
+                            :size_y  4
                             :row     0
                             :col     0
                             :id      true
@@ -76,8 +76,8 @@
            :cards       []}
           {:name        "Diff Test"
            :description nil
-           :cards       [{:size_x   2
-                          :size_y   2
+           :cards       [{:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      1
@@ -90,15 +90,15 @@
           {:name        "Diff Test"
            :description nil
            :cache_ttl   333
-           :cards       [{:size_x   2
-                          :size_y   2
+           :cards       [{:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      1
                           :card_id 1
                           :series  [5 6]}
-                         {:size_x   2
-                          :size_y   2
+                         {:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      2
@@ -107,15 +107,15 @@
           {:name        "Diff Test"
            :description nil
            :cache_ttl   1227
-           :cards       [{:size_x   2
-                          :size_y   2
+           :cards       [{:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      1
                           :card_id 1
                           :series  [4 5]}
-                         {:size_x   2
-                          :size_y   2
+                         {:size_x  4
+                          :size_y  4
                           :row     2
                           :col     0
                           :id      2
@@ -144,8 +144,8 @@
         (is (= {:name        "Test Dashboard"
                 :description nil
                 :cache_ttl   nil
-                :cards       [{:size_x  2
-                               :size_y  2
+                :cards       [{:size_x  4
+                               :size_y  4
                                :row     0
                                :col     0
                                :id      true
@@ -166,8 +166,8 @@
         (is (= {:name        "Test Dashboard"
                 :description nil
                 :cache_ttl   nil
-                :cards       [{:size_x  2
-                               :size_y  2
+                :cards       [{:size_x  4
+                               :size_y  4
                                :row     0
                                :col     0
                                :id      false

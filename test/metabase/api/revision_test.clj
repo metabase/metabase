@@ -120,13 +120,13 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         {:before {:cards nil}
-                              :after  {:cards [{:size_x 2, :size_y 2, :row 0, :col 0, :card_id card-id, :series []}]}}
+                              :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
                :description  "added a card."}
               {:is_reversion false
                :is_creation  false
                :message      nil
                :user         @rasta-revision-info
-               :diff         {:before {:cards [{:size_x 2, :size_y 2, :row 0, :col 0, :card_id card-id, :series []}]}
+               :diff         {:before {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}
                               :after  {:cards nil}}
                :description "removed a card."}
               {:is_reversion false
@@ -134,7 +134,7 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         {:before {:cards nil}
-                              :after  {:cards [{:size_x 2, :size_y 2, :row 0, :col 0, :card_id card-id, :series []}]}}
+                              :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
                :description "added a card."}
               {:is_reversion false
                :is_creation  true

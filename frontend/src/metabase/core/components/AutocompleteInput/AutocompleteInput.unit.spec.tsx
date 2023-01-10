@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import AutocompleteInput, { AutocompleteInputProps } from "./AutocompleteInput";
@@ -10,12 +10,12 @@ const setup = ({
   onChange = jest.fn(),
   ...props
 }: Partial<AutocompleteInputProps> = {}) => {
-  const { getByRole, rerender, findAllByRole } = render(
+  const { rerender } = render(
     <AutocompleteInput {...props} options={OPTIONS} onChange={onChange} />,
   );
 
-  const input = getByRole("combobox");
-  const getOptions = async () => findAllByRole("menuitem");
+  const input = screen.getByRole("combobox");
+  const getOptions = () => screen.findAllByRole("menuitem");
 
   return { input, getOptions, rerender };
 };

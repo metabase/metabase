@@ -120,7 +120,7 @@ function DataPicker({
     }
   });
 
-  const handleBack = useCallback(() => {
+  const handleReset = useCallback(() => {
     onChange({
       type: undefined,
       databaseId: undefined,
@@ -128,6 +128,8 @@ function DataPicker({
       tableIds: [],
     });
   }, [onChange]);
+
+  const canGoBack = dataTypes.length > 1;
 
   return (
     <DataPickerView
@@ -137,7 +139,7 @@ function DataPicker({
       searchQuery={search.query}
       hasDataAccess={hasDataAccess}
       onDataTypeChange={handleDataTypeChange}
-      onBack={handleBack}
+      onBack={canGoBack ? handleReset : undefined}
     />
   );
 }

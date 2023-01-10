@@ -17,14 +17,11 @@ describe("api", () => {
   });
 
   it("GET should throw on 503 with no retry", async () => {
-    expect.assertions(1);
     nock(location.origin).get("/hello").reply(503);
     const hello = GET("/hello", { retry: false });
-    try {
-      await hello();
-    } catch (error) {
-      expect(error.status).toBe(503);
-    }
+    await expect(hello()).rejects.toEqual(
+      expect.objectContaining({ status: 503 }),
+    );
   });
 
   it("should POST", async () => {
@@ -61,11 +58,9 @@ describe("api", () => {
     expect.assertions(1);
     nock(location.origin).post("/hello").reply(503);
     const hello = POST("/hello", { retry: false });
-    try {
-      await hello({ data: "here" });
-    } catch (error) {
-      expect(error.status).toBe(503);
-    }
+    await expect(hello()).rejects.toEqual(
+      expect.objectContaining({ status: 503 }),
+    );
   });
 
   it("GET should retry and succeed if 503 then 200", async () => {
@@ -90,15 +85,12 @@ describe("api", () => {
     nock(location.origin).get("/hello").reply(503);
     const limitedRetryGET = api._makeMethod("GET", RETRY_THREE_TIMES);
     const hello = limitedRetryGET("/hello", { retry: true });
-    try {
-      await hello();
-    } catch (error) {
-      expect(error.status).toBe(503);
-    }
+    await expect(hello()).rejects.toEqual(
+      expect.objectContaining({ status: 503 }),
+    );
   });
 
   it("GET should succeed if the last attempt succeeds", async () => {
-    expect.assertions(1);
     nock(location.origin).get("/hello").reply(503);
     nock(location.origin).get("/hello").reply(503);
     nock(location.origin).get("/hello").reply(503);
@@ -110,16 +102,15 @@ describe("api", () => {
   });
 
   it("should use _status from body when HTTP status is 202", async () => {
-    expect.assertions(2);
     nock(location.origin)
       .get("/async-status")
       .reply(202, { _status: 400, message: "error message" });
     const asyncStatus = GET("/async-status");
-    try {
-      await asyncStatus();
-    } catch (error) {
-      expect(error.status).toBe(400);
-      expect(error.data.message).toBe("error message");
-    }
+    await expect(asyncStatus()).rejects.toEqual(
+      expect.objectContaining({
+        status: 400,
+        data: expect.objectContaining({ message: "error message" }),
+      }),
+    );
   });
 });

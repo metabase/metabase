@@ -26,7 +26,7 @@ describe("isSingleOrMultiSelectable", () => {
     expect(isSingleOrMultiSelectable(parameter)).toBe(false);
   });
 
-  it("is true for parameters with acceptable types and corresponding subTypes ", () => {
+  it("is true for parameters with acceptable types and corresponding subTypes", () => {
     const parameter = {
       ...requiredParameterAttributes,
       sectionId: "location",

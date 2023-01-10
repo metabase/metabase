@@ -111,8 +111,14 @@ export default class NotebookStep extends React.Component {
   };
 
   render() {
-    const { step, openStep, isLastStep, isLastOpened, updateQuery } =
-      this.props;
+    const {
+      step,
+      openStep,
+      isLastStep,
+      isLastOpened,
+      updateQuery,
+      reportTimezone,
+    } = this.props;
     const { showPreview } = this.state;
 
     const {
@@ -180,6 +186,7 @@ export default class NotebookStep extends React.Component {
                   query={step.query}
                   updateQuery={updateQuery}
                   isLastOpened={isLastOpened}
+                  reportTimezone={reportTimezone}
                 />
               </StepContent>
               <StepButtonContainer>
@@ -238,6 +245,7 @@ const ActionButton = ({
   onClick,
   ...props
 }) => {
+  const label = large ? title : null;
   const button = (
     <ColorButton
       icon={icon}
@@ -247,9 +255,10 @@ const ActionButton = ({
       iconVertical={large}
       iconSize={large ? 18 : 14}
       onClick={onClick}
+      aria-label={label}
       {...props}
     >
-      {large ? title : null}
+      {label}
     </ColorButton>
   );
 

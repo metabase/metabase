@@ -576,6 +576,7 @@ export default class PieChart extends Component {
                               })
                           : undefined
                       }
+                      data-testid="slice"
                     />
                   );
                 })}
