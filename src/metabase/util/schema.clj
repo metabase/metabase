@@ -582,6 +582,8 @@
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   (with-api-error-message {:id                                    NonBlankStringPlumatic
                            :type                                  keyword-or-non-blank-str
+                           ;; should be required on dashboard
+                           (s/optional-key :values_query_type)    (s/enum "list" "search" "none")
                            (s/optional-key :values_source_type)   (s/enum "static-list" "card" nil)
                            (s/optional-key :values_source_config) ValuesSourceConfigPlumatic
                            ;; Allow blank name and slug #15279
@@ -617,6 +619,8 @@
     [:map {:error/fn (constantly (deferred-tru "parameter must be a map with :id and :type keys"))}
      [:id NonBlankString]
      [:type keyword-or-non-blank-str-malli]
+     ;; should be required on dashboard
+     [:values_query_type {:optional true} [:enum "list" "search" "none"]]
      ;; TODO how to merge this with ParameterSource above?
      [:values_source_type {:optional true} [:enum "static-list" "card" nil]]
      [:values_source_config {:optional true} ValuesSourceConfig]

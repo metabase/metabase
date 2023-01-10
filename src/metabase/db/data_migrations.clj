@@ -12,11 +12,12 @@
    [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Dashboard DashboardCard Setting]]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.setting :as setting :refer [Setting]]
    [metabase.util :as u]
    [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]))
 
 ;;; # Migration Helpers
@@ -37,11 +38,14 @@
       (log/info (format "Running data migration '%s'..." migration-name))
       (try
        (db/transaction
-        (@migration-var))
+         (@migration-var))
        (catch Exception e
-         (if catch?
-           (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
-           (throw e))))
+        (let [fail-msg (format "Data migration %s failed: %s" migration-name (.getMessage e))]
+          (if catch?
+            (log/warn fail-msg)
+            (do
+              (log/error fail-msg)
+              (throw e))))))
       (db/insert! DataMigrations
         :id        migration-name
         :timestamp :%now))))
@@ -221,6 +225,77 @@
   ;; have switched from enterprise -> SSO and stil have this mapping in Setting table
   (remove-admin-group-from-mappings-by-setting-key! :jwt-group-mappings)
   (remove-admin-group-from-mappings-by-setting-key! :saml-group-mappings))
+
+(defn- mappings->field-ids
+  [mappings]
+  (for [{:keys [target] :as mapping} mappings
+        :let [field-id
+              ;; check [[metabase.mbql.schema/template-tag]] for the all possible shape of `target`
+              (or
+                ;; parameter that maps to a field
+                (mbql.u/match-one
+                  target
+                  [:field field-id _]
+                  field-id)
+                  ;; parameter that maps to a field-filter on native question
+                (when-let [template-tag-name (mbql.u/match-one
+                                               target
+                                               [:dimension [:template-tag template-tag-name]]
+                                               template-tag-name)]
+
+                  (second (get-in mapping [:dashcard :card :dataset_query :native :template-tags template-tag-name :dimension]))))]
+        :when (some? field-id)]
+    field-id))
+
+(defn- populate-parameter-values-query-type
+  [{:keys [resolved-params parameters] :as _dashboard}]
+  (let [field-ids        (flatten (map #(mappings->field-ids (:mappings %1)) (vals resolved-params)))
+        ;; fetch all the needed fields from parameters once to save some CPU cycle
+        field-id->field (if (seq field-ids)
+                          (->> (hydrate (db/select ['Field :id :has_field_values :base_type]
+                                                   :id [:in field-ids])
+                                        :has_field_values)
+                               (m/index-by :id))
+                          {})]
+   (for [parameter parameters
+         :let [param             (get resolved-params (:id parameter))
+               mapped-field-ids  (mappings->field-ids (:mappings param))
+               ;; this should returns a subset of #{:search :list :none}
+               has-field-valuess (->> (map #(get field-id->field %) mapped-field-ids)
+                                      (map :has_field_values)
+                                      set)]]
+     (assoc parameter
+            :values_query_type
+            (cond
+              ;; if at least one is :none, then :none
+              (contains? has-field-valuess :none)
+              "none"
+
+              ;; else if at least one is :search, then :search
+              (contains? has-field-valuess :search)
+              "search"
+
+              :else
+              "list")))))
+
+(defn- should-populate-parameter-values-query-type?
+  [parameters]
+  (and (seq parameters)
+       (some (comp nil? :values_query_type) parameters)))
+
+(defn- maybe-populate-parameter-values-query-type
+  [{:keys [parameters] :as dashboard}]
+  (when (should-populate-parameter-values-query-type? parameters)
+    (db/update! 'Dashboard (:id dashboard)
+               :parameters (populate-parameter-values-query-type (hydrate dashboard :resolved-params)))))
+
+(defmigration
+  ^{:author "qnkhuat"
+    :added  "0.46.0"
+    :doc    "TO ADD."}
+  migrate-adding-values-query-type-to-parameter-dashboard
+  (doseq [dashboard (db/select Dashboard)]
+    (maybe-populate-parameter-values-query-type dashboard)))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

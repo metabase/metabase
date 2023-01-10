@@ -8,7 +8,6 @@
    [medley.core :as m]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.events :as events]
-   [metabase.mbql.util :as mbql.u]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard-card
@@ -165,77 +164,11 @@
                (assoc-in param [:values_source_config :card_id] (get param-id->card-id id (:card_id values_source_config)))
                param)))))
 
-(defn- should-populate-parameter-values-query-type?
-  [parameters]
-  (and (seq parameters)
-       (some (comp nil? :values_query_type) parameters)))
-
-(defn- mappings->field-ids
-  [mappings]
-  (for [{:keys [target] :as mapping} mappings
-        :let [field-id
-              ;; check [[metabase.mbql.schema/template-tag]] for the all possible shape of `target`
-              (or
-                ;; parameter that maps to a field
-                (metabase.mbql.util/match-one
-                  target
-                  [:field field-id _]
-                  field-id)
-                  ;; parameter that maps to a field-filter on native question
-                (when-let [template-tag-name (metabase.mbql.util/match-one
-                                               target
-                                               [:dimension [:template-tag template-tag-name]]
-                                               template-tag-name)]
-
-                  (second (get-in mapping [:dashcard :card :dataset_query :native :template-tags template-tag-name :dimension]))))]
-        :when (some? field-id)]
-    field-id))
-
-(defn- populate-parameter-values-query-type
-  [resolved-params parameters]
-  (let [field-ids        (flatten (map #(mappings->field-ids (:mappings %1)) (vals resolved-params)))
-        ;; fetch all the needed fields from parameters once to save some CPU cycle
-        field-id->field (if (seq field-ids)
-                          (->> (hydrate (db/select ['Field :id :has_field_values :base_type]
-                                                   :id [:in field-ids])
-                                        :has_field_values)
-                               (m/index-by :id))
-                          {})]
-   (for [parameter parameters
-         :let [param             (get resolved-params (:id parameter))
-               mapped-field-ids  (mappings->field-ids (:mappings param))
-               ;; this should returns a subset of #{:search :list :none}
-               has-field-valuess (->> (map #(get field-id->field %) mapped-field-ids)
-                                      (map :has_field_values)
-                                      set)]]
-     (assoc parameter
-            :values_query_type
-            (cond
-              ;; if at least one is :none, then :none
-              (contains? has-field-valuess :none)
-              :none
-
-              ;; else if at least one is :search, then :search
-              (contains? has-field-valuess :search)
-              :search
-
-              :else
-              :list)))))
-
-(declare dashboard->resolved-params)
-
-(defn- maybe-populate-parameter-values-query-type
-  [{:keys [parameters] :as dashboard}]
-  (if-not (should-populate-parameter-values-query-type? parameters)
-    dashboard
-    (assoc dashboard :parameters (populate-parameter-values-query-type (dashboard->resolved-params dashboard) parameters))))
-
 (defn- post-select
   [dashboard]
   (-> dashboard
       public-settings/remove-public-uuid-if-public-sharing-is-disabled
-      populate-card-id-for-parameters
-      maybe-populate-parameter-values-query-type))
+      populate-card-id-for-parameters))
 
 (mi/define-methods
  Dashboard
@@ -485,10 +418,10 @@
                  s/Keyword                    s/Any}]
   (let [dashboard           (hydrate dashboard [:ordered_cards :card])
         param-key->mappings (apply
-                             merge-with set/union
-                             (for [dashcard (:ordered_cards dashboard)
-                                   param    (:parameter_mappings dashcard)]
-                               {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
+                              merge-with set/union
+                              (for [dashcard (:ordered_cards dashboard)
+                                    param    (:parameter_mappings dashcard)]
+                                {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
     (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
                [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
 

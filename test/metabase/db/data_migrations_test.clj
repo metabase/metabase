@@ -5,7 +5,7 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.db.data-migrations :as migrations]
-   [metabase.models :refer [Card Dashboard DashboardCard Setting]]
+   [metabase.models :refer [Card Database Dashboard DashboardCard Field Table Setting]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
@@ -392,3 +392,131 @@
           [ldap-sync-admin-group "true"]
           (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
           (is (= ldap-group-mappings (get-json-setting :ldap-group-mappings))))))))
+
+(deftest post-select-fill-values-query-type-test
+    (testing "selecting Dashboard should populate values_source_type to dashboard.parameters"
+      (mt/with-temp*
+        [Database  [{db-id :id}]
+         Table     [{table-id :id}          {:db_id db-id}]
+         Field     [{autolist-field-id :id} {:has_field_values :auto-list
+                                             :base_type        :type/Text
+                                             :table_id         table-id}]
+         Field     [{list-field-id :id}     {:has_field_values :list
+                                             :base_type        :type/Text
+                                             :table_id         table-id}]
+         Field     [{search-field-id :id}   {:has_field_values :search
+                                             :base_type        :type/Text
+                                             :table_id         table-id}]
+         Field     [{none-field-id :id}     {:has_field_values :none
+                                             :base_type        :type/Text
+                                             :table_id         table-id}]
+         Card      [{card-id :id}           {:database_id   db-id
+                                             :table_id      table-id}]]
+        (testing "should set values_source_type correctly"
+          (mt/with-temp*
+            [Dashboard [{dash-id :id
+                         :as dashboard}          {:parameters [{:id   "_none_parameter_"
+                                                                :name "None Parameter"
+                                                                :type "category"}
+                                                               {:id   "_search_parameter_"
+                                                                :name "Search Parameter"
+                                                                :type "category"}
+                                                               {:id   "_list_parameter_"
+                                                                :name "List Parameter"
+                                                                :type "category"}]}]
+             DashboardCard [_ {:dashboard_id       dash-id
+                               :card_id            card-id
+                               :parameter_mappings [{:parameter_id "_none_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["field" none-field-id nil]]}
+                                                    {:parameter_id "_none_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["field" autolist-field-id nil]]}
+                                                    {:parameter_id "_none_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["field" list-field-id nil]]}
+                                                    {:parameter_id "_none_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["field" search-field-id nil]]}
+
+                                                    {:parameter_id "_search_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["field" search-field-id nil]]}
+                                                    {:parameter_id "_search_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["field" autolist-field-id nil]]}
+                                                    {:parameter_id "_search_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["field" list-field-id nil]]}
+
+                                                    {:parameter_id "_list_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["field" autolist-field-id nil]]}
+                                                    {:parameter_id "_list_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["field" list-field-id nil]]}]}]]
+            (#'migrations/maybe-populate-parameter-values-query-type dashboard)
+            (is (=? [;; parameter mapped to at least one field with has_field_values = :none should be :none
+                     {:id "_none_parameter_",
+                      :values_query_type "none"}
+                     ;; parameter mapped to at least one field with has_field_values = :search should be :search
+                     {:id "_search_parameter_",
+                      :values_query_type "search"}
+                     ;; otherwise :list
+                     {:id "_list_parameter_",
+                      :values_query_type "list"}]
+                    (:parameters (db/select-one Dashboard :id dash-id))))))
+
+        (testing "it should works with legacy mbql-field and parameters with target is template-tag"
+          (mt/with-temp*
+            [Dashboard [{dash-id :id
+                         :as dashboard}          {:parameters [{:id   "_none_parameter_"
+                                                                :name "None Parameter"
+                                                                :type "category"}
+                                                               {:id   "_search_parameter_"
+                                                                :name "Search Parameter"
+                                                                :type "category"}
+                                                               {:id   "_list_parameter_"
+                                                                :name "List Parameter"
+                                                                :type "category"}]}]
+             Card          [{native-card-id :id}   {:dataset_query
+                                                    {:database      db-id,
+                                                     :type          :native
+                                                     :native {:query         "select * from table where {{field}}"
+                                                              :template-tags {"field-filter" {:id          "table",
+                                                                                              :name        "table",
+                                                                                              :type        "dimension",
+                                                                                              :dimension   ["field" none-field-id nil],
+                                                                                              :widget-type "category"}
+                                                                              "text-field"   {:name         "text field"
+                                                                                              :display-name "text field"
+                                                                                              :type         :text}}}}}]
+
+             DashboardCard [_ {:dashboard_id       dash-id
+                               :card_id            native-card-id
+                               :parameter_mappings [{:parameter_id "_none_parameter_"
+                                                     :card_id      native-card-id
+                                                     :target       ["dimension" ["template-tag" "field-filter"]]}
+                                                    {:parameter_id "_none_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["variable" "text-field"]]}]}]
+
+             DashboardCard [_ {:dashboard_id       dash-id
+                               :card_id            card-id
+                               :parameter_mappings [{:parameter_id "_search_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["template-tag" "whatever"]]}
+                                                    {:parameter_id "_search_parameter_"
+                                                     :card_id      card-id
+                                                     :target       ["dimension" ["field-id" search-field-id]]}]}]]
+           (#'migrations/maybe-populate-parameter-values-query-type dashboard)
+           (is (=? [;; parameter maps to a field filter with has_field_values = "none"
+                    {:id                "_none_parameter_"
+                     :values_query_type "none"}
+                    ;; pararameter maps to a field with has_field_values = "search" with legacy mbql
+                    {:id                "_search_parameter_"
+                     :values_query_type "search"}
+                    ;; default to :list if parameter doesn't map to anything
+                    {:id                "_list_parameter_"
+                     :values_query_type "list"}]
+                   (:parameters (db/select-one Dashboard :id dash-id)))))))))
