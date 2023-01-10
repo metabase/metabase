@@ -61,7 +61,8 @@ interface ModalCardProps {
 
 interface ModalStateProps {
   question: Question | undefined;
-  fieldsValues: string[][][];
+  fieldValues: string[][][];
+  isLoadingFieldValues: boolean;
 }
 
 interface ModalDispatchProps {
@@ -76,7 +77,8 @@ type ModalProps = ModalOwnProps &
 const ValuesSourceTypeModal = ({
   name,
   fields,
-  fieldsValues,
+  fieldValues,
+  isLoadingFieldValues,
   question,
   sourceType,
   sourceConfig,
@@ -87,16 +89,16 @@ const ValuesSourceTypeModal = ({
   onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
-  const fieldValues = useMemo(() => {
-    return getFieldValues(fieldsValues);
-  }, [fieldsValues]);
+  const allFieldValues = useMemo(() => {
+    return getUniqueFieldValues(fieldValues);
+  }, [fieldValues]);
 
   const handleTypeChange = useCallback(
     (sourceType: ValuesSourceType) => {
       onChangeSourceType(sourceType);
-      onChangeSourceConfig(getDefaultSourceConfig(sourceType, fieldValues));
+      onChangeSourceConfig(getDefaultSourceConfig(sourceType, allFieldValues));
     },
-    [fieldValues, onChangeSourceType, onChangeSourceConfig],
+    [allFieldValues, onChangeSourceType, onChangeSourceConfig],
   );
 
   useEffect(() => {
@@ -119,7 +121,8 @@ const ValuesSourceTypeModal = ({
       {sourceType === null ? (
         <FieldSourceModal
           fields={fields}
-          fieldValues={fieldValues}
+          fieldValues={allFieldValues}
+          isLoadingFieldValues={isLoadingFieldValues}
           sourceType={sourceType}
           onChangeSourceType={handleTypeChange}
         />
@@ -136,7 +139,7 @@ const ValuesSourceTypeModal = ({
         <ListSourceModal
           sourceType={sourceType}
           sourceConfig={sourceConfig}
-          fieldValues={fieldValues}
+          fieldValues={allFieldValues}
           onChangeSourceType={handleTypeChange}
           onChangeSourceConfig={onChangeSourceConfig}
         />
@@ -148,6 +151,7 @@ const ValuesSourceTypeModal = ({
 interface FieldSourceModalProps {
   fields: Field[];
   fieldValues: string[];
+  isLoadingFieldValues: boolean;
   sourceType: ValuesSourceType;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
 }
@@ -155,9 +159,17 @@ interface FieldSourceModalProps {
 const FieldSourceModal = ({
   fields,
   fieldValues,
+  isLoadingFieldValues,
   sourceType,
   onChangeSourceType,
 }: FieldSourceModalProps) => {
+  const hasFields = fields.length > 0;
+  const hasFieldValues = fieldValues.length > 0;
+
+  const fieldValuesText = useMemo(() => {
+    return getValuesText(fieldValues);
+  }, [fieldValues]);
+
   return (
     <ModalBody>
       <ModalPane>
@@ -172,16 +184,16 @@ const FieldSourceModal = ({
         </ModalSection>
       </ModalPane>
       <ModalMain>
-        {!fields.length ? (
+        {!hasFields ? (
           <ModalEmptyState>
             {t`You haven’t connected a field to this filter yet, so there aren’t any values.`}
           </ModalEmptyState>
+        ) : !hasFieldValues && !isLoadingFieldValues ? (
+          <ModalEmptyState>
+            {t`We don’t have any cached values for the connected fields. Try one of the other options, or change this widget to a search box.`}
+          </ModalEmptyState>
         ) : (
-          <ModalTextArea
-            defaultValue={getValuesText(fieldValues)}
-            readOnly
-            fullWidth
-          />
+          <ModalTextArea value={fieldValuesText} readOnly fullWidth />
         )}
       </ModalMain>
     </ModalBody>
@@ -270,7 +282,13 @@ const CardSourceModal = ({
         )}
       </ModalPane>
       <ModalMain>
-        <ModalTextArea readOnly fullWidth />
+        {!question ? (
+          <ModalEmptyState>{t`Pick a model or question`}</ModalEmptyState>
+        ) : !selectedField ? (
+          <ModalEmptyState>{t`Pick a column`}</ModalEmptyState>
+        ) : (
+          <ModalTextArea readOnly fullWidth />
+        )}
       </ModalMain>
     </ModalBody>
   );
@@ -326,7 +344,7 @@ const getValuesText = (values?: string[]) => {
   return values?.join(NEW_LINE) ?? "";
 };
 
-const getFieldValues = (fieldsValues: string[][][]) => {
+const getUniqueFieldValues = (fieldsValues: string[][][]) => {
   const allValues = fieldsValues.flatMap(values => values.map(([key]) => key));
   return Array.from(new Set(allValues));
 };
@@ -353,8 +371,14 @@ const mapStateToProps = (
 ): ModalStateProps => {
   return {
     question: card ? new Question(card, getMetadata(state)) : undefined,
-    fieldsValues: fields.map(field =>
+    fieldValues: fields.map(field =>
       Fields.selectors.getFieldValues(state, { entityId: field.id }),
+    ),
+    isLoadingFieldValues: fields.every(field =>
+      Fields.selectors.getLoading(state, {
+        entityId: field.id,
+        requestType: "values",
+      }),
     ),
   };
 };
