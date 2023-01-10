@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { compact_currency_options_js } from "cljs/metabase.shared.formatting.numbers";
 import { moveToFront } from "metabase/lib/dom";
 import { isHistogramBar, xValueForWaterfallTotal } from "./renderer_utils";
 
@@ -183,7 +184,7 @@ export function onRenderValueLabels(
         // those settings.
         minimum_fraction_digits: 2,
         maximum_fraction_digits: 2,
-        currency_style: "symbol",
+        ...compact_currency_options_js,
       };
       const lengths = data.map(d => formatYValue(d.y, options).length);
       return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
