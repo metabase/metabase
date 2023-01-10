@@ -346,15 +346,16 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                   :slug   "category_name"
-                                                                   :id     "_CATEGORY_NAME_"
-                                                                   :type   "category"
-                                                                   :values_query_type    "list"
-                                                                   :values_source_type   "card"
-                                                                   :values_source_config {:card_id 1
-                                                                                          :value_field [:field 2 nil]}
-                                                                   :target target}]}]
+        (mt/with-temp* [Card      [{card-id :id}]
+                        Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                     :slug   "category_name"
+                                                                     :id     "_CATEGORY_NAME_"
+                                                                     :type   "category"
+                                                                     :values_query_type    "list"
+                                                                     :values_source_type   "card"
+                                                                     :values_source_config {:card_id card-id
+                                                                                            :value_field [:field 2 nil]}
+                                                                     :target target}]}]]
           (is (= [{:name   "Category Name"
                    :slug   "category_name"
                    :id     "_CATEGORY_NAME_"
@@ -362,7 +363,7 @@
                    :target expected
                    :values_query_type "list",
                    :values_source_type "card",
-                   :values_source_config {:card_id 1, :value_field [:field 2 nil]}}]
+                   :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
                  (db/select-one-field :parameters Dashboard :id dashboard-id))))))))
 
 (deftest should-add-default-values-source-test
@@ -381,21 +382,22 @@
               (db/select-one-field :parameters Dashboard :id dashboard-id)))))
 
   (testing "shoudld not override if existsed "
-    (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                               :slug   "category_name"
-                                                               :id     "_CATEGORY_NAME_"
-                                                               :type   "category"
-                                                               :values_query_type    "list"
-                                                               :values_source_type   "card"
-                                                               :values_source_config {:card_id 1
-                                                                                      :value_field [:field 2 nil]}}]}]
+    (mt/with-temp* [Card      [{card-id :id}]
+                    Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                  :slug   "category_name"
+                                                                  :id     "_CATEGORY_NAME_"
+                                                                  :type   "category"
+                                                                  :values_query_type    "list"
+                                                                  :values_source_type   "card"
+                                                                  :values_source_config {:card_id card-id
+                                                                                         :value_field [:field 2 nil]}}]}]]
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
                 :type                 :category
                 :values_query_type    "list",
                 :values_source_type   "card",
-                :values_source_config {:card_id 1, :value_field [:field 2 nil]}}]
+                :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
               (db/select-one-field :parameters Dashboard :id dashboard-id))))))
 
 (deftest identity-hash-test
