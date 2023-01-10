@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
@@ -12,8 +12,9 @@ import Tables from "metabase/entities/tables";
 import { loadMetadataForCard } from "metabase/query_builder/actions";
 
 import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
+import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 
-import type { Card } from "metabase-types/api";
+import type { Card, Collection } from "metabase-types/api";
 import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type { State } from "metabase-types/store";
 
@@ -34,10 +35,22 @@ type StateProps = {
   model: Question;
 };
 
+type ToastOpts = {
+  notify: {
+    message: JSX.Element;
+    undo: boolean;
+  };
+};
+
 type DispatchProps = {
   loadMetadataForCard: (card: LegacyCardType) => void;
   fetchTableForeignKeys: (params: { id: Table["id"] }) => void;
   onChangeModel: (card: Card) => void;
+  onChangeCollection: (
+    card: Card,
+    collection: Collection,
+    opts: ToastOpts,
+  ) => void;
 };
 
 type Props = OwnProps & EntityLoaderProps & StateProps & DispatchProps;
@@ -52,6 +65,7 @@ const mapDispatchToProps = {
   loadMetadataForCard,
   fetchTableForeignKeys: Tables.actions.fetchForeignKeys,
   onChangeModel: Questions.actions.update,
+  onChangeCollection: Questions.objectActions.setCollection,
 };
 
 function ModelDetailPage({
@@ -59,6 +73,7 @@ function ModelDetailPage({
   loadMetadataForCard,
   fetchTableForeignKeys,
   onChangeModel,
+  onChangeCollection,
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
@@ -78,11 +93,24 @@ function ModelDetailPage({
     }
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
 
+  const handleCollectionChange = useCallback(
+    (collection: Collection) => {
+      onChangeCollection(model.card() as Card, collection, {
+        notify: {
+          message: <QuestionMoveToast collectionId={collection.id} isModel />,
+          undo: false,
+        },
+      });
+    },
+    [model, onChangeCollection],
+  );
+
   return (
     <ModelDetailPageView
       model={model}
       mainTable={mainTable}
       onChangeModel={onChangeModel}
+      onChangeCollection={handleCollectionChange}
     />
   );
 }

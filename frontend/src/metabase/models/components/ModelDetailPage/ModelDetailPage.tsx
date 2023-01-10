@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import TabContent from "metabase/core/components/TabContent";
 
-import type { Card } from "metabase-types/api";
+import type { Card, Collection } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
 
@@ -22,11 +22,17 @@ interface Props {
   model: Question;
   mainTable?: Table | null;
   onChangeModel: (model: Card) => void;
+  onChangeCollection: (collection: Collection) => void;
 }
 
 type ModelTab = "schema" | "usage";
 
-function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
+function ModelDetailPage({
+  model,
+  mainTable,
+  onChangeModel,
+  onChangeCollection,
+}: Props) {
   const [tab, setTab] = useState<ModelTab>("usage");
 
   const handleNameChange = useCallback(
@@ -52,7 +58,11 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
   return (
     <RootLayout>
       <ModelMain>
-        <ModelDetailHeader model={model} onChangeName={handleNameChange} />
+        <ModelDetailHeader
+          model={model}
+          onChangeName={handleNameChange}
+          onChangeCollection={onChangeCollection}
+        />
         <TabContent value={tab} onChange={setTab}>
           <TabList
             value={tab}
