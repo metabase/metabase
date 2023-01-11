@@ -4,7 +4,12 @@ title: Questions overview
 
 # Questions overview
 
-Questions are queries plus their visualization. You can ask questions using Metabase's graphical query builder, or create a native/SQL query.
+Questions are queries plus their visualization. You can 
+
+- Ask questions using Metabase's graphical query builder, or create a native/SQL query.
+- Ask questions based on models, raw tables, or other saved questions.
+- Save questions to collections and add them to dashboards.
+- And a lot more
 
 ## Reference docs
 
@@ -64,14 +69,37 @@ Create links or embeds for the good people of the internet.
 
 ## Tutorials and guides
 
-- [Create interactive charts](https://www.metabase.com/learn/questions/drill-through)
-- [Custom expressions in the query builder](https://www.metabase.com/learn/questions/custom-expressions)
-- [Trend analysis: comparing time periods](https://www.metabase.com/learn/questions/time-series-comparisons)
-- [Trend analysis: measuring rates of change](https://www.metabase.com/learn/questions/rate-of-change)
-- [Joins in Metabase](https://www.metabase.com/learn/questions/joins-in-metabase)
-- [Multi-level aggregation](https://www.metabase.com/learn/questions/multi-aggregation)
-- [Searching your tables and questions](https://www.metabase.com/learn/questions/searching-tables)
-- [Cleaning and formatting text](https://www.metabase.com/learn/questions/formatting)
+### [Create interactive charts](https://www.metabase.com/learn/questions/drill-through)
+
+Build charts that people can explore by using the query builder, building models, or adding custom destinations.
+
+### [Custom expressions in the query builder](https://www.metabase.com/learn/questions/custom-expressions)
+
+When you should use custom expressions and why you should take advantage of them in Metabase's notebook editor.
+
+### [Trend analysis: comparing time periods](https://www.metabase.com/learn/questions/time-series-comparisons)
+
+How to measure the change in a metric over time by comparing two or more time periods.
+
+### [Trend analysis: measuring rates of change](https://www.metabase.com/learn/questions/rate-of-change)
+
+How to get the rate of change or percentage change across an entire dataset at once.
+
+### [Joins in Metabase](https://www.metabase.com/learn/questions/joins-in-metabase)
+
+How to join tables in Metabase using the query builder.
+
+### [Multi-level aggregation](https://www.metabase.com/learn/questions/multi-aggregation)
+
+How to ask questions with multiple parts using the query builder.
+
+### [Searching your tables and questions](https://www.metabase.com/learn/questions/searching-tables)
+
+Learn how to search within your SQL and query builder questions using filters and custom expressions.
+
+### [Cleaning and formatting text](https://www.metabase.com/learn/questions/formatting)
+
+How to use custom expressions to clean up text that's inconsistent, unstructured, or blank.",
 
 ## Troubleshooting questions
 
