@@ -3,12 +3,18 @@ import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 import { space } from "metabase/styled-components/theme";
+import { AppBarLeftContainer } from "./AppBarLarge.styled";
 
 export const LogoRoot = styled.div`
   position: relative;
 `;
 
-export const LogoLink = styled(Link)`
+interface LogoLinkProps {
+  isSmallAppBar?: boolean;
+  isNavBarEnabled?: boolean;
+}
+
+export const LogoLink = styled(Link)<LogoLinkProps>`
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -20,6 +26,15 @@ export const LogoLink = styled(Link)`
   &:hover {
     background-color: ${color("bg-light")};
   }
+
+  ${props =>
+    !props.isSmallAppBar &&
+    css`
+      ${AppBarLeftContainer}:hover & {
+        opacity: ${props.isNavBarEnabled ? 0 : 1};
+        pointer-events: ${props.isNavBarEnabled ? "none" : ""};
+      }
+    `}
 `;
 
 interface ToggleContainerProps {

@@ -2,7 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-import { LogoLink } from "./AppBarLogo.styled";
+// import { LogoLink } from "./AppBarLogo.styled";
 
 interface AppBarRootProps {
   isNavBarOpen?: boolean;
@@ -30,13 +30,6 @@ export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
   flex: 1 1 auto;
   align-items: center;
   min-width: 5rem;
-
-  &:hover {
-    ${LogoLink} {
-      opacity: ${props => (props.isNavBarEnabled ? 0 : 1)};
-      pointer-events: ${props => (props.isNavBarEnabled ? "none" : "")};
-    }
-  }
 
   padding-left: ${({ isLogoVisible, isNavBarEnabled }) =>
     !isLogoVisible && !isNavBarEnabled && "1rem"};

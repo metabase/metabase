@@ -24,6 +24,7 @@ const AppBarLogo = ({
     <LogoRoot>
       {isLogoVisible && (
         <LogoLink
+          isNavBarEnabled={isNavBarEnabled}
           to="/"
           onClick={onLogoClick}
           data-metabase-event="Navbar;Logo"
