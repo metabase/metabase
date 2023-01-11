@@ -10,22 +10,39 @@ import {
 
 import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 
-describe("Collections BaseItemsTable", () => {
-  const timestamp = "2021-06-03T19:46:52.128";
+// eslint-disable-next-line react/display-name, react/prop-types
+jest.mock("metabase/core/components/Link", () => ({ to, ...props }) => (
+  <a {...props} href={to} />
+));
 
-  const ITEM = {
-    id: 1,
-    model: "dashboard",
-    name: "Test Dashboard",
+const timestamp = "2021-06-03T19:46:52.128";
+
+function getCollectionItem({
+  id = 1,
+  model = "dashboard",
+  name = "My Item",
+  icon = "dashboard",
+  url = "/dashboard/1",
+  ...rest
+} = {}) {
+  return {
     "last-edit-info": {
       id: 1,
       first_name: "John",
       last_name: "Doe",
-      timestamp: timestamp,
+      timestamp,
     },
-    getIcon: () => ({ name: "dashboard" }),
-    getUrl: () => "/dashboard/1",
+    ...rest,
+    id,
+    model,
+    name,
+    getIcon: () => icon,
+    getUrl: () => url,
   };
+}
+
+describe("Collections BaseItemsTable", () => {
+  const ITEM = getCollectionItem();
 
   function setup({ items = [ITEM], ...props } = {}) {
     return renderWithProviders(
