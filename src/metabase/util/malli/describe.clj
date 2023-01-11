@@ -240,7 +240,6 @@
        (seq kv-description) (str "where {" kv-description "} ")
        additional-properties (str "with no other keys ")))))
 
-(describe [:map {:title "X" :closed true} [:a int?]])
 
 (defmethod accept ::mc/val [_ _ children _] (first children))
 (defmethod accept 'map? [n schema children o] (-map n schema children o))

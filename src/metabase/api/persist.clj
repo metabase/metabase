@@ -3,13 +3,12 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [compojure.core :refer [GET POST]]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.db.query :as mdb.query]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info
@@ -40,17 +39,17 @@
                              [:db.name :database_name]
                              [:col.id :collection_id] [:col.name :collection_name]
                              [:col.authority_level :collection_authority_level]]
-                 :from      [[PersistedInfo :p]]
-                 :left-join [[Database :db] [:= :db.id :p.database_id]
-                             [Card :c] [:= :c.id :p.card_id]
-                             [Collection :col] [:= :c.collection_id :col.id]]
+                 :from      [[:persisted_info :p]]
+                 :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
+                             [:report_card :c]        [:= :c.id :p.card_id]
+                             [:collection :col]       [:= :c.collection_id :col.id]]
                  :order-by  [[:p.refresh_begin :desc]]}
-          persisted-info-id (hh/merge-where [:= :p.id persisted-info-id])
-          (seq db-ids) (hh/merge-where [:in :p.database_id db-ids])
-          card-id (hh/merge-where [:= :p.card_id card-id])
-          limit (hh/limit limit)
-          offset (hh/offset offset))
-        (db/query)
+          persisted-info-id (sql.helpers/where [:= :p.id persisted-info-id])
+          (seq db-ids)      (sql.helpers/where [:in :p.database_id db-ids])
+          card-id           (sql.helpers/where [:= :p.card_id card-id])
+          limit             (sql.helpers/limit limit)
+          offset            (sql.helpers/offset offset))
+        mdb.query/query
         (hydrate :creator)
         (->> (db/do-post-select PersistedInfo)
              (map (fn [{:keys [database_id] :as pi}]
@@ -81,7 +80,7 @@
 (api/defendpoint-schema GET "/:persisted-info-id"
   "Fetch a particular [[PersistedInfo]] by id."
   [persisted-info-id]
-  {persisted-info-id (s/maybe su/IntGreaterThanZeroPlumatic)}
+  {persisted-info-id (s/maybe su/IntGreaterThanZero)}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
     (api/write-check (db/select-one Database :id (:database_id persisted-info)))
     persisted-info))
@@ -90,7 +89,7 @@
 (api/defendpoint-schema GET "/card/:card-id"
   "Fetch a particular [[PersistedInfo]] by card-id."
   [card-id]
-  {card-id (s/maybe su/IntGreaterThanZeroPlumatic)}
+  {card-id (s/maybe su/IntGreaterThanZero)}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
     (api/write-check (db/select-one Database :id (:database_id persisted-info)))
     persisted-info))

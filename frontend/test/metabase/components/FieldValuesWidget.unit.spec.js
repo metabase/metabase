@@ -58,7 +58,7 @@ describe("FieldValuesWidget", () => {
       it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", async () => {
         renderFieldValuesWidget({ ...props });
         expect(
-          await screen.queryByPlaceholderText("Search the list"),
+          screen.queryByPlaceholderText("Search the list"),
         ).not.toBeInTheDocument();
       });
 
@@ -175,8 +175,8 @@ describe("FieldValuesWidget", () => {
       renderFieldValuesWidget({ fields });
       await screen.findByPlaceholderText("Search");
 
-      expect(screen.queryByText("AZ")).toBeNull();
-      expect(screen.queryByText("Facebook")).toBeNull();
+      expect(screen.queryByText("AZ")).not.toBeInTheDocument();
+      expect(screen.queryByText("Facebook")).not.toBeInTheDocument();
     });
 
     it("don't list any values if any is set to 'plain input box'", async () => {
@@ -187,8 +187,8 @@ describe("FieldValuesWidget", () => {
       renderFieldValuesWidget({ fields });
       await screen.findByPlaceholderText("Enter some text");
 
-      expect(screen.queryByText("AZ")).toBeNull();
-      expect(screen.queryByText("Facebook")).toBeNull();
+      expect(screen.queryByText("AZ")).not.toBeInTheDocument();
+      expect(screen.queryByText("Facebook")).not.toBeInTheDocument();
     });
   });
 
@@ -205,7 +205,7 @@ describe("FieldValuesWidget", () => {
       renderFieldValuesWidget({
         fields: [mock(PRODUCTS.PRICE, { has_field_values: "none" })],
       });
-      expect(screen.queryByTestId("input-prefix")).toBeNull();
+      expect(screen.queryByTestId("input-prefix")).not.toBeInTheDocument();
     });
   });
 

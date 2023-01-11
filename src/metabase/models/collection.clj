@@ -118,7 +118,7 @@
   "Build a 'location path' from a sequence of `collections-or-ids`.
 
      (location-path 10 20) ; -> \"/10/20/\""
-  [& collections-or-ids :- [(s/cond-pre su/IntGreaterThanZeroPlumatic su/MapPlumatic)]]
+  [& collections-or-ids :- [(s/cond-pre su/IntGreaterThanZero su/Map)]]
   (if-not (seq collections-or-ids)
     "/"
     (str
@@ -127,14 +127,14 @@
                      (u/the-id collection-or-id)))
      "/")))
 
-(s/defn location-path->ids :- [su/IntGreaterThanZeroPlumatic]
+(s/defn location-path->ids :- [su/IntGreaterThanZero]
   "'Explode' a `location-path` into a sequence of Collection IDs, and parse them as integers.
 
      (location-path->ids \"/10/20/\") ; -> [10 20]"
   [location-path :- LocationPath]
   (unchecked-location-path->ids location-path))
 
-(s/defn location-path->parent-id :- (s/maybe su/IntGreaterThanZeroPlumatic)
+(s/defn location-path->parent-id :- (s/maybe su/IntGreaterThanZero)
   "Given a `location-path` fetch the ID of the direct of a Collection.
 
      (location-path->parent-id \"/10/20/\") ; -> 20"
@@ -212,7 +212,7 @@
   (s/cond-pre
    RootCollection
    {:location LocationPath
-    :id       su/IntGreaterThanZeroPlumatic
+    :id       su/IntGreaterThanZero
     s/Keyword s/Any}))
 
 (s/defn ^:private parent :- CollectionWithLocationAndIDOrRoot
@@ -237,7 +237,7 @@
 (def VisibleCollections
   "Includes the possible values for visible collections, either `:all` or a set of ids, possibly including `\"root\"` to
   represent the root collection."
-  (s/cond-pre (s/eq :all) #{(s/cond-pre (s/eq "root") su/IntGreaterThanZeroPlumatic)}))
+  (s/cond-pre (s/eq :all) #{(s/cond-pre (s/eq "root") su/IntGreaterThanZero)}))
 
 (s/defn permissions-set->visible-collection-ids :- VisibleCollections
   "Given a `permissions-set` (presumably those of the current user), return a set of IDs of Collections that the
@@ -284,7 +284,7 @@
   ([collection-ids :- VisibleCollections]
    (visible-collection-ids->honeysql-filter-clause :collection_id collection-ids))
 
-  ([collection-id-field :- s/Keyword, collection-ids :- VisibleCollections]
+  ([collection-id-field :- s/Keyword collection-ids :- VisibleCollections]
    (if (= collection-ids :all)
      true
      (let [{non-root-ids false, root-id true} (group-by (partial = "root") collection-ids)
@@ -311,17 +311,19 @@
                               "/"
                               (format "%%/%s/" (str parent-id)))]
     (into
-      ; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
-      ; the [:= 1 1] is to prevent this
-      [:and [:= 1 1]]
-      (if (= collection-ids :all)
-        ; In the case that visible-collection-ids is all, that means there's no invisible collection ids
-        ; meaning, the effective children are always the direct children. So check for being a direct child.
-        [[:like :location (hx/literal child-literal)]]
-        (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
-              disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
-          (for [visible-collection-id disj-collection-ids]
-            [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
+     ;; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
+     ;; the (1 = 1) is to prevent this
+     [:and (case hx/*honey-sql-version*
+             1 [:= 1 1]
+             2 [:= [:inline 1] [:inline 1]])]
+     (if (= collection-ids :all)
+       ;; In the case that visible-collection-ids is all, that means there's no invisible collection ids
+       ;; meaning, the effective children are always the direct children. So check for being a direct child.
+       [[:like :location (hx/literal child-literal)]]
+       (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
+             disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
+         (for [visible-collection-id disj-collection-ids]
+           [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
 
 (s/defn ^:private effective-location-path* :- (s/maybe LocationPath)
@@ -396,7 +398,7 @@
   [collection]
   (effective-ancestors* collection))
 
-(s/defn ^:private parent-id* :- (s/maybe su/IntGreaterThanZeroPlumatic)
+(s/defn ^:private parent-id* :- (s/maybe su/IntGreaterThanZero)
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))
 
@@ -467,7 +469,7 @@
         ;; key
         :children)))
 
-(s/defn descendant-ids :- (s/maybe #{su/IntGreaterThanZeroPlumatic})
+(s/defn descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
   "Return a set of IDs of all descendant Collections of a `collection`."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (db/select-ids Collection :location [:like (str (children-location collection) \%)]))
@@ -515,9 +517,9 @@
    You can think of this process as 'collapsing' the Collection hierarchy and removing nodes that aren't visible to
    the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
-  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
+  [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
   {:select [:id :name :description]
-   :from   [[Collection :col]]
+   :from   [[:collection :col]]
    :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
 
 (s/defn ^:private effective-children* :- #{(mi/InstanceOf Collection)}
@@ -613,7 +615,7 @@
         :set    {:location (hsql/call :replace :location orig-children-location new-children-location)}
         :where  [:like :location (str orig-children-location "%")]}))))
 
-(s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZeroPlumatic})
+(s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
   (apply db/select-ids Collection
          :location [:like (str (children-location collection) "%")]
@@ -656,7 +658,7 @@
   "Schema for a Collection instance that has a valid `:location`, and a `:personal_owner_id` key *present* (but not
   neccesarily non-nil)."
   {:location          LocationPath
-   :personal_owner_id (s/maybe su/IntGreaterThanZeroPlumatic)
+   :personal_owner_id (s/maybe su/IntGreaterThanZero)
    s/Keyword          s/Any})
 
 (s/defn is-personal-collection-or-descendant-of-one? :- s/Bool
@@ -730,7 +732,7 @@
 (s/defn ^:private check-changes-allowed-for-personal-collection
   "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
   have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
-  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/MapPlumatic]
+  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (let [unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a Personal Collection.")
@@ -749,7 +751,7 @@
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
-  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/MapPlumatic]
+  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
   ;; If the updates map contains a value for `:archived`, see if it's actually something different than current value
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     ;; check to make sure we're not trying to change location at the same time
@@ -1052,7 +1054,7 @@
 ;;; |                                              Personal Collections                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn format-personal-collection-name :- su/NonBlankStringPlumatic
+(s/defn format-personal-collection-name :- su/NonBlankString
   "Constructs the personal collection name from user name.
   When displaying to users we'll tranlsate it to user's locale,
   but to keeps things consistent in the database, we'll store the name in site's locale.
@@ -1069,7 +1071,7 @@
       (and first-name last-name) (trs "{0} {1}''s Personal Collection" first-name last-name)
       :else                      (trs "{0}''s Personal Collection" (or first-name last-name email)))))
 
-(s/defn user->personal-collection-name :- su/NonBlankStringPlumatic
+(s/defn user->personal-collection-name :- su/NonBlankString
   "Come up with a nice name for the Personal Collection for `user-or-id`."
   [user-or-id user-or-site]
   (let [{first-name :first_name

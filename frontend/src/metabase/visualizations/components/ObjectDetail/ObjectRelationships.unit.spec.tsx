@@ -6,16 +6,17 @@ import { Relationships } from "./ObjectRelationships";
 
 describe("Object Relationships", () => {
   it("renders null if no foreign keys are provided", () => {
-    const { container } = render(
-      <Relationships
-        objectName="Large Sandstone Socks"
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={{}}
-        foreignKeyClicked={() => null}
-      />,
+    render(
+      <div data-testid="container">
+        <Relationships
+          objectName="Large Sandstone Socks"
+          tableForeignKeys={[]}
+          tableForeignKeyReferences={{}}
+          foreignKeyClicked={() => null}
+        />
+      </div>,
     );
-
-    expect(container.childElementCount).toEqual(0);
+    expect(screen.getByTestId("container")).toBeEmptyDOMElement();
   });
 
   it("renders a list of relationships", () => {

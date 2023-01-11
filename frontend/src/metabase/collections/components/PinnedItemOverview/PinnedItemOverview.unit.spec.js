@@ -69,7 +69,7 @@ describe("PinnedItemOverview", () => {
   it("should render items sorted by collection_position", () => {
     setup();
     const names = screen.queryAllByText(/Dashboard (Foo|Bar)/);
-    expect(names[0].textContent).toContain(dashboardItem2.name);
-    expect(names[1].textContent).toContain(dashboardItem1.name);
+    expect(names[0]).toHaveTextContent(new RegExp(dashboardItem2.name));
+    expect(names[1]).toHaveTextContent(new RegExp(dashboardItem1.name));
   });
 });

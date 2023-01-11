@@ -54,6 +54,7 @@ const BaseTreeNode = React.memo(
     return (
       <TreeNodeRoot
         role="menuitem"
+        aria-label={name}
         tabIndex={0}
         onClick={onClick}
         {...props}

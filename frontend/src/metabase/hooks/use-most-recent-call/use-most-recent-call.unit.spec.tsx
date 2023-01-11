@@ -43,14 +43,14 @@ describe("useMostRecentCall", () => {
         resolveFnMap[num] = resolve.bind(null, num);
       });
 
-    const { rerender, findByText } = render(
+    const { rerender } = render(
       <TestComponent asyncFn={asyncFn} trigger={1} />,
     );
 
     rerender(<TestComponent asyncFn={asyncFn} trigger={2} />);
     rerender(<TestComponent asyncFn={asyncFn} trigger={3} />);
 
-    expect(await findByText("0")).toBeInTheDocument();
+    expect(await screen.findByText("0")).toBeInTheDocument();
 
     // before most recent call resolves
     resolveFnMap[1]();
@@ -59,7 +59,7 @@ describe("useMostRecentCall", () => {
     // after most recent call resolves
     resolveFnMap[2]();
 
-    expect(await findByText("3")).toBeInTheDocument();
+    expect(await screen.findByText("3")).toBeInTheDocument();
   });
 
   it("should only reject last call's promise", async () => {
@@ -69,14 +69,14 @@ describe("useMostRecentCall", () => {
         rejectFnMap[num] = reject.bind(null, num);
       });
 
-    const { rerender, findByText } = render(
+    const { rerender } = render(
       <TestComponent asyncFn={asyncFn} trigger={1} />,
     );
 
     rerender(<TestComponent asyncFn={asyncFn} trigger={2} />);
     rerender(<TestComponent asyncFn={asyncFn} trigger={3} />);
 
-    expect(await findByText("0")).toBeInTheDocument();
+    expect(await screen.findByText("0")).toBeInTheDocument();
 
     // before most recent call resolves
     rejectFnMap[1]();
@@ -85,6 +85,6 @@ describe("useMostRecentCall", () => {
     // after most recent call resolves
     rejectFnMap[2]();
 
-    expect(await findByText("3")).toBeInTheDocument();
+    expect(await screen.findByText("3")).toBeInTheDocument();
   });
 });

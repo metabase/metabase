@@ -59,13 +59,16 @@ class TokenFieldWithStateAndDefaults extends React.Component {
 describe("TokenField", () => {
   beforeAll(() => {
     // temporarily until JSDOM updates
+    // eslint-disable-next-line testing-library/no-node-access
     if (!global.Element.prototype.closest) {
+      // eslint-disable-next-line testing-library/no-node-access
       global.Element.prototype.closest = function (selector) {
         let element = this;
         while (element) {
           if (element.matches(selector)) {
             return element;
           }
+          // eslint-disable-next-line testing-library/no-node-access
           element = element.parentElement;
         }
       };
@@ -92,15 +95,15 @@ describe("TokenField", () => {
     fireEvent.keyDown(input(), { keyCode: keyCode });
 
   const findWithinValues = collection =>
-    expect(values().textContent).toBe(collection.join(""));
+    expect(values()).toHaveTextContent(collection.join(""));
 
   const findWithinOptions = collection =>
-    expect(options().textContent).toBe(collection.join(""));
+    expect(options()).toHaveTextContent(collection.join(""));
 
   it("should render with no options or values", () => {
     render(<TokenFieldWithStateAndDefaults />);
-    expect(screen.queryByText("foo")).toBeNull();
-    expect(screen.queryByText("bar")).toBeNull();
+    expect(screen.queryByText("foo")).not.toBeInTheDocument();
+    expect(screen.queryByText("bar")).not.toBeInTheDocument();
   });
 
   it("should render input prefix with prefix prop", () => {
@@ -110,7 +113,7 @@ describe("TokenField", () => {
 
   it("should not render input prefix without prefix prop", () => {
     render(<TokenFieldWithStateAndDefaults />);
-    expect(screen.queryByTestId("input-prefix")).toBeNull();
+    expect(screen.queryByTestId("input-prefix")).not.toBeInTheDocument();
   });
 
   it("should render with 1 options and 1 values", () => {
@@ -165,7 +168,7 @@ describe("TokenField", () => {
         canAddItems={false}
       />,
     );
-    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
   it("should add freeform value if parseFreeformValue is provided", () => {
@@ -212,7 +215,7 @@ describe("TokenField", () => {
   });
 
   describe("when updateOnInputChange is provided", () => {
-    beforeEach(() => {
+    function setup() {
       render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
@@ -222,14 +225,17 @@ describe("TokenField", () => {
           updateOnInputChange
         />,
       );
-    });
+    }
 
     it("should add freeform value immediately if updateOnInputChange is provided", () => {
+      setup();
       type("yep");
       findWithinValues(["yep"]);
     });
 
     it("should only add one option when filtered and clicked", () => {
+      setup();
+
       type("Do");
       findWithinValues(["Do"]);
 
@@ -239,6 +245,8 @@ describe("TokenField", () => {
     });
 
     it("should only add one option when filtered and enter is pressed", () => {
+      setup();
+
       type("Do");
       findWithinValues(["Do"]);
 
@@ -249,6 +257,8 @@ describe("TokenField", () => {
     });
 
     it("shouldn't hide option matching input freeform value", () => {
+      setup();
+
       type("Doohickey");
       findWithinValues(["Doohickey"]);
       findWithinOptions(["Doohickey"]);
@@ -256,15 +266,19 @@ describe("TokenField", () => {
 
     // This is messy and tricky to test with RTL
     it("should not commit empty freeform value", () => {
+      setup();
+
       type("Doohickey");
       userEvent.clear(input());
       type("");
       input().blur();
-      expect(values().textContent).toBe("");
+      expect(values()).toHaveTextContent("");
       expect(input().value).toEqual("");
     });
 
     it("should hide the input but not clear the search after accepting an option", () => {
+      setup();
+
       type("G");
       findWithinOptions(["Gadget", "Gizmo"]);
 
@@ -278,6 +292,8 @@ describe("TokenField", () => {
     });
 
     it("should reset the search when adding the last option", () => {
+      setup();
+
       type("G");
       findWithinOptions(["Gadget", "Gizmo"]);
 
@@ -289,6 +305,8 @@ describe("TokenField", () => {
     });
 
     it("should hide the option if typed exactly then press enter", () => {
+      setup();
+
       type("Gadget");
       findWithinOptions(["Gadget"]);
       inputKeydown(KEYCODE_ENTER);
@@ -297,6 +315,8 @@ describe("TokenField", () => {
     });
 
     it("should hide the option if typed partially then press enter", () => {
+      setup();
+
       type("Gad");
       findWithinOptions(["Gadget"]);
       inputKeydown(KEYCODE_ENTER);
@@ -305,6 +325,8 @@ describe("TokenField", () => {
     });
 
     it("should hide the option if typed exactly then clicked", () => {
+      setup();
+
       type("Gadget");
       fireEvent.click(within(options()).getByText("Gadget"));
       findWithinValues(["Gadget"]);
@@ -312,6 +334,8 @@ describe("TokenField", () => {
     });
 
     it("should hide the option if typed partially then clicked", () => {
+      setup();
+
       type("Gad");
       fireEvent.click(within(options()).getByText("Gadget"));
       findWithinValues(["Gadget"]);
@@ -320,7 +344,7 @@ describe("TokenField", () => {
   });
 
   describe("when updateOnInputBlur is false", () => {
-    beforeEach(() => {
+    function setup() {
       render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
@@ -330,22 +354,24 @@ describe("TokenField", () => {
           updateOnInputBlur={false}
         />,
       );
-    });
+    }
 
     it("should not add freeform value immediately", () => {
+      setup();
       type("yep");
-      expect(values().textContent).toBe("");
+      expect(values()).toHaveTextContent("");
     });
 
     it("should not add freeform value when blurring", () => {
+      setup();
       type("yep");
       fireEvent.blur(input());
-      expect(values().textContent).toBe("");
+      expect(values()).toHaveTextContent("");
     });
   });
 
   describe("when updateOnInputBlur is true", () => {
-    beforeEach(() => {
+    function setup() {
       render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
@@ -355,14 +381,16 @@ describe("TokenField", () => {
           updateOnInputBlur={true}
         />,
       );
-    });
+    }
 
     it("should not add freeform value immediately", () => {
+      setup();
       type("yep");
-      expect(values().textContent).toBe("");
+      expect(values()).toHaveTextContent("");
     });
 
     it("should add freeform value when blurring", () => {
+      setup();
       type("yep");
       fireEvent.blur(input());
       findWithinValues(["yep"]);
@@ -429,6 +457,7 @@ describe("TokenField", () => {
 
   describe("custom layoutRenderer", () => {
     let layoutRenderer;
+
     beforeEach(() => {
       layoutRenderer = jest
         .fn()
@@ -438,14 +467,16 @@ describe("TokenField", () => {
             {optionsList}
           </div>
         ));
+    });
+
+    it("should be called with isFiltered=true when filtered", () => {
       render(
         <TokenFieldWithStateAndDefaults
           options={["hello"]}
           layoutRenderer={layoutRenderer}
         />,
       );
-    });
-    it("should be called with isFiltered=true when filtered", () => {
+
       let call = layoutRenderer.mock.calls.pop();
       expect(call[0].isFiltered).toEqual(false);
       expect(call[0].isAllSelected).toEqual(false);
@@ -457,6 +488,13 @@ describe("TokenField", () => {
     });
 
     it("should be called with isAllSelected=true when all options are selected", () => {
+      render(
+        <TokenFieldWithStateAndDefaults
+          options={["hello"]}
+          layoutRenderer={layoutRenderer}
+        />,
+      );
+
       let call = layoutRenderer.mock.calls.pop();
       expect(call[0].isFiltered).toEqual(false);
       expect(call[0].isAllSelected).toEqual(false);

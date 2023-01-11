@@ -68,7 +68,7 @@
   (for [[k v] metadata]
     (assoc v :name (name k))))
 
-(s/defn ^:private format-results [{:keys [results metadata]} :- {:results  [su/MapPlumatic]
+(s/defn ^:private format-results [{:keys [results metadata]} :- {:results  [su/Map]
                                                                  :metadata audit.i/ResultsMetadata}]
   (check-results-and-metadata-keys-match results metadata)
   {:cols (metadata->cols metadata)

@@ -287,12 +287,14 @@
 
 (defn normalize-query-parameter
   "Normalize a parameter in the query `:parameters` list."
-  [{:keys [type target id], :as param}]
+  [{:keys [type target id values_source_config], :as param}]
   (cond-> param
-    id     (update :id mbql.u/qualified-name)
+    id                   (update :id mbql.u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
-    type   (update :type maybe-normalize-token)
-    target (update :target #(normalize-tokens % :ignore-path))))
+    type                 (update :type maybe-normalize-token)
+    target               (update :target #(normalize-tokens % :ignore-path))
+    values_source_config (update-in [:values_source_config :label_field] #(normalize-tokens % :ignore-path))
+    values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % :ignore-path))))
 
 (defn- normalize-source-query [source-query]
   (let [{native? :native, :as source-query} (m/map-keys maybe-normalize-token source-query)]

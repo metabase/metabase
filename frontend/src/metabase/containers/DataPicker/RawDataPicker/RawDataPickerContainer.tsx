@@ -29,6 +29,7 @@ interface TableListLoaderProps {
 }
 
 interface RawDataPickerOwnProps extends DataPickerProps {
+  isMultiSelect?: boolean;
   onBack?: () => void;
 }
 
@@ -37,6 +38,7 @@ type RawDataPickerProps = RawDataPickerOwnProps & DatabaseListLoaderProps;
 function RawDataPicker({
   value,
   databases,
+  isMultiSelect,
   allLoading,
   onChange,
   onBack,
@@ -45,7 +47,7 @@ function RawDataPicker({
 
   const { selectedTableIds, toggleTableIdSelection } = useSelectedTables({
     initialValues: value.tableIds,
-    mode: "multiple",
+    isMultiSelect,
   });
 
   const selectedDatabase = useMemo(() => {

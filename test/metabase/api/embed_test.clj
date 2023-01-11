@@ -425,8 +425,8 @@
                                                         {:id "_b", :slug "b", :name "b", :type "date"}
                                                         {:id "_c", :slug "c", :name "c", :type "date"}
                                                         {:id "_d", :slug "d", :name "d", :type "date"}]}]
-        (is (= [{:id "_d", :slug "d", :name "d", :type "date"}]
-               (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
+        (is (=? [{:id "_d", :slug "d", :name "d", :type "date"}]
+                (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
 
 (deftest locked-params-are-substituted-into-text-cards
   (testing "check that locked params are substituted into text cards with mapped variables on the backend"

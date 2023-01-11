@@ -69,7 +69,7 @@
     "10000+"     100000))
 
 (def DBMSVersionStats
-  {s/Str su/IntGreaterThanOrEqualToZeroPlumatic})
+  {s/Str su/IntGreaterThanOrEqualToZero})
 
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)

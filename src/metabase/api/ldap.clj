@@ -100,7 +100,7 @@
 (api/defendpoint-schema PUT "/settings"
   "Update LDAP related settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
-  {settings su/MapPlumatic}
+  {settings su/Map}
   (api/check-superuser)
   (let [ldap-settings (-> settings
                           (select-keys (keys ldap/mb-settings->ldap-details))

@@ -43,9 +43,9 @@
   associated with that dashboard. If `user_id` is specified, restricts results to pulses or subscriptions
   created by the user, or for which the user is a known recipient."
   [archived dashboard_id user_id]
-  {archived     (s/maybe su/BooleanStringPlumatic)
-   dashboard_id (s/maybe su/IntGreaterThanZeroPlumatic)
-   user_id      (s/maybe su/IntGreaterThanZeroPlumatic)}
+  {archived     (s/maybe su/BooleanString)
+   dashboard_id (s/maybe su/IntGreaterThanZero)
+   user_id      (s/maybe su/IntGreaterThanZero)}
   (as-> (pulse/retrieve-pulses {:archived?    (Boolean/parseBoolean archived)
                                 :dashboard-id dashboard_id
                                 :user-id      user_id}) <>
@@ -64,14 +64,14 @@
 (api/defendpoint-schema POST "/"
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id parameters]} :body}]
-  {name                su/NonBlankStringPlumatic
+  {name                su/NonBlankString
    cards               (su/non-empty [pulse/CoercibleToCardRef])
-   channels            (su/non-empty [su/MapPlumatic])
+   channels            (su/non-empty [su/Map])
    skip_if_empty       (s/maybe s/Bool)
-   collection_id       (s/maybe su/IntGreaterThanZeroPlumatic)
-   collection_position (s/maybe su/IntGreaterThanZeroPlumatic)
-   dashboard_id        (s/maybe su/IntGreaterThanZeroPlumatic)
-   parameters          [su/MapPlumatic]}
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)
+   dashboard_id        (s/maybe su/IntGreaterThanZero)
+   parameters          [su/Map]}
   (validation/check-has-application-permission :subscription false)
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
@@ -108,13 +108,13 @@
 (api/defendpoint-schema PUT "/:id"
   "Update a Pulse with `id`."
   [id :as {{:keys [name cards channels skip_if_empty collection_id archived parameters], :as pulse-updates} :body}]
-  {name          (s/maybe su/NonBlankStringPlumatic)
+  {name          (s/maybe su/NonBlankString)
    cards         (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
-   channels      (s/maybe (su/non-empty [su/MapPlumatic]))
+   channels      (s/maybe (su/non-empty [su/Map]))
    skip_if_empty (s/maybe s/Bool)
-   collection_id (s/maybe su/IntGreaterThanZeroPlumatic)
+   collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)
-   parameters    [su/MapPlumatic]}
+   parameters    [su/Map]}
   ;; do various perms checks
   (try
    (validation/check-has-application-permission :monitoring)
@@ -243,13 +243,13 @@
 (api/defendpoint-schema POST "/test"
   "Test send an unsaved pulse."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id] :as body} :body}]
-  {name                su/NonBlankStringPlumatic
+  {name                su/NonBlankString
    cards               (su/non-empty [pulse/CoercibleToCardRef])
-   channels            (su/non-empty [su/MapPlumatic])
+   channels            (su/non-empty [su/Map])
    skip_if_empty       (s/maybe s/Bool)
-   collection_id       (s/maybe su/IntGreaterThanZeroPlumatic)
-   collection_position (s/maybe su/IntGreaterThanZeroPlumatic)
-   dashboard_id        (s/maybe su/IntGreaterThanZeroPlumatic)}
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)
+   dashboard_id        (s/maybe su/IntGreaterThanZero)}
   (check-card-read-permissions cards)
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]

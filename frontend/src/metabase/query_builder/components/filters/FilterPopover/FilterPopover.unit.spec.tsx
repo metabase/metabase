@@ -79,8 +79,8 @@ describe("FilterPopover", () => {
             onChangeFilter={dummyFunction}
           />,
         );
-        expect(screen.queryByText("Include")).toBeNull();
-        expect(screen.queryByText("today")).toBeNull();
+        expect(screen.queryByText("Include")).not.toBeInTheDocument();
+        expect(screen.queryByText("today")).not.toBeInTheDocument();
       });
 
       it('should show "case-sensitive" option to the user for "contains" filters', () => {
