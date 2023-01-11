@@ -30,7 +30,7 @@ const AppBarLogo = ({
         </LogoLink>
       )}
       {isNavBarEnabled && (
-        <ToggleContainer isAbsolute={isLogoVisible}>
+        <ToggleContainer isLogoVisible={isLogoVisible}>
           <AppBarToggle
             isLogoVisible={isLogoVisible}
             isNavBarOpen={isNavBarOpen}

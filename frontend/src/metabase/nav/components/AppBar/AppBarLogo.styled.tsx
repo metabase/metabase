@@ -23,12 +23,12 @@ export const LogoLink = styled(Link)`
 `;
 
 interface ToggleContainerProps {
-  isAbsolute?: boolean;
+  isLogoVisible?: boolean;
 }
 
 export const ToggleContainer = styled.div<ToggleContainerProps>`
   ${props =>
-    props.isAbsolute
+    props.isLogoVisible
       ? css`
           position: absolute;
           top: 0.625rem;
