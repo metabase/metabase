@@ -40,6 +40,15 @@ export function findColumnForColumnSetting(columns, columnSetting) {
   }
 }
 
+export function findColumnSettingForColumn(columnSettings, column) {
+  const index = findColumnSettingIndexForColumn(columnSettings, column);
+  if (index >= 0) {
+    return columnSettings[index];
+  } else {
+    return null;
+  }
+}
+
 export function normalizeFieldRef(fieldRef) {
   const dimension = Dimension.parseMBQL(fieldRef);
   return dimension && dimension.mbql();
@@ -63,15 +72,17 @@ export function findColumnIndexForColumnSetting(columns, columnSetting) {
 
 export function findColumnSettingIndexForColumn(columnSettings, column) {
   const fieldRef = normalizeFieldRef(fieldRefForColumn(column));
-  if (fieldRef == null) {
-    return columnSettings.findIndex(
-      columnSetting => columnSetting.name === column.name,
+  if (fieldRef != null) {
+    const index = columnSettings.findIndex(columnSetting =>
+      _.isEqual(fieldRef, normalizeFieldRef(columnSetting.fieldRef)),
     );
+    if (index >= 0) {
+      return index;
+    }
   }
-  const index = columnSettings.findIndex(columnSetting =>
-    _.isEqual(fieldRef, normalizeFieldRef(columnSetting.fieldRef)),
+  return columnSettings.findIndex(
+    columnSetting => columnSetting.name === column.name,
   );
-  return index;
 }
 
 export function syncTableColumnsToQuery(question) {
@@ -90,6 +101,8 @@ export function syncTableColumnsToQuery(question) {
       const join = query.joins()[i];
       query = join.clearFields().parent();
     }
+
+    console.log(columnSettings);
 
     for (const columnSetting of columnSettings) {
       if (columnSetting.enabled) {

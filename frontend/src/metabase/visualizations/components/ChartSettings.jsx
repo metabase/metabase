@@ -96,9 +96,17 @@ class ChartSettings extends Component {
     this.setState({ popoverRef: ref, popoverWidget: widget });
   };
 
+  handleSetCurrentWidget = widget => {
+    this.setState({ currentWidget: widget });
+  };
+
   // go back to previously selected section
   handleEndShowWidget = () => {
-    this.setState({ popoverWidget: null, popoverRef: null });
+    this.setState({
+      popoverWidget: null,
+      popoverRef: null,
+      currentWidget: null,
+    });
   };
 
   handleResetSettings = () => {
@@ -242,7 +250,7 @@ class ChartSettings extends Component {
     const widgets = this._getWidgets();
     const { popoverWidget } = this.state;
     const widget =
-      popoverWidget && widgets.find(widget => widget.id === popoverWidget.id);
+      popoverWidget && widgets.find(widget => widget.id === "column_settings");
 
     if (widget) {
       return { ...widget, props: { ...widget.props, ...popoverWidget.props } };
@@ -261,11 +269,12 @@ class ChartSettings extends Component {
       dashcard,
       isDashboard,
     } = this.props;
-    const { popoverWidget, popoverRef } = this.state;
+    const { popoverWidget, popoverRef, currentWidget } = this.state;
 
     const settings = this._getSettings();
     const widgets = this._getWidgets();
     const rawSeries = this._getRawSeries();
+    console.log(widgets);
 
     const widgetsById = {};
     const sections = {};
@@ -308,7 +317,16 @@ class ChartSettings extends Component {
         : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
           sectionNames[0];
 
-    const visibleWidgets = sections[currentSection] || [];
+    console.log(widgets);
+
+    const visibleWidgets =
+      (currentWidget
+        ? [
+            widgets.find(
+              widget => widget.id === currentWidget.props.initialKey,
+            ),
+          ].map(w => ({ ...w, hidden: false }))
+        : sections[currentSection]) || [];
 
     // This checks whether the current section contains a column settings widget
     // at the top level. If it does, we avoid hiding the section tabs and
@@ -322,6 +340,7 @@ class ChartSettings extends Component {
       question: question,
       addField: addField,
       onShowPopoverWidget: this.handleShowPopoverWidget,
+      onSetCurrentWidget: this.handleSetCurrentWidget,
       onEndShowWidget: this.handleEndShowWidget,
       currentSectionHasColumnSettings,
       columnHasSettings: col => this.columnHasSettings(col),

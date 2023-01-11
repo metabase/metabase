@@ -20,11 +20,14 @@ interface ChartSettingOrderedSimpleProps {
   onChange: (rows: SortableItem[]) => void;
   value: SortableItem[];
   onShowPopoverWidget: (
-    widget: { props: { seriesKey: string } },
+    widget: { props: { seriesKey?: string; initialKey?: string } },
     ref: HTMLElement | undefined,
   ) => void;
+  onSetCurrentWidget: (widget: { props: { initialKey?: string } }) => void;
   series: Series;
   hasEditSettings: boolean;
+  hasOnEnable: boolean;
+  listOfSeries: boolean;
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
 }
 
@@ -32,8 +35,11 @@ export const ChartSettingOrderedSimple = ({
   onChange,
   value: orderedItems,
   onShowPopoverWidget,
+  onSetCurrentWidget,
   hasEditSettings = true,
+  hasOnEnable = true,
   onChangeSeriesColor,
+  listOfSeries = true,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = (selectedItem: SortableItem) => {
     const index = orderedItems.findIndex(item => item.key === selectedItem.key);
@@ -57,10 +63,11 @@ export const ChartSettingOrderedSimple = ({
   };
 
   const handleOnEdit = (item: SortableItem, ref: HTMLElement | undefined) => {
+    console.log(item);
     onShowPopoverWidget(
       {
         props: {
-          seriesKey: item.key,
+          [listOfSeries ? "seriesKey" : "initialKey"]: item.key,
         },
       },
       ref,
@@ -71,19 +78,30 @@ export const ChartSettingOrderedSimple = ({
     onChangeSeriesColor(item.key, color);
   };
 
+  const handleExtra = () => {
+    onSetCurrentWidget({
+      props: {
+        initialKey: "table.columns2",
+      },
+    });
+  };
+
   return (
     <ChartSettingOrderedSimpleRoot>
       {orderedItems.length > 0 ? (
-        <ChartSettingOrderedItems
-          items={orderedItems}
-          getItemName={getItemTitle}
-          onRemove={toggleDisplay}
-          onEnable={toggleDisplay}
-          onSortEnd={handleSortEnd}
-          onEdit={hasEditSettings ? handleOnEdit : undefined}
-          onColorChange={handleColorChange}
-          distance={5}
-        />
+        <>
+          <p onClick={handleExtra}>Add some stuff</p>
+          <ChartSettingOrderedItems
+            items={orderedItems}
+            getItemName={getItemTitle}
+            onRemove={hasOnEnable ? toggleDisplay : undefined}
+            onEnable={hasOnEnable ? toggleDisplay : undefined}
+            onSortEnd={handleSortEnd}
+            onEdit={hasEditSettings ? handleOnEdit : undefined}
+            onColorChange={handleColorChange}
+            distance={5}
+          />
+        </>
       ) : (
         <ChartSettingMessage>{t`Nothing to order`}</ChartSettingMessage>
       )}
