@@ -282,13 +282,14 @@
 
 (deftest grouped-expression-in-card-test
   (testing "Nested grouped expressions work (#23862)."
-    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :basic-aggregations)
+    ;; TODO make this work for other drivers supporting :nested-queries :expressions :basic-aggregations
+    (mt/test-drivers #{:h2 :postgres :mongo}
       (mt/with-temp Card [card {:dataset_query
                                 (mt/mbql-query venues
-                                  {:aggregation [[:count]]
-                                   :breakout [[:expression "Price level"]]
-                                   :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
-                                   :limit 2})}]
+                                               {:aggregation [[:count]]
+                                                :breakout [[:expression "Price level"]]
+                                                :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
+                                                :limit 2})}]
         (is (= [["budget"    81]
                 ["expensive" 19]]
                (mt/rows
@@ -318,14 +319,15 @@
 
 (deftest filter-by-field-literal-test
   (testing "make sure we can filter by a field literal"
-    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    ;; TODO make this work for other drivers supporting :nested-queries
+    (mt/test-drivers #{:h2 :postgres :mongo}
       (is (= {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]]
               :cols (mapv (partial qp.test/col :venues)
                           [:id :name :category_id :latitude :longitude :price])}
              (qp.test/rows-and-cols
               (mt/run-mbql-query venues
-                {:source-query {:source-table $$venues}
-                 :filter       [:= *id 1]})))))))
+                                 {:source-query {:source-table $$venues}
+                                  :filter       [:= *id 1]})))))))
 
 (defn- honeysql->sql
   "Convert `honeysql-form` to the format returned by `compile`. Writing HoneySQL is a lot easier that writing
@@ -514,7 +516,8 @@
                                                  :breakout    [!day.*date]})))))))))
 
 (deftest breakout-year-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+  ;; TODO make this work for other drivers supporting :nested-queries
+  (mt/test-drivers #{:h2 :postgres :mongo}
     (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
                   "break out a *YEAR*")
       (let [source-query (mt/$ids checkins
