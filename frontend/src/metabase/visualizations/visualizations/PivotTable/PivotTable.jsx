@@ -1,5 +1,11 @@
 /* eslint-disable react/prop-types */
-import React, { useEffect, useMemo, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 import { findDOMNode } from "react-dom";
@@ -52,15 +58,10 @@ function PivotTable({
   fontFamily,
   onVisualizationClick,
 }) {
-  console.log("render");
-  let grid;
-  let bodyRef;
-  let topHeaderRef;
-  let leftHeaderRef;
-
-  // const setBodyRef = element => {
-  //   bodyRef = element;
-  // };
+  const [gridElement, setGridElement] = useState(null);
+  const bodyRef = useRef(null);
+  const leftHeaderRef = useRef(null);
+  const topHeaderRef = useRef(null);
 
   const getColumnTitle = useCallback(
     function (columnIndex) {
@@ -83,12 +84,14 @@ function PivotTable({
 
   useEffect(() => {
     // This is needed in case the cell counts didn't change, but the data did
-    leftHeaderRef && leftHeaderRef.recomputeCellSizesAndPositions();
-    topHeaderRef && topHeaderRef.recomputeCellSizesAndPositions();
+    leftHeaderRef.current &&
+      leftHeaderRef.current.recomputeCellSizesAndPositions();
+    topHeaderRef.current &&
+      topHeaderRef.current.recomputeCellSizesAndPositions();
   }, [data, leftHeaderRef, topHeaderRef]);
 
   useOnMount(() => {
-    grid = bodyRef && findDOMNode(bodyRef);
+    setGridElement(bodyRef.current && findDOMNode(bodyRef.current));
   });
 
   const pivoted = useMemo(() => {
@@ -107,12 +110,13 @@ function PivotTable({
   // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
   // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights
   function scrollBarOffsetSize() {
-    if (!grid) {
+    if (!gridElement) {
       return 0;
     }
     // get the size of the scrollbars
     const scrollBarSize = getScrollBarSize();
-    const scrollsHorizontally = grid.scrollWidth > parseInt(grid.style.width);
+    const scrollsHorizontally =
+      gridElement.scrollWidth > parseInt(gridElement.style.width);
 
     if (scrollsHorizontally && scrollBarSize > 0) {
       return scrollBarSize;
@@ -181,6 +185,7 @@ function PivotTable({
       // </div>
     );
   };
+
   const leftHeaderCellSizeAndPositionGetter = ({ index }) => {
     const { offset, span, depth, maxDepthBelow } = leftHeaderItems[index];
 
@@ -407,4 +412,5 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   isLiveResizable: () => false,
   seriesAreCompatible: () => false,
 });
+
 export { PivotTable };
