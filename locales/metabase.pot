@@ -2732,7 +2732,7 @@ msgid "in"
 msgstr ""
 
 #: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:74
-#: frontend/src/metabase/entities/collections/constants.js:7
+#: frontend/src/metabase/entities/collections/constants.ts:7
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor.jsx:410
 #: frontend/src/metabase/query_builder/components/dataref/QuestionPane/QuestionPane.tsx:84
 #: frontend/src/metabase/query_builder/components/view/QuestionDataSource.jsx:112
@@ -3751,7 +3751,7 @@ msgstr ""
 msgid "empty"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:386
+#: frontend/src/metabase-lib/operators/constants.ts:386
 #: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:104
 #: frontend/src/metabase/query_builder/components/filters/modals/InlineValuePicker/InlineValuePicker.tsx:97
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:28
@@ -3774,7 +3774,7 @@ msgstr ""
 msgid "and"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:395
+#: frontend/src/metabase-lib/operators/constants.ts:395
 #: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:105
 #: frontend/src/metabase/query_builder/components/filters/modals/InlineValuePicker/InlineValuePicker.tsx:104
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:29
@@ -3799,10 +3799,10 @@ msgstr ""
 msgid "Current"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:205
-#: frontend/src/metabase-lib/operators/constants.js:219
-#: frontend/src/metabase-lib/operators/constants.js:250
-#: frontend/src/metabase-lib/operators/constants.js:270
+#: frontend/src/metabase-lib/operators/constants.ts:205
+#: frontend/src/metabase-lib/operators/constants.ts:219
+#: frontend/src/metabase-lib/operators/constants.ts:250
+#: frontend/src/metabase-lib/operators/constants.ts:270
 #: frontend/src/metabase-lib/parameters/constants.ts:18
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:80
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:249
@@ -3810,7 +3810,7 @@ msgstr ""
 msgid "Between"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:248
+#: frontend/src/metabase-lib/operators/constants.ts:248
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:88
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:228
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker/TimePicker.jsx:75
@@ -3824,7 +3824,7 @@ msgstr ""
 msgid "On"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:249
+#: frontend/src/metabase-lib/operators/constants.ts:249
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:104
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:235
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker/TimePicker.jsx:86
@@ -3891,19 +3891,19 @@ msgstr ""
 msgid "Hours of the day..."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:196
-#: frontend/src/metabase-lib/operators/constants.js:208
-#: frontend/src/metabase-lib/operators/constants.js:222
-#: frontend/src/metabase-lib/operators/constants.js:232
-#: frontend/src/metabase-lib/operators/constants.js:242
-#: frontend/src/metabase-lib/operators/constants.js:251
-#: frontend/src/metabase-lib/operators/constants.js:257
-#: frontend/src/metabase-lib/operators/constants.js:276
+#: frontend/src/metabase-lib/operators/constants.ts:196
+#: frontend/src/metabase-lib/operators/constants.ts:208
+#: frontend/src/metabase-lib/operators/constants.ts:222
+#: frontend/src/metabase-lib/operators/constants.ts:232
+#: frontend/src/metabase-lib/operators/constants.ts:242
+#: frontend/src/metabase-lib/operators/constants.ts:251
+#: frontend/src/metabase-lib/operators/constants.ts:257
+#: frontend/src/metabase-lib/operators/constants.ts:276
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:128
 msgid "Is empty"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:252
+#: frontend/src/metabase-lib/operators/constants.ts:252
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:137
 msgid "Is not empty"
 msgstr ""
@@ -4087,26 +4087,26 @@ msgstr ""
 msgid "Adding metadata makes it easier for your team to explore this data."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:215
+#: frontend/src/metabase-lib/operators/constants.ts:215
 #: frontend/src/metabase-lib/parameters/constants.ts:8
 msgid "Equal to"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:216
+#: frontend/src/metabase-lib/operators/constants.ts:216
 #: frontend/src/metabase-lib/parameters/constants.ts:13
 msgid "Not equal to"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:206
-#: frontend/src/metabase-lib/operators/constants.js:220
-#: frontend/src/metabase-lib/operators/constants.js:271
+#: frontend/src/metabase-lib/operators/constants.ts:206
+#: frontend/src/metabase-lib/operators/constants.ts:220
+#: frontend/src/metabase-lib/operators/constants.ts:271
 #: frontend/src/metabase-lib/parameters/constants.ts:23
 msgid "Greater than or equal to"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:207
-#: frontend/src/metabase-lib/operators/constants.js:221
-#: frontend/src/metabase-lib/operators/constants.js:272
+#: frontend/src/metabase-lib/operators/constants.ts:207
+#: frontend/src/metabase-lib/operators/constants.ts:221
+#: frontend/src/metabase-lib/operators/constants.ts:272
 #: frontend/src/metabase-lib/parameters/constants.ts:28
 msgid "Less than or equal to"
 msgstr ""
@@ -4119,12 +4119,12 @@ msgstr ""
 msgid "Select one or more values from a list or search box."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:195
-#: frontend/src/metabase-lib/operators/constants.js:202
-#: frontend/src/metabase-lib/operators/constants.js:227
-#: frontend/src/metabase-lib/operators/constants.js:239
-#: frontend/src/metabase-lib/operators/constants.js:256
-#: frontend/src/metabase-lib/operators/constants.js:266
+#: frontend/src/metabase-lib/operators/constants.ts:195
+#: frontend/src/metabase-lib/operators/constants.ts:202
+#: frontend/src/metabase-lib/operators/constants.ts:227
+#: frontend/src/metabase-lib/operators/constants.ts:239
+#: frontend/src/metabase-lib/operators/constants.ts:256
+#: frontend/src/metabase-lib/operators/constants.ts:266
 #: frontend/src/metabase-lib/parameters/constants.ts:41
 msgid "Is not"
 msgstr ""
@@ -4133,8 +4133,8 @@ msgstr ""
 msgid "Exclude one or more specific values."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:228
-#: frontend/src/metabase-lib/operators/constants.js:259
+#: frontend/src/metabase-lib/operators/constants.ts:228
+#: frontend/src/metabase-lib/operators/constants.ts:259
 #: frontend/src/metabase-lib/parameters/constants.ts:47
 msgid "Contains"
 msgstr ""
@@ -4143,8 +4143,8 @@ msgstr ""
 msgid "Match values that contain the entered text."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:229
-#: frontend/src/metabase-lib/operators/constants.js:260
+#: frontend/src/metabase-lib/operators/constants.ts:229
+#: frontend/src/metabase-lib/operators/constants.ts:260
 #: frontend/src/metabase-lib/parameters/constants.ts:53
 msgid "Does not contain"
 msgstr ""
@@ -4153,8 +4153,8 @@ msgstr ""
 msgid "Filter out values that contain the entered text."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:234
-#: frontend/src/metabase-lib/operators/constants.js:261
+#: frontend/src/metabase-lib/operators/constants.ts:234
+#: frontend/src/metabase-lib/operators/constants.ts:261
 #: frontend/src/metabase-lib/parameters/constants.ts:59
 msgid "Starts with"
 msgstr ""
@@ -4163,8 +4163,8 @@ msgstr ""
 msgid "Match values that begin with the entered text."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:235
-#: frontend/src/metabase-lib/operators/constants.js:262
+#: frontend/src/metabase-lib/operators/constants.ts:235
+#: frontend/src/metabase-lib/operators/constants.ts:262
 #: frontend/src/metabase-lib/parameters/constants.ts:65
 msgid "Ends with"
 msgstr ""
@@ -4599,7 +4599,7 @@ msgstr ""
 msgid "Doing science..."
 msgstr ""
 
-#: enterprise/frontend/src/metabase-enterprise/collections/constants.js:5
+#: enterprise/frontend/src/metabase-enterprise/collections/constants.ts:5
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontFilesWidget/utils.ts:8
 #: frontend/src/metabase/plugins/index.ts:100
 msgid "Regular"
@@ -6206,25 +6206,25 @@ msgstr ""
 msgid "Option Three"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:61
+#: frontend/src/metabase-lib/operators/constants.ts:61
 #: frontend/src/metabase/query_builder/components/filters/pickers/BooleanPicker/constants.ts:5
 #: frontend/src/metabase/query_builder/components/filters/pickers/BooleanPicker/constants.ts:10
 msgid "True"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:62
+#: frontend/src/metabase-lib/operators/constants.ts:62
 #: frontend/src/metabase/query_builder/components/filters/pickers/BooleanPicker/constants.ts:6
 #: frontend/src/metabase/query_builder/components/filters/pickers/BooleanPicker/constants.ts:11
 msgid "False"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:197
-#: frontend/src/metabase-lib/operators/constants.js:209
-#: frontend/src/metabase-lib/operators/constants.js:223
-#: frontend/src/metabase-lib/operators/constants.js:233
-#: frontend/src/metabase-lib/operators/constants.js:243
-#: frontend/src/metabase-lib/operators/constants.js:258
-#: frontend/src/metabase-lib/operators/constants.js:277
+#: frontend/src/metabase-lib/operators/constants.ts:197
+#: frontend/src/metabase-lib/operators/constants.ts:209
+#: frontend/src/metabase-lib/operators/constants.ts:223
+#: frontend/src/metabase-lib/operators/constants.ts:233
+#: frontend/src/metabase-lib/operators/constants.ts:243
+#: frontend/src/metabase-lib/operators/constants.ts:258
+#: frontend/src/metabase-lib/operators/constants.ts:277
 #: frontend/src/metabase/query_builder/components/filters/pickers/BooleanPicker/constants.ts:13
 msgid "Not empty"
 msgstr ""
@@ -6432,68 +6432,68 @@ msgstr ""
 msgid "Attachments can contain up to 2,000 rows of data."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:154
+#: frontend/src/metabase-lib/operators/constants.ts:154
 msgid "Select longitude field"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:155
+#: frontend/src/metabase-lib/operators/constants.ts:155
 msgid "Enter upper latitude"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:156
+#: frontend/src/metabase-lib/operators/constants.ts:156
 msgid "Enter left longitude"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:157
+#: frontend/src/metabase-lib/operators/constants.ts:157
 msgid "Enter lower latitude"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:158
+#: frontend/src/metabase-lib/operators/constants.ts:158
 msgid "Enter right longitude"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:194
-#: frontend/src/metabase-lib/operators/constants.js:201
-#: frontend/src/metabase-lib/operators/constants.js:226
-#: frontend/src/metabase-lib/operators/constants.js:238
-#: frontend/src/metabase-lib/operators/constants.js:247
-#: frontend/src/metabase-lib/operators/constants.js:255
-#: frontend/src/metabase-lib/operators/constants.js:265
-#: frontend/src/metabase-lib/operators/constants.js:275
+#: frontend/src/metabase-lib/operators/constants.ts:194
+#: frontend/src/metabase-lib/operators/constants.ts:201
+#: frontend/src/metabase-lib/operators/constants.ts:226
+#: frontend/src/metabase-lib/operators/constants.ts:238
+#: frontend/src/metabase-lib/operators/constants.ts:247
+#: frontend/src/metabase-lib/operators/constants.ts:255
+#: frontend/src/metabase-lib/operators/constants.ts:265
+#: frontend/src/metabase-lib/operators/constants.ts:275
 msgid "Is"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:203
-#: frontend/src/metabase-lib/operators/constants.js:217
-#: frontend/src/metabase-lib/operators/constants.js:268
+#: frontend/src/metabase-lib/operators/constants.ts:203
+#: frontend/src/metabase-lib/operators/constants.ts:217
+#: frontend/src/metabase-lib/operators/constants.ts:268
 msgid "Greater than"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:204
-#: frontend/src/metabase-lib/operators/constants.js:218
-#: frontend/src/metabase-lib/operators/constants.js:269
+#: frontend/src/metabase-lib/operators/constants.ts:204
+#: frontend/src/metabase-lib/operators/constants.ts:218
+#: frontend/src/metabase-lib/operators/constants.ts:269
 msgid "Less than"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:230
-#: frontend/src/metabase-lib/operators/constants.js:240
+#: frontend/src/metabase-lib/operators/constants.ts:230
+#: frontend/src/metabase-lib/operators/constants.ts:240
 msgid "Is null"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:231
-#: frontend/src/metabase-lib/operators/constants.js:241
+#: frontend/src/metabase-lib/operators/constants.ts:231
+#: frontend/src/metabase-lib/operators/constants.ts:241
 msgid "Not null"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:246
+#: frontend/src/metabase-lib/operators/constants.ts:246
 msgid "Excludes"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:267
+#: frontend/src/metabase-lib/operators/constants.ts:267
 msgid "Inside"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:314
+#: frontend/src/metabase-lib/operators/constants.ts:314
 #: frontend/src/metabase-lib/queries/utils/description.js:70
 #: frontend/src/metabase-lib/queries/utils/description.js:260
 #: frontend/src/metabase/query_builder/components/AggregationWidget.jsx:61
@@ -6501,15 +6501,15 @@ msgstr ""
 msgid "Raw data"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:315
+#: frontend/src/metabase-lib/operators/constants.ts:315
 msgid "Just a table with the rows in the answer, no additional operations."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:322
+#: frontend/src/metabase-lib/operators/constants.ts:322
 msgid "Count of rows"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:323
+#: frontend/src/metabase-lib/operators/constants.ts:323
 #: frontend/src/metabase-lib/queries/utils/description.js:72
 #: frontend/src/metabase-lib/queries/utils/description.js:262
 #: frontend/src/metabase/visualizations/lib/utils.js:144
@@ -6522,43 +6522,43 @@ msgstr ""
 msgid "Count"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:324
+#: frontend/src/metabase-lib/operators/constants.ts:324
 msgid "Total number of rows in the answer."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:331
+#: frontend/src/metabase-lib/operators/constants.ts:331
 msgid "Sum of ..."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:332
+#: frontend/src/metabase-lib/operators/constants.ts:332
 #: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:9
 #: frontend/src/metabase/visualizations/lib/utils.js:145
 msgid "Sum"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:333
+#: frontend/src/metabase-lib/operators/constants.ts:333
 msgid "Sum of all the values of a column."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:340
+#: frontend/src/metabase-lib/operators/constants.ts:340
 msgid "Average of ..."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:341
+#: frontend/src/metabase-lib/operators/constants.ts:341
 #: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:103
 #: frontend/src/metabase/visualizations/lib/utils.js:143
 msgid "Average"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:342
+#: frontend/src/metabase-lib/operators/constants.ts:342
 msgid "Average of all the values of a column"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:349
+#: frontend/src/metabase-lib/operators/constants.ts:349
 msgid "Number of distinct values of ..."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:350
+#: frontend/src/metabase-lib/operators/constants.ts:350
 #: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:19
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/field/State.yaml
@@ -6568,67 +6568,67 @@ msgstr ""
 msgid "Distinct values"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:351
+#: frontend/src/metabase-lib/operators/constants.ts:351
 msgid "Number of unique values of a column among all the rows in the answer."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:358
+#: frontend/src/metabase-lib/operators/constants.ts:358
 msgid "Cumulative sum of ..."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:359
+#: frontend/src/metabase-lib/operators/constants.ts:359
 msgid "Cumulative sum"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:360
+#: frontend/src/metabase-lib/operators/constants.ts:360
 msgid ""
 "Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:367
+#: frontend/src/metabase-lib/operators/constants.ts:367
 msgid "Cumulative count of rows"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:368
+#: frontend/src/metabase-lib/operators/constants.ts:368
 #: frontend/src/metabase-lib/queries/utils/description.js:74
 #: frontend/src/metabase-lib/queries/utils/description.js:264
 msgid "Cumulative count"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:369
+#: frontend/src/metabase-lib/operators/constants.ts:369
 msgid ""
 "Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:376
+#: frontend/src/metabase-lib/operators/constants.ts:376
 msgid "Standard deviation of ..."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:377
+#: frontend/src/metabase-lib/operators/constants.ts:377
 msgid "Standard deviation"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:378
+#: frontend/src/metabase-lib/operators/constants.ts:378
 msgid ""
 "Number which expresses how much the values of a column vary among all rows "
 "in the answer."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:385
+#: frontend/src/metabase-lib/operators/constants.ts:385
 msgid "Minimum of ..."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:387
+#: frontend/src/metabase-lib/operators/constants.ts:387
 msgid "Minimum value of a column"
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:394
+#: frontend/src/metabase-lib/operators/constants.ts:394
 msgid "Maximum of ..."
 msgstr ""
 
-#: frontend/src/metabase-lib/operators/constants.js:396
+#: frontend/src/metabase-lib/operators/constants.ts:396
 msgid "Maximum value of a column"
 msgstr ""
 
@@ -8049,7 +8049,7 @@ msgid ""
 "interfaces. It will still be accessible in SQL/native queries."
 msgstr ""
 
-#: frontend/src/metabase/lib/constants.js:11
+#: frontend/src/metabase/lib/constants.ts:11
 msgid "(empty)"
 msgstr ""
 
@@ -8688,15 +8688,15 @@ msgstr ""
 msgid "Must be a positive integer value"
 msgstr ""
 
-#: enterprise/frontend/src/metabase-enterprise/collections/constants.js:11
+#: enterprise/frontend/src/metabase-enterprise/collections/constants.ts:11
 msgid "Official"
 msgstr ""
 
-#: enterprise/frontend/src/metabase-enterprise/collections/constants.js:15
+#: enterprise/frontend/src/metabase-enterprise/collections/constants.ts:15
 msgid "Official collection"
 msgstr ""
 
-#: enterprise/frontend/src/metabase-enterprise/collections/constants.js:16
+#: enterprise/frontend/src/metabase-enterprise/collections/constants.ts:16
 msgid "Belongs to an Official collection"
 msgstr ""
 
@@ -9733,11 +9733,11 @@ msgstr ""
 msgid "You're editing this dashboard."
 msgstr ""
 
-#: frontend/src/metabase/entities/collections/constants.js:14
+#: frontend/src/metabase/entities/collections/constants.ts:14
 msgid "My personal collection"
 msgstr ""
 
-#: frontend/src/metabase/entities/collections/constants.js:23
+#: frontend/src/metabase/entities/collections/constants.ts:23
 msgid "All personal collections"
 msgstr ""
 
@@ -10257,12 +10257,12 @@ msgid "Skip a scheduled Pulse if none of its questions have any results"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:26
-#: frontend/src/metabase/sharing/components/AddEditSidebar/constants.js:4
+#: frontend/src/metabase/sharing/components/AddEditSidebar/constants.ts:4
 msgid "Emails"
 msgstr ""
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:27
-#: frontend/src/metabase/sharing/components/AddEditSidebar/constants.js:5
+#: frontend/src/metabase/sharing/components/AddEditSidebar/constants.ts:5
 msgid "Slack messages"
 msgstr ""
 

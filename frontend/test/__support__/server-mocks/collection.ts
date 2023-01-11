@@ -1,17 +1,14 @@
-import _ from "underscore";
 import type { Scope } from "nock";
-
+import _ from "underscore";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-
-import type { Card, Collection } from "metabase-types/api";
-
+import { Card, Collection } from "metabase-types/api";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 
-export function setupCollectionEndpoints(
+export function setupCollectionsEndpoints(
   scope: Scope,
   collections: Collection[],
 ) {
