@@ -97,7 +97,7 @@ const ValuesSourceTypeModal = ({
   onClose,
 }: ModalProps): JSX.Element => {
   const allFieldValues = useMemo(() => {
-    return getUniqueFieldValues(fieldValues);
+    return getFieldValues(fieldValues);
   }, [fieldValues]);
 
   const handleTypeChange = useCallback(
@@ -232,8 +232,8 @@ const CardSourceModal = ({
     return getFieldByReference(fields, sourceConfig.value_field);
   }, [fields, sourceConfig]);
 
-  const selectedFieldQuestion = useMemo(() => {
-    return question && selectedField && question.toFieldData(selectedField);
+  const fieldValuesQuestion = useMemo(() => {
+    return question && selectedField && question.toFieldValues(selectedField);
   }, [question, selectedField]);
 
   const handleFieldChange = useCallback(
@@ -298,10 +298,10 @@ const CardSourceModal = ({
         ) : !selectedField ? (
           <ModalEmptyState>{t`Pick a column`}</ModalEmptyState>
         ) : (
-          <QuestionResultLoader question={selectedFieldQuestion}>
+          <QuestionResultLoader question={fieldValuesQuestion}>
             {({ result }: QuestionLoaderProps) => (
               <ModalTextArea
-                value={getDatasetText(result)}
+                value={getValuesText(getDatasetValues(result))}
                 readOnly
                 fullWidth
               />
@@ -363,13 +363,18 @@ const getValuesText = (values?: string[]) => {
   return values?.join(NEW_LINE) ?? "";
 };
 
-const getDatasetText = (dataset?: Dataset) => {
-  return getValuesText(dataset?.data.rows.map(row => String(row[0])));
+const getUniqueValues = (values: string[]) => {
+  return Array.from(new Set(values));
 };
 
-const getUniqueFieldValues = (fieldsValues: string[][][]) => {
+const getFieldValues = (fieldsValues: string[][][]) => {
   const allValues = fieldsValues.flatMap(values => values.map(([key]) => key));
-  return Array.from(new Set(allValues));
+  return getUniqueValues(allValues);
+};
+
+const getDatasetValues = (dataset?: Dataset) => {
+  const allValues = dataset?.data.rows.map(([value]) => String(value)) ?? [];
+  return getUniqueValues(allValues);
 };
 
 const getStaticValues = (value: string) => {
