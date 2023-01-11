@@ -111,21 +111,6 @@ interface SetupOpts {
   hasNestedQueriesEnabled?: boolean;
 }
 
-// react-virtualized's AutoSizer uses offsetWidth and offsetHeight.
-// Jest runs in JSDom which doesn't support measurements APIs.
-export function setupVirtualizedLists() {
-  Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
-    configurable: true,
-    value: 100,
-  });
-  Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
-    configurable: true,
-    value: 100,
-  });
-
-  window.HTMLElement.prototype.scrollIntoView = jest.fn();
-}
-
 export async function setup({
   initialValue = { tableIds: [] },
   filters,

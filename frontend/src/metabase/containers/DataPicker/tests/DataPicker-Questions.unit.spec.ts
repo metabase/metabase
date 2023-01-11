@@ -13,7 +13,6 @@ import {
 
 import {
   setup,
-  setupVirtualizedLists,
   EMPTY_COLLECTION,
   SAMPLE_COLLECTION,
   SAMPLE_QUESTION,
@@ -26,7 +25,7 @@ const ROOT_COLLECTION_QUESTIONS_VIRTUAL_SCHEMA_ID =
 
 describe("DataPicker — picking questions", () => {
   beforeAll(() => {
-    setupVirtualizedLists();
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   afterEach(() => {
