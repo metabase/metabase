@@ -5,6 +5,7 @@
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.card :refer [Card]]
@@ -381,16 +382,16 @@
   [id]
   (let [{:keys [database_id] :as card} (db/select-one [Card :id :dataset_query :result_metadata :name :description
                                                        :collection_id :database_id]
-                                                      :id id)
-        moderated-status              (->> (db/query {:select   [:status]
-                                                      :from     [:moderation_review]
-                                                      :where    [:and
-                                                                 [:= :moderated_item_type "card"]
-                                                                 [:= :moderated_item_id id]
-                                                                 [:= :most_recent true]]
-                                                      :order-by [[:id :desc]]
-                                                      :limit    1}
-                                                     :id id)
+                                         :id id)
+        moderated-status              (->> (mdb.query/query {:select   [:status]
+                                                             :from     [:moderation_review]
+                                                             :where    [:and
+                                                                        [:= :moderated_item_type "card"]
+                                                                        [:= :moderated_item_id id]
+                                                                        [:= :most_recent true]]
+                                                             :order-by [[:id :desc]]
+                                                             :limit    1}
+                                                            :id id)
                                            first :status)]
     (-> (assoc card :moderated_status moderated-status)
         api/read-check

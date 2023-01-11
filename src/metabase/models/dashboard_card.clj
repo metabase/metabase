@@ -1,6 +1,7 @@
 (ns metabase.models.dashboard-card
   (:require
    [clojure.set :as set]
+   [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.events :as events]
    [metabase.models.card :refer [Card]]
@@ -100,15 +101,15 @@
   from the visualization with same type (line bar or whatever),
   which is a separate option in line area or bar visualization"
   [dashcard]
-  (db/query {:select [:newcard.*]
-             :from [[:report_dashboardcard :dashcard]]
-             :left-join [[:dashboardcard_series :dashcardseries]
-                         [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                         [:report_card :newcard]
-                         [:= :dashcardseries.card_id :newcard.id]]
-             :where [:and
-                     [:= :newcard.archived false]
-                     [:= :dashcard.id (:id dashcard)]]}))
+  (mdb.query/query {:select    [:newcard.*]
+                    :from      [[:report_dashboardcard :dashcard]]
+                    :left-join [[:dashboardcard_series :dashcardseries]
+                                [:= :dashcard.id :dashcardseries.dashboardcard_id]
+                                [:report_card :newcard]
+                                [:= :dashcardseries.card_id :newcard.id]]
+                    :where     [:and
+                                [:= :newcard.archived false]
+                                [:= :dashcard.id (:id dashcard)]]}))
 
 (s/defn update-dashboard-card-series!
   "Update the DashboardCardSeries for a given DashboardCard.

@@ -1,5 +1,6 @@
 (ns metabase.models.permissions-group-membership
   (:require
+   [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.util :as u]
@@ -31,11 +32,12 @@
   []
   (:count
    (first
-    (db/query {:select [[:%count.* :count]]
-               :from   [[:permissions_group_membership :pgm]]
-               :join   [[:core_user :user] [:= :user.id :pgm.user_id]]
-               :where  [:and [:= :pgm.group_id (u/the-id (perms-group/admin))]
-                             [:= :user.is_active true]]}))))
+    (mdb.query/query {:select [[:%count.* :count]]
+                      :from   [[:permissions_group_membership :pgm]]
+                      :join   [[:core_user :user] [:= :user.id :pgm.user_id]]
+                      :where  [:and
+                               [:= :pgm.group_id (u/the-id (perms-group/admin))]
+                               [:= :user.is_active true]]}))))
 
 (defn throw-if-last-admin!
   "Throw an Exception if there is only one admin (superuser) left. The assumption is that the one admin is about to be
