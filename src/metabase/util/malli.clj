@@ -17,15 +17,18 @@
 
 (core/defn- ->malli-io-link
   ([schema]
-   (->malli-io-link schema (try (mg/generate schema {:seed 1 :size 1})
-                                ;; not all schemas can generate values
-                                (catch Exception _ ::none))))
+   (->malli-io-link schema (try
+                             ;; try to make a sample value
+                             (mg/generate schema {:seed 1 :size 1})
+                             ;; not all schemas can generate values
+                             (catch Exception _ ::none))))
   ([schema value]
-   (let [url-schema (codec/url-encode (u/pprint-to-str (mc/form schema)))
-         url-value (if (or (= ::none value))
-                     ""
-                     (codec/url-encode (nil->nil-str (u/pprint-to-str value))))]
-     (str "https://malli.io?schema=" url-schema "&value=" url-value))))
+   (str "https://malli.io?schema="
+        (codec/url-encode (u/pprint-to-str (mc/form schema)))
+        "&value="
+        (if (= ::none value)
+          ""
+          (codec/url-encode (nil->nil-str (u/pprint-to-str value)))))))
 
 (core/defn- explain-fn-fail!
   "Used as reporting function to minst/instrument!"
