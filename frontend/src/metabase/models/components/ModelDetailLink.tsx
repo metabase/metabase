@@ -18,6 +18,7 @@ function ModelDetailLink({ model, ...props }: Props) {
   return (
     <Button
       aria-label={t`Model details`}
+      tooltip={t`Model details`}
       {...props}
       as={Link}
       to={Urls.modelDetail(model)}
