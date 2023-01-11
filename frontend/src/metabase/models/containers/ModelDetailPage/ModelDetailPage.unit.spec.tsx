@@ -35,8 +35,6 @@ import {
 
 import ModelDetailPage from "./ModelDetailPage";
 
-console.warn = jest.fn();
-
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/core/components/Link", () => ({ to, ...props }: any) => (
   <a {...props} href={to} />
