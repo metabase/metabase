@@ -94,7 +94,7 @@ Metabase's reference documentation.
 
 - [Data modeling overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
-- [Metadata editing](./data-modeling/metadata-editing.md)
+- [Admin Data Model](./data-modeling/admin-data-model.md)
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
