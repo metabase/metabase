@@ -29,7 +29,7 @@
       max (str " with length >= " max)
       :else "")))
 
-(defn pluralize-times [n]
+(defn- pluralize-times [n]
   (when n
     (if (= 1 n) "time" "times")))
 
