@@ -194,7 +194,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     );
 
     rows.forEach(rowData => {
-      expect(screen.queryByText(rowData[0].toString())).toBeInTheDocument();
+      expect(screen.getByText(rowData[0].toString())).toBeInTheDocument();
 
       [1, 2, 4, 5].forEach(colIndex => {
         expect(
