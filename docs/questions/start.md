@@ -6,56 +6,73 @@ title: Questions overview
 
 Questions are queries plus their visualization. You can ask questions using Metabase's graphical query builder, or create a native/SQL query.
 
-## Query builder
+## Reference docs
 
-### [Asking questions](./query-builder/introduction.md)
+### Query builder
+
+#### [Asking questions](./query-builder/introduction.md)
 
 An introduction to Metabase's graphical query builder.
 
-### [Custom expressions](./query-builder/expressions.md)
+#### [Custom expressions](./query-builder/expressions.md)
 
 Custom expressions, like spreadsheet formulas, are tools you can use in the graphical query builder to ask more complicated questions.
 
-### [List of expressions](./query-builder/expressions.md)
-
+#### [List of expressions](./query-builder/expressions.md)
+    
 A list of the aggregations and functions available in the graphical query builder.
 
-### [Joining data](./query-builder/join.md)
+#### [Joining data](./query-builder/join.md)
 
 You can join data to combine your current data with another table, or even with a saved question.
 
-## Native query editor
+### Native query editor
 
 Also known as the SQL editor (we say native because you can also query databases that don't use SQL, like MongoDB and Google Analytics).
 
-### [Introduction to the native query editor](./native-editor/writing-sql.md)
+#### [Introduction to the native query editor](./native-editor/writing-sql.md)
 
 Write native code (like SQL) to query your data source.
 
-### [SQL templates](./native-editor/sql-parameters.md)
+#### [SQL templates](./native-editor/sql-parameters.md)
 
 Pass parameters into variables in your SQL templates.
 
-### [SQL snippets](./native-editor/sql-snippets.md)
+#### [SQL snippets](./native-editor/sql-snippets.md)
 
 Reuse and share bits of SQL.
 
-## Sharing results
+### Sharing results
 
 There are many different ways to share the results of questions. To share the results of a dashboard, see [Dashboard subscriptions](../dashboards/subscriptions.md).
 
-### [Sharing answers](./sharing/answers.md)
+#### [Sharing answers](./sharing/answers.md)
 
 Save questions, download results, and share links.
 
-### [Visualizing results](./sharing/visualizing-results.md)
+#### [Visualizing results](./sharing/visualizing-results.md)
 
 Choose from a variety of visualization types.
 
-### [Alerts](./sharing/alerts.md)
+#### [Alerts](./sharing/alerts.md)
 
 Get results via email or Slack, either on a schedule, or only when something interesting happens.
 
-### [Public sharing](./sharing/public-links.md)
+#### [Public sharing](./sharing/public-links.md)
 
 Create links or embeds for the good people of the internet.
+
+## Tutorials and guides
+
+- [Create interactive charts](https://www.metabase.com/learn/questions/drill-through)
+- [Custom expressions in the query builder](https://www.metabase.com/learn/questions/custom-expressions)
+- [Trend analysis: comparing time periods](https://www.metabase.com/learn/questions/time-series-comparisons)
+- [Trend analysis: measuring rates of change](https://www.metabase.com/learn/questions/rate-of-change)
+- [Joins in Metabase](https://www.metabase.com/learn/questions/joins-in-metabase)
+- [Multi-level aggregation](https://www.metabase.com/learn/questions/multi-aggregation)
+- [Searching your tables and questions](https://www.metabase.com/learn/questions/searching-tables)
+- [Cleaning and formatting text](https://www.metabase.com/learn/questions/formatting)
+
+## Troubleshooting questions
+
+- [Can't save my question or dashboard](https://www.metabase.com/docs/latest/troubleshooting-guide/proxies)
