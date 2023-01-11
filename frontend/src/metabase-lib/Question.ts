@@ -444,6 +444,13 @@ class QuestionInner {
   }
 
   /**
+   * How many filters or other widgets are this question's values used for?
+   */
+  getParameterUsageCount(): number {
+    return this.card().parameter_usage_count || 0;
+  }
+
+  /**
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
