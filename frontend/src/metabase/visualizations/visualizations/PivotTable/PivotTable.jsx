@@ -1,33 +1,21 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
-import _ from "underscore";
-import { getIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
-import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
 import {
-  COLLAPSED_ROWS_SETTING,
-  COLUMN_SPLIT_SETTING,
-  COLUMN_SORT_ORDER,
-  COLUMN_SORT_ORDER_ASC,
-  COLUMN_SORT_ORDER_DESC,
   COLUMN_SHOW_TOTALS,
-  COLUMN_FORMATTING_SETTING,
   isPivotGroupColumn,
   multiLevelPivot,
 } from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 
 import { PLUGIN_SELECTORS } from "metabase/plugins";
-import { isDimension } from "metabase-lib/types/utils/isa";
 
 import { RowToggleIcon } from "./RowToggleIcon";
 import { Cell } from "./PivotTableCell";
@@ -37,16 +25,16 @@ import {
   PivotTableTopLeftCellsContainer,
 } from "./PivotTable.styled";
 
-import { partitions } from "./partitions";
 import {
-  addMissingCardBreakouts,
-  isColumnValid,
-  isFormattablePivotColumn,
-  updateValueWithCurrentColumns,
   getLeftHeaderWidths,
+  databaseSupportsPivotTables,
+  isSensible,
+  checkRenderable,
 } from "./utils";
 
 import { CELL_WIDTH, CELL_HEIGHT, LEFT_HEADER_LEFT_SPACING } from "./constants";
+
+import { settings, _columnSettings as columnSettings } from "./settings";
 
 const mapStateToProps = state => ({
   hasCustomColors: PLUGIN_SELECTORS.getHasCustomColors(state),
@@ -54,225 +42,6 @@ const mapStateToProps = state => ({
 });
 
 class PivotTable extends Component {
-  static uiName = t`Pivot Table`;
-  static identifier = "pivot";
-  static iconName = "pivot_table";
-
-  static isLiveResizable(series) {
-    return false;
-  }
-
-  static databaseSupportsPivotTables(query) {
-    if (query && query.database && query.database() != null) {
-      // if we don't have metadata, we can't check this
-      return query.database().supportsPivots();
-    }
-    return true;
-  }
-
-  static isSensible({ cols }, query) {
-    return (
-      cols.length >= 2 &&
-      cols.every(isColumnValid) &&
-      this.databaseSupportsPivotTables(query)
-    );
-  }
-
-  static checkRenderable([{ data, card }], settings, query) {
-    if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
-      throw new Error(
-        t`Pivot tables can only be used with aggregated queries.`,
-      );
-    }
-    if (!this.databaseSupportsPivotTables(query)) {
-      throw new Error(t`This database does not support pivot tables.`);
-    }
-  }
-
-  static seriesAreCompatible(initialSeries, newSeries) {
-    return false;
-  }
-
-  static settings = {
-    ...columnSettings({ hidden: true }),
-    [COLLAPSED_ROWS_SETTING]: {
-      hidden: true,
-      readDependencies: [COLUMN_SPLIT_SETTING],
-      getValue: (series, settings = {}) => {
-        // This is hack. Collapsed rows depend on the current column split setting.
-        // If the query changes or the rows are reordered, we ignore the current collapsed row setting.
-        // This is accomplished by snapshotting part of the column split setting *inside* this setting.
-        // `value` the is the actual data for this setting
-        // `rows` is value we check against the current setting to see if we should use `value`
-        const { rows, value } = settings[COLLAPSED_ROWS_SETTING] || {};
-        const { rows: currentRows } = settings[COLUMN_SPLIT_SETTING] || {};
-        if (!_.isEqual(rows, currentRows)) {
-          return { value: [], rows: currentRows };
-        }
-        return { rows, value };
-      },
-    },
-    [COLUMN_SPLIT_SETTING]: {
-      section: t`Columns`,
-      widget: "fieldsPartition",
-      persistDefault: true,
-      getHidden: ([{ data }]) =>
-        // hide the setting widget if there are invalid columns
-        !data || data.cols.some(col => !isColumnValid(col)),
-      getProps: ([{ data }], settings) => ({
-        partitions,
-        columns: data == null ? [] : data.cols,
-        settings,
-      }),
-      getValue: ([{ data, card }], settings = {}) => {
-        const storedValue = settings[COLUMN_SPLIT_SETTING];
-        if (data == null) {
-          return undefined;
-        }
-        const columnsToPartition = data.cols.filter(
-          col => !isPivotGroupColumn(col),
-        );
-        let setting;
-        if (storedValue == null) {
-          const [dimensions, values] = _.partition(
-            columnsToPartition,
-            isDimension,
-          );
-          const [first, second, ...rest] = _.sortBy(dimensions, col =>
-            getIn(col, ["fingerprint", "global", "distinct-count"]),
-          );
-          let rows, columns;
-          if (dimensions.length < 2) {
-            columns = [];
-            rows = [first];
-          } else if (dimensions.length <= 3) {
-            columns = [first];
-            rows = [second, ...rest];
-          } else {
-            columns = [first, second];
-            rows = rest;
-          }
-          setting = _.mapObject({ rows, columns, values }, cols =>
-            cols.map(col => col.field_ref),
-          );
-        } else {
-          setting = updateValueWithCurrentColumns(
-            storedValue,
-            columnsToPartition,
-          );
-        }
-
-        return addMissingCardBreakouts(setting, card);
-      },
-    },
-    "pivot.show_row_totals": {
-      section: t`Columns`,
-      title: t`Show row totals`,
-      widget: "toggle",
-      default: true,
-      inline: true,
-    },
-    "pivot.show_column_totals": {
-      section: t`Columns`,
-      title: t`Show column totals`,
-      widget: "toggle",
-      default: true,
-      inline: true,
-    },
-    [COLUMN_FORMATTING_SETTING]: {
-      section: t`Conditional Formatting`,
-      widget: ChartSettingsTableFormatting,
-      default: [],
-      getDefault: ([{ data }], settings) => {
-        const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
-
-        return columnFormats
-          .map(columnFormat => {
-            const hasOnlyFormattableColumns = columnFormat.columns
-              .map(columnName =>
-                data.cols.find(column => column.name === columnName),
-              )
-              .filter(Boolean)
-              .every(isFormattablePivotColumn);
-
-            if (!hasOnlyFormattableColumns) {
-              return null;
-            }
-
-            return {
-              ...columnFormat,
-              highlight_row: false,
-            };
-          })
-          .filter(Boolean);
-      },
-      isValid: ([{ data }], settings) => {
-        const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
-
-        return columnFormats.every(columnFormat => {
-          const hasOnlyFormattableColumns = columnFormat.columns
-            .map(columnName =>
-              data.cols.find(column => column.name === columnName),
-            )
-            .filter(Boolean)
-            .every(isFormattablePivotColumn);
-
-          return hasOnlyFormattableColumns && !columnFormat.highlight_row;
-        });
-      },
-      getProps: series => ({
-        canHighlightRow: false,
-        cols: series[0].data.cols.filter(isFormattablePivotColumn),
-      }),
-      getHidden: ([{ data }]) =>
-        !data?.cols.some(col => isFormattablePivotColumn(col)),
-    },
-  };
-
-  static columnSettings = {
-    [COLUMN_SORT_ORDER]: {
-      title: t`Sort order`,
-      widget: ChartSettingIconRadio,
-      inline: true,
-      borderBottom: true,
-      props: {
-        options: [
-          {
-            iconName: "arrow_up",
-            value: COLUMN_SORT_ORDER_ASC,
-          },
-          {
-            iconName: "arrow_down",
-            value: COLUMN_SORT_ORDER_DESC,
-          },
-        ],
-      },
-      getHidden: ({ source }) => source === "aggregation",
-    },
-    [COLUMN_SHOW_TOTALS]: {
-      title: t`Show totals`,
-      widget: "toggle",
-      inline: true,
-      getDefault: (column, columnSettings, { settings }) => {
-        //Default to showing totals if appropriate
-        const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
-        return rows.slice(0, -1).some(row => _.isEqual(row, column.field_ref));
-      },
-      getHidden: (column, columnSettings, { settings }) => {
-        const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
-        // to show totals a column needs to be:
-        //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
-        //  - not the last column
-        return !rows.slice(0, -1).some(row => _.isEqual(row, column.field_ref));
-      },
-    },
-    column_title: {
-      title: t`Column title`,
-      widget: "input",
-      getDefault: column => formatColumn(column),
-    },
-  };
-
   setBodyRef = element => {
     this.bodyRef = element;
   };
@@ -610,5 +379,16 @@ class PivotTable extends Component {
   }
 }
 
-export default connect(mapStateToProps)(PivotTable);
+export default Object.assign(connect(mapStateToProps)(PivotTable), {
+  uiName: t`Pivot Table`,
+  identifier: "pivot",
+  iconName: "pivot_table",
+  databaseSupportsPivotTables,
+  isSensible,
+  checkRenderable,
+  settings,
+  columnSettings,
+  isLiveResizable: () => false,
+  seriesAreCompatible: () => false,
+});
 export { PivotTable };

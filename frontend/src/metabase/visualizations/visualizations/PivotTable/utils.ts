@@ -1,16 +1,21 @@
 import _ from "underscore";
 import { getIn } from "icepick";
+import { t } from "ttag";
 
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
 
-import type { Column } from "metabase-types/types/Dataset";
+import type { Column, DatasetData } from "metabase-types/types/Dataset";
 import type { Card } from "metabase-types/types/Card";
+import type { VisualizationSettings } from "metabase-types/api";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import type {
   PivotSetting,
   FieldOrAggregationReference,
   LeftHeaderItem,
 } from "./types";
+
 import { partitions } from "./partitions";
 
 import {
@@ -181,4 +186,36 @@ export function getColumnValues(leftHeaderItems: LeftHeaderItem[]) {
     });
 
   return columnValues;
+}
+
+export function databaseSupportsPivotTables(query: StructuredQuery) {
+  if (query && query.database && query.database() != null) {
+    // if we don't have metadata, we can't check this
+    return query.database()?.supportsPivots();
+  }
+  return true;
+}
+
+export function isSensible(
+  { cols }: { cols: Column[] },
+  query: StructuredQuery,
+) {
+  return (
+    cols.length >= 2 &&
+    cols.every(isColumnValid) &&
+    databaseSupportsPivotTables(query)
+  );
+}
+
+export function checkRenderable(
+  [{ data }]: [{ data: DatasetData }],
+  settings: VisualizationSettings,
+  query: StructuredQuery,
+) {
+  if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
+    throw new Error(t`Pivot tables can only be used with aggregated queries.`);
+  }
+  if (!databaseSupportsPivotTables(query)) {
+    throw new Error(t`This database does not support pivot tables.`);
+  }
 }

@@ -46,6 +46,15 @@ export type SeriesOrderSetting = {
   color?: string;
 };
 
+export type ColumnFormattingSetting = {
+  columns: string[]; // column names
+  color?: string;
+  type?: string;
+  operator?: string;
+  value?: string | number;
+  highlight_row?: boolean;
+};
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: "stacked" | "normalized" | null;
@@ -76,6 +85,8 @@ export type VisualizationSettings = {
 
   // Funnel settings
   "funnel.rows"?: SeriesOrderSetting[];
+
+  "table.column_formatting": ColumnFormattingSetting[];
 
   [key: string]: any;
 };
