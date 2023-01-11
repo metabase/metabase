@@ -6,12 +6,13 @@ import EntityMenu from "metabase/components/EntityMenu";
 
 import * as Urls from "metabase/lib/urls";
 
+import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
 
 import type { CollectionId } from "metabase-types/api";
 
-type ModalType = "new-app" | "new-dashboard" | "new-collection";
+type ModalType = "new-action" | "new-dashboard" | "new-collection";
 
 export interface NewItemMenuProps {
   className?: string;
@@ -75,6 +76,11 @@ const NewItemMenu = ({
 
     items.push(
       {
+        title: t`Action`,
+        icon: "bolt",
+        action: () => setModal("new-action"),
+      },
+      {
         title: t`Dashboard`,
         icon: "dashboard",
         action: () => setModal("new-dashboard"),
@@ -132,7 +138,9 @@ const NewItemMenu = ({
                 onClose={handleModalClose}
               />
             </Modal>
-          ) : null}
+          ) : (
+            <ActionCreator onClose={handleModalClose} />
+          )}
         </>
       )}
     </>
