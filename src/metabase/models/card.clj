@@ -2,7 +2,6 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.tools.logging :as log]
    [medley.core :as m]
@@ -306,29 +305,6 @@
   :in mi/json-in
   :out result-metadata-out)
 
-(defn- remove-opt [field opt-key]
-  (update field 2 (fn [opts]
-                    (let [opts' (dissoc opts opt-key)]
-                      (if (empty? opts') nil opts')))))
-
-;; TODO: add schema validation?
-(defn- update-column-settings [column-settings result-metadata]
-  (->> column-settings
-       (mapcat (fn [[k v]]
-                 (let [field-ref (-> k
-                                     json/parse-string
-                                     second
-                                     mbql.normalize/normalize)
-                       new-field-refs (->> result-metadata
-                                           (map :field_ref)
-                                           (filter #(= (remove-opt % :join-alias) field-ref)))]
-                   (->> new-field-refs
-                        (map (fn [x] [(json/encode ["ref" x]) v]))))))
-       (into {})))
-
-(defn- post-select [card]
-  (update-in card [:visualization_settings :column_settings] update-column-settings (:result_metadata card)))
-
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
   models/IModel
   (merge models/IModelDefaults
@@ -349,7 +325,7 @@
           :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
           :post-insert    post-insert
           :pre-delete     pre-delete
-          :post-select    (comp public-settings/remove-public-uuid-if-public-sharing-is-disabled post-select)}))
+          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]
