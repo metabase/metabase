@@ -31,6 +31,8 @@ import {
   getNativeModel as _getNativeModel,
   getSavedStructuredQuestion,
   getSavedNativeQuestion,
+  StructuredSavedCard,
+  NativeSavedCard,
 } from "metabase-lib/mocks";
 
 import ModelDetailPage from "./ModelDetailPage";
@@ -42,12 +44,12 @@ jest.mock("metabase/core/components/Link", () => ({ to, ...props }: any) => (
 
 const resultMetadata = ORDERS.fields.map(field => field.getPlainObject());
 
-function getStructuredModel(opts: Parameters<typeof _getStructuredModel>) {
-  return _getStructuredModel({ result_metadata: resultMetadata, ...opts });
+function getStructuredModel(card?: Partial<StructuredSavedCard>) {
+  return _getStructuredModel({ ...card, result_metadata: resultMetadata });
 }
 
-function getNativeModel(opts: Parameters<typeof _getNativeModel>) {
-  return _getNativeModel({ result_metadata: resultMetadata, ...opts });
+function getNativeModel(card?: Partial<NativeSavedCard>) {
+  return _getNativeModel({ ...card, result_metadata: resultMetadata });
 }
 
 const COLLECTION_1 = createMockCollection({
