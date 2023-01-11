@@ -12,6 +12,9 @@
    [metabase.util :as u]
    [ring.util.codec :as codec]))
 
+(core/defn- nil->nil-str [x]
+  (if (nil? x) "nil" x))
+
 (core/defn- ->malli-io-link
   ([schema]
    (->malli-io-link schema (try (mg/generate schema {:seed 1 :size 1})
@@ -19,9 +22,9 @@
                                 (catch Exception _ ::none))))
   ([schema value]
    (let [url-schema (codec/url-encode (u/pprint-to-str (mc/form schema)))
-         url-value (if (= ::none value)
+         url-value (if (or (= ::none value))
                      ""
-                     (codec/url-encode (u/pprint-to-str value)))]
+                     (codec/url-encode (nil->nil-str (u/pprint-to-str value))))]
      (str "https://malli.io?schema=" url-schema "&value=" url-value))))
 
 (core/defn- explain-fn-fail!
