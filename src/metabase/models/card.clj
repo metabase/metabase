@@ -11,7 +11,6 @@
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.json-migration :as jm]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
@@ -315,6 +314,13 @@
 (defn- update-column-settings-field-refs
   "If the field is a joined field, we need to update the column settings for all the fields
    with the same field ref excluding the join-alias"
+  ;;  e.g.
+  ;;  (update-column-settings {"[\"ref\",[\"field\",1,null]]" {:column_title "ID changed"}}
+  ;;                          [{:field_ref [\"field\",1,null]}
+  ;;                           {:field_ref [\"field\",1,{\"join-alias\":\"Checkins\"}]}]
+  ;;  =>
+  ;;  {"[\"ref\",[\"field\",1,null]]"                          {:column_title "ID changed"},
+  ;;   "[\"ref\",[\"field\",1,{\"join-alias\":\"Checkins\"}]]" {:column_title "ID changed"}}
   [column-settings field-refs]
   (->> column-settings
        (mapcat (fn [[k v]]
@@ -328,33 +334,9 @@
                         (map (fn [x] [(json/encode ["ref" x]) v]))))))
        (into {})))
 
-(jm/def-json-migration migrate-viz-settings)
-
-(def ^:private viz-settings-current-version 3)
-
-(defmethod ^:private migrate-viz-settings [1 2] [card _]
-  ;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
-  ;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
-  (let [{percent? :pie.show_legend_perecent ;; [sic]
-         legend?  :pie.show_legend} (:visualization_settings card)
-        new-value (cond
-                    legend?  "inside"
-                    percent? "legend")]
-    (update card :visualization_settings
-            (fn [viz-settings]
-              (-> viz-settings
-                  (cond-> (some? new-value)
-                    (assoc :pie.percent_visibility new-value)) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
-                  (assoc :version 2))))))
-
-(defmethod ^:private migrate-viz-settings [2 3] [card _]
+(defn- post-select [card]
   (let [field-refs (map :field_ref (:result_metadata card))]
-    (-> card
-        (update card :visualization_settings
-                (fn [viz-settings]
-                  (-> viz-settings
-                      (update :column-settings update-column-settings-field-refs field-refs))))
-        (assoc-in [:visualization_settings :version] 2)))) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+    (update-in card [:visualization_settings :column_settings] update-column-settings-field-refs field-refs)))
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
   models/IModel
@@ -376,7 +358,7 @@
           :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
           :post-insert    post-insert
           :pre-delete     pre-delete
-          :post-select    (comp public-settings/remove-public-uuid-if-public-sharing-is-disabled migrate-viz-settings)}))
+          :post-select    (comp public-settings/remove-public-uuid-if-public-sharing-is-disabled post-select)}))
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]
