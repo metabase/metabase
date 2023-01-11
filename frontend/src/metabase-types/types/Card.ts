@@ -35,6 +35,16 @@ export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   archived?: boolean;
   collection_id?: number | null;
 
+  creator?: {
+    id: number;
+    common_name: string;
+    first_name: string | null;
+    last_name: string | null;
+    email: string;
+    last_login: string;
+    date_joined: string;
+  };
+
   // Only for native queries
   is_write?: boolean;
   action_id?: number;
