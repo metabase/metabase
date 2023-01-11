@@ -311,32 +311,23 @@
                     (let [opts' (dissoc opts opt-key)]
                       (if (empty? opts') nil opts')))))
 
-(defn- update-column-settings-field-refs
-  "If the field is a joined field, we need to update the column settings for all the fields
-   with the same field ref excluding the join-alias"
-  ;;  e.g.
-  ;;  (update-column-settings {"[\"ref\",[\"field\",1,null]]" {:column_title "ID changed"}}
-  ;;                          [{:field_ref [\"field\",1,null]}
-  ;;                           {:field_ref [\"field\",1,{\"join-alias\":\"Checkins\"}]}]
-  ;;  =>
-  ;;  {"[\"ref\",[\"field\",1,null]]"                          {:column_title "ID changed"},
-  ;;   "[\"ref\",[\"field\",1,{\"join-alias\":\"Checkins\"}]]" {:column_title "ID changed"}}
-  [column-settings field-refs]
+;; TODO: add schema validation?
+(defn- update-column-settings [column-settings result-metadata]
   (->> column-settings
        (mapcat (fn [[k v]]
                  (let [field-ref (-> k
                                      json/parse-string
                                      second
                                      mbql.normalize/normalize)
-                       new-field-refs (->> field-refs
+                       new-field-refs (->> result-metadata
+                                           (map :field_ref)
                                            (filter #(= (remove-opt % :join-alias) field-ref)))]
                    (->> new-field-refs
                         (map (fn [x] [(json/encode ["ref" x]) v]))))))
        (into {})))
 
 (defn- post-select [card]
-  (let [field-refs (map :field_ref (:result_metadata card))]
-    (update-in card [:visualization_settings :column_settings] update-column-settings-field-refs field-refs)))
+  (update-in card [:visualization_settings :column_settings] update-column-settings (:result_metadata card)))
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
   models/IModel
