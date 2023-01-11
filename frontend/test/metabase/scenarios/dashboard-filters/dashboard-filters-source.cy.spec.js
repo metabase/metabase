@@ -40,6 +40,7 @@ describe("scenarios > dashboard > filters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
@@ -120,6 +121,8 @@ const setupStructuredQuestionSource = () => {
   });
 
   modal().within(() => {
+    cy.wait("@dataset");
+    cy.findByDisplayValue(/Gadget/).should("be.visible");
     cy.button("Done").click();
   });
 };
@@ -144,6 +147,8 @@ const setupNativeQuestionSource = () => {
   });
 
   modal().within(() => {
+    cy.wait("@dataset");
+    cy.findByDisplayValue(/Gadget/).should("be.visible");
     cy.button("Done").click();
   });
 };
