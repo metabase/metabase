@@ -6,6 +6,50 @@
    (liquibase.database.core H2Database)
    (liquibase.database.jvm JdbcConnection)))
 
+(defn create-udfs! [^JdbcConnection conn]
+    ;; JSON_STRING_VALUE
+  (.execute (.createStatement conn)
+            "CREATE ALIAS IF NOT EXISTS JSON_STRING_VALUE AS $$
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+@CODE
+String jsonStringValue(String s, String key) {
+    Object obj = JSONValue.parse(s);
+    JSONObject jsonObject = (JSONObject) obj;
+    return String.valueOf(jsonObject.get(key));
+}
+$$;")
+  ;; JSON_MERGE_PATCH
+  ;; overrides the 1st keys with the 2nd as in https://www.rfc-editor.org/rfc/rfc7396
+  (.execute (.createStatement conn)
+            "CREATE ALIAS IF NOT EXISTS JSON_MERGE_PATCH AS $$
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+@CODE
+String jsonMergePatch(String s1, String s2) {
+    Object obj1 = JSONValue.parse(s1);
+    Object obj2 = JSONValue.parse(s2);
+    JSONObject jsonObject1 = (JSONObject) obj1;
+    JSONObject jsonObject2 = (JSONObject) obj2;
+    jsonObject1.putAll(jsonObject2);
+    return jsonObject1.toJSONString();
+}
+$$;")
+  ;; JSON_SET
+  ;; replaces existing values and adds nonexisting values
+  (.execute (.createStatement conn)
+            "CREATE ALIAS IF NOT EXISTS JSON_SET AS $$
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+@CODE
+String jsonSet(String s, String key, String value) {
+    Object obj = JSONValue.parse(s);
+    JSONObject jsonObject = (JSONObject) obj;
+    jsonObject.put(key, value);
+    return jsonObject.toJSONString();
+}
+$$;"))
+
 (defn- upcase ^String [s]
   (some-> s u/upper-case-en))
 
@@ -47,7 +91,9 @@
       (assert (.getPackage klass) (format "Failed to create package for proxy class %s." class-name)))))
 
 (defn h2-database
-  "A version of the Liquibase H2 implementation that always converts identifiers to uppercase and then quotes them."
+  "A version of the Liquibase H2 implementation that always converts identifiers to uppercase and then quotes them.
+   Also creates UDFs for JSON handling."
   ^H2Database [^JdbcConnection conn]
+  (create-udfs! conn)
   (doto (h2-database*)
     (.setConnection conn)))
