@@ -12,6 +12,7 @@
    [metabase.mbql.util.match :as mbql.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -19,8 +20,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
-   [schema.core :as s]
-   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]))
+   [schema.core :as s]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -700,7 +700,7 @@
   (fn add-column-info-rff* [metadata]
     (if (= query-type :query)
       (let [query (cond-> query
-                    (seq escaped->original)
+                    (seq escaped->original) ;; if we replaced aliases, restore them
                     (escape-join-aliases/restore-aliases escaped->original))]
        (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
               (seq dataset-metadata)

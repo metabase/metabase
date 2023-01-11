@@ -62,5 +62,8 @@
             (assoc-in [:info :alias/escaped->original] (set/map-invert original->escaped)))))))
 
 (defn restore-aliases
+  "Restore aliases in query.
+  If aliases were changed in [[escape-join-aliases]], there is a key in `:info` of `:alias/escaped->original` which we
+  can restore the aliases in the query."
   [query escaped->original]
   (rename-join-aliases query escaped->original))
