@@ -5,19 +5,25 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { SidebarButton, SidebarIcon } from "./AppBarToggle.styled";
 
 export interface AppBarToggleProps {
+  isSmallAppBar?: boolean;
+  isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
   isNavBarOpen?: boolean;
   onToggleClick?: () => void;
 }
 
 const AppBarToggle = ({
-  isLogoVisible = true,
+  isSmallAppBar,
+  isNavBarEnabled,
+  isLogoVisible,
   isNavBarOpen,
   onToggleClick,
 }: AppBarToggleProps): JSX.Element => {
   return (
     <Tooltip tooltip={getSidebarTooltip(isNavBarOpen)}>
       <SidebarButton
+        isSmallAppBar={isSmallAppBar}
+        isNavBarEnabled={isNavBarEnabled}
         isLogoVisible={isLogoVisible}
         onClick={onToggleClick}
         data-testid="sidebar-toggle"

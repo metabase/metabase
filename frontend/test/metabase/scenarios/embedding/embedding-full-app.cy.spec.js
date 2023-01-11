@@ -1,6 +1,4 @@
-import Color from "color";
 import { restore } from "__support__/e2e/helpers";
-import { color } from "metabase/lib/colors";
 
 describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -171,15 +169,6 @@ describe("scenarios > embedding > full app", () => {
           cy.findByTestId("main-logo").should("not.exist");
           cy.icon("sidebar_closed").should("be.visible");
         });
-        // Non-hovered color
-        cy.findByTestId("sidebar-toggle")
-          .children()
-          .should("have.css", "color", toRgbString(color("text-medium")));
-        // hovered color
-        cy.findByTestId("sidebar-toggle")
-          .realHover()
-          .children()
-          .should("have.css", "color", toRgbString(color("brand")));
 
         cy.findByTestId("sidebar-toggle").click();
         cy.findByText(/Add your own data/i).should("be.visible");
@@ -260,16 +249,6 @@ describe("scenarios > embedding > full app", () => {
           cy.findByTestId("main-logo").should("not.exist");
           cy.icon("sidebar_closed").should("be.visible");
         });
-
-        // non-hovered color
-        cy.findByTestId("sidebar-toggle")
-          .children()
-          .should("have.css", "color", toRgbString(color("brand")));
-        // hovered color
-        cy.findByTestId("sidebar-toggle")
-          .realHover()
-          .children()
-          .should("have.css", "color", toRgbString(color("brand")));
 
         cy.findByTestId("sidebar-toggle").click();
         cy.findByText(/Add your own data/i).should("be.visible");
@@ -418,7 +397,3 @@ const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
     });
   });
 };
-
-function toRgbString(color) {
-  return Color(color).rgb().string();
-}

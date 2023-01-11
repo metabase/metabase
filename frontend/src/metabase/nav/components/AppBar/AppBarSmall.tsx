@@ -73,6 +73,7 @@ const AppBarSmall = ({
             <AppBarToggleContainer>
               {isNavBarEnabled && (
                 <AppBarToggle
+                  isSmallAppBar
                   isNavBarOpen={isNavBarVisible}
                   onToggleClick={onToggleNavbar}
                 />
@@ -94,6 +95,7 @@ const AppBarSmall = ({
           </AppBarMainContainer>
           <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
             <AppBarLogo
+              isSmallAppBar
               isLogoVisible={isLogoVisible}
               onLogoClick={handleLogoClick}
             />

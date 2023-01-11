@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { LogoLink } from "./AppBarLogo.styled";
-import { SidebarButton, SidebarIcon } from "./AppBarToggle.styled";
 
 interface AppBarRootProps {
   isNavBarOpen?: boolean;
@@ -32,18 +31,10 @@ export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
   align-items: center;
   min-width: 5rem;
 
-  ${SidebarButton} {
-    opacity: ${props => (props.isNavBarEnabled ? 0 : 1)};
-  }
-
   &:hover {
     ${LogoLink} {
       opacity: ${props => (props.isNavBarEnabled ? 0 : 1)};
       pointer-events: ${props => (props.isNavBarEnabled ? "none" : "")};
-    }
-
-    ${SidebarButton} {
-      opacity: ${props => (props.isNavBarEnabled ? 1 : 0)};
     }
   }
 

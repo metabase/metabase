@@ -4,6 +4,7 @@ import AppBarToggle from "./AppBarToggle";
 import { LogoLink, LogoRoot, ToggleContainer } from "./AppBarLogo.styled";
 
 export interface AppBarLogoProps {
+  isSmallAppBar?: boolean;
   isLogoVisible?: boolean;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
@@ -12,6 +13,7 @@ export interface AppBarLogoProps {
 }
 
 const AppBarLogo = ({
+  isSmallAppBar,
   isLogoVisible,
   isNavBarOpen,
   isNavBarEnabled,
@@ -32,6 +34,8 @@ const AppBarLogo = ({
       {isNavBarEnabled && (
         <ToggleContainer isLogoVisible={isLogoVisible}>
           <AppBarToggle
+            isSmallAppBar={isSmallAppBar}
+            isNavBarEnabled={isNavBarEnabled}
             isLogoVisible={isLogoVisible}
             isNavBarOpen={isNavBarOpen}
             onToggleClick={onToggleClick}
