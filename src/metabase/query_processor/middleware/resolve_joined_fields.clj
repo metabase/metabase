@@ -13,7 +13,7 @@
    [schema.core :as s]))
 
 (def ^:private InnerQuery
-  (s/constrained su/MapPlumatic (every-pred (some-fn :source-table :source-query :joins)
+  (s/constrained su/Map (every-pred (some-fn :source-table :source-query :joins)
                                     (complement :condition))))
 
 (s/defn ^:private add-join-alias

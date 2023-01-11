@@ -10,20 +10,20 @@
 
 (def ParentID
   "Schema for the `parent-id` of a Field, i.e. an optional ID."
-  (s/maybe su/IntGreaterThanZeroPlumatic))
+  (s/maybe su/IntGreaterThanZero))
 
 (def TableMetadataFieldWithID
   "Schema for `TableMetadataField` with an included ID of the corresponding Metabase Field object.
   `our-metadata` is always returned in this format. (The ID is needed in certain places so we know which Fields to
   retire, and the parent ID of any nested-fields.)"
   (assoc i/TableMetadataField
-    :id                             su/IntGreaterThanZeroPlumatic
+    :id                             su/IntGreaterThanZero
     (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataFieldWithID)}))
 
 (def TableMetadataFieldWithOptionalID
   "Schema for either `i/TableMetadataField` (`db-metadata`) or `TableMetadataFieldWithID` (`our-metadata`)."
   (assoc i/TableMetadataField
-    (s/optional-key :id)            su/IntGreaterThanZeroPlumatic
+    (s/optional-key :id)            su/IntGreaterThanZero
     (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataFieldWithOptionalID)}))
 
 (s/defn field-metadata-name-for-logging :- s/Str
@@ -39,7 +39,7 @@
   [field]
   (str/lower-case (:name field)))
 
-(s/defn semantic-type :- (s/maybe su/FieldSemanticOrRelationTypePlumatic)
+(s/defn semantic-type :- (s/maybe su/FieldSemanticOrRelationType)
   "Determine a the appropriate `semantic-type` for a Field with `field-metadata`."
   [field-metadata :- (s/maybe i/TableMetadataField)]
   (and field-metadata

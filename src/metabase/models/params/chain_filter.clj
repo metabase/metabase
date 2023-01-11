@@ -355,19 +355,19 @@
 
 (def ^:private Options
   ;; if original-field-id is specified, we'll include this in the results. For Field->Field remapping.
-  {(s/optional-key :original-field-id) (s/maybe su/IntGreaterThanZeroPlumatic)
+  {(s/optional-key :original-field-id) (s/maybe su/IntGreaterThanZero)
    ;; return at most the lesser of `limit` (if specified) and `max-results`.
-   (s/optional-key :limit)             (s/maybe su/IntGreaterThanZeroPlumatic)})
+   (s/optional-key :limit)             (s/maybe su/IntGreaterThanZero)})
 
 (def ^:private max-results 1000)
 
 (def ^:private ConstraintsMap
   "Schema for map of (other) Field ID -> value for additional constraints for the `chain-filter` results."
-  {su/IntGreaterThanZeroPlumatic s/Any})
+  {su/IntGreaterThanZero s/Any})
 
 (s/defn ^:private chain-filter-mbql-query
   "Generate the MBQL query powering `chain-filter`."
-  [field-id                          :- su/IntGreaterThanZeroPlumatic
+  [field-id                          :- su/IntGreaterThanZero
    constraints                       :- (s/maybe ConstraintsMap)
    {:keys [original-field-id limit]} :- (s/maybe Options)]
   {:database (field/field-id->database-id field-id)
@@ -420,7 +420,7 @@
 
 (s/defn ^:private unremapped-chain-filter
   "Chain filtering without all the fancy remapping stuff on top of it."
-  [field-id                                 :- su/IntGreaterThanZeroPlumatic
+  [field-id                                 :- su/IntGreaterThanZero
    constraints                              :- (s/maybe ConstraintsMap)
    {:keys [original-field-id], :as options} :- (s/maybe Options)]
   (let [mbql-query (chain-filter-mbql-query field-id constraints options)]
@@ -467,7 +467,7 @@
   (su/non-empty {s/Any (s/maybe s/Str)}))
 
 (s/defn ^:private human-readable-remapping-map :- (s/maybe HumanReadableRemappingMap)
-  [field-id :- su/IntGreaterThanZeroPlumatic]
+  [field-id :- su/IntGreaterThanZero]
   (when-let [{orig :values, remapped :human_readable_values} (db/select-one [FieldValues :values :human_readable_values]
                                                                {:where [:and
                                                                         [:= :type "full"]
@@ -489,7 +489,7 @@
   "Chain filter, but for Fields that have human-readable values defined (e.g. you've went in and specified that enum
   value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
-  [field-id          :- su/IntGreaterThanZeroPlumatic
+  [field-id          :- su/IntGreaterThanZero
    v->human-readable :- HumanReadableRemappingMap
    constraints       :- (s/maybe ConstraintsMap)
    options           :- (s/maybe Options)]
@@ -499,8 +499,8 @@
 (s/defn ^:private field-to-field-remapped-chain-filter
   "Chain filter, but for Field->Field remappings (e.g. 'remap' `venue.category_id` -> `category.name`; search by
   `category.name` but return tuples of `[venue.category_id category.name]`."
-  [original-field-id :- su/IntGreaterThanZeroPlumatic
-   remapped-field-id :- su/IntGreaterThanZeroPlumatic
+  [original-field-id :- su/IntGreaterThanZero
+   remapped-field-id :- su/IntGreaterThanZero
    constraints       :- (s/maybe ConstraintsMap)
    options           :- (s/maybe Options)]
   (unremapped-chain-filter remapped-field-id constraints (assoc options :original-field-id original-field-id)))
@@ -542,7 +542,7 @@
    :limit  1})
 
 ;; TODO -- add some caching here?
-(s/defn ^:private remapped-field-id :- (s/maybe su/IntGreaterThanZeroPlumatic)
+(s/defn ^:private remapped-field-id :- (s/maybe su/IntGreaterThanZero)
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- su/IntGreaterThanZeroPlumatic]
@@ -582,7 +582,7 @@
     (chain-filter %venues.price {} :limit 10)
 
   For remapped columns, this returns results as a sequence of `[value remapped-value]` pairs."
-  [field-id    :- su/IntGreaterThanZeroPlumatic
+  [field-id    :- su/IntGreaterThanZero
    constraints :- (s/maybe ConstraintsMap)
    & options]
   (assert (even? (count options)))
@@ -616,9 +616,9 @@
                          :base-type   base-type}))))))
 
 (s/defn ^:private unremapped-chain-filter-search
-  [field-id    :- su/IntGreaterThanZeroPlumatic
+  [field-id    :- su/IntGreaterThanZero
    constraints :- (s/maybe ConstraintsMap)
-   query       :- su/NonBlankStringPlumatic
+   query       :- su/NonBlankString
    options     :- (s/maybe Options)]
   (check-valid-search-field field-id)
   (let [query-constraint {field-id [:contains query {:case-sensitive false}]}
@@ -636,10 +636,10 @@
   "Chain filter search, but for Fields that have human-readable values defined (e.g. you've went in and specified that
   enum value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
-  [field-id          :- su/IntGreaterThanZeroPlumatic
+  [field-id          :- su/IntGreaterThanZero
    v->human-readable :- HumanReadableRemappingMap
    constraints       :- (s/maybe ConstraintsMap)
-   query             :- su/NonBlankStringPlumatic
+   query             :- su/NonBlankString
    options           :- (s/maybe Options)]
   (or (when-let [unremapped-values (not-empty (matching-unremapped-values query v->human-readable))]
         (let [query-constraint  {field-id (set unremapped-values)}
@@ -679,10 +679,10 @@
 (s/defn ^:private field-to-field-remapped-chain-filter-search
   "Chain filter search, but for Field->Field remappings e.g. 'remap' `venue.category_id` -> `category.name`; search by
   `category.name` but return tuples of `[venue.category_id category.name]`."
-  [original-field-id :- su/IntGreaterThanZeroPlumatic
-   remapped-field-id :- su/IntGreaterThanZeroPlumatic
+  [original-field-id :- su/IntGreaterThanZero
+   remapped-field-id :- su/IntGreaterThanZero
    constraints       :- (s/maybe ConstraintsMap)
-   query             :- su/NonBlankStringPlumatic
+   query             :- su/NonBlankString
    options           :- (s/maybe Options)]
   (unremapped-chain-filter-search remapped-field-id constraints query
                                   (assoc options :original-field-id original-field-id)))
@@ -690,9 +690,9 @@
 (s/defn chain-filter-search
   "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id`
   containing String `query`. Powers the `search/:query` version of the chain filter endpoint."
-  [field-id          :- su/IntGreaterThanZeroPlumatic
+  [field-id          :- su/IntGreaterThanZero
    constraints       :- (s/maybe ConstraintsMap)
-   query             :- (s/maybe su/NonBlankStringPlumatic)
+   query             :- (s/maybe su/NonBlankString)
    & options]
   (assert (even? (count options)))
   (if (str/blank? query)
@@ -715,8 +715,8 @@
 
     ;; maybe we can't filter against Field 2 because there's no FK-> relationship
     (filterable-field-ids 1 #{2 3 4}) ; -> #{3 4}"
-  [field-id         :- su/IntGreaterThanZeroPlumatic
-   filter-field-ids :- (s/maybe #{su/IntGreaterThanZeroPlumatic})]
+  [field-id         :- su/IntGreaterThanZero
+   filter-field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq filter-field-ids)
     (let [mbql-query (chain-filter-mbql-query field-id
                                               (into {} (for [id filter-field-ids] [id nil]))

@@ -99,8 +99,8 @@
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
                    show_in_getting_started field_order], :as body} :body}]
-  {display_name            (s/maybe su/NonBlankStringPlumatic)
-   entity_type             (s/maybe su/EntityTypeKeywordOrStringPlumatic)
+  {display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
@@ -114,9 +114,9 @@
   "Update all `Table` in `ids`."
   [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
                 show_in_getting_started], :as body} :body}]
-  {ids                     (su/non-empty [su/IntGreaterThanZeroPlumatic])
-   display_name            (s/maybe su/NonBlankStringPlumatic)
-   entity_type             (s/maybe su/EntityTypeKeywordOrStringPlumatic)
+  {ids                     (su/non-empty [su/IntGreaterThanZero])
+   display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
@@ -308,9 +308,9 @@
 
   These options are provided for use in the Admin Edit Metadata page."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
-  {include_sensitive_fields (s/maybe su/BooleanStringPlumatic)
-   include_hidden_fields (s/maybe su/BooleanStringPlumatic)
-   include_editable_data_model (s/maybe su/BooleanStringPlumatic)}
+  {include_sensitive_fields (s/maybe su/BooleanString)
+   include_hidden_fields (s/maybe su/BooleanString)
+   include_editable_data_model (s/maybe su/BooleanString)}
   (fetch-query-metadata (db/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
                                                       :include-hidden-fields?       include_hidden_fields
                                                       :include-editable-data-model? include_editable_data_model}))
@@ -457,7 +457,7 @@
 (api/defendpoint-schema PUT "/:id/fields/order"
   "Reorder fields"
   [id :as {field_order :body}]
-  {field_order [su/IntGreaterThanZeroPlumatic]}
+  {field_order [su/IntGreaterThanZero]}
   (-> (db/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
 (api/define-routes)

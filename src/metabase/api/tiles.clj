@@ -174,12 +174,12 @@
   appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in
   parallel."
   [zoom x y lat-field lon-field query]
-  {zoom        su/IntStringPlumatic
-   x           su/IntStringPlumatic
-   y           su/IntStringPlumatic
+  {zoom        su/IntString
+   x           su/IntString
+   y           su/IntString
    lat-field   s/Str
    lon-field   s/Str
-   query       su/JSONStringPlumatic}
+   query       su/JSONString}
   (let [zoom          (Integer/parseInt zoom)
         x             (Integer/parseInt x)
         y             (Integer/parseInt y)

@@ -52,8 +52,8 @@
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`."
   [archived namespace]
-  {archived  (s/maybe su/BooleanStringPlumatic)
-   namespace (s/maybe su/NonBlankStringPlumatic)}
+  {archived  (s/maybe su/BooleanString)
+   namespace (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)]
     (as-> (db/select Collection
             {:where    [:and
@@ -101,8 +101,8 @@
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
   [exclude-archived namespace]
-  {exclude-archived (s/maybe su/BooleanStringPlumatic)
-   namespace        (s/maybe su/NonBlankStringPlumatic)}
+  {exclude-archived (s/maybe su/BooleanString)
+   namespace        (s/maybe su/NonBlankString)}
   (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
                                 (update acc (if dataset :dataset :card) conj collection_id))
                               {:dataset #{}
@@ -651,7 +651,7 @@
   "Fetch the root Collection's timelines."
   [include archived]
   {include  (s/maybe api.timeline/Include)
-   archived (s/maybe su/BooleanStringPlumatic)}
+   archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)]
     (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                             :timeline/archived? archived?})))
@@ -661,7 +661,7 @@
   "Fetch a specific Collection's timelines."
   [id include archived]
   {include  (s/maybe api.timeline/Include)
-   archived (s/maybe su/BooleanStringPlumatic)}
+   archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)]
     (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                            :timeline/archived? archived?})))
@@ -677,7 +677,7 @@
                    when `all`, return everything. By default returns everything"
   [id models archived pinned_state sort_column sort_direction]
   {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanStringPlumatic)
+   archived       (s/maybe su/BooleanString)
    pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
    sort_column    (s/maybe (apply s/enum valid-sort-columns))
    sort_direction (s/maybe (apply s/enum valid-sort-directions))}
@@ -699,7 +699,7 @@
 (api/defendpoint-schema GET "/root"
   "Return the 'Root' Collection object with standard details added"
   [namespace]
-  {namespace (s/maybe su/NonBlankStringPlumatic)}
+  {namespace (s/maybe su/NonBlankString)}
   (-> (root-collection namespace)
       (api/read-check)
       (dissoc ::collection.root/is-root?)))
@@ -733,8 +733,8 @@
   `snippets`, you can pass the `?namespace=` parameter."
   [models archived namespace pinned_state sort_column sort_direction]
   {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanStringPlumatic)
-   namespace      (s/maybe su/NonBlankStringPlumatic)
+   archived       (s/maybe su/BooleanString)
+   namespace      (s/maybe su/NonBlankString)
    pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
    sort_column    (s/maybe (apply s/enum valid-sort-columns))
    sort_direction (s/maybe (apply s/enum valid-sort-directions))}
@@ -785,11 +785,11 @@
 (api/defendpoint-schema POST "/"
   "Create a new Collection."
   [:as {{:keys [name color description parent_id namespace authority_level] :as body} :body}]
-  {name            su/NonBlankStringPlumatic
+  {name            su/NonBlankString
    color           collection/hex-color-regex
-   description     (s/maybe su/NonBlankStringPlumatic)
-   parent_id       (s/maybe su/IntGreaterThanZeroPlumatic)
-   namespace       (s/maybe su/NonBlankStringPlumatic)
+   description     (s/maybe su/NonBlankString)
+   parent_id       (s/maybe su/IntGreaterThanZero)
+   namespace       (s/maybe su/NonBlankString)
    authority_level collection/AuthorityLevel}
   (create-collection! body))
 
@@ -844,11 +844,11 @@
 (api/defendpoint-schema PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
-  {name                                   (s/maybe su/NonBlankStringPlumatic)
+  {name                                   (s/maybe su/NonBlankString)
    color                                  (s/maybe collection/hex-color-regex)
-   description                            (s/maybe su/NonBlankStringPlumatic)
+   description                            (s/maybe su/NonBlankString)
    archived                               (s/maybe s/Bool)
-   parent_id                              (s/maybe su/IntGreaterThanZeroPlumatic)
+   parent_id                              (s/maybe su/IntGreaterThanZero)
    authority_level                        collection/AuthorityLevel}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
@@ -880,7 +880,7 @@
 (api/defendpoint-schema GET "/graph"
   "Fetch a graph of all Collection Permissions."
   [namespace]
-  {namespace (s/maybe su/NonBlankStringPlumatic)}
+  {namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
   (graph/graph namespace))
 
@@ -923,8 +923,8 @@
   "Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
   [:as {{:keys [namespace], :as body} :body}]
-  {body      su/MapPlumatic
-   namespace (s/maybe su/NonBlankStringPlumatic)}
+  {body      su/Map
+   namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
   (->> (dissoc body :namespace)
        decode-graph

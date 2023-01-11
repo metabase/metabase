@@ -28,10 +28,10 @@
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
-  {:search-string                (s/maybe su/NonBlankStringPlumatic)
+  {:search-string                (s/maybe su/NonBlankString)
    :archived?                    s/Bool
    :current-user-perms           #{perms/Path}
-   (s/optional-key :models)      (s/maybe #{su/NonBlankStringPlumatic})
+   (s/optional-key :models)      (s/maybe #{su/NonBlankString})
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)
    (s/optional-key :offset-int)  (s/maybe s/Int)})
@@ -237,7 +237,7 @@
 (s/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- su/MapPlumatic, id :- (s/maybe s/Int)]
+  [query :- su/Map, id :- (s/maybe s/Int)]
   (if (some? id)
     (sql.helpers/where query [:= id :db_id])
     query))
@@ -245,7 +245,7 @@
 (s/defn ^:private add-card-db-id-clause
   "Add a WHERE clause to only return cards with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- su/MapPlumatic, id :- (s/maybe s/Int)]
+  [query :- su/Map, id :- (s/maybe s/Int)]
   (if (some? id)
     (sql.helpers/where query [:= id :database_id])
     query))
@@ -444,15 +444,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional vector? [su/NonBlankStringPlumatic] :else su/NonBlankStringPlumatic))
+(def ^:private models-schema (s/conditional vector? [su/NonBlankString] :else su/NonBlankString))
 
 (s/defn ^:private search-context :- SearchContext
-  [search-string :-   (s/maybe su/NonBlankStringPlumatic),
-   archived-string :- (s/maybe su/BooleanStringPlumatic)
-   table-db-id :-     (s/maybe su/IntGreaterThanZeroPlumatic)
+  [search-string :-   (s/maybe su/NonBlankString),
+   archived-string :- (s/maybe su/BooleanString)
+   table-db-id :-     (s/maybe su/IntGreaterThanZero)
    models :-          (s/maybe models-schema)
-   limit :-           (s/maybe su/IntGreaterThanZeroPlumatic)
-   offset :-          (s/maybe su/IntGreaterThanOrEqualToZeroPlumatic)]
+   limit :-           (s/maybe su/IntGreaterThanZero)
+   offset :-          (s/maybe su/IntGreaterThanOrEqualToZero)]
   (cond-> {:search-string      search-string
            :archived?          (Boolean/parseBoolean archived-string)
            :current-user-perms @api/*current-user-permissions-set*}
@@ -478,9 +478,9 @@
   To specify a list of models, pass in an array to `models`.
   "
   [q archived table_db_id models]
-  {q            (s/maybe su/NonBlankStringPlumatic)
-   archived     (s/maybe su/BooleanStringPlumatic)
-   table_db_id  (s/maybe su/IntGreaterThanZeroPlumatic)
+  {q            (s/maybe su/NonBlankString)
+   archived     (s/maybe su/BooleanString)
+   table_db_id  (s/maybe su/IntGreaterThanZero)
    models       (s/maybe models-schema)}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (search (search-context

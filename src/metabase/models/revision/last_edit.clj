@@ -21,7 +21,7 @@
 (def LastEditInfo
   "Schema of the `:last-edit-info` map. A subset of a user with a timestamp indicating when the last edit was."
   {:timestamp  (s/maybe s/Any)
-   :id         (s/maybe su/IntGreaterThanZeroPlumatic)
+   :id         (s/maybe su/IntGreaterThanZero)
    :first_name (s/maybe s/Str)
    :last_name  (s/maybe s/Str)
    :email      (s/maybe s/Str)})

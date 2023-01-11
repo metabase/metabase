@@ -171,7 +171,8 @@
                     dashboard-defaults
                     {:name           test-dashboard-name
                      :creator_id     (mt/user->id :rasta)
-                     :parameters     [{:id "abc123", :name "test", :type "date"}]
+                     :parameters     [{:id "abc123", :name "test", :type "date"
+                                       :values_query_type "list", :values_source_type nil, :values_source_config {}}]
                      :updated_at     true
                      :created_at     true
                      :collection_id  true
@@ -1039,11 +1040,11 @@
           (try
             (is (= 2
                    (count (db/select-ids DashboardCard, :dashboard_id copy-id))))
-            (is (= [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
+            (is (=? [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
                    (db/select-one-field :parameters Dashboard :id copy-id)))
-            (is (= [{:parameter_id "random-id"
-                     :card_id      card-id
-                     :target       [:dimension [:field (mt/id :venues :name) nil]]}]
+            (is (=? [{:parameter_id "random-id"
+                      :card_id      card-id
+                      :target       [:dimension [:field (mt/id :venues :name) nil]]}]
                    (db/select-one-field :parameter_mappings DashboardCard :id dashcard-id)))
            (finally
              (db/delete! Dashboard :id copy-id))))))))
@@ -1874,12 +1875,14 @@
                                                              :slug                  "static_category"
                                                              :id                    "_STATIC_CATEGORY_",
                                                              :type                  "category",
+                                                             :values_query_type     "search"
                                                              :values_source_type    "static-list"
                                                              :values_source_config {"values" ["BBQ" "Bakery" "Bar"]}}]})]
           (is (= [{:name                  "Static Category",
                    :slug                  "static_category"
                    :id                    "_STATIC_CATEGORY_",
                    :type                  "category",
+                   :values_query_type     "search"
                    :values_source_type    "static-list"
                    :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                  (:parameters dashboard))))))

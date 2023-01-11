@@ -44,7 +44,7 @@
 (derive Pulse ::mi/read-policy.full-perms-for-perms-set)
 
 (defn- assert-valid-parameters [{:keys [parameters]}]
-  (when (s/check (s/maybe [{:id su/NonBlankStringPlumatic, s/Keyword s/Any}]) parameters)
+  (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
     (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
                     {:parameters parameters}))))
 
@@ -161,10 +161,10 @@
 (def CardRef
   "Schema for the map we use to internally represent the fact that a Card is in a Notification and the details about its
   presence there."
-  (su/with-api-error-message {:id                                 su/IntGreaterThanZeroPlumatic
+  (su/with-api-error-message {:id                                 su/IntGreaterThanZero
                               :include_csv                        s/Bool
                               :include_xls                        s/Bool
-                              (s/optional-key :dashboard_card_id) (s/maybe su/IntGreaterThanZeroPlumatic)}
+                              (s/optional-key :dashboard_card_id) (s/maybe su/IntGreaterThanZero)}
     (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
 
 (def HybridPulseCard
@@ -175,10 +175,10 @@
     (merge (:schema CardRef)
            {:name               (s/maybe s/Str)
             :description        (s/maybe s/Str)
-            :display            (s/maybe su/KeywordOrStringPlumatic)
-            :collection_id      (s/maybe su/IntGreaterThanZeroPlumatic)
-            :dashboard_id       (s/maybe su/IntGreaterThanZeroPlumatic)
-            :parameter_mappings (s/maybe [su/MapPlumatic])})
+            :display            (s/maybe su/KeywordOrString)
+            :collection_id      (s/maybe su/IntGreaterThanZero)
+            :dashboard_id       (s/maybe su/IntGreaterThanZero)
+            :parameter_mappings (s/maybe [su/Map])})
     (deferred-tru "value must be a map with the following keys `({0})`"
       (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
                       "dashboard_id" "parameter_mappings"]))))
@@ -376,7 +376,7 @@
 
 (s/defn card->ref :- CardRef
   "Create a card reference from a card or id"
-  [card :- su/MapPlumatic]
+  [card :- su/Map]
   {:id                (u/the-id card)
    :include_csv       (get card :include_csv false)
    :include_xls       (get card :include_xls false)
@@ -440,7 +440,7 @@
    * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
 
    * All previously existing channels will be updated with their most recent information."
-  [notification-or-id channels :- [su/MapPlumatic]]
+  [notification-or-id channels :- [su/Map]]
   (let [new-channels   (group-by (comp keyword :channel_type) channels)
         old-channels   (group-by (comp keyword :channel_type) (db/select PulseChannel
                                                                 :pulse_id (u/the-id notification-or-id)))
@@ -474,13 +474,13 @@
   {:style/indent 2}
   [cards    :- [{s/Keyword s/Any}]
    channels :- [{s/Keyword s/Any}]
-   kvs      :- {:name                                 su/NonBlankStringPlumatic
-                :creator_id                           su/IntGreaterThanZeroPlumatic
+   kvs      :- {:name                                 su/NonBlankString
+                :creator_id                           su/IntGreaterThanZero
                 (s/optional-key :skip_if_empty)       (s/maybe s/Bool)
-                (s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZeroPlumatic)
-                (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZeroPlumatic)
-                (s/optional-key :dashboard_id)        (s/maybe su/IntGreaterThanZeroPlumatic)
-                (s/optional-key :parameters)          [su/MapPlumatic]}]
+                (s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZero)
+                (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
+                (s/optional-key :dashboard_id)        (s/maybe su/IntGreaterThanZero)
+                (s/optional-key :parameters)          [su/Map]}]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event)
     (events/publish-event! :pulse-create (retrieve-pulse pulse-id))))
@@ -511,18 +511,18 @@
 
 (s/defn update-notification!
   "Update the supplied keys in a `notification`."
-  [notification :- {:id                                   su/IntGreaterThanZeroPlumatic
-                    (s/optional-key :name)                su/NonBlankStringPlumatic
+  [notification :- {:id                                   su/IntGreaterThanZero
+                    (s/optional-key :name)                su/NonBlankString
                     (s/optional-key :alert_condition)     AlertConditions
                     (s/optional-key :alert_above_goal)    s/Bool
                     (s/optional-key :alert_first_only)    s/Bool
                     (s/optional-key :skip_if_empty)       s/Bool
-                    (s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZeroPlumatic)
-                    (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZeroPlumatic)
+                    (s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZero)
+                    (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
                     (s/optional-key :cards)               [CoercibleToCardRef]
-                    (s/optional-key :channels)            [su/MapPlumatic]
+                    (s/optional-key :channels)            [su/Map]
                     (s/optional-key :archived)            s/Bool
-                    (s/optional-key :parameters)          [su/MapPlumatic]}]
+                    (s/optional-key :parameters)          [su/Map]}]
   (db/update! Pulse (u/the-id notification)
     (u/select-keys-when notification
       :present [:collection_id :collection_position :archived]

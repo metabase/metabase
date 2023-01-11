@@ -190,7 +190,7 @@
                                   :details (:details (mt/db))}}
             (testing ":database-create events should have been fired"
               (is (schema= {:topic (schema/eq :database-create)
-                            :item  {:id            su/IntGreaterThanZeroPlumatic
+                            :item  {:id            su/IntGreaterThanZero
                                     :name          (schema/eq db-name)
                                     schema/Keyword schema/Any}}
                            (mt/wait-for-result chan 100))))

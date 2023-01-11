@@ -356,6 +356,7 @@
     metabase.util.i18n                                              i18n
     metabase.util.i18n.impl                                         i18n.impl
     metabase.util.malli                                             mu
+    metabase.util.malli.schema                                      ms
     metabase.util.password                                          u.password
     metabase.util.schema                                            su
     metabase.util.ui-logic                                          ui-logic

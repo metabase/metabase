@@ -339,7 +339,7 @@
                          (nice-graph (graph/graph :currency)))))
 
                 (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                  (is (schema= {:id         su/IntGreaterThanZeroPlumatic
+                  (is (schema= {:id         su/IntGreaterThanZero
                                 :before     (s/eq (mt/obj->json->obj (assoc before :namespace nil)))
                                 :after      (s/eq {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})
                                 :user_id    (s/eq (mt/user->id :crowberto))
@@ -358,7 +358,7 @@
                          (nice-graph (graph/graph)))))
 
                 (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                  (is (schema= {:id         su/IntGreaterThanZeroPlumatic
+                  (is (schema= {:id         su/IntGreaterThanZero
                                 :before     (s/eq (mt/obj->json->obj (assoc before :namespace "currency")))
                                 :after      (s/eq {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})
                                 :user_id    (s/eq (mt/user->id :crowberto))

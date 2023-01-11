@@ -9,7 +9,7 @@
    [honey.sql :as sql]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types])
   (:import
    (java.util Locale)))
@@ -177,7 +177,7 @@
    [:metabase.util.honeysql-extensions/database-type
     {:optional true}
     [:and
-     su/NonBlankString
+     ms/NonBlankString
      [:fn
       {:error/message "lowercased string"}
       (fn [s]
@@ -261,7 +261,7 @@
     (with-database-type-info :field \"text\")
     ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
   {:style/indent [:form]}
-  [honeysql-form db-type :- [:maybe su/KeywordOrString]]
+  [honeysql-form db-type :- [:maybe ms/KeywordOrString]]
   (if (some? db-type)
     (with-type-info honeysql-form {:metabase.util.honeysql-extensions/database-type db-type})
     (unwrap-typed-honeysql-form honeysql-form)))
