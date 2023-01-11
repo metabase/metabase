@@ -3,7 +3,7 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { Parameter, VisualizationSettings } from "metabase-types/api";
+import { Field, Parameter, VisualizationSettings } from "metabase-types/api";
 import { DatabaseId } from "./Database";
 import { StructuredQuery, NativeQuery } from "./Query";
 import { ParameterQueryObject } from "./Parameter";
@@ -34,6 +34,7 @@ export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   cache_ttl?: number | null;
   archived?: boolean;
   collection_id?: number | null;
+  result_metadata: Field[];
 
   creator?: {
     id: number;
@@ -44,10 +45,6 @@ export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
     last_login: string;
     date_joined: string;
   };
-
-  // Only for native queries
-  is_write?: boolean;
-  action_id?: number;
 };
 
 export type Card<Query = DatasetQuery> = SavedCard<Query> | UnsavedCard<Query>;

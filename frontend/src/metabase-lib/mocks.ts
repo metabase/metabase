@@ -54,7 +54,7 @@ const SAVED_QUESTION = {
   description: "",
   collection_id: null,
   can_write: true,
-  result_metadata: ORDERS.fields.map(field => field.getPlainObject()),
+  result_metadata: [],
 };
 
 export function getQuestion(card: Partial<Card>) {

@@ -12,7 +12,7 @@ import {
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
-import { PRODUCTS, PEOPLE } from "__support__/sample_database_fixture";
+import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_database_fixture";
 import {
   setupCardEndpoints,
   setupCollectionEndpoints,
@@ -27,8 +27,8 @@ import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 
 import type Question from "metabase-lib/Question";
 import {
-  getStructuredModel,
-  getNativeModel,
+  getStructuredModel as _getStructuredModel,
+  getNativeModel as _getNativeModel,
   getSavedStructuredQuestion,
   getSavedNativeQuestion,
 } from "metabase-lib/mocks";
@@ -41,6 +41,16 @@ console.warn = jest.fn();
 jest.mock("metabase/core/components/Link", () => ({ to, ...props }: any) => (
   <a {...props} href={to} />
 ));
+
+const resultMetadata = ORDERS.fields.map(field => field.getPlainObject());
+
+function getStructuredModel(opts: Parameters<typeof _getStructuredModel>) {
+  return _getStructuredModel({ result_metadata: resultMetadata, ...opts });
+}
+
+function getNativeModel(opts: Parameters<typeof _getNativeModel>) {
+  return _getNativeModel({ result_metadata: resultMetadata, ...opts });
+}
 
 const COLLECTION_1 = createMockCollection({
   id: 5,
