@@ -32,10 +32,13 @@ function ModelRelationships({ model, mainTable }: Props) {
   return (
     <ModelInfoSection>
       <ModelInfoTitle>{t`Relationships`}</ModelInfoTitle>
-      <List>
+      <List data-testid="model-relationships">
         {relatedTables.map(table => (
           <li key={table.id}>
-            <ListItemLink to={table.newQuestion().getUrl()}>
+            <ListItemLink
+              to={table.newQuestion().getUrl()}
+              aria-label={table.displayName()}
+            >
               <Icon name="table" />
               <ListItemName>{table.displayName()}</ListItemName>
             </ListItemLink>

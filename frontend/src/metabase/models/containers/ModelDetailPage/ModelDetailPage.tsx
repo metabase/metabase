@@ -65,7 +65,7 @@ function mapStateToProps(state: State, props: OwnProps & EntityLoaderProps) {
 const mapDispatchToProps = {
   loadMetadataForCard,
   fetchTableForeignKeys: Tables.actions.fetchForeignKeys,
-  onChangeModel: Questions.actions.update,
+  onChangeModel: (card: Card) => Questions.actions.update(card),
   onChangeCollection: Questions.objectActions.setCollection,
 };
 

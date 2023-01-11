@@ -50,7 +50,10 @@ function ModelUsageDetails({ model, cards }: Props) {
     <ul>
       {cards.map(card => (
         <li key={card.id}>
-          <CardListItem to={Urls.question(card as LegacyCardType)}>
+          <CardListItem
+            to={Urls.question(card as LegacyCardType)}
+            aria-label={card.name}
+          >
             <Icon name={getQuestionIcon(card).name} />
             <CardTitle>{card.name}</CardTitle>
           </CardListItem>
