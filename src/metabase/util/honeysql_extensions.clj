@@ -175,7 +175,7 @@
 
 (def ^:private NormalizedTypeInfo
   {(s/optional-key ::database-type) (s/constrained
-                                     su/NonBlankStringPlumatic
+                                     su/NonBlankString
                                      (fn [s]
                                        (= s (u/lower-case-en s)))
                                      "lowercased string")})
@@ -244,7 +244,7 @@
     (with-database-type-info :field \"text\")
     ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
   {:style/indent [:form]}
-  [honeysql-form db-type :- (s/maybe su/KeywordOrStringPlumatic)]
+  [honeysql-form db-type :- (s/maybe su/KeywordOrString)]
   (if (some? db-type)
     (with-type-info honeysql-form {::database-type db-type})
     (unwrap-typed-honeysql-form honeysql-form)))

@@ -26,8 +26,8 @@
   although the compound key can be inferred from it."
   {:id                               s/Str
    :type                             (s/enum "card" "collection" "dashboard")
-   :item_id                          su/IntGreaterThanZeroPlumatic
-   :name                             su/NonBlankStringPlumatic
+   :item_id                          su/IntGreaterThanZero
+   :name                             su/NonBlankString
    (s/optional-key :dataset)         (s/maybe s/Bool)
    (s/optional-key :display)         (s/maybe s/Str)
    (s/optional-key :authority_level) (s/maybe s/Str)

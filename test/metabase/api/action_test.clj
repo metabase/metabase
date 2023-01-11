@@ -13,18 +13,18 @@
 
 (def ^:private ExpectedGetQueryActionAPIResponse
   "Expected schema for a query action as it should appear in the response for an API request to one of the GET endpoints."
-  {:id                     su/IntGreaterThanOrEqualToZeroPlumatic
+  {:id                     su/IntGreaterThanOrEqualToZero
    :type                   (s/eq "query")
-   :model_id               su/IntGreaterThanOrEqualToZeroPlumatic
-   :database_id            su/IntGreaterThanOrEqualToZeroPlumatic
-   :dataset_query          {:database su/IntGreaterThanOrEqualToZeroPlumatic
+   :model_id               su/IntGreaterThanOrEqualToZero
+   :database_id            su/IntGreaterThanOrEqualToZero
+   :dataset_query          {:database su/IntGreaterThanOrEqualToZero
                             :type     (s/eq "native")
                             :native   {:query    s/Str
                                        s/Keyword s/Any}
                             s/Keyword s/Any}
    :parameters             s/Any
    :parameter_mappings     s/Any
-   :visualization_settings su/MapPlumatic
+   :visualization_settings su/Map
    s/Keyword               s/Any})
 
 (deftest list-actions-test

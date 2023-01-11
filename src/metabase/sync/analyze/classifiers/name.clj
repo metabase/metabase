@@ -119,9 +119,9 @@
     (assert (or (isa? semantic-type :Semantic/*)
                 (isa? semantic-type :Relation/*)))))
 
-(s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldSemanticOrRelationTypePlumatic)
+(s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldSemanticOrRelationType)
   "If `name` and `base-type` matches a known pattern, return the `semantic_type` we should assign to it."
-  [field-name :- su/NonBlankStringPlumatic, base-type :- su/FieldTypePlumatic]
+  [field-name :- su/NonBlankString, base-type :- su/FieldType]
   (let [field-name (str/lower-case field-name)]
     (some (fn [[name-pattern valid-base-types semantic-type]]
             (when (and (some (partial isa? base-type) valid-base-types)

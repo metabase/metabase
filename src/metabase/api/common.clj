@@ -485,7 +485,7 @@
     (api/column-will-change? :archived (db/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
 
     (api/column-will-change? :archived (db/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
-  [k :- schema/Keyword, object-before-updates :- su/MapPlumatic, object-updates :- su/MapPlumatic]
+  [k :- schema/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
   (boolean
    (and (contains? object-updates k)
         (not= (get object-before-updates k)
@@ -496,9 +496,9 @@
 (schema/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
   for fixing card/dashboard/pulse changes that impact other instances in the collection"
-  [collection-id :- (schema/maybe su/IntGreaterThanZeroPlumatic)
-   old-position  :- (schema/maybe su/IntGreaterThanZeroPlumatic)
-   new-position  :- (schema/maybe su/IntGreaterThanZeroPlumatic)]
+  [collection-id :- (schema/maybe su/IntGreaterThanZero)
+   old-position  :- (schema/maybe su/IntGreaterThanZero)
+   new-position  :- (schema/maybe su/IntGreaterThanZero)]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse]]
                        (db/update-where! model {:collection_id       collection-id
@@ -521,15 +521,15 @@
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  {:collection_id       (schema/maybe su/IntGreaterThanZeroPlumatic)
-   :collection_position (schema/maybe su/IntGreaterThanZeroPlumatic)
+  {:collection_id       (schema/maybe su/IntGreaterThanZero)
+   :collection_position (schema/maybe su/IntGreaterThanZero)
    schema/Any           schema/Any})
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
-  {(schema/optional-key :collection_id)       (schema/maybe su/IntGreaterThanZeroPlumatic)
-   (schema/optional-key :collection_position) (schema/maybe su/IntGreaterThanZeroPlumatic)
+  {(schema/optional-key :collection_id)       (schema/maybe su/IntGreaterThanZero)
+   (schema/optional-key :collection_position) (schema/maybe su/IntGreaterThanZero)
    schema/Any                                 schema/Any})
 
 (schema/defn maybe-reconcile-collection-position!

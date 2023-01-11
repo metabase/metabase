@@ -20,8 +20,8 @@
   This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in
   the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.html#mb_api_key)"
   [id :as {{:keys [table_id table_name scan synchronous?]} :body}]
-  {table_id   (s/maybe su/IntGreaterThanZeroPlumatic)
-   table_name (s/maybe su/NonBlankStringPlumatic)
+  {table_id   (s/maybe su/IntGreaterThanZero)
+   table_name (s/maybe su/NonBlankString)
    scan       (s/maybe (s/enum "full" "schema"))}
   (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)

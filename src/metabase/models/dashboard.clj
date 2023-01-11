@@ -381,14 +381,14 @@
     dashboard))
 
 (def ^:private ParamWithMapping
-  {:name     su/NonBlankStringPlumatic
-   :id       su/NonBlankStringPlumatic
+  {:name     su/NonBlankString
+   :id       su/NonBlankString
    :mappings (s/maybe #{dashboard-card/ParamMapping})
    s/Keyword s/Any})
 
-(s/defn ^:private dashboard->resolved-params* :- (let [param-id su/NonBlankStringPlumatic]
+(s/defn ^:private dashboard->resolved-params* :- (let [param-id su/NonBlankString]
                                                    {param-id ParamWithMapping})
-  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/MapPlumatic])
+  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/Map])
                  s/Keyword                    s/Any}]
   (let [dashboard           (hydrate dashboard [:ordered_cards :card])
         param-key->mappings (apply
