@@ -2,6 +2,7 @@
 title: Adding and managing databases
 redirect_from:
   - /docs/latest/administration-guide/01-managing-databases
+  - /docs/latest/databases/connections/sql-server
 ---
 
 # Adding and managing databases
@@ -33,7 +34,7 @@ The databases listed below have official drivers maintained by the Metabase team
 - Redshift (Amazon Web Services)
 - [Snowflake](./connections/snowflake.md)
 - SparkSQL
-- [SQL Server](./connections/sql-server.md)
+- SQL Server
 - SQLite
 - [Vertica](./connections/vertica.md)
 
