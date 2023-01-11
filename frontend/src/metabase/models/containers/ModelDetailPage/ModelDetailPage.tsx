@@ -8,6 +8,7 @@ import { useOnMount } from "metabase/hooks/use-on-mount";
 import { getMetadata } from "metabase/selectors/metadata";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
+import title from "metabase/hoc/Title";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 
@@ -115,6 +116,10 @@ function ModelDetailPage({
   );
 }
 
+function getPageTitle({ modelCard }: Props) {
+  return modelCard?.name;
+}
+
 export default _.compose(
   Questions.load({
     id: (state: State, props: OwnProps) =>
@@ -125,4 +130,5 @@ export default _.compose(
     mapStateToProps,
     mapDispatchToProps,
   ),
+  title(getPageTitle),
 )(ModelDetailPage);
