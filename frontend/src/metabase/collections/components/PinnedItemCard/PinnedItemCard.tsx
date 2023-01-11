@@ -2,13 +2,16 @@ import React, { useState } from "react";
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+
+import ActionMenu from "metabase/collections/components/ActionMenu";
+
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {
   Body,
   Description,
   Header,
-  HoverMenu,
+  ActionsContainer,
   ItemCard,
   ItemIcon,
   ItemLink,
@@ -70,15 +73,17 @@ function PinnedItemCard({
         <Body>
           <Header>
             <ItemIcon name={icon} />
-            <HoverMenu
-              bookmarks={bookmarks}
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-              item={item}
-              collection={collection}
-              onCopy={onCopy}
-              onMove={onMove}
-            />
+            <ActionsContainer>
+              <ActionMenu
+                bookmarks={bookmarks}
+                createBookmark={createBookmark}
+                deleteBookmark={deleteBookmark}
+                item={item}
+                collection={collection}
+                onCopy={onCopy}
+                onMove={onMove}
+              />
+            </ActionsContainer>
           </Header>
           <Tooltip
             tooltip={name}
