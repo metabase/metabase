@@ -1,3 +1,4 @@
+import type { DatabaseId } from "./database";
 import type { Field } from "./field";
 import type { DatasetQuery } from "./query";
 
@@ -7,6 +8,7 @@ export interface Card extends UnsavedCard {
   name: string;
   description: string | null;
   dataset: boolean;
+  database_id?: DatabaseId;
   can_write: boolean;
   cache_ttl: number | null;
   query_average_duration?: number | null;

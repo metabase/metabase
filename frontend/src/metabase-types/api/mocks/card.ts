@@ -13,6 +13,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   description: null,
   display: "table",
   dataset_query: createMockStructuredDatasetQuery(),
+  result_metadata: [],
   visualization_settings: createMockVisualizationSettings(),
   result_metadata: [],
   dataset: false,
