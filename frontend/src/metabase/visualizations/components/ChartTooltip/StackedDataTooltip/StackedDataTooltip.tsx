@@ -1,6 +1,6 @@
 import React from "react";
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
-import { TooltipModel } from "../types";
+import { StackedTooltipModel } from "../types";
 import {
   DataPointHeader,
   DataPointTableHeader,
@@ -8,19 +8,19 @@ import {
   DataPointTableBody,
   DataPointTable,
   DataPointTableFooter,
-} from "./DataPointTooltip.styled";
+} from "./StackedDataTooltip.styled";
 import { getPercent, getTotalValue } from "./utils";
 
-type DataPointTooltipProps = TooltipModel;
+type StackedDataTooltipProps = StackedTooltipModel;
 
-const DataPointTooltip = ({
+const StackedDataTooltip = ({
   headerTitle,
   headerRows,
   bodyRows = [],
   showTotal,
   showPercentages,
   totalFormatter = (value: unknown) => String(value),
-}: DataPointTooltipProps) => {
+}: StackedDataTooltipProps) => {
   const total = getTotalValue(headerRows, bodyRows);
   const isShowingTotalSensible = headerRows.length + bodyRows.length > 1;
 
@@ -72,4 +72,4 @@ const DataPointTooltip = ({
   );
 };
 
-export default DataPointTooltip;
+export default StackedDataTooltip;
