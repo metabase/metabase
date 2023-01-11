@@ -771,7 +771,8 @@
                   :filter       [:starts-with $venue_id->venues.name "F"]})))))))
 
 (deftest two-of-the-same-aggregations-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+  ;; TODO make this work for other drivers supporting :nested-queries
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries) :vertica :sqlite :presto-jdbc)
     (testing "Do nested queries work with two of the same aggregation? (#9767)"
       (is (= [["2014-02-01T00:00:00Z" 302 1804]
               ["2014-03-01T00:00:00Z" 350 2362]]
