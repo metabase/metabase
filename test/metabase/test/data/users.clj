@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.http-client :as client]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
@@ -17,8 +18,7 @@
    [toucan.db :as db]
    [toucan.util.test :as tt])
   (:import
-   (clojure.lang ExceptionInfo)
-   (metabase.models.user UserInstance)))
+   (clojure.lang ExceptionInfo)))
 
 ;;; ------------------------------------------------ User Definitions ------------------------------------------------
 
@@ -80,7 +80,7 @@
               :is_qbnewb    true
               :is_active    active)))))
 
-(s/defn fetch-user :- UserInstance
+(s/defn fetch-user :- (mi/InstanceOf User)
   "Fetch the User object associated with `username`. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
