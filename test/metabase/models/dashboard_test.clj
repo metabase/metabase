@@ -24,6 +24,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt])
   (:import
    (java.time LocalDateTime)))
@@ -366,3 +367,23 @@
         (is (= "8cbf93b7"
                (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1) now])
                (serdes.hash/identity-hash dash)))))))
+
+(deftest parameter-with-null-name-is-allowed-test
+  (testing "parametesr with null or empty name should works (#24500)"
+    (mt/with-temp*
+      [Card          [{card-id :id}]
+       Dashboard     [{dash-id :id} {:parameters [{:id   "_null_name_"
+                                                   :type "category"}
+                                                  {:id   "_empty_name_"
+                                                   :name ""
+                                                   :type "category"}]}]
+       DashboardCard [_ {:dashboard_id       dash-id
+                         :card_id            card-id
+                         :parameter_mappings [{:parameter_id "_null_name_"}
+                                              {:parameter_id "_empty_name_"}]}]]
+      (is (=? {"_empty_name_" {:id   "_empty_name_",
+                               :name "",
+                               :type :category,}
+               "_null_name_"  {:id   "_null_name_",
+                               :type :category,}}
+            (:resolved-params (hydrate (db/select-one Dashboard :id dash-id) :resolved-params)))))))

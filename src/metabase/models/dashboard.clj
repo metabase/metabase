@@ -381,10 +381,10 @@
     dashboard))
 
 (def ^:private ParamWithMapping
-  {:name     su/NonBlankStringPlumatic
-   :id       su/NonBlankStringPlumatic
-   :mappings (s/maybe #{dashboard-card/ParamMapping})
-   s/Keyword s/Any})
+  {:id                    su/NonBlankStringPlumatic
+   :mappings              (s/maybe #{dashboard-card/ParamMapping})
+   (s/optional-key :name) s/Str
+   s/Keyword              s/Any})
 
 (s/defn ^:private dashboard->resolved-params* :- (let [param-id su/NonBlankStringPlumatic]
                                                    {param-id ParamWithMapping})
