@@ -20,6 +20,7 @@ import {
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
+import { Collection } from "metabase-types/api";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
@@ -150,14 +151,18 @@ export async function setup({
 
   setupCollectionsEndpoints(scope, [SAMPLE_COLLECTION, EMPTY_COLLECTION]);
 
-  setupCollectionVirtualSchemaEndpoints(scope, ROOT_COLLECTION, [
-    SAMPLE_QUESTION,
-    SAMPLE_QUESTION_2,
-    SAMPLE_QUESTION_3,
-    SAMPLE_MODEL,
-    SAMPLE_MODEL_2,
-    SAMPLE_MODEL_3,
-  ]);
+  setupCollectionVirtualSchemaEndpoints(
+    scope,
+    ROOT_COLLECTION as unknown as Collection,
+    [
+      SAMPLE_QUESTION,
+      SAMPLE_QUESTION_2,
+      SAMPLE_QUESTION_3,
+      SAMPLE_MODEL,
+      SAMPLE_MODEL_2,
+      SAMPLE_MODEL_3,
+    ],
+  );
 
   setupCollectionVirtualSchemaEndpoints(scope, SAMPLE_COLLECTION, [
     SAMPLE_QUESTION,
