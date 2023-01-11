@@ -218,7 +218,7 @@
 (s/defn ^:private add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`."
-  [honeysql-query               :- su/MapPlumatic
+  [honeysql-query               :- su/Map
    collection-id-column         :- s/Keyword
    {:keys [current-user-perms]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)

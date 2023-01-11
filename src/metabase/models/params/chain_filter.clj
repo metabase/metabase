@@ -545,7 +545,7 @@
 (s/defn ^:private remapped-field-id :- (s/maybe su/IntGreaterThanZero)
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
-  [field-id :- su/IntGreaterThanZeroPlumatic]
+  [field-id :- su/IntGreaterThanZero]
   (:id (first (mdb.query/query (remapped-field-id-query field-id)))))
 
 (defn- use-cached-field-values?
