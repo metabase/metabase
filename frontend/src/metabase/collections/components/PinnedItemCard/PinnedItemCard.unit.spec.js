@@ -4,6 +4,11 @@ import { render, screen, getIcon } from "__support__/ui";
 
 import PinnedItemCard from "./PinnedItemCard";
 
+// eslint-disable-next-line react/display-name, react/prop-types
+jest.mock("metabase/core/components/Link", () => ({ to, ...props }) => (
+  <a {...props} href={to} />
+));
+
 const mockOnCopy = jest.fn();
 const mockOnMove = jest.fn();
 
