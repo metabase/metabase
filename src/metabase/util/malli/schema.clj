@@ -20,6 +20,7 @@
   (mc/schema
     [:int {:min 0}]))
 
+;; TODO - rename this to `PositiveInt`?
 (def IntGreaterThanZero
   "Schema representing an integer than must also be greater than zero."
   (mc/schema
@@ -198,6 +199,7 @@
 
 (def ValuesSourceConfig
   "Schema for valid source_options within a Parameter"
+  ;; TODO: This should be tighter
   (mc/schema
     [:map
      [:values {:optional true} [:* :any]]
