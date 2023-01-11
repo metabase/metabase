@@ -21,6 +21,8 @@ import {
   ItemLink,
   TableItemSecondaryField,
   DescriptionIcon,
+  ModelDetailLink,
+  RowActionsContainer,
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
@@ -141,15 +143,18 @@ export function BaseTableItem({
           )}
         </ItemCell>
         <ItemCell>
-          <ActionMenu
-            createBookmark={createBookmark}
-            deleteBookmark={deleteBookmark}
-            bookmarks={bookmarks}
-            item={item}
-            collection={collection}
-            onCopy={onCopy}
-            onMove={onMove}
-          />
+          <RowActionsContainer>
+            <ActionMenu
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
+              bookmarks={bookmarks}
+              item={item}
+              collection={collection}
+              onCopy={onCopy}
+              onMove={onMove}
+            />
+            {item.model === "dataset" && <ModelDetailLink model={item} />}
+          </RowActionsContainer>
         </ItemCell>
       </tr>
     );
