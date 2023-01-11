@@ -19,7 +19,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -695,12 +696,15 @@
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [{query-type :type, :as query
-    {:keys [:metadata/dataset-metadata]} :info} rff]
+    {:keys [:metadata/dataset-metadata :alias/escaped->original]} :info} rff]
   (fn add-column-info-rff* [metadata]
     (if (= query-type :query)
-      (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-             (seq dataset-metadata)
-             (update :cols qp.util/combine-metadata dataset-metadata)))
+      (let [query (cond-> query
+                    (seq escaped->original)
+                    (escape-join-aliases/restore-aliases escaped->original))]
+       (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
+              (seq dataset-metadata)
+              (update :cols qp.util/combine-metadata dataset-metadata))))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
       ;; queries...
       (let [metadata (cond-> (update metadata :cols annotate-native-cols)

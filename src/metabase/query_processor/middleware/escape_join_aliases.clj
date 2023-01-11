@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.escape-join-aliases
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [metabase.driver :as driver]
@@ -56,4 +57,10 @@
             original->escaped (into {}
                                     (map (juxt identity (comp uniquify escape)))
                                     all-join-aliases)]
-        (rename-join-aliases query original->escaped)))))
+        (-> query
+            (rename-join-aliases original->escaped)
+            (assoc-in [:info :alias/escaped->original] (set/map-invert original->escaped)))))))
+
+(defn restore-aliases
+  [query escaped->original]
+  (rename-join-aliases query escaped->original))
