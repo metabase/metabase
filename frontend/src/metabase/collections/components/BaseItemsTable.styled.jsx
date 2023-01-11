@@ -101,7 +101,7 @@ export const SortingControlContainer = styled.div`
 
 export const RowActionsContainer = styled.div`
   display: flex;
-  gap: 8px;
+  gap: 0.5rem;
 `;
 
 export const TableItemSecondaryField = styled.span`
