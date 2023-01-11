@@ -9,7 +9,7 @@
    [toucan.db :as db]))
 
 (s/defn ^:private has-parent-collection-perms?
-  [snippet       :- {:collection_id (s/maybe su/IntGreaterThanZeroPlumatic), s/Keyword s/Any}
+  [snippet       :- {:collection_id (s/maybe su/IntGreaterThanZero), s/Keyword s/Any}
    read-or-write :- (s/enum :read :write)]
   (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" snippet read-or-write)))
 

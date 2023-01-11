@@ -188,7 +188,7 @@
                             :value          (s/eq nil)
                             :is_env_setting (s/eq true)
                             :env_name       (s/eq "MB_CUSTOM_GEOJSON")
-                            :description    su/NonBlankStringPlumatic
+                            :description    su/NonBlankString
                             :default        (s/eq "Using value of env var $MB_CUSTOM_GEOJSON")
                             s/Keyword       s/Any}
                            (some

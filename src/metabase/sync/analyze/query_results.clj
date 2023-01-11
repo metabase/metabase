@@ -20,7 +20,7 @@
 
 (def ^:private DateTimeUnitKeywordOrString
   "Schema for a valid datetime unit string like \"default\" or \"minute-of-hour\"."
-  (s/constrained su/KeywordOrStringPlumatic
+  (s/constrained su/KeywordOrString
                  #(mbql.preds/DateTimeUnit? (keyword %))
                  "Valid field datetime unit keyword or string"))
 
@@ -31,11 +31,11 @@
   {:name                                s/Str
    :display_name                        s/Str
    (s/optional-key :description)        (s/maybe s/Str)
-   :base_type                           su/FieldTypeKeywordOrStringPlumatic
-   (s/optional-key :semantic_type)      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrStringPlumatic)
+   :base_type                           su/FieldTypeKeywordOrString
+   (s/optional-key :semantic_type)      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
    (s/optional-key :unit)               (s/maybe DateTimeUnitKeywordOrString)
    (s/optional-key :fingerprint)        (s/maybe i/Fingerprint)
-   (s/optional-key :id)                 (s/maybe su/IntGreaterThanZeroPlumatic)
+   (s/optional-key :id)                 (s/maybe su/IntGreaterThanZero)
    ;; only optional because it's not present right away, but it should be present at the end.
    (s/optional-key :field_ref)          (s/cond-pre
                                           mbql.s/FieldOrAggregationReference

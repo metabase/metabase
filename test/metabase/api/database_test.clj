@@ -180,10 +180,10 @@
                      :cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"}
                     {:created_at java.time.temporal.Temporal
                      :engine     (s/eq ::test-driver)
-                     :id         su/IntGreaterThanZeroPlumatic
+                     :id         su/IntGreaterThanZero
                      :details    (s/eq {:db "my_db"})
                      :updated_at java.time.temporal.Temporal
-                     :name       su/NonBlankStringPlumatic
+                     :name       su/NonBlankString
                      :features   (s/eq (driver.u/features ::test-driver (mt/db)))
                      :creator_id (s/eq (mt/user->id :crowberto))})
                    (create-db-via-api!))))
@@ -659,7 +659,7 @@
                                             :moderated_status (s/enum nil "verified")
                                             :schema           s/Str ; collection name
                                             :description      (s/maybe s/Str)
-                                            :fields           [su/MapPlumatic]}]}
+                                            :fields           [su/Map]}]}
                      response))
         (check-tables-included
          response
