@@ -19,6 +19,7 @@ import FormCollectionWidget from "./widgets/FormCollectionWidget";
 import FormSnippetCollectionWidget from "./widgets/FormSnippetCollectionWidget";
 import FormHiddenWidget from "./widgets/FormHiddenWidget";
 import FormTextFileWidget from "./widgets/FormTextFileWidget";
+import FormModelWidget from "./widgets/FormModelWidget";
 
 const WIDGETS = {
   info: FormInfoWidget,
@@ -37,6 +38,7 @@ const WIDGETS = {
   snippetCollection: FormSnippetCollectionWidget,
   hidden: FormHiddenWidget,
   textFile: FormTextFileWidget,
+  model: FormModelWidget,
 };
 
 export function getWidgetComponent(formField) {
