@@ -28,7 +28,7 @@
    [schema.core :as s])
   (:import
    (metabase.models.field FieldInstance)
-   (metabase.util.honeysql_extensions Identifier TypedHoneySQLForm)))
+   (metabase.util.honey_sql_1_extensions Identifier TypedHoneySQLForm)))
 
 (comment metabase.models.field/keep-me) ; for FieldInstance
 

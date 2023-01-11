@@ -82,7 +82,7 @@
              ;; if one has already been set, don't do so again
              (not (::in-report-zone? (meta expr)))
              report-zone)
-      (-> (hx/with-database-type-info (hx/->AtTimeZone expr report-zone) timestamp-with-time-zone-db-type)
+      (-> (hx/with-database-type-info (hx/at-time-zone expr report-zone) timestamp-with-time-zone-db-type)
         (vary-meta assoc ::in-report-zone? true))
       expr)))
 
@@ -183,7 +183,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; Kerberos related definitions
-(def ^:private ^:const kerb-props->url-param-names
+(def ^:private kerb-props->url-param-names
   {:kerberos-principal "KerberosPrincipal"
    :kerberos-remote-service-name "KerberosRemoteServiceName"
    :kerberos-use-canonical-hostname "KerberosUseCanonicalHostname"
