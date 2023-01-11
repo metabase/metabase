@@ -318,13 +318,13 @@
   [column-settings field-refs]
   (->> column-settings
        (mapcat (fn [[k v]]
-                 (let [field-ref (-> k
-                                     json/parse-string
-                                     second
-                                     mbql.normalize/normalize)
-                       new-field-refs (->> field-refs
-                                           (filter #(= (remove-opt % :join-alias) field-ref)))]
-                   (->> new-field-refs
+                 ;; TODO: maybe refs are not guaranteed to be in this format.
+                 (let [settings-field-ref (-> k
+                                              json/parse-string
+                                              second
+                                              mbql.normalize/normalize)] ;; Is this totally necessary?
+                   (->> field-refs
+                        (filter #(= (remove-opt % :join-alias) settings-field-ref))
                         (map (fn [x] [(json/encode ["ref" x]) v]))))))
        (into {})))
 
