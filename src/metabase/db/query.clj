@@ -90,7 +90,8 @@
 (defn- jdbc-connection-spec
   "Returns the [[toucan.db/connection]], but ensures that the application DB is set up first."
   []
-  ((requiring-resolve 'metabase.db/setup-db!))
+  ;; make sure [[metabase.db.setup]] gets loaded so default Honey SQL options and the like are loaded.
+  (classloader/require 'metabase.db.setup)
   (db/connection))
 
 (defn query
