@@ -6,6 +6,8 @@ redirect_from:
 
 # Working with MongoDB in Metabase
 
+Metabase supports MongoDB version 4.2 or higher. 
+
 ## How Metabase syncs data in MongoDB
 
 Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will scan the first ten thousand documents of each collection in your MongoDB. This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would be put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/db-connection.md).
@@ -87,9 +89,7 @@ To make sure you are using the correct connection configuration:
 
    ![Connect screengrab](../images/mongo_2.png "Connect")
 
-4. Select **Java** and **3.6 or later**.
-
-   ![Java screengrab](../images/mongo_3.png "Java")
+4. Select **Java** and version.
 
 5. The resulting connection string has the relevant information to provide to Metabase's `Add a Database` form for MongoDB.
 
