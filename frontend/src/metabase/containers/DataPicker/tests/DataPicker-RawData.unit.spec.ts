@@ -10,11 +10,11 @@ import {
 
 import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
 
-import { setup, setupVirtualizedLists } from "./common";
+import { setup } from "./common";
 
 describe("DataPicker — picking raw data", () => {
   beforeAll(() => {
-    setupVirtualizedLists();
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   afterEach(() => {
