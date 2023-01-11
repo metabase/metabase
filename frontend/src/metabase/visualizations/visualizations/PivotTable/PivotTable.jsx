@@ -152,9 +152,10 @@ function PivotTable({
     return getLeftHeaderWidths({
       rowIndexes: rowIndexes,
       getColumnTitle: idx => getColumnTitle(idx),
+      leftHeaderItems: pivoted.leftHeaderItems,
       fontFamily: fontFamily,
     });
-  }, [rowIndexes, fontFamily, getColumnTitle]);
+  }, [rowIndexes, fontFamily, pivoted.leftHeaderItems, getColumnTitle]);
 
   if (pivoted === null) {
     return null;
