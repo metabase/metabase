@@ -10,6 +10,7 @@ import Select, {
 } from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
+import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Collections from "metabase/entities/collections";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
@@ -17,6 +18,7 @@ import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card, ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
+import { Dataset } from "metabase-types/types/Dataset";
 import Question from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
@@ -68,6 +70,10 @@ interface ModalStateProps {
 
 interface ModalDispatchProps {
   onFetchFieldValues: (fields: Field[]) => void;
+}
+
+interface QuestionLoaderProps {
+  result?: Dataset;
 }
 
 type ModalProps = ModalOwnProps &
@@ -226,6 +232,10 @@ const CardSourceModal = ({
     return getFieldByReference(fields, sourceConfig.value_field);
   }, [fields, sourceConfig]);
 
+  const selectedFieldQuestion = useMemo(() => {
+    return question && selectedField && question.toFieldData(selectedField);
+  }, [question, selectedField]);
+
   const handleFieldChange = useCallback(
     (event: SelectChangeEvent<Field>) => {
       onChangeSourceConfig({
@@ -288,7 +298,15 @@ const CardSourceModal = ({
         ) : !selectedField ? (
           <ModalEmptyState>{t`Pick a column`}</ModalEmptyState>
         ) : (
-          <ModalTextArea readOnly fullWidth />
+          <QuestionResultLoader question={selectedFieldQuestion}>
+            {({ result }: QuestionLoaderProps) => (
+              <ModalTextArea
+                value={getDatasetText(result)}
+                readOnly
+                fullWidth
+              />
+            )}
+          </QuestionResultLoader>
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -343,6 +361,10 @@ const ListSourceModal = ({
 
 const getValuesText = (values?: string[]) => {
   return values?.join(NEW_LINE) ?? "";
+};
+
+const getDatasetText = (dataset?: Dataset) => {
+  return getValuesText(dataset?.data.rows.map(row => String(row[0])));
 };
 
 const getUniqueFieldValues = (fieldsValues: string[][][]) => {

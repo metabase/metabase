@@ -548,6 +548,16 @@ class QuestionInner {
     return query.question().toUnderlyingRecords();
   }
 
+  toFieldData(field: Field): Question {
+    const query = this.composeThisQuery()?.query();
+    if (query instanceof StructuredQuery) {
+      query.setFields([field.reference()]);
+      return query.question();
+    }
+
+    return this;
+  }
+
   toUnderlyingRecords(): Question {
     const query = this.query();
     if (!(query instanceof StructuredQuery)) {
