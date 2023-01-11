@@ -82,18 +82,16 @@ async function searchFieldValues(
 class FieldValuesWidgetInner extends Component {
   constructor(props) {
     super(props);
-    const { parameter, fields, disableSearch, disablePKRemappingForSearch } =
-      props;
+    const { fields, disableSearch, disablePKRemappingForSearch } = props;
     this.state = {
       options: [],
       loadingState: "INIT",
       lastValue: "",
-      valuesMode: getValuesMode({
-        parameter,
+      valuesMode: getValuesMode(
         fields,
         disableSearch,
         disablePKRemappingForSearch,
-      }),
+      ),
     };
   }
 
@@ -110,9 +108,7 @@ class FieldValuesWidgetInner extends Component {
   };
 
   componentDidMount() {
-    const { parameter, fields, disableSearch } = this.props;
-
-    if (shouldList({ parameter, fields, disableSearch })) {
+    if (shouldList(this.props.fields, this.props.disableSearch)) {
       this.fetchValues();
     }
   }
@@ -133,18 +129,13 @@ class FieldValuesWidgetInner extends Component {
         valuesMode = has_more_values ? "search" : valuesMode;
       } else {
         options = await this.fetchFieldValues(query);
-        const {
-          parameter,
+        const { fields, disableSearch, disablePKRemappingForSearch } =
+          this.props;
+        valuesMode = getValuesMode(
           fields,
           disableSearch,
           disablePKRemappingForSearch,
-        } = this.props;
-        valuesMode = getValuesMode({
-          parameter,
-          fields,
-          disableSearch,
-          disablePKRemappingForSearch,
-        });
+        );
       }
     } finally {
       this.updateRemappings(options);
@@ -316,16 +307,11 @@ class FieldValuesWidgetInner extends Component {
 
     const isListMode =
       !disableList &&
-      shouldList({ parameter, fields, disableSearch }) &&
+      shouldList(fields, disableSearch) &&
       valuesMode === "list" &&
       !forceTokenField;
     const isLoading = loadingState === "LOADING";
-    const hasListValues = hasList({
-      parameter,
-      fields,
-      disableSearch,
-      options,
-    });
+    const hasListValues = hasList({ fields, disableSearch, options });
 
     const parseFreeformValue = value => {
       return isNumeric(fields[0], parameter)
@@ -456,18 +442,16 @@ function showRemapping(fields) {
   return fields.length === 1;
 }
 
-function shouldList({ parameter, fields, disableSearch }) {
-  if (disableSearch) {
-    return false;
-  } else if (parameter && parameter.values_query_type !== "list") {
-    return false;
-  } else if (parameter && parameter.values_source_type != null) {
-    return true;
-  } else {
-    return fields
-      .filter(field => !field.isVirtual())
-      .every(field => field.has_field_values === "list");
-  }
+function shouldList(fields, disableSearch) {
+  // Virtual fields come from questions that are based on other questions.
+  // Currently, the back end does not return `has_field_values` in their metadata,
+  // so we ignore them for now.
+  const nonVirtualFields = fields.filter(field => typeof field.id === "number");
+
+  return (
+    !disableSearch &&
+    nonVirtualFields.every(field => field.has_field_values === "list")
+  );
 }
 
 function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
@@ -537,10 +521,8 @@ function getSearchableTokenFieldPlaceholder(
   return placeholder;
 }
 
-function hasList({ parameter, fields, disableSearch, options }) {
-  return (
-    shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)
-  );
+function hasList({ fields, disableSearch, options }) {
+  return shouldList(fields, disableSearch) && !_.isEmpty(options);
 }
 
 // if this search is just an extension of the previous search, and the previous search
@@ -555,33 +537,30 @@ function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
 }
 
 export function isSearchable({
-  parameter,
   fields,
   disableSearch,
   disablePKRemappingForSearch,
   valuesMode,
 }) {
-  if (disableSearch) {
-    return false;
-  } else if (parameter && parameter.values_query_type === "none") {
-    return false;
-  } else if (parameter && parameter.values_source_type !== null) {
-    return true;
-  } else if (valuesMode === "search") {
-    return true;
-  } else {
-    const everyFieldIsSearchable = fields.every(field =>
+  function everyFieldIsSearchable() {
+    return fields.every(field =>
       searchField(field, disablePKRemappingForSearch),
     );
-
-    const someFieldIsConfiguredForSearch = fields.some(
-      field =>
-        field.has_field_values === "search" ||
-        (field.has_field_values === "list" && field.has_more_values === true),
-    );
-
-    return everyFieldIsSearchable && someFieldIsConfiguredForSearch;
   }
+
+  function someFieldIsConfiguredForSearch() {
+    return fields.some(
+      f =>
+        f.has_field_values === "search" ||
+        (f.has_field_values === "list" && f.has_more_values === true),
+    );
+  }
+
+  return (
+    !disableSearch &&
+    (valuesMode === "search" ||
+      (everyFieldIsSearchable() && someFieldIsConfiguredForSearch()))
+  );
 }
 
 function getTokenFieldPlaceholder({
@@ -601,7 +580,6 @@ function getTokenFieldPlaceholder({
 
   if (
     hasList({
-      parameter,
       fields,
       disableSearch,
       options,
@@ -610,7 +588,6 @@ function getTokenFieldPlaceholder({
     return t`Search the list`;
   } else if (
     isSearchable({
-      parameter,
       fields,
       disableSearch,
       disablePKRemappingForSearch,
@@ -634,7 +611,6 @@ function renderOptions(
 ) {
   const {
     alwaysShowOptions,
-    parameter,
     fields,
     disableSearch,
     disablePKRemappingForSearch,
@@ -646,7 +622,6 @@ function renderOptions(
       return optionsList;
     } else if (
       hasList({
-        parameter,
         fields,
         disableSearch,
         options,
@@ -658,7 +633,6 @@ function renderOptions(
       }
     } else if (
       isSearchable({
-        parameter,
         fields,
         disableSearch,
         disablePKRemappingForSearch,
@@ -693,19 +667,17 @@ function renderValue(fields, formatOptions, value, options) {
   );
 }
 
-export function getValuesMode({
-  parameter,
+export function getValuesMode(
   fields,
   disableSearch,
   disablePKRemappingForSearch,
-}) {
+) {
   if (fields.length === 0) {
     return "none";
   }
 
   if (
     isSearchable({
-      parameter,
       fields,
       disableSearch,
       disablePKRemappingForSearch,
@@ -715,7 +687,7 @@ export function getValuesMode({
     return "search";
   }
 
-  if (shouldList({ parameter, fields, disableSearch })) {
+  if (shouldList(fields, disableSearch)) {
     return "list";
   }
 
