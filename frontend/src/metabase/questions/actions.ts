@@ -3,8 +3,9 @@ import _ from "underscore";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import { Card } from "metabase-types/types/Card";
-import { Dispatch, GetState } from "metabase-types/store";
+import type { Card } from "metabase-types/types/Card";
+import type { Dispatch, GetState } from "metabase-types/store";
+
 import Question from "metabase-lib/Question";
 
 export interface LoadMetadataOptions {

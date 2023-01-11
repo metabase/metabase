@@ -81,7 +81,7 @@
 (api/defendpoint-schema GET "/:persisted-info-id"
   "Fetch a particular [[PersistedInfo]] by id."
   [persisted-info-id]
-  {persisted-info-id (s/maybe su/IntGreaterThanZeroPlumatic)}
+  {persisted-info-id (s/maybe su/IntGreaterThanZero)}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
     (api/write-check (db/select-one Database :id (:database_id persisted-info)))
     persisted-info))
@@ -90,7 +90,7 @@
 (api/defendpoint-schema GET "/card/:card-id"
   "Fetch a particular [[PersistedInfo]] by card-id."
   [card-id]
-  {card-id (s/maybe su/IntGreaterThanZeroPlumatic)}
+  {card-id (s/maybe su/IntGreaterThanZero)}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
     (api/write-check (db/select-one Database :id (:database_id persisted-info)))
     persisted-info))

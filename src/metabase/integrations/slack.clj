@@ -199,7 +199,7 @@
 
 (s/defn valid-token?
   "Check whether a Slack token is valid by checking if the `conversations.list` Slack api accepts it."
-  [token :- su/NonBlankStringPlumatic]
+  [token :- su/NonBlankString]
   (try
     (binding [*send-token-error-emails?* false]
       (boolean (take 1 (:channels (GET "conversations.list" :limit 1, :token token)))))
@@ -286,7 +286,7 @@
 (s/defn join-channel!
   "Given a channel ID, calls Slack API `conversations.join` endpoint to join the channel as the Metabase Slack app.
   This must be done before uploading a file to the channel, if using a Slack app integration."
-  [channel-id :- su/NonBlankStringPlumatic]
+  [channel-id :- su/NonBlankString]
   (POST "conversations.join" {:form-params {:channel channel-id}}))
 
 (defn- maybe-lookup-id
@@ -303,7 +303,7 @@
 
 (s/defn upload-file!
   "Calls Slack API `files.upload` endpoint and returns the URL of the uploaded file."
-  [file :- NonEmptyByteArray, filename :- su/NonBlankStringPlumatic, channel-id :- su/NonBlankStringPlumatic]
+  [file :- NonEmptyByteArray, filename :- su/NonBlankString, channel-id :- su/NonBlankString]
   {:pre [(slack-configured?)]}
   (let [request  {:multipart [{:name "file",     :content file}
                               {:name "filename", :content filename}
@@ -325,7 +325,7 @@
 (s/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` should be serialized
   JSON."
-  [channel-id :- su/NonBlankStringPlumatic, text-or-nil :- (s/maybe s/Str) & [attachments]]
+  [channel-id :- su/NonBlankString, text-or-nil :- (s/maybe s/Str) & [attachments]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (POST "chat.postMessage"
         {:form-params

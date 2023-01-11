@@ -36,9 +36,9 @@
 (api/defendpoint-schema POST "/"
   "Create a new GTAP."
   [:as {{:keys [table_id card_id group_id attribute_remappings]} :body}]
-  {table_id             su/IntGreaterThanZeroPlumatic
-   card_id              (s/maybe su/IntGreaterThanZeroPlumatic)
-   group_id             su/IntGreaterThanZeroPlumatic
+  {table_id             su/IntGreaterThanZero
+   card_id              (s/maybe su/IntGreaterThanZero)
+   group_id             su/IntGreaterThanZero
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
   (db/insert! GroupTableAccessPolicy
     {:table_id             table_id
@@ -52,7 +52,7 @@
   paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
   one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints."
   [id :as {{:keys [card_id #_attribute_remappings], :as body} :body}]
-  {card_id              (s/maybe su/IntGreaterThanZeroPlumatic)
+  {card_id              (s/maybe su/IntGreaterThanZero)
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
   (api/check-404 (GroupTableAccessPolicy id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
