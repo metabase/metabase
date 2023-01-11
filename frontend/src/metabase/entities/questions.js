@@ -1,17 +1,19 @@
+import { t } from "ttag";
 import { updateIn } from "icepick";
+
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-
-import {
-  API_UPDATE_QUESTION,
-  SOFT_RELOAD_CARD,
-} from "metabase/query_builder/actions";
 
 import Collections, {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
+
+import {
+  API_UPDATE_QUESTION,
+  SOFT_RELOAD_CARD,
+} from "metabase/query_builder/actions";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import forms from "./questions/forms";
@@ -28,8 +30,8 @@ const Questions = createEntity({
         { archived },
         undo(
           opts,
-          dataset || model === "dataset" ? "model" : "question",
-          archived ? "archived" : "unarchived",
+          dataset || model === "dataset" ? t`model` : t`question`,
+          archived ? t`archived` : t`unarchived`,
         ),
       ),
 
@@ -43,8 +45,8 @@ const Questions = createEntity({
             },
             undo(
               opts,
-              dataset || model === "dataset" ? "model" : "question",
-              "moved",
+              dataset || model === "dataset" ? t`model` : t`question`,
+              t`moved`,
             ),
           ),
         );
