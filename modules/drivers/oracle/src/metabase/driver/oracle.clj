@@ -10,7 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.impl :as driver.impl]
-   [metabase.driver.sql :as sql]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -249,7 +249,7 @@
    (-> (if has-timezone?
          expr
          (hsql/call :from_tz expr (or source-timezone (qp.timezone/results-timezone-id))))
-       (hx/->AtTimeZone target-timezone)
+       (hx/at-time-zone target-timezone)
        hx/->timestamp)))
 
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
@@ -344,7 +344,7 @@
   [unit x]
   (let [x (cond-> x
              (hx/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")
-             (hx/->AtTimeZone (qp.timezone/results-timezone-id)))]
+             (hx/at-time-zone (qp.timezone/results-timezone-id)))]
     (trunc unit x)))
 
 (defmethod sql.qp/datetime-diff [:oracle :year]
@@ -375,10 +375,10 @@
   [x y]
   (let [x (cond-> x
             (hx/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")
-            (hx/->AtTimeZone "UTC"))
+            (hx/at-time-zone "UTC"))
         y (cond-> y
             (hx/is-of-type? y #"(?i)timestamp(\(\d\))? with time zone")
-            (hx/->AtTimeZone "UTC"))]
+            (hx/at-time-zone "UTC"))]
     (hx/- (hx/->date y) (hx/->date x))))
 
 (defmethod sql.qp/datetime-diff [:oracle :hour] [_driver _unit x y] (hx/* (utc-days-diff x y) 24))
@@ -602,6 +602,6 @@
   (unprepare/unprepare-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
 
 ;; Oracle doesn't really support boolean types so use bits instead (See #11592, similar issue for SQL Server)
-(defmethod sql/->prepared-substitution [:oracle Boolean]
+(defmethod driver.sql/->prepared-substitution [:oracle Boolean]
   [driver bool]
-  (sql/->prepared-substitution driver (if bool 1 0)))
+  (driver.sql/->prepared-substitution driver (if bool 1 0)))
