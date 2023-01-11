@@ -25,7 +25,6 @@
    [clojure.tools.logging :as log]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.setup :as mdb.setup]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.honeysql-extensions :as hx]
    [toucan.db :as db])
@@ -34,8 +33,6 @@
    (com.github.vertical_blank.sqlformatter.languages Dialect)))
 
 (set! *warn-on-reflection* true)
-
-(comment mdb.setup/keep-me) ; ensure that the default Toucan connection is loaded etc.
 
 (defn format-sql
   "Return a nicely-formatted version of a `sql` string."
@@ -90,6 +87,12 @@
 (defn- increment-call-count! []
   (some-> @#'db/*call-count* (swap! inc)))
 
+(defn- jdbc-connection-spec
+  "Returns the [[toucan.db/connection]], but ensures that the application DB is set up first."
+  []
+  ((requiring-resolve 'metabase.db/setup-db!))
+  (db/connection))
+
 (defn query
   "Replacement for [[toucan.db/query]] -- uses Honey SQL 2 instead of Honey SQL 1, to ease the transition to the
   former (and to Toucan 2).
@@ -104,7 +107,7 @@
     ;; will help with debugging stuff. This should mostly be dev-facing because we should hopefully not be committing
     ;; any busted code into the repo
     (try
-      (jdbc/query (db/connection) sql-args (merge (default-jbc-options) jdbc-options))
+      (jdbc/query (jdbc-connection-spec) sql-args (merge (default-jbc-options) jdbc-options))
       (catch Throwable e
         (let [formatted-sql (format-sql (first sql-args))]
           (throw (ex-info (str "Error executing SQL query: " (ex-message e)
@@ -128,4 +131,4 @@
   (let [sql-args (compile sql-args-or-honey-sql-map)]
     ;; It doesn't really make sense to put a try-catch around this since it will return immediately and not execute
     ;; until we actually reduce it
-    (jdbc/reducible-query (db/connection) sql-args (merge (default-jbc-options) jdbc-options))))
+    (jdbc/reducible-query (jdbc-connection-spec) sql-args (merge (default-jbc-options) jdbc-options))))
