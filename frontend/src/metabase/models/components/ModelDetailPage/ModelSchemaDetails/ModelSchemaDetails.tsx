@@ -23,6 +23,8 @@ interface Props {
 }
 
 function ModelSchemaDetails({ model }: Props) {
+  const canWrite = model.canWrite();
+
   const metadataEditorUrl = Urls.modelEditor(model.card(), {
     type: "metadata",
   });
@@ -49,7 +51,9 @@ function ModelSchemaDetails({ model }: Props) {
     <>
       <SchemaHeader>
         <span>{fieldsCount}</span>
-        <Button as={Link} to={metadataEditorUrl}>{t`Edit metadata`}</Button>
+        {canWrite && (
+          <Button as={Link} to={metadataEditorUrl}>{t`Edit metadata`}</Button>
+        )}
       </SchemaHeader>
       <FieldList>{fields.map(renderField)}</FieldList>
     </>

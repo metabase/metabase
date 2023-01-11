@@ -93,9 +93,13 @@ function ModelDetailHeader({ model, onChangeName, onChangeCollection }: Props) {
           <ModelFootnote>{t`Model`}</ModelFootnote>
         </div>
         <ModelHeaderButtonsContainer>
-          <Button as={Link} to={queryEditorLink}>{t`Edit definition`}</Button>
+          {canWrite && (
+            <Button as={Link} to={queryEditorLink}>{t`Edit definition`}</Button>
+          )}
           <Button primary as={Link} to={exploreDataLink}>{t`Explore`}</Button>
-          <EntityMenu items={extraActions} triggerIcon="ellipsis" />
+          {canWrite && (
+            <EntityMenu items={extraActions} triggerIcon="ellipsis" />
+          )}
         </ModelHeaderButtonsContainer>
       </ModelHeader>
       {modal && <Modal onClose={handleCloseModal}>{renderModal()}</Modal>}

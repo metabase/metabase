@@ -6,6 +6,7 @@ import {
   fireEvent,
   renderWithProviders,
   getIcon,
+  queryIcon,
   screen,
   waitFor,
   waitForElementToBeRemoved,
@@ -267,6 +268,40 @@ describe("ModelDetailPage", () => {
           fields.forEach((field: Field) => {
             expect(screen.getByText(field.display_name)).toBeInTheDocument();
           });
+        });
+      });
+
+      describe("read-only permissions", () => {
+        const model = getModel({ can_write: false });
+
+        it("doesn't allow to rename a model", async () => {
+          await setup({ model });
+          expect(
+            screen.getByDisplayValue(model.displayName() as string),
+          ).toBeDisabled();
+        });
+
+        it("doesn't allow to change description", async () => {
+          await setup({ model });
+          expect(screen.getByPlaceholderText("No description")).toBeDisabled();
+        });
+
+        it("doesn't show model management actions", async () => {
+          await setup({ model });
+          expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+          expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+          expect(screen.queryByText("Move")).not.toBeInTheDocument();
+        });
+
+        it("doesn't show a link to the query editor", async () => {
+          await setup({ model });
+          expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
+        });
+
+        it("doesn't show a link to the metadata editor", async () => {
+          await setup({ model });
+          userEvent.click(screen.getByText("Schema"));
+          expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
         });
       });
     });
