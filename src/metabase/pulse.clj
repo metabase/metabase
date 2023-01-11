@@ -31,8 +31,7 @@
    [schema.core :as s]
    [toucan.db :as db])
   (:import
-   (clojure.lang ExceptionInfo)
-   (metabase.models.card CardInstance)))
+   (clojure.lang ExceptionInfo)))
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
@@ -102,7 +101,7 @@
 
 (s/defn defaulted-timezone :- s/Str
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card :- CardInstance]
+  [card :- (mi/InstanceOf Card)]
   (or (some->> card database-id (db/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 

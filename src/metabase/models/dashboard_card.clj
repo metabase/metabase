@@ -1,6 +1,7 @@
 (ns metabase.models.dashboard-card
   (:require
    [clojure.set :as set]
+   [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.events :as events]
    [metabase.models.card :refer [Card]]
@@ -83,7 +84,7 @@
 
 (s/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
-  [id :- su/IntGreaterThanZeroPlumatic]
+  [id :- su/IntGreaterThanZero]
   (-> (db/select-one DashboardCard :id id)
       (hydrate :series)))
 
@@ -100,15 +101,15 @@
   from the visualization with same type (line bar or whatever),
   which is a separate option in line area or bar visualization"
   [dashcard]
-  (db/query {:select [:newcard.*]
-             :from [[:report_dashboardcard :dashcard]]
-             :left-join [[:dashboardcard_series :dashcardseries]
-                         [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                         [:report_card :newcard]
-                         [:= :dashcardseries.card_id :newcard.id]]
-             :where [:and
-                     [:= :newcard.archived false]
-                     [:= :dashcard.id (:id dashcard)]]}))
+  (mdb.query/query {:select    [:newcard.*]
+                    :from      [[:report_dashboardcard :dashcard]]
+                    :left-join [[:dashboardcard_series :dashcardseries]
+                                [:= :dashcard.id :dashcardseries.dashboardcard_id]
+                                [:report_card :newcard]
+                                [:= :dashcardseries.card_id :newcard.id]]
+                    :where     [:and
+                                [:= :newcard.archived false]
+                                [:= :dashcard.id (:id dashcard)]]}))
 
 (s/defn update-dashboard-card-series!
   "Update the DashboardCardSeries for a given DashboardCard.
@@ -118,8 +119,8 @@
    *  If an existing DashboardCardSeries has no corresponding ID in `card-ids`, it will be deleted.
    *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
   {:arglists '([dashboard-card card-ids])}
-  [{:keys [id]} :- {:id su/IntGreaterThanZeroPlumatic, s/Keyword s/Any}
-   card-ids     :- [su/IntGreaterThanZeroPlumatic]]
+  [{:keys [id]} :- {:id su/IntGreaterThanZero, s/Keyword s/Any}
+   card-ids     :- [su/IntGreaterThanZero]]
   ;; first off, just delete all series on the dashboard card (we add them again below)
   (db/delete! DashboardCardSeries :dashboardcard_id id)
   ;; now just insert all of the series that were given to us
@@ -130,12 +131,12 @@
       (db/insert-many! DashboardCardSeries cards))))
 
 (def ^:private DashboardCardUpdates
-  {:id                                      su/IntGreaterThanZeroPlumatic
-   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZeroPlumatic)
-   (s/optional-key :parameter_mappings)     (s/maybe [su/MapPlumatic])
-   (s/optional-key :visualization_settings) (s/maybe su/MapPlumatic)
+  {:id                                      su/IntGreaterThanZero
+   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZero)
+   (s/optional-key :parameter_mappings)     (s/maybe [su/Map])
+   (s/optional-key :visualization_settings) (s/maybe su/Map)
    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
-   (s/optional-key :series)                 (s/maybe [su/IntGreaterThanZeroPlumatic])
+   (s/optional-key :series)                 (s/maybe [su/IntGreaterThanZero])
    s/Keyword                                s/Any})
 
 (s/defn update-dashboard-card!
@@ -168,18 +169,18 @@
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
-  {:parameter_id su/NonBlankStringPlumatic
+  {:parameter_id su/NonBlankString
    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed
    #_:target       #_s/Any
    s/Keyword     s/Any})
 
 (def ^:private NewDashboardCard
-  {:dashboard_id                            su/IntGreaterThanZeroPlumatic
-   (s/optional-key :card_id)                (s/maybe su/IntGreaterThanZeroPlumatic)
-   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZeroPlumatic)
+  {:dashboard_id                            su/IntGreaterThanZero
+   (s/optional-key :card_id)                (s/maybe su/IntGreaterThanZero)
+   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZero)
    ;; TODO - use ParamMapping. Breaks too many tests right now tho
-   (s/optional-key :parameter_mappings)     (s/maybe [#_ParamMapping su/MapPlumatic])
-   (s/optional-key :visualization_settings) (s/maybe su/MapPlumatic)
+   (s/optional-key :parameter_mappings)     (s/maybe [#_ParamMapping su/Map])
+   (s/optional-key :visualization_settings) (s/maybe su/Map)
    ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys
    s/Keyword                                s/Any})
 

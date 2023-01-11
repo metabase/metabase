@@ -39,12 +39,6 @@ For emails, we can:
 
 If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](./filters.md).
 
-## Email example
-
-![Example dashboard subscription email](./images/example-email.png)
-
-You'll notice in the email that Metabase excludes any text cards on the dashboard, and that the charts look different - Metabase reformats the charts to make them more legible in email. Additionally, tables that exceed either 10 columns or 20 rows get the rest of their results, up to 2000 rows, included as an attachment.
-
 ## Slack subscription options
 
 For Slack subscriptions, you can set up a subscription for a channel (like #general), or for a single person via their Slack username.

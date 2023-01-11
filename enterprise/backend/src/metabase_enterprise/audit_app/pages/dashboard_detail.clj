@@ -11,22 +11,22 @@
 
 ;; Get views of a Dashboard broken out by a time `unit`, e.g. `day` or `day-of-week`.
 (s/defmethod audit.i/internal-query ::views-by-time
-  [_ dashboard-id  :- su/IntGreaterThanZeroPlumatic datetime-unit :- common/DateTimeUnitStr]
+  [_ dashboard-id  :- su/IntGreaterThanZero datetime-unit :- common/DateTimeUnitStr]
   (card-and-dash-detail/views-by-time "dashboard" dashboard-id datetime-unit))
 
 ;; Revision history for a specific Dashboard.
 (s/defmethod audit.i/internal-query ::revision-history
-  [_ dashboard-id :- su/IntGreaterThanZeroPlumatic]
+  [_ dashboard-id :- su/IntGreaterThanZero]
   (card-and-dash-detail/revision-history Dashboard dashboard-id))
 
 ;; View log for a specific Dashboard.
 (s/defmethod audit.i/internal-query ::audit-log
-  [_ dashboard-id :- su/IntGreaterThanZeroPlumatic]
+  [_ dashboard-id :- su/IntGreaterThanZero]
   (card-and-dash-detail/audit-log "dashboard" dashboard-id))
 
 ;; Information about the Saved Questions (Cards) in this instance.
 (s/defmethod audit.i/internal-query ::cards
-  [_ dashboard-id :- su/IntGreaterThanZeroPlumatic]
+  [_ dashboard-id :- su/IntGreaterThanZero]
   {:metadata [[:card_id             {:display_name "Card ID",              :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name           {:display_name "Title",                :base_type :type/Name,    :remapped_from :card_id}]
               [:collection_id       {:display_name "Collection ID",        :base_type :type/Integer, :remapped_to   :collection_name}]

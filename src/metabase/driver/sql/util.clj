@@ -11,7 +11,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [schema.core :as s])
   (:import
-   (metabase.util.honeysql_extensions Identifier)))
+   (metabase.util.honey_sql_1_extensions Identifier)))
 
 (s/defn quote-name
   "Quote unqualified string or keyword identifier(s) by passing them to `hx/identifier`, then calling HoneySQL `format`
@@ -24,7 +24,7 @@
   You should only use this function for places where you are not using HoneySQL, such as queries written directly in
   SQL. For HoneySQL forms, `Identifier` is converted to SQL automatically when it is compiled."
   {:style/indent 2}
-  [driver :- s/Keyword, identifier-type :- hx/IdentifierType, & components]
+  [driver :- s/Keyword identifier-type :- hx/IdentifierType & components]
   (first
    (hsql/format (sql.qp/->honeysql driver (apply hx/identifier identifier-type components))
      :quoting             (sql.qp/quote-style driver)

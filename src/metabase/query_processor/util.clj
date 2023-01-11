@@ -59,7 +59,7 @@
 (s/defn ^:deprecated normalize-token :- s/Keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
-  [token :- su/KeywordOrStringPlumatic]
+  [token :- su/KeywordOrString]
   (-> (name token)
       str/lower-case
       (str/replace #"_" "-")

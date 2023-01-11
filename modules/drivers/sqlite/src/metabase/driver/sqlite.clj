@@ -7,7 +7,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql :as sql]
+            [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -261,8 +261,8 @@
 ;;
 ;; TIMESTAMP FIXME — this doesn't seem like the correct thing to do for non-Dates. I think params only support dates
 ;; rn however
-(s/defmethod sql/->prepared-substitution [:sqlite Temporal] :- sql/PreparedStatementSubstitution
-  [_ date]
+(s/defmethod driver.sql/->prepared-substitution [:sqlite Temporal] :- driver.sql/PreparedStatementSubstitution
+  [_driver date]
   ;; for anything that's a Temporal value convert it to a yyyy-MM-dd formatted date literal
   ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`
   ;; sometimes so we need to use just the date rather than a full ISO-8601 string

@@ -15,7 +15,7 @@
   "Schema for a valid cron schedule string."
   (su/with-api-error-message
       (s/constrained
-       su/NonBlankStringPlumatic
+       su/NonBlankString
        (fn [^String s]
          (try (CronExpression/validateExpression s)
               true
@@ -148,7 +148,7 @@
      :schedule_hour   (cron->digit hours)
      :schedule_type   (cron->schedule-type hours day-of-month day-of-week)}))
 
-(s/defn describe-cron-string :- su/NonBlankStringPlumatic
+(s/defn describe-cron-string :- su/NonBlankString
   "Return a human-readable description of a cron expression, localized for the current User."
   [cron-string :- CronScheduleString]
   (CronExpressionDescriptor/getDescription ^String cron-string, ^java.util.Locale (i18n/user-locale)))

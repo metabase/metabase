@@ -7651,7 +7651,7 @@ bonjour-service@^1.0.11:
     fast-deep-equal "^3.1.3"
     multicast-dns "^7.2.5"
 
-boolbase@^1.0.0:
+boolbase@^1.0.0, boolbase@~1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/boolbase/-/boolbase-1.0.0.tgz#68dff5fbe60c51eb37725ea9e3ed310dcc1e776e"
   integrity sha1-aN/1++YMUes3cl6p4+0xDcwed24=
@@ -12637,11 +12637,6 @@ image-size@^1.0.0:
   dependencies:
     queue "6.0.2"
 
-immer@9.0.6:
-  version "9.0.6"
-  resolved "https://registry.yarnpkg.com/immer/-/immer-9.0.6.tgz#7a96bf2674d06c8143e327cbf73539388ddf1a73"
-  integrity sha512-G95ivKpy+EvVAnAab4fVa4YGYn24J1SpEktnJX7JJ45Bd7xqME/SCplFzYFmTbrkwZbQ4xJK1xMTUYBkN6pWsQ==
-
 import-fresh@^3.0.0, import-fresh@^3.2.1:
   version "3.2.2"
   resolved "https://registry.yarnpkg.com/import-fresh/-/import-fresh-3.2.2.tgz#fc129c160c5d68235507f4331a6baad186bdbc3e"
@@ -15448,7 +15443,7 @@ minimatch@^5.1.1:
   dependencies:
     brace-expansion "^2.0.1"
 
-minimist@1.2.6, minimist@^1.1.1, minimist@^1.1.3, minimist@^1.2.0, minimist@^1.2.5, minimist@^1.2.6:
+minimist@^1.1.1, minimist@^1.1.3, minimist@^1.2.0, minimist@^1.2.5, minimist@^1.2.6:
   version "1.2.6"
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.6.tgz#8637a5b759ea0d6e98702cfb3a9283323c93af44"
   integrity sha512-Jsjnk4bw3YJqYzbdyBiNsPWHPfO++UGG749Cxs6peCu5Xg4nrena6OVxOYxrQTqww0Jmwt+Ref8rggumkTLz9Q==
@@ -15662,10 +15657,15 @@ nanoclone@^0.2.1:
   resolved "https://registry.yarnpkg.com/nanoclone/-/nanoclone-0.2.1.tgz#dd4090f8f1a110d26bb32c49ed2f5b9235209ed4"
   integrity sha512-wynEP02LmIbLpcYw8uBKpcfF6dmg2vcpKqxeH5UcoKEYdExslsdUA4ugFauuaeYdTB76ez6gJW8XAZ6CgkXYxA==
 
-nanoid@3.1.31, nanoid@^3.1.30, nanoid@^3.3.1, nanoid@^3.3.4:
+nanoid@^3.1.30:
   version "3.1.31"
   resolved "https://registry.yarnpkg.com/nanoid/-/nanoid-3.1.31.tgz#f5b58a1ce1b7604da5f0605757840598d8974dc6"
   integrity sha512-ZivnJm0o9bb13p2Ot5CpgC2rQdzB9Uxm/mFZweqm5eMViqOJe3PV6LU2E30SiLgheesmcPrjquqraoolONSA0A==
+
+nanoid@^3.3.1, nanoid@^3.3.4:
+  version "3.3.4"
+  resolved "https://registry.yarnpkg.com/nanoid/-/nanoid-3.3.4.tgz#730b67e3cd09e2deacf03c027c81c9d9dbc5e8ab"
+  integrity sha512-MqBkQh/OHTS2egovRtLk45wEyNXwF+cokD+1YPf9u5VfJiRdAiRwB2froX5Co9Rh20xs4siNPm8naNotSD6RBw==
 
 nanomatch@^1.2.9:
   version "1.2.13"
@@ -15788,7 +15788,7 @@ node-fetch@^2.6.7:
   dependencies:
     whatwg-url "^5.0.0"
 
-node-forge@1.3.0, node-forge@^1:
+node-forge@^1:
   version "1.3.0"
   resolved "https://registry.yarnpkg.com/node-forge/-/node-forge-1.3.0.tgz#37a874ea723855f37db091e6c186e5b67a01d4b2"
   integrity sha512-08ARB91bUi6zNKzVmaj3QO7cr397uiDT2nJ63cHjyNtCTWIgvS47j3eT0WfzUwS9+6Z5YshRaoasFkXCKrIYbA==
@@ -15972,7 +15972,14 @@ npmlog@^5.0.1:
     gauge "^3.0.0"
     set-blocking "^2.0.0"
 
-nth-check@2.0.1, nth-check@^1.0.2, nth-check@^2.0.0, nth-check@^2.0.1:
+nth-check@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/nth-check/-/nth-check-1.0.2.tgz#b2bd295c37e3dd58a3bf0700376663ba4d9cf05c"
+  integrity sha512-WeBOdju8SnzPN5vTUJYxYUxLeXpCaVP5i5e0LF8fg7WORF2Wd7wFX/pk0tYZk7s8T+J7VLy0Da6J1+wCT0AtHg==
+  dependencies:
+    boolbase "~1.0.0"
+
+nth-check@^2.0.0, nth-check@^2.0.1:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/nth-check/-/nth-check-2.0.1.tgz#2efe162f5c3da06a28959fbd3db75dbeea9f0fc2"
   integrity sha512-it1vE95zF6dTT9lBsYbxvqh0Soy4SPowchj0UBGj/V6cTPnXXtQOPUbhZ6CmGzAD/rW22LQK6E96pcdJXk4A4w==
@@ -17347,11 +17354,6 @@ printj@~1.3.0, printj@~1.3.1:
   version "1.3.1"
   resolved "https://registry.yarnpkg.com/printj/-/printj-1.3.1.tgz#9af6b1d55647a1587ac44f4c1654a4b95b8e12cb"
   integrity sha512-GA3TdL8szPK4AQ2YnOe/b+Y1jUFwmmGMMK/qbY7VcE3Z7FU8JstbKiKRzO6CIiAKPhTO8m01NoQ0V5f3jc4OGg==
-
-prismjs@1.27.0:
-  version "1.27.0"
-  resolved "https://registry.yarnpkg.com/prismjs/-/prismjs-1.27.0.tgz#bb6ee3138a0b438a3653dd4d6ce0cc6510a45057"
-  integrity sha512-t13BGPUlFDR7wRB5kQDG4jjl7XeuH6jbJGt11JHPL96qwsEHNX2+68tFXqc1/k+/jALsbSWJKUOT/hcYAZ5LkA==
 
 private@^0.1.6, private@^0.1.8, private@~0.1.5:
   version "0.1.8"

@@ -1,37 +1,30 @@
 import React from "react";
 import { jt } from "ttag";
 
-import Collections from "metabase/entities/collections";
-import { color } from "metabase/lib/colors";
+import { coerceCollectionId } from "metabase/collections/utils";
 
-import { StyledIcon, ToastRoot } from "./QuestionMoveToast.styled";
+import type { CollectionId } from "metabase-types/api";
+
+import {
+  CollectionLink,
+  StyledIcon,
+  ToastRoot,
+} from "./QuestionMoveToast.styled";
 
 interface QuestionMoveToastProps {
   isModel: boolean;
-  collectionId: number;
+  collectionId: CollectionId;
 }
 
 function QuestionMoveToast({ isModel, collectionId }: QuestionMoveToastProps) {
+  const id = coerceCollectionId(collectionId);
+  const collectionLink = <CollectionLink key="collection-link" id={id} />;
   return (
     <ToastRoot>
-      <StyledIcon name="all" color="white" />
+      <StyledIcon name="all" />
       {isModel
-        ? jt`Model moved to ${(
-            <Collections.Link
-              key="collection-link"
-              id={collectionId}
-              ml={1}
-              color={color("brand")}
-            />
-          )}`
-        : jt`Question moved to ${(
-            <Collections.Link
-              key="collection-link"
-              id={collectionId}
-              ml={1}
-              color={color("brand")}
-            />
-          )}`}
+        ? jt`Model moved to ${collectionLink}`
+        : jt`Question moved to ${collectionLink}`}
     </ToastRoot>
   );
 }

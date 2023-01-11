@@ -137,6 +137,9 @@ describe("managing question from the question's details sidebar", () => {
               );
               openQuestionActions();
               cy.findByTestId("archive-button").click();
+              cy.findByText(
+                "It will also be removed from the filter that uses it to populate values.",
+              ).should("not.exist");
               clickButton("Archive");
               assertOnRequest("updateQuestion");
               cy.wait("@getItems"); // pinned items

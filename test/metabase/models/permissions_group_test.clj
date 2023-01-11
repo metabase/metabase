@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group
     :as perms-group
@@ -15,9 +16,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
-  (:import
-   (metabase.models.permissions_group PermissionsGroupInstance)))
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -30,7 +29,7 @@
     (doseq [[group-name group] {"All Users"      (perms-group/all-users)
                                 "Administrators" (perms-group/admin)}]
       (testing group-name
-        (is (instance? PermissionsGroupInstance group))
+        (is (mi/instance-of? PermissionsGroup group))
         (is (= group-name
                (:name group)))
         (testing "make sure we're not allowed to delete the magic groups"
@@ -70,7 +69,7 @@
 
 (s/defn ^:private group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
-  [group-id :- su/IntGreaterThanOrEqualToZeroPlumatic object :- perms/Path]
+  [group-id :- su/IntGreaterThanOrEqualToZero object :- perms/Path]
   ;; e.g. WHERE (object || '%') LIKE '/db/1000/'
   (db/exists? Permissions
     :group_id group-id
