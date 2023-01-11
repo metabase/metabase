@@ -5,6 +5,7 @@ import {
   dashboard,
   question,
   model,
+  modelDetail,
   modelEditor,
   extractQueryParams,
   extractEntityId,
@@ -163,6 +164,14 @@ describe("urls", () => {
       expect(
         model({ id: 1, dataset: true, name: "Foo" }, { objectId: 4 }),
       ).toBe("/model/1-foo/4");
+    });
+
+    describe("detail page", () => {
+      it("should return correct URL", () => {
+        expect(modelDetail({ id: 1, dataset: true, name: "Foo" })).toBe(
+          "/model/1-foo/detail",
+        );
+      });
     });
 
     describe("editor", () => {

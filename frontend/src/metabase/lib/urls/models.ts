@@ -17,6 +17,11 @@ export function model(
   return question(card as LegacyCard, opts);
 }
 
+export function modelDetail(card: CardOrSearchResult) {
+  const baseUrl = model(card);
+  return `${baseUrl}/detail`;
+}
+
 type ModelEditorUrlBuilderOpts = {
   type?: "query" | "metadata";
 };

@@ -4,6 +4,7 @@ import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
+import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
@@ -74,6 +75,9 @@ function PinnedItemCard({
           <Header>
             <ItemIcon name={icon} />
             <ActionsContainer>
+              {item.model === "dataset" && (
+                <ModelDetailLink model={item as CollectionItem<"dataset">} />
+              )}
               <ActionMenu
                 bookmarks={bookmarks}
                 createBookmark={createBookmark}
