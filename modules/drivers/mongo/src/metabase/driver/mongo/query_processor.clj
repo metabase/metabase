@@ -976,7 +976,7 @@
         [:field (field-name :guard string?) _]
         [field-name]
 
-        [:expression expr-name]
+        [:expression expr-name _]
         [expr-name])
       (->rvalue field-clause)))
    (ordered-map/ordered-map)
@@ -1184,7 +1184,7 @@
 
 (defn- preprocess
   [inner-query]
-  (nest-query/nest-expressions (add/add-alias-info inner-query)))
+  (add/add-alias-info inner-query))
 
 (defn mbql->native
   "Compile an MBQL query."

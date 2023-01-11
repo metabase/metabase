@@ -105,8 +105,7 @@
                                     :breakout    [[:expression "expr"]]})}])
 (deftest extraction-function-tests
   (mt/dataset times-mixed
-    ;; mongo doesn't support cast string to date, it has specific tests using data without such fields
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
+    (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
       (testing "with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
                 op                  [:get-year :get-quarter :get-month :get-day
@@ -114,16 +113,19 @@
                 {:keys [expected-fn query-fn]}
                 extraction-test-cases]
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id))))))))
+            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
+    ;; mongo doesn't supports cast string to date
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with date columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
                 op                  [:get-year :get-quarter :get-month :get-day :get-day-of-week]
                 {:keys [expected-fn query-fn]}
                 extraction-test-cases]
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id))))))))
+            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
+    (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
       (testing "works with literal value"
         (let [ops [:get-year :get-quarter :get-month :get-day
                    :get-day-of-week :get-hour :get-minute :get-second]]
@@ -191,8 +193,7 @@
                         (zipmap ops))))))))))
 
 (deftest temporal-extraction-with-filter-expresion-tests
-  ;; mongo doesn't support cast string to date, it has specific tests using data without such fields
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested expression"
@@ -225,9 +226,7 @@
           (is (= expected (test-temporal-extract query))))))))
 
 (deftest temporal-extraction-with-datetime-arithmetic-expression-tests
-  ;; mongo doesn't support cast string to date, it has specific tests using data without such fields
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract :expressions :date-arithmetics)
-                         :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract :expressions :date-arithmetics)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested interval addition expression"
@@ -346,8 +345,8 @@
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :fields      [[:expression "expr"]]}}
                  {:expected (into [] (frequencies
-                                       [(datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type) (datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                        (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type) (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
+                                      [(datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type) (datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                                       (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type) (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :aggregation [[:count]]
                              :breakout    [[:expression "expr"]]}}]]
@@ -365,8 +364,8 @@
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :fields      [[:expression "expr"]]}}
                  {:expected (into [] (frequencies
-                                       [(datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type) (datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                        (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type) (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
+                                      [(datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type) (datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                                       (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type) (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :aggregation [[:count]]
                              :breakout    [[:expression "expr"]]}}]]
@@ -375,9 +374,9 @@
       (testing "date arithmetics with literal date"
         (is (= ["2008-08-20 00:00:00" "2008-04-20 00:00:00"]
                (->> (mt/run-mbql-query times
-                                       {:expressions {"add" [:datetime-add "2008-06-20T00:00:00" 2 :month]
-                                                      "sub" [:datetime-subtract "2008-06-20T00:00:00" 2 :month]}
-                                        :fields      [[:expression "add"] [:expression "sub"]]})
+                      {:expressions {"add" [:datetime-add "2008-06-20T00:00:00" 2 :month]
+                                     "sub" [:datetime-subtract "2008-06-20T00:00:00" 2 :month]}
+                       :fields      [[:expression "add"] [:expression "sub"]]})
                     (mt/formatted-rows [normalize-timestamp-str normalize-timestamp-str])
                     first)))))))
 
@@ -476,8 +475,7 @@
             (is (true? (close-hour? hour (.getHour now))))))))))
 
 (deftest datetime-math-with-extract-test
-  ;; FIXME: mongo doesn't supports parsing strings as dates so we exclude it from this test temporarily (#27111)
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested date math then extract"
