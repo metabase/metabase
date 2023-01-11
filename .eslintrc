@@ -116,8 +116,12 @@
       }
     },
     {
-      "extends": ["plugin:jest/recommended"],
-      "plugins": ["jest"],
+      "extends": [
+        "plugin:jest/recommended",
+        "plugin:jest-dom/recommended",
+        "plugin:testing-library/react"
+      ],
+      "plugins": ["jest", "jest-dom", "testing-library"],
       "files": [
         "*.unit.spec.ts",
         "*.unit.spec.tsx",

@@ -62,7 +62,7 @@
                                                :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]]
 
                 (is (schema= {(s/eq email)
-                              [{:from    su/EmailPlumatic
+                              [{:from    su/Email
                                 :to      (s/eq [email])
                                 :subject (s/eq (format "We've Noticed a New Metabase Login, %s" first-name))
                                 :body    [(s/one {:type    (s/eq "text/html; charset=utf-8")

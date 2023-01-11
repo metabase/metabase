@@ -20,15 +20,15 @@
 (api/defendpoint-schema POST "/"
   "Create a new [[TimelineEvent]]."
   [:as {{:keys [name description timestamp time_matters timezone icon timeline_id source question_id archived] :as body} :body}]
-  {name         su/NonBlankStringPlumatic
+  {name         su/NonBlankString
    description  (s/maybe s/Str)
-   timestamp    su/TemporalStringPlumatic
+   timestamp    su/TemporalString
    time_matters (s/maybe s/Bool)
    timezone     s/Str
    icon         (s/maybe timeline/Icons)
-   timeline_id  su/IntGreaterThanZeroPlumatic
+   timeline_id  su/IntGreaterThanZero
    source       (s/maybe timeline-event/Sources)
-   question_id  (s/maybe su/IntGreaterThanZeroPlumatic)
+   question_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
   ;; deliberately not using api/check-404 so we can have a useful error message.
   (let [timeline (db/select-one Timeline :id timeline_id)]
@@ -64,13 +64,13 @@
   "Update a [[TimelineEvent]]."
   [id :as {{:keys [name description timestamp time_matters timezone icon timeline_id archived]
             :as   timeline-event-updates} :body}]
-  {name         (s/maybe su/NonBlankStringPlumatic)
+  {name         (s/maybe su/NonBlankString)
    description  (s/maybe s/Str)
-   timestamp    (s/maybe su/TemporalStringPlumatic)
+   timestamp    (s/maybe su/TemporalString)
    time_matters (s/maybe s/Bool)
    timezone     (s/maybe s/Str)
    icon         (s/maybe timeline/Icons)
-   timeline_id  (s/maybe su/IntGreaterThanZeroPlumatic)
+   timeline_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
   (let [existing (api/write-check TimelineEvent id)
         timeline-event-updates (cond-> timeline-event-updates

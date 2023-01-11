@@ -54,6 +54,7 @@ function mapStateToProps(state: State) {
 }
 
 function DataPicker({
+  value,
   databases,
   search: modelLookupResult,
   filters: customFilters = {},
@@ -114,7 +115,7 @@ function DataPicker({
   );
 
   useOnMount(() => {
-    if (dataTypes.length === 1) {
+    if (dataTypes.length === 1 && value.type !== dataTypes[0].id) {
       handleDataTypeChange(dataTypes[0].id);
     }
   });
@@ -133,6 +134,7 @@ function DataPicker({
   return (
     <DataPickerView
       {...props}
+      value={value}
       dataTypes={dataTypes}
       searchQuery={search.query}
       hasDataAccess={hasDataAccess}

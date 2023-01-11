@@ -134,7 +134,6 @@
                 :table_id    nil
                 :details     {:name        "My Cool Dashboard"
                               :description nil
-                              :parameters  []
                               :dashcards   [{:description (:description card)
                                              :name        (:name card)
                                              :id          (:id dashcard)
@@ -159,7 +158,6 @@
                 :table_id    nil
                 :details     {:name        "My Cool Dashboard"
                               :description nil
-                              :parameters  []
                               :dashcards   [{:description (:description card)
                                              :name        (:name card)
                                              :id          (:id dashcard)

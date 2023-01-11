@@ -1,11 +1,10 @@
 import React from "react";
 import _ from "underscore";
 import {
-  getByRole,
-  getByText,
   render,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -116,7 +115,7 @@ describe("DatabaseEditApp/Sidebar", () => {
       const { database, discardSavedFieldValues } = setup();
 
       userEvent.click(screen.getByText(/Discard saved field values/i));
-      userEvent.click(getByRole(getModal(), "button", { name: "Yes" }));
+      userEvent.click(within(getModal()).getByRole("button", { name: "Yes" }));
 
       expect(discardSavedFieldValues).toHaveBeenCalledWith(database.id);
     });
@@ -125,7 +124,9 @@ describe("DatabaseEditApp/Sidebar", () => {
       const { discardSavedFieldValues } = setup();
 
       userEvent.click(screen.getByText(/Discard saved field values/i));
-      userEvent.click(getByRole(getModal(), "button", { name: "Cancel" }));
+      userEvent.click(
+        within(getModal()).getByRole("button", { name: "Cancel" }),
+      );
       await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();
@@ -278,8 +279,8 @@ describe("DatabaseEditApp/Sidebar", () => {
       const modal = getModal();
 
       // Fill in database name to confirm deletion
-      userEvent.type(getByRole(modal, "textbox"), database.name);
-      userEvent.click(getByRole(modal, "button", { name: "Delete" }));
+      userEvent.type(within(modal).getByRole("textbox"), database.name);
+      userEvent.click(within(modal).getByRole("button", { name: "Delete" }));
       await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();
@@ -291,8 +292,8 @@ describe("DatabaseEditApp/Sidebar", () => {
       userEvent.click(screen.getByText(/Remove this database/i));
       const modal = getModal();
 
-      getByText(modal, `Delete the ${database.name} database?`);
-      userEvent.click(getByRole(modal, "button", { name: "Cancel" }));
+      within(modal).getByText(`Delete the ${database.name} database?`);
+      userEvent.click(within(modal).getByRole("button", { name: "Cancel" }));
       await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();

@@ -1,11 +1,11 @@
 import React from "react";
-import { render, fireEvent, screen } from "@testing-library/react";
 import nock from "nock";
 
 import _ from "underscore";
 
 import { delay } from "metabase/lib/promise";
 
+import { render, fireEvent, screen, getIcon } from "__support__/ui";
 import {
   SAMPLE_DATABASE,
   ANOTHER_DATABASE,
@@ -283,7 +283,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
     // check for chevron icon
-    expect(document.body.querySelector(".Icon-chevronup")).not.toBe(null);
+    expect(getIcon("chevronup")).toBeInTheDocument();
 
     // collapse db
     fireEvent.click(screen.getByText("Multi-schema Database"));
@@ -293,7 +293,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
     expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
     // check for chevron icon
-    expect(document.body.querySelector(".Icon-chevrondown")).not.toBe(null);
+    expect(getIcon("chevrondown")).toBeInTheDocument();
   });
 
   it("should auto-advance past db and schema in field picker", async () => {
