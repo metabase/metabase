@@ -25,7 +25,12 @@ import { formatColumn } from "metabase/lib/formatting";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 import { RowToggleIcon } from "./RowToggleIcon";
-import { Cell } from "./PivotTableCell";
+import {
+  Cell,
+  TopHeaderCell,
+  LeftHeaderCell,
+  BodyCell,
+} from "./PivotTableCell";
 
 import {
   PivotTableRoot,
@@ -153,39 +158,6 @@ function PivotTable({
     return null;
   }
 
-  const leftHeaderCellRenderer = ({ index, key, style }) => {
-    const { value, isSubtotal, hasSubtotal, depth, path, clicked } =
-      leftHeaderItems[index];
-
-    return (
-      <Cell
-        key={key}
-        style={{
-          ...style,
-          ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
-        }}
-        isNightMode={isNightMode}
-        value={value}
-        isEmphasized={isSubtotal}
-        isBold={isSubtotal}
-        onClick={getCellClickHander(clicked)}
-        icon={
-          (isSubtotal || hasSubtotal) && (
-            <RowToggleIcon
-              value={path}
-              settings={settings}
-              updateSettings={onUpdateVisualizationSettings}
-              hideUnlessCollapsed={isSubtotal}
-              rowIndex={rowIndex} // used to get a list of "other" paths when open one item in a collapsed column
-              isNightMode={isNightMode}
-            />
-          )
-        }
-      />
-      // </div>
-    );
-  };
-
   const leftHeaderCellSizeAndPositionGetter = ({ index }) => {
     const { offset, span, depth, maxDepthBelow } = leftHeaderItems[index];
 
@@ -214,25 +186,6 @@ function PivotTable({
     columnIndexes.length + (valueIndexes.length > 1 ? 1 : 0) || 1;
   const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
 
-  const topHeaderCellRenderer = ({ index, key, style }) => {
-    const { value, hasChildren, clicked, isSubtotal, maxDepthBelow } =
-      topHeaderItems[index];
-    return (
-      <Cell
-        key={key}
-        style={{
-          ...style,
-        }}
-        value={value}
-        isNightMode={isNightMode}
-        isBorderedHeader={maxDepthBelow === 0}
-        isEmphasized={hasChildren}
-        isBold={isSubtotal}
-        onClick={getCellClickHander(clicked)}
-      />
-    );
-  };
-
   const topHeaderCellSizeAndPositionGetter = ({ index }) => {
     const { offset, span, maxDepthBelow } = topHeaderItems[index];
     return {
@@ -246,28 +199,7 @@ function PivotTable({
   const leftHeaderWidth =
     rowIndexes.length > 0 ? LEFT_HEADER_LEFT_SPACING + totalHeaderWidths : 0;
 
-  // These are tied to the `multiLevelPivot` call, so they're awkwardly shoved in render for now
-
-  const bodyRenderer = ({ key, style, rowIndex, columnIndex }) => (
-    <div key={key} style={style} className="flex">
-      {getRowSection(columnIndex, rowIndex).map(
-        ({ value, isSubtotal, clicked, backgroundColor }, index) => (
-          <Cell
-            isNightMode={isNightMode}
-            key={index}
-            value={value}
-            isEmphasized={isSubtotal}
-            isBold={isSubtotal}
-            isBody
-            onClick={getCellClickHander(clicked)}
-            backgroundColor={backgroundColor}
-          />
-        ),
-      )}
-    </div>
-  );
-
-  function getCellClickHander(clicked) {
+  function getCellClickHandler(clicked) {
     if (!clicked) {
       return null;
     }
@@ -342,7 +274,15 @@ function PivotTable({
                 width={width - leftHeaderWidth}
                 height={topHeaderHeight}
                 cellCount={topHeaderItems.length}
-                cellRenderer={topHeaderCellRenderer}
+                cellRenderer={({ index, style, key }) => (
+                  <TopHeaderCell
+                    key={key}
+                    style={style}
+                    item={topHeaderItems[index]}
+                    getCellClickHandler={getCellClickHandler}
+                    isNightMode={isNightMode}
+                  />
+                )}
                 cellSizeAndPositionGetter={topHeaderCellSizeAndPositionGetter}
                 onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                 scrollLeft={scrollLeft}
@@ -357,7 +297,20 @@ function PivotTable({
                       ref={leftHeaderRef}
                       className="scroll-hide-all"
                       cellCount={leftHeaderItems.length}
-                      cellRenderer={leftHeaderCellRenderer}
+                      cellRenderer={({ index, style, key }) => (
+                        <LeftHeaderCell
+                          key={key}
+                          style={style}
+                          item={leftHeaderItems[index]}
+                          rowIndex={rowIndex}
+                          onUpdateVisualizationSettings={
+                            onUpdateVisualizationSettings
+                          }
+                          settings={settings}
+                          isNightMode={isNightMode}
+                          getCellClickHandler={getCellClickHandler}
+                        />
+                      )}
                       cellSizeAndPositionGetter={
                         leftHeaderCellSizeAndPositionGetter
                       }
@@ -381,7 +334,15 @@ function PivotTable({
                       columnCount={columnCount}
                       rowHeight={CELL_HEIGHT}
                       columnWidth={valueIndexes.length * CELL_WIDTH}
-                      cellRenderer={bodyRenderer}
+                      cellRenderer={({ rowIndex, columnIndex, key, style }) => (
+                        <BodyCell
+                          key={key}
+                          style={style}
+                          rowSection={getRowSection(columnIndex, rowIndex)}
+                          isNightMode={isNightMode}
+                          getCellClickHandler={getCellClickHandler}
+                        />
+                      )}
                       onScroll={({ scrollLeft, scrollTop }) =>
                         onScroll({ scrollLeft, scrollTop })
                       }
