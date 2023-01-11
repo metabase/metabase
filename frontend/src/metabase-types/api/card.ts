@@ -55,6 +55,11 @@ export type ColumnFormattingSetting = {
   highlight_row?: boolean;
 };
 
+export type PivotTableCollapsedRowsSetting = {
+  rows: FieldOrAggregationReference[];
+  value: string[]; // identifiers for collapsed rows
+};
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: "stacked" | "normalized" | null;
@@ -86,7 +91,8 @@ export type VisualizationSettings = {
   // Funnel settings
   "funnel.rows"?: SeriesOrderSetting[];
 
-  "table.column_formatting": ColumnFormattingSetting[];
+  "table.column_formatting"?: ColumnFormattingSetting[];
+  "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
   [key: string]: any;
 };
