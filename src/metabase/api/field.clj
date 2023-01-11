@@ -101,17 +101,17 @@
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
                    coercion_strategy visibility_type has_field_values settings nfc_path]
             :as   body} :body}]
-  {caveats            (s/maybe su/NonBlankStringPlumatic)
-   description        (s/maybe su/NonBlankStringPlumatic)
-   display_name       (s/maybe su/NonBlankStringPlumatic)
-   fk_target_field_id (s/maybe su/IntGreaterThanZeroPlumatic)
-   points_of_interest (s/maybe su/NonBlankStringPlumatic)
-   semantic_type      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrStringPlumatic)
-   coercion_strategy  (s/maybe su/CoercionStrategyKeywordOrStringPlumatic)
+  {caveats            (s/maybe su/NonBlankString)
+   description        (s/maybe su/NonBlankString)
+   display_name       (s/maybe su/NonBlankString)
+   fk_target_field_id (s/maybe su/IntGreaterThanZero)
+   points_of_interest (s/maybe su/NonBlankString)
+   semantic_type      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
+   coercion_strategy  (s/maybe su/CoercionStrategyKeywordOrString)
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
-   settings           (s/maybe su/MapPlumatic)
-   nfc_path           (s/maybe [su/NonBlankStringPlumatic])}
+   settings           (s/maybe su/Map)
+   nfc_path           (s/maybe [su/NonBlankString])}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
@@ -169,8 +169,8 @@
   "Sets the dimension for the given field at ID"
   [id :as {{dimension-type :type, dimension-name :name, human_readable_field_id :human_readable_field_id} :body}]
   {dimension-type          (su/api-param "type" (s/enum "internal" "external"))
-   dimension-name          (su/api-param "name" su/NonBlankStringPlumatic)
-   human_readable_field_id (s/maybe su/IntGreaterThanZeroPlumatic)}
+   dimension-name          (su/api-param "name" su/NonBlankString)
+   human_readable_field_id (s/maybe su/IntGreaterThanZero)}
   (api/write-check Field id)
   (api/check (or (= dimension-type "internal")
                  (and (= dimension-type "external")
@@ -278,7 +278,7 @@
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
-  {value-pairs [[(s/one s/Any "value") (s/optional su/NonBlankStringPlumatic "human readable value")]]}
+  {value-pairs [[(s/one s/Any "value") (s/optional su/NonBlankString "human readable value")]]}
   (let [field (api/write-check Field id)]
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
@@ -391,7 +391,7 @@
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value]
-  {value su/NonBlankStringPlumatic}
+  {value su/NonBlankString}
   (let [field        (api/check-404 (db/select-one Field :id id))
         search-field (api/check-404 (db/select-one Field :id search-id))]
     (throw-if-no-read-or-segmented-perms field)

@@ -2,7 +2,7 @@
 import React from "react";
 import { connect } from "react-redux";
 
-import { loadMetadataForCard } from "metabase/query_builder/actions";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Questions from "metabase/entities/questions";

@@ -33,7 +33,7 @@
    :percent-email [:type/Email          percent-valid-threshold]
    :percent-state [:type/State          lower-percent-valid-threshold]})
 
-(s/defn ^:private infer-semantic-type-for-text-fingerprint :- (s/maybe su/FieldTypePlumatic)
+(s/defn ^:private infer-semantic-type-for-text-fingerprint :- (s/maybe su/FieldType)
   "Check various percentages inside the TEXT-FINGERPRINT and return the corresponding semantic type to mark the Field
   as if the percent passes the threshold."
   [text-fingerprint :- i/TextFingerprint]

@@ -12,6 +12,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.db :as db]
+   [toucan.hydrate :as hydrate]
    [toucan.util.test :as tt])
   (:import
    (java.time LocalDateTime)))
@@ -35,6 +36,30 @@
           (add-card-to-dash! dash-2)
           (is (= 2
                  (get-dashboard-count))))))))
+
+(deftest dropdown-widget-values-usage-count-test
+  (let [hydrated-count (fn [card] (-> card
+                                      (hydrate/hydrate :parameter_usage_count)
+                                      :parameter_usage_count))
+        default-params {:name       "Category Name"
+                        :slug       "category_name"
+                        :id         "_CATEGORY_NAME_"
+                        :type       "category"}
+        card-params    (fn [card-id] (merge default-params {:values_source_type "card"
+                                                            :values_source_config {:card_id card-id}}) )]
+    (testing "With no associated cards"
+      (tt/with-temp Card [card]
+        (is (zero? (hydrated-count card)))))
+    (testing "With one"
+      (tt/with-temp* [Card      [{card-id :id :as card}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]]
+        (is (= 1 (hydrated-count card)))))
+    (testing "With several"
+      (tt/with-temp* [Card      [{card-id :id :as card}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]]
+        (is (= 3 (hydrated-count card)))))))
 
 (deftest remove-from-dashboards-when-archiving-test
   (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"

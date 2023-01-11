@@ -213,7 +213,7 @@
    (semantic-version-gte [4 0 1] [4 1]) => false
    (semantic-version-gte [4 1] [4]) => true
    (semantic-version-gte [3 1] [4]) => false"
-  [xv :- [su/IntGreaterThanOrEqualToZeroPlumatic] yv :- [su/IntGreaterThanOrEqualToZeroPlumatic]] :- s/Bool
+  [xv :- [su/IntGreaterThanOrEqualToZero] yv :- [su/IntGreaterThanOrEqualToZero]] :- s/Bool
   (loop [xv (seq xv), yv (seq yv)]
     (or (nil? yv)
         (let [[x & xs] xv

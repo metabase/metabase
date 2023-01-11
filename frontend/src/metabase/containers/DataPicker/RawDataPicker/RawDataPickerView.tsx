@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import SelectList from "metabase/components/SelectList";
+
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 
 import type Database from "metabase-lib/metadata/Database";
@@ -11,9 +13,8 @@ import type { DataPickerSelectedItem } from "../types";
 
 import EmptyState from "../EmptyState";
 import LoadingState from "../LoadingState";
-import VirtualizedSelectList from "../VirtualizedSelectList";
 import PanePicker from "../PanePicker";
-import { ListContainer } from "./RawDataPicker.styled";
+import { StyledSelectList } from "./RawDataPicker.styled";
 
 interface RawDataPickerViewProps {
   databases: Database[];
@@ -60,7 +61,7 @@ function TableSelectListItem({
 }) {
   const name = table.displayName();
   return (
-    <VirtualizedSelectList.Item
+    <SelectList.Item
       id={table.id}
       name={name}
       isSelected={isSelected}
@@ -68,7 +69,7 @@ function TableSelectListItem({
       onSelect={onSelect}
     >
       {name}
-    </VirtualizedSelectList.Item>
+    </SelectList.Item>
   );
 }
 
@@ -134,8 +135,9 @@ function RawDataPickerView({
   );
 
   const renderTable = useCallback(
-    ({ item: table }: { item: Table }) => (
+    (table: Table) => (
       <TableSelectListItem
+        key={table.id}
         table={table}
         isSelected={selectedTableIds.includes(table.id)}
         onSelect={onSelectedTable}
@@ -160,14 +162,7 @@ function RawDataPickerView({
       ) : isEmpty ? (
         <EmptyState />
       ) : (
-        <ListContainer>
-          {Array.isArray(tables) && (
-            <VirtualizedSelectList<Table>
-              items={tables}
-              renderItem={renderTable}
-            />
-          )}
-        </ListContainer>
+        <StyledSelectList>{tables?.map?.(renderTable)}</StyledSelectList>
       )}
     </PanePicker>
   );

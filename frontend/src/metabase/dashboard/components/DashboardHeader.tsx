@@ -14,9 +14,9 @@ import { getScrollY } from "metabase/lib/dom";
 import { Dashboard } from "metabase-types/api";
 
 import EditBar from "metabase/components/EditBar";
-import EditWarning from "metabase/components/EditWarning";
 import HeaderModal from "metabase/components/HeaderModal";
 import {
+  EditWarning,
   HeaderRoot,
   HeaderBadges,
   HeaderContent,
@@ -122,7 +122,11 @@ const DashboardHeader = ({
           buttons={editingButtons}
         />
       )}
-      {editWarning && <EditWarning title={editWarning} />}
+      {editWarning && (
+        <EditWarning className="wrapper">
+          <span>{editWarning}</span>
+        </EditWarning>
+      )}
       <HeaderModal
         isOpen={!!headerModalMessage}
         height={headerHeight}

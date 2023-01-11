@@ -435,7 +435,7 @@
    StepRunMetadata))
 
 (s/defn ^:private create-task-history
-  [task-name :- su/NonBlankStringPlumatic
+  [task-name :- su/NonBlankString
    database  :- i/DatabaseInstance
    {:keys [start-time end-time]} :- SyncOperationOrStepRunMetadata]
   {:task       task-name
