@@ -110,7 +110,7 @@ describe("scenarios > dashboard > filters", () => {
     });
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
+    setFilter("Text or Category", "Is");
     mapFilterToQuestion();
     editDropdown();
     setupStructuredQuestionSource();
