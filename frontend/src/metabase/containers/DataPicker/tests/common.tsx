@@ -20,9 +20,11 @@ import {
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
-import { Database } from "metabase-types/api";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
+
+import Database from "metabase-lib/metadata/Database";
+import Table from "metabase-lib/metadata/Table";
 
 import type { DataPickerValue, DataPickerFiltersProp } from "../types";
 import useDataPickerValue from "../useDataPickerValue";
@@ -127,14 +129,14 @@ export async function setup({
   const scope = nock(location.origin);
 
   if (hasDataAccess) {
-    const databases: Database[] = [SAMPLE_DATABASE.getPlainObject()];
+    const databases = [getDatabaseObject(SAMPLE_DATABASE)];
 
     if (hasMultiSchemaDatabase) {
-      databases.push(MULTI_SCHEMA_DATABASE.getPlainObject());
+      databases.push(getDatabaseObject(MULTI_SCHEMA_DATABASE));
     }
 
     if (hasEmptyDatabase) {
-      databases.push(ANOTHER_DATABASE.getPlainObject());
+      databases.push(getDatabaseObject(ANOTHER_DATABASE));
     }
 
     setupDatabasesEndpoints(scope, databases);
@@ -186,4 +188,18 @@ export async function setup({
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
 
   return { onChange };
+}
+
+function getDatabaseObject(database: Database) {
+  return {
+    ...database.getPlainObject(),
+    tables: database.tables.map(getTableObject),
+  };
+}
+
+function getTableObject(table: Table) {
+  return {
+    ...table.getPlainObject(),
+    schema: table.schema_name,
+  };
 }
