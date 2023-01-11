@@ -1,7 +1,7 @@
 import type { Column } from "metabase-types/types/Dataset";
 import type { Card } from "metabase-types/types/Card";
 
-import type { PivotSetting, LeftHeaderItem } from "./types";
+import type { PivotSetting, HeaderItem } from "./types";
 
 import {
   isColumnValid,
@@ -282,7 +282,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         { depth: 1, value: "bar2" },
         { depth: 2, value: "baz1" },
         { depth: 4, value: "boo1" },
-      ] as LeftHeaderItem[];
+      ] as HeaderItem[];
 
       const { leftHeaderWidths } = getLeftHeaderWidths({
         rowIndexes: [0, 1, 2, 3, 4],
@@ -334,7 +334,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         { depth: 1, value: "bar2" },
         { depth: 2, value: "baz1" },
         { depth: 4, value: "boo1" },
-      ] as LeftHeaderItem[];
+      ] as HeaderItem[];
 
       const result = getColumnValues(data);
 
@@ -354,7 +354,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         { depth: 1, value: "bar1", hasSubtotal: false },
         { depth: 1, value: "bar2", hasSubtotal: false },
         { depth: 2, value: "baz1", hasSubtotal: true },
-      ] as LeftHeaderItem[];
+      ] as HeaderItem[];
 
       const result = getColumnValues(data);
 
@@ -372,7 +372,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         { depth: 1, value: "bar1", hasSubtotal: false },
         { depth: 1, value: "bar2", hasSubtotal: false },
         { depth: 2, value: "baz1", hasSubtotal: true },
-      ] as LeftHeaderItem[];
+      ] as HeaderItem[];
 
       const result = getColumnValues(data);
 

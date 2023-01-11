@@ -9,10 +9,10 @@ export type PivotSetting = {
   values: AggregationReference[];
 };
 
-export interface LeftHeaderItem {
+export interface HeaderItem {
   clicked: { value: string; column: Column };
 
-  isCollapsed: boolean;
+  isCollapsed?: boolean;
   hasChildren: boolean;
   hasSubtotal?: boolean;
   isSubtotal?: boolean;

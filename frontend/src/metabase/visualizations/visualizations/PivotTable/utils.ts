@@ -13,7 +13,7 @@ import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type {
   PivotSetting,
   FieldOrAggregationReference,
-  LeftHeaderItem,
+  HeaderItem,
 } from "./types";
 
 import { partitions } from "./partitions";
@@ -25,6 +25,9 @@ import {
   MAX_HEADER_CELL_WIDTH,
   PIVOT_TABLE_FONT_SIZE,
   MAX_ROWS_TO_MEASURE,
+  LEFT_HEADER_LEFT_SPACING,
+  CELL_HEIGHT,
+  CELL_WIDTH,
 } from "./constants";
 
 // adds or removes columns from the pivot settings based on the current query
@@ -98,7 +101,7 @@ export function isFormattablePivotColumn(column: Column) {
 interface GetLeftHeaderWidthsProps {
   rowIndexes: number[];
   getColumnTitle: (columnIndex: number) => string;
-  leftHeaderItems?: LeftHeaderItem[];
+  leftHeaderItems?: HeaderItem[];
   fontFamily?: string;
 }
 
@@ -158,12 +161,12 @@ type ColumnValueInfo = {
   hasSubtotal: boolean;
 };
 
-export function getColumnValues(leftHeaderItems: LeftHeaderItem[]) {
+export function getColumnValues(leftHeaderItems: HeaderItem[]) {
   const columnValues: ColumnValueInfo[] = [];
 
   leftHeaderItems
     .slice(0, MAX_ROWS_TO_MEASURE)
-    .forEach((leftHeaderItem: LeftHeaderItem) => {
+    .forEach((leftHeaderItem: HeaderItem) => {
       const { value, depth, isSubtotal, isGrandTotal, hasSubtotal } =
         leftHeaderItem;
 
@@ -219,3 +222,44 @@ export function checkRenderable(
     throw new Error(t`This database does not support pivot tables.`);
   }
 }
+
+export const leftHeaderCellSizeAndPositionGetter = (
+  item: HeaderItem,
+  leftHeaderWidths: number[],
+  rowIndexes: number[],
+) => {
+  const { offset, span, depth, maxDepthBelow } = item;
+
+  const columnsToSpan = rowIndexes.length - depth - maxDepthBelow;
+
+  // add up all the widths of the columns, other than itself, that this cell spans
+  const spanWidth = leftHeaderWidths
+    .slice(depth + 1, depth + columnsToSpan)
+    .reduce((acc, cellWidth) => acc + cellWidth, 0);
+  const columnPadding = depth === 0 ? LEFT_HEADER_LEFT_SPACING : 0;
+  const columnWidth = leftHeaderWidths[depth];
+
+  return {
+    height: span * CELL_HEIGHT,
+    width: columnWidth + spanWidth + columnPadding,
+    x:
+      leftHeaderWidths
+        .slice(0, depth)
+        .reduce((acc, cellWidth) => acc + cellWidth, 0) +
+      (depth > 0 ? LEFT_HEADER_LEFT_SPACING : 0),
+    y: offset * CELL_HEIGHT,
+  };
+};
+
+export const topHeaderCellSizeAndPositionGetter = (
+  item: HeaderItem,
+  topHeaderRows: number,
+) => {
+  const { offset, span, maxDepthBelow } = item;
+  return {
+    height: CELL_HEIGHT,
+    width: span * CELL_WIDTH,
+    x: offset * CELL_WIDTH,
+    y: (topHeaderRows - maxDepthBelow - 1) * CELL_HEIGHT,
+  };
+};

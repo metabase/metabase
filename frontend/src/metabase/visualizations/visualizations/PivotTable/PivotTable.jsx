@@ -42,6 +42,8 @@ import {
   databaseSupportsPivotTables,
   isSensible,
   checkRenderable,
+  leftHeaderCellSizeAndPositionGetter,
+  topHeaderCellSizeAndPositionGetter,
 } from "./utils";
 
 import { CELL_WIDTH, CELL_HEIGHT, LEFT_HEADER_LEFT_SPACING } from "./constants";
@@ -158,43 +160,10 @@ function PivotTable({
     return null;
   }
 
-  const leftHeaderCellSizeAndPositionGetter = ({ index }) => {
-    const { offset, span, depth, maxDepthBelow } = leftHeaderItems[index];
-
-    const columnsToSpan = rowIndexes.length - depth - maxDepthBelow;
-
-    // add up all the widths of the columns, other than itself, that this cell spans
-    const spanWidth = leftHeaderWidths
-      .slice(depth + 1, depth + columnsToSpan)
-      .reduce((acc, cellWidth) => acc + cellWidth, 0);
-    const columnPadding = depth === 0 ? LEFT_HEADER_LEFT_SPACING : 0;
-    const columnWidth = leftHeaderWidths[depth];
-
-    return {
-      height: span * CELL_HEIGHT,
-      width: columnWidth + spanWidth + columnPadding,
-      x:
-        leftHeaderWidths
-          .slice(0, depth)
-          .reduce((acc, cellWidth) => acc + cellWidth, 0) +
-        (depth > 0 ? LEFT_HEADER_LEFT_SPACING : 0),
-      y: offset * CELL_HEIGHT,
-    };
-  };
-
   const topHeaderRows =
     columnIndexes.length + (valueIndexes.length > 1 ? 1 : 0) || 1;
-  const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
 
-  const topHeaderCellSizeAndPositionGetter = ({ index }) => {
-    const { offset, span, maxDepthBelow } = topHeaderItems[index];
-    return {
-      height: CELL_HEIGHT,
-      width: span * CELL_WIDTH,
-      x: offset * CELL_WIDTH,
-      y: (topHeaderRows - maxDepthBelow - 1) * CELL_HEIGHT,
-    };
-  };
+  const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
 
   const leftHeaderWidth =
     rowIndexes.length > 0 ? LEFT_HEADER_LEFT_SPACING + totalHeaderWidths : 0;
@@ -283,7 +252,12 @@ function PivotTable({
                     isNightMode={isNightMode}
                   />
                 )}
-                cellSizeAndPositionGetter={topHeaderCellSizeAndPositionGetter}
+                cellSizeAndPositionGetter={({ index }) =>
+                  topHeaderCellSizeAndPositionGetter(
+                    topHeaderItems[index],
+                    topHeaderRows,
+                  )
+                }
                 onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                 scrollLeft={scrollLeft}
               />
@@ -311,8 +285,12 @@ function PivotTable({
                           getCellClickHandler={getCellClickHandler}
                         />
                       )}
-                      cellSizeAndPositionGetter={
-                        leftHeaderCellSizeAndPositionGetter
+                      cellSizeAndPositionGetter={({ index }) =>
+                        leftHeaderCellSizeAndPositionGetter(
+                          leftHeaderItems[index],
+                          leftHeaderWidths,
+                          rowIndexes,
+                        )
                       }
                       width={leftHeaderWidth}
                       height={height - scrollBarOffsetSize()}
