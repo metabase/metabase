@@ -25,7 +25,8 @@
                     (merge
                      ;; recursively update stuff inside the join
                      (rename-join-aliases* (dissoc join :alias))
-                     {:alias (original->new (:alias join))})))]
+                     {:alias          (original->new (:alias join))
+                      :alias/original (:alias join)})))]
           (rename-join-aliases* query))))))
 
 (defn- all-join-aliases [query]

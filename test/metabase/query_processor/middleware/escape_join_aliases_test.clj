@@ -7,7 +7,7 @@
     :as
     escape-join-aliases]))
 
-(deftest deduplicate-alias-names-test
+(deftest ^:parallel deduplicate-alias-names-test
   (testing "Should ensure all join aliases are unique, ignoring case"
     ;; some Databases treat table/subquery aliases as case-insensitive and thus `Cat` and `cat` would be considered the
     ;; same thing. That's EVIL! Make sure we deduplicate.
@@ -17,9 +17,10 @@
               :query    {:joins  [{:source-table 2
                                    :alias        "Cat"
                                    :condition    [:= [:field 3 nil] [:field 4 {:join-alias "Cat"}]]}
-                                  {:source-table 2
-                                   :alias        "cat_2"
-                                   :condition    [:= [:field 3 nil] [:field 4 {:join-alias "cat_2"}]]}]
+                                  {:source-table   2
+                                   :alias          "cat_2"
+                                   :alias/original "cat"
+                                   :condition      [:= [:field 3 nil] [:field 4 {:join-alias "cat_2"}]]}]
                          :fields [[:field 3 nil]
                                   [:field 4 {:join-alias "Cat"}]
                                   [:field 4 {:join-alias "cat_2"}]]}}
@@ -42,17 +43,19 @@
   [_driver s]
   (driver.impl/truncate-alias s 12))
 
-(deftest escape-alias-names-test
+(deftest ^:parallel escape-alias-names-test
   (testing "Make sure aliases are escaped with `metabase.driver/escape-alias` for the current driver"
     (driver/with-driver ::custom-escape
       (is (= {:database 1
               :type     :query
-              :query    {:joins  [{:source-table 2
-                                   :alias        "012_68c4f033"
-                                   :condition    [:= [:field 3 nil] [:field 4 {:join-alias "012_68c4f033"}]]}
-                                  {:source-table 2
-                                   :alias        "가_50a93035"
-                                   :condition    [:= [:field 3 nil] [:field 4 {:join-alias "가_50a93035"}]]}]
+              :query    {:joins  [{:source-table   2
+                                   :alias          "012_68c4f033"
+                                   :alias/original "0123456789abcdef"
+                                   :condition      [:= [:field 3 nil] [:field 4 {:join-alias "012_68c4f033"}]]}
+                                  {:source-table   2
+                                   :alias          "가_50a93035"
+                                   :alias/original "가나다라마"
+                                   :condition      [:= [:field 3 nil] [:field 4 {:join-alias "가_50a93035"}]]}]
                          :fields [[:field 3 nil]
                                   [:field 4 {:join-alias "012_68c4f033"}]
                                   [:field 4 {:join-alias "가_50a93035"}]]}}

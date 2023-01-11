@@ -100,7 +100,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private join-with-alias :- (s/maybe mbql.s/Join)
-  [{:keys [joins source-query]} :- su/Map, join-alias :- su/NonBlankString]
+  [{:keys [joins source-query]} :- su/Map join-alias :- su/NonBlankString]
   (or (some
        (fn [{:keys [alias], :as join}]
          (when (= alias join-alias)
@@ -114,13 +114,14 @@
 (defn- display-name-for-joined-field
   "Return an appropriate display name for a joined field. For *explicitly* joined Fields, the qualifier is the join
   alias; for implicitly joined fields, it is the display name of the foreign key used to create the join."
-  [field-display-name {:keys [fk-field-id], join-alias :alias}]
+  [field-display-name {:keys [fk-field-id], join-alias :alias, original-join-alias :alias/original}]
   (let [qualifier (if fk-field-id
                     ;; strip off trailing ` id` from FK display name
                     (str/replace (:display_name (qp.store/field fk-field-id))
                                  #"(?i)\sid$"
                                  "")
-                    join-alias)]
+                    (or original-join-alias
+                        join-alias))]
     (format "%s → %s" qualifier field-display-name)))
 
 (defn- datetime-arithmetics?
@@ -256,8 +257,18 @@
       (:temporal-unit opts)
       (assoc :unit (:temporal-unit opts))
 
-      (or (:join-alias opts) (:alias join))
-      (assoc :source_alias (or (:join-alias opts) (:alias join)))
+      ;; return the original join alias, recorded in the join as `:alias/original`, if present. This is the one used in
+      ;; the original query rather than whatever we may have changed it to in
+      ;; the [[metabase.query-processor.middleware.escape-join-aliases]] middleware. See #27464
+      (or (:alias/original join)
+          (:join-alias opts)
+          (:alias join))
+      (assoc :source_alias (or (:alias/original join)
+                               (:join-alias opts)
+                               (:alias join)))
+
+      (:alias/original join)
+      (update :field_ref mbql.u/assoc-field-options :join-alias (:alias/original join))
 
       join
       (update :display_name display-name-for-joined-field join)
