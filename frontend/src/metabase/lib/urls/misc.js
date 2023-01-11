@@ -28,8 +28,6 @@ export function modelToUrl(item) {
       return model(modelData);
     case "dashboard":
       return dashboard(modelData);
-    case "page":
-      return dashboard(modelData);
     case "pulse":
       return pulse(modelData.id);
     case "table":
