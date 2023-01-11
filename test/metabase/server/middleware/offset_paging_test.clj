@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.server.handler :as handler]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.server.middleware.security :as mw.security]
    [ring.mock.request :as ring.mock]
    [ring.util.response :as response])
   (:import
@@ -49,5 +50,6 @@
 
   (testing "invalid params"
     (is (=? {:status  400
+             :headers (mw.security/security-headers)
              :body    {"message" #"Error parsing paging parameters.*"}}
             (read-response (handler (ring.mock/request :get "/" {:offset "abc", :limit "100"})))))))
