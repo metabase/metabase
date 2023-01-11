@@ -9,9 +9,9 @@ Questions are queries plus their visualization. You can
 - Ask questions using Metabase's graphical query builder, or create a native/SQL query.
 - Ask questions based on models, raw tables, or other saved questions.
 - Save questions to collections and add them to dashboards.
-- And a lot more
+- And a lot more.
 
-## Reference docs
+## Reference documentation
 
 ### Query builder
 
