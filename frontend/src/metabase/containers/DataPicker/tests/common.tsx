@@ -82,10 +82,12 @@ export const SAMPLE_QUESTION_3 = createMockCard({
 function DataPickerWrapper({
   value: initialValue,
   filters,
+  isMultiSelect,
   onChange,
 }: {
   value: DataPickerValue;
   filters?: DataPickerFiltersProp;
+  isMultiSelect?: boolean;
   onChange: (value: DataPickerValue) => void;
 }) {
   const [value, setValue] = useDataPickerValue(initialValue);
@@ -93,6 +95,7 @@ function DataPickerWrapper({
     <DataPicker
       value={value}
       filters={filters}
+      isMultiSelect={isMultiSelect}
       onChange={(value: DataPickerValue) => {
         setValue(value);
         onChange(value);
@@ -104,6 +107,7 @@ function DataPickerWrapper({
 interface SetupOpts {
   initialValue?: DataPickerValue;
   filters?: DataPickerFiltersProp;
+  isMultiSelect?: boolean;
   hasDataAccess?: boolean;
   hasEmptyDatabase?: boolean;
   hasMultiSchemaDatabase?: boolean;
@@ -114,6 +118,7 @@ interface SetupOpts {
 export async function setup({
   initialValue = { tableIds: [] },
   filters,
+  isMultiSelect = false,
   hasDataAccess = true,
   hasEmptyDatabase = false,
   hasMultiSchemaDatabase = false,
@@ -174,6 +179,7 @@ export async function setup({
     <DataPickerWrapper
       value={initialValue}
       filters={filters}
+      isMultiSelect={isMultiSelect}
       onChange={onChange}
     />,
     {
