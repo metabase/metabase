@@ -2,39 +2,34 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import TippyPopoverWithTrigger, {
-  TippyPopoverWithTriggerProps,
-} from "./TippyPopoverWithTrigger";
+import TippyPopoverWithTrigger from "./TippyPopoverWithTrigger";
 
-function setup(props: TippyPopoverWithTriggerProps) {
+function setup() {
   return render(
     <div>
       <div>something outside of the popover</div>
-      <TippyPopoverWithTrigger {...props} />
+      <TippyPopoverWithTrigger
+        popoverContent={<div>popover content</div>}
+        triggerContent="trigger content"
+      />
     </div>,
   );
 }
 
-const popoverContent = <div>popover content</div>;
-const triggerContent = "trigger content";
-
 describe("TippyPopoverWithTrigger", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
-    setup({
-      popoverContent,
-      triggerContent,
-    });
   });
 
   it("should show the popover when user clicks the trigger", async () => {
-    userEvent.click(screen.getByText(triggerContent));
+    setup();
+    userEvent.click(screen.getByText("trigger content"));
     expect(await screen.findByText("popover content")).toBeVisible();
   });
 
   it("should hide the popover if the user clicks outside of the popover", async () => {
-    userEvent.click(screen.getByText(triggerContent));
+    setup();
+    userEvent.click(screen.getByText("trigger content"));
     expect(await screen.findByText("popover content")).toBeVisible();
 
     userEvent.click(screen.getByText("something outside of the popover"));
@@ -42,7 +37,8 @@ describe("TippyPopoverWithTrigger", () => {
   });
 
   it("should hide the popover if the user presses the escape key while the popover is open", async () => {
-    userEvent.click(screen.getByText(triggerContent));
+    setup();
+    userEvent.click(screen.getByText("trigger content"));
     expect(await screen.findByText("popover content")).toBeVisible();
 
     userEvent.type(document.body, "{Escape}");

@@ -45,7 +45,7 @@
     (is (schema= {:status       (s/eq :failed)
                   :class        Class
                   :error        s/Str
-                  :stacktrace   [su/NonBlankStringPlumatic]
+                  :stacktrace   [su/NonBlankString]
                   ;; `:database` is removed by the catch-exceptions middleware for historical reasons
                   :json_query   (bad-query-schema)
                   :preprocessed (bad-query-preprocessed-schema)
@@ -61,9 +61,9 @@
                   :native       bad-query-native-schema
                   :status       (s/eq :failed)
                   :class        Class
-                  :stacktrace   [su/NonBlankStringPlumatic]
+                  :stacktrace   [su/NonBlankString]
                   :context      (s/eq :question)
-                  :error        su/NonBlankStringPlumatic
+                  :error        su/NonBlankString
                   :row_count    (s/eq 0)
                   :running_time (s/constrained s/Int (complement neg?))
                   :preprocessed (bad-query-preprocessed-schema)

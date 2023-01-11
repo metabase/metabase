@@ -367,7 +367,7 @@
 
 ;;; ------------------------------------------- filter (built-in segments) -------------------------------------------
 
-(s/defn ^:private built-in-segment :- (s/maybe su/NonBlankStringPlumatic)
+(s/defn ^:private built-in-segment :- (s/maybe su/NonBlankString)
   [{filter-clause :filter}]
   (let [segments (mbql.u/match filter-clause [:segment (segment-name :guard mbql.u/ga-id?)] segment-name)]
     (when (> (count segments) 1)

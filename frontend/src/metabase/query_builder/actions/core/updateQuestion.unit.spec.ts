@@ -1,3 +1,4 @@
+import * as questionActions from "metabase/questions/actions";
 import { createMockDataset } from "metabase-types/api/mocks";
 import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
 import { ConcreteField, TemplateTag } from "metabase-types/types/Query";
@@ -34,7 +35,6 @@ import * as native from "../native";
 import * as querying from "../querying";
 import * as ui from "../ui";
 
-import * as metadataActions from "./metadata";
 import { updateQuestion, UPDATE_QUESTION } from "./updateQuestion";
 
 type SetupOpts = {
@@ -212,11 +212,6 @@ describe("QB Actions > updateQuestion", () => {
   const SAVED_QUESTION_TEST_CASES = [
     TEST_CASE.SAVED_STRUCTURED_QUESTION,
     TEST_CASE.SAVED_NATIVE_QUESTION,
-  ];
-
-  const UNSAVED_QUESTION_TEST_CASES = [
-    TEST_CASE.UNSAVED_STRUCTURED_QUESTION,
-    TEST_CASE.UNSAVED_NATIVE_QUESTION,
   ];
 
   const MODEL_TEST_CASES = [
@@ -456,7 +451,7 @@ describe("QB Actions > updateQuestion", () => {
       describe(questionType, () => {
         it("loads metadata for the model", async () => {
           const loadMetadataSpy = jest.spyOn(
-            metadataActions,
+            questionActions,
             "loadMetadataForCard",
           );
 
@@ -466,7 +461,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("refreshes question metadata if there's difference in dependent metadata", async () => {
           const loadMetadataSpy = jest.spyOn(
-            metadataActions,
+            questionActions,
             "loadMetadataForCard",
           );
           const join = new Join(PRODUCTS_JOIN_CLAUSE);
@@ -493,7 +488,7 @@ describe("QB Actions > updateQuestion", () => {
       describe(questionType, () => {
         it("doesn't refresh question metadata if dependent metadata doesn't change", async () => {
           const loadMetadataSpy = jest.spyOn(
-            metadataActions,
+            questionActions,
             "loadMetadataForCard",
           );
 
@@ -503,7 +498,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("refreshes question metadata if there's difference in dependent metadata", async () => {
           const loadMetadataSpy = jest.spyOn(
-            metadataActions,
+            questionActions,
             "loadMetadataForCard",
           );
           const join = new Join(PRODUCTS_JOIN_CLAUSE);

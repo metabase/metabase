@@ -43,9 +43,9 @@
   ([card-id value-field-ref]
    (values-from-card card-id value-field-ref nil))
 
-  ([card-id     :- su/IntGreaterThanZeroPlumatic
-    value-field :- su/FieldPlumatic
-    query       :- (s/maybe su/NonBlankStringPlumatic)]
+  ([card-id     :- su/IntGreaterThanZero
+    value-field :- su/Field
+    query       :- (s/maybe su/NonBlankString)]
    (let [mbql-query   (values-from-card-query card-id value-field query)
          query-limit  (get-in mbql-query [:query :limit])
          result       (qp/process-query mbql-query)]

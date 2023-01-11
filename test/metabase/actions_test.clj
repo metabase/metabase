@@ -110,8 +110,8 @@
     :request-body (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"})
     :expect-fn    (fn [result]
                     ;; check that we return the entire row
-                    (is (schema= {:created-row {(format-field-name :id)   su/IntGreaterThanZeroPlumatic
-                                                (format-field-name :name) su/NonBlankStringPlumatic}}
+                    (is (schema= {:created-row {(format-field-name :id)   su/IntGreaterThanZero
+                                                (format-field-name :name) su/NonBlankString}}
                                  result)))}
    {:action       :row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})

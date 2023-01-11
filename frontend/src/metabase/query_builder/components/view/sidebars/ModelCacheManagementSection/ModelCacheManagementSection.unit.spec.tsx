@@ -6,12 +6,7 @@ import PersistedModels from "metabase/entities/persisted-models";
 import { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 
-import {
-  fireEvent,
-  renderWithProviders,
-  waitFor,
-  screen,
-} from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { ORDERS } from "__support__/sample_database_fixture";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";
@@ -53,16 +48,13 @@ async function setup({
     });
   }
 
-  const utils = renderWithProviders(
-    <ModelCacheManagementSection model={model} />,
-  );
+  renderWithProviders(<ModelCacheManagementSection model={model} />);
 
   if (waitForSectionAppearance) {
-    await waitFor(() => utils.queryByTestId("model-cache-section"));
+    await screen.findByTestId("model-cache-section");
   }
 
   return {
-    ...utils,
     modelCacheInfo,
     onRefreshMock,
   };
@@ -71,16 +63,16 @@ async function setup({
 describe("ModelCacheManagementSection", () => {
   afterEach(() => {
     nock.cleanAll();
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
   });
 
   it("doesn't show up in 'off' state", async () => {
-    await setup({ state: "off" });
+    await setup({ state: "off", waitForSectionAppearance: false });
     expect(screen.queryByTestId("model-cache-section")).not.toBeInTheDocument();
   });
 
   it("doesn't show up in 'deletable' state", async () => {
-    await setup({ state: "deletable" });
+    await setup({ state: "deletable", waitForSectionAppearance: false });
     expect(screen.queryByTestId("model-cache-section")).not.toBeInTheDocument();
   });
 

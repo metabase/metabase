@@ -27,6 +27,7 @@ import CardPickerView from "./CardPickerView";
 
 interface CardPickerOwnProps extends DataPickerProps {
   targetModel: "model" | "question";
+  isMultiSelect?: boolean;
   onBack?: () => void;
 }
 
@@ -38,6 +39,7 @@ interface CollectionsLoaderProps {
   collectionTree: Collection[];
   collections: Collection[];
   rootCollection: Collection;
+  allLoading: boolean;
 }
 
 interface SchemaLoaderProps {
@@ -63,6 +65,8 @@ function CardPickerContainer({
   schema: selectedSchema,
   currentUser,
   targetModel,
+  isMultiSelect,
+  allLoading,
   onChange,
   onBack,
 }: CardPickerProps) {
@@ -70,7 +74,7 @@ function CardPickerContainer({
 
   const { selectedTableIds, toggleTableIdSelection } = useSelectedTables({
     initialValues: value.tableIds,
-    mode: "multiple",
+    isMultiSelect,
   });
 
   const collectionsMap = useMemo(
@@ -133,6 +137,7 @@ function CardPickerContainer({
       virtualTables={selectedSchema?.tables}
       selectedItems={selectedItems}
       targetModel={targetModel}
+      isLoading={allLoading}
       onSelectCollection={handleSelectedCollectionChange}
       onSelectedVirtualTable={handleSelectedTablesChange}
       onBack={onBack}

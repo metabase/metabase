@@ -27,7 +27,7 @@
                                          :type         :card
                                          :card-id      (u/the-id card)}}}]
           (binding [driver/*driver* :h2]
-            (is (schema= {:native   su/NonBlankStringPlumatic
+            (is (schema= {:native   su/NonBlankString
                           :params   (s/eq ["G%"])
                           s/Keyword s/Any}
                          (qp.native/expand-inner query)))))))))

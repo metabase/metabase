@@ -40,10 +40,18 @@ describe("ArchiveModal", () => {
 
     render(<ArchiveModal item={alert} type="alert" />);
 
-    screen.getByText("Delete this alert?");
-    screen.getByText("Yes, delete this alert");
-    screen.getByText("You created this alert on May 8, 2021", { exact: false });
-    screen.getByText("It’s currently being sent to 1 email.", { exact: false });
+    expect(screen.getByText("Delete this alert?")).toBeInTheDocument();
+    expect(screen.getByText("Yes, delete this alert")).toBeInTheDocument();
+    expect(
+      screen.getByText("You created this alert on May 8, 2021", {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("It’s currently being sent to 1 email.", {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("should render an email pulse", () => {
@@ -51,10 +59,18 @@ describe("ArchiveModal", () => {
 
     render(<ArchiveModal item={pulse} type="pulse" />);
 
-    screen.getByText("Delete this subscription?");
-    screen.getByText("Yes, delete this subscription");
-    screen.getByText("May 8, 2021", { exact: false });
-    screen.getByText("It’s currently being sent to 1 email.", { exact: false });
+    expect(screen.getByText("Delete this subscription?")).toBeInTheDocument();
+    expect(
+      screen.getByText("Yes, delete this subscription"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("May 8, 2021", { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("It’s currently being sent to 1 email.", {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("should render a slack pulse", () => {
@@ -64,7 +80,9 @@ describe("ArchiveModal", () => {
 
     render(<ArchiveModal item={pulse} type="pulse" />);
 
-    screen.getByText("1 Slack channel", { exact: false });
+    expect(
+      screen.getByText("1 Slack channel", { exact: false }),
+    ).toBeInTheDocument();
   });
 
   it("should render an alert with both email and slack channels", () => {
@@ -83,7 +101,9 @@ describe("ArchiveModal", () => {
 
     render(<ArchiveModal item={alert} type="alert" />);
 
-    screen.getByText("2 emails and 3 Slack channels", { exact: false });
+    expect(
+      screen.getByText("2 emails and 3 Slack channels", { exact: false }),
+    ).toBeInTheDocument();
   });
 
   it("should close on submit", async () => {
@@ -104,10 +124,10 @@ describe("ArchiveModal", () => {
 
     screen.getByText("Yes, delete this alert").click();
 
-    waitFor(() => {
-      expect(onArchive).toHaveBeenCalled(alert, true);
-      expect(onClose).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onArchive).toHaveBeenCalledWith(alert, true);
     });
+    expect(onClose).toHaveBeenCalled();
   });
 
   it("should not close on a submit error", async () => {
@@ -128,10 +148,10 @@ describe("ArchiveModal", () => {
 
     screen.getByText("Yes, delete this alert").click();
 
-    waitFor(() => {
-      screen.getByText("An error occurred");
-      expect(onArchive).toHaveBeenCalled(alert, true);
-      expect(onClose).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText("An error occurred")).toBeInTheDocument();
     });
+    expect(onArchive).toHaveBeenCalledWith(alert, true);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

@@ -303,7 +303,7 @@
                                            :display-name card-tag
                                            :type         :card
                                            :card-id      (u/the-id card)}}})]
-          (is (schema= {:native   {:query    su/NonBlankStringPlumatic
+          (is (schema= {:native   {:query    su/NonBlankString
                                    :params   (s/eq ["G%"])
                                    s/Keyword s/Any}
                         s/Keyword s/Any}

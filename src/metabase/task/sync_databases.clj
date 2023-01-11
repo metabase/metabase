@@ -10,6 +10,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time :as t]
+   [metabase.db.query :as mdb.query]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze :as analyze]
@@ -25,7 +26,6 @@
    [toucan.db :as db]
    [toucan.models :as models])
   (:import
-   (metabase.models.database DatabaseInstance)
    (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -34,7 +34,7 @@
 
 (declare unschedule-tasks-for-db!)
 
-(s/defn ^:private job-context->database-id :- (s/maybe su/IntGreaterThanZeroPlumatic)
+(s/defn ^:private job-context->database-id :- (s/maybe su/IntGreaterThanZero)
   "Get the Database ID referred to in `job-context`."
   [job-context]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))
@@ -132,12 +132,12 @@
 
 (s/defn ^:private trigger-key :- TriggerKey
   "Return an appropriate string key for the trigger for `task-info` and `database-or-id`."
-  [database :- DatabaseInstance, task-info :- TaskInfo]
+  [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/the-id database))))
 
 (s/defn ^:private cron-schedule :- u.cron/CronScheduleString
   "Fetch the appropriate cron schedule string for `database` and `task-info`."
-  [database :- DatabaseInstance, task-info :- TaskInfo]
+  [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))
 
 (s/defn ^:private job-class :- Class
@@ -147,7 +147,7 @@
 
 (s/defn ^:private trigger-description :- s/Str
   "Return an appropriate description string for a job/trigger for Database described by `task-info`."
-  [database :- DatabaseInstance, task-info :- TaskInfo]
+  [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
   (format "%s Database %d" (name (:key task-info)) (u/the-id database)))
 
 (s/defn ^:private job-description :- s/Str
@@ -162,7 +162,7 @@
 
 (s/defn ^:private delete-task!
   "Cancel a single sync task for `database-or-id` and `task-info`."
-  [database :- DatabaseInstance, task-info :- TaskInfo]
+  [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
     (log/debug (u/format-color 'red
                    (trs "Unscheduling task for Database {0}: trigger: {1}" (u/the-id database) (.getName trigger-key))))
@@ -170,7 +170,7 @@
 
 (s/defn unschedule-tasks-for-db!
   "Cancel *all* scheduled sync and FieldValues caching tasks for `database-or-id`."
-  [database :- DatabaseInstance]
+  [database :- (mi/InstanceOf Database)]
   (doseq [task [sync-analyze-task-info field-values-task-info]]
     (delete-task! database task)))
 
@@ -194,7 +194,7 @@
 
 (s/defn ^:private trigger :- CronTrigger
   "Build a Quartz Trigger for `database` and `task-info`."
-  [database :- DatabaseInstance, task-info :- TaskInfo]
+  [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
   (triggers/build
    (triggers/with-description (trigger-description database task-info))
    (triggers/with-identity (trigger-key database task-info))
@@ -214,7 +214,7 @@
 #_ {:clj-kondo/ignore [:unused-private-var]}
 (s/defn ^:private check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
-  [database :- DatabaseInstance]
+  [database :- (mi/InstanceOf Database)]
   (let [sync-job (task/job-info (job-key sync-analyze-task-info))
         fv-job   (task/job-info (job-key field-values-task-info))
 
@@ -286,14 +286,16 @@
                               (trs "Error updating database {0} for randomized schedules"
                                    (u/the-id db)))
                     counter))))
-             (db/reducible-query
+             (mdb.query/reducible-query
               {:select [:id :details]
-               :from [Database]
-               :where [:or
-                       [:in :metadata_sync_schedule
-                        sync.schedules/default-metadata-sync-schedule-cron-strings]
-                       [:in :cache_field_values_schedule
-                        sync.schedules/default-cache-field-values-schedule-cron-strings]]})))
+               :from   [:metabase_database]
+               :where  [:or
+                        [:in
+                         :metadata_sync_schedule
+                         sync.schedules/default-metadata-sync-schedule-cron-strings]
+                        [:in
+                         :cache_field_values_schedule
+                         sync.schedules/default-cache-field-values-schedule-cron-strings]]})))
 
 (defmethod task/init! ::SyncDatabases
   [_]

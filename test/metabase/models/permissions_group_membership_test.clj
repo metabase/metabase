@@ -24,4 +24,16 @@
     (mt/with-temp User [user {:is_superuser true}]
       (db/delete! PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin)))
       (is (= false
-             (db/select-one-field :is_superuser User :id (u/the-id user)))))))
+             (db/select-one-field :is_superuser User :id (u/the-id user))))))
+
+  (testing "it should not let you remove the last admin"
+    (mt/with-single-admin-user [{id :id}]
+      (is (thrown? Exception
+                   (db/delete! PermissionsGroupMembership :user_id id, :group_id (u/the-id (perms-group/admin)))))))
+
+  (testing "it should not let you remove the last non-archived admin"
+    (mt/with-single-admin-user [{id :id}]
+      (mt/with-temp User [_ {:is_active    false
+                             :is_superuser true}]
+        (is (thrown? Exception
+                     (db/delete! PermissionsGroupMembership :user_id id, :group_id (u/the-id (perms-group/admin)))))))))

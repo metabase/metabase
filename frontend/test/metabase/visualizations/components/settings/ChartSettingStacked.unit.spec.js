@@ -1,5 +1,5 @@
 import React from "react";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 // these tests use ChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
@@ -90,17 +90,17 @@ const setup = seriesMetrics => {
 
 describe("ChartSettingsStacked", () => {
   it("should not show stacking options when there is only 1 series", () => {
-    const { queryByText } = setup(["MALE"]);
+    setup(["MALE"]);
 
-    expect(queryByText(/Stacking/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Stacking/)).not.toBeInTheDocument();
   });
 
   it("should show stacking options when there is more than 1 series", () => {
-    const { queryByText, queryByLabelText } = setup(["MALE", "FEMALE"]);
+    setup(["MALE", "FEMALE"]);
 
-    expect(queryByText(/Stacking/)).toBeInTheDocument();
-    expect(queryByLabelText("Don't stack")).toBeInTheDocument();
-    expect(queryByLabelText("Stack")).toBeInTheDocument();
-    expect(queryByLabelText("Stack - 100%")).toBeInTheDocument();
+    expect(screen.getByText(/Stacking/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Don't stack")).toBeInTheDocument();
+    expect(screen.getByLabelText("Stack")).toBeInTheDocument();
+    expect(screen.getByLabelText("Stack - 100%")).toBeInTheDocument();
   });
 });

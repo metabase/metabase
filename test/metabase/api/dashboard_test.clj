@@ -171,7 +171,8 @@
                     dashboard-defaults
                     {:name           test-dashboard-name
                      :creator_id     (mt/user->id :rasta)
-                     :parameters     [{:id "abc123", :name "test", :type "date"}]
+                     :parameters     [{:id "abc123", :name "test", :type "date"
+                                       :values_query_type "list", :values_source_type nil, :values_source_config {}}]
                      :updated_at     true
                      :created_at     true
                      :collection_id  true
@@ -197,7 +198,7 @@
               (mt/user-http-request :rasta :post 200 "dashboard" {:name                dashboard-name
                                                                   :collection_id       (u/the-id collection)
                                                                   :collection_position 1000})
-              (is (= #metabase.models.dashboard.DashboardInstance{:collection_id true, :collection_position 1000, :parameters []}
+              (is (= #metabase.models.dashboard.DashboardInstance{:collection_id true, :collection_position 1000}
                      (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
                              (update :collection_id (partial = (u/the-id collection))))))
               (finally
@@ -244,8 +245,8 @@
                      :can_write                  false
                      :param_fields               nil
                      :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
-                     :ordered_cards              [{:size_x                     2
-                                                   :size_y                     2
+                     :ordered_cards              [{:size_x                     4
+                                                   :size_y                     4
                                                    :col                        0
                                                    :row                        0
                                                    :collection_authority_level nil
@@ -293,8 +294,8 @@
                                                                   :has_field_values "search"
                                                                   :name_field       nil
                                                                   :dimensions       []}}
-                           :ordered_cards              [{:size_x                     2
-                                                         :size_y                     2
+                           :ordered_cards              [{:size_x                     4
+                                                         :size_y                     4
                                                          :col                        0
                                                          :row                        0
                                                          :updated_at                 true
@@ -1039,11 +1040,11 @@
           (try
             (is (= 2
                    (count (db/select-ids DashboardCard, :dashboard_id copy-id))))
-            (is (= [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
+            (is (=? [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
                    (db/select-one-field :parameters Dashboard :id copy-id)))
-            (is (= [{:parameter_id "random-id"
-                     :card_id      card-id
-                     :target       [:dimension [:field (mt/id :venues :name) nil]]}]
+            (is (=? [{:parameter_id "random-id"
+                      :card_id      card-id
+                      :target       [:dimension [:field (mt/id :venues :name) nil]]}]
                    (db/select-one-field :parameter_mappings DashboardCard :id dashcard-id)))
            (finally
              (db/delete! Dashboard :id copy-id))))))))
@@ -1075,8 +1076,8 @@
                   Card      [{card-id :id}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id]
-        (is (= {:size_x                 2
-                :size_y                 2
+        (is (= {:size_x                 4
+                :size_y                 4
                 :col                    4
                 :row                    4
                 :series                 []
@@ -1096,8 +1097,8 @@
                    (dissoc :id :dashboard_id :action_id :card_id :entity_id)
                    (update :created_at boolean)
                    (update :updated_at boolean))))
-        (is (= [{:size_x                 2
-                 :size_y                 2
+        (is (= [{:size_x                 4
+                 :size_y                 4
                  :col                    4
                  :row                    4
                  :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
@@ -1117,8 +1118,8 @@
                                                     :row    4
                                                     :col    4
                                                     :series [{:id series-id-1}]})]
-          (is (= {:size_x                 2
-                  :size_y                 2
+          (is (= {:size_x                 4
+                  :size_y                 4
                   :col                    4
                   :row                    4
                   :parameter_mappings     []
@@ -1131,8 +1132,8 @@
                   :created_at             true
                   :updated_at             true}
                  (remove-ids-and-booleanize-timestamps dashboard-card)))
-          (is (= [{:size_x 2
-                   :size_y 2
+          (is (= [{:size_x 4
+                   :size_y 4
                    :col    4
                    :row    4}]
                  (map (partial into {})
@@ -1284,8 +1285,8 @@
                     DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
                     Card          [{series-id-1 :id}   {:name "Series Card"}]]
       (with-dashboards-in-writeable-collection [dashboard-id]
-        (is (= {:size_x                 2
-                :size_y                 2
+        (is (= {:size_x                 4
+                :size_y                 4
                 :col                    0
                 :row                    0
                 :series                 []
@@ -1294,8 +1295,8 @@
                 :created_at             true
                 :updated_at             true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-1))))
-        (is (= {:size_x                 2
-                :size_y                 2
+        (is (= {:size_x                 4
+                :size_y                 4
                 :col                    0
                 :row                    0
                 :parameter_mappings     []
@@ -1375,8 +1376,8 @@
                                   :model_id     dashboard-id
                                   :object       {:name         "b"
                                                  :description  nil
-                                                 :cards        [{:size_x   2
-                                                                 :size_y   2
+                                                 :cards        [{:size_x  4
+                                                                 :size_y  4
                                                                  :row     0
                                                                  :col     0
                                                                  :card_id 123
@@ -1387,8 +1388,8 @@
                                   :user_id  (mt/user->id :crowberto)
                                   :object   {:name         "c"
                                              :description  "something"
-                                             :cards        [{:size_x   4
-                                                             :size_y   3
+                                             :cards        [{:size_x  5
+                                                             :size_y  3
                                                              :row     0
                                                              :col     0
                                                              :card_id 123
@@ -1401,10 +1402,10 @@
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         {:before {:name        "b"
                                        :description nil
-                                       :cards       [{:series nil, :size_y 2, :size_x 2}]}
+                                       :cards       [{:series nil, :size_y 4, :size_x 4}]}
                               :after  {:name        "c"
                                        :description "something"
-                                       :cards       [{:series [8 9], :size_y 3, :size_x 4}]}}
+                                       :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
                :description  "renamed it from \"b\" to \"c\", added a description, rearranged the cards and added some series to card 123."}
               {:is_reversion false
                :is_creation  true
@@ -1874,12 +1875,14 @@
                                                              :slug                  "static_category"
                                                              :id                    "_STATIC_CATEGORY_",
                                                              :type                  "category",
+                                                             :values_query_type     "search"
                                                              :values_source_type    "static-list"
                                                              :values_source_config {"values" ["BBQ" "Bakery" "Bar"]}}]})]
           (is (= [{:name                  "Static Category",
                    :slug                  "static_category"
                    :id                    "_STATIC_CATEGORY_",
                    :type                  "category",
+                   :values_query_type     "search"
                    :values_source_type    "static-list"
                    :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                  (:parameters dashboard))))))
@@ -2025,7 +2028,8 @@
 
 (deftest chain-filter-should-use-cached-field-values-test
   (testing "Chain filter endpoints should use cached FieldValues if applicable (#13832)"
-    (mt/with-temp-vals-in-db FieldValues (db/select-one-id FieldValues :field_id (mt/id :categories :name)) {:values ["Good" "Bad"]}
+    ;; ignore the cache entries added by #23699
+    (mt/with-temp-vals-in-db FieldValues (db/select-one-id FieldValues :field_id (mt/id :categories :name) :hash_key nil) {:values ["Good" "Bad"]}
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
           (let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_")]

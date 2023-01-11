@@ -41,8 +41,8 @@
     (is (= {:name         "Test Dashboard"
             :description  nil
             :cache_ttl    nil
-            :cards        [{:size_x   2
-                            :size_y   2
+            :cards        [{:size_x  4
+                            :size_y  4
                             :row     0
                             :col     0
                             :id      true
@@ -76,8 +76,8 @@
            :cards       []}
           {:name        "Diff Test"
            :description nil
-           :cards       [{:size_x   2
-                          :size_y   2
+           :cards       [{:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      1
@@ -90,15 +90,15 @@
           {:name        "Diff Test"
            :description nil
            :cache_ttl   333
-           :cards       [{:size_x   2
-                          :size_y   2
+           :cards       [{:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      1
                           :card_id 1
                           :series  [5 6]}
-                         {:size_x   2
-                          :size_y   2
+                         {:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      2
@@ -107,15 +107,15 @@
           {:name        "Diff Test"
            :description nil
            :cache_ttl   1227
-           :cards       [{:size_x   2
-                          :size_y   2
+           :cards       [{:size_x  4
+                          :size_y  4
                           :row     0
                           :col     0
                           :id      1
                           :card_id 1
                           :series  [4 5]}
-                         {:size_x   2
-                          :size_y   2
+                         {:size_x  4
+                          :size_y  4
                           :row     2
                           :col     0
                           :id      2
@@ -144,8 +144,8 @@
         (is (= {:name        "Test Dashboard"
                 :description nil
                 :cache_ttl   nil
-                :cards       [{:size_x  2
-                               :size_y  2
+                :cards       [{:size_x  4
+                               :size_y  4
                                :row     0
                                :col     0
                                :id      true
@@ -166,8 +166,8 @@
         (is (= {:name        "Test Dashboard"
                 :description nil
                 :cache_ttl   nil
-                :cards       [{:size_x  2
-                               :size_y  2
+                :cards       [{:size_x  4
+                               :size_y  4
                                :row     0
                                :col     0
                                :id      false
@@ -346,17 +346,59 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                   :slug   "category_name"
-                                                                   :id     "_CATEGORY_NAME_"
-                                                                   :type   "category"
-                                                                   :target target}]}]
+        (mt/with-temp* [Card      [{card-id :id}]
+                        Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                     :slug   "category_name"
+                                                                     :id     "_CATEGORY_NAME_"
+                                                                     :type   "category"
+                                                                     :values_query_type    "list"
+                                                                     :values_source_type   "card"
+                                                                     :values_source_config {:card_id card-id
+                                                                                            :value_field [:field 2 nil]}
+                                                                     :target target}]}]]
           (is (= [{:name   "Category Name"
                    :slug   "category_name"
                    :id     "_CATEGORY_NAME_"
                    :type   :category
-                   :target expected}]
+                   :target expected
+                   :values_query_type "list",
+                   :values_source_type "card",
+                   :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
                  (db/select-one-field :parameters Dashboard :id dashboard-id))))))))
+
+(deftest should-add-default-values-source-test
+  (testing "shoudld add default if not exists"
+    (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                               :slug   "category_name"
+                                                               :id     "_CATEGORY_NAME_"
+                                                               :type   "category"}]}]
+      (is (=? [{:name                 "Category Name"
+                :slug                 "category_name"
+                :id                   "_CATEGORY_NAME_"
+                :type                 :category
+                :values_query_type    "list",
+                :values_source_type   nil,
+                :values_source_config {}}]
+              (db/select-one-field :parameters Dashboard :id dashboard-id)))))
+
+  (testing "shoudld not override if existsed "
+    (mt/with-temp* [Card      [{card-id :id}]
+                    Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                  :slug   "category_name"
+                                                                  :id     "_CATEGORY_NAME_"
+                                                                  :type   "category"
+                                                                  :values_query_type    "list"
+                                                                  :values_source_type   "card"
+                                                                  :values_source_config {:card_id card-id
+                                                                                         :value_field [:field 2 nil]}}]}]]
+      (is (=? [{:name                 "Category Name"
+                :slug                 "category_name"
+                :id                   "_CATEGORY_NAME_"
+                :type                 :category
+                :values_query_type    "list",
+                :values_source_type   "card",
+                :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
+              (db/select-one-field :parameters Dashboard :id dashboard-id))))))
 
 (deftest identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"

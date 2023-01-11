@@ -6,6 +6,7 @@
    [clojure.tools.reader.edn :as edn]
    [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Field FieldValues Secret Table]]
@@ -272,18 +273,18 @@
 
 (defn- copy-db-fks! [old-db-id new-db-id]
   (doseq [{:keys [source-field source-table target-field target-table]}
-          (db/query {:select    [[:source-field.name :source-field]
-                                 [:source-table.name :source-table]
-                                 [:target-field.name   :target-field]
-                                 [:target-table.name   :target-table]]
-                     :from      [[Field :source-field]]
-                     :left-join [[Table :source-table] [:= :source-field.table_id :source-table.id]
-                                 [Field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
-                                 [Table :target-table] [:= :target-field.table_id :target-table.id]]
-                     :where     [:and
-                                 [:= :source-table.db_id old-db-id]
-                                 [:= :target-table.db_id old-db-id]
-                                 [:not= :source-field.fk_target_field_id nil]]})]
+          (mdb.query/query {:select    [[:source-field.name :source-field]
+                                        [:source-table.name :source-table]
+                                        [:target-field.name   :target-field]
+                                        [:target-table.name   :target-table]]
+                            :from      [[:metabase_field :source-field]]
+                            :left-join [[:metabase_table :source-table] [:= :source-field.table_id :source-table.id]
+                                        [:metabase_field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
+                                        [:metabase_table :target-table] [:= :target-field.table_id :target-table.id]]
+                            :where     [:and
+                                        [:= :source-table.db_id old-db-id]
+                                        [:= :target-table.db_id old-db-id]
+                                        [:not= :source-field.fk_target_field_id nil]]})]
     (db/update! Field (the-field-id (the-table-id new-db-id source-table) source-field)
       :fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field))))
 

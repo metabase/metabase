@@ -57,11 +57,11 @@
 
 (def ^:private TokenStatus
   {:valid                               schema/Bool
-   :status                              su/NonBlankStringPlumatic
-   (schema/optional-key :error-details) (schema/maybe su/NonBlankStringPlumatic)
-   (schema/optional-key :features)      [su/NonBlankStringPlumatic]
+   :status                              su/NonBlankString
+   (schema/optional-key :error-details) (schema/maybe su/NonBlankString)
+   (schema/optional-key :features)      [su/NonBlankString]
    (schema/optional-key :trial)         schema/Bool
-   (schema/optional-key :valid_thru)    su/NonBlankStringPlumatic ; ISO 8601 timestamp
+   (schema/optional-key :valid_thru)    su/NonBlankString ; ISO 8601 timestamp
    ;; don't explode in the future if we add more to the response! lol
    schema/Any                           schema/Any})
 
@@ -113,7 +113,7 @@
    fetch-token-status*
    :ttl/threshold (* 1000 60 5)))
 
-(schema/defn ^:private valid-token->features* :- #{su/NonBlankStringPlumatic}
+(schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
   [token :- ValidToken]
   (let [{:keys [valid status features error-details]} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
@@ -170,7 +170,7 @@
                        (log/debug e (trs "Error validating token")))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
-  (schema/defn ^:private token-features :- #{su/NonBlankStringPlumatic}
+  (schema/defn ^:private token-features :- #{su/NonBlankString}
     "Get the features associated with the system's premium features token."
     []
     (try
