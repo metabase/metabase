@@ -1,5 +1,6 @@
 import { dashboard } from "./dashboards";
-import { question, model, tableRowsQuery } from "./questions";
+import { model } from "./models";
+import { question, tableRowsQuery } from "./questions";
 import { pulse } from "./pulses";
 
 export const exportFormats = ["csv", "xlsx", "json"];
