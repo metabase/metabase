@@ -81,23 +81,24 @@ describe("DataPicker — picking models", () => {
     const { onChange } = await setup();
 
     userEvent.click(screen.getByText(/Models/i));
-    const listItem = await screen.findByRole("menuitem", {
-      name: SAMPLE_MODEL.name,
-    });
-    userEvent.click(listItem);
+    userEvent.click(await screen.findByText(SAMPLE_MODEL.name));
+    userEvent.click(screen.getByText(SAMPLE_MODEL_2.name));
 
-    expect(listItem).toHaveAttribute("aria-selected", "true");
+    const selectedItem = screen.getByRole("menuitem", {
+      name: SAMPLE_MODEL_2.name,
+    });
+    expect(selectedItem).toHaveAttribute("aria-selected", "true");
     expect(onChange).toHaveBeenCalledWith({
       type: "models",
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
       schemaId: ROOT_COLLECTION_MODEL_VIRTUAL_SCHEMA_ID,
       collectionId: "root",
-      tableIds: [getQuestionVirtualTableId(SAMPLE_MODEL.id)],
+      tableIds: [getQuestionVirtualTableId(SAMPLE_MODEL_2.id)],
     });
   });
 
   it("allows to pick multiple models", async () => {
-    const { onChange } = await setup();
+    const { onChange } = await setup({ isMultiSelect: true });
 
     userEvent.click(screen.getByText(/Models/i));
     userEvent.click(await screen.findByText(SAMPLE_MODEL.name));

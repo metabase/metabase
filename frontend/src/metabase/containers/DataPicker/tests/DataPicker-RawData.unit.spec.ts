@@ -47,7 +47,7 @@ describe("DataPicker — picking raw data", () => {
   });
 
   it("allows to pick multiple tables", async () => {
-    const { onChange } = await setup();
+    const { onChange } = await setup({ isMultiSelect: true });
 
     userEvent.click(screen.getByText(/Raw Data/i));
     userEvent.click(await screen.findByText(/Orders/i));
@@ -91,12 +91,13 @@ describe("DataPicker — picking raw data", () => {
     const { onChange } = await setup();
 
     userEvent.click(screen.getByText(/Raw Data/i));
-    const tableListItem = await screen.findByRole("menuitem", {
+    userEvent.click(await screen.findByText("Orders"));
+    userEvent.click(screen.getByText("Products"));
+
+    const selectedItem = screen.getByRole("menuitem", {
       name: /Products/i,
     });
-    userEvent.click(tableListItem);
-
-    expect(tableListItem).toHaveAttribute("aria-selected", "true");
+    expect(selectedItem).toHaveAttribute("aria-selected", "true");
     expect(onChange).toHaveBeenCalledWith({
       type: "raw-data",
       databaseId: SAMPLE_DATABASE.id,
