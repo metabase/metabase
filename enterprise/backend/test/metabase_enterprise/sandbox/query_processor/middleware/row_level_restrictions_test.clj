@@ -244,7 +244,9 @@
 
 (deftest e2e-test
   ;; ->honeysql is not implemented for mongo
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries) :mongo)
+  (mt/test-drivers (into #{}
+                         (filter #(isa? driver/hierarchy % :sql))
+                         (mt/normal-drivers-with-feature :nested-queries))
     (testing "When querying with full permissions, no changes should be made"
       (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" 50}}
