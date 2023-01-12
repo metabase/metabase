@@ -356,7 +356,9 @@
 
       (and (= (:values field-values) values)
            (= (:has_more_values field-values) has_more_values))
-      (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+      (do
+        (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+        ::fv-skipped)
 
       ;; if the FieldValues object already exists then update values in it
       (and field-values values)
@@ -395,10 +397,16 @@
   (when (field-should-have-field-values? field)
     (let [existing (db/select-one FieldValues :field_id field-id :type :full)]
       (if (or (not existing) (inactive? existing))
-        (when-let [result (#{::fv-created ::fv-updated} (create-or-update-full-field-values! field human-readable-values))]
-          (when (= result ::fv-updated)
-            (db/update! FieldValues (:id existing) :last_used_at :%now))
-          (db/select-one FieldValues :field_id field-id :type :full))
+        (case (create-or-update-full-field-values! field human-readable-values)
+              ::fv-deleted
+              nil
+
+              ::fv-created
+              (db/select-one FieldValues :field_id field-id :type :full)
+
+              (do
+                (db/update! FieldValues (:id existing) :last_used_at :%now)
+                (db/select-one FieldValues :field_id field-id :type :full)))
         (do
           (db/update! FieldValues (:id existing) :last_used_at :%now)
           existing)))))
