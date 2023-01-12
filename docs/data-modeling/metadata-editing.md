@@ -165,8 +165,3 @@ You can also select from several options:
 - **Alphabetical.** A, B, C... however the alphabet works.
 - **Custom.** You choose the order. Metabase will automatically switch to custom if you rearrange any of the columns.
 - **Smart.** Metabase chooses for you.
-
-## Further reading
-
-- [Segments and metrics](./segments-and-metrics.md)
-- [Models](./models.md)
