@@ -6,47 +6,73 @@
    (liquibase.database.core H2Database)
    (liquibase.database.jvm JdbcConnection)))
 
-(defn create-udfs! [^JdbcConnection conn]
-    ;; JSON_STRING_VALUE
-  (.execute (.createStatement conn)
-            "CREATE ALIAS IF NOT EXISTS JSON_STRING_VALUE AS $$
+(defn create-udfs! [conn]
+  ;; JSON_STRING_VALUE, like JSON_VALUE but returns a string
+  (.execute (.createStatement conn) "
+CREATE ALIAS IF NOT EXISTS JSON_STRING_VALUE AS $$
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
+import org.json.simple.JSONArray;
 @CODE
 String jsonStringValue(String s, String key) {
     Object obj = JSONValue.parse(s);
-    JSONObject jsonObject = (JSONObject) obj;
-    return String.valueOf(jsonObject.get(key));
+    if (obj instanceof JSONObject) {
+        JSONObject jsonObject = (JSONObject) obj;
+        return jsonObject.get(key).toString();
+    } else if (obj instanceof JSONArray) {
+        JSONArray jsonArray = (JSONArray) obj;
+        int keyInt = Integer.parseInt(key);
+        if (keyInt < jsonArray.size() && keyInt >= 0) {
+            return jsonArray.get(keyInt).toString();
+        } else {
+            return null;
+        }
+    } else {
+        return null;
+    }
 }
 $$;")
-  ;; JSON_MERGE_PATCH
-  ;; overrides the 1st keys with the 2nd as in https://www.rfc-editor.org/rfc/rfc7396
-  (.execute (.createStatement conn)
-            "CREATE ALIAS IF NOT EXISTS JSON_MERGE_PATCH AS $$
+  (.execute (.createStatement conn) "
+CREATE ALIAS IF NOT EXISTS JSON_KEYS AS $$
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
+import java.util.Set;
 @CODE
-String jsonMergePatch(String s1, String s2) {
-    Object obj1 = JSONValue.parse(s1);
-    Object obj2 = JSONValue.parse(s2);
-    JSONObject jsonObject1 = (JSONObject) obj1;
-    JSONObject jsonObject2 = (JSONObject) obj2;
-    jsonObject1.putAll(jsonObject2);
-    return jsonObject1.toJSONString();
+String jsonKeys(String json) {
+  Object obj = JSONValue.parse(json);
+  JSONObject jsonObject = (JSONObject) obj;
+  Set<String> jsonObject.keySet();
+  return keys.toString();
+}
+$$;")
+  (.execute (.createStatement conn) "
+CREATE ALIAS IF NOT EXISTS JSON_VALUES AS $$
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+import java.util.Collection;
+@CODE
+String jsonValues(String json) {
+  Object obj = JSONValue.parse(json);
+  JSONObject jsonObject = (JSONObject) obj;
+  return jsonObject.toJSONString();
 }
 $$;")
   ;; JSON_SET
-  ;; replaces existing values and adds nonexisting values
+  ;; replaces existing values and adds nonexisting values.
+  ;; converts values to strings
+  ;; only works for JSON Objects, not Arrays
   (.execute (.createStatement conn)
             "CREATE ALIAS IF NOT EXISTS JSON_SET AS $$
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 @CODE
 String jsonSet(String s, String key, String value) {
-    Object obj = JSONValue.parse(s);
-    JSONObject jsonObject = (JSONObject) obj;
-    jsonObject.put(key, value);
-    return jsonObject.toJSONString();
+    Object sObj = JSONValue.parse(s);
+    Object valueObj = JSONValue.parse(value);
+    JSONObject sJSON = (JSONObject) sObj;
+    JSONObject valueJSON = (JSONObject) valueObj;
+    sJSON.put(key, valueJSON);
+    return sJSON.toJSONString();
 }
 $$;"))
 

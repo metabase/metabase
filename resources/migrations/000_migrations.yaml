@@ -13932,6 +13932,135 @@ databaseChangeLog:
               - column:
                   name: context
             indexName: idx_query_execution_context
+              
+  - changeSet:
+      id: v46.00-044
+      author: calherries 
+      comment: Added 0.46.0 -- converts
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,mysql,mariadb
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              WITH column_settings AS (
+                  SELECT id, visualization_settings::json->'column_settings' AS settings
+                  FROM report_card
+                  WHERE visualization_settings IS NOT NULL 
+                    AND visualization_settings::json->'column_settings' IS NOT NULL
+              ),
+              kvs AS (
+                  SELECT id, 
+                      json_object_keys(settings)::json AS key, 
+                      (settings->json_object_keys(settings))::json AS value 
+                  FROM column_settings
+              ),
+              new_kvs AS (
+                  SELECT id, 
+                      CASE 
+                          WHEN key->>0 = 'ref' AND key->1->>0 = 'field-id' THEN 
+                              '["ref",["field",' || (key->1->1)::text || ',null]]' 
+                          ELSE key::text 
+                      END AS key, 
+                      value
+                  FROM kvs
+              ),
+              new_column_settings AS (
+                  SELECT id, json_object_agg(new_kvs.key, new_kvs.value) AS column_settings
+                  FROM new_kvs 
+                  GROUP BY id
+              )
+              UPDATE report_card c
+              SET visualization_settings = jsonb_set(c.visualization_settings::jsonb, '{column_settings}', s.column_settings::jsonb)
+              FROM new_column_settings s
+              WHERE c.id = s.id;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE report_card c
+              JOIN (
+              SELECT
+                id, JSON_OBJECTAGG(k, v) AS column_settings
+              FROM (
+              SELECT
+                id,
+                CASE WHEN JSON_EXTRACT(JSON_UNQUOTE(k), '$[0]') = 'ref' AND JSON_EXTRACT(JSON_UNQUOTE(k), '$[1][0]') = 'field-id' 
+                  THEN CONCAT('["ref",["field",', JSON_EXTRACT(JSON_UNQUOTE(k), '$[1][1]'), ',null]]')
+                  ELSE JSON_UNQUOTE(k)
+                END AS k,
+                v
+              FROM (
+                SELECT 
+                  id
+                  , JSON_EXTRACT(JSON_KEYS(settings), CONCAT('$[', idx, ']')) AS k
+                  , JSON_EXTRACT(JSON_EXTRACT(settings, '$.*'), CONCAT('$[', idx, ']')) AS v
+                FROM (
+                    SELECT id, JSON_EXTRACT(visualization_settings, '$.column_settings') AS settings
+                    FROM report_card
+                    WHERE visualization_settings IS NOT NULL 
+                      AND JSON_EXTRACT(visualization_settings, '$.column_settings') IS NOT NULL
+                ) AS column_settings
+                JOIN ( 
+                    SELECT a.x + b.x * 4 + c.x * 16 + d.x * 64 + e.x * 256 AS idx
+                    FROM (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) a
+                    JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) b
+                    JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) c
+                    JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) d
+                    JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) e
+                  ) AS indices -- 0 to 1023. Assumes there are no more than 1024 columns for every card.
+                WHERE JSON_EXTRACT(JSON_KEYS(settings), CONCAT('$[', idx, ']')) IS NOT NULL
+              ) AS kvs
+              ) AS kvs
+              GROUP BY id 
+              ) AS column_settings
+              SET c.visualization_settings = JSON_SET(c.visualization_settings, '$.column_settings', column_settings.column_settings)
+              WHERE column_settings.id = c.id 
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE report_card c
+              JOIN (
+              SELECT
+                id, JSON_OBJECTAGG(k: v) AS column_settings
+              FROM (
+              SELECT
+                id,
+                CASE
+                    WHEN JSON_STRING_VALUE(JSON_STRING_VALUE(k, 1), 0) = 'field-id' 
+                    THEN CONCAT('["ref",["field",', JSON_STRING_VALUE(JSON_STRING_VALUE(k, 1), 1), ',null]]')
+                    ELSE k
+                END AS k,
+                (v FORMAT JSON) as v
+              FROM (
+                SELECT 
+                  id
+                  , JSON_STRING_VALUE(JSON_KEYS(settings), idx) as k
+                  , JSON_STRING_VALUE(JSON_VALUES(settings), idx) as v
+                FROM (
+                    SELECT id, JSON_STRING_VALUE(visualization_settings, 'column_settings') AS settings
+                    FROM report_card
+                    WHERE visualization_settings IS NOT NULL
+                      AND JSON_STRING_VALUE(visualization_settings, 'column_settings') IS NOT NULL
+                ) as column_settings
+                JOIN ( 
+                  SELECT a.x + b.x * 4 + c.x * 16 + d.x * 64 + e.x * 256 AS idx
+                  FROM (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) a
+                  JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) b
+                  JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) c
+                  JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) d
+                  JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) e
+                ) AS indices -- 0 to 1023. Assumes there are no more than 1024 columns for every card.
+                WHERE JSON_STRING_VALUE(JSON_KEYS(settings), idx) IS NOT NULL
+              ) as kvs
+              ) as kvs2
+              GROUP BY id
+              ) as column_settings
+              SET visualization_settings = JSON_SET(visualization_settings, 'column_settings', column_settings.column_settings)
+              WHERE column_settings.id = c.id
+                AND visualization_settings IS NOT NULL
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
