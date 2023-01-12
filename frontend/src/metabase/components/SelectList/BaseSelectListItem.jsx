@@ -13,7 +13,7 @@ const propTypes = {
   size: PropTypes.oneOf(["small", "medium"]),
   className: PropTypes.string,
   children: PropTypes.node.isRequired,
-  as: PropTypes.element,
+  as: PropTypes.any,
 };
 
 export function BaseSelectListItem({
@@ -32,6 +32,7 @@ export function BaseSelectListItem({
     <Root
       ref={isSelected ? ref : undefined}
       isSelected={isSelected}
+      aria-selected={isSelected}
       role="menuitem"
       tabIndex={0}
       size={size}

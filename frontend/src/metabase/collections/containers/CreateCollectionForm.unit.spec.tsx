@@ -2,20 +2,30 @@ import React from "react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 
-import { User } from "metabase-types/api";
+import { Collection, User } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import { createMockEntitiesState } from "metabase-types/store/mocks";
 
 import CreateCollectionForm from "./CreateCollectionForm";
+
+const ROOT_COLLECTION = {
+  id: "root",
+  name: "Our analytics",
+  can_write: true,
+} as Collection;
 
 type SetupOpts = {
   user?: User;
   onCancel?: (() => void) | null;
 };
 
-function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
+function setup({
+  user = createMockUser({ is_superuser: true }),
+  onCancel = jest.fn(),
+}: SetupOpts = {}) {
   nock(location.origin)
     .post("/api/collection")
     .reply(200, (url, body) => {
@@ -25,7 +35,14 @@ function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
     });
 
   renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
-    currentUser: user,
+    storeInitialState: {
+      currentUser: user,
+      entities: createMockEntitiesState({
+        collections: {
+          root: ROOT_COLLECTION,
+        },
+      }),
+    },
   });
 
   return { onCancel };
@@ -33,15 +50,7 @@ function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
 
 describe("CreateCollectionForm", () => {
   beforeEach(() => {
-    nock(location.origin)
-      .get("/api/collection")
-      .reply(200, [
-        {
-          id: "root",
-          name: "Our analytics",
-          can_write: true,
-        },
-      ]);
+    nock(location.origin).get("/api/collection").reply(200, [ROOT_COLLECTION]);
   });
 
   afterEach(() => {
@@ -76,10 +85,12 @@ describe("CreateCollectionForm", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("calls onCancel when cancel button is clicked", () => {
+  it("calls onCancel when cancel button is clicked", async () => {
     const { onCancel } = setup();
     userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(onCancel).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(onCancel).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("Collection authority level", () => {

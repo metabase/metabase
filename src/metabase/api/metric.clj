@@ -20,6 +20,7 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new `Metric`."
   [:as {{:keys [name description table_id definition], :as body} :body}]
@@ -52,6 +53,7 @@
                :query_description
                (api.qd/generate-query-description table (:definition metric)))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch `Metric` with ID."
   [id]
@@ -65,6 +67,7 @@
       (for [metric metrics]
         (assoc metric :database_id (table-id->db-id (:table_id metric)))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch *all* `Metrics`."
   []
@@ -95,6 +98,7 @@
       (events/publish-event! (if archive? :metric-delete :metric-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a `Metric` with ID."
   [id :as {{:keys [name definition revision_message archived caveats description how_is_this_calculated
@@ -111,6 +115,7 @@
    show_in_getting_started (s/maybe s/Bool)}
   (write-check-and-update-metric! id body))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id/important_fields"
   "Update the important `Fields` for a `Metric` with ID.
    (This is used for the Getting Started guide)."
@@ -132,6 +137,7 @@
     {:success true}))
 
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Archive a Metric. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [id revision_message]
@@ -142,6 +148,7 @@
   api/generic-204-no-content)
 
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for `Metric` with ID."
   [id]
@@ -149,6 +156,7 @@
   (revision/revisions+details Metric id))
 
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/revert"
   "Revert a `Metric` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
@@ -160,6 +168,7 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]

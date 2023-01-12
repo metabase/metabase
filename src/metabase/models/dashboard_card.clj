@@ -1,6 +1,7 @@
 (ns metabase.models.dashboard-card
   (:require
    [clojure.set :as set]
+   [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.events :as events]
    [metabase.models.card :refer [Card]]
@@ -12,7 +13,6 @@
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -101,15 +101,15 @@
   from the visualization with same type (line bar or whatever),
   which is a separate option in line area or bar visualization"
   [dashcard]
-  (db/query {:select [:newcard.*]
-             :from [[:report_dashboardcard :dashcard]]
-             :left-join [[:dashboardcard_series :dashcardseries]
-                         [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                         [:report_card :newcard]
-                         [:= :dashcardseries.card_id :newcard.id]]
-             :where [:and
-                     [:= :newcard.archived false]
-                     [:= :dashcard.id (:id dashcard)]]}))
+  (mdb.query/query {:select    [:newcard.*]
+                    :from      [[:report_dashboardcard :dashcard]]
+                    :left-join [[:dashboardcard_series :dashcardseries]
+                                [:= :dashcard.id :dashcardseries.dashboardcard_id]
+                                [:report_card :newcard]
+                                [:= :dashcardseries.card_id :newcard.id]]
+                    :where     [:and
+                                [:= :newcard.archived false]
+                                [:= :dashcard.id (:id dashcard)]]}))
 
 (s/defn update-dashboard-card-series!
   "Update the DashboardCardSeries for a given DashboardCard.
@@ -156,10 +156,10 @@
                                    :col                    col
                                    :parameter_mappings     parameter_mappings
                                    :visualization_settings visualization_settings}
-                                  ;; Allow changing card for model_actions
+                                  ;; Allow changing card for actions
                                   ;; This is to preserve the existing behavior of questions and card_id
                                   ;; I don't know why card_id couldn't be changed for questions though.
-                                  (:action_slug visualization_settings) (assoc :card_id card_id))))
+                                  action_id (assoc :card_id card_id))))
      ;; update series (only if they changed)
      (when-not (= series (map :card_id (db/select [DashboardCardSeries :card_id]
                                                   :dashboardcard_id id
@@ -189,19 +189,14 @@
    DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
   [dashboard-card :- NewDashboardCard]
   (let [{:keys [dashboard_id card_id action_id parameter_mappings visualization_settings size_x size_y row col series]
-         :or   {size_x 2, size_y 2, series []}} dashboard-card]
-    ;; make sure the Card isn't a writeback QueryAction. It doesn't make sense to add these to a Dashboard since we're
-    ;; not supposed to be executing them for results
-    (when (db/select-one-field :is_write Card :id card_id)
-      (throw (ex-info (tru "You cannot add an is_write Card to a Dashboard.")
-                      {:status-code 400})))
+         :or   {size_x 4, size_y 4, series []}} dashboard-card]
     (db/transaction
      (let [dashboard-card (db/insert! DashboardCard
                                       :dashboard_id           dashboard_id
                                       :card_id                card_id
                                       :action_id              action_id
-                                      :size_x                  size_x
-                                      :size_y                  size_y
+                                      :size_x                 size_x
+                                      :size_y                 size_y
                                       :row                    (or row 0)
                                       :col                    (or col 0)
                                       :parameter_mappings     (or parameter_mappings [])

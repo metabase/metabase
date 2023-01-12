@@ -108,6 +108,7 @@
   (public-settings/anon-tracking-enabled! (or (nil? allow-tracking?)
                                               allow-tracking?)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
@@ -170,6 +171,7 @@
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/validate"
   "Validate that we can connect to a database given a set of details."
   [:as {{{:keys [engine details]} :details, token :token} :body}]
@@ -299,6 +301,7 @@
 (defn- admin-checklist []
   (partition-steps-into-groups (add-next-step-info (admin-checklist-values))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
@@ -307,6 +310,7 @@
 
 ;; User defaults endpoint
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/user_defaults"
   "Returns object containing default user details for initial setup, if configured,
    and if the provided token value matches the token in the configuration value."

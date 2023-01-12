@@ -275,7 +275,7 @@
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`
 (defmacro defendpoint-schema
-  "Define an API function.
+  "Define an API function with Plumatic Schema.
    This automatically does several things:
 
    -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
@@ -290,8 +290,11 @@
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
       the function in the generated `defroutes` form.
 
-   -  Generates a super-sophisticated Markdown-formatted docstring"
-  {:arglists '([method route docstr? args schemas-map? & body])}
+   -  Generates a super-sophisticated Markdown-formatted docstring.
+
+  DEPRECATED: use `defendpoint` instead where we use Malli to define the schema."
+  {:arglists   '([method route docstr? args schemas-map? & body])
+   :deprecated "0.46.0"}
   [& defendpoint-args]
   (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
@@ -326,6 +329,20 @@
                                                (wrap-response-if-needed
                                                 (do ~@body))))))))
 
+(defmacro defendpoint-async-schema
+  "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params.
+
+  DEPRECATED: use `defendpoint-async` instead where we use Malli to define the schema."
+  {:arglists   '([method route docstr? args schemas-map? & body])
+   :deprecated "0.46.0"}
+  [& defendpoint-args]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
+    `(defendpoint* ~(assoc defendpoint-args
+                           :args []
+                           :body `((fn ~args
+                                     ~@(validate-params arg->schema)
+                                     ~@body))))))
+
 (defmacro defendpoint-async
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
   {:arglists '([method route docstr? args schemas-map? & body])}
@@ -334,7 +351,7 @@
     `(defendpoint* ~(assoc defendpoint-args
                            :args []
                            :body `((fn ~args
-                                     ~@(validate-params arg->schema)
+                                     ~@(malli-validate-params arg->schema)
                                      ~@body))))))
 
 (defn- namespace->api-route-fns
@@ -451,13 +468,6 @@
     (check-404 object)
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
-
-(defn check-is-readonly
-  "Check that the object has `:is_write` = false, or throw a `405`. Returns `object` as-is if check passes."
-  [object]
-  (u/prog1 object
-    (check (not (:is_write object))
-      [405 {:message (tru "Write queries are only executable via the Actions API."), :error_code "is_not_readonly"}])))
 
 (defn check-valid-page-params
   "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."

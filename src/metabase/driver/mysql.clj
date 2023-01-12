@@ -13,6 +13,7 @@
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -33,8 +34,10 @@
   (:import
    (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)
-   (metabase.util.honeysql_extensions Identifier)))
+   (metabase.util.honey_sql_1_extensions Identifier)))
 (comment
+  ;; method impls live in these namespaces.
+  mysql.actions/keep-me
   mysql.ddl/keep-me)
 
 (driver/register! :mysql, :parent :sql-jdbc)
@@ -68,6 +71,11 @@
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 
+(doseq [feature [:actions :actions/custom]]
+  (defmethod driver/database-supports? [:mysql feature]
+    [driver _feat _db]
+    ;; Only supported for MySQL right now. Revise when a child driver is added.
+    (= driver :mysql)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -141,7 +149,9 @@
   ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
   (if (= unit :millisecond)
     (recur driver hsql-form (/ amount 1000.0) :second)
-    (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %s %s" amount (name unit))))))
+    (case hx/*honey-sql-version*
+      1 (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %s %s" amount (name unit))))
+      2 [:date_add hsql-form [:raw (format "INTERVAL %s %s" amount (name unit))]])))
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql

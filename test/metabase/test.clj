@@ -16,7 +16,8 @@
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.email-test :as et]
    [metabase.http-client :as client]
-   [metabase.models.action :as action]
+   [metabase.models :refer [PermissionsGroupMembership User]]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test :as qp.test]
@@ -45,11 +46,11 @@
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
    [toucan.db :as db]
+   [toucan.models :as models]
    [toucan.util.test :as tt]))
 
 (humane-are/install!)
 (humane-test-output/activate!)
-(alter-var-root #'action/*data-apps-enabled* (constantly true))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
@@ -206,6 +207,7 @@
   secret-value-equals?
   select-keys-sequentially
   throw-if-called
+  with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes
   with-env-keys-renamed-by
@@ -287,6 +289,39 @@
       ...)"
   [clock & body]
   `(do-with-clock ~clock (fn [] ~@body)))
+
+(defn do-with-single-admin-user
+  [attributes thunk]
+  (let [existing-admin-memberships (db/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
+        _                          (db/simple-delete! PermissionsGroupMembership :group_id (:id (perms-group/admin)))
+        existing-admin-ids         (db/select-ids User :is_superuser true)
+        _                          (when (seq existing-admin-ids)
+                                     (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser false))
+        temp-admin                 (db/insert! User (merge (with-temp-defaults User)
+                                                           attributes
+                                                           {:is_superuser true}))
+        primary-key                (models/primary-key User)]
+    (try
+      (thunk temp-admin)
+      (finally
+        (db/delete! User primary-key (primary-key temp-admin))
+        (when (seq existing-admin-ids)
+          (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser true))
+        (db/insert-many! PermissionsGroupMembership existing-admin-memberships)))))
+
+(defmacro with-single-admin-user
+  "Creates an admin user (with details described in the `options-map`) and (temporarily) removes the administrative
+  powers of all other users in the database.
+
+  Example:
+
+  (testing \"Check that the last superuser cannot deactivate themselves\"
+    (mt/with-single-admin-user [{id :id}]
+      (is (= \"You cannot remove the last member of the 'Admin' group!\"
+             (mt/user-http-request :crowberto :delete 400 (format \"user/%d\" id))))))"
+  [[binding-form & [options-map]] & body]
+  `(do-with-single-admin-user ~options-map (fn [~binding-form]
+                                             ~@body)))
 
 ;;;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
 

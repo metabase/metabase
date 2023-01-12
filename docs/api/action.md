@@ -20,7 +20,7 @@ Returns cards that can be used for QueryActions.
 
 ### PARAMS:
 
-*  **`model-id`** value must be an integer greater than zero.
+*  **`model-id`** integer greater than 0
 
 ## `GET /api/action/:action-id`
 
@@ -30,26 +30,35 @@ Returns cards that can be used for QueryActions.
 
 ## `POST /api/action/`
 
-Create a new HTTP action.
+Create a new action.
 
 ### PARAMS:
 
-*  **`type`** Only http actions are supported at this time.
+*  **`visualization_settings`** nullable map
 
-*  **`name`** value must be a string.
+*  **`parameters`** nullable sequence of map
 
-*  **`template`** value must be a map with schema: (
-  body (optional) : value may be nil, or if non-nil, value must be a string.
-  headers (optional) : value may be nil, or if non-nil, value must be a string.
-  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.
-  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.
-  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.
-  url : value must be a string.
-)
+*  **`description`** nullable string
 
-*  **`response_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`error_handle`** nullable string, and must be a valid json-query, something like '.item.title'
 
-*  **`error_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`database_id`** nullable integer greater than 0
+
+*  **`name`** string
+
+*  **`response_handle`** nullable string, and must be a valid json-query, something like '.item.title'
+
+*  **`template`** nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length 1 or longer >, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys
+
+*  **`type`** nullable Unsupported action type
+
+*  **`dataset_query`** nullable map
+
+*  **`model_id`** integer greater than 0
+
+*  **`kind`** nullable Unsupported implicit action kind
+
+*  **`parameter_mappings`** nullable map
 
 *  **`action`**
 
@@ -57,24 +66,33 @@ Create a new HTTP action.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+*  **`visualization_settings`** nullable map
 
-*  **`type`** Only http actions are supported at this time.
+*  **`parameters`** nullable sequence of map
 
-*  **`name`** value may be nil, or if non-nil, value must be a string.
+*  **`description`** nullable string
 
-*  **`template`** value may be nil, or if non-nil, value must be a map with schema: (
-  body (optional) : value may be nil, or if non-nil, value must be a string.
-  headers (optional) : value may be nil, or if non-nil, value must be a string.
-  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.
-  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.
-  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.
-  url : value must be a string.
-)
+*  **`error_handle`** nullable string, and must be a valid json-query, something like '.item.title'
 
-*  **`response_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`database_id`** nullable integer greater than 0
 
-*  **`error_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`name`** nullable string
+
+*  **`response_handle`** nullable string, and must be a valid json-query, something like '.item.title'
+
+*  **`template`** nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length 1 or longer >, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys
+
+*  **`type`** nullable Unsupported action type
+
+*  **`dataset_query`** nullable map
+
+*  **`model_id`** nullable integer greater than 0
+
+*  **`id`** integer greater than 0
+
+*  **`kind`** nullable Unsupported implicit action kind
+
+*  **`parameter_mappings`** nullable map
 
 *  **`action`**
 

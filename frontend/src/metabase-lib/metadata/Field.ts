@@ -4,33 +4,37 @@ import _ from "underscore";
 import moment from "moment-timezone";
 
 import { formatField, stripId } from "metabase/lib/formatting";
-import type { FieldFingerprint } from "metabase-types/api/field";
+import type {
+  DatasetColumn,
+  Field as IField,
+  FieldFingerprint,
+} from "metabase-types/api";
 import type { Field as FieldRef } from "metabase-types/types/Query";
 import {
+  isAddress,
+  isBoolean,
+  isCategory,
+  isCity,
+  isComment,
+  isCoordinate,
+  isCountry,
   isDate,
   isDateWithoutTime,
-  isTime,
+  isDescription,
+  isDimension,
+  isEntityName,
+  isFK,
+  isLocation,
+  isMetric,
   isNumber,
   isNumeric,
-  isBoolean,
+  isPK,
+  isScope,
+  isState,
   isString,
   isSummable,
-  isScope,
-  isCategory,
-  isAddress,
-  isCity,
-  isState,
+  isTime,
   isZipCode,
-  isCountry,
-  isCoordinate,
-  isLocation,
-  isDescription,
-  isComment,
-  isDimension,
-  isMetric,
-  isPK,
-  isFK,
-  isEntityName,
 } from "metabase-lib/types/utils/isa";
 import { getFilterOperators } from "metabase-lib/operators/utils";
 import { getFieldValues } from "metabase-lib/queries/utils/field";
@@ -70,6 +74,10 @@ class FieldInner extends Base {
 
   // added when creating "virtual fields" that are associated with a given query
   query?: StructuredQuery | NativeQuery;
+
+  getPlainObject(): IField {
+    return this._plainObject;
+  }
 
   getId() {
     if (Array.isArray(this.id)) {
@@ -436,7 +444,7 @@ class FieldInner extends Base {
     return this.isString();
   }
 
-  column(extra = {}) {
+  column(extra = {}): DatasetColumn {
     return this.dimension().column({
       source: "fields",
       ...extra,
@@ -478,6 +486,10 @@ class FieldInner extends Base {
    */
   foreign(foreignField) {
     return this.dimension().foreign(foreignField.dimension());
+  }
+
+  isVirtual() {
+    return typeof this.id !== "number";
   }
 
   /**

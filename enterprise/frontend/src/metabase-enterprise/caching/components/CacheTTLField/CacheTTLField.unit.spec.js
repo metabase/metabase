@@ -40,7 +40,7 @@ describe("CacheTTLField", () => {
 
   it("displays message", () => {
     setup({ message: "Cache results for" });
-    expect(screen.queryByText("Cache results for")).toBeInTheDocument();
+    expect(screen.getByText("Cache results for")).toBeInTheDocument();
   });
 
   it("calls onChange correctly", () => {

@@ -100,7 +100,7 @@
                         s/Keyword   s/Any}
                        field)))))))
 
-(deftest upgrade-to-v2-viz-settings-test
+(deftest ^:parallel upgrade-to-v2-viz-settings-test
   (let [migrate #(select-keys (#'mi/migrate-viz-settings %)
                               [:version :pie.percent_visibility])]
     (testing "show_legend -> inside"

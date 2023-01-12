@@ -6,6 +6,8 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
+  openQuestionActions,
+  visitQuestion,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -40,6 +42,7 @@ describe("scenarios > dashboard > filters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
@@ -52,9 +55,10 @@ describe("scenarios > dashboard > filters", () => {
     });
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
-    setupStructuredQuestionSource();
+    setFilter("Text or Category", "Is");
     mapFilterToQuestion();
+    editDropdown();
+    setupStructuredQuestionSource();
     saveDashboard();
     filterDashboard();
   });
@@ -68,9 +72,10 @@ describe("scenarios > dashboard > filters", () => {
     });
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
-    setupNativeQuestionSource();
+    setFilter("Text or Category", "Is");
     mapFilterToQuestion();
+    editDropdown();
+    setupNativeQuestionSource();
     saveDashboard();
     filterDashboard();
   });
@@ -83,54 +88,112 @@ describe("scenarios > dashboard > filters", () => {
     });
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
-    setupCustomList();
+    setFilter("Text or Category", "Is");
     mapFilterToQuestion();
+    editDropdown();
+    setupCustomList();
     saveDashboard();
     filterDashboard();
   });
+
+  it("should result in a warning being shown when archiving a question it uses", () => {
+    cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
+
+    cy.createQuestion(structuredQuestionDetails, {
+      wrapId: true,
+      idAlias: "structuredQuestionId",
+    });
+    cy.createQuestionAndDashboard({
+      questionDetails: dashboardQuestionDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+    setFilter("Text or Category", "Is");
+    mapFilterToQuestion();
+    editDropdown();
+    setupStructuredQuestionSource();
+    saveDashboard();
+
+    cy.intercept("GET", "/api/collection/root/items**").as("getItems");
+
+    cy.get("@structuredQuestionId").then(question_id => {
+      visitQuestion(question_id);
+      openQuestionActions();
+      cy.findByTestId("archive-button").click();
+      modal().within(() => {
+        cy.findByText(
+          "This question will be removed from any dashboards or pulses using it. It will also be removed from the filter that uses it to populate values.",
+        );
+      });
+    });
+  });
 });
 
+const editDropdown = () => {
+  cy.findByText("Dropdown list").click();
+  cy.findByText("Edit").click();
+};
+
 const setupStructuredQuestionSource = () => {
-  cy.findByText("Values from a model or question").click();
+  modal().within(() => {
+    cy.findByText("From another model or question").click();
+    cy.findByText("Pick a model or question…").click();
+  });
+
   modal().within(() => {
     cy.findByPlaceholderText(/Search for a question/).type("Categories");
     cy.findByText("Categories").click();
-    cy.button("Select column").click();
+    cy.button("Done").click();
   });
+
   modal().within(() => {
-    cy.findByText("Pick a column").click();
+    cy.findByText("Pick a column…").click();
   });
+
   popover().within(() => {
     cy.findByText("Category").click();
   });
+
   modal().within(() => {
+    cy.wait("@dataset");
+    cy.findByDisplayValue(/Gadget/).should("be.visible");
     cy.button("Done").click();
   });
 };
 
 const setupNativeQuestionSource = () => {
-  cy.findByText("Values from a model or question").click();
   modal().within(() => {
-    cy.findByText("Saved Questions").click();
+    cy.findByText("From another model or question").click();
+    cy.findByText("Pick a model or question…").click();
+  });
+
+  modal().within(() => {
     cy.findByText("Categories").click();
-    cy.button("Select column").click();
+    cy.button("Done").click();
   });
+
   modal().within(() => {
-    cy.findByText("Pick a column").click();
+    cy.findByText("Pick a column…").click();
   });
+
   popover().within(() => {
     cy.findByText("CATEGORY").click();
   });
+
   modal().within(() => {
+    cy.wait("@dataset");
+    cy.findByDisplayValue(/Gadget/).should("be.visible");
     cy.button("Done").click();
   });
 };
 
 const setupCustomList = () => {
-  cy.findByText("Custom list").click();
   modal().within(() => {
-    cy.findByPlaceholderText(/banana/).type("Doohickey\nGadget");
+    cy.findByText("Custom list").click();
+    cy.findByRole("textbox").should("contain.value", "Gizmo");
+    cy.findByRole("textbox").clear().type("Doohickey\nGadget");
     cy.button("Done").click();
   });
 };
@@ -142,6 +205,7 @@ const mapFilterToQuestion = () => {
 
 const filterDashboard = () => {
   cy.findByText("Text").click();
+
   popover().within(() => {
     cy.findByText("Doohickey").should("be.visible");
     cy.findByText("Gadget").should("be.visible");
@@ -151,6 +215,6 @@ const filterDashboard = () => {
     cy.findByText("Doohickey").should("not.exist");
     cy.findByText("Gadget").click();
     cy.button("Add filter").click();
+    cy.wait("@getCardQuery");
   });
-  cy.wait("@getCardQuery");
 };

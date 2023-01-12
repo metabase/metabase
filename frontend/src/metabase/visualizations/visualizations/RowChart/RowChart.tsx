@@ -188,7 +188,13 @@ const RowChartVisualization = ({
       onHoverChange?.(null);
       return;
     }
-    const hoverData = getHoverData(bar, settings, chartColumns, data.cols);
+    const hoverData = getHoverData(
+      bar,
+      settings,
+      chartColumns,
+      series,
+      seriesColors,
+    );
 
     onHoverChange?.({
       ...hoverData,

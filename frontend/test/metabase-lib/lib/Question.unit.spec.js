@@ -445,7 +445,7 @@ describe("Question", () => {
 
     describe("pivot(...)", () => {
       const ordersCountQuestion = new Question(orders_count_card, metadata);
-      it("works with a datetime dimension ", () => {
+      it("works with a datetime dimension", () => {
         const pivoted = ordersCountQuestion.pivot([
           ["field", ORDERS.CREATED_AT.id, null],
         ]);
@@ -1130,6 +1130,9 @@ describe("Question", () => {
           slug: "foo",
           target: ["dimension", ["template-tag", "foo"]],
           type: "category",
+          values_query_type: "list",
+          values_source_type: null,
+          values_source_config: {},
         },
         {
           default: undefined,
@@ -1139,6 +1142,9 @@ describe("Question", () => {
           slug: "bar",
           target: ["variable", ["template-tag", "bar"]],
           type: "category",
+          values_query_type: "list",
+          values_source_type: null,
+          values_source_config: {},
         },
       ]);
     });

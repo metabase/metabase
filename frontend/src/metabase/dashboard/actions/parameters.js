@@ -194,6 +194,19 @@ export const setParameterIsMultiSelect = createThunkAction(
   },
 );
 
+export const SET_PARAMETER_QUERY_TYPE =
+  "metabase/dashboard/SET_PARAMETER_QUERY_TYPE";
+export const setParameterQueryType = createThunkAction(
+  SET_PARAMETER_QUERY_TYPE,
+  (parameterId, queryType) => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameterId, parameter => ({
+      ...parameter,
+      values_query_type: queryType,
+    }));
+    return { id: parameterId, queryType };
+  },
+);
+
 export const SET_PARAMETER_SOURCE_TYPE =
   "metabase/dashboard/SET_PARAMETER_SOURCE_TYPE";
 export const setParameterSourceType = createThunkAction(

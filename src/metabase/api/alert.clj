@@ -26,6 +26,7 @@
 (u/ignore-exceptions
  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch all alerts"
   [archived user_id]
@@ -36,12 +37,14 @@
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch an alert by ID"
   [id]
   (-> (api/read-check (pulse/retrieve-alert id))
       (hydrate :can_write)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/question/:id"
   "Fetch all questions for the given question (`Card`) id"
   [id archived]
@@ -128,6 +131,7 @@
     (assoc card :include_csv true)
     card))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new Alert."
   [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal]
@@ -140,11 +144,6 @@
   (validation/check-has-application-permission :subscription false)
   ;; To create an Alert you need read perms for its Card
   (api/read-check Card (u/the-id card))
-  ;; don't allow creation of Alerts for `is_write` writeback QueryAction cards. Those are intended only for Actions
-  ;; and aren't ran for results so they don't make sense as Alerts.
-  (when (db/select-one-field :is_write Card :id (u/the-id card))
-    (throw (ex-info (tru "You cannot create an Alert for an is_write Card.")
-                    {:status-code 400})))
   ;; ok, now create the Alert
   (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/card->ref)
         new-alert  (api/check-500
@@ -162,6 +161,7 @@
     (doseq [recipient (collect-alert-recipients alert)]
       (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a `Alert` with ID."
   [id :as {{:keys [alert_condition alert_first_only alert_above_goal card channels archived]
@@ -241,6 +241,7 @@
       ;; Finally, return the updated Alert
       updated-alert)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]

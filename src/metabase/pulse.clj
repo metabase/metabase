@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
@@ -32,8 +31,7 @@
    [schema.core :as s]
    [toucan.db :as db])
   (:import
-   (clojure.lang ExceptionInfo)
-   (metabase.models.card CardInstance)))
+   (clojure.lang ExceptionInfo)))
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
@@ -54,7 +52,6 @@
   (try
     (let [card-id (u/the-id card-or-id)
           card    (db/select-one Card :id card-id)
-          _       (api/check-is-readonly card)
           result  (mw.session/with-current-user owner-id
                     (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)
@@ -104,7 +101,7 @@
 
 (s/defn defaulted-timezone :- s/Str
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card :- CardInstance]
+  [card :- (mi/InstanceOf Card)]
   (or (some->> card database-id (db/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 

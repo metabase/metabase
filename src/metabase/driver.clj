@@ -42,6 +42,11 @@
      java.time.format.TextStyle/SHORT
      (java.util.Locale/getDefault))))
 
+(defn- long-timezone-name [timezone-id]
+  (if (seq timezone-id)
+    timezone-id
+    (str (t/zone-id))))
+
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
@@ -55,6 +60,13 @@
   :visibility :public
   :setter     :none
   :getter     (fn [] (short-timezone-name (report-timezone)))
+  :doc        false)
+
+(defsetting report-timezone-long
+  "Current report timezone string"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (long-timezone-name (report-timezone)))
   :doc        false)
 
 
@@ -476,7 +488,7 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
-    ;; Does the driver support custom writeback actions using `is_write` Saved Questions. Drivers that support this must
+    ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom})
 
@@ -773,8 +785,8 @@
   nil)
 
 (defmulti execute-write-query!
-  "Execute a writeback query (from an `is_write` Card) e.g. one powering a custom
-  `QueryAction` (see [[metabase.models.action]]). Drivers that support `:actions/custom` must implement this method."
+  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.models.action]]).
+  Drivers that support `:actions/custom` must implement this method."
   {:added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

@@ -1,7 +1,6 @@
 import React from "react";
-import { queryByText } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 
 // these tests use ChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
@@ -39,77 +38,82 @@ const setup = (seriesDisplay, numberOfSeries = 1, changeSeriesName = false) => {
       initial={{ section: "Display" }}
       isDashboard={true}
     />,
-    {
-      withSettings: true,
-      withEmbedSettings: true,
-    },
   );
 };
 
 describe("ChartNestedSettingSeries", () => {
   it("shouldn't show line/area/bar buttons for row charts", () => {
-    const { queryByRole } = setup("row");
+    setup("row");
 
-    expect(queryByRole("img", { name: /line/i })).not.toBeInTheDocument();
-    expect(queryByRole("img", { name: /area/i })).not.toBeInTheDocument();
-    expect(queryByRole("img", { name: /bar/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("img", { name: /line/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("img", { name: /area/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /bar/i })).not.toBeInTheDocument();
   });
 
   it("should show line/area/bar buttons for bar charts", () => {
-    const { getByRole } = setup("bar");
+    setup("bar");
 
-    expect(getByRole("img", { name: /line/i })).toBeInTheDocument();
-    expect(getByRole("img", { name: /area/i })).toBeInTheDocument();
-    expect(getByRole("img", { name: /bar/i })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /line/i })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /area/i })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /bar/i })).toBeInTheDocument();
   });
 
   it("should show and open 'More options' on visualizations with multiple lines (metabase#17619)", () => {
-    const { getByDisplayValue, getAllByRole, getByText, queryByText } = setup(
-      "line",
-      3,
-    );
+    setup("line", 3);
     //Check that all series are present
-    expect(getByDisplayValue("Test 0")).toBeInTheDocument();
-    expect(getByDisplayValue("Test 1")).toBeInTheDocument();
-    expect(getByDisplayValue("Test 2")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Test 0")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Test 1")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Test 2")).toBeInTheDocument();
 
     //Because there are multiple series, all should be collapsed
-    const expandButtons = getAllByRole("img", { name: /chevrondown/i });
+    const expandButtons = screen.getAllByRole("img", { name: /chevrondown/i });
     expect(expandButtons).toHaveLength(3);
 
-    expect(queryByText("Line style")).not.toBeInTheDocument();
-    expect(queryByText("Show dots on lines")).not.toBeInTheDocument();
-    expect(queryByText("Replace missing values with")).not.toBeInTheDocument();
-    expect(queryByText("Y-axis position")).not.toBeInTheDocument();
-    expect(queryByText("Show values for this series")).not.toBeInTheDocument();
+    expect(screen.queryByText("Line style")).not.toBeInTheDocument();
+    expect(screen.queryByText("Show dots on lines")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Replace missing values with"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Y-axis position")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Show values for this series"),
+    ).not.toBeInTheDocument();
 
     //Expand a section
     userEvent.click(expandButtons[0]);
-    expect(getAllByRole("img", { name: /chevronup/i })).toHaveLength(1);
-    expect(getByText("Line style")).toBeInTheDocument();
-    expect(getByText("Show dots on lines")).toBeInTheDocument();
-    expect(getByText("Replace missing values with")).toBeInTheDocument();
-    expect(getByText("Y-axis position")).toBeInTheDocument();
-    expect(getByText("Show values for this series")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /chevronup/i })).toBeInTheDocument();
+    expect(screen.getByText("Line style")).toBeInTheDocument();
+    expect(screen.getByText("Show dots on lines")).toBeInTheDocument();
+    expect(screen.getByText("Replace missing values with")).toBeInTheDocument();
+    expect(screen.getByText("Y-axis position")).toBeInTheDocument();
+    expect(screen.getByText("Show values for this series")).toBeInTheDocument();
 
     //Expand another section, should only be 1 open section
     userEvent.click(expandButtons[1]);
-    expect(getAllByRole("img", { name: /chevronup/i })).toHaveLength(1);
+    expect(screen.getByRole("img", { name: /chevronup/i })).toBeInTheDocument();
   });
 
   it("should show original series title in subtitle if it's changed", () => {
-    const { getByTestId, getByLabelText } = setup("line", 1, true);
+    setup("line", 1, true);
 
-    const seriesSettings = getByTestId("series-settings");
-    expect(queryByText(seriesSettings, "Test 0")).toBeInTheDocument();
-    expect(getByLabelText("series-name-input")).toHaveValue("Test 0 updated");
+    const seriesSettings = screen.getByTestId("series-settings");
+    expect(within(seriesSettings).getByText("Test 0")).toBeInTheDocument();
+    expect(screen.getByLabelText("series-name-input")).toHaveValue(
+      "Test 0 updated",
+    );
   });
 
   it("should not show a series subtitle if the series name has not changed", () => {
-    const { getByTestId, getByLabelText } = setup("line", 1);
+    setup("line", 1);
 
-    const seriesSettings = getByTestId("series-settings");
-    expect(queryByText(seriesSettings, "Test 0")).not.toBeInTheDocument();
-    expect(getByLabelText("series-name-input")).toHaveValue("Test 0");
+    const seriesSettings = screen.getByTestId("series-settings");
+    expect(
+      within(seriesSettings).queryByText("Test 0"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("series-name-input")).toHaveValue("Test 0");
   });
 });

@@ -3,7 +3,7 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.models
-    :refer [Action Card Collection Dashboard DashboardCard QueryAction]]
+    :refer [Card Collection Dashboard DashboardCard]]
    [metabase.models.card :as card]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
@@ -12,6 +12,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.db :as db]
+   [toucan.hydrate :as hydrate]
    [toucan.util.test :as tt])
   (:import
    (java.time LocalDateTime)))
@@ -35,6 +36,30 @@
           (add-card-to-dash! dash-2)
           (is (= 2
                  (get-dashboard-count))))))))
+
+(deftest dropdown-widget-values-usage-count-test
+  (let [hydrated-count (fn [card] (-> card
+                                      (hydrate/hydrate :parameter_usage_count)
+                                      :parameter_usage_count))
+        default-params {:name       "Category Name"
+                        :slug       "category_name"
+                        :id         "_CATEGORY_NAME_"
+                        :type       "category"}
+        card-params    (fn [card-id] (merge default-params {:values_source_type "card"
+                                                            :values_source_config {:card_id card-id}}) )]
+    (testing "With no associated cards"
+      (tt/with-temp Card [card]
+        (is (zero? (hydrated-count card)))))
+    (testing "With one"
+      (tt/with-temp* [Card      [{card-id :id :as card}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]]
+        (is (= 1 (hydrated-count card)))))
+    (testing "With several"
+      (tt/with-temp* [Card      [{card-id :id :as card}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]]
+        (is (= 3 (hydrated-count card)))))))
 
 (deftest remove-from-dashboards-when-archiving-test
   (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
@@ -258,39 +283,6 @@
                clojure.lang.ExceptionInfo
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
                (db/update! Card card-id bad-card-data))))))))
-
-(deftest action-creation-test
-  (testing "actions are created when is_write is set"
-    (testing "during create"
-      (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (seq qa-rows)
-              "Inserting a card with :is_write true should create QueryAction")
-          (is (seq (db/select Action :id action_id))))))
-    (testing "during update"
-      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
-        (db/update! Card card-id {:is_write true})
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (seq qa-rows) "Updating a card to have :is_write true should create QueryAction")
-          (is (seq (db/select Action :id action_id)))))))
-  (testing "actions are not created when is_write is not set"
-    (testing "during create:"
-      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (empty? qa-rows) "Inserting a card with :is_write false should not create QueryAction")
-          (is (empty? (db/select Action :id action_id))))))
-    (testing "during update"
-      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
-        (db/update! Card card-id {:is_write false})
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (empty? qa-rows) "Updating a card to have :is_write false should delete QueryAction")
-          (is (empty? (db/select Action :id action_id)))))))
-  (testing "actions are deleted when is_write is set to false during update"
-    (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
-      (db/update! Card card-id {:is_write false})
-      (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-        (is (empty? qa-rows) "Updating a card to have :is_write false should create a QueryAction")
-        (is (empty? (db/select Action :id action_id)))))))
 
 ;;; ------------------------------------------ Parameters tests ------------------------------------------
 

@@ -1,5 +1,5 @@
 export const DASHBOARD_TEXT_FILTERS = {
-  Dropdown: {
+  Is: {
     value: "Organic",
     representativeResult: "39.58",
   },

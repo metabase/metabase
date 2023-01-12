@@ -9,6 +9,7 @@
    [java-time :as t]
    [medley.core :as m]
    [metabase.config :as config]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
@@ -221,7 +222,7 @@
                                                       [:= :p.group_id :pg.id]
                                                       [:= :p.object db-details]]}]]
                          :group-by [:pgm.user_id]}
-                        db/query
+                        mdb.query/query
                         (mapv :user_id)))]
     (into
       []

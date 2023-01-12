@@ -11,6 +11,7 @@
    [colorize.core :as colorize]
    [environ.core :as env]
    [java-time :as t]
+   [metabase.db.query :as mdb.query]
    [metabase.models
     :refer [Card
             Collection
@@ -52,7 +53,6 @@
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
-   [metabase.test.util :as tu]
    [metabase.test.util.log :as tu.log]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -424,8 +424,8 @@
                        (catch Exception e
                          (when-not raw-setting?
                            (throw e))))]
-    (if-let [env-var-value (and (not raw-setting?) (#'setting/env-var-value setting-k))]
-      (do-with-temp-env-var-value setting env-var-value thunk)
+    (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
+      (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (db/select-one-field :value Setting :key setting-k)
                              (#'setting/get setting-k))]
@@ -512,9 +512,13 @@
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model                    (db/resolve-model model)
-        [original-column->value] (db/query {:select (keys column->temp-value)
-                                            :from   [model]
-                                            :where  [:= :id (u/the-id object-or-id)]})]
+        [original-column->value] (mdb.query/query {:select (keys column->temp-value)
+                                                   :from   [(u/prog1 (:table model)
+                                                              ;; this will fail once we switch to Toucan 2, since models
+                                                              ;; aren't objects; this is here so we can catch it easily
+                                                              ;; and fix it without hurting our heads
+                                                              (assert (keyword? <>)))]
+                                                   :where  [:= :id (u/the-id object-or-id)]})]
     (assert original-column->value
             (format "%s %d not found." (name model) (u/the-id object-or-id)))
     (try
@@ -822,6 +826,25 @@
            :namespace (name ~collection-namespace))
     (fn [] ~@body)))
 
+(defn do-with-all-users-permission
+  "Call `f` without arguments in a context where the ''All Users'' group
+  is granted the permission specified by `permission-path`.
+
+  For most use cases see the macro [[with-all-users-permission]]."
+  [permission-path f]
+  (tt/with-temp Permissions [_ {:group_id (:id (perms-group/all-users))
+                                :object permission-path}]
+    (f)))
+
+(defmacro with-all-users-permission
+  "Run `body` with the ''All Users'' group being granted the permission
+  specified by `permission-path`.
+
+  (mt/with-all-users-permission (perms/app-root-collection-permission :read)
+    ...)"
+  [permission-path & body]
+  `(do-with-all-users-permission ~permission-path (fn [] ~@body)))
+
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
   Useful for tests when you need the entire object to be realized in the body of a `binding`, `with-redefs`, or
@@ -901,8 +924,8 @@
                                                 :name     (format "%s [internal remap]" (:display_name original))
                                                 :type     :internal}]]
                   (if preexisting-id
-                    (tu/with-temp-vals-in-db FieldValues preexisting-id {:values (keys values-map)
-                                                                         :human_readable_values (vals values-map)}
+                    (with-temp-vals-in-db FieldValues preexisting-id {:values (keys values-map)
+                                                                      :human_readable_values (vals values-map)}
                       (testing-thunk))
                     (tt/with-temp* [FieldValues [_ {:field_id              (:id original)
                                                     :values                (keys values-map)

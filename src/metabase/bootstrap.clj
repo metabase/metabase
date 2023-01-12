@@ -6,7 +6,9 @@
 ;; own log4j2.xml and dynamically reloads and kills useful logging. Should we move our log4j2.xml into
 ;; metabase/metabase/log4j2.xml and refer to it that way so presumably no jar could add another log4j2.xml that we
 ;; accidentally pick up?
-(System/setProperty "log4j2.configurationFile" "log4j2.xml")
+(when-not (or (System/getProperty "log4j2.configurationFile")
+              (System/getProperty "log4j.configurationFile"))
+  (System/setProperty "log4j2.configurationFile" "log4j2.xml"))
 
 ;; ensure we use a `BasicContextSelector` instead of a `ClassLoaderContextSelector` for log4j2. Ensures there is only
 ;; one LoggerContext instead of one per classpath root. Practical effect is that now `(LogManager/getContext true)`

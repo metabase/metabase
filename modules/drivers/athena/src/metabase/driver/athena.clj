@@ -142,9 +142,14 @@
 
 ;;; ------------------------------------------------- date functions -------------------------------------------------
 
+(def ^:dynamic *loading-data*
+  "HACK! Whether we're loading data (e.g. in [[metabase.test.data.athena]]). We can't use `timestamp with time zone`
+  literals when loading data because Athena doesn't let you use a `timestamp with time zone` value for a `timestamp`
+  column, and you can only have `timestamp` columns when actually creating them."
+  false)
+
 (defmethod unprepare/unprepare-value [:athena OffsetDateTime]
   [_driver t]
-  #_(format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t))
   ;; Timestamp literals do not support offsets, or at least they don't in `INSERT INTO ...` statements. I'm not 100%
   ;; sure what the correct thing to do here is then. The options are either:
   ;;
@@ -154,11 +159,14 @@
   ;;
   ;; For now I went with option (1) because it SEEMS like that's what Athena is doing. Not sure about this tho. We can
   ;; do something better when we figure out what's actually going on. -- Cam
-  (let [t (u.date/with-time-zone-same-instant t (t/zone-id "UTC"))]
-    (format "timestamp '%s %s'" (t/local-date t) (t/local-time t))))
+  (if *loading-data*
+    (let [t (u.date/with-time-zone-same-instant t (t/zone-id "UTC"))]
+      (format "timestamp '%s %s'" (t/local-date t) (t/local-time t)))
+    ;; when not loading data we can actually use timestamp with offset info.
+    (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t))))
 
 (defmethod unprepare/unprepare-value [:athena ZonedDateTime]
-  [_driver t]
+  [driver t]
   ;; This format works completely fine for literals e.g.
   ;;
   ;;    SELECT timestamp '2022-11-16 04:21:00 US/Pacific'
@@ -169,8 +177,9 @@
   ;; that have already been created for performance reasons. If you add a new dataset and it should work for
   ;; Athena (despite Athena only partially supporting TIMESTAMP WITH TIME ZONE) then you can use the commented out impl
   ;; to do it. That should work ok because it converts it to a UTC then to a LocalDateTime. -- Cam
-  #_(unprepare/unprepare-value driver (t/offset-date-time t))
-  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t)))
+  (if *loading-data*
+    (unprepare/unprepare-value driver (t/offset-date-time t))
+    (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t))))
 
 ;;; for some evil reason Athena expects `OFFSET` *before* `LIMIT`, unlike every other database in the known universe; so
 ;;; we'll have to have a custom implementation of `:page` here and do our own version of `:offset` that comes before

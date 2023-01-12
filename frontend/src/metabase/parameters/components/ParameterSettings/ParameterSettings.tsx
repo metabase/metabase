@@ -1,21 +1,19 @@
-import React, {
-  ChangeEvent,
-  FocusEvent,
-  useCallback,
-  useLayoutEffect,
-  useState,
-} from "react";
+import React, { ChangeEvent, useCallback } from "react";
 import { t } from "ttag";
-import Input from "metabase/core/components/Input";
+import InputBlurChange from "metabase/components/InputBlurChange";
 import Radio from "metabase/core/components/Radio";
-import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
+import {
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import {
   canUseCustomSource,
   isSingleOrMultiSelectable,
 } from "../../utils/parameter-type";
-import ParameterSourceSettings from "../ParameterSourceSettings";
+import ValuesSourceSettings from "../ValuesSourceSettings";
 import {
   SettingLabel,
   SettingRemoveButton,
@@ -34,6 +32,7 @@ export interface ParameterSettingsProps {
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
+  onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceOptions: ValuesSourceConfig) => void;
   onRemoveParameter: () => void;
@@ -42,23 +41,35 @@ export interface ParameterSettingsProps {
 const ParameterSettings = ({
   parameter,
   onChangeName,
-  onChangeSourceType,
-  onChangeSourceConfig,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
+  onChangeQueryType,
+  onChangeSourceType,
+  onChangeSourceConfig,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
+  const handleNameChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      onChangeName(event.target.value);
+    },
+    [onChangeName],
+  );
+
   return (
     <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
-        <ParameterInput initialValue={parameter.name} onChange={onChangeName} />
+        <InputBlurChange
+          value={parameter.name}
+          onBlurChange={handleNameChange}
+        />
       </SettingSection>
       {canUseCustomSource(parameter) && (
         <SettingSection>
-          <SettingLabel>{t`Options to pick from`}</SettingLabel>
-          <ParameterSourceSettings
+          <SettingLabel>{t`How should users filter on this column?`}</SettingLabel>
+          <ValuesSourceSettings
             parameter={parameter}
+            onChangeQueryType={onChangeQueryType}
             onChangeSourceType={onChangeSourceType}
             onChangeSourceConfig={onChangeSourceConfig}
           />
@@ -89,39 +100,6 @@ const ParameterSettings = ({
         {t`Remove`}
       </SettingRemoveButton>
     </SettingsRoot>
-  );
-};
-
-interface ParameterInputProps {
-  initialValue: string;
-  onChange: (value: string) => void;
-}
-
-const ParameterInput = ({ initialValue, onChange }: ParameterInputProps) => {
-  const [value, setValue] = useState(initialValue);
-
-  useLayoutEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
-
-  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setValue(event.target.value);
-  }, []);
-
-  const handleBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
-      onChange(event.target.value);
-    },
-    [onChange],
-  );
-
-  return (
-    <Input
-      value={value}
-      fullWidth
-      onChange={handleChange}
-      onBlur={handleBlur}
-    />
   );
 };
 

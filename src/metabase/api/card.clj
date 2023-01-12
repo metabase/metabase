@@ -8,12 +8,11 @@
    [clojure.walk :as walk]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
-   [metabase.actions :as actions]
-   [metabase.api.action :as api.action]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.timeline :as api.timeline]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -52,8 +51,7 @@
    [toucan.hydrate :refer [hydrate]])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
-   (java.util UUID)
-   (metabase.models.card CardInstance)))
+   (java.util UUID)))
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
@@ -92,7 +90,7 @@
   [_ table-id]
   (db/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(s/defn ^:private cards-with-ids :- (s/maybe [CardInstance])
+(s/defn ^:private cards-with-ids :- (s/maybe [(mi/InstanceOf Card)])
   "Return unarchived Cards with `card-ids`.
   Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
   [card-ids :- [su/IntGreaterThanZero]]
@@ -125,6 +123,21 @@
   [_]
   (db/select Card, :archived true, {:order-by [[:%lower.name :asc]]}))
 
+;; Cards that are using a given model.
+(defmethod cards-for-filter-option* :using_model
+  [_filter-option model-id]
+  (->> (mdb.query/query {:select [:c.*]
+                         :from [[:report_card :m]]
+                         :join [[:report_card :c] [:and
+                                                   [:= :c.database_id :m.database_id]
+                                                   [:or
+                                                    [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+                                                    [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
+                         :where [:= :m.id model-id]})
+       (db/do-post-select Card)
+       ;; now check if model-id really occurs as a card ID
+       (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
+
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
       (hydrate :creator :collection)))
@@ -135,20 +148,23 @@
   "Schema for a valid card filter option."
   (apply s/enum (map name (keys (methods cards-for-filter-option*)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, and `archived`. See
-  corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
+  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
+  and `archived`. See corresponding implementation functions above for the specific behavior of each filter
+  option. :card_index:"
   [f model_id]
   {f        (s/maybe CardFilterOption)
    model_id (s/maybe su/IntGreaterThanZero)}
   (let [f (keyword f)]
-    (when (contains? #{:database :table} f)
+    (when (contains? #{:database :table :using_model} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                          (name f)))
       (case f
-        :database (api/read-check Database model_id)
-        :table    (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
+        :database    (api/read-check Database model_id)
+        :table       (api/read-check Database (db/select-one-field :db_id Table, :id model_id))
+        :using_model (api/read-check Card model_id)))
     (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
           last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
       (into []
@@ -158,6 +174,7 @@
                      card)))
             cards))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
@@ -166,19 +183,20 @@
                  (hydrate :creator
                           :bookmarked
                           :dashboard_count
+                          :parameter_usage_count
                           :can_write
                           :average_query_time
                           :last_query_start
                           :collection [:moderation_reviews :moderator_details])
                  (cond-> ;; card
-                   (:dataset raw-card) (hydrate :persisted)
-                   (:is_write raw-card) (hydrate :card/action-id))
+                   (:dataset raw-card) (hydrate :persisted))
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
       (when-not (Boolean/parseBoolean ignore_view)
         (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
   [id include start end]
@@ -270,45 +288,6 @@
                       (when (instance? Throwable required-perms)
                         required-perms))))))
 
-(defn- check-allowed-to-set-is-write
-  "Check whether we're allowed to set `is_write` for the Card in question."
-  ([card]
-   (check-allowed-to-set-is-write nil card))
-
-  ([card-before-update card-updates]
-   ;; make sure the value has actually changed
-   (when (and (contains? card-updates :is_write)
-              (some? (:is_write card-updates)))
-     (let [before (boolean (get card-before-update :is_write))
-           after  (:is_write card-updates)]
-       (log/tracef "is_write value will change from %s => %s" (pr-str before) (pr-str after))
-       (when-not (= before after)
-         ;; make sure current User is a superuser
-         (api/check-superuser)
-         (try
-           ;; make sure Card is not a Dataset
-           (when (:dataset (merge card-updates card-before-update))
-             (throw (ex-info (tru "Saved Question is a Dataset.")
-                             {:status-code 400})))
-           ;; make sure Card's query is a native query
-           (let [query-type (some-> (get-in (merge card-updates card-before-update) [:dataset_query :type])
-                                    keyword)]
-             (when-not (= query-type :native)
-               (throw (ex-info (tru "Query must be a native query.")
-                               {:status-code 400}))))
-           ;; make sure Actions are enabled Globally
-           (when-not (actions/experimental-enable-actions)
-             (throw (ex-info (tru "Actions are not enabled.")
-                             {:status-code 400})))
-           (when-let [database-id (:database (some :dataset_query [card-updates card-before-update]))]
-             ;; make sure Actions are allowed for the Card's query's Database
-             (api.action/check-actions-enabled database-id))
-           (catch Throwable e
-             (let [message (tru "Cannot mark Saved Question as ''is_write'': {0}" (ex-message e))]
-               (throw (ex-info message
-                               (assoc (ex-data e) :errors {:is_write message})
-                               e))))))))))
-
 (def ^:private metadata-sync-wait-ms
   "Duration in milliseconds to wait for the metadata before saving the card without the metadata. That metadata will be
 saved later when it is ready."
@@ -357,10 +336,9 @@ saved later when it is ready."
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
-                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :is_write]
+                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                      :creator_id api/*current-user-id*
-                                     :is_write (boolean (:is_write card-data))
                                      :dataset (boolean (:dataset card-data))
                                      :parameters (or parameters [])
                                      :parameter_mappings (or parameter_mappings []))
@@ -390,16 +368,15 @@ saved later when it is ready."
                            :average_query_time
                            :last_query_start
                            :collection [:moderation_reviews :moderator_details])
-                  (cond-> ;; card
-                      (:is_write card) (hydrate :card/action-id))
                   (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
        (when timed-out?
          (schedule-metadata-saving result-metadata-chan <>))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
-                parameters parameter_mappings result_metadata visualization_settings cache_ttl is_write], :as body} :body}]
+                parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
   {name                   su/NonBlankString
    dataset_query          su/Map
    parameters             (s/maybe [su/Parameter])
@@ -410,16 +387,14 @@ saved later when it is ready."
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   cache_ttl              (s/maybe su/IntGreaterThanZero)
-   is_write               (s/maybe s/Bool)}
+   cache_ttl              (s/maybe su/IntGreaterThanZero)}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
-  ;; if `is_write` was passed, check that it's allowed to be set.
-  (check-allowed-to-set-is-write body)
   (create-card! body))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
   [id]
@@ -446,10 +421,6 @@ saved later when it is ready."
   (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
             (api/column-will-change? :embedding_params card-before-updates card-updates))
     (validation/check-embedding-enabled)
-    ;; you can't embed an is_write (QueryAction) Card because they can't be ran by the normal QP pathway for results
-    (when (:is_write card-before-updates)
-      (throw (ex-info (tru "You cannot enable embedding for an is_write Card.")
-                      {:status-code 400})))
     (api/check-superuser)))
 
 (defn- publish-card-update!
@@ -608,9 +579,9 @@ saved later when it is ready."
      ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
      ;; modified if they're passed in as non-nil
      (u/select-keys-when card-updates
-       :present #{:collection_id :collection_position :description :cache_ttl :dataset :is_write}
+       :present #{:collection_id :collection_position :description :cache_ttl :dataset}
        :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                  :parameters :parameter_mappings :embedding_params :result_metadata :is_write :collection_preview})))
+                  :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
     ;; Fetch the updated Card from the DB
 
   (let [card (db/select-one Card :id id)]
@@ -626,10 +597,10 @@ saved later when it is ready."
                  :last_query_start
                  :collection [:moderation_reviews :moderator_details])
         (cond-> ;; card
-          (:dataset card) (hydrate :persisted)
-          (:is_write card) (hydrate :card/action-id))
+          (:dataset card) (hydrate :persisted))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
@@ -656,8 +627,7 @@ saved later when it is ready."
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
-               check-allowed-to-change-embedding
-               check-allowed-to-set-is-write]]
+               check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
     ;; make sure we have the correct `result_metadata`
     (let [result-metadata-chan  (result-metadata-async {:original-query    (:dataset_query card-before-update)
@@ -686,6 +656,7 @@ saved later when it is ready."
 
 ;; TODO - Pretty sure this endpoint is not actually used any more, since Cards are supposed to get archived (via PUT
 ;;        /api/card/:id) instead of deleted.  Should we remove this?
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.)"
   [id]
@@ -763,6 +734,7 @@ saved later when it is ready."
           (db/update-where! Card {:id [:in (set cards-without-position)]}
             :collection_id new-collection-id-or-nil))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with
   COLLECTION_ID, or remove them from any Collections by passing a `null` COLLECTION_ID."
@@ -775,6 +747,7 @@ saved later when it is ready."
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
@@ -794,6 +767,7 @@ saved later when it is ready."
    :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
@@ -815,6 +789,7 @@ saved later when it is ready."
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:card-id/public_link"
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
@@ -823,18 +798,14 @@ saved later when it is ready."
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
-  (let [{existing-public-uuid :public_uuid, is-write? :is_write} (db/select-one [Card :public_uuid :is_write] :id card-id)]
-    ;; don't allow sharing `is_write` (QueryAction) Cards, since they can't be executed for results under the public QP
-    ;; pathway
-    (when is-write?
-      (throw (ex-info (tru "You cannot share an is_write Card.")
-                      {:status-code 400})))
+  (let [{existing-public-uuid :public_uuid} (db/select-one [Card :public_uuid] :id card-id)]
     {:uuid (or existing-public-uuid
                (u/prog1 (str (UUID/randomUUID))
                  (db/update! Card card-id
                    :public_uuid       <>
                    :made_public_by_id api/*current-user-id*)))}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
   [card-id]
@@ -846,6 +817,7 @@ saved later when it is ready."
     :made_public_by_id nil)
   {:status 204, :body nil})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/public"
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
@@ -853,6 +825,7 @@ saved later when it is ready."
   (validation/check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/embeddable"
   "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
   and a signed JWT."
@@ -861,16 +834,19 @@ saved later when it is ready."
   (validation/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Card :id id) api/read-check related/related))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/related"
   "Return related entities for an ad-hoc query."
   [:as {query :body}]
   (related/related (query/adhoc-query query)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming POST "/pivot/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache]
@@ -881,6 +857,7 @@ saved later when it is ready."
                             :qp-runner qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query."
@@ -905,6 +882,7 @@ saved later when it is ready."
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
       api/generic-204-no-content)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:card-id/refresh"
   "Refresh the persisted model caching `card-id`."
   [card-id]
@@ -919,6 +897,7 @@ saved later when it is ready."
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:card-id/unpersist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."

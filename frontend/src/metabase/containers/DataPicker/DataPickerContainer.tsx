@@ -54,6 +54,7 @@ function mapStateToProps(state: State) {
 }
 
 function DataPicker({
+  value,
   databases,
   search: modelLookupResult,
   filters: customFilters = {},
@@ -114,12 +115,12 @@ function DataPicker({
   );
 
   useOnMount(() => {
-    if (dataTypes.length === 1) {
+    if (dataTypes.length === 1 && value.type !== dataTypes[0].id) {
       handleDataTypeChange(dataTypes[0].id);
     }
   });
 
-  const handleBack = useCallback(() => {
+  const handleReset = useCallback(() => {
     onChange({
       type: undefined,
       databaseId: undefined,
@@ -128,14 +129,17 @@ function DataPicker({
     });
   }, [onChange]);
 
+  const canGoBack = dataTypes.length > 1;
+
   return (
     <DataPickerView
       {...props}
+      value={value}
       dataTypes={dataTypes}
       searchQuery={search.query}
       hasDataAccess={hasDataAccess}
       onDataTypeChange={handleDataTypeChange}
-      onBack={handleBack}
+      onBack={canGoBack ? handleReset : undefined}
     />
   );
 }

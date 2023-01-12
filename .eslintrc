@@ -72,7 +72,8 @@
     "browser": true,
     "es6": true,
     "commonjs": true,
-    "jest": true
+    "jest": true,
+    "jest/globals": true
   },
   "parser": "babel-eslint",
   "plugins": ["react", "no-only-tests"],
@@ -112,6 +113,23 @@
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-this-alias": "off",
         "@typescript-eslint/no-unused-vars": "off"
+      }
+    },
+    {
+      "extends": [
+        "plugin:jest/recommended",
+        "plugin:jest-dom/recommended",
+        "plugin:testing-library/react"
+      ],
+      "plugins": ["jest", "jest-dom", "testing-library"],
+      "files": [
+        "*.unit.spec.ts",
+        "*.unit.spec.tsx",
+        "*.unit.spec.js",
+        "*.unit.spec.jsx"
+      ],
+      "rules": {
+        "jest/valid-title": ["error", { "ignoreTypeOfDescribeName": true }]
       }
     }
   ]

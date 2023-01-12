@@ -5,8 +5,8 @@
    [clojure.set :as set]
    [clojure.tools.logging :as log]
    [medley.core :as m]
+   [metabase.db.query :as mdb.query]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.models.action :as action]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -40,29 +40,36 @@
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
+(mi/define-simple-hydration-method parameter-usage-count
+  :parameter_usage_count
+  "Return the number of dashboard/card filters and other widgets that use this card to populate their available
+  values (via ParameterCards)"
+  [{:keys [id]}]
+  (db/count 'ParameterCard, :card_id id))
+
 (mi/define-simple-hydration-method average-query-time
   :average_query_time
   "Average query time of card, taken by query executions which didn't hit cache. If it's nil we don't have any query
   executions on file."
   [{:keys [id]}]
-  (-> (db/query {:select [:%avg.running_time]
-                 :from [:query_execution]
-                 :where [:and
-                         [:not= :running_time nil]
-                         [:not= :cache_hit true]
-                         [:= :card_id id]]})
+  (-> (mdb.query/query {:select [:%avg.running_time]
+                        :from [:query_execution]
+                        :where [:and
+                                [:not= :running_time nil]
+                                [:not= :cache_hit true]
+                                [:= :card_id id]]})
       first vals first))
 
 (mi/define-simple-hydration-method last-query-start
   :last_query_start
   "Timestamp for start of last query of this card."
   [{:keys [id]}]
-  (-> (db/query {:select [:%max.started_at]
-                 :from [:query_execution]
-                 :where [:and
-                         [:not= :running_time nil]
-                         [:not= :cache_hit true]
-                         [:= :card_id id]]})
+  (-> (mdb.query/query {:select [:%max.started_at]
+                        :from [:query_execution]
+                        :where [:and
+                                [:not= :running_time nil]
+                                [:not= :cache_hit true]
+                                [:= :card_id id]]})
       first vals first))
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
@@ -175,14 +182,15 @@
   ;; for updates if `query` isn't being updated we don't need to validate anything.
   (when query
     (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
-      (doseq [{:keys [field-id field-name table-name field-db-id]} (db/query {:select    [[:field.id :field-id]
-                                                                                          [:field.name :field-name]
-                                                                                          [:table.name :table-name]
-                                                                                          [:table.db_id :field-db-id]]
-                                                                              :from      [[(db/resolve-model 'Field) :field]]
-                                                                              :left-join [[(db/resolve-model 'Table) :table]
-                                                                                          [:= :field.table_id :table.id]]
-                                                                              :where     [:in :field.id (set field-ids)]})]
+      (doseq [{:keys [field-id field-name table-name field-db-id]} (mdb.query/query
+                                                                    {:select    [[:field.id :field-id]
+                                                                                 [:field.name :field-name]
+                                                                                 [:table.name :table-name]
+                                                                                 [:table.db_id :field-db-id]]
+                                                                     :from      [[:metabase_field :field]]
+                                                                     :left-join [[:metabase_table :table]
+                                                                                 [:= :field.table_id :table.id]]
+                                                                     :where     [:in :field.id (set field-ids)]})]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
                                     (format "%d %s" db-id (pr-str (db/select-one-field :name 'Database :id db-id))))]
@@ -193,15 +201,6 @@
                           {:status-code           400
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
-
-(defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
-  (when is-write?
-    (when-not (db/select-one action/QueryAction :card_id card-id)
-      (action/insert! {:card_id card-id :type :query}))))
-
-(defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
-  (when (not is-write?)
-    (db/delete! action/QueryAction :card_id card-id)))
 
 (defn- assert-valid-model
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
@@ -234,8 +233,7 @@
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (create-actions-when-is-writable! card)))
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))))
 
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
@@ -253,7 +251,7 @@
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
-          old-card-info (when (or (:dataset changes)
+          old-card-info (when (or (contains? changes :dataset)
                                   (get-in changes [:dataset_query :native]))
                           (db/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
@@ -275,6 +273,12 @@
       ;; make sure this Card doesn't have circular source query references if we're updating the query
       (when (:dataset_query changes)
         (check-for-circular-source-query-references changes))
+      ;; prevent demoting a model if it has actions
+      (when (and (not (:dataset changes))
+                 (:dataset old-card-info)
+                 (db/select-one ['Action :id] :model_id id))
+        (throw (ex-info (tru "Cannot make a question from a model with actions")
+                        {:id id})))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
@@ -283,15 +287,10 @@
       (params/assert-valid-parameter-mappings changes)
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)
-      ;; create Action and QueryAction when is_write is set true
-      (create-actions-when-is-writable! changes)
-      ;; delete Action and QueryAction when is_write is set false
-      (delete-actions-when-not-writable! changes)
       (assert-valid-model (merge old-card-info changes)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
-  (db/delete! 'QueryAction :card_id id)
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (db/delete! 'Revision :model "Card", :model_id id))
 

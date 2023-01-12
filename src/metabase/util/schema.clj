@@ -1,5 +1,8 @@
-(ns metabase.util.schema
-  "Various schemas that are useful throughout the app."
+(ns ^{:deprecated "0.46.0"} metabase.util.schema
+  "Various schemas that are useful throughout the app.
+
+  Schemas defined are deprecated and should be replaced with Malli schema defined in [[metabase.util.malli.schema]].
+  If you update schemas in this ns, please make sure you update the malli schema too. It'll help us makes the transition easier."
   (:refer-clojure :exclude [distinct])
   (:require
    [cheshire.core :as json]
@@ -215,12 +218,6 @@
   (with-api-error-message
     (s/constrained s/Int (partial < 0) (deferred-tru "Integer greater than zero"))
     (deferred-tru "value must be an integer greater than zero.")))
-
-(def NonNegativeInt
-  "Schema representing an integer 0 or greater"
-  (with-api-error-message
-    (s/constrained s/Int (partial <= 0) (deferred-tru "Integer greater than or equal to zero"))
-    (deferred-tru "value must be an integer zero or greater.")))
 
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."

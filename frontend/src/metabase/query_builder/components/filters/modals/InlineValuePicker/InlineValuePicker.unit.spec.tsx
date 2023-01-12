@@ -94,8 +94,8 @@ describe("InlineValuePicker", () => {
       />,
     );
 
-    screen.getByTestId("value-picker");
-    screen.getByPlaceholderText("Enter an ID");
+    expect(screen.getByTestId("value-picker")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter an ID")).toBeInTheDocument();
   });
 
   it("loads an existing set of key filter values", () => {
@@ -113,8 +113,8 @@ describe("InlineValuePicker", () => {
         handleChange={changeSpy}
       />,
     );
-    screen.getByText("777");
-    screen.getByText("888");
+    expect(screen.getByText("777")).toBeInTheDocument();
+    expect(screen.getByText("888")).toBeInTheDocument();
   });
 
   it("loads an existing set of text filter values", async () => {
@@ -133,8 +133,8 @@ describe("InlineValuePicker", () => {
       />,
     );
 
-    screen.getByText("fooBarBaz");
-    screen.getByText("BazBarFoo");
+    expect(screen.getByText("fooBarBaz")).toBeInTheDocument();
+    expect(screen.getByText("BazBarFoo")).toBeInTheDocument();
   });
 
   it("adds additional filter values", () => {
@@ -180,7 +180,7 @@ describe("InlineValuePicker", () => {
     );
 
     // click remove on the first data item, which is 777
-    const [firstDataItem] = await screen.getAllByLabelText("close icon");
+    const [firstDataItem] = screen.getAllByLabelText("close icon");
     userEvent.click(firstDataItem);
     expect(changeSpy).toHaveBeenCalled();
     expect(changeSpy.mock.calls[0][0].arguments()).toEqual([888]);
@@ -250,8 +250,8 @@ describe("InlineValuePicker", () => {
       />,
     );
 
-    screen.getByPlaceholderText("Min");
-    screen.getByPlaceholderText("Max");
+    expect(screen.getByPlaceholderText("Min")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Max")).toBeInTheDocument();
   });
 
   const noValueOperators = ["is-null", "not-null", "is-empty", "not-empty"];

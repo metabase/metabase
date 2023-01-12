@@ -3,11 +3,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
    [metabase.api.collection :as api.collection]
    [metabase.models
-    :refer [App
-            Card
+    :refer [Card
             Collection
             Dashboard
             DashboardCard
@@ -127,28 +125,26 @@
                                     (str/includes? collection-name "Personal Collection"))))
                       (map :name)))))))
 
-    (mt/with-temp* [Collection [{coll1-id :id} {:name "Archived Collection", :archived true}]
-                    Collection [{coll2-id :id} {:name "Regular Collection"}]
-                    App [{app1-id :id} {:collection_id coll1-id}]
-                    App [{app2-id :id} {:collection_id coll2-id}]]
+    (mt/with-temp* [Collection [_ {:name "Archived Collection", :archived true}]
+                    Collection [_ {:name "Regular Collection"}]]
       (letfn [(remove-other-collections [collections]
                 (filter (fn [{collection-name :name}]
                           (or (#{"Our analytics" "Archived Collection" "Regular Collection"} collection-name)
                               (str/includes? collection-name "Personal Collection")))
                         collections))]
         (testing "check that we don't see collections if they're archived"
-          (is (= [["Our analytics" nil]
-                  ["Rasta Toucan's Personal Collection" nil]
-                  ["Regular Collection" app2-id]]
+          (is (= ["Our analytics"
+                  "Rasta Toucan's Personal Collection"
+                  "Regular Collection"]
                  (->> (mt/user-http-request :rasta :get 200 "collection")
                       remove-other-collections
-                      (map (juxt :name :app_id))))))
+                      (map :name)))))
 
         (testing "Check that if we pass `?archived=true` we instead see archived Collections"
-          (is (= [["Archived Collection" app1-id]]
+          (is (= ["Archived Collection"]
                  (->> (mt/user-http-request :rasta :get 200 "collection" :archived :true)
                       remove-other-collections
-                      (map (juxt :name :app_id))))))))
+                      (map :name)))))))
 
     (testing "?namespace= parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
@@ -201,41 +197,35 @@
       (testing "sanity check"
         (is (some? personal-collection)))
       (with-collection-hierarchy [a b c d e f g]
-        (mt/with-temp* [App [{app-a-id :id} {:collection_id (:id a)}]
-                        App [{app-c-id :id} {:collection_id (:id c)}]
-                        App [{app-g-id :id} {:collection_id (:id g)}]]
-          (let [ids      (set (map :id (cons personal-collection [a b c d e f g])))
-                response (mt/user-http-request :rasta :get 200 "collection/tree")]
-            (testing "Make sure overall tree shape of the response is as is expected"
-              (is (= [{:name     "A"
-                       :app_id   app-a-id
-                       :children [{:name "B", :children []}
-                                  {:name     "C"
-                                   :app_id   app-c-id
-                                   :children [{:name     "D"
-                                               :children [{:name "E", :children []}]}
-                                              {:name     "F"
-                                               :children [{:name     "G"
-                                                           :app_id   app-g-id
-                                                           :children []}]}]}]}
-                      {:name "Rasta Toucan's Personal Collection", :children []}]
-                     (collection-tree-view ids [:name :app_id] response))))
-            (testing "Make sure each Collection comes back with the expected keys"
-              (is (partial= {:description       nil
-                             :archived          false
-                             :entity_id         (:entity_id personal-collection)
-                             :slug              "rasta_toucan_s_personal_collection"
-                             :color             "#31698A"
-                             :name              "Rasta Toucan's Personal Collection"
-                             :personal_owner_id (mt/user->id :rasta)
-                             :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
-                             :location          "/"
-                             :namespace         nil
-                             :children          []
-                             :authority_level   nil}
-                            (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
-                                     %)
-                                  response)))))))
+        (let [ids      (set (map :id (cons personal-collection [a b c d e f g])))
+              response (mt/user-http-request :rasta :get 200 "collection/tree")]
+          (testing "Make sure overall tree shape of the response is as is expected"
+            (is (= [{:name     "A"
+                     :children [{:name "B", :children []}
+                                {:name     "C"
+                                 :children [{:name     "D"
+                                             :children [{:name "E", :children []}]}
+                                            {:name     "F"
+                                             :children [{:name     "G"
+                                                         :children []}]}]}]}
+                    {:name "Rasta Toucan's Personal Collection", :children []}]
+                   (collection-tree-view ids response))))
+          (testing "Make sure each Collection comes back with the expected keys"
+            (is (partial= {:description       nil
+                           :archived          false
+                           :entity_id         (:entity_id personal-collection)
+                           :slug              "rasta_toucan_s_personal_collection"
+                           :color             "#31698A"
+                           :name              "Rasta Toucan's Personal Collection"
+                           :personal_owner_id (mt/user->id :rasta)
+                           :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
+                           :location          "/"
+                           :namespace         nil
+                           :children          []
+                           :authority_level   nil}
+                          (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
+                                   %)
+                                response))))))
       (testing "Excludes archived collections (#19603)"
         (mt/with-temp* [Collection [a {:name "A"}]
                         Collection [b {:name     "B archived"
@@ -341,11 +331,9 @@
 (deftest fetch-collection-test
   (testing "GET /api/collection/:id"
     (testing "check that we can see collection details"
-      (mt/with-temp* [Collection [collection {:name "Coin Collection"}]
-                      App [{app-id :id} {:collection_id (:id collection)}]]
-        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-        (is (= ["Coin Collection" app-id]
-               ((juxt :name :app_id)
+      (mt/with-temp Collection [collection {:name "Coin Collection"}]
+        (is (= "Coin Collection"
+               (:name
                 (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))
 
     (testing "check that collections detail properly checks permissions"
@@ -420,7 +408,7 @@
           items))
 
 (defn- default-item [{:keys [model] :as item-map}]
-  (merge {:id true, :collection_position nil, :entity_id true, :app_id false}
+  (merge {:id true, :collection_position nil, :entity_id true}
          (when (= model "collection")
            {:authority_level nil})
          (when (= model "card")
@@ -449,20 +437,19 @@
                                            :moderator_id        user-id
                                            :most_recent         true}]]
         (is (= (mt/obj->json->obj
-                [{:id                  card-id
-                  :name                (:name card)
-                  :collection_position nil
-                  :collection_preview  true
-                  :app_id              nil
-                  :display             "table"
-                  :description         nil
-                  :entity_id           (:entity_id card)
-                  :moderated_status    "verified"
-                  :model               "card"
-                  :fully_parametrized  true}])
+                 [{:id                  card-id
+                   :name                (:name card)
+                   :collection_position nil
+                   :collection_preview  true
+                   :display             "table"
+                   :description         nil
+                   :entity_id           (:entity_id card)
+                   :moderated_status    "verified"
+                   :model               "card"
+                   :fully_parametrized  true}])
                (mt/obj->json->obj
-                (:data (mt/user-http-request :crowberto :get 200
-                                             (str "collection/" (u/the-id collection) "/items"))))))))
+                 (:data (mt/user-http-request :crowberto :get 200
+                                              (str "collection/" (u/the-id collection) "/items"))))))))
     (testing "check that limit and offset work and total comes back"
       (mt/with-temp* [Collection [collection]
                       Card       [_ {:collection_id (u/the-id collection)}]
@@ -700,61 +687,13 @@
           (is (= #{"card" "dash" "subcollection" "dataset"}
                  (into #{} (map :name) items))))))))
 
-(deftest filter-facet-test
-  (testing "Filter facets"
-    (mt/with-temp* [Collection [_ {:name "Top level collection"}]
-                    Collection [{app-coll-id :id} {:name "App with items"}]
-                    App        [{app-id :id} {:collection_id app-coll-id}]
-                    Collection [_ {:name "subcollection"
-                                   :location (format "/%d/" app-coll-id)
-                                   :authority_level "official"}]
-                    Card       [_ {:name "card" :collection_id app-coll-id}]
-                    Card       [_ {:name "dataset" :dataset true :collection_id app-coll-id}]
-                    Dashboard  [_ {:name "dash" :collection_id app-coll-id}]
-                    Dashboard  [_ {:name "page" :collection_id app-coll-id :is_app_page true}]]
-      (let [items (->> "/items?models=dashboard&models=card&models=collection"
-                       (str "collection/" app-coll-id)
-                       (mt/user-http-request :rasta :get 200)
-                       :data)]
-        (is (= #{"card" "dash" "subcollection"}
-               (into #{} (map :name) items))))
-      (let [items (->> "/items?models=dashboard&models=card&models=collection&models=dataset"
-                       (str "collection/" app-coll-id)
-                       (mt/user-http-request :rasta :get 200)
-                       :data)]
-        (is (= #{"card" "dash" "subcollection" "dataset"}
-               (into #{} (map :name) items))))
-      (let [items (->> "/items?models=page"
-                       (str "collection/" app-coll-id)
-                       (mt/user-http-request :rasta :get 200)
-                       :data)]
-        (is (= #{"page"}
-               (into #{} (map :name) items))))
-      (let [items (mt/user-http-request
-                   :rasta :get 200 "collection/root/items?models=app")]
-        (is (partial= [{:id app-coll-id
-                        :app_id app-id
-                        :model "app"}]
-                      (:data items))))
-      (let [items (mt/user-http-request
-                   :rasta :get 200 "collection/root/items")]
-        (is (= #{["app" "App with items"]
-                 ["collection" "Top level collection"]
-                 ["collection" "Rasta Toucan's Personal Collection"]}
-               (into #{} (map (juxt :model :name)) (:data items)))))
-      (let [items (->> (str "collection/" app-coll-id "/items")
-                       (mt/user-http-request :rasta :get 200)
-                       :data)]
-        (is (= #{"card" "dash" "subcollection" "dataset" "page"}
-               (into #{} (map :name) items)))))))
-
 (deftest children-sort-clause-test
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
       (is (= [[:%lower.name :asc]]
              (api.collection/children-sort-clause nil app-db)))))
   (testing "Sorting by last-edited-at"
-    (is (= [[(hsql/call :ISNULL :last_edit_timestamp)]
+    (is (= [[:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-at :asc] :mysql)))
@@ -769,9 +708,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-by :asc] :postgres)))
-    (is (= [[(hsql/call :ISNULL :last_edit_last_name)]
+    (is (= [[:%isnull.last_edit_last_name]
             [:last_edit_last_name :asc]
-            [(hsql/call :ISNULL :last_edit_first_name)]
+            [:%isnull.last_edit_first_name]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-by :asc] :mysql))))
@@ -792,7 +731,6 @@
         (is (= [{:id        (:id snippet)
                  :name      "My Snippet"
                  :entity_id (:entity_id snippet)
-                 :app_id    nil
                  :model     "snippet"}]
                (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))
 
@@ -800,7 +738,6 @@
           (is (= [{:id        (:id archived)
                    :name      "Archived Snippet"
                    :entity_id (:entity_id archived)
-                   :app_id    nil
                    :model     "snippet"}]
                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" (:id collection)))))))
 
@@ -808,7 +745,6 @@
           (is (= [{:id        (:id snippet)
                    :name      "My Snippet"
                    :entity_id (:entity_id snippet)
-                   :app_id    nil
                    :model     "snippet"}]
                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))))))
 
@@ -1136,18 +1072,13 @@
                    :description         nil
                    :collection_position nil
                    :collection_preview  true
-                   :app_id              nil
                    :display             "table"
                    :moderated_status    nil
                    :entity_id           (:entity_id card)
                    :model               "card"
                    :fully_parametrized  true}]
                  (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
-                   (dissoc item :id))))))
-
-      (testing "Are is_write cards excluded?"
-        (mt/with-temp Card [_ {:name "Action Card" :is_write true}]
-          (is (nil? (some (comp #(= % "Action Card") :name) (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))))
+                   (dissoc item :id)))))))
 
     (testing "fully_parametrized of a card"
       (testing "can be false"
@@ -1303,12 +1234,10 @@
           (is (= [{:id        (:id snippet)
                    :name      "My Snippet"
                    :entity_id (:entity_id snippet)
-                   :app_id    nil
                    :model     "snippet"}
                   {:id        (:id snippet-2)
                    :name      "My Snippet 2"
                    :entity_id (:entity_id snippet-2)
-                   :app_id    nil
                    :model     "snippet"}]
                  (only-test-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=snippets")))))
 
@@ -1555,14 +1484,6 @@
                           (update :location collection-test/location-path-ids->names)
                           (update :id integer?)
                           (update :entity_id string?))))))
-
-    (testing "I shouldn't be allowed to move an App away from root."
-      (mt/with-temp* [Collection [collection-a]
-                      App [_app {:collection_id (:id collection-a)}]
-                      Collection [collection-b]]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
-                                     {:parent_id (u/the-id collection-b)})))))
 
     (testing "I shouldn't be allowed to move the Collection without proper perms."
       (testing "If I want to move A into B, I should need permissions for both A and B"

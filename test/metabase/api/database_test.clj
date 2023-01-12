@@ -340,6 +340,23 @@
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
+(deftest fetch-database-fields-test
+  (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
+    (testing "GET /api/database/:id/fields"
+      (is (partial= {"VENUES.ID"        {:name "ID" :display_name "ID"
+                                         :table_name "VENUES"}
+                     "CHECKINS.USER_ID" {:name "USER_ID" :display_name "User ID"
+                                         :table_name "CHECKINS"}}
+                    (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id))))))
+      (testing "shows display names"
+        (mt/with-temp* [Table [{t-id :id} {:name "FOO_TABLE" :display_name "irrelevant"
+                                           :db_id (mt/id)}]
+                        Field [_ {:name "F_NAME" :display_name "user editable"
+                                  :table_id t-id}]]
+          (is (partial= {"FOO_TABLE.F_NAME" {:name "F_NAME" :display_name "user editable"
+                                             :table_name "FOO_TABLE"}}
+                        (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id)))))))))))
+
 (deftest fetch-database-metadata-include-hidden-test
   ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test
   (mt/with-temp-vals-in-db Table (mt/id :categories) {:visibility_type "hidden"}
@@ -1049,8 +1066,7 @@
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
                       Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
-                      Card       [card-2 (card-with-native-query "Card 2")]
-                      Card       [_card-3 (assoc (card-with-native-query "Card 3") :is_write true :result_metadata {})]]
+                      Card       [card-2 (card-with-native-query "Card 2")]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
