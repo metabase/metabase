@@ -3,13 +3,17 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+
+import { Grid } from "metabase/components/Grid";
+import NewModelOption from "metabase/models/components/NewModelOption";
+
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import { Grid } from "metabase/components/Grid";
-import NewModelOption from "metabase/new_model/components/NewModelOption";
-import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import Database from "metabase/entities/databases";
+import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
+
+import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
+
 import {
   OptionsGridItem,
   OptionsRoot,
@@ -59,9 +63,7 @@ class NewModelOptions extends Component {
       );
     }
 
-    {
-      /* Determine how many items will be shown based on permissions etc so we can make sure the layout adapts */
-    }
+    // Determine how many items will be shown based on permissions etc so we can make sure the layout adapts
     const itemsCount = (hasDataAccess ? 1 : 0) + (hasNativeWrite ? 1 : 0);
 
     return (
