@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [defn])
   (:require
    [clojure.core :as core]
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
@@ -21,11 +22,11 @@
                              (catch Exception _ ::none))))
   ([schema value]
    (str "https://malli.io?schema="
-        (codec/url-encode (u/pprint-to-str (mc/form schema)))
+        (codec/url-encode (str/trim (u/pprint-to-str (mc/form schema))))
         "&value="
         (if (= ::none value)
           ""
-          (codec/url-encode (nil->nil-str (u/pprint-to-str value)))))))
+          (codec/url-encode (str/trim (u/pprint-to-str value)))))))
 
 (core/defn- explain-fn-fail!
   "Used as reporting function to minst/instrument!"
