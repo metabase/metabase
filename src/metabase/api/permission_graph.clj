@@ -6,13 +6,13 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as gen]
-   [clojure.walk :as walk]
-   [metabase.util :as u]
-   [metabase.util.malli.describe :as umd]
-   [malli.generator :as mg]
    [clojure.string :as str]
+   [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.error :as me] ;; umd/describe
+   [malli.generator :as mg]
    [malli.transform :as mtx]
-   [malli.core :as mc]))
+   [metabase.util :as u]))
 
 (defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"
@@ -140,23 +140,17 @@
 
 {"PUBLIC" {1 :all}}
 
-(me/humanize (mc/explain schema-graph {"PUBLIC"
-                                       ;; table-id -> permission level
-                                       {1 :all}}))
+(chk (mc/validate schema-graph {"PUBLIC"
+                                ;; table-id -> permission level
+                                {1 :all}}))
 
 (s/def ::schemas (s/or :str->kw   #{"all" "segmented" "none" "block" "full" "limited"}
                        :nil->none nil?
                        :identity  ::schema-graph))
 
 (s/def ::data (s/keys :opt-un [::native ::schemas]))
-
 (s/def ::download (s/keys :opt-un [::native ::schemas]))
-
 (s/def ::data-model (s/keys :opt-un [::native ::schemas]))
-
-(def flamingo [:map
-               [:native {:optional true} native]
-               [:schemas {:optional true} schemas]])
 
 (def details [:enum {:comment
                      (str/join ["We use :yes and :no instead of booleans for consistency with the application perms graph, and"
@@ -166,13 +160,16 @@
 ;; language used on the frontend.
 (s/def ::details (s/or :str->kw #{"yes" "no"}))
 
-(def execute [:enum :all :none]);; redundant
+(def flamingo [:map
+               [:native {:optional true} native]
+               [:schemas {:optional true} schemas]])
+
 (def db-perms [:map
                [:data {:optional true} flamingo]
                [:download {:optional true} flamingo]
                [:data-model {:optional true} flamingo]
                [:details {:optional true} details]
-               [:execute {:optional true} execute]])
+               [:execute {:optional true} [:enum :all :none]]])
 
 (s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details ::execute]))
 
@@ -238,82 +235,25 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(require '[malli.core :as mc] ;; nocommit
-         '[malli.error :as me]
-         '[malli.util :as mut]
-         '[metabase.util.malli :as mu]
-         '[metabase.util.malli.describe :as umd] ;; umd/describe
-         '[malli.provider :as mp]
-         '[malli.generator :as mg]
-         '[malli.transform :as mtx])
+(def ^{:arglists '([data-permissions-graph])} data-permissions-graph-decoder
+  (mc/decoder data-permissions-graph
+              (mtx/transformer
+               mtx/string-transformer
+               (mtx/transformer {:name :perm-graph}))))
 
-(def dpg-in
-  {:groups
-   {:1
-    {:1
-     {:data
-      {:native "none",
-       :schemas {:PUBLIC {:1 "all", :2 "none", :3 "all", :4 "all", :5 "all", :6 "all", :7 "all", :8 "all"}}},
-      :download {:native "full", :schemas "full"}},
-     :12 {:download {:native "full", :schemas "full"}, :data {:native "write", :schemas "all"}}},
-    :2
-    {:1
-     {:data {:native "write", :schemas "all"},
-      :download {:native "full", :schemas "full"},
-      :data-model {:schemas "all"},
-      :details "yes"},
-     :12
-     {:data {:native "write", :schemas "all"},
-      :download {:native "full", :schemas "full"},
-      :data-model {:schemas "all"},
-      :details "yes"}}},
-   :revision 8})
-
-;; db id, group id, schema
-
-(def dpg-out
-  {:groups
-   {1 {1 {:data {:native :none, :schemas {"PUBLIC"
-                                          ;; table-id -> permission level
-                                          {1 :all,
-                                           2 :none,
-                                           3 :all,
-                                           4 :all, 5 :all, 6 :all, 7 :all, 8 :all}}},
-          :download {:native :full, :schemas :full}},
-       12 {:download {:native :full, :schemas :full},
-           :data {:native :write, :schemas :all}}},
-    2 {1 {:data {:native :write, :schemas :all},
-          :download {:native :full, :schemas :full},
-          :data-model {:schemas :all},
-          :details :yes},
-       12 {:data {:native :write, :schemas :all},
-           :download {:native :full, :schemas :full},
-           :data-model {:schemas :all},
-           :details :yes}}},
-   :revision 8})
-
-
-(def native [:and :keyword [:enum :write :none :full :limited]])
-
-(def examples (read-string (str "[" (slurp "examples.edn") "]")))
 
 (for [[_ in out] examples]
-  [(if (mc/validate data-permissions-graph out)
-     :validated
-     {:out out
-      :h (me/humanize (mc/explain data-permissions-graph out)
-                      {:wrap #(select-keys % [:message :value])})
-      :e (mc/explain data-permissions-graph out)})
-   (if (= out
-          (mc/decode data-permissions-graph in (mtx/transformer
-                                                mtx/string-transformer
-                                                (mtx/transformer {:name :perm-graph}))))
-     :decoded
-     {:in in
-      :out out
-      :computed (mc/decode data-permissions-graph in (mtx/transformer
-                                                      (mtx/transformer {:name :perm-graph})
-                                                      mtx/string-transformer))})])
+  (do
+    (chk (mc/validate data-permissions-graph out)
+         #_(if
+               :validated
+             {:out out
+              :h (me/humanize (mc/explain data-permissions-graph out)
+                              {:wrap #(select-keys % [:message :value])})
+              :e (mc/explain data-permissions-graph out)}))
+    (chk (= out (data-permissions-graph-decoder in)))
+    (if (= out (data-permissions-graph-decoder in)) :ok
+        [out (data-permissions-graph-decoder in)])))
 
 
 
