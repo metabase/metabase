@@ -65,7 +65,7 @@ interface PivotTableProps {
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   isNightMode: boolean;
   isDashboard: boolean;
-  fontFamily: string;
+  fontFamily?: string;
   onVisualizationClick: (options: any) => void;
 }
 
