@@ -357,6 +357,12 @@
   "List of models that are used to report usage on a database."
   [:question :dataset :metric :segment])
 
+(def ^:private always-false-hsql-expr
+  "A Honey SQL expression that is never true.
+
+    1 = 2"
+  [:= [:inline 1] [:inline 2]])
+
 (defmulti ^:private database-usage-query
   "Query that will returns the number of `model` that use the database with id `database-id`.
   The query must returns a scalar, and the method could return `nil` in case no query is available."
@@ -381,17 +387,19 @@
 
 (defmethod database-usage-query :metric
   [_ _db-id table-ids]
-  (when (seq table-ids)
-    {:select [[:%count.* :metric]]
-     :from   [:metric]
-     :where  [:in :table_id table-ids]}))
+  {:select [[:%count.* :metric]]
+   :from   [:metric]
+   :where  (if table-ids
+             [:in :table_id table-ids]
+             always-false-hsql-expr)})
 
 (defmethod database-usage-query :segment
   [_ _db-id table-ids]
-  (when (seq table-ids)
-    {:select [[:%count.* :segment]]
-     :from   [:segment]
-     :where  [:in :table_id table-ids]}))
+  {:select [[:%count.* :segment]]
+   :from   [:segment]
+   :where  (if table-ids
+             [:in :table_id table-ids]
+             always-false-hsql-expr)})
 
 (api/defendpoint GET "/:id/usage_info"
   "Get usage info for a database.
@@ -401,14 +409,12 @@
   (api/check-superuser)
   (api/check-404 (db/exists? Database :id id))
   (let [table-ids (db/select-ids Table :db_id id)]
-    (merge (into {} (for [model database-usage-models]
-                      [model 0]))
-           (first (mdb.query/query
-                    {:select [:*]
-                     :from   (for [model database-usage-models
-                                   :let [query (database-usage-query model id table-ids)]
-                                   :when query]
-                               [query model])})))))
+    (first (mdb.query/query
+             {:select [:*]
+              :from   (for [model database-usage-models
+                            :let [query (database-usage-query model id table-ids)]
+                            :when query]
+                        [query model])}))))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
