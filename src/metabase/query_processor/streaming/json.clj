@@ -3,6 +3,8 @@
   response with all the metadata for `:api`."
   (:require
    [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   flatland.ordered.map
    [java-time :as t]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -10,6 +12,14 @@
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
+
+;; custom Cheshire encoding for flatland.ordered.map so queries are cached correctly (see #25915)
+
+(json.generate/add-encoder
+ flatland.ordered.map.OrderedMap
+ #(json.generate/encode-map (into {} %1) %2))
+
+;; qp.si implementations
 
 (defmethod qp.si/stream-options :json
   ([_]
