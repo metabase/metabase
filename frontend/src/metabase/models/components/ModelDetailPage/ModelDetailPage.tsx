@@ -3,6 +3,8 @@ import { t } from "ttag";
 
 import TabContent from "metabase/core/components/TabContent";
 
+import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
+
 import type { Card, Collection } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
@@ -37,6 +39,15 @@ function ModelDetailPage({
 }: Props) {
   const [tab, setTab] = useState<ModelTab>("usage");
 
+  const database = model.database()?.getPlainObject();
+  const hasActionsTab = database && checkDatabaseActionsEnabled(database);
+
+  const tabs = [
+    { value: "usage", name: t`Used by` },
+    { value: "schema", name: t`Schema` },
+    hasActionsTab && { value: "actions", name: t`Actions` },
+  ].filter(Boolean);
+
   const handleNameChange = useCallback(
     name => {
       if (name && name !== model.displayName()) {
@@ -68,11 +79,7 @@ function ModelDetailPage({
         <TabContent value={tab} onChange={setTab}>
           <TabList
             value={tab}
-            options={[
-              { value: "usage", name: t`Used by` },
-              { value: "schema", name: t`Schema` },
-              { value: "actions", name: t`Actions` },
-            ]}
+            options={tabs}
             onChange={tab => setTab(tab as ModelTab)}
           />
           <TabPanel value="usage">
@@ -85,11 +92,13 @@ function ModelDetailPage({
               <ModelSchemaDetails model={model} />
             </TabPanelContent>
           </TabPanel>
-          <TabPanel value="actions">
-            <TabPanelContent>
-              <ModelActionDetails model={model} />
-            </TabPanelContent>
-          </TabPanel>
+          {hasActionsTab && (
+            <TabPanel value="actions">
+              <TabPanelContent>
+                <ModelActionDetails model={model} />
+              </TabPanelContent>
+            </TabPanel>
+          )}
         </TabContent>
       </ModelMain>
       <ModelInfoSidePanel
