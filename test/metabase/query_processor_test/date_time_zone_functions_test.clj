@@ -115,7 +115,7 @@
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
-    ;; mongo doesn't supports cast string to date
+    ;; mongo doesn't support casting string to date
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with date columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
@@ -332,8 +332,7 @@
 
 (deftest datetime-math-tests
   (mt/dataset times-mixed
-    ;; mongo doesn't supports coercion yet so we exclude it here, Tests for it are in [[metabase.driver.mongo.query-processor-test]]
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
+    (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
       (testing "date arithmetic with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
                 op                  [:datetime-add :datetime-subtract]
@@ -351,9 +350,12 @@
                              :aggregation [[:count]]
                              :breakout    [[:expression "expr"]]}}]]
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-            (is (= (set expected) (set (test-datetime-math query)))))))
+            (is (= (set expected) (set (test-datetime-math query))))))))
 
-      (testing "date arithmetic with datetime columns"
+    ;; mongo doesn't support casting string to date so we exclude it here
+    ;; tests for it are in [[metabase.driver.mongo.query-processor-test]]
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
+      (testing "date arithmetic with date columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
                 op                  [:datetime-add :datetime-subtract]
                 unit                [:year :quarter :month :day]
@@ -370,7 +372,9 @@
                              :aggregation [[:count]]
                              :breakout    [[:expression "expr"]]}}]]
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-            (is (= (set expected) (set (test-datetime-math query)))))))
+            (is (= (set expected) (set (test-datetime-math query))))))))
+
+    (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
       (testing "date arithmetics with literal date"
         (is (= ["2008-08-20 00:00:00" "2008-04-20 00:00:00"]
                (->> (mt/run-mbql-query times
