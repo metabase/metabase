@@ -1,13 +1,12 @@
-import type { Scope } from "nock";
-
-import type { Card } from "metabase-types/api";
+import { Scope } from "nock";
+import { Card } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   getQuestionVirtualTableId,
   convertSavedQuestionToVirtualTable,
 } from "metabase-lib/metadata/utils/saved-questions";
 
-function setupForSingleCard(scope: Scope, card: Card) {
+export function setupCardEndpoints(scope: Scope, card: Card) {
   scope.get(`/api/card/${card.id}`).reply(200, card);
   scope
     .put(`/api/card/${card.id}`)
@@ -26,7 +25,7 @@ function setupForSingleCard(scope: Scope, card: Card) {
   }
 }
 
-export function setupCardEndpoints(scope: Scope, cards: Card[]) {
+export function setupCardsEndpoints(scope: Scope, cards: Card[]) {
   scope.get("/api/card").reply(200, cards);
-  cards.forEach(card => setupForSingleCard(scope, card));
+  cards.forEach(card => setupCardEndpoints(scope, card));
 }

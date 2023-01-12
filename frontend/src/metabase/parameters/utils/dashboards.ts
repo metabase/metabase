@@ -8,8 +8,6 @@ import type {
   Dashboard,
   DashboardParameterMapping,
   DashboardOrderedCard,
-  ValuesSourceType,
-  ValuesSourceConfig,
   Parameter,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
@@ -41,13 +39,17 @@ export function createParameter(
     name = (option.combinedName || option.name) + " " + ++nameIndex;
   }
 
-  const parameter = {
+  const parameter: Parameter = {
     name: "",
     slug: "",
     id: generateParameterId(),
     type: option.type,
     sectionId: option.sectionId,
+    values_query_type: "list",
+    values_source_type: null,
+    values_source_config: {},
   };
+
   return setParameterName(parameter, name);
 }
 
@@ -64,14 +66,6 @@ export function setParameterName(
     name: name,
     slug: slug,
   };
-}
-
-export function getSourceType(parameter: Parameter): ValuesSourceType {
-  return parameter.values_source_type ?? null;
-}
-
-export function getSourceConfig(parameter: Parameter): ValuesSourceConfig {
-  return parameter.values_source_config ?? {};
 }
 
 export function getIsMultiSelect(parameter: Parameter): boolean {

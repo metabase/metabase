@@ -80,7 +80,7 @@ describe("scenarios > public", () => {
 
       popover().within(() => {
         cy.findByText("Text or Category").click();
-        cy.findByText("Dropdown").click();
+        cy.findByText("Is").click();
       });
 
       cy.contains("Select…").click();

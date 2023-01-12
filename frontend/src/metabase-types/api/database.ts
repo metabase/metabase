@@ -43,6 +43,7 @@ export interface Database extends DatabaseData {
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
+  tables?: Table[];
 }
 
 export interface DatabaseData {

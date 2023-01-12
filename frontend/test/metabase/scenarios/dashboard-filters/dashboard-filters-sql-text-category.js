@@ -3,7 +3,7 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 const { PRODUCTS } = SAMPLE_DATABASE;
 
 export const DASHBOARD_SQL_TEXT_FILTERS = {
-  Dropdown: {
+  Is: {
     sqlFilter: "string/=",
     value: "Gizmo",
     representativeResult: "Rustic Paper Wallet",
@@ -39,12 +39,12 @@ export const questionDetails = {
   name: "SQL with Field Filter",
   native: {
     query:
-      "select * from PRODUCTS where true \n[[AND {{dropdown}}]] \n[[AND {{not}}]] \n[[AND {{contains}}]] \n[[AND {{doesntcontain}}]] \n[[AND {{startswith}}]] \n[[AND {{endswith}}]]",
+      "select * from PRODUCTS where true \n[[AND {{is}}]] \n[[AND {{not}}]] \n[[AND {{contains}}]] \n[[AND {{doesntcontain}}]] \n[[AND {{startswith}}]] \n[[AND {{endswith}}]]",
     "template-tags": {
-      dropdown: {
+      is: {
         id: "bcd8b984-2e16-ffa4-82fc-2895ac8570f9",
-        name: "dropdown",
-        "display-name": "Dropdown",
+        name: "is",
+        "display-name": "Is",
         type: "dimension",
         dimension: ["field", PRODUCTS.CATEGORY, null],
         "widget-type": "string/=",

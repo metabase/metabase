@@ -128,7 +128,7 @@ describe("scenarios > dashboard > text-box", () => {
     cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("Text or Category").click();
-      cy.findByText("Dropdown").click();
+      cy.findByText("Is").click();
     });
     cy.findByText("Save").click();
 

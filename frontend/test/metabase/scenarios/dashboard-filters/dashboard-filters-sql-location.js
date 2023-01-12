@@ -6,12 +6,12 @@ export const questionDetails = {
   name: "SQL with Field Filter",
   native: {
     query:
-      "select PEOPLE.NAME, PEOPLE.CITY from PEOPLE where true \n[[AND {{dropdown}}]] \n[[AND {{not}}]] \n[[AND {{contains}}]] \n[[AND {{doesntcontain}}]] \n[[AND {{startswith}}]] \n[[AND {{endswith}}]] limit 10",
+      "select PEOPLE.NAME, PEOPLE.CITY from PEOPLE where true \n[[AND {{is}}]] \n[[AND {{not}}]] \n[[AND {{contains}}]] \n[[AND {{doesntcontain}}]] \n[[AND {{startswith}}]] \n[[AND {{endswith}}]] limit 10",
     "template-tags": {
-      dropdown: {
+      is: {
         id: "bcd8b984-2e16-ffa4-82fc-2895ac8570f9",
-        name: "dropdown",
-        "display-name": "Dropdown",
+        name: "is",
+        "display-name": "Is",
         type: "dimension",
         dimension: ["field", PEOPLE.CITY, null],
         "widget-type": "string/=",
@@ -67,7 +67,7 @@ export const questionDetails = {
 };
 
 export const DASHBOARD_SQL_LOCATION_FILTERS = {
-  Dropdown: {
+  Is: {
     sqlFilter: "string/=",
     value: "Rye",
     representativeResult: "Arnold Adams",
