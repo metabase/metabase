@@ -2,8 +2,15 @@ import React, { useState } from "react";
 import { t } from "ttag";
 
 import Modal from "metabase/components/Modal";
+import { ModalFooter } from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import Button from "metabase/core/components/Button";
+
+import {
+  ModalHeader,
+  ModalSubtitle,
+  ModalRadioRoot,
+} from "./DeleteGroupMappingModal.styled";
 
 type DeleteGroupMappingModalProps = {
   onHide: () => void;
@@ -16,21 +23,22 @@ const DeleteGroupMappingModal = ({ onHide }: DeleteGroupMappingModalProps) => {
     setValue(newValue);
   };
 
+  const submitButtonLabels: Record<string, string> = {
+    nothing: t`Remove mapping`,
+    removeAllMembers: t`Remove mapping and members`,
+    deleteGroup: t`Remove mapping and delete group`,
+  };
+
   return (
     <Modal>
-      <div className="px4">
-        <div className="pt4">
-          <h2>{t`Remove this group mapping?`}</h2>
-        </div>
-        <div className="pt4">
-          <p className="text-measure">
-            {t`This group's user membership will no longer be synced with the directory server.`}
-          </p>
-        </div>
-        <div className="pt4">
-          <p className="text-measure">
-            {t`What should happen with the group itself in ⚠️fill in dynamic application name?`}
-          </p>
+      <div>
+        <ModalHeader>{t`Remove this group mapping?`}</ModalHeader>
+        <ModalSubtitle>
+          {t`This group's user membership will no longer be synced with the directory server.`}
+        </ModalSubtitle>
+        <ModalRadioRoot>
+          <p>{t`What should happen with the group itself in Metabase?`}</p>
+
           <Radio
             className="ml2"
             vertical
@@ -42,20 +50,23 @@ const DeleteGroupMappingModal = ({ onHide }: DeleteGroupMappingModalProps) => {
               },
               {
                 name: t`Also remove all group members`,
-                value: "remove-all-members",
+                value: "removeAllMembers",
               },
               {
                 name: t`Also delete the group`,
-                value: "delete-group",
+                value: "deleteGroup",
               },
             ]}
             showButtons
             onChange={handleChange}
           />
-        </div>
-        <div className="pt4">
+        </ModalRadioRoot>
+        <ModalFooter>
           <Button onClick={onHide}>{t`Cancel`}</Button>
-        </div>
+          <Button danger onClick={onHide}>
+            {submitButtonLabels[value]}
+          </Button>
+        </ModalFooter>
       </div>
     </Modal>
   );
