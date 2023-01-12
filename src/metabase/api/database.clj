@@ -43,6 +43,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -352,6 +353,31 @@
                                      secret/expand-db-details-inferred-secret-values
                                      (assoc :can-manage true)))))
 
+(api/defendpoint GET "/:id/usage_info"
+  "Get usage info of a database"
+  [id]
+  {id ms/IntGreaterThanZero}
+  (api/check-superuser)
+  (api/check-404 (db/exists? Database :id id))
+  (let [table-ids (db/select-ids Table :db_id id)]
+    (first (mdb.query/query
+             {:select [:*]
+              :from   [[{:select [[:%count.* :question]]
+                         :from   [:report_card]
+                         :where  [:and
+                                  [:= :database_id id]
+                                  [:= :dataset false]]} :question]
+                       [{:select [[:%count.* :dataset]]
+                         :from   [:report_card]
+                         :where  [:and
+                                  [:= :database_id id]
+                                  [:= :dataset true]]} :dataset]
+                       [{:select [[:%count.* :metric]]
+                         :from   [:metric]
+                         :where  [:in :table_id table-ids]} :metric]
+                       [{:select [[:%count.* :segment]]
+                         :from   [:segment]
+                         :where  [:in :table_id table-ids]} :segment]]}))))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
