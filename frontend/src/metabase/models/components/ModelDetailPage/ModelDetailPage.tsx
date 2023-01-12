@@ -7,6 +7,7 @@ import type { Card, Collection } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
 
+import ModelActionDetails from "./ModelActionDetails";
 import ModelDetailHeader from "./ModelDetailHeader";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
 import ModelSchemaDetails from "./ModelSchemaDetails";
@@ -16,6 +17,7 @@ import {
   ModelMain,
   TabList,
   TabPanel,
+  NarrowTabPanel,
 } from "./ModelDetailPage.styled";
 
 interface Props {
@@ -69,6 +71,7 @@ function ModelDetailPage({
             options={[
               { value: "usage", name: t`Used by` },
               { value: "schema", name: t`Schema` },
+              { value: "actions", name: t`Actions` },
             ]}
             onChange={tab => setTab(tab as ModelTab)}
           />
@@ -78,6 +81,9 @@ function ModelDetailPage({
           <TabPanel value="schema">
             <ModelSchemaDetails model={model} />
           </TabPanel>
+          <NarrowTabPanel value="actions">
+            <ModelActionDetails model={model} />
+          </NarrowTabPanel>
         </TabContent>
       </ModelMain>
       <ModelInfoSidePanel

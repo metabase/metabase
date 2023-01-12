@@ -4,6 +4,7 @@ import Radio from "metabase/core/components/Radio";
 import BaseTabPanel from "metabase/core/components/TabPanel";
 
 import { color } from "metabase/lib/colors";
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const RootLayout = styled.div`
   display: flex;
@@ -32,6 +33,14 @@ TabList.defaultProps = { variant: "underlined" };
 export const TabPanel = styled(BaseTabPanel)`
   display: flex;
   flex-direction: column;
+`;
+
+export const NarrowTabPanel = styled(TabPanel)`
+  width: 70%;
+
+  ${breakpointMaxSmall} {
+    width: 100%;
+  }
 `;
 
 export const EmptyStateContainer = styled.div`
