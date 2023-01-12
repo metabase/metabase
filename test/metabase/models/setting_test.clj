@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [medley.core :as m]
+   [metabase.db.query :as mdb.query]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.setting.cache :as setting.cache]
@@ -450,9 +451,9 @@
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
 (defn- actual-value-in-db [setting-key]
-  (-> (db/query {:select [:value]
-                 :from   [:setting]
-                 :where  [:= :key (name setting-key)]})
+  (-> (mdb.query/query {:select [:value]
+                        :from   [:setting]
+                        :where  [:= :key (name setting-key)]})
       first :value))
 
 (deftest encrypted-settings-test

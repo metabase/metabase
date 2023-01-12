@@ -106,7 +106,7 @@
                                                  (mdb.u/isa :semantic_type :type/PK)       0
                                                  (mdb.u/isa :semantic_type :type/Name)     1
                                                  (mdb.u/isa :semantic_type :type/Temporal) 2
-                                                 :else                                    3)
+                                                 :else                                     3)
                                                :asc]
                                               [:%lower.name :asc]]
                                :database     [[:database_position :asc]]

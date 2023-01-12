@@ -39,7 +39,7 @@
    (java.sql ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)
-   (metabase.util.honeysql_extensions Identifier)))
+   (metabase.util.honey_sql_1_extensions Identifier)))
 
 (comment
   ;; method impls live in these namespaces.
@@ -95,7 +95,10 @@
   (if (= unit :quarter)
     (recur driver hsql-form (* 3 amount) :month)
     (let [hsql-form (->timestamp hsql-form)]
-      (-> (hx/+ hsql-form (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit))))
+      (-> (hx/+ hsql-form (let [s (format "(INTERVAL '%s %s')" amount (name unit))]
+                            (case hx/*honey-sql-version*
+                              1 (hsql/raw s)
+                              2 [:raw s])))
           (hx/with-type-info (hx/type-info hsql-form))))))
 
 (defmethod driver/humanize-connection-error-message :postgres

@@ -13,9 +13,17 @@ title: Driver interface changelog
   necessary. Currently, the only case when a special implementation is used is for BigQuery, which does not
   respect limit clauses.
 
-- `metabase.driver.sql.query-processor/datetime-diff` has been added. This method is used by implementations of 
+- `metabase.driver.sql.query-processor/datetime-diff` has been added. This method is used by implementations of
   `->honeysql` for the `:datetime-diff` clause. It is recommended to implement this if you want to use the default SQL
    implementation of `->honeysql` for the `:datetime-diff`, which includes validation of argument types across all units.
+
+- The classes `metabase.util.honeysql_extensions.Identifer` and `metabase.util.honeysql_extensions.TypedHoneySQLForm`
+  have been moved to `metabase.util.honey_sql_1_extensions.Identifer` and
+  `metabase.util.honey_sql_1_extensions.TypedHoneySQLForm`, respectively. Code that was referencing these classes
+  should be updated to reference the new class names.
+
+- `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; use
+  `metabase.util.honeysql-extensions/at-time-zone` instead.
 
 ## Metabase 0.45.0
 

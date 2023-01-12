@@ -1,20 +1,7 @@
 import _ from "underscore";
 import type { Scope } from "nock";
-
-import type { Table as TableObject } from "metabase-types/api";
-
 import type Database from "metabase-lib/metadata/Database";
-import type Table from "metabase-lib/metadata/Table";
-
-function cleanTable(table: Table): TableObject {
-  const object = {
-    ..._.omit(table.getPlainObject(), "schema", "schema_name"),
-    // After table is built inside the metadata object,
-    // what is normally called "schema" is renamed to "schema_name"
-    schema: table.schema_name,
-  };
-  return object as TableObject;
-}
+import { cleanTable } from "./utils";
 
 function setupForSingleDatabase(scope: Scope, db: Database) {
   scope.get(`/api/database/${db.id}`).reply(200, db.getPlainObject());

@@ -11,6 +11,7 @@
    [colorize.core :as colorize]
    [environ.core :as env]
    [java-time :as t]
+   [metabase.db.query :as mdb.query]
    [metabase.models
     :refer [Card
             Collection
@@ -511,9 +512,13 @@
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model                    (db/resolve-model model)
-        [original-column->value] (db/query {:select (keys column->temp-value)
-                                            :from   [model]
-                                            :where  [:= :id (u/the-id object-or-id)]})]
+        [original-column->value] (mdb.query/query {:select (keys column->temp-value)
+                                                   :from   [(u/prog1 (:table model)
+                                                              ;; this will fail once we switch to Toucan 2, since models
+                                                              ;; aren't objects; this is here so we can catch it easily
+                                                              ;; and fix it without hurting our heads
+                                                              (assert (keyword? <>)))]
+                                                   :where  [:= :id (u/the-id object-or-id)]})]
     (assert original-column->value
             (format "%s %d not found." (name model) (u/the-id object-or-id)))
     (try

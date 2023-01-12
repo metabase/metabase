@@ -13,7 +13,6 @@ import {
 
 import {
   setup,
-  setupVirtualizedLists,
   EMPTY_COLLECTION,
   SAMPLE_COLLECTION,
   SAMPLE_QUESTION,
@@ -26,7 +25,7 @@ const ROOT_COLLECTION_QUESTIONS_VIRTUAL_SCHEMA_ID =
 
 describe("DataPicker — picking questions", () => {
   beforeAll(() => {
-    setupVirtualizedLists();
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   afterEach(() => {
@@ -79,23 +78,24 @@ describe("DataPicker — picking questions", () => {
     const { onChange } = await setup();
 
     userEvent.click(screen.getByText(/Saved Questions/i));
-    const listItem = await screen.findByRole("menuitem", {
-      name: SAMPLE_QUESTION.name,
-    });
-    userEvent.click(listItem);
+    userEvent.click(await screen.findByText(SAMPLE_QUESTION.name));
+    userEvent.click(screen.getByText(SAMPLE_QUESTION_2.name));
 
-    expect(listItem).toHaveAttribute("aria-selected", "true");
+    const selectedItem = screen.getByRole("menuitem", {
+      name: SAMPLE_QUESTION_2.name,
+    });
+    expect(selectedItem).toHaveAttribute("aria-selected", "true");
     expect(onChange).toHaveBeenCalledWith({
       type: "questions",
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
       schemaId: ROOT_COLLECTION_QUESTIONS_VIRTUAL_SCHEMA_ID,
       collectionId: "root",
-      tableIds: [getQuestionVirtualTableId(SAMPLE_QUESTION.id)],
+      tableIds: [getQuestionVirtualTableId(SAMPLE_QUESTION_2.id)],
     });
   });
 
   it("allows to pick multiple questions", async () => {
-    const { onChange } = await setup();
+    const { onChange } = await setup({ isMultiSelect: true });
 
     userEvent.click(screen.getByText(/Saved Questions/i));
     userEvent.click(await screen.findByText(SAMPLE_QUESTION.name));

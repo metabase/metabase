@@ -4,6 +4,11 @@ import { render, screen, getIcon } from "__support__/ui";
 
 import PinnedItemCard from "./PinnedItemCard";
 
+// eslint-disable-next-line react/display-name, react/prop-types
+jest.mock("metabase/core/components/Link", () => ({ to, ...props }) => (
+  <a {...props} href={to} />
+));
+
 const mockOnCopy = jest.fn();
 const mockOnMove = jest.fn();
 
@@ -14,27 +19,37 @@ const defaultCollection = {
   archived: false,
 };
 
-const defaultItem = {
-  id: 1,
-  model: "dashboard",
-  collection_position: 1,
-  name: "Dashboard Foo",
-  description: "description foo foo foo",
-  getIcon: () => ({ name: "dashboard" }),
-  getUrl: () => "/dashboard/1",
-  setArchived: jest.fn(),
-  setPinned: jest.fn(),
-};
+function getCollectionItem({
+  id = 1,
+  model = "dashboard",
+  name = "My Item",
+  description = "description foo foo foo",
+  collection_position = 1,
+  icon = "dashboard",
+  url = "/dashboard/1",
+  setArchived = jest.fn(),
+  setPinned = jest.fn(),
+  ...rest
+} = {}) {
+  return {
+    ...rest,
+    id,
+    model,
+    name,
+    description,
+    collection_position,
+    getIcon: () => ({ name: icon }),
+    getUrl: () => url,
+    setArchived,
+    setPinned,
+  };
+}
 
-function setup({ item, collection } = {}) {
-  item = item || defaultItem;
-  collection = collection || defaultCollection;
+const defaultItem = getCollectionItem();
 
+function setup({ item = defaultItem, collection = defaultCollection } = {}) {
   mockOnCopy.mockReset();
   mockOnMove.mockReset();
-  item.setArchived.mockReset();
-  item.setPinned.mockReset();
-
   return render(
     <PinnedItemCard
       item={item}
@@ -62,12 +77,7 @@ describe("PinnedItemCard", () => {
   });
 
   it("should show a default description if there is no item description", () => {
-    const item = {
-      ...defaultItem,
-      description: null,
-    };
-    setup({ item });
-
+    setup({ item: getCollectionItem({ description: null }) });
     expect(screen.getByText("A dashboard")).toBeInTheDocument();
   });
 
@@ -75,5 +85,28 @@ describe("PinnedItemCard", () => {
     setup();
     userEvent.click(getIcon("ellipsis"));
     expect(screen.getByText("Unpin")).toBeInTheDocument();
+  });
+
+  it("doesn't show model detail page link", () => {
+    setup();
+    expect(screen.queryByTestId("model-detail-link")).not.toBeInTheDocument();
+  });
+
+  describe("models", () => {
+    const model = getCollectionItem({
+      id: 1,
+      name: "Order",
+      model: "dataset",
+      url: "/model/1",
+    });
+
+    it("should show a model detail page link", () => {
+      setup({ item: model });
+      expect(screen.getByTestId("model-detail-link")).toBeInTheDocument();
+      expect(screen.getByTestId("model-detail-link")).toHaveAttribute(
+        "href",
+        "/model/1-order/detail",
+      );
+    });
   });
 });

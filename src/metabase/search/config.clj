@@ -1,7 +1,6 @@
 (ns metabase.search.config
   (:require
    [cheshire.core :as json]
-   [honeysql.core :as hsql]
    [metabase.models
     :refer [Card Collection Dashboard Database Metric Pulse Segment Table]]
    [metabase.models.setting :refer [defsetting]]
@@ -107,7 +106,7 @@
 
 (def ^:private bookmark-col
   "Case statement to return boolean values of `:bookmark` for Card, Collection and Dashboard."
-  [(hsql/call :case [:not= :bookmark.id nil] true :else false) :bookmark])
+  [[:case [:not= :bookmark.id nil] true :else false] :bookmark])
 
 (def ^:private dashboardcard-count-col
   "Subselect to get the count of associated DashboardCards"

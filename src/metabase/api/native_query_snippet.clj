@@ -16,7 +16,7 @@
    [toucan.hydrate :refer [hydrate]]))
 
 (s/defn ^:private hydrated-native-query-snippet :- (s/maybe (mi/InstanceOf NativeQuerySnippet))
-  [id :- su/IntGreaterThanZeroPlumatic]
+  [id :- su/IntGreaterThanZero]
   (-> (api/read-check (db/select-one NativeQuerySnippet :id id))
       (hydrate :creator)))
 
@@ -24,7 +24,7 @@
 (api/defendpoint-schema GET "/"
   "Fetch all snippets"
   [archived]
-  {archived (s/maybe su/BooleanStringPlumatic)}
+  {archived (s/maybe su/BooleanString)}
   (let [snippets (db/select NativeQuerySnippet
                             :archived (Boolean/parseBoolean archived)
                             {:order-by [[:%lower.name :asc]]})]
@@ -48,7 +48,7 @@
   {content       s/Str
    description   (s/maybe s/Str)
    name          native-query-snippet/NativeQuerySnippetName
-   collection_id (s/maybe su/IntGreaterThanZeroPlumatic)}
+   collection_id (s/maybe su/IntGreaterThanZero)}
   (check-snippet-name-is-unique name)
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
@@ -82,7 +82,7 @@
    content       (s/maybe s/Str)
    description   (s/maybe s/Str)
    name          (s/maybe native-query-snippet/NativeQuerySnippetName)
-   collection_id (s/maybe su/IntGreaterThanZeroPlumatic)}
+   collection_id (s/maybe su/IntGreaterThanZero)}
   (check-perms-and-update-snippet! id body))
 
 (api/define-routes)

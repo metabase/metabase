@@ -13,18 +13,18 @@
 
 (def ^:private ExpectedGetQueryActionAPIResponse
   "Expected schema for a query action as it should appear in the response for an API request to one of the GET endpoints."
-  {:id                     su/IntGreaterThanOrEqualToZeroPlumatic
+  {:id                     su/IntGreaterThanOrEqualToZero
    :type                   (s/eq "query")
-   :model_id               su/IntGreaterThanOrEqualToZeroPlumatic
-   :database_id            su/IntGreaterThanOrEqualToZeroPlumatic
-   :dataset_query          {:database su/IntGreaterThanOrEqualToZeroPlumatic
+   :model_id               su/IntGreaterThanOrEqualToZero
+   :database_id            su/IntGreaterThanOrEqualToZero
+   :dataset_query          {:database su/IntGreaterThanOrEqualToZero
                             :type     (s/eq "native")
                             :native   {:query    s/Str
                                        s/Keyword s/Any}
                             s/Keyword s/Any}
    :parameters             s/Any
    :parameter_mappings     s/Any
-   :visualization_settings su/MapPlumatic
+   :visualization_settings su/Map
    s/Keyword               s/Any})
 
 (deftest list-actions-test
@@ -178,21 +178,31 @@
               action-path (str "action/" (:id created-action))]
           (testing "Validate POST"
             (testing "Required fields"
-              (is (partial= {:errors {:name ["should be a string"]}}
+              (is (partial= {:errors {:name "string"},
+                             :specific-errors {:name ["should be a string"]}}
                             (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
-              (is (partial= {:errors {:model_id ["should be a positive int"]}}
+              (is (partial= {:errors {:model_id "integer greater than 0"},
+                             :specific-errors {:model_id ["should be a positive int"]}}
                             (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
             (testing "Handles need to be valid jq"
-              (is (partial= {:errors {:response_handle ["must be a valid json-query, something like '.item.title'"]}}
+              (is (partial= {:errors {:response_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+                             :specific-errors {:response_handle ["must be a valid json-query, something like '.item.title'"]}}
                             (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :response_handle "body"))))
-              (is (partial= {:errors {:error_handle ["must be a valid json-query, something like '.item.title'"]}}
+              (is (partial= {:errors {:error_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+                             :specific-errors {:error_handle ["must be a valid json-query, something like '.item.title'"]}}
                             (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :error_handle "x"))))))
           (testing "Validate PUT"
             (testing "Template needs method and url"
-              (is (partial= {:errors {:template {:method ["missing required key",] :url ["missing required key"]}}}
+              (is (partial= {:errors
+                             {:template
+                              "nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length <= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys"},
+                             :specific-errors {:template {:method ["missing required key"],
+                                                          :url ["missing required key"]}}}
                             (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
             (testing "Handles need to be valid jq"
-              (is (partial= {:errors {:response_handle ["must be a valid json-query, something like '.item.title'"]}}
+              (is (partial= {:errors {:response_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+                             :specific-errors {:response_handle ["must be a valid json-query, something like '.item.title'"]}}
                             (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :response_handle "body"))))
-              (is (partial= {:errors {:error_handle ["must be a valid json-query, something like '.item.title'"]}}
+              (is (partial= {:errors {:error_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+                             :specific-errors {:error_handle ["must be a valid json-query, something like '.item.title'"]}}
                             (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :error_handle "x")))))))))))
