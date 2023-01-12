@@ -18,7 +18,7 @@
 
 (def ^:private ApplicationPermissionsGraph
   {:revision s/Int
-   :groups   {su/IntGreaterThanZeroPlumatic GroupPermissionsGraph}})
+   :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 

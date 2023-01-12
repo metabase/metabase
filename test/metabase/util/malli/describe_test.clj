@@ -53,34 +53,35 @@
 
   (is (= "Order which is: <Country is map where {:name -> <enum of :FI, :PO>, :neighbors (optional) -> <vector of \"Country\">} with no other keys, Burger is map where {:name -> <string>, :description (optional) -> <string>, :origin -> <nullable Country>, :price -> <integer greater than 0>}, OrderLine is map where {:burger -> <Burger>, :amount -> <integer>} with no other keys, Order is map where {:lines -> <vector of OrderLine>, :delivery -> <map where {:delivered -> <boolean>, :address -> <map where {:street -> <string>, :zip -> <integer>, :country -> <Country>}>} with no other keys>} with no other keys>"
          (umd/describe [:schema
-                           {:registry {"Country" [:map
-                                                  {:closed true}
-                                                  [:name [:enum :FI :PO]]
-                                                  [:neighbors
-                                                   {:optional true}
-                                                   [:vector [:ref "Country"]]]],
-                                       "Burger" [:map
-                                                 [:name string?]
-                                                 [:description {:optional true} string?]
-                                                 [:origin [:maybe "Country"]]
-                                                 [:price pos-int?]],
-                                       "OrderLine" [:map
-                                                    {:closed true}
-                                                    [:burger "Burger"]
-                                                    [:amount int?]],
-                                       "Order" [:map
-                                                {:closed true}
-                                                [:lines [:vector "OrderLine"]]
-                                                [:delivery
-                                                 [:map
-                                                  {:closed true}
-                                                  [:delivered boolean?]
-                                                  [:address
-                                                   [:map
-                                                    [:street string?]
-                                                    [:zip int?]
-                                                    [:country "Country"]]]]]]}}
-                           "Order"])))
+                        {:registry
+                         {"Country" [:map
+                                     {:closed true}
+                                     [:name [:enum :FI :PO]]
+                                     [:neighbors
+                                      {:optional true}
+                                      [:vector [:ref "Country"]]]],
+                          "Burger" [:map
+                                    [:name string?]
+                                    [:description {:optional true} string?]
+                                    [:origin [:maybe "Country"]]
+                                    [:price pos-int?]],
+                          "OrderLine" [:map
+                                       {:closed true}
+                                       [:burger "Burger"]
+                                       [:amount int?]],
+                          "Order" [:map
+                                   {:closed true}
+                                   [:lines [:vector "OrderLine"]]
+                                   [:delivery
+                                    [:map
+                                     {:closed true}
+                                     [:delivered boolean?]
+                                     [:address
+                                      [:map
+                                       [:street string?]
+                                       [:zip int?]
+                                       [:country "Country"]]]]]]}}
+                        "Order"])))
 
   (is (= "ConsCell <nullable vector with exactly 2 items of type: integer, \"ConsCell\">"
          (umd/describe [:schema

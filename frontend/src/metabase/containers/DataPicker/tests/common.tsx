@@ -82,10 +82,12 @@ export const SAMPLE_QUESTION_3 = createMockCard({
 function DataPickerWrapper({
   value: initialValue,
   filters,
+  isMultiSelect,
   onChange,
 }: {
   value: DataPickerValue;
   filters?: DataPickerFiltersProp;
+  isMultiSelect?: boolean;
   onChange: (value: DataPickerValue) => void;
 }) {
   const [value, setValue] = useDataPickerValue(initialValue);
@@ -93,6 +95,7 @@ function DataPickerWrapper({
     <DataPicker
       value={value}
       filters={filters}
+      isMultiSelect={isMultiSelect}
       onChange={(value: DataPickerValue) => {
         setValue(value);
         onChange(value);
@@ -104,6 +107,7 @@ function DataPickerWrapper({
 interface SetupOpts {
   initialValue?: DataPickerValue;
   filters?: DataPickerFiltersProp;
+  isMultiSelect?: boolean;
   hasDataAccess?: boolean;
   hasEmptyDatabase?: boolean;
   hasMultiSchemaDatabase?: boolean;
@@ -111,24 +115,10 @@ interface SetupOpts {
   hasNestedQueriesEnabled?: boolean;
 }
 
-// react-virtualized's AutoSizer uses offsetWidth and offsetHeight.
-// Jest runs in JSDom which doesn't support measurements APIs.
-export function setupVirtualizedLists() {
-  Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
-    configurable: true,
-    value: 100,
-  });
-  Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
-    configurable: true,
-    value: 100,
-  });
-
-  window.HTMLElement.prototype.scrollIntoView = jest.fn();
-}
-
 export async function setup({
   initialValue = { tableIds: [] },
   filters,
+  isMultiSelect = false,
   hasDataAccess = true,
   hasEmptyDatabase = false,
   hasMultiSchemaDatabase = false,
@@ -189,6 +179,7 @@ export async function setup({
     <DataPickerWrapper
       value={initialValue}
       filters={filters}
+      isMultiSelect={isMultiSelect}
       onChange={onChange}
     />,
     {

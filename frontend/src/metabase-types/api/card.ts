@@ -1,4 +1,5 @@
-import { DatasetQuery } from "./query";
+import type { Field } from "./field";
+import type { DatasetQuery } from "./query";
 
 export interface Card extends UnsavedCard {
   id: CardId;
@@ -10,13 +11,14 @@ export interface Card extends UnsavedCard {
   cache_ttl: number | null;
   query_average_duration?: number | null;
   last_query_start: string | null;
+  result_metadata: Field[];
   archived: boolean;
 
   creator?: {
     id: number;
     common_name: string;
-    first_name: string;
-    last_name: string;
+    first_name: string | null;
+    last_name: string | null;
     email: string;
     last_login: string;
     date_joined: string;

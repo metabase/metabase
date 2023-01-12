@@ -57,7 +57,7 @@
 
 (s/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
-  [card-id :- su/IntGreaterThanZeroPlumatic]
+  [card-id :- su/IntGreaterThanZero]
   (let [card (or (db/select-one [Card :collection_id] :id card-id)
                  (throw (ex-info (tru "Card {0} does not exist." card-id)
                                  {:type    qp.error-type/invalid-query
@@ -91,7 +91,7 @@
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [outer-query :- su/MapPlumatic]
+  [outer-query :- su/Map]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (if *card-id*
@@ -128,7 +128,7 @@
 
 (s/defn check-query-action-permissions*
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
-  [outer-query :- su/MapPlumatic]
+  [outer-query :- su/Map]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
     (check-card-read-perms *card-id*))

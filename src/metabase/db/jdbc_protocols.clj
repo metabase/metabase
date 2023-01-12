@@ -15,6 +15,8 @@
    (java.sql PreparedStatement ResultSet ResultSetMetaData Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (defn- set-object
   [^PreparedStatement stmt ^Integer index object ^Integer target-sql-type]
   (.setObject stmt index object target-sql-type))
@@ -62,7 +64,12 @@
   ;; Similarly, none of them handle ZonedDateTime out of the box either, so convert it to an OffsetDateTime first
   ZonedDateTime
   (set-parameter [t stmt i]
-    (jdbc/set-parameter (t/offset-date-time t) stmt i)))
+    (jdbc/set-parameter (t/offset-date-time t) stmt i))
+
+  ;; JDBC drivers don't know about Clojure ratios. So just set them as a double instead. That should be ok enough for now.
+  clojure.lang.Ratio
+  (set-parameter [ratio stmt i]
+    (jdbc/set-parameter (double ratio) stmt i)))
 
 (defn clob->str
   "Convert an H2 clob to a String."

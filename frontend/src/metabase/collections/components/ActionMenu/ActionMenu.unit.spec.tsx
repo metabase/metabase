@@ -51,7 +51,7 @@ describe("ActionMenu", () => {
   it("should not show an option to hide preview for a pinned model", () => {
     const props = getProps({
       item: createMockCollectionItem({
-        model: "model",
+        model: "dataset",
         collection_position: 1,
         setCollectionPreview: jest.fn(),
       }),

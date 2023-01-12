@@ -83,10 +83,17 @@
     schema.core/both                                                             {:namespaces ["metabase.*"]}
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
-  :unresolved-var               {:exclude [colorize.core
-                                           metabase.test/with-gtaps
-                                           metabase.test/with-gtaps-for-user
-                                           metabase.test/with-user-attributes]}
+  :discouraged-var
+  {toucan.db/query           {:message "Use mdb.query/query instead of toucan.db/query"}
+   toucan.db/reducible-query {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
+
+  :unresolved-var
+  {:exclude
+   [colorize.core
+    metabase.test/with-gtaps
+    metabase.test/with-gtaps-for-user
+    metabase.test/with-user-attributes]}
+
   :unsorted-required-namespaces {:level :warning}
 
   :consistent-alias
@@ -114,6 +121,8 @@
     hf.depstar.api                                                  depstar
     hiccup.core                                                     hiccup
     hiccup.util                                                     hiccup.util
+    honey.sql                                                       sql
+    honey.sql.helpers                                               sql.helpers
     honeysql.core                                                   hsql
     honeysql.format                                                 hformat
     honeysql.helpers                                                hh
@@ -185,6 +194,7 @@
     metabase.db.jdbc-protocols                                      mdb.jdbc-protocols
     metabase.db.metadata-queries                                    metadata-queries
     metabase.db.spec                                                mdb.spec
+    metabase.db.query                                               mdb.query
     metabase.domain-entities.specs                                  de.specs
     metabase.driver.common.parameters                               params
     metabase.driver.common.parameters.dates                         params.dates
@@ -205,6 +215,7 @@
     metabase.driver.mongo.parameters                                mongo.params
     metabase.driver.mongo.query-processor                           mongo.qp
     metabase.driver.mongo.util                                      mongo.util
+    metabase.driver.sql                                             driver.sql
     metabase.driver.sql-jdbc.common                                 sql-jdbc.common
     metabase.driver.sql-jdbc.connection                             sql-jdbc.conn
     metabase.driver.sql-jdbc.execute                                sql-jdbc.execute
@@ -339,9 +350,13 @@
     metabase.util.encryption                                        encryption
     metabase.util.encryption-test                                   encryption-test
     metabase.util.files                                             u.files
+    metabase.util.honey-sql-1-extensions                            h1x
+    metabase.util.honey-sql-2-extensions                            h2x
+    metabase.util.honeysql-extensions                               hx
     metabase.util.i18n                                              i18n
     metabase.util.i18n.impl                                         i18n.impl
     metabase.util.malli                                             mu
+    metabase.util.malli.schema                                      ms
     metabase.util.password                                          u.password
     metabase.util.schema                                            su
     metabase.util.ui-logic                                          ui-logic

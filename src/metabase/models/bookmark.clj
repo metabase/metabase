@@ -2,10 +2,11 @@
   (:require
    [clojure.string :as str]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -26,8 +27,8 @@
   although the compound key can be inferred from it."
   {:id                               s/Str
    :type                             (s/enum "card" "collection" "dashboard")
-   :item_id                          su/IntGreaterThanZeroPlumatic
-   :name                             su/NonBlankStringPlumatic
+   :item_id                          su/IntGreaterThanZero
+   :name                             su/NonBlankString
    (s/optional-key :dataset)         (s/maybe s/Bool)
    (s/optional-key :display)         (s/maybe s/Str)
    (s/optional-key :authority_level) (s/maybe s/Str)
@@ -51,66 +52,72 @@
 
 (defn- bookmarks-union-query
   [user-id]
-  (let [as-null (when (= (mdb.connection/db-type) :postgres) (hx/->integer nil))]
+  (let [as-null (when (= (mdb.connection/db-type) :postgres) (h2x/->integer nil))]
     {:union-all [{:select [:card_id
                            [as-null :dashboard_id]
                            [as-null :collection_id]
                            [:card_id :item_id]
-                           [(hx/literal "card") :type]
+                           [(h2x/literal "card") :type]
                            :created_at]
-                  :from   [CardBookmark]
+                  :from   [:card_bookmark]
                   :where  [:= :user_id user-id]}
                  {:select [[as-null :card_id]
                            :dashboard_id
                            [as-null :collection_id]
                            [:dashboard_id :item_id]
-                           [(hx/literal "dashboard") :type]
+                           [(h2x/literal "dashboard") :type]
                            :created_at]
-                  :from   [DashboardBookmark]
+                  :from   [:dashboard_bookmark]
                   :where  [:= :user_id user-id]}
                  {:select [[as-null :card_id]
                            [as-null :dashboard_id]
                            :collection_id
                            [:collection_id :item_id]
-                           [(hx/literal "collection") :type]
+                           [(h2x/literal "collection") :type]
                            :created_at]
-                  :from   [CollectionBookmark]
+                  :from   [:collection_bookmark]
                   :where  [:= :user_id user-id]}]}))
 
 (s/defn bookmarks-for-user :- [BookmarkResult]
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
   item_id, name, and description from the underlying bookmarked item."
   [user-id]
-  (->> (db/query
-        {:select    [[:bookmark.created_at :created_at]
-                     [:bookmark.type :type]
-                     [:bookmark.item_id :item_id]
-                     [:card.name (db/qualify 'Card :name)]
-                     [:card.dataset (db/qualify 'Card :dataset)]
-                     [:card.display (db/qualify 'Card :display)]
-                     [:card.description (db/qualify 'Card :description)]
-                     [:card.archived (db/qualify 'Card :archived)]
-                     [:dashboard.name (db/qualify 'Dashboard :name)]
-                     [:dashboard.description (db/qualify 'Dashboard :description)]
-                     [:dashboard.archived (db/qualify 'Dashboard :archived)]
-                     [:collection.name (db/qualify 'Collection :name)]
-                     [:collection.authority_level (db/qualify 'Collection :authority_level)]
-                     [:collection.description (db/qualify 'Collection :description)]
-                     [:collection.archived (db/qualify 'Collection :archived)]]
+  (->> (mdb.query/query
+        {:select    [[:bookmark.created_at        :created_at]
+                     [:bookmark.type              :type]
+                     [:bookmark.item_id           :item_id]
+                     [:card.name                  (db/qualify Card :name)]
+                     [:card.dataset               (db/qualify Card :dataset)]
+                     [:card.display               (db/qualify Card :display)]
+                     [:card.description           (db/qualify Card :description)]
+                     [:card.archived              (db/qualify Card :archived)]
+                     [:dashboard.name             (db/qualify Dashboard :name)]
+                     [:dashboard.description      (db/qualify Dashboard :description)]
+                     [:dashboard.archived         (db/qualify Dashboard :archived)]
+                     [:collection.name            (db/qualify Collection  :name)]
+                     [:collection.authority_level (db/qualify Collection :authority_level)]
+                     [:collection.description     (db/qualify Collection :description)]
+                     [:collection.archived        (db/qualify Collection :archived)]]
          :from      [[(bookmarks-union-query user-id) :bookmark]]
-         :left-join [[Card :card] [:= :bookmark.card_id :card.id]
-                     [Dashboard :dashboard] [:= :bookmark.dashboard_id :dashboard.id]
-                     [Collection :collection] [:in :collection.id [:bookmark.collection_id
-                                                                   :dashboard.collection_id]]
-                     [BookmarkOrdering :bookmark_ordering] [:and
-                                                            [:= :bookmark_ordering.user_id user-id]
-                                                            [:= :bookmark_ordering.type :bookmark.type]
-                                                            [:= :bookmark_ordering.item_id :bookmark.item_id]]]
+         :left-join [[:report_card :card]                    [:= :bookmark.card_id :card.id]
+                     [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]
+                     ;; use of [[h2x/identifier]] here is a workaround for https://github.com/seancorfield/honeysql/issues/450
+                     [:collection :collection]               [:in :collection.id [(h2x/identifier :field :bookmark :collection_id)
+                                                                                  (h2x/identifier :field :dashboard :collection_id)]]
+                     [:bookmark_ordering :bookmark_ordering] [:and
+                                                              [:= :bookmark_ordering.user_id user-id]
+                                                              [:= :bookmark_ordering.type :bookmark.type]
+                                                              [:= :bookmark_ordering.item_id :bookmark.item_id]]]
          :where     (into [:and]
                           (for [table [:card :dashboard :collection]
-                                :let [field (keyword (str (name table) "." "archived"))]]
+                                :let  [field (keyword (str (name table) "." "archived"))]]
                             [:or [:= field false] [:= field nil]]))
-         :order-by [[:bookmark_ordering.ordering :asc-nulls-last] [:created_at :desc]]})
+         :order-by  [[:bookmark_ordering.ordering (case (mdb.connection/db-type)
+                                                    ;; NULLS LAST is not supported by MySQL, but this is default
+                                                    ;; behavior for MySQL anyway
+                                                    (:postgres :h2) :asc-nulls-last
+                                                    :mysql          :asc)]
+                     [:created_at :desc]]})
        (map normalize-bookmark-result)))
 
 (defn save-ordering
