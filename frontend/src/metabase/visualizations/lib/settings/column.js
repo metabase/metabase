@@ -28,6 +28,7 @@ export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   ...def
 } = {}) {
+  console.log("here in columnSettings");
   return nestedSettings("column_settings", {
     section: t`Formatting`,
     objectName: "column",

@@ -495,11 +495,11 @@ class TableInteractive extends Component {
     const { dragColIndex, showDetailShortcut } = this.state;
     const { rows, cols } = data;
 
-    const column = cols[columnIndex];
+    const column = cols[columnIndex]; // cols are the things from result_metadata
     const row = rows[rowIndex];
     const value = row[columnIndex];
 
-    const columnSettings = settings.column(column);
+    const columnSettings = settings.column(column); // this is the one. where is this column function?
     const clicked = this.getCellClickedObject(rowIndex, columnIndex);
 
     const cellData = columnSettings["show_mini_bar"] ? (
