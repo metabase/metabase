@@ -477,20 +477,3 @@
   font-style: normal;
   font-display: swap;
 }
-
-@font-face {
-  font-family: "Fira Code";
-  src: local("Fira Code Regular"), local("FiraCode-Regular"),
-    url("~fonts/Fira_Code/FiraCode-Regular.woff2") format("woff2");
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Fira Code";
-  src: local("Fira Code Bold"), local("FiraCode-Bold"),
-    url("~fonts/Fira_Code/FiraCode-Bold.woff2") format("woff2");
-  font-weight: bold;
-  font-style: normal;
-  font-display: swap;
-}

@@ -14,7 +14,7 @@ export const CodeBlock = styled.pre`
   margin-top: 0.5rem;
   border-radius: 6px;
 
-  font-family: "Fira Code", monospace;
+  font-family: Monaco, monospace;
   font-size: 0.7rem;
   white-space: pre-wrap;
   color: ${color("text-white")};
