@@ -12,9 +12,6 @@
    [metabase.util :as u]
    [ring.util.codec :as codec]))
 
-(core/defn- nil->nil-str [x]
-  (if (nil? x) "nil" x))
-
 (core/defn- ->malli-io-link
   ([schema]
    (->malli-io-link schema (try
