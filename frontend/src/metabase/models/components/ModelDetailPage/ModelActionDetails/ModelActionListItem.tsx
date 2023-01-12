@@ -1,14 +1,20 @@
-import React from "react";
+import React, { useCallback } from "react";
 
 import type { WritebackAction } from "metabase-types/api";
 
-import { ActionTitle, CodeBlock } from "./ModelActionListItem.styled";
+import {
+  ActionTitle,
+  CodeBlock,
+  CodeContainer,
+  EditButton,
+} from "./ModelActionListItem.styled";
 
 interface Props {
   action: WritebackAction;
+  onEdit?: () => void;
 }
 
-function ModelActionListItem({ action }: Props) {
+function ModelActionListItem({ action, onEdit }: Props) {
   if (action.type !== "query") {
     console.warn(
       `ModelActionListItem doesn't support "${action.type} actions"`,
@@ -19,7 +25,10 @@ function ModelActionListItem({ action }: Props) {
   return (
     <div>
       <ActionTitle>{action.name}</ActionTitle>
-      <CodeBlock>{action.dataset_query.native.query}</CodeBlock>
+      <CodeContainer>
+        <CodeBlock>{action.dataset_query.native.query}</CodeBlock>
+        {onEdit && <EditButton onClick={onEdit} />}
+      </CodeContainer>
     </div>
   );
 }

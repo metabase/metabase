@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
 export const ActionTitle = styled.h4`
@@ -18,4 +19,22 @@ export const CodeBlock = styled.pre`
   white-space: pre-wrap;
   color: ${color("text-white")};
   background-color: #12436e;
+`;
+
+export const EditButton = styled(Button)`
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+
+  background-color: ${color("bg-white")};
+  color: ${color("text-dark")};
+`;
+
+EditButton.defaultProps = {
+  icon: "pencil",
+  onlyIcon: true,
+};
+
+export const CodeContainer = styled.div`
+  position: relative;
 `;
