@@ -126,6 +126,7 @@
   [:map-of id db-graph])
 
 (def data-permissions-graph
+  "Used to transform, and verify data permissions graph"
   [:map [:groups permission-graph-data-groups]])
 
 ;;; --------------------------------------------- Collection Permissions ---------------------------------------------
@@ -148,7 +149,6 @@
 
 ;;; --------------------------------------------- Execution Permissions ----------------------------------------------
 
-(def execute [:enum :all :none])
 (s/def ::execute (s/or :str->kw #{"all" "none"}))
 
 (s/def ::execute-graph
