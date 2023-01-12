@@ -7,7 +7,7 @@ export const ActionTitle = styled.h4`
   color: ${color("text-dark")};
 `;
 
-export const CodeBlock = styled.code`
+export const CodeBlock = styled.pre`
   display: block;
   padding: 1rem;
   margin-top: 0.5rem;
@@ -15,6 +15,7 @@ export const CodeBlock = styled.code`
 
   font-family: "Fira Code", monospace;
   font-size: 0.7rem;
+  white-space: pre-wrap;
   color: ${color("text-white")};
   background-color: #12436e;
 `;
