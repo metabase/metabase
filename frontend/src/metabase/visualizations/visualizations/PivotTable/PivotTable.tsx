@@ -14,7 +14,6 @@ import { connect } from "react-redux";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
 import { useOnMount } from "metabase/hooks/use-on-mount";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 import {
   COLUMN_SHOW_TOTALS,
@@ -56,7 +55,6 @@ import { CELL_WIDTH, CELL_HEIGHT, LEFT_HEADER_LEFT_SPACING } from "./constants";
 import { settings, _columnSettings as columnSettings } from "./settings";
 
 const mapStateToProps = (state: State) => ({
-  hasCustomColors: PLUGIN_SELECTORS.getHasCustomColors(state),
   fontFamily: getSetting(state, "application-font"),
 });
 
@@ -64,7 +62,6 @@ interface PivotTableProps {
   data: DatasetData;
   settings: VisualizationSettings;
   width: number;
-  hasCustomColors: boolean;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   isNightMode: boolean;
   isDashboard: boolean;
@@ -76,7 +73,6 @@ function PivotTable({
   data,
   settings,
   width,
-  hasCustomColors,
   onUpdateVisualizationSettings,
   isNightMode,
   isDashboard,
