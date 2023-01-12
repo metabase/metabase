@@ -32,7 +32,7 @@ export const PARAMETER_OPERATOR_TYPES = {
     {
       type: "string/=",
       operator: "=",
-      name: t`Dropdown`,
+      name: t`Is`,
       description: t`Select one or more values from a list or search box.`,
     },
     {

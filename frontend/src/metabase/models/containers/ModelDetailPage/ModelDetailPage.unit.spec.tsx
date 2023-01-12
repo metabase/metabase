@@ -14,10 +14,10 @@ import {
 } from "__support__/ui";
 import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_database_fixture";
 import {
-  setupCardEndpoints,
-  setupCollectionEndpoints,
+  setupCardsEndpoints,
+  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupTableEndpoints,
+  setupTablesEndpoints,
 } from "__support__/server-mocks";
 
 import Models from "metabase/entities/questions";
@@ -26,6 +26,8 @@ import type { Card, Collection, Field } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 
 import type Question from "metabase-lib/Question";
+import Database from "metabase-lib/metadata/Database";
+import Table from "metabase-lib/metadata/Table";
 import {
   getStructuredModel as _getStructuredModel,
   getNativeModel as _getNativeModel,
@@ -81,8 +83,8 @@ async function setup({ model, collections = [], usedBy = [] }: SetupOpts) {
   const slug = `${card.id}-model-name`;
 
   if (database) {
-    setupDatabasesEndpoints(scope, [database]);
-    setupTableEndpoints(scope, tables);
+    setupDatabasesEndpoints(scope, [getDatabaseObject(database)]);
+    setupTablesEndpoints(scope, tables.map(getTableObject));
   }
 
   scope
@@ -93,9 +95,9 @@ async function setup({ model, collections = [], usedBy = [] }: SetupOpts) {
       usedBy.map(question => question.card()),
     );
 
-  setupCardEndpoints(scope, [card]);
+  setupCardsEndpoints(scope, [card]);
 
-  setupCollectionEndpoints(scope, collections);
+  setupCollectionsEndpoints(scope, collections);
 
   renderWithProviders(<ModelDetailPage params={{ slug }} />, {
     withSampleDatabase: true,
@@ -106,6 +108,20 @@ async function setup({ model, collections = [], usedBy = [] }: SetupOpts) {
   );
 
   return { modelUpdateSpy };
+}
+
+function getDatabaseObject(database: Database) {
+  return {
+    ...database.getPlainObject(),
+    tables: database.tables.map(getTableObject),
+  };
+}
+
+function getTableObject(table: Table) {
+  return {
+    ...table.getPlainObject(),
+    schema: table.schema_name,
+  };
 }
 
 describe("ModelDetailPage", () => {
