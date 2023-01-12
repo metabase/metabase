@@ -13,6 +13,7 @@ import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isDefaultGroup } from "metabase/lib/groups";
 
 import SettingToggle from "./SettingToggle";
+import DeleteGroupMappingModal from "./GroupMappingsWidget/DeleteGroupMappingModal";
 
 const groupIsMappable = group => !isDefaultGroup(group);
 
@@ -77,8 +78,17 @@ export default class GroupMappingsWidget extends React.Component {
     }
   };
 
+  handleShowDeleteMappingModal = () => {
+    this.setState({ showDeleteMappingModal: true, showEditModal: false });
+  };
+
+  handleHideDeleteMappingModal = () => {
+    this.setState({ showDeleteMappingModal: false, showEditModal: true });
+  };
+
   _deleteMapping = dn => e => {
     e.preventDefault();
+
     this.setState(prevState => ({
       mappings: _.omit(prevState.mappings, dn),
     }));
@@ -93,11 +103,11 @@ export default class GroupMappingsWidget extends React.Component {
     e.preventDefault();
     const {
       state: { mappings },
-      props: { onChangeSetting },
+      props: { mappingSetting, onChangeSetting },
     } = this;
-    SettingsApi.put({ key: this.props.mappingSetting, value: mappings }).then(
+    SettingsApi.put({ key: mappingSetting, value: mappings }).then(
       () => {
-        onChangeSetting(this.props.mappingSetting, mappings);
+        onChangeSetting(mappingSetting, mappings);
         this.setState({
           showEditModal: false,
           showAddRow: false,
@@ -109,8 +119,14 @@ export default class GroupMappingsWidget extends React.Component {
   };
 
   render() {
-    const { showEditModal, showAddRow, groups, mappings, saveError } =
-      this.state;
+    const {
+      showDeleteMappingModal,
+      showEditModal,
+      showAddRow,
+      groups,
+      mappings,
+      saveError,
+    } = this.state;
 
     return (
       <div className="flex align-center">
@@ -157,7 +173,10 @@ export default class GroupMappingsWidget extends React.Component {
                       groups={groups || []}
                       selectedGroups={ids}
                       onChange={this._changeMapping(dn)}
-                      onDelete={this._deleteMapping(dn)}
+                      onDelete={
+                        this
+                          .handleShowDeleteMappingModal /*this._deleteMapping(dn)*/
+                      }
                     />
                   ))}
                 </AdminContentTable>
@@ -176,6 +195,9 @@ export default class GroupMappingsWidget extends React.Component {
               </ModalFooter>
             </div>
           </Modal>
+        ) : null}
+        {showDeleteMappingModal ? (
+          <DeleteGroupMappingModal onHide={this.handleHideDeleteMappingModal} />
         ) : null}
       </div>
     );
