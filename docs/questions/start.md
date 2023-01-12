@@ -4,12 +4,7 @@ title: Questions overview
 
 # Questions overview
 
-Questions are queries plus their visualization. You can 
-
-- Ask questions using Metabase's graphical query builder, or create a native/SQL query.
-- Ask questions based on models, raw tables, or other saved questions.
-- Save questions to collections and add them to dashboards.
-- And a lot more.
+Questions are queries plus their visualization.
 
 ## Reference documentation
 
@@ -99,8 +94,13 @@ Learn how to search within your SQL and query builder questions using filters an
 
 ### [Cleaning and formatting text](https://www.metabase.com/learn/questions/formatting)
 
-How to use custom expressions to clean up text that's inconsistent, unstructured, or blank.",
+How to use custom expressions to clean up text that's inconsistent, unstructured, or blank.
 
-## Troubleshooting questions
+## Troubleshooting
 
-- [Can't save my question or dashboard](https://www.metabase.com/docs/latest/troubleshooting-guide/proxies)
+- [Can't save my question or dashboard](../troubleshooting-guide/proxies.md)
+- [I can't view or edit my question or dashboard](../troubleshooting-guide/cant-view-or-edit.md)
+- [My visualizations are wrong](../troubleshooting-guide/visualization.md)
+- [My SQL question doesn't work](../troubleshooting-guide/sql.md)
+- [The dates and times in my questions and charts are wrong](../troubleshooting-guide/timezones.md)
+- [My filters don't work](../troubleshooting-guide/filters.md)
