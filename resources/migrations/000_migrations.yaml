@@ -13936,12 +13936,8 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-044
       author: calherries 
-      comment: Added 0.46.0 -- converts
+      comment: Added 0.46.0 -- updates visualization_settings.column_settings field refs
       validCheckSum: ANY
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: postgresql,mysql,mariadb
       changes:
         - sql:
             dbms: postgresql
