@@ -1,6 +1,10 @@
 import type { DatabaseId } from "./database";
 import type { Field } from "./field";
-import type { DatasetQuery } from "./query";
+import type {
+  DatasetQuery,
+  FieldReference,
+  AggregationReference,
+} from "./query";
 
 export interface Card extends UnsavedCard {
   id: CardId;
@@ -56,7 +60,7 @@ export type ColumnFormattingSetting = {
 };
 
 export type PivotTableCollapsedRowsSetting = {
-  rows: FieldOrAggregationReference[];
+  rows: (FieldReference | AggregationReference)[];
   value: string[]; // identifiers for collapsed rows
 };
 
