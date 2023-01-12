@@ -7,7 +7,12 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as gen]
    [clojure.walk :as walk]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.describe :as umd]
+   [malli.generator :as mg]
+   [clojure.string :as str]
+   [malli.transform :as mtx]
+   [malli.core :as mc]))
 
 (defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"
@@ -47,38 +52,98 @@
 
 ;;; --------------------------------------------------- Common ----------------------------------------------------
 
+
+(require '[malli.core :as mc] ;; nocommit
+         '[malli.error :as me]
+         '[malli.util :as mut]
+         '[metabase.util.malli :as mu]
+         '[metabase.util.malli.describe :as umd] ;; umd/describe
+         '[malli.provider :as mp]
+         '[malli.generator :as mg]
+         '[malli.transform :as mtx])
+
+(defmacro chk [& body] `(print (if (do ~@body) "✅" "❌")))
+
+
+(defn perm-graph-enum [& keywords]
+  ;; temporary hack until the next version of malli comes, when we can drop the
+  ;; [:and :keyword ,,,] piece
+  [:and {:decode/perm-graph (fn [x] (keyword x))}
+   :keyword
+   (into [:enum] keywords)])
+
+(mc/decode [:enum :all :none] "all" (mtx/string-transformer))
+
+(def decodable-kw-int
+  [:int {:comment "integer schema that knows how to decode itself from the :123 sort of shape used in perm-graphs"
+         :decode/perm-graph
+         (fn thing [kw-int] (if (int? kw-int) kw-int (Integer/parseInt (name kw-int))))}])
+(chk (= 1
+        (mc/decode decodable-kw-int :1 (mtx/transformer {:name :perm-graph}))))
+
+(def id decodable-kw-int)
+
 ;; ids come in asa keywordized numbers
 (s/def ::id (s/with-gen (s/or :kw->int (s/and keyword? #(re-find #"^\d+$" (name %))))
               #(gen/fmap (comp keyword str) (s/gen pos-int?))))
 
-(s/def ::native (s/or :str->kw #{"write" "none" "full" "limited"}
+(def native [:maybe [:enum :write :none :full :limited]])
+(s/def ::native (s/or :str->kw #{"write"
+                                 ;; data
+                                 ;; ""
+                                 ;; download
+                                 "none" "full" "limited"}
                       :nil->none nil?))
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
+(def schema-name [:string {:decode/perm-graph name}])
 (s/def ::schema-name (s/or :kw->str keyword?))
+(chk (= "lemon" (mc/decode schema-name :lemon (mtx/transformer {:name :perm-graph}))))
 
 ;; {:groups {1 {:data {:schemas {"PUBLIC" ::schema-perms-granular}}}}} =>
 ;; {:groups {1 {:data {:schemas {"PUBLIC" {1 :all}}}}}}
 (s/def ::read (s/or :str->kw #{"all" "none"}))
 (s/def ::query (s/or :str->kw #{"all" "none" "segmented"}))
 
+(def query [:enum :all :none :segmented])
+(def read [:enum :all :none])
+(def table-perms-granular [:map
+                           [:read read]
+                           [:query query]])
 (s/def ::table-perms-granular (s/keys :opt-un [::read ::query]))
 
+(def table-perms [:or
+                  [:enum :all :segmented :none :full :limited]
+                  table-perms-granular])
 (s/def ::table-perms (s/or :str->kw #{"all" "segmented" "none" "full" "limited"}
                            :identity ::table-perms-granular))
 
+(def table-graph [:map-of id table-perms])
 (s/def ::table-graph (s/map-of ::id ::table-perms
                                :conform-keys true))
 
+(def schema-perms [:or [:keyword {:title "schema name"}]
+                   table-graph])
 (s/def ::schema-perms (s/or :str->kw #{"all" "segmented" "none" "full" "limited"}
                             :identity ::table-graph))
 
-;; {:groups {1 {:data {:schemas {"PUBLIC" ::schema-perms}}}}}
+(def schema-graph [:map-of schema-name schema-perms])
 (s/def ::schema-graph (s/map-of ::schema-name ::schema-perms
                                 :conform-keys true))
 
-;; {:groups {1 {:data {:schemas ::schemas}}}}
+(mg/generate schema-graph)
+
+(def schemas [:or
+              schema-graph
+              [:enum :all :segmented :none :block :full :limited]])
+
+{"PUBLIC" {1 :all}}
+
+(me/humanize (mc/explain schema-graph {"PUBLIC"
+                                       ;; table-id -> permission level
+                                       {1 :all}}))
+
 (s/def ::schemas (s/or :str->kw   #{"all" "segmented" "none" "block" "full" "limited"}
                        :nil->none nil?
                        :identity  ::schema-graph))
@@ -89,21 +154,40 @@
 
 (s/def ::data-model (s/keys :opt-un [::native ::schemas]))
 
+(def flamingo [:map
+               [:native {:optional true} native]
+               [:schemas {:optional true} schemas]])
+
+(def details [:enum {:comment
+                     (str/join ["We use :yes and :no instead of booleans for consistency with the application perms graph, and"
+                                "consistency with the language used on the frontend."])}
+              :yes :no])
 ;; We use "yes" and "no" instead of booleans for consistency with the application perms graph, and consistency with the
 ;; language used on the frontend.
 (s/def ::details (s/or :str->kw #{"yes" "no"}))
 
+(def execute [:enum :all :none]);; redundant
+(def db-perms [:map
+               [:data {:optional true} flamingo]
+               [:download {:optional true} flamingo]
+               [:data-model {:optional true} flamingo]
+               [:details {:optional true} details]
+               [:execute {:optional true} execute]])
+
 (s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details ::execute]))
 
+(def db-graph [:map-of id db-perms])
 (s/def ::db-graph
   (s/map-of ::id
             ::db-perms
             :conform-keys true))
 
+(def permission-graph-data-groups [:map-of id db-graph])
 (s/def :metabase.api.permission-graph.data/groups
   (s/map-of ::id ::db-graph
             :conform-keys true))
 
+(def data-permissions-graph [:map [:groups permission-graph-data-groups]])
 (s/def ::data-permissions-graph
   (s/keys :req-un [:metabase.api.permission-graph.data/groups]))
 
@@ -126,6 +210,7 @@
 
 ;;; --------------------------------------------- Execution Permissions ----------------------------------------------
 
+(def execute [:enum :all :none])
 (s/def ::execute (s/or :str->kw #{"all" "none"}))
 
 (s/def ::execute-graph
@@ -150,3 +235,94 @@
                         (if (and (vector? x) (get-method convert (first x)))
                           (convert x)
                           x)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(require '[malli.core :as mc] ;; nocommit
+         '[malli.error :as me]
+         '[malli.util :as mut]
+         '[metabase.util.malli :as mu]
+         '[metabase.util.malli.describe :as umd] ;; umd/describe
+         '[malli.provider :as mp]
+         '[malli.generator :as mg]
+         '[malli.transform :as mtx])
+
+(def dpg-in
+  {:groups
+   {:1
+    {:1
+     {:data
+      {:native "none",
+       :schemas {:PUBLIC {:1 "all", :2 "none", :3 "all", :4 "all", :5 "all", :6 "all", :7 "all", :8 "all"}}},
+      :download {:native "full", :schemas "full"}},
+     :12 {:download {:native "full", :schemas "full"}, :data {:native "write", :schemas "all"}}},
+    :2
+    {:1
+     {:data {:native "write", :schemas "all"},
+      :download {:native "full", :schemas "full"},
+      :data-model {:schemas "all"},
+      :details "yes"},
+     :12
+     {:data {:native "write", :schemas "all"},
+      :download {:native "full", :schemas "full"},
+      :data-model {:schemas "all"},
+      :details "yes"}}},
+   :revision 8})
+
+;; db id, group id, schema
+
+(def dpg-out
+  {:groups
+   {1 {1 {:data {:native :none, :schemas {"PUBLIC"
+                                          ;; table-id -> permission level
+                                          {1 :all,
+                                           2 :none,
+                                           3 :all,
+                                           4 :all, 5 :all, 6 :all, 7 :all, 8 :all}}},
+          :download {:native :full, :schemas :full}},
+       12 {:download {:native :full, :schemas :full},
+           :data {:native :write, :schemas :all}}},
+    2 {1 {:data {:native :write, :schemas :all},
+          :download {:native :full, :schemas :full},
+          :data-model {:schemas :all},
+          :details :yes},
+       12 {:data {:native :write, :schemas :all},
+           :download {:native :full, :schemas :full},
+           :data-model {:schemas :all},
+           :details :yes}}},
+   :revision 8})
+
+
+(def native [:and :keyword [:enum :write :none :full :limited]])
+
+(def examples (read-string (str "[" (slurp "examples.edn") "]")))
+
+(for [[_ in out] examples]
+  [(if (mc/validate data-permissions-graph out)
+     :validated
+     {:out out
+      :h (me/humanize (mc/explain data-permissions-graph out)
+                      {:wrap #(select-keys % [:message :value])})
+      :e (mc/explain data-permissions-graph out)})
+   (if (= out
+          (mc/decode data-permissions-graph in (mtx/transformer
+                                                mtx/string-transformer
+                                                (mtx/transformer {:name :perm-graph}))))
+     :decoded
+     {:in in
+      :out out
+      :computed (mc/decode data-permissions-graph in (mtx/transformer
+                                                      (mtx/transformer {:name :perm-graph})
+                                                      mtx/string-transformer))})])
+
+
+
+;; outputs match [[s]]
+
+
+;; native data access is :write or :none
+;; non-native data access is :all :segmented or :none
+
+;; Download:
+;; native download access is :full or :limited or :none
+;; non native download :full or :limited or :none
