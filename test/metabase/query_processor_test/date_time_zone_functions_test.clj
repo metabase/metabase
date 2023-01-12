@@ -91,7 +91,7 @@
   [x op]
   (u.date/extract x (temporal-extraction-op->unit op)))
 
-(def extraction-test-cases
+(def ^:private extraction-test-cases
   [{:expected-fn (fn [op]          [(extract #t "2004-03-19 09:19:09" op) (extract #t "2008-06-20 10:20:10" op)
                                     (extract #t "2012-11-21 11:21:11" op) (extract #t "2012-11-21 11:21:11" op)])
     :query-fn    (fn [op field-id] {:expressions {"expr" [op [:field field-id nil]]}

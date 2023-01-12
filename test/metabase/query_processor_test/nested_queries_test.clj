@@ -228,7 +228,7 @@
   [& additional-clauses]
   (apply mbql-card-def :source-table (mt/id :venues) additional-clauses))
 
-(defn query-with-source-card
+(defn- query-with-source-card
   {:style/indent 1}
   ([card]
    {:database mbql.s/saved-questions-virtual-database-id
