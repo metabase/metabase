@@ -84,7 +84,7 @@
          (filter #(re-matches  #"^metabase.*test$" (name %)))
          (mapcat find-tests))))
 
-(def ^:dynamic *exclude-once-tests?* false)
+(def ^:dynamic *exclude-tags* false)
 
 ;; a test namespace or individual test
 (defmethod find-tests clojure.lang.Symbol
@@ -101,20 +101,21 @@
       ;; a namespace e.g. `metabase.whatever-test`
       (do
         (load-test-namespace symb)
-        (if (and *exclude-once-tests?* (-> symb find-ns meta :mb.testing/once))
-          (println (format "Skipping tests in `%s` due to :exclude-once" symb))
-          (eftest.runner/find-tests symb))))))
+        (let [ns-tag (-> symb find-ns meta :mb/tag)]
+         (if (and (seq *exclude-tags*) ns-tag (contains? *exclude-tags* ns-tag))
+           (println (format "Skipping tests in `%s` due to :exclude-once" symb))
+           (eftest.runner/find-tests symb)))))))
 
 ;; default -- look in all dirs on the classpath
 (defmethod find-tests nil
   [_]
   (find-tests (classpath/system-classpath)))
 
-(defn tests [{:keys [only exclude-once]}]
+(defn tests [{:keys [only exclude-tags]}]
   (when only
     (println "Running tests in" (pr-str only)))
   (let [start-time-ms (System/currentTimeMillis)
-        tests         (binding [*exclude-once-tests?* (boolean exclude-once)]
+        tests         (binding [*exclude-tags* (-> exclude-tags u/one-or-many set)]
                         (into [] (find-tests only)))]
     (printf "Finding tests took %s.\n" (u/format-milliseconds (- (System/currentTimeMillis) start-time-ms)))
     (println "Running" (count tests) "tests")
