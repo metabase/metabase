@@ -17,7 +17,7 @@ import {
   ModelMain,
   TabList,
   TabPanel,
-  NarrowTabPanel,
+  TabPanelContent,
 } from "./ModelDetailPage.styled";
 
 interface Props {
@@ -76,14 +76,20 @@ function ModelDetailPage({
             onChange={tab => setTab(tab as ModelTab)}
           />
           <TabPanel value="usage">
-            <ModelUsageDetails model={model} />
+            <TabPanelContent>
+              <ModelUsageDetails model={model} />
+            </TabPanelContent>
           </TabPanel>
           <TabPanel value="schema">
-            <ModelSchemaDetails model={model} />
+            <TabPanelContent>
+              <ModelSchemaDetails model={model} />
+            </TabPanelContent>
           </TabPanel>
-          <NarrowTabPanel value="actions">
-            <ModelActionDetails model={model} />
-          </NarrowTabPanel>
+          <TabPanel value="actions">
+            <TabPanelContent>
+              <ModelActionDetails model={model} />
+            </TabPanelContent>
+          </TabPanel>
         </TabContent>
       </ModelMain>
       <ModelInfoSidePanel

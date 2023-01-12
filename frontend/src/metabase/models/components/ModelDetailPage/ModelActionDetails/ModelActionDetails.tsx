@@ -12,8 +12,9 @@ import type { WritebackAction, WritebackActionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
+import EmptyState from "../EmptyState.styled";
 import ModelActionListItem from "./ModelActionListItem";
-import { ActionsHeader, ActionList } from "./ModelActionDetails.styled";
+import { Root, ActionsHeader, ActionList } from "./ModelActionDetails.styled";
 
 interface OwnProps {
   model: Question;
@@ -49,20 +50,27 @@ function ModelActionDetails({ model, actions }: Props) {
   }, [hideActionCreator]);
 
   return (
-    <>
+    <Root>
       <ActionsHeader>
         <Button onClick={showActionCreator}>{t`New action`}</Button>
       </ActionsHeader>
-      <ActionList>
-        {actions.map(action => (
-          <li key={action.id}>
-            <ModelActionListItem
-              action={action}
-              onEdit={() => handleEditAction(action)}
-            />
-          </li>
-        ))}
-      </ActionList>
+      {actions.length > 0 ? (
+        <ActionList>
+          {actions.map(action => (
+            <li key={action.id}>
+              <ModelActionListItem
+                action={action}
+                onEdit={() => handleEditAction(action)}
+              />
+            </li>
+          ))}
+        </ActionList>
+      ) : (
+        <EmptyState.Container>
+          <EmptyState.Title>{t`No actions have been created yet.`}</EmptyState.Title>
+          <EmptyState.Message>{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</EmptyState.Message>
+        </EmptyState.Container>
+      )}
       {isActionCreatorOpen && (
         <ActionCreator
           modelId={model.id()}
@@ -71,7 +79,7 @@ function ModelActionDetails({ model, actions }: Props) {
           onClose={handleCloseActionCreator}
         />
       )}
-    </>
+    </Root>
   );
 }
 

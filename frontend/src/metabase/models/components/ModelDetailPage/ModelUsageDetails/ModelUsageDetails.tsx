@@ -15,10 +15,7 @@ import type { State } from "metabase-types/store";
 import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type Question from "metabase-lib/Question";
 
-import {
-  EmptyStateContainer,
-  EmptyStateTitle,
-} from "../ModelDetailPage.styled";
+import EmptyState from "../EmptyState.styled";
 
 import { CardListItem, CardTitle } from "./ModelUsageDetails.styled";
 
@@ -35,14 +32,16 @@ type Props = OwnProps & EntityLoaderProps;
 function ModelUsageDetails({ model, cards }: Props) {
   if (cards.length === 0) {
     return (
-      <EmptyStateContainer>
-        <EmptyStateTitle>{t`This model is not used by any questions yet.`}</EmptyStateTitle>
-        <Button
-          as={Link}
-          to={model.composeDataset().getUrl()}
-          icon="add"
-        >{t`Create a new question`}</Button>
-      </EmptyStateContainer>
+      <EmptyState.Container>
+        <EmptyState.Title>{t`This model is not used by any questions yet.`}</EmptyState.Title>
+        <EmptyState.ActionContainer>
+          <Button
+            as={Link}
+            to={model.composeDataset().getUrl()}
+            icon="add"
+          >{t`Create a new question`}</Button>
+        </EmptyState.ActionContainer>
+      </EmptyState.Container>
     );
   }
 
