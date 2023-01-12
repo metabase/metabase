@@ -16,7 +16,6 @@ import { usePrevious } from "metabase/hooks/use-previous";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
 import { useOnMount } from "metabase/hooks/use-on-mount";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 import { sumArray } from "metabase/core/utils/arrays";
 
