@@ -1,0 +1,30 @@
+# We save the static viz bundle hash on master and release branches to use it on PRs to skip backend workflows
+# that change only Javascript files if, at the same time, the static vis bundle is not changed
+name: Save static viz bundle hash
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      # frontend and E2E tests
+      - "**/frontend/test/**"
+      - "**/frontend/**.unit.*"
+
+save-static-viz-bundle-hash:
+  runs-on: ubuntu-20.04
+  timeout-minutes: 10
+  steps:
+    - uses: actions/checkout@v3
+    - name: Build static viz frontend
+      run: yarn build-static-viz
+      # we cache an empty file because we interested only in knowing the cache key exists
+    - run: |
+        touch static-viz-stub-empty-file
+    - uses: actions/cache/save@v3
+      with:
+        path: static-viz-stub-empty-file
+        key: ${{ hashFiles('./resources/frontend_client/app/dist/lib-static-viz.bundle.js') }}
