@@ -1,4 +1,4 @@
-(ns metabase.api.session-test
+(ns ^{:mb/tag :mb.test/once} metabase.api.session-test
   "Tests for /api/session"
   (:require
    [cheshire.core :as json]

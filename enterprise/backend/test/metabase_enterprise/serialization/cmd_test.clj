@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.cmd-test
+(ns ^{:mb/tag :mb.test/once} metabase-enterprise.serialization.cmd-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
