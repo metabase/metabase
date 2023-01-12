@@ -259,7 +259,7 @@
   "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
   `:cards`."
   [notification-or-id & additional-conditions]
-  (some-> (apply Pulse :id (u/the-id notification-or-id), additional-conditions)
+  (some-> (apply db/select-one Pulse :id (u/the-id notification-or-id), additional-conditions)
           hydrate-notification))
 
 (s/defn ^:private notification->alert :- (mi/InstanceOf Pulse)
