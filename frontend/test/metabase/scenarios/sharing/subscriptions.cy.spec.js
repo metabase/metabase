@@ -375,7 +375,7 @@ function addParametersToDashboard() {
   // add Category > Dropdown "Name" filter
   cy.icon("filter").click();
   cy.findByText("Text or Category").click();
-  cy.findByText("Dropdown").click();
+  cy.findByText("Is").click();
 
   cy.findByText("Select…").click();
   popover().within(() => {
@@ -391,7 +391,7 @@ function addParametersToDashboard() {
   // add Category > Dropdown "Category" filter
   cy.icon("filter").click();
   cy.findByText("Text or Category").click();
-  cy.findByText("Dropdown").click();
+  cy.findByText("Is").click();
   cy.findByText("Select…").click();
   popover().within(() => {
     cy.findByText("Category").click();
