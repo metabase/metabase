@@ -28,6 +28,21 @@ interface CellProps {
   onResize?: (newWidth: number) => void;
 }
 
+interface CellProps {
+  value: React.ReactNode;
+  style?: React.CSSProperties;
+  icon?: React.ReactNode;
+  backgroundColor?: string;
+  isBody?: boolean;
+  isBold?: boolean;
+  isEmphasized?: boolean;
+  isNightMode?: boolean;
+  isBorderedHeader?: boolean;
+  isTransparent?: boolean;
+  hasTopBorder?: boolean;
+  onClick?: ((e: React.SyntheticEvent) => void) | undefined;
+}
+
 export function Cell({
   value,
   style,
