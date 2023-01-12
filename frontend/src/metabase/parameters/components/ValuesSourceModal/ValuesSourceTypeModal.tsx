@@ -11,7 +11,6 @@ import Select, {
 import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
-import Collections from "metabase/entities/collections";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
@@ -422,17 +421,10 @@ export default _.compose(
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
       card_id ? getQuestionVirtualTableId(card_id) : undefined,
     requestType: "fetchMetadata",
-    loadingAndErrorWrapper: false,
   }),
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     entityAlias: "card",
-    loadingAndErrorWrapper: false,
-  }),
-  Collections.load({
-    id: (state: State, { card }: ModalCardProps) =>
-      card?.collection_id ?? "root",
-    loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(ValuesSourceTypeModal);
