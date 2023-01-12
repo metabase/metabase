@@ -2,7 +2,6 @@
 title: "Data modeling for admins"
 redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
-  - /docs/latest/data-modeling/metadata-editing
 ---
 
 # Data modeling for admins
@@ -43,7 +42,7 @@ To edit a table's display name in Metabase, click into the box that contains the
 
 ### Table description
 
-To add a table description, click into the box below the table name. Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference) to help people find the right table for their use case.
+To add a table description, click into the box below the table name. Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference.md) to help people find the right table for their use case.
 
 ### Table visibility
 
@@ -83,7 +82,7 @@ To change the display name of a column in Metabase, click on the name of the col
 
 ### Column description
 
-To add a description, click into the box below the column name. Descriptions are displayed in the [data reference](../exploration-and-organization/data-model-reference) to help people interpret the column's values. You should consider adding a description if your column contains:
+To add a description, click into the box below the column name. Descriptions are displayed in the [data reference](../exploration-and-organization/data-model-reference.md) to help people interpret the column's values. You should consider adding a description if your column contains:
 
 - abbreviations or codes
 - zeroes, nulls, or blank values
@@ -120,11 +119,11 @@ To sort the columns **automatically**, click on the **sort** icon at the top rig
 
 ### Field type
 
-[Field types](../data-modeling/field-types) help Metabase suggest the right display options for your data, such as the map visualization for "Longitude" and "Latitude" columns.
+[Field types](../data-modeling/field-types.md) help Metabase suggest the right display options for your data, such as the map visualization for "Longitude" and "Latitude" columns.
 
 To change the field type of a column, click on the **Type** dropdown menu in a column's setting box. You can also use the **Type** menu to label a column as an [entity key](https://www.metabase.com/glossary/entity_key) (primary key) or [foreign key](https://www.metabase.com/glossary/foreign_key) in Metabase (with no consequence to your database). 
 
-Primary keys and foreign keys show up in the [data reference](../exploration-and-organization/data-model-reference#connections) to help people identify unique records and create [joins](../questions/query-builder/join.md).
+Primary keys and foreign keys show up in the [data reference](../exploration-and-organization/data-model-reference.md#connections) to help people identify unique records and create [joins](../questions/query-builder/join.md).
 
 ### Casting to a specific data type
 
@@ -157,7 +156,7 @@ Let's say you have a column with the values 1, 2, and 3, and you want to map eac
 
 To manually replace a numeric column's values with different values (numbers or text) from the **Data Model** tab of your **Admin settings**:
 
-1. [Find your database and table](#selecting-a-database).
+1. [Find your database and table](#quick-start).
 2. Click **gear** icon at the right of a column's settings box.
 3. Scroll to **Display values**.
 4. Select "Custom mapping" from the dropdown menu.
@@ -227,18 +226,18 @@ https://www.google.com/search?q=askew
 To update the values in your filter dropdown menus, you'll need to refresh or reset the cached values. You should avoid doing this for an entire table at once, because [scans](../databases/connecting.md#how-database-scans-work) can slow down your database.
 
 **Cache actions**:
-- **Re-scan this table** to run a manual [scan](../databases/connecting#how-database-scans-work) for new or updated column values.
-- **Discard cached field values** to stop using cached values for your [filter widgets](#changing-the-filter-widget).
+- **Re-scan this table** to run a manual scan for new or updated column values.
+- **Discard cached field values** to clear cached values and stop them from showing up in your [filter widgets](#changing-the-filter-widget).
 
 To find the cache actions for a column:
 
-1. [Find your database and table](#selecting-a-database).
+1. [Find your database and table](#quick-start).
 2. Click **gear** icon at the right of a column's settings box.
 3. Scroll to **Cached field values**.
 
 To find the cache actions for a table:
 
-1. [Find your database and table](#selecting-a-database). 
+1. [Find your database and table](#quick-start). 
 2. Click the **gear** icon at the top right (below **Exit admin**).
 
 ## Further reading
