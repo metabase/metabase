@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.api.automagic-dashboards-test
+(ns metabase.api.automagic-dashboards-test
   (:require
    [clojure.test :refer :all]
    [metabase.automagic-dashboards.core :as magic]

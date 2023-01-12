@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.test.automagic-dashboards
+(ns metabase.test.automagic-dashboards
   "Helper functions and macros for writing tests for automagic dashboards."
   (:require
    [clojure.test :refer :all]
