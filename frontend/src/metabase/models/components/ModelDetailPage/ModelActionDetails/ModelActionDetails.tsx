@@ -59,6 +59,8 @@ function ModelActionDetails({
     { turnOn: showActionCreator, turnOff: hideActionCreator },
   ] = useToggle();
 
+  const canWrite = model.canWrite();
+
   const handleEditAction = useCallback(
     (action: WritebackAction) => {
       setEditingActionId(action.id);
@@ -77,18 +79,22 @@ function ModelActionDetails({
   return (
     <Root>
       <ActionsHeader>
-        <Button onClick={showActionCreator}>{t`New action`}</Button>
-        {!hasImplicitActions && (
-          <ActionMenu
-            triggerIcon="ellipsis"
-            items={[
-              {
-                title: t`Create basic actions`,
-                icon: "bolt",
-                action: handleEnableImplicitActions,
-              },
-            ]}
-          />
+        {canWrite && (
+          <>
+            <Button onClick={showActionCreator}>{t`New action`}</Button>
+            {!hasImplicitActions && (
+              <ActionMenu
+                triggerIcon="ellipsis"
+                items={[
+                  {
+                    title: t`Create basic actions`,
+                    icon: "bolt",
+                    action: handleEnableImplicitActions,
+                  },
+                ]}
+              />
+            )}
+          </>
         )}
       </ActionsHeader>
       {actions.length > 0 ? (
@@ -97,7 +103,7 @@ function ModelActionDetails({
             <li key={action.id}>
               <ModelActionListItem
                 action={action}
-                onEdit={() => handleEditAction(action)}
+                onEdit={canWrite ? () => handleEditAction(action) : undefined}
               />
             </li>
           ))}
@@ -106,12 +112,14 @@ function ModelActionDetails({
         <EmptyState.Container>
           <EmptyState.Title>{t`No actions have been created yet.`}</EmptyState.Title>
           <EmptyState.Message>{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</EmptyState.Message>
-          <EmptyState.ActionContainer>
-            <Button
-              icon="bolt"
-              onClick={handleEnableImplicitActions}
-            >{t`Create basic actions`}</Button>
-          </EmptyState.ActionContainer>
+          {canWrite && (
+            <EmptyState.ActionContainer>
+              <Button
+                icon="bolt"
+                onClick={handleEnableImplicitActions}
+              >{t`Create basic actions`}</Button>
+            </EmptyState.ActionContainer>
+          )}
         </EmptyState.Container>
       )}
       {isActionCreatorOpen && (
