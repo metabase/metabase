@@ -4,7 +4,7 @@ import Radio from "metabase/core/components/Radio";
 import BaseTabPanel from "metabase/core/components/TabPanel";
 
 import { color } from "metabase/lib/colors";
-import { breakpointMaxSmall } from "metabase/styled-components/theme";
+import { breakpointMaxMedium } from "metabase/styled-components/theme";
 
 export const RootLayout = styled.div`
   display: flex;
@@ -38,7 +38,7 @@ export const TabPanel = styled(BaseTabPanel)`
 export const NarrowTabPanel = styled(TabPanel)`
   width: 70%;
 
-  ${breakpointMaxSmall} {
+  ${breakpointMaxMedium} {
     width: 100%;
   }
 `;
