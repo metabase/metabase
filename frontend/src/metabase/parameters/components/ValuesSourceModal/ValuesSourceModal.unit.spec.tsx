@@ -29,7 +29,7 @@ describe("ValuesSourceModal", () => {
     it("should a message about missing field values", async () => {
       setup({
         parameter: createMockUiParameter({
-          fields: [new Field(createMockField({ id: 1 }))],
+          fields: [new Field(createMockField())],
         }),
       });
 
@@ -41,7 +41,7 @@ describe("ValuesSourceModal", () => {
     it("should show mapped fields values", async () => {
       setup({
         parameter: createMockUiParameter({
-          fields: [new Field(createMockField({ id: 2 }))],
+          fields: [new Field(createMockField())],
         }),
       });
 
@@ -66,25 +66,29 @@ describe("ValuesSourceModal", () => {
 
 interface SetupOpts {
   parameter?: UiParameter;
+  hasFieldValues?: boolean;
 }
 
-const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
+const setup = ({
+  parameter = createMockUiParameter(),
+  hasFieldValues,
+}: SetupOpts = {}) => {
   const scope = nock(location.origin);
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
   setupCollectionsEndpoints(scope, [
-    createMockCollection({ id: "root", name: "Our analytics" }),
+    createMockCollection({
+      id: "root",
+      name: "Our analytics",
+    }),
   ]);
 
   setupFieldValuesEndpoints(
     scope,
-    createMockFieldValues({ field_id: 1, values: [] }),
-  );
-
-  setupFieldValuesEndpoints(
-    scope,
-    createMockFieldValues({ field_id: 2, values: [["Gadget"], ["Widget"]] }),
+    createMockFieldValues({
+      values: hasFieldValues ? [["Gadget"], ["Widget"]] : [],
+    }),
   );
 
   renderWithProviders(
