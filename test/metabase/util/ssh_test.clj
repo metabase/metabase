@@ -1,4 +1,4 @@
-(ns metabase.util.ssh-test
+(ns ^{:mb/tag :mb.test/once} metabase.util.ssh-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]

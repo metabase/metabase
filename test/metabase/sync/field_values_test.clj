@@ -1,4 +1,4 @@
-(ns metabase.sync.field-values-test
+(ns ^{:mb/tag :mb.test/once} metabase.sync.field-values-test
   "Tests around the way Metabase syncs FieldValues, and sets the values of `field.has_field_values`."
   (:require
    [clojure.string :as str]

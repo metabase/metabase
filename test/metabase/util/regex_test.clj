@@ -1,4 +1,4 @@
-(ns metabase.util.regex-test
+(ns ^{:mb/tag :mb.test/once} metabase.util.regex-test
   (:require
    [clojure.test :refer :all]
    [metabase.util.regex :as u.regex]))

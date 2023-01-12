@@ -1,4 +1,4 @@
-(ns metabase.util.files-test
+(ns ^{:mb/tag :mb.test/once} metabase.util.files-test
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
