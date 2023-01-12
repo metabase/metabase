@@ -344,6 +344,11 @@
                  :database (mt/id)}]
       (mt/with-temp Card [{card-id :id} {:dataset_query query}]
         (is (= {:source-metadata nil
-                :source-query    (set/rename-keys (:native query) {:query :native})
+                :source-query    {:projections ["_id" "user_id" "venue_id"],
+                                  :native      {:collection "checkins"
+                                                :query [{:$project {:_id "$_id"}}
+                                                        {:$limit 1048575}]}
+                                  :collection  "checkins"
+                                  :mbql?       true}
                 :database        (mt/id)}
                (#'fetch-source-query/card-id->source-query-and-metadata card-id)))))))
