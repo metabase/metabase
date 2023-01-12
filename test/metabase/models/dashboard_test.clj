@@ -411,7 +411,7 @@
                (serdes.hash/identity-hash dash)))))))
 
 (deftest parameter-with-null-name-is-allowed-test
-  (testing "parametesr with null or empty name should works (#24500)"
+  (testing "parameters with null or empty names should work (#24500)"
     (mt/with-temp*
       [Card          [{card-id :id}]
        Dashboard     [{dash-id :id} {:parameters [{:id   "_null_name_"
