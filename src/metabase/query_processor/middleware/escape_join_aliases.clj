@@ -39,7 +39,8 @@
 (defn escape-join-aliases
   "Pre-processing middleware. Make sure all join aliases are unique, regardless of case (some databases treat table
   aliases as case-insensitive, even if table names themselves are not); escape all join aliases
-  with [[metabase.driver/escape-alias]]."
+  with [[metabase.driver/escape-alias]]. If aliases are 'uniquified', will include a map
+  at [:info :alias/escaped->original] of the escaped name back to the original, to be restored in post processing."
   [query]
   (let [all-join-aliases (all-join-aliases query)]
     (log/tracef "Join aliases in query: %s" (pr-str all-join-aliases))
@@ -56,10 +57,14 @@
                                                   (escape (str original \_ suffix))))
             original->escaped (into {}
                                     (map (juxt identity (comp uniquify escape)))
-                                    all-join-aliases)]
-        (-> query
-            (rename-join-aliases original->escaped)
-            (assoc-in [:info :alias/escaped->original] (set/map-invert original->escaped)))))))
+                                    all-join-aliases)
+            aliases-changed?  (some (fn [[original escaped]] (not= original escaped))
+                                    original->escaped)]
+        (if aliases-changed?
+          (-> query
+              (rename-join-aliases original->escaped)
+              (assoc-in [:info :alias/escaped->original] (set/map-invert original->escaped)))
+          query)))))
 
 (defn restore-aliases
   "Restore aliases in query.

@@ -35,7 +35,26 @@
                                     :condition    [:= [:field 3 nil] [:field 4 {:join-alias "cat"}]]}]
                           :fields [[:field 3 nil]
                                    [:field 4 {:join-alias "Cat"}]
-                                   [:field 4 {:join-alias "cat"}]]}}))))))
+                                   [:field 4 {:join-alias "cat"}]]}})))))
+  (testing "no need to include alias info if they have no changed"
+    (driver/with-driver :h2
+      (let [query {:database 1
+                   :type     :query
+                   :query    {:joins  [{:source-table 2
+                                        :alias        "cat_1"
+                                        :condition    [:= [:field 3 nil] [:field 4 {:join-alias "Cat"}]]}
+                                       {:source-table 2
+                                        :alias        "Cat_2"
+                                        :condition    [:= [:field 3 nil] [:field 4 {:join-alias "cat"}]]}]
+                              :fields [[:field 3 nil]
+                                       [:field 4 {:join-alias "Cat"}]
+                                       [:field 4 {:join-alias "cat"}]]}}
+            q' (escape-join-aliases/escape-join-aliases query)]
+        (testing "No need for a map with identical mapping"
+          (is (not (contains? (:info q') :alias/escaped->original))))
+        (testing "aliases in the query remain the same"
+          (is (= (#'escape-join-aliases/all-join-aliases query)
+                 (#'escape-join-aliases/all-join-aliases q'))))))))
 
 (driver/register! ::custom-escape :abstract? true)
 
