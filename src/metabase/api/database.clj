@@ -353,11 +353,17 @@
                                      secret/expand-db-details-inferred-secret-values
                                      (assoc :can-manage true)))))
 
-(defmulti ^:private database-usage-info
+(def ^:private database-usage-models
+  "List of models that are used to report usage on a database."
+  [:question :dataset :metric :segment])
+
+(defmulti ^:private database-usage-query
+  "Query that will returns the number of `model` that use the database with id `database-id`.
+  The query must returns a scalar, and the method could return `nil` in case no query is available."
   {:arglists '([model database-id table-ids])}
   (fn [model _database-id _table-ids] (keyword model)))
 
-(defmethod database-usage-info :question
+(defmethod database-usage-query :question
   [_ db-id _table-ids]
   {:select [[:%count.* :question]]
    :from   [:report_card]
@@ -365,7 +371,7 @@
             [:= :database_id db-id]
             [:= :dataset false]]})
 
-(defmethod database-usage-info :dataset
+(defmethod database-usage-query :dataset
   [_ db-id _table-ids]
   {:select [[:%count.* :dataset]]
    :from   [:report_card]
@@ -373,29 +379,37 @@
             [:= :database_id db-id]
             [:= :dataset true]]})
 
-(defmethod database-usage-info :metric
+(defmethod database-usage-query :metric
   [_ _db-id table-ids]
-  {:select [[:%count.* :metric]]
-   :from   [:metric]
-   :where  [:in :table_id table-ids]})
+  (when (seq table-ids)
+    {:select [[:%count.* :metric]]
+     :from   [:metric]
+     :where  [:in :table_id table-ids]}))
 
-(defmethod database-usage-info :segment
+(defmethod database-usage-query :segment
   [_ _db-id table-ids]
-  {:select [[:%count.* :segment]]
-   :from   [:segment]
-   :where  [:in :table_id table-ids]})
+  (when (seq table-ids)
+    {:select [[:%count.* :segment]]
+     :from   [:segment]
+     :where  [:in :table_id table-ids]}))
 
 (api/defendpoint GET "/:id/usage_info"
-  "Get usage info of a database."
+  "Get usage info for a database.
+  Returns a map with keys are models and values are the number of entities that use this database."
   [id]
   {id ms/IntGreaterThanZero}
   (api/check-superuser)
   (api/check-404 (db/exists? Database :id id))
   (let [table-ids (db/select-ids Table :db_id id)]
-    (first (mdb.query/query
-             {:select [:*]
-              :from   (for [model [:question :dataset :metric :segment]]
-                           [(database-usage-info model id table-ids) model])}))))
+    (merge (into {} (for [model database-usage-models]
+                      [model 0]))
+           (first (mdb.query/query
+                    {:select [:*]
+                     :from   (for [model database-usage-models
+                                   :let [query (database-usage-query model id table-ids)]
+                                   :when query]
+                               [query model])})))))
+
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 

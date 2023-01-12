@@ -160,16 +160,16 @@
      Table    [{table-id-2 :id} {:db_id db-id}]
      ;; question
      Card     [_                {:database_id db-id
-                                 :table_id table-id-1
-                                 :dataset  false}]
+                                 :table_id    table-id-1
+                                 :dataset     false}]
      ;; dataset
      Card     [_                {:database_id db-id
-                                 :table_id table-id-1
-                                 :dataset  true}]
+                                 :table_id    table-id-1
+                                 :dataset     true}]
      Card     [_                {:database_id db-id
-                                 :table_id table-id-2
-                                 :dataset  true
-                                 :archived true}]
+                                 :table_id    table-id-2
+                                 :dataset     true
+                                 :archived    true}]
 
      Metric   [_                {:table_id table-id-1}]
      Metric   [_                {:table_id table-id-1}]
@@ -187,11 +187,19 @@
               :segment  1}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
 
-    (testing "404 if db not exists"
+    (testing "404 if db does not exist"
       (let [non-existing-db-id (inc (db/select-one-id Database {:order-by [[:id :desc]]}))]
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404
-                                     (format "database/%d/usage_info" non-existing-db-id))))))))
+                                     (format "database/%d/usage_info" non-existing-db-id)))))))
+  (mt/with-temp*
+    [Database [{db-id :id}]]
+    (testing "should works with DB that has no tables"
+      (is (= {:question 0
+              :dataset  0
+              :metric   0
+              :segment  0}
+             (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))))
 
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
