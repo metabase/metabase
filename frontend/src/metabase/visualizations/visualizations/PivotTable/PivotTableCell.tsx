@@ -1,13 +1,30 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import cx from "classnames";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 
+import type { VisualizationSettings } from "metabase-types/api";
+
 import { RowToggleIcon } from "./RowToggleIcon";
 import { PivotTableCell } from "./PivotTable.styled";
 
+import type { HeaderItem, BodyItem, PivotTableClicked } from "./types";
 import { LEFT_HEADER_LEFT_SPACING } from "./constants";
+
+interface CellProps {
+  value: React.ReactNode;
+  style?: React.CSSProperties;
+  icon?: React.ReactNode;
+  backgroundColor?: string;
+  isBody?: boolean;
+  isBold?: boolean;
+  isEmphasized?: boolean;
+  isNightMode?: boolean;
+  isBorderedHeader?: boolean;
+  isTransparent?: boolean;
+  hasTopBorder?: boolean;
+  onClick?: ((e: React.SyntheticEvent) => void) | undefined;
+}
 
 export function Cell({
   value,
@@ -22,7 +39,7 @@ export function Cell({
   isTransparent,
   hasTopBorder,
   onClick,
-}) {
+}: CellProps) {
   return (
     <PivotTableCell
       data-testid="pivot-table-cell"
@@ -50,12 +67,23 @@ export function Cell({
   );
 }
 
+type CellClickHandler = (
+  clicked: PivotTableClicked,
+) => ((e: React.SyntheticEvent) => void) | undefined;
+
+interface TopHeaderCellProps {
+  item: HeaderItem;
+  style: React.CSSProperties;
+  isNightMode: boolean;
+  getCellClickHandler: CellClickHandler;
+}
+
 export const TopHeaderCell = ({
-  style,
   item,
-  getCellClickHandler,
+  style,
   isNightMode,
-}) => {
+  getCellClickHandler,
+}: TopHeaderCellProps) => {
   const { value, hasChildren, clicked, isSubtotal, maxDepthBelow } = item;
 
   return (
@@ -73,15 +101,21 @@ export const TopHeaderCell = ({
   );
 };
 
+type LeftHeaderCellProps = TopHeaderCellProps & {
+  rowIndex: string[];
+  settings: VisualizationSettings;
+  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+};
+
 export const LeftHeaderCell = ({
   item,
   style,
   isNightMode,
+  getCellClickHandler,
   rowIndex,
   settings,
   onUpdateVisualizationSettings,
-  getCellClickHandler,
-}) => {
+}: LeftHeaderCellProps) => {
   const { value, isSubtotal, hasSubtotal, depth, path, clicked } = item;
 
   return (
@@ -103,7 +137,6 @@ export const LeftHeaderCell = ({
             updateSettings={onUpdateVisualizationSettings}
             hideUnlessCollapsed={isSubtotal}
             rowIndex={rowIndex} // used to get a list of "other" paths when open one item in a collapsed column
-            isNightMode={isNightMode}
           />
         )
       }
@@ -111,12 +144,19 @@ export const LeftHeaderCell = ({
   );
 };
 
+interface BodyCellProps {
+  style: React.CSSProperties;
+  rowSection: BodyItem[];
+  isNightMode: boolean;
+  getCellClickHandler: CellClickHandler;
+}
+
 export const BodyCell = ({
   style,
   rowSection,
   isNightMode,
   getCellClickHandler,
-}) => {
+}: BodyCellProps) => {
   return (
     <div style={style} className="flex">
       {rowSection.map(

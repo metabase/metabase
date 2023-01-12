@@ -9,8 +9,9 @@ export type PivotSetting = {
   values: AggregationReference[];
 };
 
+export type PivotTableClicked = { value: string; column: Column };
 export interface HeaderItem {
-  clicked: { value: string; column: Column };
+  clicked: PivotTableClicked;
 
   isCollapsed?: boolean;
   hasChildren: boolean;
@@ -27,3 +28,7 @@ export interface HeaderItem {
   rawValue: string;
   value: string;
 }
+
+export type BodyItem = HeaderItem & {
+  backgroundColor?: string;
+};

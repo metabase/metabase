@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, {
   useEffect,
   useMemo,
@@ -8,12 +7,14 @@ import React, {
 } from "react";
 import { t } from "ttag";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
+import type { OnScrollParams } from "react-virtualized";
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 
 import { getScrollBarSize } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
 import { useOnMount } from "metabase/hooks/use-on-mount";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 import {
   COLUMN_SHOW_TOTALS,
@@ -22,9 +23,14 @@ import {
 } from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 
-import { PLUGIN_SELECTORS } from "metabase/plugins";
+import type { DatasetData } from "metabase-types/types/Dataset";
+import type { VisualizationSettings } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
+import type { PivotTableClicked } from "./types";
 
 import { RowToggleIcon } from "./RowToggleIcon";
+
 import {
   Cell,
   TopHeaderCell,
@@ -49,10 +55,22 @@ import {
 import { CELL_WIDTH, CELL_HEIGHT, LEFT_HEADER_LEFT_SPACING } from "./constants";
 import { settings, _columnSettings as columnSettings } from "./settings";
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state: State) => ({
   hasCustomColors: PLUGIN_SELECTORS.getHasCustomColors(state),
   fontFamily: getSetting(state, "application-font"),
 });
+
+interface PivotTableProps {
+  data: DatasetData;
+  settings: VisualizationSettings;
+  width: number;
+  hasCustomColors: boolean;
+  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  isNightMode: boolean;
+  isDashboard: boolean;
+  fontFamily: string;
+  onVisualizationClick: (options: any) => void;
+}
 
 function PivotTable({
   data,
@@ -64,8 +82,8 @@ function PivotTable({
   isDashboard,
   fontFamily,
   onVisualizationClick,
-}) {
-  const [gridElement, setGridElement] = useState(null);
+}: PivotTableProps) {
+  const [gridElement, setGridElement] = useState<HTMLElement | null>(null);
   const bodyRef = useRef(null);
   const leftHeaderRef = useRef(null);
   const topHeaderRef = useRef(null);
@@ -81,7 +99,7 @@ function PivotTable({
     [data, settings],
   );
 
-  function isColumnCollapsible(columnIndex) {
+  function isColumnCollapsible(columnIndex: number) {
     const columns = data.cols.filter(col => !isPivotGroupColumn(col));
     const { [COLUMN_SHOW_TOTALS]: showTotals } = settings.column(
       columns[columnIndex],
@@ -91,10 +109,12 @@ function PivotTable({
 
   useEffect(() => {
     // This is needed in case the cell counts didn't change, but the data did
-    leftHeaderRef.current &&
-      leftHeaderRef.current.recomputeCellSizesAndPositions();
-    topHeaderRef.current &&
-      topHeaderRef.current.recomputeCellSizesAndPositions();
+    (
+      leftHeaderRef.current as Collection | null
+    )?.recomputeCellSizesAndPositions?.();
+    (
+      topHeaderRef.current as Collection | null
+    )?.recomputeCellSizesAndPositions?.();
   }, [data, leftHeaderRef, topHeaderRef]);
 
   useOnMount(() => {
@@ -111,7 +131,7 @@ function PivotTable({
     } catch (e) {
       console.warn(e);
     }
-    return {};
+    return null;
   }, [data, settings]);
 
   // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
@@ -132,6 +152,28 @@ function PivotTable({
     }
   }
 
+  const { leftHeaderWidths, totalHeaderWidths } = useMemo(() => {
+    if (!pivoted?.rowIndexes) {
+      return { leftHeaderWidths: null, totalHeaderWidths: null };
+    }
+
+    return getLeftHeaderWidths({
+      rowIndexes: pivoted?.rowIndexes,
+      getColumnTitle: idx => getColumnTitle(idx),
+      leftHeaderItems: pivoted?.leftHeaderItems,
+      fontFamily: fontFamily,
+    });
+  }, [
+    pivoted?.rowIndexes,
+    pivoted?.leftHeaderItems,
+    fontFamily,
+    getColumnTitle,
+  ]);
+
+  if (pivoted === null) {
+    return null;
+  }
+
   const {
     leftHeaderItems,
     topHeaderItems,
@@ -142,24 +184,7 @@ function PivotTable({
     rowIndexes,
     columnIndexes,
     valueIndexes,
-  } = pivoted ?? {};
-
-  const { leftHeaderWidths, totalHeaderWidths } = useMemo(() => {
-    if (!rowIndexes) {
-      return {};
-    }
-
-    return getLeftHeaderWidths({
-      rowIndexes: rowIndexes,
-      getColumnTitle: idx => getColumnTitle(idx),
-      leftHeaderItems: pivoted.leftHeaderItems,
-      fontFamily: fontFamily,
-    });
-  }, [rowIndexes, fontFamily, pivoted.leftHeaderItems, getColumnTitle]);
-
-  if (pivoted === null) {
-    return null;
-  }
+  } = pivoted;
 
   const topHeaderRows =
     columnIndexes.length + (valueIndexes.length > 1 ? 1 : 0) || 1;
@@ -167,13 +192,15 @@ function PivotTable({
   const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
 
   const leftHeaderWidth =
-    rowIndexes.length > 0 ? LEFT_HEADER_LEFT_SPACING + totalHeaderWidths : 0;
+    rowIndexes.length > 0
+      ? LEFT_HEADER_LEFT_SPACING + (totalHeaderWidths ?? 0)
+      : 0;
 
-  function getCellClickHandler(clicked) {
+  function getCellClickHandler(clicked: PivotTableClicked) {
     if (!clicked) {
-      return null;
+      return undefined;
     }
-    return e =>
+    return (e: React.SyntheticEvent) =>
       onVisualizationClick({
         ...clicked,
         event: e.nativeEvent,
@@ -198,7 +225,7 @@ function PivotTable({
                   width: leftHeaderWidth,
                 }}
               >
-                {rowIndexes.map((rowIndex, index) => (
+                {rowIndexes.map((rowIndex: number, index: number) => (
                   <Cell
                     key={rowIndex}
                     isEmphasized
@@ -211,7 +238,7 @@ function PivotTable({
                     style={{
                       flex: "0 0 auto",
                       width:
-                        leftHeaderWidths?.[index] +
+                        (leftHeaderWidths?.[index] ?? 0) +
                         (index === 0 ? LEFT_HEADER_LEFT_SPACING : 0),
                       ...(index === 0
                         ? { paddingLeft: LEFT_HEADER_LEFT_SPACING }
@@ -228,8 +255,6 @@ function PivotTable({
                           value={index + 1}
                           settings={settings}
                           updateSettings={onUpdateVisualizationSettings}
-                          hasCustomColors={hasCustomColors}
-                          isNightMode={isNightMode}
                         />
                       )
                     }
@@ -259,7 +284,9 @@ function PivotTable({
                     topHeaderRows,
                   )
                 }
-                onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
+                onScroll={({ scrollLeft }) =>
+                  onScroll({ scrollLeft } as OnScrollParams)
+                }
                 scrollLeft={scrollLeft}
               />
             </div>
@@ -289,14 +316,16 @@ function PivotTable({
                       cellSizeAndPositionGetter={({ index }) =>
                         leftHeaderCellSizeAndPositionGetter(
                           leftHeaderItems[index],
-                          leftHeaderWidths,
+                          leftHeaderWidths ?? [0],
                           rowIndexes,
                         )
                       }
                       width={leftHeaderWidth}
                       height={height - scrollBarOffsetSize()}
                       scrollTop={scrollTop}
-                      onScroll={({ scrollTop }) => onScroll({ scrollTop })}
+                      onScroll={({ scrollTop }) =>
+                        onScroll({ scrollTop } as OnScrollParams)
+                      }
                     />
                   )}
                 </AutoSizer>
@@ -323,7 +352,7 @@ function PivotTable({
                         />
                       )}
                       onScroll={({ scrollLeft, scrollTop }) =>
-                        onScroll({ scrollLeft, scrollTop })
+                        onScroll({ scrollLeft, scrollTop } as OnScrollParams)
                       }
                       ref={bodyRef}
                       scrollTop={scrollTop}

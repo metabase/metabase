@@ -307,7 +307,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         { depth: 1, value: "bar2" },
         { depth: 2, value: "baz1" },
         { depth: 4, value: "boo1" },
-      ] as LeftHeaderItem[];
+      ] as HeaderItem[];
 
       const { leftHeaderWidths } = getLeftHeaderWidths({
         rowIndexes: [0, 1, 2, 3, 4],
