@@ -8,7 +8,7 @@ export const ActionsHeader = styled.div`
 export const ActionList = styled.ul`
   margin-top: 1rem;
 
-  li:not(:first-child) {
+  li:not(:first-of-type) {
     margin-top: 1rem;
   }
 `;
