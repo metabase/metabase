@@ -1,6 +1,6 @@
 import React from "react";
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
-import { StackedTooltipModel } from "../types";
+import type { StackedTooltipModel } from "../types";
 import {
   DataPointHeader,
   DataPointTableHeader,

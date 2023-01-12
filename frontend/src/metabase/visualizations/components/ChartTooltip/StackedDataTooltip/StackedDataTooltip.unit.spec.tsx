@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import { StackedTooltipModel } from "../types";
+import type { StackedTooltipModel } from "../types";
 import StackedDataTooltip from "./StackedDataTooltip";
 
 const defaultHeaderRows = [
@@ -33,7 +33,7 @@ const setup = ({
   headerRows = defaultHeaderRows,
   bodyRows = defaultBodyRows,
   ...rest
-}: Partial<TooltipModel> = {}) => {
+}: Partial<StackedTooltipModel> = {}) => {
   render(
     <StackedDataTooltip
       headerTitle={headerTitle}

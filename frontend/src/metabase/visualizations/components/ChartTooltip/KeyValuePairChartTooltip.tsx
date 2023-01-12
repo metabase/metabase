@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
-import { Column } from "metabase-types/types/Dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { RemappingHydratedDatasetColumn } from "metabase/visualizations/shared/types/data";
 import {
   DataPoint,
   HoveredDimension,
@@ -40,7 +40,7 @@ const KeyValuePairChartTooltip = ({
 export interface TooltipRowProps {
   name?: string;
   value?: any;
-  column?: Column;
+  column?: RemappingHydratedDatasetColumn;
   settings: VisualizationSettings;
 }
 
