@@ -42,8 +42,6 @@ export function RowToggleIcon({
     !isColumn && settingValue.includes(columnRef as string);
   const isCollapsed = settingValue.includes(ref) || isColumnCollapsed;
 
-  console.log(setting);
-
   if (hideUnlessCollapsed && !isCollapsed) {
     // subtotal rows shouldn't have an icon unless the section is collapsed
     return null;

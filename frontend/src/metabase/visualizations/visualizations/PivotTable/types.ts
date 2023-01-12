@@ -32,3 +32,8 @@ export interface HeaderItem {
 export type BodyItem = HeaderItem & {
   backgroundColor?: string;
 };
+
+export type HeaderWidthType = {
+  leftHeaderWidths: number[] | null;
+  totalHeaderWidths: number | null;
+};

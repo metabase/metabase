@@ -26,7 +26,7 @@ import type { DatasetData } from "metabase-types/types/Dataset";
 import type { VisualizationSettings } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import type { PivotTableClicked } from "./types";
+import type { PivotTableClicked, HeaderWidthType } from "./types";
 
 import { RowToggleIcon } from "./RowToggleIcon";
 
@@ -51,7 +51,12 @@ import {
   topHeaderCellSizeAndPositionGetter,
 } from "./utils";
 
-import { CELL_WIDTH, CELL_HEIGHT, LEFT_HEADER_LEFT_SPACING } from "./constants";
+import {
+  CELL_WIDTH,
+  CELL_HEIGHT,
+  LEFT_HEADER_LEFT_SPACING,
+  MIN_HEADER_CELL_WIDTH,
+} from "./constants";
 import { settings, _columnSettings as columnSettings } from "./settings";
 
 const mapStateToProps = (state: State) => ({
@@ -80,6 +85,12 @@ function PivotTable({
   onVisualizationClick,
 }: PivotTableProps) {
   const [gridElement, setGridElement] = useState<HTMLElement | null>(null);
+  const [{ leftHeaderWidths, totalHeaderWidths }, setHeaderWidths] =
+    useState<HeaderWidthType>({
+      leftHeaderWidths: null,
+      totalHeaderWidths: null,
+    });
+
   const bodyRef = useRef(null);
   const leftHeaderRef = useRef(null);
   const topHeaderRef = useRef(null);
@@ -148,17 +159,19 @@ function PivotTable({
     }
   }
 
-  const { leftHeaderWidths, totalHeaderWidths } = useMemo(() => {
+  useEffect(() => {
     if (!pivoted?.rowIndexes) {
-      return { leftHeaderWidths: null, totalHeaderWidths: null };
+      setHeaderWidths({ leftHeaderWidths: null, totalHeaderWidths: null });
     }
 
-    return getLeftHeaderWidths({
-      rowIndexes: pivoted?.rowIndexes,
-      getColumnTitle: idx => getColumnTitle(idx),
-      leftHeaderItems: pivoted?.leftHeaderItems,
-      fontFamily: fontFamily,
-    });
+    setHeaderWidths(
+      getLeftHeaderWidths({
+        rowIndexes: pivoted?.rowIndexes,
+        getColumnTitle: idx => getColumnTitle(idx),
+        leftHeaderItems: pivoted?.leftHeaderItems,
+        fontFamily: fontFamily,
+      }),
+    );
   }, [
     pivoted?.rowIndexes,
     pivoted?.leftHeaderItems,
@@ -166,7 +179,7 @@ function PivotTable({
     getColumnTitle,
   ]);
 
-  if (pivoted === null) {
+  if (pivoted === null || !leftHeaderWidths) {
     return null;
   }
 
