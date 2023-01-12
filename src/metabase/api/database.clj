@@ -353,8 +353,40 @@
                                      secret/expand-db-details-inferred-secret-values
                                      (assoc :can-manage true)))))
 
+(defmulti ^:private database-usage-info
+  {:arglists '([model database-id table-ids])}
+  (fn [model _database-id _table-ids] (keyword model)))
+
+(defmethod database-usage-info :question
+  [_ db-id _table-ids]
+  {:select [[:%count.* :question]]
+   :from   [:report_card]
+   :where  [:and
+            [:= :database_id db-id]
+            [:= :dataset false]]})
+
+(defmethod database-usage-info :dataset
+  [_ db-id _table-ids]
+  {:select [[:%count.* :dataset]]
+   :from   [:report_card]
+   :where  [:and
+            [:= :database_id db-id]
+            [:= :dataset true]]})
+
+(defmethod database-usage-info :metric
+  [_ _db-id table-ids]
+  {:select [[:%count.* :metric]]
+   :from   [:metric]
+   :where  [:in :table_id table-ids]})
+
+(defmethod database-usage-info :segment
+  [_ _db-id table-ids]
+  {:select [[:%count.* :segment]]
+   :from   [:segment]
+   :where  [:in :table_id table-ids]})
+
 (api/defendpoint GET "/:id/usage_info"
-  "Get usage info of a database"
+  "Get usage info of a database."
   [id]
   {id ms/IntGreaterThanZero}
   (api/check-superuser)
@@ -362,22 +394,8 @@
   (let [table-ids (db/select-ids Table :db_id id)]
     (first (mdb.query/query
              {:select [:*]
-              :from   [[{:select [[:%count.* :question]]
-                         :from   [:report_card]
-                         :where  [:and
-                                  [:= :database_id id]
-                                  [:= :dataset false]]} :question]
-                       [{:select [[:%count.* :dataset]]
-                         :from   [:report_card]
-                         :where  [:and
-                                  [:= :database_id id]
-                                  [:= :dataset true]]} :dataset]
-                       [{:select [[:%count.* :metric]]
-                         :from   [:metric]
-                         :where  [:in :table_id table-ids]} :metric]
-                       [{:select [[:%count.* :segment]]
-                         :from   [:segment]
-                         :where  [:in :table_id table-ids]} :segment]]}))))
+              :from   (for [model [:question :dataset :metric :segment]]
+                           [(database-usage-info model id table-ids) model])}))))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
