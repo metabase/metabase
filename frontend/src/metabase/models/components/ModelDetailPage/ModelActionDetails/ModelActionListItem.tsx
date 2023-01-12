@@ -1,12 +1,16 @@
-import React, { useCallback } from "react";
+import React from "react";
+import { t } from "ttag";
 
-import type { WritebackAction } from "metabase-types/api";
+import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
+import StackedInsightIcon from "./StackedInsightIcon";
 import {
   ActionTitle,
+  Card,
   CodeBlock,
-  CodeContainer,
   EditButton,
+  ImplicitActionCardContentRoot,
+  ImplicitActionMessage,
 } from "./ModelActionListItem.styled";
 
 interface Props {
@@ -14,22 +18,37 @@ interface Props {
   onEdit?: () => void;
 }
 
+function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
+  return <CodeBlock>{action.dataset_query.native.query}</CodeBlock>;
+}
+
+function ImplicitActionCardContent() {
+  return (
+    <ImplicitActionCardContentRoot>
+      <StackedInsightIcon />
+      <ImplicitActionMessage>{t`Auto tracking schema`}</ImplicitActionMessage>
+    </ImplicitActionCardContentRoot>
+  );
+}
+
 function ModelActionListItem({ action, onEdit }: Props) {
-  if (action.type !== "query") {
-    console.warn(
-      `ModelActionListItem doesn't support "${action.type} actions"`,
-    );
-    return null;
-  }
+  const canEdit = action.type !== "implicit" && onEdit;
+
+  const renderCardContent = () =>
+    action.type === "query" ? (
+      <QueryActionCardContent action={action} />
+    ) : action.type === "implicit" ? (
+      <ImplicitActionCardContent />
+    ) : null;
 
   return (
-    <div>
+    <>
       <ActionTitle>{action.name}</ActionTitle>
-      <CodeContainer>
-        <CodeBlock>{action.dataset_query.native.query}</CodeBlock>
-        {onEdit && <EditButton onClick={onEdit} />}
-      </CodeContainer>
-    </div>
+      <Card>
+        {renderCardContent()}
+        {canEdit && <EditButton onClick={onEdit} />}
+      </Card>
+    </>
   );
 }
 

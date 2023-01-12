@@ -2,23 +2,31 @@ import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
+const BACKGROUND_COLOR = "#12436e";
+
 export const ActionTitle = styled.h4`
   font-size: 1rem;
   font-weight: 700;
   color: ${color("text-dark")};
 `;
 
-export const CodeBlock = styled.pre`
+export const Card = styled.div`
   display: block;
+  position: relative;
+
   padding: 1rem;
   margin-top: 0.5rem;
   border-radius: 6px;
 
+  color: ${color("text-white")};
+  background-color: ${BACKGROUND_COLOR};
+`;
+
+export const CodeBlock = styled.pre`
   font-family: Monaco, monospace;
   font-size: 0.7rem;
   white-space: pre-wrap;
-  color: ${color("text-white")};
-  background-color: #12436e;
+  margin: 0;
 `;
 
 export const EditButton = styled(Button)`
@@ -35,6 +43,14 @@ EditButton.defaultProps = {
   onlyIcon: true,
 };
 
-export const CodeContainer = styled.div`
-  position: relative;
+export const ImplicitActionCardContentRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+`;
+
+export const ImplicitActionMessage = styled.span`
+  display: block;
+  margin-top: 0.5rem;
 `;
