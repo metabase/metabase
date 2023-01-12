@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
   (:require
    [cheshire.core :as json]
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models :refer [Card]]
