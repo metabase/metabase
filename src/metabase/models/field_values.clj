@@ -398,15 +398,16 @@
     (let [existing (db/select-one FieldValues :field_id field-id :type :full)]
       (if (or (not existing) (inactive? existing))
         (case (create-or-update-full-field-values! field human-readable-values)
-              ::fv-deleted
-              nil
+          ::fv-deleted
+          nil
 
-              ::fv-created
-              (db/select-one FieldValues :field_id field-id :type :full)
+          ::fv-created
+          (db/select-one FieldValues :field_id field-id :type :full)
 
-              (do
-                (db/update! FieldValues (:id existing) :last_used_at :%now)
-                (db/select-one FieldValues :field_id field-id :type :full)))
+          (do
+            (when existing
+              (db/update! FieldValues (:id existing) :last_used_at :%now))
+            (db/select-one FieldValues :field_id field-id :type :full)))
         (do
           (db/update! FieldValues (:id existing) :last_used_at :%now)
           existing)))))
