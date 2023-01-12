@@ -986,12 +986,12 @@
   [projected-fields breakout-fields aggregations]
   (mapcat
    (partial remove nil?)
-   [ ;; create the $group clause
+   [;; create the $group clause
     (group-and-post-aggregations
      (when (seq breakout-fields)
        (projection-group-map breakout-fields))
      aggregations)
-    [ ;; Sort by _id (group)
+    [;; Sort by _id (group)
      {$sort {"_id" 1}}
      ;; now project back to the fields we expect
      {$project (into
@@ -1168,9 +1168,6 @@
                            (-> source-query
                                (dissoc :native)
                                (assoc :query (parse-query-string nq)))
-
-                           (vector? nq)
-                           {:query nq}
 
                            :else
                            nq))
