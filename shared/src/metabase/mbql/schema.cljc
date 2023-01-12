@@ -1715,7 +1715,7 @@
    (s/optional-key :card-id)                   (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :card-name)                 (s/maybe helpers/NonBlankString)
    (s/optional-key :dashboard-id)              (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :alias/escaped->original)   (s/maybe {s/Str s/Str})
+   (s/optional-key :alias/escaped->original)   (s/maybe {s/Str s/Any})
    (s/optional-key :pulse-id)                  (s/maybe helpers/IntGreaterThanZero)
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
