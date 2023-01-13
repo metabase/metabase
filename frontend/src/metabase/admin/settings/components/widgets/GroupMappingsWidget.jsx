@@ -21,11 +21,17 @@ export default class GroupMappingsWidget extends React.Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
+      showDeleteMappingModal: false,
       showEditModal: false,
       showAddRow: false,
       groups: null,
       mappings: {},
       saveError: null,
+      dnForVisibleDeleteMappingModal: null,
+      whenDeletingMappingGroups: {
+        groupsToClearAllPermissions: [],
+        groupsToDelete: [],
+      },
     };
   }
 
@@ -78,12 +84,40 @@ export default class GroupMappingsWidget extends React.Component {
     }
   };
 
-  handleShowDeleteMappingModal = () => {
-    this.setState({ showDeleteMappingModal: true, showEditModal: false });
+  handleShowDeleteMappingModal = dn => {
+    this.setState({
+      showDeleteMappingModal: true,
+      showEditModal: false,
+      dnForVisibleDeleteMappingModal: dn,
+    });
   };
 
   handleHideDeleteMappingModal = () => {
-    this.setState({ showDeleteMappingModal: false, showEditModal: true });
+    this.setState({
+      showDeleteMappingModal: false,
+      showEditModal: true,
+      dnForVisibleDeleteMappingModal: null,
+    });
+  };
+
+  handleConfirmDeleteMappingGroup = (whatToDoAboutGroup, dn) => {
+    if (whatToDoAboutGroup === "nothing") {
+      return;
+    }
+
+    const stateKey = {
+      clearAllPermissions: "groupsToClearAllPermissions",
+      delete: "groupsToDelete",
+    }[whatToDoAboutGroup];
+
+    this.setState(({ whenDeletingMappingGroups }) => ({
+      whenDeletingMappingGroups: {
+        ...whenDeletingMappingGroups,
+        [stateKey]: whenDeletingMappingGroups[stateKey].push(dn),
+      },
+    }));
+
+    console.log("🚀", "Confirmed", whatToDoAboutGroup, this.state);
   };
 
   _deleteMapping = dn => e => {
@@ -126,6 +160,7 @@ export default class GroupMappingsWidget extends React.Component {
       groups,
       mappings,
       saveError,
+      dnForVisibleDeleteMappingModal,
     } = this.state;
 
     return (
@@ -173,10 +208,7 @@ export default class GroupMappingsWidget extends React.Component {
                       groups={groups || []}
                       selectedGroups={ids}
                       onChange={this._changeMapping(dn)}
-                      onDelete={
-                        this
-                          .handleShowDeleteMappingModal /*this._deleteMapping(dn)*/
-                      }
+                      onDelete={() => this.handleShowDeleteMappingModal(dn)}
                     />
                   ))}
                 </AdminContentTable>
@@ -197,7 +229,11 @@ export default class GroupMappingsWidget extends React.Component {
           </Modal>
         ) : null}
         {showDeleteMappingModal ? (
-          <DeleteGroupMappingModal onHide={this.handleHideDeleteMappingModal} />
+          <DeleteGroupMappingModal
+            dn={dnForVisibleDeleteMappingModal}
+            onHide={this.handleHideDeleteMappingModal}
+            onConfirm={this.handleConfirmDeleteMappingGroup}
+          />
         ) : null}
       </div>
     );
