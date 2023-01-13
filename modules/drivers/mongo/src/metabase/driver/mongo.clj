@@ -230,6 +230,7 @@
 
 (doseq [feature [:basic-aggregations
                  :nested-fields
+                 :nested-queries
                  :native-parameters
                  :standard-deviation-aggregations]]
   (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
