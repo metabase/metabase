@@ -825,7 +825,14 @@
   (testing "Migrations v46.00-044: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v46.00-044" "v46.00-045"] [migrate!]
       (let [visualization-settings {"column_settings" {"[\"ref\",[\"field-id\",39]]" {"column_title" "ID1"}
-                                                       "[\"ref\",[\"field\",40,null]]" {"column_title" "ID2"}}}
+                                                       "[\"ref\",[\"field\",40,null]]" {"column_title" "ID2"}
+                                                       "[\"ref\",[\"fk->\" [\"field-id\",39] [\"field-id\",40]]]" {"column_title" "ID3"}
+                                                       "[\"ref\",[\"field-literal\",\"column_name\",\"type/Text\"]]" {"column_title" "ID4"}
+                                                       }}
+            expected               {"column_settings" {"[\"ref\",[\"field\",39,null]]" {"column_title" "ID1"}
+                                                       "[\"ref\",[\"field\",40,null]]" {"column_title" "ID2"}
+                                                       "[\"ref\",[\"field\",40,{\"source-field\":39}]]" {"column_title" "ID3"}
+                                                       "[\"ref\",[\"field\",\"column_name\",{\"base-type\":\"type/Text\"}]]" {"column_title" "ID4"}}}
             user-id
             (db/simple-insert! User {:first_name  "Howard"
                                      :last_name   "Hughes"
@@ -843,10 +850,10 @@
                                              :database_id            database-id
                                              :collection_id          nil})]
         (migrate!)
-        (is (= visualization-settings
+        (is (= expected
                (-> (db/query {:select [:visualization_settings]
                               :from   [Card]
                               :where  [:= :id card-id]})
                    first
                    :visualization_settings
-                   (json/parse-string))))))))
+                   mi/json-out-without-keywordization)))))))
