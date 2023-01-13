@@ -21,10 +21,7 @@ import { Dataset } from "metabase-types/types/Dataset";
 import Question from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import {
-  getDefaultSourceConfig,
-  isValidSourceConfig,
-} from "metabase-lib/parameters/utils/parameter-source";
+import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
 import {
   ModalHelpMessage,
   ModalLabel,
@@ -102,9 +99,8 @@ const ValuesSourceTypeModal = ({
   const handleTypeChange = useCallback(
     (sourceType: ValuesSourceType) => {
       onChangeSourceType(sourceType);
-      onChangeSourceConfig(getDefaultSourceConfig(sourceType, allFieldValues));
     },
-    [allFieldValues, onChangeSourceType, onChangeSourceConfig],
+    [onChangeSourceType],
   );
 
   useEffect(() => {

@@ -2,25 +2,27 @@ import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 
 export const isValidSourceConfig = (
   sourceType: ValuesSourceType,
-  sourceConfig: ValuesSourceConfig,
+  { card_id, value_field, values }: ValuesSourceConfig,
 ) => {
   switch (sourceType) {
     case "card":
-      return sourceConfig.card_id != null && sourceConfig.value_field != null;
+      return card_id != null && value_field != null;
     case "static-list":
-      return sourceConfig.values != null && sourceConfig.values.length > 0;
+      return values != null && values.length > 0;
     default:
       return true;
   }
 };
 
-export const getDefaultSourceConfig = (
+export const getSourceConfigForType = (
   sourceType: ValuesSourceType,
-  sourceValues?: string[],
+  { card_id, value_field, values }: ValuesSourceConfig,
 ): ValuesSourceConfig => {
   switch (sourceType) {
+    case "card":
+      return { card_id, value_field };
     case "static-list":
-      return { values: sourceValues };
+      return { values };
     default:
       return {};
   }
