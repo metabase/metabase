@@ -6,11 +6,13 @@ import React, {
   useState,
 } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 import type { OnScrollParams } from "react-virtualized";
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 
+import { usePrevious } from "metabase/hooks/use-previous";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -141,6 +143,8 @@ function PivotTable({
     return null;
   }, [data, settings]);
 
+  const previousRowIndexes = usePrevious(pivoted?.rowIndexes);
+
   // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
   // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights
   function scrollBarOffsetSize() {
@@ -164,19 +168,25 @@ function PivotTable({
       setHeaderWidths({ leftHeaderWidths: null, totalHeaderWidths: null });
     }
 
-    setHeaderWidths(
-      getLeftHeaderWidths({
-        rowIndexes: pivoted?.rowIndexes,
-        getColumnTitle: idx => getColumnTitle(idx),
-        leftHeaderItems: pivoted?.leftHeaderItems,
-        fontFamily: fontFamily,
-      }),
-    );
+    if (
+      !pivoted?.rowIndexes ||
+      !_.isEqual(pivoted?.rowIndexes, previousRowIndexes)
+    ) {
+      setHeaderWidths(
+        getLeftHeaderWidths({
+          rowIndexes: pivoted?.rowIndexes,
+          getColumnTitle: idx => getColumnTitle(idx),
+          leftHeaderItems: pivoted?.leftHeaderItems,
+          fontFamily: fontFamily,
+        }),
+      );
+    }
   }, [
     pivoted?.rowIndexes,
     pivoted?.leftHeaderItems,
     fontFamily,
     getColumnTitle,
+    previousRowIndexes,
   ]);
 
   const handleColumnResize = (columnIndex: number, newWidth: number) => {
