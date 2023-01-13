@@ -8,7 +8,7 @@
 
 (defn create-udfs!
   "Registers the JSON manipulation functions for an H2 database."
-  [conn]
+  [^JdbcConnection conn]
   (.execute (.createStatement conn) "
 CREATE ALIAS IF NOT EXISTS JSON_VALUE AS $$
 import org.json.simple.JSONObject;
