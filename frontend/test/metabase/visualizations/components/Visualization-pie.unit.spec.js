@@ -115,14 +115,13 @@ describe("pie chart", () => {
     const otherPath = paths[paths.length - 1];
 
     // condensed tooltips display as "dimension: metric"
-    expect(screen.queryByText("baz:")).not.toBeInTheDocument();
-    expect(screen.queryByText("qux:")).not.toBeInTheDocument();
+    expect(screen.queryByText("baz")).not.toBeInTheDocument();
+    expect(screen.queryByText("qux")).not.toBeInTheDocument();
 
     fireEvent.mouseMove(otherPath);
 
-    // these appear twice in the dom due to some popover weirdness
-    expect(screen.getAllByText("baz:")).toHaveLength(2);
-    expect(screen.getAllByText("qux:")).toHaveLength(2);
+    expect(screen.getByText("baz")).toBeInTheDocument();
+    expect(screen.getByText("qux")).toBeInTheDocument();
   });
 
   it("shouldn't show a condensed tooltip for just one squashed slice", () => {

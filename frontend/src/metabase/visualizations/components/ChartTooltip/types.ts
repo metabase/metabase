@@ -38,6 +38,7 @@ export interface StackedTooltipModel {
   totalFormatter?: (value: unknown) => string;
   showTotal?: boolean;
   showPercentages?: boolean;
+  grandTotal?: number;
 }
 
 export interface HoveredObject {
