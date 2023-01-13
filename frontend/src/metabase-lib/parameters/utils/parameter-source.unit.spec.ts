@@ -4,11 +4,40 @@ import { createMockUiParameter } from "metabase-lib/parameters/mock";
 import { canListParameterValues } from "./parameter-source";
 
 describe("canListParameterValues", () => {
-  it("should list with fields source", () => {
+  it("should not list the query type other than list", () => {
     const parameter = createMockUiParameter({
       fields: [
         new Field(
           createMockField({
+            id: 1,
+            has_field_values: "list",
+          }),
+        ),
+        new Field(
+          createMockField({
+            id: 2,
+            has_field_values: "list",
+          }),
+        ),
+      ],
+      values_query_type: "none",
+    });
+
+    expect(canListParameterValues(parameter)).toBeFalsy();
+  });
+
+  it("should list with the default source when all fields have field values", () => {
+    const parameter = createMockUiParameter({
+      fields: [
+        new Field(
+          createMockField({
+            id: 1,
+            has_field_values: "list",
+          }),
+        ),
+        new Field(
+          createMockField({
+            id: 2,
             has_field_values: "list",
           }),
         ),
@@ -19,7 +48,38 @@ describe("canListParameterValues", () => {
     expect(canListParameterValues(parameter)).toBeTruthy();
   });
 
-  it("should list with card source", () => {
+  it("should not list with the default source when there are no fields", () => {
+    const parameter = createMockUiParameter({
+      fields: [],
+      values_query_type: "list",
+    });
+
+    expect(canListParameterValues(parameter)).toBeFalsy();
+  });
+
+  it("should not list with the default source when some fields don't have field values", () => {
+    const parameter = createMockUiParameter({
+      fields: [
+        new Field(
+          createMockField({
+            id: 1,
+            has_field_values: "list",
+          }),
+        ),
+        new Field(
+          createMockField({
+            id: 2,
+            has_field_values: "search",
+          }),
+        ),
+      ],
+      values_query_type: "list",
+    });
+
+    expect(canListParameterValues(parameter)).toBeFalsy();
+  });
+
+  it("should list with the card source", () => {
     const parameter = createMockUiParameter({
       fields: [
         new Field(
@@ -39,7 +99,7 @@ describe("canListParameterValues", () => {
     expect(canListParameterValues(parameter)).toBeTruthy();
   });
 
-  it("should list with static list source", () => {
+  it("should list with the static list source", () => {
     const parameter = createMockUiParameter({
       fields: [
         new Field(
