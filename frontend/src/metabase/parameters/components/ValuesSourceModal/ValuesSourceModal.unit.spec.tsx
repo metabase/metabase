@@ -21,6 +21,10 @@ import { createMockUiParameter } from "metabase-lib/parameters/mock";
 import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   describe("fields source", () => {
     it("should show a message about not connected fields", () => {
       setup();
