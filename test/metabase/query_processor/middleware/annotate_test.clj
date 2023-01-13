@@ -795,3 +795,32 @@
           (is (= "alias → B Column" (-> results :data :results_metadata
                                         :columns second :display_name))
               "Results metadata cols has wrong display name"))))))
+
+(deftest preserve-original-join-alias-test
+  (testing "The join alias for the `:field_ref` in results metadata should match the one originally specified (#27464)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset sample-dataset
+        (let [join-alias "Products with a very long name - Product ID with a very long name"
+              results    (mt/run-mbql-query orders
+                           {:joins  [{:source-table $$products
+                                      :condition    [:= $product_id [:field %products.id {:join-alias join-alias}]]
+                                      :alias        join-alias
+                                      :fields       [[:field %products.title {:join-alias join-alias}]]}]
+                            :fields [$orders.id
+                                     [:field %products.title {:join-alias join-alias}]]
+                            :limit  4})]
+          (doseq [[location metadata] {"data.cols"                     (mt/cols results)
+                                       "data.results_metadata.columns" (get-in results [:data :results_metadata :columns])}]
+            (testing location
+              (is (= (mt/$ids
+                       [{:display_name "ID"
+                         :field_ref    $orders.id}
+                        (merge
+                         {:display_name (str join-alias " → Title")
+                          :field_ref    [:field %products.title {:join-alias join-alias}]}
+                         ;; `source_alias` is only included in `data.cols`, but not in `results_metadata`
+                         (when (= location "data.cols")
+                           {:source_alias join-alias}))])
+                     (map
+                      #(select-keys % [:display_name :field_ref :source_alias])
+                      metadata))))))))))

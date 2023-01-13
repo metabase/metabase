@@ -415,7 +415,7 @@ describe("formatting", () => {
           time_style: "HH:mm",
           column: {
             base_type: "type/Date",
-            unit: "hour-of-day",
+            unit: "minute",
           },
         }),
       ).toEqual("7/7/2019");
@@ -597,7 +597,7 @@ describe("formatting", () => {
   describe("formatDateTimeWithUnit", () => {
     it("should format week ranges", () => {
       expect(
-        formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
+        formatDateTimeWithUnit("2019-07-09T00:00:00.000Z", "week", {
           type: "cell",
         }),
       ).toEqual("July 7, 2019 – July 13, 2019");
@@ -605,13 +605,14 @@ describe("formatting", () => {
 
     it("should always format week ranges according to returned data", () => {
       try {
-        // globally set locale to es
+        // globally set locale to es. That moves the weeks to starting on Mondays, in the abstract unit testing world.
+        // In the full app the first day of the week is a setting.
         moment.locale("es");
         expect(
-          formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
+          formatDateTimeWithUnit("2019-07-09T00:00:00.000Z", "week", {
             type: "cell",
           }),
-        ).toEqual("julio 7, 2019 – julio 13, 2019");
+        ).toEqual("julio 8, 2019 – julio 14, 2019");
       } finally {
         // globally reset locale
         moment.locale("en");
