@@ -18,7 +18,11 @@ String jsonStringValue(String s, String key) {
     Object obj = JSONValue.parse(s);
     if (obj instanceof JSONObject) {
         JSONObject jsonObject = (JSONObject) obj;
-        return jsonObject.get(key).toString();
+        if (jsonObject.containsKey(key)) {
+            return jsonObject.get(key).toString();
+        } else {
+            return null;
+        }
     } else if (obj instanceof JSONArray) {
         JSONArray jsonArray = (JSONArray) obj;
         int keyInt = Integer.parseInt(key);
@@ -41,7 +45,7 @@ import java.util.Set;
 String jsonKeys(String json) {
   Object obj = JSONValue.parse(json);
   JSONObject jsonObject = (JSONObject) obj;
-  Set<String> jsonObject.keySet();
+  Set<String> keys = jsonObject.keySet();
   return keys.toString();
 }
 $$;")
@@ -54,15 +58,16 @@ import java.util.Collection;
 String jsonValues(String json) {
   Object obj = JSONValue.parse(json);
   JSONObject jsonObject = (JSONObject) obj;
-  return jsonObject.toJSONString();
+  Collection<Object> values = jsonObject.values();
+  return values.toString();
 }
 $$;")
   ;; JSON_SET
   ;; replaces existing values and adds nonexisting values.
   ;; converts values to strings
   ;; only works for JSON Objects, not Arrays
-  (.execute (.createStatement conn)
-            "CREATE ALIAS IF NOT EXISTS JSON_SET AS $$
+  (.execute (.createStatement conn) "
+CREATE ALIAS IF NOT EXISTS JSON_SET AS $$
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 @CODE
