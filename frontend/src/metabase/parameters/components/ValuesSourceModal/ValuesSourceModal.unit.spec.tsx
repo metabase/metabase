@@ -1,13 +1,16 @@
 import React from "react";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
-import { FieldValues, Table } from "metabase-types/api";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { Card, FieldValues } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCollection,
   createMockField,
   createMockFieldValues,
 } from "metabase-types/api/mocks";
 import {
+  setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
@@ -19,24 +22,28 @@ import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
   describe("fields source", () => {
-    it("should show a message about not connected fields", async () => {
+    it("should show a message about not connected fields", () => {
       setup();
 
-      expect(
-        await screen.findByText(/You haven’t connected a field/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/haven’t connected a field/)).toBeInTheDocument();
     });
 
     it("should show a message about missing field values", async () => {
       setup({
         parameter: createMockUiParameter({
-          fields: [new Field(createMockField())],
+          fields: [new Field(createMockField({ id: 1 }))],
         }),
+        fieldsValues: [
+          createMockFieldValues({
+            field_id: 1,
+            values: [],
+          }),
+        ],
       });
 
-      expect(
-        await screen.findByText(/We don’t have any cached values/),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText(/any cached values/)).toBeInTheDocument();
+      });
     });
 
     it("should show unique non-null mapped fields values", async () => {
@@ -65,6 +72,47 @@ describe("ValuesSourceModal", () => {
     });
   });
 
+  describe("card source", () => {
+    it("should allow to select only string-based fields", async () => {
+      const { onSubmit } = setup({
+        parameter: createMockUiParameter({
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+          },
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockField({
+                id: 1,
+                display_name: "ID",
+                base_type: "type/BigInteger",
+              }),
+              createMockField({
+                id: 2,
+                display_name: "Category",
+                base_type: "type/Text",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      expect(await screen.findByText(/Selectable values/)).toBeInTheDocument();
+      userEvent.click(screen.getByRole("button", { name: /Pick a column/ }));
+      userEvent.click(screen.getByRole("option", { name: /Category/ }));
+      userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      expect(onSubmit).toHaveBeenCalledWith("card", {
+        card_id: 1,
+        value_field: ["field", 2, null],
+      });
+    });
+  });
+
   describe("list source", () => {
     it("should set static list values", () => {
       const { onSubmit } = setup();
@@ -82,25 +130,21 @@ describe("ValuesSourceModal", () => {
 
 interface SetupOpts {
   parameter?: UiParameter;
-  tables?: Table[];
+  cards?: Card[];
   fieldsValues?: FieldValues[];
 }
 
 const setup = ({
   parameter = createMockUiParameter(),
+  cards = [],
   fieldsValues = [],
 }: SetupOpts = {}) => {
   const scope = nock(location.origin);
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
-  setupCollectionsEndpoints(scope, [
-    createMockCollection({
-      id: "root",
-      name: "Our analytics",
-    }),
-  ]);
-
+  setupCollectionsEndpoints(scope, [createMockCollection(ROOT_COLLECTION)]);
+  setupCardsEndpoints(scope, cards);
   setupFieldsValuesEndpoints(scope, fieldsValues);
 
   renderWithProviders(

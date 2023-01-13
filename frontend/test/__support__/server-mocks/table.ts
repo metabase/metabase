@@ -2,7 +2,7 @@ import { Scope } from "nock";
 import { Table } from "metabase-types/api";
 import { setupFieldEndpoints } from "./field";
 
-export function setupTableEndpoint(scope: Scope, table: Table) {
+export function setupTableEndpoints(scope: Scope, table: Table) {
   scope.get(`/api/table/${table.id}`).reply(200, table);
   scope.get(`/api/table/${table.id}/query_metadata`).reply(200, table);
   scope.get(`/api/table/${table.id}/fks`).reply(200, []);
@@ -11,5 +11,5 @@ export function setupTableEndpoint(scope: Scope, table: Table) {
 
 export function setupTablesEndpoints(scope: Scope, tables: Table[]) {
   scope.get("/api/table").reply(200, tables);
-  tables.forEach(table => setupTableEndpoint(scope, table));
+  tables.forEach(table => setupTableEndpoints(scope, table));
 }

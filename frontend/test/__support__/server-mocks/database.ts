@@ -1,12 +1,12 @@
 import { Scope } from "nock";
 import _ from "underscore";
 import { Database } from "metabase-types/api";
-import { setupTableEndpoint } from "./table";
+import { setupTableEndpoints } from "./table";
 
 export function setupDatabaseEndpoints(scope: Scope, db: Database) {
   scope.get(`/api/database/${db.id}`).reply(200, db);
   setupSchemaEndpoints(scope, db);
-  db.tables?.forEach(table => setupTableEndpoint(scope, table));
+  db.tables?.forEach(table => setupTableEndpoints(scope, table));
 }
 
 export function setupDatabasesEndpoints(scope: Scope, dbs: Database[]) {
