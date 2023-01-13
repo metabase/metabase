@@ -126,7 +126,7 @@ describe("ValuesSourceModal", () => {
       });
     });
 
-    it("preserves the list when changing the source type", () => {
+    it("should preserve the list when changing the source type", () => {
       setup({
         parameter: createMockUiParameter({
           values_source_type: "static-list",
