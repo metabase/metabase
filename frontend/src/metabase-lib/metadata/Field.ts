@@ -11,30 +11,30 @@ import type {
 } from "metabase-types/api";
 import type { Field as FieldRef } from "metabase-types/types/Query";
 import {
+  isAddress,
+  isBoolean,
+  isCategory,
+  isCity,
+  isComment,
+  isCoordinate,
+  isCountry,
   isDate,
   isDateWithoutTime,
-  isTime,
+  isDescription,
+  isDimension,
+  isEntityName,
+  isFK,
+  isLocation,
+  isMetric,
   isNumber,
   isNumeric,
-  isBoolean,
+  isPK,
+  isScope,
+  isState,
   isString,
   isSummable,
-  isScope,
-  isCategory,
-  isAddress,
-  isCity,
-  isState,
+  isTime,
   isZipCode,
-  isCountry,
-  isCoordinate,
-  isLocation,
-  isDescription,
-  isComment,
-  isDimension,
-  isMetric,
-  isPK,
-  isFK,
-  isEntityName,
 } from "metabase-lib/types/utils/isa";
 import { getFilterOperators } from "metabase-lib/operators/utils";
 import { getFieldValues } from "metabase-lib/queries/utils/field";
@@ -486,6 +486,10 @@ class FieldInner extends Base {
    */
   foreign(foreignField) {
     return this.dimension().foreign(foreignField.dimension());
+  }
+
+  isVirtual() {
+    return typeof this.id !== "number";
   }
 
   /**

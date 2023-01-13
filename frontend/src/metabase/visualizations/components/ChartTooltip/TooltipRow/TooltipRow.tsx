@@ -42,19 +42,23 @@ export const TooltipRow = ({
 
 interface TotalTooltipRow {
   value: string;
-  showPercentages?: boolean;
+  percent?: number;
+  hasIcon?: boolean;
 }
 
 export const TooltipTotalRow = ({
   value,
-  showPercentages,
+  percent,
+  hasIcon,
 }: TotalTooltipRow) => (
   <TotalRowRoot>
-    <Cell>=</Cell>
+    {hasIcon && <Cell>=</Cell>}
     <Cell data-testid="row-name">{t`Total`}</Cell>
     <ValueCell data-testid="row-value">{value}</ValueCell>
-    {showPercentages && (
-      <PercentCell data-testid="row-percent">100%</PercentCell>
+    {percent != null && (
+      <PercentCell data-testid="row-percent">
+        {formatPercent(percent)}
+      </PercentCell>
     )}
   </TotalRowRoot>
 );

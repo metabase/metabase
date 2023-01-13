@@ -17,7 +17,7 @@ export const isValidSourceConfig = (
 export const getDefaultSourceConfig = (
   sourceType: ValuesSourceType,
   sourceValues?: string[],
-) => {
+): ValuesSourceConfig => {
   switch (sourceType) {
     case "static-list":
       return { values: sourceValues };

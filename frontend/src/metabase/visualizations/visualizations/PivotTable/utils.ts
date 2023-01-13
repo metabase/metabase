@@ -2,11 +2,20 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
+import { measureText } from "metabase/lib/measure-text";
 
 import type { Column } from "metabase-types/types/Dataset";
 import type { Card } from "metabase-types/types/Card";
 import type { PivotSetting, FieldOrAggregationReference } from "./types";
 import { partitions } from "./partitions";
+
+import {
+  ROW_TOGGLE_ICON_WIDTH,
+  CELL_PADDING,
+  MIN_HEADER_CELL_WIDTH,
+  MAX_HEADER_CELL_WIDTH,
+  PIVOT_TABLE_FONT_SIZE,
+} from "./constants";
 
 // adds or removes columns from the pivot settings based on the current query
 export function updateValueWithCurrentColumns(
@@ -74,4 +83,43 @@ export function isColumnValid(col: Column) {
 
 export function isFormattablePivotColumn(column: Column) {
   return column.source === "aggregation";
+}
+
+interface GetLeftHeaderWidthsProps {
+  rowIndexes: number[];
+  getColumnTitle: (columnIndex: number) => string;
+  fontFamily?: string;
+}
+
+export function getLeftHeaderWidths({
+  rowIndexes,
+  getColumnTitle,
+  fontFamily = "Lato",
+}: GetLeftHeaderWidthsProps) {
+  const widths = rowIndexes.map(rowIndex => {
+    const computedWidth =
+      Math.ceil(
+        measureText(getColumnTitle(rowIndex), {
+          weight: "bold",
+          family: fontFamily,
+          size: PIVOT_TABLE_FONT_SIZE,
+        }),
+      ) +
+      ROW_TOGGLE_ICON_WIDTH +
+      CELL_PADDING;
+
+    if (computedWidth > MAX_HEADER_CELL_WIDTH) {
+      return MAX_HEADER_CELL_WIDTH;
+    }
+
+    if (computedWidth < MIN_HEADER_CELL_WIDTH) {
+      return MIN_HEADER_CELL_WIDTH;
+    }
+
+    return computedWidth;
+  });
+
+  const total = widths.reduce((acc, width) => acc + width, 0);
+
+  return { leftHeaderWidths: widths, totalHeaderWidths: total };
 }

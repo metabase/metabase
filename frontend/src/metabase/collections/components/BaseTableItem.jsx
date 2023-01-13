@@ -21,6 +21,8 @@ import {
   ItemLink,
   TableItemSecondaryField,
   DescriptionIcon,
+  ModelDetailLink,
+  RowActionsContainer,
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
@@ -115,7 +117,7 @@ export function BaseTableItem({
           />
         </ItemCell>
         <ItemCell data-testid={`${testId}-name`}>
-          <ItemLink {...linkProps} to={item.getUrl({ isModelDetail: true })}>
+          <ItemLink {...linkProps} to={item.getUrl()}>
             <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
@@ -141,15 +143,18 @@ export function BaseTableItem({
           )}
         </ItemCell>
         <ItemCell>
-          <ActionMenu
-            createBookmark={createBookmark}
-            deleteBookmark={deleteBookmark}
-            bookmarks={bookmarks}
-            item={item}
-            collection={collection}
-            onCopy={onCopy}
-            onMove={onMove}
-          />
+          <RowActionsContainer>
+            <ActionMenu
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
+              bookmarks={bookmarks}
+              item={item}
+              collection={collection}
+              onCopy={onCopy}
+              onMove={onMove}
+            />
+            {item.model === "dataset" && <ModelDetailLink model={item} />}
+          </RowActionsContainer>
         </ItemCell>
       </tr>
     );
