@@ -13938,6 +13938,7 @@ databaseChangeLog:
       author: calherries 
       comment: Added 0.46.0 -- updates visualization_settings.column_settings field refs
       validCheckSum: ANY
+      rollback: # nothing to do because it's backwards compatible with 45
       changes:
         - sql:
             dbms: postgresql
@@ -14018,45 +14019,47 @@ databaseChangeLog:
             dbms: h2
             sql: >-
               UPDATE report_card c
-              JOIN (
-              SELECT
-                id, JSON_OBJECTAGG(k: v) AS column_settings
-              FROM (
-              SELECT
-                id,
-                CASE
-                    WHEN JSON_STRING_VALUE(JSON_STRING_VALUE(k, 1), 0) = 'field-id' 
-                    THEN CONCAT('["ref",["field",', JSON_STRING_VALUE(JSON_STRING_VALUE(k, 1), 1), ',null]]')
-                    ELSE k
-                END AS k,
-                (v FORMAT JSON) as v
-              FROM (
-                SELECT 
-                  id
-                  , JSON_STRING_VALUE(JSON_KEYS(settings), idx) as k
-                  , JSON_STRING_VALUE(JSON_VALUES(settings), idx) as v
+              SET visualization_settings = (
+                SELECT JSON_SET(visualization_settings, 'column_settings', column_settings.column_settings)
                 FROM (
-                    SELECT id, JSON_STRING_VALUE(visualization_settings, 'column_settings') AS settings
-                    FROM report_card
-                    WHERE visualization_settings IS NOT NULL
-                      AND JSON_STRING_VALUE(visualization_settings, 'column_settings') IS NOT NULL
+                  SELECT
+                    id, JSON_OBJECTAGG(k: v) AS column_settings
+                  FROM (
+                    SELECT
+                      id,
+                      CASE
+                          WHEN JSON_STRING_VALUE(JSON_STRING_VALUE(k, 1), 0) = 'field-id' 
+                          THEN CONCAT('["ref",["field",', JSON_STRING_VALUE(JSON_STRING_VALUE(k, 1), 1), ',null]]')
+                          ELSE k
+                      END AS k,
+                      (v FORMAT JSON) as v
+                    FROM (
+                      SELECT 
+                        id
+                        , JSON_STRING_VALUE(JSON_KEYS(column_settings), idx) as k
+                        , JSON_STRING_VALUE(JSON_VALUES(column_settings), idx) as v
+                      FROM (
+                        SELECT id, JSON_STRING_VALUE(visualization_settings, 'column_settings') AS column_settings
+                        FROM report_card
+                        WHERE visualization_settings IS NOT NULL
+                          AND JSON_STRING_VALUE(visualization_settings, 'column_settings') IS NOT NULL
+                      ) as column_settings
+                      JOIN ( 
+                        SELECT a.x + b.x * 4 + c.x * 16 + d.x * 64 + e.x * 256 AS idx
+                        FROM (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) a
+                        JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) b
+                        JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) c
+                        JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) d
+                        JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) e
+                        ) AS indexes
+                      WHERE JSON_STRING_VALUE(JSON_KEYS(column_settings), idx) IS NOT NULL
+                    ) as kvs
+                  ) as kvs
+                  GROUP BY id
                 ) as column_settings
-                JOIN ( 
-                  SELECT a.x + b.x * 4 + c.x * 16 + d.x * 64 + e.x * 256 AS idx
-                  FROM (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) a
-                  JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) b
-                  JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) c
-                  JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) d
-                  JOIN (SELECT 0 AS x UNION SELECT 1 AS x UNION SELECT 2 AS x UNION SELECT 3 AS x) e
-                ) AS indices -- 0 to 1023. Assumes there are no more than 1024 columns for every card.
-                WHERE JSON_STRING_VALUE(JSON_KEYS(settings), idx) IS NOT NULL
-              ) as kvs
-              ) as kvs2
-              GROUP BY id
-              ) as column_settings
-              SET visualization_settings = JSON_SET(visualization_settings, 'column_settings', column_settings.column_settings)
-              WHERE column_settings.id = c.id
-                AND visualization_settings IS NOT NULL
+                WHERE column_settings.id = c.id
+              )
+              WHERE c.visualization_settings IS NOT NULL
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
