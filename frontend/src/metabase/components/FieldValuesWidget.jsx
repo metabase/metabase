@@ -70,7 +70,7 @@ async function searchFieldValues(
           {
             value,
             fieldId: field.id,
-            searchFieldId: searchField(field, disablePKRemappingForSearch).id,
+            searchFieldId: field.searchField(disablePKRemappingForSearch).id,
             limit: maxResults,
           },
           { cancelled },
@@ -199,7 +199,7 @@ class FieldValuesWidgetInner extends Component {
       const [field] = fields;
       if (
         field.remappedField() ===
-        searchField(field, this.props.disablePKRemappingForSearch)
+        field.searchField(this.props.disablePKRemappingForSearch)
       ) {
         this.props.addRemappings(field.id, options);
       }
@@ -485,15 +485,7 @@ function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
 }
 
 export function searchField(field, disablePKRemappingForSearch) {
-  if (disablePKRemappingForSearch && field.isPK()) {
-    return field.isSearchable() ? field : null;
-  }
-
-  const remappedField = field.remappedField();
-  if (remappedField && remappedField.isSearchable()) {
-    return remappedField;
-  }
-  return field.isSearchable() ? field : null;
+  return field.searchField(disablePKRemappingForSearch);
 }
 
 function getSearchableTokenFieldPlaceholder(
@@ -505,7 +497,7 @@ function getSearchableTokenFieldPlaceholder(
 
   const names = new Set(
     fields.map(field =>
-      stripId(searchField(field, disablePKRemappingForSearch).display_name),
+      stripId(field.searchField(disablePKRemappingForSearch).display_name),
     ),
   );
 
@@ -517,7 +509,7 @@ function getSearchableTokenFieldPlaceholder(
     placeholder = t`Search by ${name}`;
     if (
       firstField.isID() &&
-      firstField !== searchField(firstField, disablePKRemappingForSearch)
+      firstField !== firstField.searchField(disablePKRemappingForSearch)
     ) {
       placeholder += t` or enter an ID`;
     }
@@ -548,7 +540,7 @@ export function isSearchable({
 }) {
   function everyFieldIsSearchable() {
     return fields.every(field =>
-      searchField(field, disablePKRemappingForSearch),
+      field.searchField(disablePKRemappingForSearch),
     );
   }
 
@@ -649,7 +641,7 @@ function renderOptions(
         return (
           <NoMatchState
             fields={fields.map(field =>
-              searchField(field, disablePKRemappingForSearch),
+              field.searchField(disablePKRemappingForSearch),
             )}
           />
         );

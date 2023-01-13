@@ -444,6 +444,19 @@ class FieldInner extends Base {
     return this.isString();
   }
 
+  searchField(disablePKRemapping = false): Field | null {
+    if (disablePKRemapping && this.isPK()) {
+      return this.isSearchable() ? field : null;
+    }
+
+    const remappedField = this.remappedField();
+    if (remappedField && remappedField.isSearchable()) {
+      return remappedField;
+    }
+
+    return this.isSearchable() ? this : null;
+  }
+
   column(extra = {}): DatasetColumn {
     return this.dimension().column({
       source: "fields",
