@@ -103,7 +103,7 @@ describe("ValuesSourceModal", () => {
 
       expect(await screen.findByText(/Selectable values/)).toBeInTheDocument();
       userEvent.click(screen.getByRole("button", { name: /Pick a column/ }));
-      userEvent.click(screen.getByRole("option", { name: /Category/ }));
+      userEvent.click(screen.getByRole("heading", { name: /Category/ }));
       userEvent.click(screen.getByRole("button", { name: "Done" }));
 
       expect(onSubmit).toHaveBeenCalledWith("card", {
