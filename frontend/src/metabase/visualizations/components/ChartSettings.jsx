@@ -97,6 +97,14 @@ class ChartSettings extends Component {
   };
 
   handleSetCurrentWidget = widget => {
+    console.log(this.props);
+    this.props.setSidebarPropsOverride({
+      title: t`Add or Remove Columns`,
+      onBack: () => {
+        this.handleEndShowWidget();
+        this.props.setSidebarPropsOverride({});
+      },
+    });
     this.setState({ currentWidget: widget });
   };
 
@@ -317,8 +325,6 @@ class ChartSettings extends Component {
         : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
           sectionNames[0];
 
-    console.log(widgets);
-
     const visibleWidgets =
       (currentWidget
         ? [
@@ -376,7 +382,8 @@ class ChartSettings extends Component {
         visibleWidgets[0].id === "column_settings" &&
         // and this section doesn't doesn't have that as a direct child
         !currentSectionHasColumnSettings
-      );
+      ) &&
+      !currentWidget;
 
     // default layout with visualization
     return (

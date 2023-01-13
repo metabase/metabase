@@ -102,8 +102,6 @@ export function syncTableColumnsToQuery(question) {
       query = join.clearFields().parent();
     }
 
-    console.log(columnSettings);
-
     for (const columnSetting of columnSettings) {
       if (columnSetting.enabled) {
         let fieldRef;

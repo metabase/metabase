@@ -86,6 +86,10 @@ export default class ChartSettingOrderedColumns extends Component {
       columnSetting => columnSetting.enabled,
     );
 
+    console.log(value);
+    console.log(enabledColumns, disabledColumns);
+    console.log(additionalFieldOptions);
+
     return (
       <div className="list">
         {enabledColumns.length > 0 ? (
