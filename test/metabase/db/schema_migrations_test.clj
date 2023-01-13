@@ -820,3 +820,33 @@
           (is (= #{"F1 D2"
                    "F2 D1"}
                  (db/select-field :name Dimension {:order-by [[:id :asc]]}))))))))
+
+(deftest migrate-legacy-column-settings-field-refs-test
+  (testing "Migrations v46.00-044: update visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v46.00-044" "v46.00-045"] [migrate!]
+      (let [visualization-settings {"column_settings" {"[\"ref\",[\"field-id\",39]]" {"column_title" "ID1"}
+                                                       "[\"ref\",[\"field\",40,null]]" {"column_title" "ID2"}}}
+            user-id
+            (db/simple-insert! User {:first_name  "Howard"
+                                     :last_name   "Hughes"
+                                     :email       "howard@aircraft.com"
+                                     :password    "superstrong"
+                                     :date_joined :%now})
+            database-id (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now, :details "{}"})
+            card-id (db/simple-insert! Card {:name                   "My Saved Question"
+                                             :created_at             :%now
+                                             :updated_at             :%now
+                                             :creator_id             user-id
+                                             :display                "table"
+                                             :dataset_query          "{}"
+                                             :visualization_settings (json/generate-string visualization-settings)
+                                             :database_id            database-id
+                                             :collection_id          nil})]
+        (migrate!)
+        (is (= visualization-settings
+               (-> (db/query {:select [:visualization_settings]
+                              :from   [Card]
+                              :where  [:= :id card-id]})
+                   first
+                   :visualization_settings
+                   (json/parse-string))))))))
