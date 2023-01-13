@@ -1057,7 +1057,7 @@
                           ;; We only care about expressions and bucketing not added as breakout
                           :when (and (not (contains? breakout-fields field))
                                      (let [dispatch-value
-                                           ((.dispatchFn ^clojure.lang.MultiFn ->rvalue) field)]
+                                           (mbql.u/dispatch-by-clause-name-or-class field)]
                                        (or (= :expression dispatch-value)
                                            (and (= :field dispatch-value)
                                                 (let [[_ _ {:keys [temporal-unit]}] field]
