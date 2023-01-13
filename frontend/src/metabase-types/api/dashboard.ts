@@ -1,12 +1,15 @@
-import { Parameter } from "metabase-types/api/parameters";
 import type { EntityId } from "metabase-types/types";
 import type {
   ParameterTarget,
   ParameterId,
 } from "metabase-types/types/Parameter";
 
+import type { WritebackAction } from "./actions";
+import type { ActionDisplayType } from "./action-form-settings";
 import type { Card, CardId } from "./card";
+import type { ClickBehavior } from "./click-behavior";
 import type { Dataset } from "./dataset";
+import type { Parameter } from "./parameters";
 
 export type DashboardId = number;
 
@@ -40,6 +43,10 @@ export type BaseDashboardOrderedCard = {
     [key: string]: unknown;
     virtual_card?: Card;
   };
+
+  // set and used by the frontend
+  isAdded?: boolean;
+  justAdded?: boolean;
 };
 
 export type DashboardOrderedCard = BaseDashboardOrderedCard & {
@@ -48,6 +55,26 @@ export type DashboardOrderedCard = BaseDashboardOrderedCard & {
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: Card[];
 };
+
+export interface ActionDashboardCard
+  extends Omit<BaseDashboardOrderedCard, "parameter_mappings"> {
+  action?: WritebackAction;
+  card_id?: number; // model card id for the associated action
+  card?: Card;
+
+  parameter_mappings?: ActionParametersMapping[] | null;
+  visualization_settings: {
+    [key: string]: unknown;
+    "button.label"?: string;
+    click_behavior?: ClickBehavior;
+    actionDisplayType?: ActionDisplayType;
+  };
+}
+
+export type ActionParametersMapping = Pick<
+  DashboardParameterMapping,
+  "parameter_id" | "target"
+>;
 
 export type DashboardParameterMapping = {
   card_id: CardId;

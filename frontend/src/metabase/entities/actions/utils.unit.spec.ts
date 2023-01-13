@@ -1,7 +1,7 @@
 import {
   getDefaultFormSettings,
   getDefaultFieldSettings,
-} from "metabase/actions/containers/ActionCreator/FormCreator/utils";
+} from "metabase/actions/utils";
 
 import { metadata } from "__support__/sample_database_fixture";
 import type { Parameter } from "metabase-types/api";

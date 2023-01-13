@@ -2,8 +2,8 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { getDefaultFieldSettings } from "../../../utils";
 import { FieldSettingsPopover } from "./FieldSettingsPopover";
-import { getDefaultFieldSettings } from "./utils";
 
 describe("actions > FormCreator > FieldSettingsPopover", () => {
   it("should show the popover", async () => {

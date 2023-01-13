@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { getDefaultFieldSettings } from "metabase/actions/containers/ActionCreator/FormCreator";
+import { getDefaultFieldSettings } from "metabase/actions/utils";
 
 import type {
   ActionFormSettings,
