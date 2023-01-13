@@ -6,79 +6,47 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as gen]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me] ;; umd/describe
-   [malli.generator :as mg]
-   [malli.transform :as mtx]
-   [metabase.util :as u]))
+   [malli.util :as mut]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]))
 
 (defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"
   first)
 
-(defmethod convert :kw->int
-  [[_ k]]
-  (Integer/parseInt (name k)))
-
-(defmethod convert :str->kw
-  [[_ s]]
-  (keyword s))
+(defmethod convert :kw->int [[_ k]] (Integer/parseInt (name k)))
+(defmethod convert :str->kw [[_ s]] (keyword s))
 
 ;; Convert a keyword to string without excluding the namespace.
 ;; e.g: :schema/name => "schema/name".
 ;; Primarily used for schema-name since schema are allowed to have "/"
 ;; and calling (name s) returning a substring after "/".
-(defmethod convert :kw->str
-  [[_ s]]
-  (u/qualified-name s))
-
-(defmethod convert :nil->none
-  [[_ _]]
-  :none)
-
-(defmethod convert :identity
-  [[_ x]]
-  x)
-
-(defmethod convert :global-execute
-  [[_ x]]
-  x)
-
-(defmethod convert :db-exeute
-  [[_ x]]
-  x)
+(defmethod convert :kw->str [[_ s]] (u/qualified-name s))
+(defmethod convert :nil->none [[_ _]] :none)
+(defmethod convert :identity [[_ x]] x)
+(defmethod convert :global-execute [[_ x]] x)
+(defmethod convert :db-exeute [[_ x]] x)
 
 ;;; --------------------------------------------------- Common ----------------------------------------------------
 
-(defn perm-graph-enum [& keywords]
-  ;; temporary hack until the next version of malli comes, when we can drop the
-  ;; [:and :keyword ,,,] piece
-  [:and {:decode/perm-graph (fn [x] (keyword x))}
-   :keyword
-   (into [:enum] keywords)])
-
-(mc/decode [:enum :all :none] "all" (mtx/string-transformer))
-
+;;integer schema that knows how to decode itself from the :123 sort of shape used in perm-graphs
 (def decodable-kw-int
-  [:int {:comment "integer schema that knows how to decode itself from the :123 sort of shape used in perm-graphs"
-         :decode/perm-graph
-         (fn thing [kw-int] (if (int? kw-int) kw-int (Integer/parseInt (name kw-int))))}])
+  [:int {:decode/perm-graph
+         (fn thing [kw-int]
+           (if (int? kw-int)
+             kw-int
+             (Integer/parseInt (name kw-int))))}])
 
-(def id decodable-kw-int)
+(def ^:private id decodable-kw-int)
 
 ;; ids come in asa keywordized numbers
 (s/def ::id (s/with-gen (s/or :kw->int (s/and keyword? #(re-find #"^\d+$" (name %))))
               #(gen/fmap (comp keyword str) (s/gen pos-int?))))
 
 (def native [:maybe [:enum :write :none :full :limited]])
-(s/def ::native (s/or :str->kw #{"write"
-                                 ;; data
-                                 ;; ""
-                                 ;; download
-                                 "none" "full" "limited"}
-                      :nil->none nil?))
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
@@ -110,6 +78,14 @@
    [:native {:optional true} native]
    [:schemas {:optional true} schemas]])
 
+(def ^:private strict-data-perms
+  [:and
+   data-perms
+   [:fn {:error/fn (constantly
+                    (trs "Invalid DB permissions: If you have write access for native queries, you must have full data access."))}
+    (fn [{:keys [native schemas]}]
+      (not (and (= native :write) schemas (not= schemas :all))))]])
+
 (def ^:private db-graph
   [:map-of
    id
@@ -122,12 +98,19 @@
     [:details {:optional true} [:enum :yes :no]]
     [:execute {:optional true} [:enum :all :none]]]])
 
-(def ^:private permission-graph-data-groups
-  [:map-of id db-graph])
+(def ^:private strict-db-graph
+  (-> db-graph
+      (mut/assoc-in [1 :data] strict-data-perms)
+      (mut/assoc-in [1 :download] strict-data-perms)
+      (mut/assoc-in [1 :data-model] strict-data-perms)
+      (mut/update 0 mut/update-properties assoc :title "strict db graph")))
 
 (def data-permissions-graph
   "Used to transform, and verify data permissions graph"
-  [:map [:groups permission-graph-data-groups]])
+  [:map [:groups [:map-of id db-graph]]])
+
+(def strict-data-permissions-graph
+  [:map [:groups [:map-of id strict-db-graph]]])
 
 ;;; --------------------------------------------- Collection Permissions ---------------------------------------------
 

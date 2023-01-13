@@ -187,11 +187,13 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [metabase.api.permission-graph :as api.permission-graph]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |
@@ -747,9 +749,9 @@
 
 (def ^:private StrictDBPermissionsGraph
   {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
-                                  (s/optional-key :download) DownloadPermissionsGraph
-                                  (s/optional-key :data-model) DataModelPermissionsGraph
-                                  (s/optional-key :details) DetailsPermissions}})
+                          (s/optional-key :download) DownloadPermissionsGraph
+                          (s/optional-key :data-model) DataModelPermissionsGraph
+                          (s/optional-key :details) DetailsPermissions}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
@@ -1173,8 +1175,8 @@
     (update-fn group-id db-id new-perms)
     (throw (ee-permissions-exception perm-type))))
 
-(s/defn ^:private update-group-permissions!
-  [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
+(mu/defn ^:private update-group-permissions! :- nil?
+  [group-id :- pos-int? new-group-perms :- api.permission-graph/strict-data-permissions-graph]
   (doseq [[db-id new-db-perms] new-group-perms
           [perm-type new-perms] new-db-perms]
     (case perm-type
