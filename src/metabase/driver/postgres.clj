@@ -95,7 +95,10 @@
   (if (= unit :quarter)
     (recur driver hsql-form (* 3 amount) :month)
     (let [hsql-form (->timestamp hsql-form)]
-      (-> (hx/+ hsql-form (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit))))
+      (-> (hx/+ hsql-form (let [s (format "(INTERVAL '%s %s')" amount (name unit))]
+                            (case hx/*honey-sql-version*
+                              1 (hsql/raw s)
+                              2 [:raw s])))
           (hx/with-type-info (hx/type-info hsql-form))))))
 
 (defmethod driver/humanize-connection-error-message :postgres

@@ -261,14 +261,8 @@
   },
   "resolutions": {
     "ansi-regex": "5.0.1",
-    "nth-check": "2.0.1",
     "set-value": "4.0.1",
-    "immer": "9.0.6",
-    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
-    "prismjs": "1.27.0",
-    "nanoid": "3.1.31",
-    "minimist": "1.2.6",
-    "node-forge": "1.3.0"
+    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",
@@ -296,7 +290,7 @@
     "cljs-server-start": "yarn && shadow-cljs start",
     "cljs-server-stop": "yarn && shadow-cljs stop",
     "cljs-server-restart": "yarn && shadow-cljs restart",
-    "cljs-nrepl": "yarn && shadow-cljs node-repl -d cider/cider-nrepl:0.25.8 -d cider/piggieback:0.5.1 -d refactor-nrepl:2.5.1",
+    "cljs-nrepl": "yarn && shadow-cljs node-repl -d cider/cider-nrepl:0.28.5 -d cider/piggieback:0.5.3 -d refactor-nrepl:3.6.0",
     "test-cljs": "yarn && shadow-cljs compile test && node target/node-tests.js",
     "build": "yarn build:cljs && yarn build:js",
     "build-watch": "yarn concurrently -n 'cljs,js' 'yarn build-watch:cljs' 'yarn build-watch:js'",

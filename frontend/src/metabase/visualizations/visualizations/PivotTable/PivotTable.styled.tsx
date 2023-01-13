@@ -2,7 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color, alpha, darken } from "metabase/lib/colors";
 
-export const CELL_HEIGHT = 30;
+import { CELL_HEIGHT, PIVOT_TABLE_FONT_SIZE } from "./constants";
 
 export const RowToggleIconRoot = styled.div`
   display: flex;
@@ -102,7 +102,7 @@ interface PivotTableRootProps {
 
 export const PivotTableRoot = styled.div<PivotTableRootProps>`
   height: 100%;
-  font-size: 0.875em;
+  font-size: ${PIVOT_TABLE_FONT_SIZE};
 
   ${props =>
     props.isDashboard

@@ -25,7 +25,7 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.icon("filter").click();
       popover().within(() => {
         cy.findByText("Location").click();
-        cy.findByText("Dropdown").click();
+        cy.findByText("Is").click();
       });
 
       // connect that to people.state
@@ -43,7 +43,7 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.findByText("add another dashboard filter").click();
       popover().within(() => {
         cy.findByText("Location").click();
-        cy.findByText("Dropdown").click();
+        cy.findByText("Is").click();
       });
 
       // connect that to person.city

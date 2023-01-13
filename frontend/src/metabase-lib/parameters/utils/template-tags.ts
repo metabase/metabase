@@ -38,6 +38,9 @@ export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
+    values_query_type: "list",
+    values_source_type: null,
+    values_source_config: {},
   };
 }
 

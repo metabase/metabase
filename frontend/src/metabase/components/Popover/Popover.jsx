@@ -63,7 +63,7 @@ export default class Popover extends Component {
       PropTypes.func,
       PropTypes.array,
     ]),
-    target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
+    target: PropTypes.any,
     targetEvent: PropTypes.object,
     role: PropTypes.string,
     ignoreTrigger: PropTypes.bool,

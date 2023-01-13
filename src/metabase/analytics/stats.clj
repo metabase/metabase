@@ -9,6 +9,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email :as email]
    [metabase.integrations.google :as google]
@@ -33,6 +34,7 @@
    [metabase.models.humanization :as humanization]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [trs]]
    [toucan.db :as db]))
 
@@ -240,15 +242,15 @@
      (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])"
   [& where-conditions]
   ;; :%distinct-count is a custom fn we registered in `metabase.util.honeysql-extensions`!
-  (-> (db/query {:select    [[:%distinct-count.pulse.id  :count]]
-                 :from      [:pulse]
-                 :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
-                 :where     (cons
-                             :and
-                             (cons
-                              [:or [:= :pulse_card.include_csv true]
-                               [:= :pulse_card.include_xls true]]
-                              where-conditions))})
+  (-> (mdb.query/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
+                        :from      [:pulse]
+                        :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
+                        :where     (into
+                                    [:and
+                                     [:or
+                                      [:= :pulse_card.include_csv true]
+                                      [:= :pulse_card.include_xls true]]]
+                                    where-conditions)})
       first
       :count))
 

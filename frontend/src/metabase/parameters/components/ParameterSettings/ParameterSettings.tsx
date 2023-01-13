@@ -2,14 +2,18 @@ import React, { ChangeEvent, useCallback } from "react";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Radio from "metabase/core/components/Radio";
-import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
+import {
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import {
   canUseCustomSource,
   isSingleOrMultiSelectable,
 } from "../../utils/parameter-type";
-import ParameterSourceSettings from "../ParameterSourceSettings";
+import ValuesSourceSettings from "../ValuesSourceSettings";
 import {
   SettingLabel,
   SettingRemoveButton,
@@ -28,6 +32,7 @@ export interface ParameterSettingsProps {
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
+  onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceOptions: ValuesSourceConfig) => void;
   onRemoveParameter: () => void;
@@ -38,6 +43,7 @@ const ParameterSettings = ({
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
+  onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
   onRemoveParameter,
@@ -61,8 +67,9 @@ const ParameterSettings = ({
       {canUseCustomSource(parameter) && (
         <SettingSection>
           <SettingLabel>{t`How should users filter on this column?`}</SettingLabel>
-          <ParameterSourceSettings
+          <ValuesSourceSettings
             parameter={parameter}
+            onChangeQueryType={onChangeQueryType}
             onChangeSourceType={onChangeSourceType}
             onChangeSourceConfig={onChangeSourceConfig}
           />

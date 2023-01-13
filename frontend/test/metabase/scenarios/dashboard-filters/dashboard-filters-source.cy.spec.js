@@ -42,6 +42,7 @@ describe("scenarios > dashboard > filters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
@@ -54,7 +55,7 @@ describe("scenarios > dashboard > filters", () => {
     });
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
+    setFilter("Text or Category", "Is");
     mapFilterToQuestion();
     editDropdown();
     setupStructuredQuestionSource();
@@ -71,7 +72,7 @@ describe("scenarios > dashboard > filters", () => {
     });
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
+    setFilter("Text or Category", "Is");
     mapFilterToQuestion();
     editDropdown();
     setupNativeQuestionSource();
@@ -87,7 +88,7 @@ describe("scenarios > dashboard > filters", () => {
     });
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
+    setFilter("Text or Category", "Is");
     mapFilterToQuestion();
     editDropdown();
     setupCustomList();
@@ -109,7 +110,7 @@ describe("scenarios > dashboard > filters", () => {
     });
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
+    setFilter("Text or Category", "Is");
     mapFilterToQuestion();
     editDropdown();
     setupStructuredQuestionSource();
@@ -156,6 +157,8 @@ const setupStructuredQuestionSource = () => {
   });
 
   modal().within(() => {
+    cy.wait("@dataset");
+    cy.findByDisplayValue(/Gadget/).should("be.visible");
     cy.button("Done").click();
   });
 };
@@ -180,6 +183,8 @@ const setupNativeQuestionSource = () => {
   });
 
   modal().within(() => {
+    cy.wait("@dataset");
+    cy.findByDisplayValue(/Gadget/).should("be.visible");
     cy.button("Done").click();
   });
 };

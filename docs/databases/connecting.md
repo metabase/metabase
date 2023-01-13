@@ -2,6 +2,7 @@
 title: Adding and managing databases
 redirect_from:
   - /docs/latest/administration-guide/01-managing-databases
+  - /docs/latest/databases/connections/sql-server
 ---
 
 # Adding and managing databases
@@ -25,7 +26,7 @@ The databases listed below have official drivers maintained by the Metabase team
 - Druid
 - [Google Analytics](./connections/google-analytics.md)
 - H2
-- [MongoDB (version 3.6 or higher)](./connections/mongodb.md) <!-- MongoDB supported version is from https://www.mongodb.com/support-policy -->
+- [MongoDB (version 4.2 or higher)](./connections/mongodb.md) 
 - [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](./connections/mysql.md)
 - [Oracle](./connections/oracle.md)
 - [PostgreSQL](connections/postgresql.md)
@@ -33,7 +34,7 @@ The databases listed below have official drivers maintained by the Metabase team
 - Redshift (Amazon Web Services)
 - [Snowflake](./connections/snowflake.md)
 - SparkSQL
-- [SQL Server](./connections/sql-server.md)
+- SQL Server
 - SQLite
 - [Vertica](./connections/vertica.md)
 

@@ -4,6 +4,7 @@ import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import {
   ParameterId,
+  ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
@@ -21,6 +22,10 @@ export interface ParameterSidebarProps {
   onChangeIsMultiSelect: (
     parameterId: ParameterId,
     isMultiSelect: boolean,
+  ) => void;
+  onChangeQueryType: (
+    parameterId: ParameterId,
+    sourceType: ValuesQueryType,
   ) => void;
   onChangeSourceType: (
     parameterId: ParameterId,
@@ -45,6 +50,7 @@ const ParameterSidebar = ({
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
+  onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeFilteringParameters,
@@ -75,6 +81,13 @@ const ParameterSidebar = ({
       onChangeIsMultiSelect(parameterId, isMultiSelect);
     },
     [parameterId, onChangeIsMultiSelect],
+  );
+
+  const handleQueryTypeChange = useCallback(
+    (queryType: ValuesQueryType) => {
+      onChangeQueryType(parameterId, queryType);
+    },
+    [parameterId, onChangeQueryType],
   );
 
   const handleSourceTypeChange = useCallback(
@@ -120,6 +133,7 @@ const ParameterSidebar = ({
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}
+            onChangeQueryType={handleQueryTypeChange}
             onChangeSourceType={handleSourceTypeChange}
             onChangeSourceConfig={handleSourceConfigChange}
             onRemoveParameter={handleRemove}
