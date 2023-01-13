@@ -1,6 +1,7 @@
 import React from "react";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
+import { FieldValues } from "metabase-types/api";
 import {
   createMockCollection,
   createMockField,
@@ -10,7 +11,7 @@ import {
   setupCollectionsEndpoints,
   setupFieldValuesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import Field from "metabase-lib/metadata/Field";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
@@ -31,7 +32,9 @@ describe("ValuesSourceModal", () => {
         parameter: createMockUiParameter({
           fields: [new Field(createMockField())],
         }),
-        hasFieldValues: false,
+        fieldValues: createMockFieldValues({
+          values: [],
+        }),
       });
 
       expect(
@@ -39,15 +42,19 @@ describe("ValuesSourceModal", () => {
       ).toBeInTheDocument();
     });
 
-    it("should show mapped fields values", async () => {
+    it("should show unique non-null mapped fields values", async () => {
       setup({
         parameter: createMockUiParameter({
           fields: [new Field(createMockField())],
         }),
-        hasFieldValues: true,
+        fieldValues: createMockFieldValues({
+          values: [["Gadget"], [null], ["Widget"], ["Gadget"]],
+        }),
       });
 
-      expect(await screen.findByDisplayValue(/Gadget/)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole("textbox")).toHaveValue("Gadget\nWidget");
+      });
     });
   });
 
@@ -68,12 +75,12 @@ describe("ValuesSourceModal", () => {
 
 interface SetupOpts {
   parameter?: UiParameter;
-  hasFieldValues?: boolean;
+  fieldValues?: FieldValues;
 }
 
 const setup = ({
   parameter = createMockUiParameter(),
-  hasFieldValues,
+  fieldValues = createMockFieldValues(),
 }: SetupOpts = {}) => {
   const scope = nock(location.origin);
   const onSubmit = jest.fn();
@@ -86,12 +93,7 @@ const setup = ({
     }),
   ]);
 
-  setupFieldValuesEndpoints(
-    scope,
-    createMockFieldValues({
-      values: hasFieldValues ? [["Gadget"], ["Widget"]] : [],
-    }),
-  );
+  setupFieldValuesEndpoints(scope, fieldValues);
 
   renderWithProviders(
     <ValuesSourceModal
