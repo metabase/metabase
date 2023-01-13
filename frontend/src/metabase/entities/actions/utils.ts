@@ -24,12 +24,9 @@ export const removeOrphanSettings = (
   parameters: Parameter[],
 ): ActionFormSettings => {
   const parameterIds = parameters.map(p => p.id);
-  const fieldIds = Object.keys(settings.fields);
-  const orphanIds = _.difference(fieldIds, parameterIds);
-
   return {
     ...settings,
-    fields: _.omit(settings.fields, orphanIds),
+    fields: _.pick(settings.fields, parameterIds),
   };
 };
 
