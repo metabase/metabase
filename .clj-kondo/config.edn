@@ -191,7 +191,6 @@
     metabase.db.jdbc-protocols                                      mdb.jdbc-protocols
     metabase.db.metadata-queries                                    metadata-queries
     metabase.db.spec                                                mdb.spec
-    metabase.db.query                                               mdb.query
     metabase.domain-entities.specs                                  de.specs
     metabase.driver.common.parameters                               params
     metabase.driver.common.parameters.dates                         params.dates
