@@ -13,7 +13,10 @@ import {
   isDateParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
 import { isTemplateTagReference } from "metabase-lib/references";
-import { getParameterOperatorName } from "metabase-lib/parameters/utils/operators";
+import {
+  deriveFieldOperatorFromParameter,
+  getParameterOperatorName,
+} from "metabase-lib/parameters/utils/operators";
 import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
 const withTemporalUnit = (fieldRef, unit) => {
@@ -144,11 +147,15 @@ export function dateParameterValueToMBQL(parameterValue, fieldRef) {
 }
 
 export function stringParameterValueToMBQL(parameter, fieldRef) {
+  const operator = deriveFieldOperatorFromParameter(parameter);
   const parameterValue = parameter.value;
-  const subtype = getParameterSubType(parameter);
-  const operatorName = getParameterOperatorName(subtype);
 
-  return [operatorName, fieldRef].concat(parameterValue);
+  const filter = [operator.name, fieldRef].concat(parameterValue);
+  if (operator.optionsDefaults) {
+    filter.push(operator.optionsDefaults);
+  }
+
+  return filter;
 }
 
 export function numberParameterValueToMBQL(parameter, fieldRef) {
