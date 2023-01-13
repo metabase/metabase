@@ -168,7 +168,11 @@ function ActionCreatorComponent({
                 <Button onClick={onClose} borderless>
                   {t`Cancel`}
                 </Button>
-                <Button primary onClick={handleSaveClick}>
+                <Button
+                  primary
+                  disabled={query.isEmpty()}
+                  onClick={handleSaveClick}
+                >
                   {isNew ? t`Save` : t`Update`}
                 </Button>
               </ModalActions>
