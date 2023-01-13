@@ -5,6 +5,20 @@ export function setupFieldEndpoints(scope: Scope, field: Field) {
   scope.get(`/api/field/${field.id}`).reply(200, field);
 }
 
-export function setupFieldValuesEndpoints(scope: Scope, values: FieldValues) {
-  scope.get(`/api/field/${values.field_id}/values`).reply(200, values);
+export function setupFieldValuesEndpoints(
+  scope: Scope,
+  fieldValues: FieldValues,
+) {
+  scope
+    .get(`/api/field/${fieldValues.field_id}/values`)
+    .reply(200, fieldValues);
+}
+
+export function setupFieldsValuesEndpoints(
+  scope: Scope,
+  fieldsValues: FieldValues[],
+) {
+  fieldsValues.forEach(fieldValues => {
+    setupFieldValuesEndpoints(scope, fieldValues);
+  });
 }

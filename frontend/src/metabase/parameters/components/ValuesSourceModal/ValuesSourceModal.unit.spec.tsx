@@ -1,7 +1,7 @@
 import React from "react";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
-import { FieldValues } from "metabase-types/api";
+import { FieldValues, Table } from "metabase-types/api";
 import {
   createMockCollection,
   createMockField,
@@ -9,7 +9,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   setupCollectionsEndpoints,
-  setupFieldValuesEndpoints,
+  setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import Field from "metabase-lib/metadata/Field";
@@ -27,7 +27,7 @@ describe("ValuesSourceModal", () => {
       ).toBeInTheDocument();
     });
 
-    it("should a message about missing field values", async () => {
+    it("should show a message about missing field values", async () => {
       setup({
         parameter: createMockUiParameter({
           fields: [new Field(createMockField())],
@@ -82,6 +82,7 @@ describe("ValuesSourceModal", () => {
 
 interface SetupOpts {
   parameter?: UiParameter;
+  tables?: Table[];
   fieldsValues?: FieldValues[];
 }
 
@@ -100,9 +101,7 @@ const setup = ({
     }),
   ]);
 
-  fieldsValues?.forEach(fieldValues => {
-    setupFieldValuesEndpoints(scope, fieldValues);
-  });
+  setupFieldsValuesEndpoints(scope, fieldsValues);
 
   renderWithProviders(
     <ValuesSourceModal
