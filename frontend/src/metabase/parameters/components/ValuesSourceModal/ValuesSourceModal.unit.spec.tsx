@@ -90,11 +90,13 @@ describe("ValuesSourceModal", () => {
                 id: 1,
                 display_name: "ID",
                 base_type: "type/BigInteger",
+                semantic_type: "type/PK",
               }),
               createMockField({
                 id: 2,
                 display_name: "Category",
                 base_type: "type/Text",
+                semantic_type: "type/Category",
               }),
             ],
           }),
@@ -103,9 +105,12 @@ describe("ValuesSourceModal", () => {
 
       expect(await screen.findByText(/Selectable values/)).toBeInTheDocument();
       userEvent.click(screen.getByRole("button", { name: /Pick a column/ }));
+      expect(
+        screen.queryByRole("heading", { name: "ID" }),
+      ).not.toBeInTheDocument();
+
       userEvent.click(screen.getByRole("heading", { name: /Category/ }));
       userEvent.click(screen.getByRole("button", { name: "Done" }));
-
       expect(onSubmit).toHaveBeenCalledWith("card", {
         card_id: 1,
         value_field: ["field", 2, null],
