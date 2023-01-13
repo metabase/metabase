@@ -1710,19 +1710,20 @@
   based on this information, don't do it!"
   {;; These keys are nice to pass in if you're running queries on the backend and you know these values. They aren't
    ;; used for permissions checking or anything like that so don't try to be sneaky
-   (s/optional-key :context)      (s/maybe Context)
-   (s/optional-key :executed-by)  (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :card-id)      (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :card-name)    (s/maybe helpers/NonBlankString)
-   (s/optional-key :dashboard-id) (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :pulse-id)     (s/maybe helpers/IntGreaterThanZero)
+   (s/optional-key :context)                   (s/maybe Context)
+   (s/optional-key :executed-by)               (s/maybe helpers/IntGreaterThanZero)
+   (s/optional-key :card-id)                   (s/maybe helpers/IntGreaterThanZero)
+   (s/optional-key :card-name)                 (s/maybe helpers/NonBlankString)
+   (s/optional-key :dashboard-id)              (s/maybe helpers/IntGreaterThanZero)
+   (s/optional-key :alias/escaped->original)   (s/maybe {s/Any s/Any})
+   (s/optional-key :pulse-id)                  (s/maybe helpers/IntGreaterThanZero)
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
    (s/optional-key :metadata/dataset-metadata) (s/maybe [{s/Any s/Any}])
    ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
-   (s/optional-key :query-hash) (s/maybe #?(:clj (Class/forName "[B")
+   (s/optional-key :query-hash)                (s/maybe #?(:clj (Class/forName "[B")
                                             :cljs s/Any))})
 
 

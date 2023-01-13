@@ -32,7 +32,7 @@ export type MetricDatum = { [key: MetricName]: MetricValue };
 export type GroupedDatum = {
   dimensionValue: RowValue;
   metrics: MetricDatum;
-  isClickable: boolean;
+  isClickable?: boolean;
   breakout?: {
     [key: BreakoutName]: {
       metrics: MetricDatum;
