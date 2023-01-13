@@ -14060,6 +14060,7 @@ databaseChangeLog:
                 WHERE column_settings.id = c.id
               )
               WHERE c.visualization_settings IS NOT NULL
+                AND JSON_STRING_VALUE(visualization_settings, 'column_settings') IS NOT NULL
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
