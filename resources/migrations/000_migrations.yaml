@@ -13944,31 +13944,56 @@ databaseChangeLog:
             dbms: postgresql
             sql: >-
               WITH column_settings AS (
-                  SELECT id, visualization_settings::json->'column_settings' AS settings
-                  FROM report_card
-                  WHERE visualization_settings IS NOT NULL
-                    AND visualization_settings::json->'column_settings' IS NOT NULL
+                SELECT id, visualization_settings::json->'column_settings' AS settings
+                FROM report_card
+                WHERE visualization_settings IS NOT NULL
+                  AND visualization_settings::json->'column_settings' IS NOT NULL
               ),
               kvs AS (
-                  SELECT id,
-                      json_object_keys(settings)::json AS key,
-                      (settings->json_object_keys(settings))::json AS value
-                  FROM column_settings
+                SELECT id,
+                  json_object_keys(settings)::json AS k,
+                  (settings->json_object_keys(settings))::json AS v
+                FROM column_settings
               ),
               new_kvs AS (
-                  SELECT id,
+                SELECT id,
+                  CASE
+                    WHEN (k->>0) = 'ref'
+                    THEN
                       CASE
-                          WHEN key->>0 = 'ref' AND key->1->>0 = 'field-id' THEN
-                              '["ref",["field",' || (key->1->1)::text || ',null]]'
-                          ELSE key::text
-                      END AS key,
-                      value
-                  FROM kvs
+                        WHEN (k->1->>0) = 'field-id'
+                        THEN CONCAT('["ref",["field",', (k->1->>1), ',null]]')
+                        WHEN (k->1->>0) = 'field-literal'
+                        THEN CONCAT('["ref",["field","',
+                                    (k->1->>1),
+                                    '",{"base-type":"',
+                                    (k->1->>2),
+                                    '"}]]')
+                        WHEN (k->1->>0) = 'fk->'
+                        THEN CONCAT('["ref",["field",',
+                                    CASE
+                                      WHEN SUBSTR((k->1->>2), 1, 1) = '['
+                                      THEN (k->1->2->>0)
+                                      ELSE (k->1->>2)
+                                    END,
+                                    ',{"source-field":',
+                                    CASE
+                                      WHEN SUBSTR((k->1->>1), 1, 1) = '['
+                                      THEN (k->1->1->>0)
+                                      ELSE (k->1->>1)
+                                    END,
+                                    '}]]')
+                        ELSE k::text
+                      END
+                    ELSE k::text
+                  END AS k,
+                  v
+                FROM kvs
               ),
               new_column_settings AS (
-                  SELECT id, json_object_agg(new_kvs.key, new_kvs.value) AS column_settings
-                  FROM new_kvs
-                  GROUP BY id
+                SELECT id, json_object_agg(new_kvs.k, new_kvs.v) AS column_settings
+                FROM new_kvs
+                GROUP BY id
               )
               UPDATE report_card c
               SET visualization_settings = jsonb_set(c.visualization_settings::jsonb, '{column_settings}', s.column_settings::jsonb)
@@ -13984,16 +14009,16 @@ databaseChangeLog:
               FROM (
               SELECT
                 id,
-                CASE 
+                CASE
                   WHEN JSON_EXTRACT(k, '$[0]') = 'ref'
                   THEN
-                    CASE 
+                    CASE
                       WHEN JSON_EXTRACT(k, '$[1][0]') = 'field-id'
                       THEN CONCAT('["ref",["field",', JSON_EXTRACT(k, '$[1][1]'), ',null]]')
                       WHEN JSON_EXTRACT(k, '$[1][0]') = 'field-literal'
                       THEN CONCAT('["ref",["field","', JSON_EXTRACT(k, '$[1][1]'), '",{"base-type":"', JSON_EXTRACT(k, '$[1][2]'), '"}]]')
                       WHEN JSON_EXTRACT(k, '$[1][0]') = 'fk->'
-                      THEN CONCAT('["ref",["field",', 
+                      THEN CONCAT('["ref",["field",',
                                   CASE
                                     WHEN SUBSTRING(JSON_EXTRACT(k, '$[1][2]'), 1, 1) = '['
                                     THEN JSON_EXTRACT(k, '$[1][2][0]')
