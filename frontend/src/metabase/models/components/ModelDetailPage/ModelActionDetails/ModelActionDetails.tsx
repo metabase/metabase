@@ -1,10 +1,9 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
-import EntityMenu from "metabase/components/EntityMenu";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 
@@ -45,6 +44,11 @@ function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
   };
 }
 
+function mostRecentFirst(action: WritebackAction) {
+  const createdAt = new Date(action["created_at"]);
+  return -createdAt.getTime();
+}
+
 function ModelActionDetails({
   model,
   actions,
@@ -60,6 +64,11 @@ function ModelActionDetails({
   ] = useToggle();
 
   const canWrite = model.canWrite();
+
+  const actionsSorted = useMemo(
+    () => _.sortBy(actions, mostRecentFirst),
+    [actions],
+  );
 
   const handleEditAction = useCallback(
     (action: WritebackAction) => {
@@ -99,7 +108,7 @@ function ModelActionDetails({
       </ActionsHeader>
       {actions.length > 0 ? (
         <ActionList>
-          {actions.map(action => (
+          {actionsSorted.map(action => (
             <li key={action.id}>
               <ModelActionListItem
                 action={action}
