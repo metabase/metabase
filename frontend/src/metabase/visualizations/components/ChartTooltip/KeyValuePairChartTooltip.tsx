@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
-import { Column } from "metabase-types/types/Dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { RemappingHydratedDatasetColumn } from "metabase/visualizations/shared/types/data";
 import {
   DataPoint,
   HoveredDimension,
@@ -9,12 +9,15 @@ import {
 } from "./types";
 import { formatValueForTooltip } from "./utils";
 
-export interface DataPointTooltipProps {
+export interface StackedDataTooltipProps {
   hovered: HoveredObject;
   settings: VisualizationSettings;
 }
 
-const DataPointTooltipOld = ({ hovered, settings }: DataPointTooltipProps) => {
+const KeyValuePairChartTooltip = ({
+  hovered,
+  settings,
+}: StackedDataTooltipProps) => {
   const rows = useMemo(() => getRows(hovered), [hovered]);
 
   return (
@@ -37,7 +40,7 @@ const DataPointTooltipOld = ({ hovered, settings }: DataPointTooltipProps) => {
 export interface TooltipRowProps {
   name?: string;
   value?: any;
-  column?: Column;
+  column?: RemappingHydratedDatasetColumn;
   settings: VisualizationSettings;
 }
 
@@ -85,4 +88,4 @@ const getRowFromDimension = ({ column, value }: HoveredDimension) => ({
   col: column,
 });
 
-export default DataPointTooltipOld;
+export default KeyValuePairChartTooltip;

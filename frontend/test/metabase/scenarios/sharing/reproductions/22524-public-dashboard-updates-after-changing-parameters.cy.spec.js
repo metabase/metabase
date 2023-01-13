@@ -36,7 +36,7 @@ describe("issue 22524", () => {
     );
 
     editDashboard();
-    setFilter("Text or Category", "Dropdown");
+    setFilter("Text or Category", "Is");
 
     cy.findByText("Select…").click();
     popover().contains("City").click();

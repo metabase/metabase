@@ -38,9 +38,11 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-export interface CollectionItem {
+type CollectionItemModel = "card" | "dataset" | "dashboard" | "pulse";
+
+export interface CollectionItem<T = CollectionItemModel> {
   id: number;
-  model: string;
+  model: T;
   name: string;
   description: string | null;
   copy?: boolean;

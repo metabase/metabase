@@ -281,11 +281,14 @@
   "Validate a parameter against its respective malli schema, or throw an Exception."
   [field-name value schema]
   (when-not (mc/validate schema value)
-    (let [explained (mc/explain schema value)]
-      (throw (ex-info (tru "Invalid m field: {0}" field-name)
-                      {:status-code 400
-                       :errors      {(keyword field-name)
-                                     (me/humanize (me/with-spell-checking explained))}})))))
+    (throw (ex-info (tru "Invalid m field: {0}" field-name)
+                    {:status-code 400
+                     :errors      {(keyword field-name) (umd/describe schema)}
+                     :specific-errors {(keyword field-name)
+                                       (-> schema
+                                           (mc/explain value)
+                                           me/with-spell-checking
+                                           me/humanize)}}))))
 
 (defn validate-param
   "Validate a parameter against its respective schema, or throw an Exception."

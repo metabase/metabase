@@ -10,6 +10,7 @@ import Select, {
 } from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
+import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Collections from "metabase/entities/collections";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
@@ -17,6 +18,7 @@ import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card, ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
+import { Dataset } from "metabase-types/types/Dataset";
 import Question from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
@@ -70,6 +72,10 @@ interface ModalDispatchProps {
   onFetchFieldValues: (fields: Field[]) => void;
 }
 
+interface QuestionLoaderProps {
+  result?: Dataset;
+}
+
 type ModalProps = ModalOwnProps &
   ModalCardProps &
   ModalStateProps &
@@ -91,7 +97,7 @@ const ValuesSourceTypeModal = ({
   onClose,
 }: ModalProps): JSX.Element => {
   const allFieldValues = useMemo(() => {
-    return getUniqueFieldValues(fieldValues);
+    return getFieldValues(fieldValues);
   }, [fieldValues]);
 
   const handleTypeChange = useCallback(
@@ -226,6 +232,10 @@ const CardSourceModal = ({
     return getFieldByReference(fields, sourceConfig.value_field);
   }, [fields, sourceConfig]);
 
+  const fieldValuesQuestion = useMemo(() => {
+    return question && selectedField && question.toFieldValues(selectedField);
+  }, [question, selectedField]);
+
   const handleFieldChange = useCallback(
     (event: SelectChangeEvent<Field>) => {
       onChangeSourceConfig({
@@ -288,7 +298,15 @@ const CardSourceModal = ({
         ) : !selectedField ? (
           <ModalEmptyState>{t`Pick a column`}</ModalEmptyState>
         ) : (
-          <ModalTextArea readOnly fullWidth />
+          <QuestionResultLoader question={fieldValuesQuestion}>
+            {({ result }: QuestionLoaderProps) => (
+              <ModalTextArea
+                value={getValuesText(getDatasetValues(result))}
+                readOnly
+                fullWidth
+              />
+            )}
+          </QuestionResultLoader>
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -345,9 +363,18 @@ const getValuesText = (values?: string[]) => {
   return values?.join(NEW_LINE) ?? "";
 };
 
-const getUniqueFieldValues = (fieldsValues: string[][][]) => {
+const getUniqueValues = (values: string[]) => {
+  return Array.from(new Set(values));
+};
+
+const getFieldValues = (fieldsValues: string[][][]) => {
   const allValues = fieldsValues.flatMap(values => values.map(([key]) => key));
-  return Array.from(new Set(allValues));
+  return getUniqueValues(allValues);
+};
+
+const getDatasetValues = (dataset?: Dataset) => {
+  const allValues = dataset?.data.rows.map(([value]) => String(value)) ?? [];
+  return getUniqueValues(allValues);
 };
 
 const getStaticValues = (value: string) => {
