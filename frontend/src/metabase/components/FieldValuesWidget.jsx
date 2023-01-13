@@ -108,7 +108,9 @@ class FieldValuesWidgetInner extends Component {
   };
 
   componentDidMount() {
-    if (shouldList(this.props.fields, this.props.disableSearch)) {
+    const { fields, disableSearch } = this.props;
+
+    if (shouldList({ fields, disableSearch })) {
       this.fetchValues();
     }
   }
@@ -307,7 +309,7 @@ class FieldValuesWidgetInner extends Component {
 
     const isListMode =
       !disableList &&
-      shouldList(fields, disableSearch) &&
+      shouldList({ fields, disableSearch }) &&
       valuesMode === "list" &&
       !forceTokenField;
     const isLoading = loadingState === "LOADING";
@@ -442,7 +444,7 @@ function showRemapping(fields) {
   return fields.length === 1;
 }
 
-function shouldList(fields, disableSearch) {
+function shouldList({ fields, disableSearch }) {
   // Virtual fields come from questions that are based on other questions.
   // Currently, the back end does not return `has_field_values` in their metadata,
   // so we ignore them for now.
@@ -522,7 +524,7 @@ function getSearchableTokenFieldPlaceholder(
 }
 
 function hasList({ fields, disableSearch, options }) {
-  return shouldList(fields, disableSearch) && !_.isEmpty(options);
+  return shouldList({ fields, disableSearch }) && !_.isEmpty(options);
 }
 
 // if this search is just an extension of the previous search, and the previous search
@@ -687,7 +689,7 @@ export function getValuesMode(
     return "search";
   }
 
-  if (shouldList(fields, disableSearch)) {
+  if (shouldList({ fields, disableSearch })) {
     return "list";
   }
 
