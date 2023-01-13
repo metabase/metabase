@@ -23,11 +23,11 @@ export const EmptyFormPlaceholder = ({
     </IconContainer>
     <h3>{t`Build custom forms and business logic.`}</h3>
     <ExplainerText>
-      {t`Actions let you write paramaterized SQL that can then be attached to buttons, clicks, or even added on the page as form elements.`}
+      {t`Actions let you write parameterized SQL that can then be attached to buttons, clicks, or even added on the page as form elements.`}
     </ExplainerText>
     <ExplainerText>
       {t`Use actions to update your data based on user input or values on the page.`}
     </ExplainerText>
-    <ExampleButton onClick={onExampleClick}>See an example</ExampleButton>
+    <ExampleButton onClick={onExampleClick}>{t`See an example`}</ExampleButton>
   </EmptyFormPlaceholderWrapper>
 );
