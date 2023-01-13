@@ -1,11 +1,6 @@
 import React, { forwardRef } from "react";
 import _ from "underscore";
 
-import type {
-  ActionFormFieldProps,
-  InputComponentType,
-} from "metabase-types/api";
-
 import FormInputWidget from "metabase/core/components/FormInput";
 import FormTextAreaWidget from "metabase/core/components/FormTextArea";
 import FormRadioWidget from "metabase/core/components/FormRadio";
@@ -13,6 +8,9 @@ import FormSelectWidget from "metabase/core/components/FormSelect";
 import FormNumericInputWidget from "metabase/core/components/FormNumericInput";
 import FormBooleanWidget from "metabase/core/components/FormToggle";
 import CategoryFieldPicker from "metabase/components/FormCategoryInput";
+
+import type { InputComponentType } from "metabase-types/api";
+import type { ActionFormFieldProps } from "metabase/actions/types";
 
 const VerticalRadio = (props: any) => <FormRadioWidget {...props} vertical />;
 

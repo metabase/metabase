@@ -4,16 +4,18 @@ import * as Yup from "yup";
 
 import type {
   ActionFormSettings,
-  ActionFormProps,
-  ActionFormFieldProps,
   ActionFormOption,
   FieldSettingsMap,
-  FieldSettings,
   InputSettingType,
   InputComponentType,
   Parameter,
   WritebackParameter,
 } from "metabase-types/api";
+import type {
+  ActionFormProps,
+  ActionFormFieldProps,
+  FieldSettings,
+} from "metabase/actions/types";
 
 import { sortActionParams, isEditableField } from "metabase/actions/utils";
 import { isEmpty } from "metabase/lib/validate";

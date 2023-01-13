@@ -1,6 +1,5 @@
 import type {
   ActionFormSettings,
-  FieldSettings,
   Database,
   Parameter,
   WritebackAction,
@@ -8,6 +7,8 @@ import type {
 
 import { TYPE } from "metabase-lib/types/constants";
 import type Field from "metabase-lib/metadata/Field";
+
+import type { FieldSettings } from "./types";
 
 export const checkDatabaseSupportsActions = (database: Database) =>
   database.features.includes("actions");
