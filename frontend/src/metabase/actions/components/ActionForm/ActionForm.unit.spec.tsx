@@ -1,19 +1,15 @@
 import React from "react";
 import _ from "underscore";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  wait,
-} from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type {
   ActionFormSettings,
   FieldSettings,
+  ParametersForActionExecution,
   WritebackParameter,
 } from "metabase-types/api";
+import { createMockActionParameter } from "metabase-types/api/mocks";
 
 import { ActionForm } from "./ActionForm";
 
@@ -31,37 +27,64 @@ const makeFieldSettings = (
   ...overrides,
 });
 
-const makeParameter = (
-  overrides?: Partial<WritebackParameter>,
-): Partial<WritebackParameter> => {
-  const id = overrides?.id ?? "abc-123";
-  return {
+const makeParameter = ({
+  id = "abc-123",
+  ...params
+}: Partial<WritebackParameter> = {}): WritebackParameter => {
+  return createMockActionParameter({
     id,
-    required: false,
     target: ["variable", ["template-tag", id]],
     type: "type/Text",
-    ...overrides,
-  };
+    required: false,
+    ...params,
+  });
 };
+
+type SetupOpts = {
+  initialValues?: ParametersForActionExecution;
+  parameters: WritebackParameter[];
+  formSettings: ActionFormSettings;
+  isSettings?: boolean;
+};
+
+const setup = ({
+  initialValues,
+  parameters,
+  formSettings,
+  isSettings = false,
+}: SetupOpts) => {
+  const setFormSettings = jest.fn();
+  const onSubmit = jest.fn();
+
+  render(
+    <ActionForm
+      initialValues={initialValues}
+      parameters={parameters}
+      formSettings={formSettings}
+      setFormSettings={isSettings ? setFormSettings : undefined}
+      onSubmit={onSubmit}
+    />,
+  );
+
+  return { setFormSettings, onSubmit };
+};
+
+function setupSettings(opts: Omit<SetupOpts, "isSettings">) {
+  return setup({ ...opts, isSettings: true });
+}
 
 describe("Actions > ActionForm", () => {
   describe("Form Display", () => {
     it("displays a form with am input label", () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "string" }),
+      setup({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "string" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={_.noop}
-        />,
-      );
+      });
 
       expect(screen.getByRole("form")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
@@ -69,21 +92,15 @@ describe("Actions > ActionForm", () => {
     });
 
     it("displays a text input", () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "string" }),
+      setup({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "string" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={_.noop}
-        />,
-      );
+      });
 
       expect(
         screen.getByLabelText(/form field name/i, { selector: "input" }),
@@ -91,21 +108,15 @@ describe("Actions > ActionForm", () => {
     });
 
     it("displays a numeric input", () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "number" }),
+      setup({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "number" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={_.noop}
-        />,
-      );
+      });
 
       expect(
         screen.getByLabelText(/form field name/i, { selector: "input" }),
@@ -113,21 +124,15 @@ describe("Actions > ActionForm", () => {
     });
 
     it("displays a textarea input", () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "text" }),
+      setup({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "text" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={_.noop}
-        />,
-      );
+      });
 
       expect(
         screen.getByLabelText(/form field name/i, { selector: "textarea" }),
@@ -135,41 +140,29 @@ describe("Actions > ActionForm", () => {
     });
 
     it("displays a boolean input", () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "boolean" }),
+      setup({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "boolean" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={_.noop}
-        />,
-      );
+      });
 
       expect(screen.getByRole("switch")).toBeInTheDocument();
     });
 
     it("displays a date input", () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "date" }),
+      setup({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "date" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={_.noop}
-        />,
-      );
+      });
 
       expect(
         screen.getByLabelText(/form field name/i, { selector: "input" }),
@@ -177,21 +170,15 @@ describe("Actions > ActionForm", () => {
     });
 
     it("displays a time input", () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "time" }),
+      setup({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "time" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={_.noop}
-        />,
-      );
+      });
 
       expect(
         screen.getByLabelText(/form field name/i, { selector: "input" }),
@@ -199,21 +186,15 @@ describe("Actions > ActionForm", () => {
     });
 
     it("displays a datetime input", () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "datetime" }),
+      setup({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "datetime" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={_.noop}
-        />,
-      );
+      });
 
       expect(
         screen.getByLabelText(/form field name/i, { selector: "input" }),
@@ -221,82 +202,62 @@ describe("Actions > ActionForm", () => {
     });
 
     it("displays a radio input", () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "radio" }),
+      setup({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "radio" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={_.noop}
-        />,
-      );
+      });
 
       expect(screen.getByRole("radiogroup")).toBeInTheDocument();
     });
 
     it("displays a select input", () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "select" }),
+      setup({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "select" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={_.noop}
-        />,
-      );
+      });
 
       expect(screen.getByTestId("select-button")).toBeInTheDocument();
     });
 
     it("can submit form field values", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({
-            inputType: "string",
-            id: "abc-123",
-            title: "text input",
-          }),
-          "def-456": makeFieldSettings({
-            inputType: "number",
-            id: "def-456",
-            title: "number input",
-          }),
+      const { onSubmit } = setup({
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "text input",
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "number",
+              id: "def-456",
+              title: "number input",
+            }),
+          },
         },
-      };
-      const params = [
-        makeParameter({ id: "abc-123" }),
-        makeParameter({ id: "def-456" }),
-      ];
-
-      const submitSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={submitSpy}
-        />,
-      );
+      });
 
       userEvent.type(screen.getByLabelText(/text input/i), "Murloc");
       userEvent.type(screen.getByLabelText(/number input/i), "12345");
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
-        expect(submitSpy).toHaveBeenCalledWith(
+        expect(onSubmit).toHaveBeenCalledWith(
           {
             "abc-123": "Murloc",
             "def-456": 12345,
@@ -309,80 +270,64 @@ describe("Actions > ActionForm", () => {
 
   describe("Form Validation", () => {
     it("allows form submission when required fields are provided", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({
-            inputType: "string",
-            id: "abc-123",
-            title: "foo input",
-            required: true,
-          }),
-          "def-456": makeFieldSettings({
-            inputType: "string",
-            id: "def-456",
-            title: "bar input",
-            required: false,
-          }),
+      const { onSubmit } = setup({
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "foo input",
+              required: true,
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "string",
+              id: "def-456",
+              title: "bar input",
+              required: false,
+            }),
+          },
         },
-      };
-      const params = [
-        makeParameter({ id: "abc-123" }),
-        makeParameter({ id: "def-456" }),
-      ];
-
-      const submitSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={submitSpy}
-        />,
-      );
+      });
 
       userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-      await waitFor(() => expect(submitSpy).toHaveBeenCalled());
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(
         screen.queryByText(/this field is required/i),
       ).not.toBeInTheDocument();
     });
 
     it("disables form submission when required fields are not provided", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({
-            inputType: "string",
-            id: "abc-123",
-            title: "foo input",
-            required: true,
-          }),
-          "def-456": makeFieldSettings({
-            inputType: "string",
-            id: "def-456",
-            title: "bar input",
-            required: false,
-          }),
+      const { onSubmit } = setup({
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "foo input",
+              required: true,
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "string",
+              id: "def-456",
+              title: "bar input",
+              required: false,
+            }),
+          },
         },
-      };
-      const params = [
-        makeParameter({ id: "abc-123" }),
-        makeParameter({ id: "def-456" }),
-      ];
-
-      const submitSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={submitSpy}
-        />,
-      );
+      });
 
       userEvent.click(await screen.findByLabelText(/foo input/i)); // leave empty
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
@@ -395,197 +340,159 @@ describe("Actions > ActionForm", () => {
       expect(
         await screen.findByText(/this field is required/i),
       ).toBeInTheDocument();
-      expect(submitSpy).not.toHaveBeenCalled();
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("disables form submission when no fields are changed", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({
-            inputType: "string",
-            id: "abc-123",
-            title: "foo input",
-            required: false,
-          }),
-          "def-456": makeFieldSettings({
-            inputType: "string",
-            id: "def-456",
-            title: "bar input",
-            required: false,
-          }),
+      const { onSubmit } = setup({
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "foo input",
+              required: false,
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "string",
+              id: "def-456",
+              title: "bar input",
+              required: false,
+            }),
+          },
         },
-      };
-      const params = [
-        makeParameter({ id: "abc-123" }),
-        makeParameter({ id: "def-456" }),
-      ];
-
-      const submitSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={submitSpy}
-        />,
-      );
+      });
 
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-      await waitFor(() => expect(submitSpy).not.toHaveBeenCalled());
+      await waitFor(() => expect(onSubmit).not.toHaveBeenCalled());
     });
 
     it("cannot type a string in a numeric field", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "number" }),
+      setup({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "number" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={_.noop}
-        />,
-      );
+      });
 
       const input = await screen.findByLabelText(/form field name/i);
       userEvent.type(input, "baz");
 
-      await waitFor(() => expect(input).toHaveValue(null));
+      await waitFor(() => expect(input).not.toHaveValue());
     });
 
     it("allows submission of a null non-required boolean field", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({
-            inputType: "string",
-            id: "abc-123",
-            title: "foo input",
-            required: true,
-          }),
-          "def-456": makeFieldSettings({
-            inputType: "boolean",
-            id: "def-456",
-            title: "bar input",
-            required: false,
-          }),
+      const { onSubmit } = setup({
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "foo input",
+              required: true,
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "boolean",
+              id: "def-456",
+              title: "bar input",
+              required: false,
+            }),
+          },
         },
-      };
-      const params = [
-        makeParameter({ id: "abc-123" }),
-        makeParameter({ id: "def-456" }),
-      ];
-
-      const submitSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={submitSpy}
-        />,
-      );
+      });
 
       userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-      await waitFor(() => expect(submitSpy).toHaveBeenCalled());
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(
         screen.queryByText(/this field is required/i),
       ).not.toBeInTheDocument();
     });
 
     it("sets a default value for an empty field", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({
-            inputType: "string",
-            id: "abc-123",
-            title: "foo input",
-            required: true,
-          }),
-          "def-456": makeFieldSettings({
-            inputType: "boolean",
-            id: "def-456",
-            title: "bar input",
-            required: false,
-          }),
+      const { onSubmit } = setup({
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "foo input",
+              required: true,
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "boolean",
+              id: "def-456",
+              title: "bar input",
+              required: false,
+            }),
+          },
         },
-      };
-      const params = [
-        makeParameter({ id: "abc-123" }),
-        makeParameter({ id: "def-456" }),
-      ];
-
-      const submitSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={submitSpy}
-        />,
-      );
+      });
 
       userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-      await waitFor(() => expect(submitSpy).toHaveBeenCalled());
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(
         screen.queryByText(/this field is required/i),
       ).not.toBeInTheDocument();
     });
 
     it("sets types on form submissions correctly", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({
-            inputType: "string",
-            id: "abc-123",
-            title: "foo input",
-            required: false,
-          }),
-          "def-456": makeFieldSettings({
-            inputType: "boolean",
-            id: "def-456",
-            title: "bar input",
-            required: false,
-          }),
-          "ghi-789": makeFieldSettings({
-            inputType: "number",
-            id: "ghi-789",
-            title: "baz input",
-            required: false,
-          }),
+      const { onSubmit } = setup({
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+          makeParameter({ id: "ghi-789" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "foo input",
+              required: false,
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "boolean",
+              id: "def-456",
+              title: "bar input",
+              required: false,
+            }),
+            "ghi-789": makeFieldSettings({
+              inputType: "number",
+              id: "ghi-789",
+              title: "baz input",
+              required: false,
+            }),
+          },
         },
-      };
-      const params = [
-        makeParameter({ id: "abc-123" }),
-        makeParameter({ id: "def-456" }),
-        makeParameter({ id: "ghi-789" }),
-      ];
-
-      const submitSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          onSubmit={submitSpy}
-        />,
-      );
+      });
 
       userEvent.type(await screen.findByLabelText(/foo input/i), "1");
       userEvent.type(await screen.findByLabelText(/bar input/i), "1");
@@ -593,7 +500,7 @@ describe("Actions > ActionForm", () => {
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
-        expect(submitSpy).toHaveBeenCalledWith(
+        expect(onSubmit).toHaveBeenCalledWith(
           {
             "abc-123": "1",
             "def-456": true,
@@ -610,29 +517,21 @@ describe("Actions > ActionForm", () => {
     const inputTypes = ["string", "number", "text", "date", "datetime", "time"];
     inputTypes.forEach(inputType => {
       it(`casts empty optional ${inputType} field to null`, async () => {
-        const formSettings: ActionFormSettings = {
-          type: "form",
-          fields: {
-            "abc-123": makeFieldSettings({
-              inputType: inputType as FieldSettings["inputType"],
-              id: "abc-123",
-              title: "input",
-              required: false,
-            }),
+        const { onSubmit } = setup({
+          initialValues: { "abc-123": 1 },
+          parameters: [makeParameter({ id: "abc-123" })],
+          formSettings: {
+            type: "form",
+            fields: {
+              "abc-123": makeFieldSettings({
+                inputType: inputType as FieldSettings["inputType"],
+                id: "abc-123",
+                title: "input",
+                required: false,
+              }),
+            },
           },
-        };
-        const params = [makeParameter({ id: "abc-123" })];
-
-        const submitSpy = jest.fn();
-
-        render(
-          <ActionForm
-            parameters={params as WritebackParameter[]}
-            initialValues={{ "abc-123": 1 }}
-            formSettings={formSettings}
-            onSubmit={submitSpy}
-          />,
-        );
+        });
 
         // userEvent.clear doesn't work for date or time inputs 🤷
         fireEvent.change(screen.getByLabelText(/input/i), {
@@ -641,7 +540,7 @@ describe("Actions > ActionForm", () => {
         userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         await waitFor(() => {
-          expect(submitSpy).toHaveBeenCalledWith(
+          expect(onSubmit).toHaveBeenCalledWith(
             {
               "abc-123": null,
             },
@@ -654,35 +553,27 @@ describe("Actions > ActionForm", () => {
     // bug repro: https://github.com/metabase/metabase/issues/27377
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("casts empty optional category fields to null", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({
-            inputType: "category",
-            id: "abc-123",
-            title: "input",
-            required: false,
-          }),
+      const { onSubmit } = setup({
+        initialValues: { "abc-123": "aaa" },
+        parameters: [makeParameter({ id: "abc-123" })],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "category",
+              id: "abc-123",
+              title: "input",
+              required: false,
+            }),
+          },
         },
-      };
-      const params = [makeParameter({ id: "abc-123" })];
-
-      const submitSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          initialValues={{ "abc-123": "aaa" }}
-          formSettings={formSettings}
-          onSubmit={submitSpy}
-        />,
-      );
+      });
 
       userEvent.clear(screen.getByLabelText(/input/i));
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
-        expect(submitSpy).toHaveBeenCalledWith(
+        expect(onSubmit).toHaveBeenCalledWith(
           {
             "abc-123": null,
           },
@@ -694,22 +585,15 @@ describe("Actions > ActionForm", () => {
 
   describe("Form Creation", () => {
     it("renders the form editor", () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "string" }),
+      setupSettings({
+        parameters: [makeParameter()],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({ inputType: "string" }),
+          },
         },
-      };
-      const params = [makeParameter()];
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          setFormSettings={jest.fn()}
-          onSubmit={() => undefined}
-        />,
-      );
+      });
 
       expect(screen.getByTestId("action-form-editor")).toBeInTheDocument();
       expect(screen.getByRole("textbox")).toBeInTheDocument();
@@ -722,27 +606,17 @@ describe("Actions > ActionForm", () => {
           "abc-123": makeFieldSettings({ inputType: "string" }),
         },
       };
-      const params = [makeParameter()];
-
-      const changeSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          setFormSettings={changeSpy}
-          onSubmit={() => undefined}
-        />,
-      );
+      const { setFormSettings } = setupSettings({
+        parameters: [makeParameter()],
+        formSettings,
+      });
 
       // click the settings cog then the number input type
       userEvent.click(await screen.findByLabelText("gear icon"));
-      1;
       userEvent.click(await screen.findByText("number"));
-      1;
 
       await waitFor(() => {
-        expect(changeSpy).toHaveBeenCalledWith({
+        expect(setFormSettings).toHaveBeenCalledWith({
           ...formSettings,
           fields: {
             "abc-123": makeFieldSettings({
@@ -761,25 +635,18 @@ describe("Actions > ActionForm", () => {
           "abc-123": makeFieldSettings({ inputType: "string" }),
         },
       };
-      const params = [makeParameter()];
 
-      const changeSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          setFormSettings={changeSpy}
-          onSubmit={() => undefined}
-        />,
-      );
+      const { setFormSettings } = setupSettings({
+        parameters: [makeParameter()],
+        formSettings,
+      });
 
       // click the settings cog then the number input type
       userEvent.click(await screen.findByLabelText("gear icon"));
       userEvent.click(await screen.findByText("long text"));
 
       await waitFor(() => {
-        expect(changeSpy).toHaveBeenCalledWith({
+        expect(setFormSettings).toHaveBeenCalledWith({
           ...formSettings,
           fields: {
             "abc-123": makeFieldSettings({
@@ -798,24 +665,17 @@ describe("Actions > ActionForm", () => {
           "abc-123": makeFieldSettings({ inputType: "number" }),
         },
       };
-      const params = [makeParameter()];
 
-      const changeSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          setFormSettings={changeSpy}
-          onSubmit={() => undefined}
-        />,
-      );
+      const { setFormSettings } = setupSettings({
+        parameters: [makeParameter()],
+        formSettings,
+      });
 
       userEvent.click(await screen.findByLabelText("gear icon"));
       userEvent.click(await screen.findByText("date"));
 
       await waitFor(() => {
-        expect(changeSpy).toHaveBeenCalledWith({
+        expect(setFormSettings).toHaveBeenCalledWith({
           ...formSettings,
           fields: {
             "abc-123": makeFieldSettings({
@@ -834,24 +694,16 @@ describe("Actions > ActionForm", () => {
           "abc-123": makeFieldSettings({ inputType: "date" }),
         },
       };
-      const params = [makeParameter()];
-
-      const changeSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          setFormSettings={changeSpy}
-          onSubmit={() => undefined}
-        />,
-      );
+      const { setFormSettings } = setupSettings({
+        parameters: [makeParameter()],
+        formSettings,
+      });
 
       userEvent.click(await screen.findByLabelText("gear icon"));
       userEvent.click(await screen.findByText("category"));
 
       await waitFor(() => {
-        expect(changeSpy).toHaveBeenCalledWith({
+        expect(setFormSettings).toHaveBeenCalledWith({
           ...formSettings,
           fields: {
             "abc-123": makeFieldSettings({
@@ -869,24 +721,16 @@ describe("Actions > ActionForm", () => {
           "abc-123": makeFieldSettings({ inputType: "string" }),
         },
       };
-      const params = [makeParameter()];
-
-      const changeSpy = jest.fn();
-
-      render(
-        <ActionForm
-          parameters={params as WritebackParameter[]}
-          formSettings={formSettings}
-          setFormSettings={changeSpy}
-          onSubmit={() => undefined}
-        />,
-      );
+      const { setFormSettings } = setupSettings({
+        parameters: [makeParameter()],
+        formSettings,
+      });
 
       userEvent.click(await screen.findByLabelText("gear icon"));
       userEvent.click(await screen.findByRole("switch"));
 
       await waitFor(() => {
-        expect(changeSpy).toHaveBeenCalledWith({
+        expect(setFormSettings).toHaveBeenCalledWith({
           ...formSettings,
           fields: {
             "abc-123": makeFieldSettings({
