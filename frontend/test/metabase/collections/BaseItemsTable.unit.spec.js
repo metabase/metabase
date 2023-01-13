@@ -4,9 +4,9 @@ import moment from "moment-timezone";
 import { renderWithProviders, screen } from "__support__/ui";
 
 import {
-  DEFAULT_DATE_STYLE,
-  DEFAULT_TIME_STYLE,
-} from "metabase/lib/formatting/datetime-utils";
+  default_date_style,
+  default_time_style,
+} from "cljs/metabase.shared.formatting.constants";
 
 import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 
@@ -72,7 +72,7 @@ describe("Collections BaseItemsTable", () => {
     userEvent.hover(screen.getByText(lastEditedAt));
 
     expect(screen.getByRole("tooltip")).toHaveTextContent(
-      moment(timestamp).format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
+      moment(timestamp).format(`${default_date_style}, ${default_time_style}`),
     );
   });
 
