@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE GET POST PUT]]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -401,6 +402,16 @@
              [:in :table_id table-ids]
              always-false-hsql-expr)})
 
+(defn- database-usage-info
+  [db-id]
+  (let [table-ids (db/select-ids Table :db_id db-id)]
+    (first (mdb.query/query
+             {:select [:*]
+              :from   (for [model database-usage-models
+                            :let [query (database-usage-query model db-id table-ids)]
+                            :when query]
+                        [query model])}))))
+
 (api/defendpoint GET "/:id/usage_info"
   "Get usage info for a database.
   Returns a map with keys are models and values are the number of entities that use this database."
@@ -408,14 +419,7 @@
   {id ms/IntGreaterThanZero}
   (api/check-superuser)
   (api/check-404 (db/exists? Database :id id))
-  (let [table-ids (db/select-ids Table :db_id id)]
-    (first (mdb.query/query
-             {:select [:*]
-              :from   (for [model database-usage-models
-                            :let [query (database-usage-query model id table-ids)]
-                            :when query]
-                        [query model])}))))
-
+  (database-usage-info id))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
@@ -936,16 +940,32 @@
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id"
-  "Delete a `Database`."
-  [id]
+(def ^:private DeleteConfirmation
+  (mc/schema
+    (into [:map]
+          (for [model database-usage-models]
+            [model ms/IntGreaterThanOrEqualToZero]))))
+
+(api/defendpoint DELETE "/:id"
+  "Delete a `Database`.
+
+  Has to provide a confirmation payload in which keys are the list of models,
+  and values are the number of entities that use this database.
+
+  One way to get this information is by calling GET /api/database/:id/usage_info"
+  [id :as {{:keys [confirmation]} :body}]
+  {id           ms/IntGreaterThanZero
+   confirmation DeleteConfirmation}
   (api/check-superuser)
+  (when-not (= confirmation (database-usage-info id))
+    (throw (ex-info (tru "Invalid confirmation info.")
+                    {:confirmation confirmation
+                     :db-id        id
+                     :status-code 400})))
   (api/let-404 [db (db/select-one Database :id id)]
     (db/delete! Database :id id)
     (events/publish-event! :database-delete db))
   api/generic-204-no-content)
-
 
 ;;; ------------------------------------------ POST /api/database/:id/sync -------------------------------------------
 
