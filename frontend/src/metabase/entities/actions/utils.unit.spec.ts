@@ -3,10 +3,10 @@ import {
   getDefaultFieldSettings,
 } from "metabase/actions/utils";
 
-import { metadata } from "__support__/sample_database_fixture";
 import type { Parameter } from "metabase-types/api";
 import type { NativeDatasetQuery } from "metabase-types/types/Card";
-import Question from "metabase-lib/Question";
+import type { TemplateTagType } from "metabase-types/types/Query";
+import { getUnsavedNativeQuestion } from "metabase-lib/mocks";
 
 import {
   removeOrphanSettings,
@@ -14,32 +14,31 @@ import {
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
 
-const createQuestionWithTemplateTags = (tagType: string) =>
-  new Question(
-    {
-      dataset_query: {
-        type: "native",
-        database: null,
-        native: {
-          query:
-            "INSERT INTO products (name, price) VALUES ({{name}}, {{price}});",
-          "template-tags": {
-            name: {
-              id: "aaa",
-              name: "name",
-              type: tagType,
-            },
-            price: {
-              id: "bbb",
-              name: "price",
-              type: tagType,
-            },
+const createQuestionWithTemplateTags = (tagType: TemplateTagType) =>
+  getUnsavedNativeQuestion({
+    dataset_query: {
+      type: "native",
+      database: 1,
+      native: {
+        query:
+          "INSERT INTO products (name, price) VALUES ({{name}}, {{price}});",
+        "template-tags": {
+          name: {
+            id: "aaa",
+            name: "name",
+            "display-name": "Name",
+            type: tagType,
+          },
+          price: {
+            id: "bbb",
+            name: "price",
+            "display-name": "Price",
+            type: tagType,
           },
         },
       },
     },
-    metadata,
-  );
+  });
 
 describe("entities > actions > utils", () => {
   describe("removeOrphanSettings", () => {
