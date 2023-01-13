@@ -827,15 +827,17 @@
       (let [visualization-settings
             {"column_settings" {"[\"ref\",[\"field-id\",39]]"                                 {"column_title" "ID1"}
                                 "[\"ref\",[\"field\",40,null]]"                               {"column_title" "ID2"}
-                                "[\"ref\",[\"fk->\" [\"field-id\",39] [\"field-id\",40]]]"    {"column_title" "ID3"}
-                                "[\"ref\",[\"field-literal\",\"column_name\",\"type/Text\"]]" {"column_title" "ID4"}
-                                "[\"name\",\"column_name\"]"                                  {"column_title" "ID5"}}}
+                                "[\"ref\",[\"fk->\",[\"field-id\",39] [\"field-id\",40]]]"    {"column_title" "ID3"}
+                                "[\"ref\",[\"fk->\",41,42]]"                                  {"column_title" "ID4"}
+                                "[\"ref\",[\"field-literal\",\"column_name\",\"type/Text\"]]" {"column_title" "ID5"}
+                                "[\"name\",\"column_name\"]"                                  {"column_title" "ID6"}}}
             expected
             {"column_settings" {"[\"ref\",[\"field\",39,null]]"                                       {"column_title" "ID1"}
                                 "[\"ref\",[\"field\",40,null]]"                                       {"column_title" "ID2"}
                                 "[\"ref\",[\"field\",40,{\"source-field\":39}]]"                      {"column_title" "ID3"}
-                                "[\"ref\",[\"field\",\"column_name\",{\"base-type\":\"type/Text\"}]]" {"column_title" "ID4"}
-                                "[\"name\",\"column_name\"]"                                          {"column_title" "ID5"}}}
+                                "[\"ref\",[\"field\",42,{\"source-field\":41}]]"                      {"column_title" "ID4"}
+                                "[\"ref\",[\"field\",\"column_name\",{\"base-type\":\"type/Text\"}]]" {"column_title" "ID5"}
+                                "[\"name\",\"column_name\"]"                                          {"column_title" "ID6"}}}
             user-id     (db/simple-insert! User {:first_name  "Howard"
                                                  :last_name   "Hughes"
                                                  :email       "howard@aircraft.com"
