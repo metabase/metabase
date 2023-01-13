@@ -17,8 +17,8 @@ export interface WritebackActionBase {
   description: string | null;
   parameters: WritebackParameter[];
   visualization_settings?: ActionFormSettings;
-  "updated-at": string;
-  "created-at": string;
+  updated_at: string;
+  created_at: string;
 }
 
 export interface QueryAction {

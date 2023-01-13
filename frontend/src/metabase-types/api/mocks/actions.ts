@@ -30,8 +30,8 @@ export const createMockQueryAction = ({
     description: null,
     model_id: 1,
     parameters: [],
-    "updated-at": new Date().toISOString(),
-    "created-at": new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
     ...opts,
     type: "query",
   };
@@ -47,8 +47,8 @@ export const createMockImplicitQueryAction = (
   model_id: 1,
   parameters: [],
   visualization_settings: undefined,
-  "updated-at": new Date().toISOString(),
-  "created-at": new Date().toISOString(),
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
   ...options,
   type: "implicit",
 });
