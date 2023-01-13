@@ -95,14 +95,14 @@
                                     :lonlat [0.0 0.0]}}))))
 
     (is (= {:errors
-            {:address "map where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
-            :specific-errors {:address {:id ["missing required key"],
+            {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
+             :specific-errors {:address {:id ["missing required key"],
                                         :tags ["missing required key"],
                                         :address ["missing required key"]}}}
            (:body (post! "/post/test-address" {:x "1"}))))
 
     (is (= {:errors
-            {:address "map where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
+            {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
             :specific-errors {:address
                               {:id ["should be a string"]
                                :tags ["invalid type"]
@@ -116,7 +116,7 @@
                                                          :lonlat [0.0 0.0]}}))))
 
     (is (= {:errors
-            {:address "map where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>} with no other keys>} with no other keys"},
+            {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>} with no other keys>} with no other keys"},
             :specific-errors {:address
                               {:address ["missing required key"],
                                :a ["disallowed key"],
