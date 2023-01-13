@@ -1,5 +1,4 @@
 import type { ParameterTarget } from "metabase-types/types/Parameter";
-import type Field from "metabase-lib/metadata/Field";
 import type { Parameter, ParameterId } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
 
@@ -129,7 +128,6 @@ export interface FieldSettings {
   width?: Size;
   height?: number;
   hasSearch?: boolean;
-  field?: Field;
 }
 
 export type FieldSettingsMap = Record<ParameterId, FieldSettings>;
@@ -157,7 +155,6 @@ export type ActionFormFieldProps = {
   placeholder?: string;
   type: InputComponentType;
   optional?: boolean;
-  field?: Field;
   options?: ActionFormOption[];
 };
 
