@@ -12,22 +12,36 @@ import {
   ModalRadioRoot,
 } from "./DeleteGroupMappingModal.styled";
 
+type ValueType = "nothing" | "clearAllPermissions" | "delete";
+
 type DeleteGroupMappingModalProps = {
+  dn: any;
+  onConfirm: () => void;
   onHide: () => void;
 };
 
-const DeleteGroupMappingModal = ({ onHide }: DeleteGroupMappingModalProps) => {
+const DeleteGroupMappingModal = ({
+  dn,
+  onConfirm,
+  onHide,
+}: DeleteGroupMappingModalProps) => {
   const [value, setValue] = useState("nothing");
 
-  const handleChange = (newValue: string) => {
+  const handleChange = (newValue: ValueType) => {
     setValue(newValue);
   };
 
-  const submitButtonLabels: Record<string, string> = {
-    nothing: t`Remove mapping`,
-    removeAllMembers: t`Remove mapping and members`,
-    deleteGroup: t`Remove mapping and delete group`,
+  const handleConfirm = () => {
+    onConfirm(value, dn);
   };
+
+  const submitButtonLabels: Record<ValueType, string> = {
+    nothing: t`Remove mapping`,
+    clearAllPermissions: t`Remove mapping and members`,
+    delete: t`Remove mapping and delete group`,
+  };
+
+  console.log("🚀", { dn });
 
   return (
     <Modal>
@@ -42,7 +56,7 @@ const DeleteGroupMappingModal = ({ onHide }: DeleteGroupMappingModalProps) => {
           <Radio
             className="ml2"
             vertical
-            value={value}
+            value={value as ValueType | undefined}
             options={[
               {
                 name: t`Nothing, just remove the mapping.`,
@@ -50,11 +64,11 @@ const DeleteGroupMappingModal = ({ onHide }: DeleteGroupMappingModalProps) => {
               },
               {
                 name: t`Also remove all group members`,
-                value: "removeAllMembers",
+                value: "clearAllPermissions",
               },
               {
                 name: t`Also delete the group`,
-                value: "deleteGroup",
+                value: "delete",
               },
             ]}
             showButtons
@@ -63,8 +77,8 @@ const DeleteGroupMappingModal = ({ onHide }: DeleteGroupMappingModalProps) => {
         </ModalRadioRoot>
         <ModalFooter>
           <Button onClick={onHide}>{t`Cancel`}</Button>
-          <Button danger onClick={onHide}>
-            {submitButtonLabels[value]}
+          <Button danger onClick={handleConfirm}>
+            {submitButtonLabels[value as ValueType]}
           </Button>
         </ModalFooter>
       </div>
