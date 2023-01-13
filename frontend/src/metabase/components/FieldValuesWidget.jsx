@@ -31,6 +31,8 @@ import {
 import {
   canListFieldValues,
   canListParameterValues,
+  canSearchFieldValues,
+  canSearchParameterValues,
 } from "metabase-lib/parameters/utils/parameter-source";
 
 const MAX_SEARCH_RESULTS = 100;
@@ -449,12 +451,12 @@ function showRemapping(fields) {
 }
 
 function shouldList({ parameter, fields, disableSearch }) {
-  if (!disableSearch) {
+  if (disableSearch) {
+    return false;
+  } else {
     return parameter
       ? canListParameterValues(parameter)
       : canListFieldValues(fields);
-  } else {
-    return false;
   }
 }
 
@@ -533,30 +535,21 @@ function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
 }
 
 export function isSearchable({
+  parameter,
   fields,
   disableSearch,
   disablePKRemappingForSearch,
   valuesMode,
 }) {
-  function everyFieldIsSearchable() {
-    return fields.every(field =>
-      field.searchField(disablePKRemappingForSearch),
-    );
+  if (!disableSearch) {
+    return false;
+  } else if (valuesMode === "search") {
+    return true;
+  } else if (parameter) {
+    return canSearchParameterValues(parameter, disablePKRemappingForSearch);
+  } else {
+    return canSearchFieldValues(fields, disablePKRemappingForSearch);
   }
-
-  function someFieldIsConfiguredForSearch() {
-    return fields.some(
-      f =>
-        f.has_field_values === "search" ||
-        (f.has_field_values === "list" && f.has_more_values === true),
-    );
-  }
-
-  return (
-    !disableSearch &&
-    (valuesMode === "search" ||
-      (everyFieldIsSearchable() && someFieldIsConfiguredForSearch()))
-  );
 }
 
 function getTokenFieldPlaceholder({

@@ -41,16 +41,50 @@ export const getSourceConfigForType = (
 export const canListParameterValues = (parameter: Parameter) => {
   const fields = getFields(parameter);
 
-  return (
-    parameter.values_query_type === "list" &&
-    (parameter.values_source_type != null || canListFieldValues(fields))
-  );
+  if (parameter.values_query_type !== "list") {
+    return false;
+  } else if (parameter.values_source_type != null) {
+    return true;
+  } else {
+    return canListFieldValues(fields);
+  }
 };
 
 export const canListFieldValues = (fields: Field[]) => {
   return fields
     .filter(field => !field.isVirtual())
     .every(field => field.has_field_values === "list");
+};
+
+export const canSearchParameterValues = (
+  parameter: Parameter,
+  disablePKRemapping = false,
+) => {
+  const fields = getFields(parameter);
+
+  if (parameter.values_query_type === "none") {
+    return false;
+  } else if (parameter.values_source_type != null) {
+    return true;
+  } else {
+    return canSearchFieldValues(fields, disablePKRemapping);
+  }
+};
+
+export const canSearchFieldValues = (
+  fields: Field[],
+  disablePKRemapping = false,
+) => {
+  const hasSearchFields = fields.every(field =>
+    field.searchField(disablePKRemapping),
+  );
+  const hasFieldValues = fields.some(
+    field =>
+      field.has_field_values === "search" ||
+      (field.has_field_values === "list" && field.has_more_values === true),
+  );
+
+  return hasSearchFields && hasFieldValues;
 };
 
 const getUniqueNonNullValues = (values: unknown[]) => {

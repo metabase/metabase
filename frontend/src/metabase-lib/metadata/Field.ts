@@ -68,6 +68,7 @@ class FieldInner extends Base {
   table_id?: Table["id"];
   target?: Field;
   has_field_values?: "list" | "search" | "none";
+  has_more_values?: boolean;
   values: any[];
   metadata?: Metadata;
   source?: string;
