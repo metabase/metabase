@@ -18,10 +18,7 @@ import ActionParametersInputModal from "../ActionParametersInputModal";
 import ActionButtonView from "./ActionButtonView";
 import { shouldShowConfirmation } from "./utils";
 
-import {
-  DataAppPageFormWrapper,
-  DataAppPageFormTitle,
-} from "./ActionForm.styled";
+import { FormWrapper, FormTitle } from "./ActionForm.styled";
 
 interface ActionFormProps {
   action: WritebackQueryAction;
@@ -105,8 +102,8 @@ function ActionVizForm({
   }
 
   return (
-    <DataAppPageFormWrapper>
-      <DataAppPageFormTitle>{title}</DataAppPageFormTitle>
+    <FormWrapper>
+      <FormTitle>{title}</FormTitle>
       <ActionParametersInputForm
         onSubmit={onSubmit}
         dashboard={dashboard}
@@ -115,7 +112,7 @@ function ActionVizForm({
         dashcardParamValues={dashcardParamValues}
         action={action}
       />
-    </DataAppPageFormWrapper>
+    </FormWrapper>
   );
 }
 

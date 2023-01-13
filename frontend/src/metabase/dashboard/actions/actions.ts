@@ -88,8 +88,8 @@ function getActionExecutionMessage(action: WritebackAction, result: any) {
   return t`${action.name} was run successfully`;
 }
 
-function getDataAppPageType(pageId: string | number) {
-  return Utils.isUUID(pageId) ? "public" : "normal";
+function getDashboardType(dashboardId: string | number) {
+  return Utils.isUUID(dashboardId) ? "public" : "normal";
 }
 
 export const executeRowAction = async ({
@@ -100,7 +100,7 @@ export const executeRowAction = async ({
   shouldToast = true,
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
   const executeAction =
-    getDataAppPageType(dashboard.id) === "public"
+    getDashboardType(dashboard.id) === "public"
       ? PublicApi.executeAction
       : ActionsApi.execute;
 
