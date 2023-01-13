@@ -1,8 +1,8 @@
 import {
   getDefaultFieldSettings,
   getDefaultFormSettings,
-} from "metabase/actions/containers/ActionCreator/FormCreator";
-import { sortActionParams } from "./utils";
+  sortActionParams,
+} from "./utils";
 
 const createParameter = (options?: any) => {
   return {

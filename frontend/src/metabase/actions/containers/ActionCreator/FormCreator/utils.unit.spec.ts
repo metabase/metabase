@@ -2,10 +2,12 @@ import type { FieldSettingsMap } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
 
 import {
-  reorderFields,
-  hasNewParams,
   getDefaultFieldSettings,
   getDefaultFormSettings,
+} from "../../../utils";
+import {
+  reorderFields,
+  hasNewParams,
   generateFieldSettingsFromParameters,
   getInputType,
 } from "./utils";

@@ -4,11 +4,11 @@ import _ from "underscore";
 import { ActionForm } from "metabase/actions/components/ActionForm";
 
 import { addMissingSettings } from "metabase/entities/actions/utils";
-import { sortActionParams } from "metabase/actions/utils";
 
 import type { ActionFormSettings, Parameter } from "metabase-types/api";
 
-import { getDefaultFormSettings, hasNewParams } from "./utils";
+import { getDefaultFormSettings, sortActionParams } from "../../../utils";
+import { hasNewParams } from "./utils";
 
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
 import { FormCreatorWrapper } from "./FormCreator.styled";

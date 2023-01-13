@@ -16,33 +16,7 @@ import type {
 import Field from "metabase-lib/metadata/Field";
 import { TYPE } from "metabase-lib/types/constants";
 
-export const getDefaultFormSettings = (
-  overrides: Partial<ActionFormSettings> = {},
-): ActionFormSettings => ({
-  name: "",
-  type: "button",
-  description: "",
-  fields: {},
-  confirmMessage: "",
-  ...overrides,
-});
-
-export const getDefaultFieldSettings = (
-  overrides: Partial<FieldSettings> = {},
-): FieldSettings => ({
-  id: "",
-  name: "",
-  title: "",
-  description: "",
-  placeholder: "",
-  order: 999,
-  fieldType: "string",
-  inputType: "string",
-  required: true,
-  hidden: false,
-  width: "medium",
-  ...overrides,
-});
+import { getDefaultFieldSettings } from "../../../utils";
 
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
