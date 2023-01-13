@@ -21,10 +21,7 @@ export const LeftHeader = styled.div`
   display: flex;
   align-items: center;
   color: ${color("text-medium")};
-  & > * ~ * {
-    margin-left: ${space(2)};
-    margin-right: ${space(2)};
-  }
+  gap: ${space(2)};
 `;
 
 export const EditableText = styled(EditableTextBase)`
