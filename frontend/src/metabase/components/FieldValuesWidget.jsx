@@ -28,6 +28,10 @@ import {
   isNumberParameter,
   isStringParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
+import {
+  canListFieldValues,
+  canListParameterValues,
+} from "metabase-lib/parameters/utils/parameter-source";
 
 const MAX_SEARCH_RESULTS = 100;
 
@@ -444,16 +448,14 @@ function showRemapping(fields) {
   return fields.length === 1;
 }
 
-function shouldList({ fields, disableSearch }) {
-  // Virtual fields come from questions that are based on other questions.
-  // Currently, the back end does not return `has_field_values` in their metadata,
-  // so we ignore them for now.
-  const nonVirtualFields = fields.filter(field => typeof field.id === "number");
-
-  return (
-    !disableSearch &&
-    nonVirtualFields.every(field => field.has_field_values === "list")
-  );
+function shouldList({ parameter, fields, disableSearch }) {
+  if (!disableSearch) {
+    return parameter
+      ? canListParameterValues(parameter)
+      : canListFieldValues(fields);
+  } else {
+    return false;
+  }
 }
 
 function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {

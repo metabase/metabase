@@ -1,8 +1,14 @@
 import {
   Dataset,
+  Parameter,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import {
+  getFields,
+  getNonVirtualFields,
+} from "metabase-lib/parameters/utils/parameter-fields";
+import Field from "metabase-lib/metadata/Field";
 
 export const isValidSourceConfig = (
   sourceType: ValuesSourceType,
@@ -30,6 +36,21 @@ export const getSourceConfigForType = (
     default:
       return {};
   }
+};
+
+export const canListParameterValues = (parameter: Parameter) => {
+  const fields = getFields(parameter);
+
+  return (
+    parameter.values_query_type === "list" &&
+    (parameter.values_source_type != null || canListFieldValues(fields))
+  );
+};
+
+export const canListFieldValues = (fields: Field[]) => {
+  return fields
+    .filter(field => !field.isVirtual())
+    .every(field => field.has_field_values === "list");
 };
 
 const getUniqueNonNullValues = (values: unknown[]) => {
