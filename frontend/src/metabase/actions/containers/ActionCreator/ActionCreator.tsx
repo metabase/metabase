@@ -58,6 +58,9 @@ const mapDispatchToProps = {
   update: Actions.actions.update,
 };
 
+const EXAMPLE_QUERY =
+  "UPDATE products\nSET rating = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
+
 interface ActionCreatorProps {
   metadata: Metadata;
   question?: Question;
@@ -117,8 +120,8 @@ function ActionCreatorComponent({
       setShowSaveModal(true);
     } else {
       update({
-        id: (question.card() as SavedCard).id,
-        name: question?.displayName() ?? "",
+        id: question.id(),
+        name: question.displayName() ?? "",
         description: question.description() ?? null,
         model_id: defaultModelId as number,
         formSettings: formSettings as ActionFormSettings,
@@ -137,16 +140,14 @@ function ActionCreatorComponent({
   const handleClose = () => setShowSaveModal(false);
 
   const handleExampleClick = () => {
-    const sampleQuery =
-      "UPDATE products\nSET rating = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
     setQuestion(
-      question.setQuery(query.setQueryText(query.queryText() + sampleQuery)),
+      question.setQuery(query.setQueryText(query.queryText() + EXAMPLE_QUERY)),
     );
   };
 
   return (
     <>
-      <Modal onClose={onClose} formModal={false} wide>
+      <Modal wide onClose={onClose}>
         <ModalRoot>
           <ActionCreatorBodyContainer>
             <ModalLeft>

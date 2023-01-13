@@ -175,7 +175,7 @@ export const ActionForm = ({
       enableReinitialize
     >
       {({ dirty }) => (
-        <Form role="form" data-testid="action-form">
+        <Form disabled={!dirty} role="form" data-testid="action-form">
           {form.fields.map(field => (
             <FormFieldWidget key={field.name} formField={field} />
           ))}

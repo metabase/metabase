@@ -93,7 +93,7 @@ function CreateActionForm({
       onSubmit={handleCreate}
     >
       {({ dirty }) => (
-        <Form>
+        <Form disabled={!dirty}>
           <FormInput
             name="name"
             title={t`Name`}
