@@ -144,6 +144,7 @@ function PivotTable({
   }, [data, settings]);
 
   const previousRowIndexes = usePrevious(pivoted?.rowIndexes);
+  const columnsChanged = !_.isEqual(pivoted?.rowIndexes, previousRowIndexes);
 
   // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
   // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights
@@ -168,10 +169,7 @@ function PivotTable({
       setHeaderWidths({ leftHeaderWidths: null, totalHeaderWidths: null });
     }
 
-    if (
-      !pivoted?.rowIndexes ||
-      !_.isEqual(pivoted?.rowIndexes, previousRowIndexes)
-    ) {
+    if (!pivoted?.rowIndexes || columnsChanged) {
       setHeaderWidths(
         getLeftHeaderWidths({
           rowIndexes: pivoted?.rowIndexes,
@@ -186,7 +184,7 @@ function PivotTable({
     pivoted?.leftHeaderItems,
     fontFamily,
     getColumnTitle,
-    previousRowIndexes,
+    columnsChanged,
   ]);
 
   const handleColumnResize = (columnIndex: number, newWidth: number) => {
@@ -204,7 +202,7 @@ function PivotTable({
     });
   };
 
-  if (pivoted === null || !leftHeaderWidths) {
+  if (pivoted === null || !leftHeaderWidths || columnsChanged) {
     return null;
   }
 
