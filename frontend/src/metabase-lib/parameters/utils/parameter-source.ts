@@ -51,9 +51,12 @@ export const canListParameterValues = (parameter: Parameter) => {
 };
 
 export const canListFieldValues = (fields: Field[]) => {
-  return fields
+  const hasFields = fields.length > 0;
+  const hasFieldValues = fields
     .filter(field => !field.isVirtual())
     .every(field => field.has_field_values === "list");
+
+  return hasFields && hasFieldValues;
 };
 
 export const canSearchParameterValues = (
@@ -75,7 +78,8 @@ export const canSearchFieldValues = (
   fields: Field[],
   disablePKRemapping = false,
 ) => {
-  const hasSearchFields = fields.every(field =>
+  const hasFields = fields.length > 0;
+  const canSearch = fields.every(field =>
     field.searchField(disablePKRemapping),
   );
   const hasFieldValues = fields.some(
@@ -84,7 +88,7 @@ export const canSearchFieldValues = (
       (field.has_field_values === "list" && field.has_more_values === true),
   );
 
-  return hasSearchFields && hasFieldValues;
+  return hasFields && canSearch && hasFieldValues;
 };
 
 const getUniqueNonNullValues = (values: unknown[]) => {

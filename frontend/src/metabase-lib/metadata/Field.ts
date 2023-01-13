@@ -447,7 +447,7 @@ class FieldInner extends Base {
 
   searchField(disablePKRemapping = false): Field | null {
     if (disablePKRemapping && this.isPK()) {
-      return this.isSearchable() ? field : null;
+      return this.isSearchable() ? this : null;
     }
 
     const remappedField = this.remappedField();
