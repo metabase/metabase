@@ -61,16 +61,24 @@ const mapDispatchToProps = {
 const EXAMPLE_QUERY =
   "UPDATE products\nSET rating = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
 
-interface ActionCreatorProps {
-  metadata: Metadata;
-  question?: Question;
-  actionId?: number;
+interface OwnProps {
   modelId?: number;
   databaseId?: number;
-  push: (url: string) => void;
-  update: (action: ActionParams) => void;
   onClose?: () => void;
 }
+
+interface StateProps {
+  actionId?: number;
+  question?: Question;
+  metadata: Metadata;
+}
+
+interface DispatchProps {
+  push: (url: string) => void;
+  update: (action: ActionParams) => void;
+}
+
+type ActionCreatorProps = OwnProps & StateProps & DispatchProps;
 
 function ActionCreatorComponent({
   metadata,
