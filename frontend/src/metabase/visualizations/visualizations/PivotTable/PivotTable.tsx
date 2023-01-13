@@ -115,14 +115,14 @@ function PivotTable({
   }
 
   useEffect(() => {
-    // This is needed in case the cell counts didn't change, but the data did
+    // This is needed in case the cell counts didn't change, but the data or cell sizes did
     (
       leftHeaderRef.current as Collection | null
     )?.recomputeCellSizesAndPositions?.();
     (
       topHeaderRef.current as Collection | null
     )?.recomputeCellSizesAndPositions?.();
-  }, [data, leftHeaderRef, topHeaderRef]);
+  }, [data, leftHeaderRef, topHeaderRef, leftHeaderWidths]);
 
   useOnMount(() => {
     setGridElement(bodyRef.current && findDOMNode(bodyRef.current));
@@ -178,6 +178,21 @@ function PivotTable({
     fontFamily,
     getColumnTitle,
   ]);
+
+  const handleColumnResize = (columnIndex: number, newWidth: number) => {
+    const newColumnWidths = [...(leftHeaderWidths as number[])];
+    newColumnWidths[columnIndex] = Math.max(newWidth, MIN_HEADER_CELL_WIDTH);
+
+    const newTotalWidth = newColumnWidths.reduce(
+      (total, current) => total + current,
+      0,
+    );
+
+    setHeaderWidths({
+      leftHeaderWidths: newColumnWidths,
+      totalHeaderWidths: newTotalWidth,
+    });
+  };
 
   if (pivoted === null || !leftHeaderWidths) {
     return null;
@@ -244,6 +259,9 @@ function PivotTable({
                     hasTopBorder={topHeaderRows > 1}
                     isNightMode={isNightMode}
                     value={getColumnTitle(rowIndex)}
+                    onResize={(newWidth: number) =>
+                      handleColumnResize(index, newWidth)
+                    }
                     style={{
                       flex: "0 0 auto",
                       width:
@@ -311,7 +329,9 @@ function PivotTable({
                       cellRenderer={({ index, style, key }) => (
                         <LeftHeaderCell
                           key={key}
-                          style={style}
+                          style={{
+                            ...style,
+                          }}
                           item={leftHeaderItems[index]}
                           rowIndex={rowIndex}
                           onUpdateVisualizationSettings={
