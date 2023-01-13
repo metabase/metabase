@@ -31,6 +31,7 @@ describe("ValuesSourceModal", () => {
         parameter: createMockUiParameter({
           fields: [new Field(createMockField())],
         }),
+        hasFieldValues: false,
       });
 
       expect(
@@ -43,6 +44,7 @@ describe("ValuesSourceModal", () => {
         parameter: createMockUiParameter({
           fields: [new Field(createMockField())],
         }),
+        hasFieldValues: true,
       });
 
       expect(await screen.findByDisplayValue(/Gadget/)).toBeInTheDocument();

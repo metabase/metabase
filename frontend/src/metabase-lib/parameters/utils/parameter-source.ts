@@ -1,4 +1,8 @@
-import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
+import {
+  Dataset,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
 
 export const isValidSourceConfig = (
   sourceType: ValuesSourceType,
@@ -26,4 +30,20 @@ export const getSourceConfigForType = (
     default:
       return {};
   }
+};
+
+const getUniqueNonNullValues = (values: unknown[]) => {
+  return Array.from(new Set(values))
+    .filter(value => value != null)
+    .map(value => String(value));
+};
+
+export const getFieldSourceValues = (fieldsValues: unknown[][][]) => {
+  const allValues = fieldsValues.flatMap(values => values.map(([key]) => key));
+  return getUniqueNonNullValues(allValues);
+};
+
+export const getCardSourceValues = (dataset: Dataset) => {
+  const allValues = dataset.data.rows.map(([value]) => value);
+  return getUniqueNonNullValues(allValues);
 };

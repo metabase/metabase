@@ -15,13 +15,21 @@ import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
+import {
+  Dataset,
+  Card,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
-import { Dataset } from "metabase-types/types/Dataset";
 import Question from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
+import {
+  getCardSourceValues,
+  getFieldSourceValues,
+  isValidSourceConfig,
+} from "metabase-lib/parameters/utils/parameter-source";
 import {
   ModalHelpMessage,
   ModalLabel,
@@ -92,10 +100,6 @@ const ValuesSourceTypeModal = ({
   onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
-  const allFieldValues = useMemo(() => {
-    return getFieldValues(fieldValues);
-  }, [fieldValues]);
-
   const handleTypeChange = useCallback(
     (sourceType: ValuesSourceType) => {
       onChangeSourceType(sourceType);
@@ -123,7 +127,7 @@ const ValuesSourceTypeModal = ({
       {sourceType === null ? (
         <FieldSourceModal
           fields={fields}
-          fieldValues={allFieldValues}
+          fieldValues={fieldValues}
           isLoadingFieldValues={isLoadingFieldValues}
           sourceType={sourceType}
           onChangeSourceType={handleTypeChange}
@@ -141,7 +145,6 @@ const ValuesSourceTypeModal = ({
         <ListSourceModal
           sourceType={sourceType}
           sourceConfig={sourceConfig}
-          fieldValues={allFieldValues}
           onChangeSourceType={handleTypeChange}
           onChangeSourceConfig={onChangeSourceConfig}
         />
@@ -152,7 +155,7 @@ const ValuesSourceTypeModal = ({
 
 interface FieldSourceModalProps {
   fields: Field[];
-  fieldValues: string[];
+  fieldValues: unknown[][][];
   isLoadingFieldValues: boolean;
   sourceType: ValuesSourceType;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
@@ -165,12 +168,16 @@ const FieldSourceModal = ({
   sourceType,
   onChangeSourceType,
 }: FieldSourceModalProps) => {
-  const hasFields = fields.length > 0;
-  const hasFieldValues = fieldValues.length > 0;
+  const fieldSourceValues = useMemo(() => {
+    return getFieldSourceValues(fieldValues);
+  }, [fieldValues]);
 
   const fieldValuesText = useMemo(() => {
-    return getValuesText(fieldValues);
-  }, [fieldValues]);
+    return getValuesText(fieldSourceValues);
+  }, [fieldSourceValues]);
+
+  const hasFields = fields.length > 0;
+  const hasFieldValues = fieldSourceValues.length > 0;
 
   return (
     <ModalBodyWithPane>
@@ -296,7 +303,7 @@ const CardSourceModal = ({
           <QuestionResultLoader question={fieldValuesQuestion}>
             {({ result }: QuestionLoaderProps) => (
               <ModalTextArea
-                value={getValuesText(getDatasetValues(result))}
+                value={result ? getValuesText(getCardSourceValues(result)) : ""}
                 readOnly
                 fullWidth
               />
@@ -311,7 +318,6 @@ const CardSourceModal = ({
 interface ListSourceModalProps {
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
-  fieldValues: string[];
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
 }
@@ -356,20 +362,6 @@ const ListSourceModal = ({
 
 const getValuesText = (values?: string[]) => {
   return values?.join(NEW_LINE) ?? "";
-};
-
-const getUniqueValues = (values: string[]) => {
-  return Array.from(new Set(values));
-};
-
-const getFieldValues = (fieldsValues: string[][][]) => {
-  const allValues = fieldsValues.flatMap(values => values.map(([key]) => key));
-  return getUniqueValues(allValues);
-};
-
-const getDatasetValues = (dataset?: Dataset) => {
-  const allValues = dataset?.data.rows.map(([value]) => String(value)) ?? [];
-  return getUniqueValues(allValues);
 };
 
 const getStaticValues = (value: string) => {
