@@ -125,6 +125,22 @@ describe("ValuesSourceModal", () => {
         values: ["Gadget", "Widget"],
       });
     });
+
+    it("preserves the list when changing the source type", () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: "static-list",
+          values_source_config: {
+            values: ["Gadget", "Widget"],
+          },
+        }),
+      });
+
+      userEvent.click(screen.getByRole("radio", { name: /connected fields/ }));
+      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+
+      expect(screen.getByRole("textbox")).toHaveValue("Gadget\nWidget");
+    });
   });
 });
 
