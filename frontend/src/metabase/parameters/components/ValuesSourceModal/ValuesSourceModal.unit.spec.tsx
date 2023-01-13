@@ -25,7 +25,9 @@ describe("ValuesSourceModal", () => {
     it("should show a message about not connected fields", () => {
       setup();
 
-      expect(screen.getByText(/haven’t connected a field/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/You haven’t connected a field to this filter/),
+      ).toBeInTheDocument();
     });
 
     it("should show a message about missing field values", async () => {
@@ -41,9 +43,9 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      await waitFor(() => {
-        expect(screen.getByText(/any cached values/)).toBeInTheDocument();
-      });
+      expect(
+        await screen.findByText(/We don’t have any cached values/),
+      ).toBeInTheDocument();
     });
 
     it("should show unique non-null mapped fields values", async () => {
@@ -73,7 +75,28 @@ describe("ValuesSourceModal", () => {
   });
 
   describe("card source", () => {
-    it("should allow to select only string-based fields", async () => {
+    it("should show a message when there are no text columns", async () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+          },
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+          }),
+        ],
+      });
+
+      expect(
+        await screen.findByText(/This question doesn’t have any text columns/),
+      ).toBeInTheDocument();
+    });
+
+    it("should allow to select only text fields", async () => {
       const { onSubmit } = setup({
         parameter: createMockUiParameter({
           values_source_type: "card",
@@ -103,8 +126,9 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      expect(await screen.findByText(/Selectable values/)).toBeInTheDocument();
-      userEvent.click(screen.getByRole("button", { name: /Pick a column/ }));
+      userEvent.click(
+        await screen.findByRole("button", { name: /Pick a column/ }),
+      );
       expect(
         screen.queryByRole("heading", { name: "ID" }),
       ).not.toBeInTheDocument();
