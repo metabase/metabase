@@ -13984,15 +13984,37 @@ databaseChangeLog:
               FROM (
               SELECT
                 id,
-                CASE WHEN JSON_EXTRACT(JSON_UNQUOTE(k), '$[0]') = 'ref' AND JSON_EXTRACT(JSON_UNQUOTE(k), '$[1][0]') = 'field-id'
-                  THEN CONCAT('["ref",["field",', JSON_EXTRACT(JSON_UNQUOTE(k), '$[1][1]'), ',null]]')
-                  ELSE JSON_UNQUOTE(k)
+                CASE 
+                  WHEN JSON_EXTRACT(k, '$[0]') = 'ref'
+                  THEN
+                    CASE 
+                      WHEN JSON_EXTRACT(k, '$[1][0]') = 'field-id'
+                      THEN CONCAT('["ref",["field",', JSON_EXTRACT(k, '$[1][1]'), ',null]]')
+                      WHEN JSON_EXTRACT(k, '$[1][0]') = 'field-literal'
+                      THEN CONCAT('["ref",["field","', JSON_EXTRACT(k, '$[1][1]'), '",{"base-type":"', JSON_EXTRACT(k, '$[1][2]'), '"}]]')
+                      WHEN JSON_EXTRACT(k, '$[1][0]') = 'fk->'
+                      THEN CONCAT('["ref",["field",', 
+                                  CASE
+                                    WHEN SUBSTRING(JSON_EXTRACT(k, '$[1][2]'), 1, 1) = '['
+                                    THEN JSON_EXTRACT(k, '$[1][2][0]')
+                                    ELSE JSON_EXTRACT(k, '$[1][2]')
+                                  END,
+                                  ',{"source-field":',
+                                  CASE
+                                    WHEN SUBSTRING(JSON_EXTRACT(k, '$[1][1]'), 1, 1) = '['
+                                    THEN JSON_EXTRACT(k, '$[1][1][0]')
+                                    ELSE JSON_EXTRACT(k, '$[1][1]')
+                                  END,
+                                  '}]]')
+                      ELSE k
+                    END
+                  ELSE k
                 END AS k,
                 v
               FROM (
                 SELECT
                   id
-                  , JSON_EXTRACT(JSON_KEYS(settings), CONCAT('$[', idx, ']')) AS k
+                  , JSON_UNQUOTE(JSON_EXTRACT(JSON_KEYS(settings), CONCAT('$[', idx, ']'))) AS k
                   , JSON_EXTRACT(JSON_EXTRACT(settings, '$.*'), CONCAT('$[', idx, ']')) AS v
                 FROM (
                     SELECT id, JSON_EXTRACT(visualization_settings, '$.column_settings') AS settings
@@ -14027,31 +14049,34 @@ databaseChangeLog:
                   FROM (
                     SELECT
                       id,
-                      CASE
-                        WHEN JSON_VALUE(JSON_VALUE(k, 1), 0) = 'field-id'
-                        THEN CONCAT('["ref",["field",',
-                                     JSON_VALUE(JSON_VALUE(k, 1), 1),
-                                     ',null]]')
-                        WHEN JSON_VALUE(JSON_VALUE(k, 1), 0) = 'field-literal'
-                        THEN CONCAT('["ref",["field","',
-                                     JSON_VALUE(JSON_VALUE(k, 1), 1),
-                                     '",{"base-type":"',
-                                     JSON_VALUE(JSON_VALUE(k, 1), 2),
-                                     '"}]]')
-                        WHEN JSON_VALUE(JSON_VALUE(k, 1), 0) = 'fk->'
-                        THEN CONCAT('["ref",["field",',
-                                    CASE
-                                      WHEN SUBSTRING(JSON_VALUE(JSON_VALUE(k, 1), 2) FROM 1 FOR 1) = '['
-                                      THEN JSON_VALUE(JSON_VALUE(JSON_VALUE(k, 1), 2), 1)
-                                      ELSE JSON_VALUE(JSON_VALUE(k, 1), 2)
-                                    END,
-                                    ',{"source-field":',
-                                    CASE
-                                      WHEN SUBSTRING(JSON_VALUE(JSON_VALUE(k, 1), 1) FROM 1 FOR 1) = '['
-                                      THEN JSON_VALUE(JSON_VALUE(JSON_VALUE(k, 1), 1), 1)
-                                      ELSE JSON_VALUE(JSON_VALUE(k, 1), 1)
-                                    END,
-                                    '}]]')
+                      CASE WHEN JSON_VALUE(k, 0) = 'ref' THEN
+                        CASE
+                          WHEN JSON_VALUE(JSON_VALUE(k, 1), 0) = 'field-id'
+                          THEN CONCAT('["ref",["field",',
+                                       JSON_VALUE(JSON_VALUE(k, 1), 1),
+                                       ',null]]')
+                          WHEN JSON_VALUE(JSON_VALUE(k, 1), 0) = 'field-literal'
+                          THEN CONCAT('["ref",["field","',
+                                       JSON_VALUE(JSON_VALUE(k, 1), 1),
+                                       '",{"base-type":"',
+                                       JSON_VALUE(JSON_VALUE(k, 1), 2),
+                                       '"}]]')
+                          WHEN JSON_VALUE(JSON_VALUE(k, 1), 0) = 'fk->'
+                          THEN CONCAT('["ref",["field",',
+                                      CASE
+                                        WHEN SUBSTRING(JSON_VALUE(JSON_VALUE(k, 1), 2) FROM 1 FOR 1) = '['
+                                        THEN JSON_VALUE(JSON_VALUE(JSON_VALUE(k, 1), 2), 1)
+                                        ELSE JSON_VALUE(JSON_VALUE(k, 1), 2)
+                                      END,
+                                      ',{"source-field":',
+                                      CASE
+                                        WHEN SUBSTRING(JSON_VALUE(JSON_VALUE(k, 1), 1) FROM 1 FOR 1) = '['
+                                        THEN JSON_VALUE(JSON_VALUE(JSON_VALUE(k, 1), 1), 1)
+                                        ELSE JSON_VALUE(JSON_VALUE(k, 1), 1)
+                                      END,
+                                      '}]]')
+                          ELSE k
+                          END
                         ELSE k
                       END AS k,
                       (v FORMAT JSON) as v
