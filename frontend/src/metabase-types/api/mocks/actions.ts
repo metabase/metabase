@@ -1,8 +1,23 @@
 import {
+  WritebackParameter,
   WritebackQueryAction,
   WritebackImplicitQueryAction,
 } from "metabase-types/api";
 import { createMockNativeDatasetQuery } from "./query";
+import { createMockParameter } from "./parameters";
+
+export const createMockActionParameter = (
+  opts?: Partial<WritebackParameter>,
+): WritebackParameter => ({
+  target: opts?.target || ["variable", ["template-tag", "id"]],
+  ...createMockParameter({
+    id: "id",
+    name: "ID",
+    type: "type/Integer",
+    slug: "id",
+    ...opts,
+  }),
+});
 
 export const createMockQueryAction = ({
   dataset_query = createMockNativeDatasetQuery(),
@@ -30,31 +45,10 @@ export const createMockImplicitQueryAction = (
   name: "",
   description: "",
   model_id: 1,
+  parameters: [],
+  visualization_settings: undefined,
   "updated-at": new Date().toISOString(),
   "created-at": new Date().toISOString(),
-  parameters: [
-    {
-      id: "id",
-      name: "ID",
-      target: ["variable", ["template-tag", "id"]],
-      type: "type/Integer",
-      slug: "id",
-      values_query_type: "list",
-      values_source_type: null,
-      values_source_config: {},
-    },
-    {
-      id: "name",
-      target: ["variable", ["template-tag", "name"]],
-      type: "type/Text",
-      name: "Name",
-      slug: "name",
-      values_query_type: "list",
-      values_source_type: null,
-      values_source_config: {},
-    },
-  ],
-  visualization_settings: undefined,
   ...options,
   type: "implicit",
 });
