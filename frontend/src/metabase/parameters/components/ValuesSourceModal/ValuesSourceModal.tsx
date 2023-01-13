@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
+import { getSourceConfigForType } from "metabase-lib/parameters/utils/parameter-source";
 import { UiParameter } from "metabase-lib/parameters/types";
 import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 import ValuesSourceCardModal from "./ValuesSourceCardModal";
@@ -40,7 +41,7 @@ const ValuesSourceModal = ({
   }, []);
 
   const handleSubmit = useCallback(() => {
-    onSubmit(sourceType, sourceConfig);
+    onSubmit(sourceType, getSourceConfigForType(sourceType, sourceConfig));
     onClose();
   }, [sourceType, sourceConfig, onSubmit, onClose]);
 

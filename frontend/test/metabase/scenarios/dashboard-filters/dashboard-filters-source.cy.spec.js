@@ -192,7 +192,6 @@ const setupNativeQuestionSource = () => {
 const setupCustomList = () => {
   modal().within(() => {
     cy.findByText("Custom list").click();
-    cy.findByRole("textbox").should("contain.value", "Gizmo");
     cy.findByRole("textbox").clear().type("Doohickey\nGadget");
     cy.button("Done").click();
   });

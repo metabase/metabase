@@ -86,6 +86,12 @@ export interface ConcreteField {
   updated_at: string;
 }
 
+export interface FieldValues {
+  field_id: FieldId;
+  values: FieldValue[];
+  has_more_values: boolean;
+}
+
 export type Field = Omit<ConcreteField, "id"> & {
   id?: FieldId;
 };

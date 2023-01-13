@@ -12,17 +12,15 @@ export function setupCardEndpoints(scope: Scope, card: Card) {
     .put(`/api/card/${card.id}`)
     .reply(200, (uri, body) => createMockCard(body as Card));
 
-  if (card.dataset) {
-    const virtualTableId = getQuestionVirtualTableId(card.id);
-    scope.get(`/api/table/${virtualTableId}/query_metadata`).reply(200, {
-      ...convertSavedQuestionToVirtualTable(card),
-      dimension_options: {},
-      fields: card.result_metadata.map(field => ({
-        ...field,
-        table_id: virtualTableId,
-      })),
-    });
-  }
+  const virtualTableId = getQuestionVirtualTableId(card.id);
+  scope.get(`/api/table/${virtualTableId}/query_metadata`).reply(200, {
+    ...convertSavedQuestionToVirtualTable(card),
+    fields: card.result_metadata.map(field => ({
+      ...field,
+      table_id: virtualTableId,
+    })),
+    dimension_options: {},
+  });
 }
 
 export function setupCardsEndpoints(scope: Scope, cards: Card[]) {
