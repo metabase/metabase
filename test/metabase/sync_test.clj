@@ -5,17 +5,19 @@
   Your new tests almost certainly do not belong in this namespace. Please put them in ones mirroring the location of
   the specific part of sync you're testing."
   (:require
-   [clojure.test :refer :all]
-   [metabase.driver :as driver]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
-   [metabase.sync :as sync]
-   [metabase.test :as mt]
-   [metabase.test.mock.util :as mock.util]
-   [metabase.test.util :as tu]
-   [metabase.util :as u]
-   [toucan.db :as db]))
+    [clojure.java.jdbc :as jdbc]
+    [clojure.test :refer :all]
+    [metabase.driver :as driver]
+    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+    [metabase.models.database :refer [Database]]
+    [metabase.models.field :refer [Field]]
+    [metabase.models.table :refer [Table]]
+    [metabase.sync :as sync]
+    [metabase.test :as mt]
+    [metabase.test.mock.util :as mock.util]
+    [metabase.test.util :as tu]
+    [metabase.util :as u]
+    [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        End-to-end 'MovieDB' Sync Tests                                         |
@@ -230,6 +232,53 @@
                                    :has_field_values :auto-list)
                             (field:movie-title)]})
            (table-details (db/select-one Table :id (:id table)))))))
+
+;; TODO - Consider moving this logic as well as the same logic and the exec! fn from metabase.driver.postgres-test
+;; to metabase.test. We might want to see if there's at least one more case of generality before doing so, though.
+;; Also, if we did this, we might want to defmulti it so that we can safely bounce and db type.
+(defn- drop-if-exists-and-create-db!
+  "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
+  [db-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))]
+    ;; kill any open connections
+    (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
+                       FROM pg_stat_activity
+                       WHERE pg_stat_activity.datname = ?;" db-name])
+    ;; create the DB
+    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
+                                  CREATE DATABASE \"%s\";"
+                                 db-name db-name)]
+                   {:transaction? false})))
+
+(deftest sync-new-table-test
+  (mt/test-driver :postgres
+    (testing (str "Notify that a new table has been added via API (#25496)")
+      (let [db-name "sync_new_table_test"
+            details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
+            spec (sql-jdbc.conn/connection-details->spec :postgres details)
+            exec! (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
+            tableset #(set (map :name (db/select 'Table :db_id (:id %))))]
+        ;; create the postgres DB
+        (drop-if-exists-and-create-db! db-name)
+        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
+                      (let [sync! #(sync/sync-database! database)]
+                        ;; create a main partitioned table and two partitions for it
+                        (exec! spec ["CREATE TABLE FOO (val bigint NOT NULL);"
+                                     "CREATE TABLE BAR (val bigint NOT NULL);"])
+                        ;; now sync the DB
+                        (sync!)
+                        ;; Assert the baseline - both table exist
+                        (let [tables (tableset database)]
+                          (is (= #{"foo" "bar"} tables)))
+                        ;; Create two new tables in the user/external db
+                        (exec! spec ["CREATE TABLE FERN (val bigint NOT NULL);"
+                                     "CREATE TABLE DOC (val bigint NOT NULL);"])
+                        ;; Add only one of the tables to be synched
+                        (sync/sync-new-table! database {:table-name  "fern"
+                                                        :schema-name "public"})
+                        ;; Assert that the synched table is in the MB db and the unsynched table is not.
+                        (let [tables (tableset database)]
+                          (is (= #{"fern" "foo" "bar"} tables)))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

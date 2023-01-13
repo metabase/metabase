@@ -9,16 +9,23 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the `sync-database!` function to do all three at once."
   (:require
-   [metabase.driver.util :as driver.u]
-   [metabase.models.field :as field]
-   [metabase.models.table :as table]
-   [metabase.sync.analyze :as analyze]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
-   [metabase.sync.field-values :as field-values]
-   [metabase.sync.interface :as i]
-   [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.sync.util :as sync-util]
-   [schema.core :as s])
+    [clojure.java.jdbc :as jdbc]
+    [clojure.tools.logging :as log]
+    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+    [metabase.driver.util :as driver.u]
+    [metabase.models.field :as field]
+    [metabase.models.table :as table]
+    [metabase.sync.analyze :as analyze]
+    [metabase.sync.analyze.fingerprint :as fingerprint]
+    [metabase.sync.field-values :as field-values]
+    [metabase.sync.interface :as i]
+    [metabase.sync.sync-metadata :as sync-metadata]
+    [metabase.sync.sync-metadata.tables :as sync-tables]
+    [metabase.sync.util :as sync-util]
+    [metabase.util :as u]
+    [schema.core :as s]
+    [toucan.db :as db])
   (:import
    (java.time.temporal Temporal)))
 
@@ -76,3 +83,24 @@
                                              (sync-util/name-for-logging field))
         (fingerprint/refingerprint-field field))
       :sync/no-connection)))
+
+(s/defn sync-new-table!
+  "Given the name and schema for a new table (one that exists in the user's db but not as a Metabase table), add the
+  table to Metabase and sync the new table's metadata."
+  [db :- i/DatabaseInstance
+   {:keys [schema-name table-name]} :- {:schema-name s/Str
+                                        :table-name  s/Str}]
+  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
+    (if (sql-jdbc.sync.interface/have-select-privilege? (:engine db) conn schema-name table-name)
+      (let [update-spec {:name table-name, :schema schema-name :description nil}]
+        (if (->> {:tables #{update-spec}}
+                 (sync-tables/sync-tables-and-database! db)
+                 :updated-tables
+                 pos?)
+          (when-some [table (db/select-one 'Table
+                                           :db_id (u/the-id db)
+                                           :schema schema-name
+                                           :name table-name)]
+            (sync-table! table))
+          (log/debugf "Table '%s' already exists." table-name)))
+      (log/debugf "Table '%s' does not exist or you do not have permission to view it." table-name))))
