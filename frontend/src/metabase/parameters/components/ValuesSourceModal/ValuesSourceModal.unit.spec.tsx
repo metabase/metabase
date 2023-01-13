@@ -109,7 +109,7 @@ describe("ValuesSourceModal", () => {
         screen.queryByRole("heading", { name: "ID" }),
       ).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("heading", { name: /Category/ }));
+      userEvent.click(screen.getByRole("heading", { name: "Category" }));
       userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(onSubmit).toHaveBeenCalledWith("card", {
         card_id: 1,
@@ -141,7 +141,9 @@ describe("ValuesSourceModal", () => {
         }),
       });
 
-      userEvent.click(screen.getByRole("radio", { name: /connected fields/ }));
+      userEvent.click(
+        screen.getByRole("radio", { name: "From connected fields" }),
+      );
       userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
 
       expect(screen.getByRole("textbox")).toHaveValue("Gadget\nWidget");
