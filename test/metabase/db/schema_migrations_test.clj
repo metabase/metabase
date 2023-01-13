@@ -839,7 +839,7 @@
       (let [visualization-settings
             {"column_settings" {"[\"ref\",[\"field-id\",39]]"                                 {"column_title" "ID1"}
                                 "[\"ref\",[\"field\",40,null]]"                               {"column_title" "ID2"}
-                                "[\"ref\",[\"fk->\",[\"field-id\",39] [\"field-id\",40]]]"    {"column_title" "ID3"}
+                                "[\"ref\",[\"fk->\",[\"field-id\",39],[\"field-id\",40]]]"    {"column_title" "ID3"}
                                 "[\"ref\",[\"fk->\",41,42]]"                                  {"column_title" "ID4"}
                                 "[\"ref\",[\"field-literal\",\"column_name\",\"type/Text\"]]" {"column_title" "ID5"}
                                 "[\"name\",\"column_name\"]"                                  {"column_title" "ID6"}}}
