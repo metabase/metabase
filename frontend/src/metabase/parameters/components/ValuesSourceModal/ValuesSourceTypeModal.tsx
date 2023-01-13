@@ -68,7 +68,7 @@ interface ModalCardProps {
 
 interface ModalStateProps {
   question: Question | undefined;
-  fieldValues: string[][][];
+  fieldsValues: string[][][];
   isLoadingFieldValues: boolean;
 }
 
@@ -88,7 +88,7 @@ type ModalProps = ModalOwnProps &
 const ValuesSourceTypeModal = ({
   name,
   fields,
-  fieldValues,
+  fieldsValues,
   isLoadingFieldValues,
   question,
   sourceType,
@@ -127,7 +127,7 @@ const ValuesSourceTypeModal = ({
       {sourceType === null ? (
         <FieldSourceModal
           fields={fields}
-          fieldValues={fieldValues}
+          fieldsValues={fieldsValues}
           isLoadingFieldValues={isLoadingFieldValues}
           sourceType={sourceType}
           onChangeSourceType={handleTypeChange}
@@ -155,7 +155,7 @@ const ValuesSourceTypeModal = ({
 
 interface FieldSourceModalProps {
   fields: Field[];
-  fieldValues: unknown[][][];
+  fieldsValues: unknown[][][];
   isLoadingFieldValues: boolean;
   sourceType: ValuesSourceType;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
@@ -163,21 +163,21 @@ interface FieldSourceModalProps {
 
 const FieldSourceModal = ({
   fields,
-  fieldValues,
+  fieldsValues,
   isLoadingFieldValues,
   sourceType,
   onChangeSourceType,
 }: FieldSourceModalProps) => {
-  const fieldSourceValues = useMemo(() => {
-    return getFieldSourceValues(fieldValues);
-  }, [fieldValues]);
+  const fieldValues = useMemo(() => {
+    return getFieldSourceValues(fieldsValues);
+  }, [fieldsValues]);
 
   const fieldValuesText = useMemo(() => {
-    return getValuesText(fieldSourceValues);
-  }, [fieldSourceValues]);
+    return getValuesText(fieldValues);
+  }, [fieldValues]);
 
   const hasFields = fields.length > 0;
-  const hasFieldValues = fieldSourceValues.length > 0;
+  const hasFieldValues = fieldValues.length > 0;
 
   return (
     <ModalBodyWithPane>
@@ -385,7 +385,7 @@ const mapStateToProps = (
   { card, fields }: ModalOwnProps & ModalCardProps,
 ): ModalStateProps => ({
   question: card ? new Question(card, getMetadata(state)) : undefined,
-  fieldValues: fields.map(field =>
+  fieldsValues: fields.map(field =>
     Fields.selectors.getFieldValues(state, { entityId: field.id }),
   ),
   isLoadingFieldValues: fields.every(field =>

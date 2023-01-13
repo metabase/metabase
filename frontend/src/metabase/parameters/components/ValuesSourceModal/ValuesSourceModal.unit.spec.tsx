@@ -32,9 +32,6 @@ describe("ValuesSourceModal", () => {
         parameter: createMockUiParameter({
           fields: [new Field(createMockField())],
         }),
-        fieldValues: createMockFieldValues({
-          values: [],
-        }),
       });
 
       expect(
@@ -45,15 +42,25 @@ describe("ValuesSourceModal", () => {
     it("should show unique non-null mapped fields values", async () => {
       setup({
         parameter: createMockUiParameter({
-          fields: [new Field(createMockField())],
+          fields: [
+            new Field(createMockField({ id: 1 })),
+            new Field(createMockField({ id: 2 })),
+          ],
         }),
-        fieldValues: createMockFieldValues({
-          values: [["Gadget"], [null], ["Widget"], ["Gadget"]],
-        }),
+        fieldsValues: [
+          createMockFieldValues({
+            field_id: 1,
+            values: [["A"], [null], ["B"], ["A"]],
+          }),
+          createMockFieldValues({
+            field_id: 2,
+            values: [["B", "Remapped"], ["C"]],
+          }),
+        ],
       });
 
       await waitFor(() => {
-        expect(screen.getByRole("textbox")).toHaveValue("Gadget\nWidget");
+        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
       });
     });
   });
@@ -75,12 +82,12 @@ describe("ValuesSourceModal", () => {
 
 interface SetupOpts {
   parameter?: UiParameter;
-  fieldValues?: FieldValues;
+  fieldsValues?: FieldValues[];
 }
 
 const setup = ({
   parameter = createMockUiParameter(),
-  fieldValues = createMockFieldValues(),
+  fieldsValues = [],
 }: SetupOpts = {}) => {
   const scope = nock(location.origin);
   const onSubmit = jest.fn();
@@ -93,7 +100,9 @@ const setup = ({
     }),
   ]);
 
-  setupFieldValuesEndpoints(scope, fieldValues);
+  fieldsValues?.forEach(fieldValues => {
+    setupFieldValuesEndpoints(scope, fieldValues);
+  });
 
   renderWithProviders(
     <ValuesSourceModal
