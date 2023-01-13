@@ -6,10 +6,11 @@
    (liquibase.database.core H2Database)
    (liquibase.database.jvm JdbcConnection)))
 
-(defn create-udfs! [conn]
-  ;; JSON_STRING_VALUE, like JSON_VALUE but returns a string
+(defn create-udfs!
+  "Registers the JSON manipulation functions for an H2 database."
+  [conn]
   (.execute (.createStatement conn) "
-CREATE ALIAS IF NOT EXISTS JSON_STRING_VALUE AS $$
+CREATE ALIAS IF NOT EXISTS JSON_VALUE AS $$
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 import org.json.simple.JSONArray;
