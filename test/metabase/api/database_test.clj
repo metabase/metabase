@@ -284,26 +284,26 @@
     (testing "Check that a superuser can delete a Database"
       (mt/with-temp Database [db]
         (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db))
-                              {:confirmation (#'api.database/database-usage-info (:id db))})
+                              {:usage_info (#'api.database/database-usage-info (:id db))})
         (is (false? (db/exists? Database :id (u/the-id db))))))
 
     (testing "Check that a non-superuser cannot delete a Database"
       (mt/with-temp Database [db]
         (mt/user-http-request :rasta :delete 403 (format "database/%d" (:id db))
-                              {:confirmation (#'api.database/database-usage-info (:id db))})))
+                              {:usage_info (#'api.database/database-usage-info (:id db))})))
 
-    (testing "Check that fail if provide an invalid confirmation info"
+    (testing "Check that fail if provide an invalid usage info"
       (mt/with-temp*
         [Database [{db-id :id}]
          Card     [_ {:database_id db-id}]
          Card     [_ {:database_id db-id
                       :dataset     true}]]
-        (is (= "Invalid confirmation info."
+        (is (= "Invalid usage info."
                (:message (mt/user-http-request :crowberto :delete 400 (format "database/%d" db-id)
-                                              {:confirmation {:metric   0
-                                                              :question 0
-                                                              :dataset  0
-                                                              :segment  0}}))))))))
+                                              {:usage_info {:metric   0
+                                                            :question 0
+                                                            :dataset  0
+                                                            :segment  0}}))))))))
 
 
 (deftest update-database-test

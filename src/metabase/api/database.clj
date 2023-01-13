@@ -940,7 +940,7 @@
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
-(def ^:private DeleteConfirmation
+(def ^:private DatabaseUsageInfo
   (mc/schema
     (into [:map]
           (for [model database-usage-models]
@@ -949,18 +949,18 @@
 (api/defendpoint DELETE "/:id"
   "Delete a `Database`.
 
-  Has to provide a confirmation payload in which keys are the list of models,
+  Has to provide a usage_info in which keys are the list of models,
   and values are the number of entities that use this database.
 
   One way to get this information is by calling GET /api/database/:id/usage_info"
-  [id :as {{:keys [confirmation]} :body}]
-  {id           ms/IntGreaterThanZero
-   confirmation DeleteConfirmation}
+  [id :as {{:keys [usage_info]} :body}]
+  {id         ms/IntGreaterThanZero
+   usage_info DatabaseUsageInfo}
   (api/check-superuser)
-  (when-not (= confirmation (database-usage-info id))
-    (throw (ex-info (tru "Invalid confirmation info.")
-                    {:confirmation confirmation
-                     :db-id        id
+  (when-not (= usage_info (database-usage-info id))
+    (throw (ex-info (tru "Invalid usage info.")
+                    {:usage_info  usage_info
+                     :db-id       id
                      :status-code 400})))
   (api/let-404 [db (db/select-one Database :id id)]
     (db/delete! Database :id id)

@@ -375,7 +375,7 @@
   (mt/with-temp Database [{db-id :id}]
     (testing "A non-admin cannot delete a database even if they have DB details permissions"
       (with-all-users-data-perms {db-id {:details :yes}}
-        (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id) {:confirmation (#'api.database/database-usage-info db-id)})))))
+        (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id) {:usage_info (#'api.database/database-usage-info db-id)})))))
 
 (deftest db-operations-test
   (mt/with-temp* [Database    [{db-id :id}     {:engine "h2", :details (:details (mt/db))}]
