@@ -25,6 +25,7 @@ import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
 
+import CreateActionForm from "../CreateActionForm";
 import ActionCreatorHeader from "./ActionCreatorHeader";
 import QueryActionEditor from "./QueryActionEditor";
 import FormCreator from "./FormCreator";
@@ -109,23 +110,7 @@ function ActionCreatorComponent({
 
   const query = question.query() as NativeQuery;
 
-  const afterSave = (action: SavedCard) => {
-    setQuestion(question.setCard(action));
-    setTimeout(() => setShowSaveModal(false), 1000);
-    onClose?.();
-  };
-
-  const handleClose = () => setShowSaveModal(false);
-
   const isNew = !actionId && !(question.card() as SavedCard).id;
-
-  const handleExampleClick = () => {
-    const sampleQuery =
-      "UPDATE products\nSET rating = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
-    setQuestion(
-      question.setQuery(query.setQueryText(query.queryText() + sampleQuery)),
-    );
-  };
 
   const handleSaveClick = () => {
     if (isNew) {
@@ -141,6 +126,22 @@ function ActionCreatorComponent({
       });
       onClose?.();
     }
+  };
+
+  const handleOnSave = (action: WritebackQueryAction) => {
+    setQuestion(question.setCard(action as unknown as SavedCard));
+    setTimeout(() => setShowSaveModal(false), 1000);
+    onClose?.();
+  };
+
+  const handleClose = () => setShowSaveModal(false);
+
+  const handleExampleClick = () => {
+    const sampleQuery =
+      "UPDATE products\nSET rating = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
+    setQuestion(
+      question.setQuery(query.setQueryText(query.queryText() + sampleQuery)),
+    );
   };
 
   return (
@@ -192,20 +193,13 @@ function ActionCreatorComponent({
         </ModalRoot>
       </Modal>
       {showSaveModal && (
-        <Modal onClose={handleClose}>
-          <Actions.ModalForm
-            title={isNew ? t`New action` : t`Save action`}
-            form={isNew ? Actions.forms.saveForm : Actions.forms.updateForm}
-            action={{
-              id: (question.card() as SavedCard).id,
-              name: question?.displayName() ?? t`New Action`,
-              description: question.description(),
-              model_id: defaultModelId,
-              formSettings,
-              question,
-            }}
-            onSaved={afterSave}
-            onClose={handleClose}
+        <Modal title={t`New Action`} onClose={handleClose}>
+          <CreateActionForm
+            question={question}
+            formSettings={formSettings as ActionFormSettings}
+            modelId={defaultModelId}
+            onCreate={handleOnSave}
+            onCancel={handleClose}
           />
         </Modal>
       )}

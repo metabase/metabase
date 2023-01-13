@@ -18,7 +18,6 @@ import {
   setTemplateTagTypesFromFieldSettings,
 } from "metabase/entities/actions/utils";
 import type Question from "metabase-lib/Question";
-import { saveForm, updateForm } from "./forms";
 
 export type ActionParams = {
   id?: WritebackAction["id"];
@@ -35,7 +34,7 @@ interface BaseCreateActionParams {
   model_id: WritebackActionBase["model_id"];
   name: WritebackActionBase["name"];
   description: WritebackActionBase["description"];
-  parameters: WritebackActionBase["parameters"];
+  parameters?: WritebackActionBase["parameters"];
 }
 
 interface UpdateActionParams {
@@ -201,10 +200,6 @@ const Actions = createEntity({
   },
   actions: {
     enableImplicitActionsForModel,
-  },
-  forms: {
-    saveForm,
-    updateForm,
   },
 });
 
