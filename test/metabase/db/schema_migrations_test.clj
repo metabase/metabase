@@ -836,22 +836,25 @@
                                 "[\"ref\",[\"field\",40,{\"source-field\":39}]]"                      {"column_title" "ID3"}
                                 "[\"ref\",[\"field\",\"column_name\",{\"base-type\":\"type/Text\"}]]" {"column_title" "ID4"}
                                 "[\"name\",\"column_name\"]"                                          {"column_title" "ID5"}}}
-            user-id
-            (db/simple-insert! User {:first_name  "Howard"
-                                     :last_name   "Hughes"
-                                     :email       "howard@aircraft.com"
-                                     :password    "superstrong"
-                                     :date_joined :%now})
-            database-id (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now, :details "{}"})
-            card-id (db/simple-insert! Card {:name                   "My Saved Question"
-                                             :created_at             :%now
-                                             :updated_at             :%now
-                                             :creator_id             user-id
-                                             :display                "table"
-                                             :dataset_query          "{}"
-                                             :visualization_settings (json/generate-string visualization-settings)
-                                             :database_id            database-id
-                                             :collection_id          nil})]
+            user-id     (db/simple-insert! User {:first_name  "Howard"
+                                                 :last_name   "Hughes"
+                                                 :email       "howard@aircraft.com"
+                                                 :password    "superstrong"
+                                                 :date_joined :%now})
+            database-id (db/simple-insert! Database {:name       "DB"
+                                                     :engine     "h2"
+                                                     :created_at :%now
+                                                     :updated_at :%now
+                                                     :details    "{}"})
+            card-id     (db/simple-insert! Card {:name                   "My Saved Question"
+                                                 :created_at             :%now
+                                                 :updated_at             :%now
+                                                 :creator_id             user-id
+                                                 :display                "table"
+                                                 :dataset_query          "{}"
+                                                 :visualization_settings (json/generate-string visualization-settings)
+                                                 :database_id            database-id
+                                                 :collection_id          nil})]
         (migrate!)
         (is (= expected
                (-> (db/query {:select [:visualization_settings]
