@@ -4,10 +4,7 @@ import {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import {
-  getFields,
-  getNonVirtualFields,
-} from "metabase-lib/parameters/utils/parameter-fields";
+import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
 import Field from "metabase-lib/metadata/Field";
 
 export const isValidSourceConfig = (

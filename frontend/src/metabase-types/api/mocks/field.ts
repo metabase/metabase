@@ -18,6 +18,8 @@ export const createMockField = (opts?: Partial<Field>): Field => ({
   position: 1,
   nfc_path: null,
 
+  has_field_values: "list",
+
   last_analyzed: new Date().toISOString(),
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),

@@ -46,6 +46,8 @@ export type FieldVisibilityType =
 type HumanReadableFieldValue = string;
 type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
 
+export type FieldValuesType = "list" | "search" | "none";
+
 export type FieldDimension = {
   name: string;
 };
@@ -74,6 +76,7 @@ export interface ConcreteField {
 
   max_value?: number;
   min_value?: number;
+  has_field_values: FieldValuesType;
 
   caveats?: string | null;
   points_of_interest?: string;
