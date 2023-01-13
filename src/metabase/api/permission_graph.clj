@@ -98,7 +98,7 @@
     [:details {:optional true} [:enum :yes :no]]
     [:execute {:optional true} [:enum :all :none]]]])
 
-(def ^:private strict-db-graph
+(def strict-db-graph
   (-> db-graph
       (mut/assoc-in [1 :data] strict-data-perms)
       (mut/assoc-in [1 :download] strict-data-perms)
