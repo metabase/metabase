@@ -35,7 +35,7 @@
 ;;integer schema that knows how to decode itself from the :123 sort of shape used in perm-graphs
 (def decodable-kw-int
   [:int {:decode/perm-graph
-         (fn thing [kw-int]
+         (fn kw-int->int-decoder [kw-int]
            (if (int? kw-int)
              kw-int
              (Integer/parseInt (name kw-int))))}])
@@ -49,7 +49,6 @@
 (def native [:maybe [:enum :write :none :full :limited]])
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
-
 
 (def ^:private table-perms
   [:or
@@ -78,7 +77,7 @@
    [:native {:optional true} native]
    [:schemas {:optional true} schemas]])
 
-(def ^:private strict-data-perms
+(def strict-data-perms
   [:and
    data-perms
    [:fn {:error/fn (constantly
@@ -109,8 +108,10 @@
   "Used to transform, and verify data permissions graph"
   [:map [:groups [:map-of id db-graph]]])
 
-(def strict-data-permissions-graph
-  [:map [:groups [:map-of id strict-db-graph]]])
+(def strict-data
+  [:map
+   [:groups [:map-of id strict-db-graph]]
+   [:revision int?]])
 
 ;;; --------------------------------------------- Collection Permissions ---------------------------------------------
 
