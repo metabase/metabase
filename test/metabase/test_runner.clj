@@ -102,9 +102,9 @@
       (do
         (load-test-namespace symb)
         (let [ns-tag (-> symb find-ns meta :mb/tag)]
-         (if (and (seq *exclude-tags*) ns-tag (contains? *exclude-tags* ns-tag))
-           (println (format "Skipping tests in `%s` due to :exclude-once" symb))
-           (eftest.runner/find-tests symb)))))))
+          (if (and (seq *exclude-tags*) ns-tag (contains? *exclude-tags* ns-tag))
+            (println (format "Skipping tests in `%s` due to :exclude-once" symb))
+            (eftest.runner/find-tests symb)))))))
 
 ;; default -- look in all dirs on the classpath
 (defmethod find-tests nil
