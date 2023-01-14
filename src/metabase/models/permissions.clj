@@ -173,6 +173,7 @@
    [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
+   [metabase.api.permission-graph :as api.permission-graph]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -192,8 +193,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]
-   [metabase.api.permission-graph :as api.permission-graph]))
+   [toucan.models :as models]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |

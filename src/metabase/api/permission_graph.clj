@@ -7,8 +7,6 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as gen]
    [clojure.walk :as walk]
-   [malli.core :as mc]
-   [malli.error :as me] ;; umd/describe
    [malli.util :as mut]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]))
@@ -32,8 +30,8 @@
 
 ;;; --------------------------------------------------- Common ----------------------------------------------------
 
-;;integer schema that knows how to decode itself from the :123 sort of shape used in perm-graphs
 (def decodable-kw-int
+  "Integer malli schema that knows how to decode itself from the :123 sort of shape used in perm-graphs"
   [:int {:decode/perm-graph
          (fn kw-int->int-decoder [kw-int]
            (if (int? kw-int)
@@ -46,7 +44,9 @@
 (s/def ::id (s/with-gen (s/or :kw->int (s/and keyword? #(re-find #"^\d+$" (name %))))
               #(gen/fmap (comp keyword str) (s/gen pos-int?))))
 
-(def native [:maybe [:enum :write :none :full :limited]])
+(def native
+  "native permissions"
+  [:maybe [:enum :write :none :full :limited]])
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
@@ -78,6 +78,7 @@
    [:schemas {:optional true} schemas]])
 
 (def strict-data-perms
+  "data perms that care about how native and schemas keys related to one another"
   [:and
    data-perms
    [:fn {:error/fn (constantly
@@ -98,17 +99,19 @@
     [:execute {:optional true} [:enum :all :none]]]])
 
 (def strict-db-graph
+  "like db-graph, but strict"
   (-> db-graph
       (mut/assoc-in [1 :data] strict-data-perms)
       (mut/assoc-in [1 :download] strict-data-perms)
       (mut/assoc-in [1 :data-model] strict-data-perms)
-      (mut/update 0 mut/update-properties assoc :title "strict db graph")))
+      (mut/update 0 mut/update-properties assoc :title "Strict Data Graph")))
 
 (def data-permissions-graph
   "Used to transform, and verify data permissions graph"
   [:map [:groups [:map-of id db-graph]]])
 
 (def strict-data
+  "Top level strict data graph schema"
   [:map
    [:groups [:map-of id strict-db-graph]]
    [:revision int?]])
