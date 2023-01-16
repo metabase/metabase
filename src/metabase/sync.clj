@@ -9,23 +9,23 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the `sync-database!` function to do all three at once."
   (:require
-    [clojure.java.jdbc :as jdbc]
-    [clojure.tools.logging :as log]
-    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-    [metabase.driver.util :as driver.u]
-    [metabase.models.field :as field]
-    [metabase.models.table :as table]
-    [metabase.sync.analyze :as analyze]
-    [metabase.sync.analyze.fingerprint :as fingerprint]
-    [metabase.sync.field-values :as field-values]
-    [metabase.sync.interface :as i]
-    [metabase.sync.sync-metadata :as sync-metadata]
-    [metabase.sync.sync-metadata.tables :as sync-tables]
-    [metabase.sync.util :as sync-util]
-    [metabase.util :as u]
-    [schema.core :as s]
-    [toucan.db :as db])
+   [clojure.java.jdbc :as jdbc]
+   [clojure.tools.logging :as log]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.field :as field]
+   [metabase.models.table :as table]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.field-values :as field-values]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db])
   (:import
    (java.time.temporal Temporal)))
 
