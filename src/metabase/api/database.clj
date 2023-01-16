@@ -402,6 +402,7 @@
              [:in :table_id table-ids]
              always-false-hsql-expr)})
 
+
 (defn- database-usage-info
   [db-id]
   (let [table-ids (db/select-ids Table :db_id db-id)]
@@ -412,6 +413,7 @@
                             :when query]
                         [query model])}))))
 
+
 (api/defendpoint GET "/:id/usage_info"
   "Get usage info for a database.
   Returns a map with keys are models and values are the number of entities that use this database."
@@ -420,6 +422,7 @@
   (api/check-superuser)
   (api/check-404 (db/exists? Database :id id))
   (database-usage-info id))
+
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 

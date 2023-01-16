@@ -194,7 +194,7 @@
                                      (format "database/%d/usage_info" non-existing-db-id)))))))
   (mt/with-temp*
     [Database [{db-id :id}]]
-    (testing "should works with DB that has no tables"
+    (testing "should work with DB that has no tables"
       (is (= {:question 0
               :dataset  0
               :metric   0

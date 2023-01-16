@@ -40,7 +40,7 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 
-import NewModelOptions from "metabase/new_model/containers/NewModelOptions";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
 
 import { Unauthorized } from "metabase/containers/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";

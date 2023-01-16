@@ -8,7 +8,7 @@ import {
   waitForElementToBeRemoved,
 } from "__support__/ui";
 import {
-  setupCollectionEndpoints,
+  setupCollectionsEndpoints,
   setupCollectionVirtualSchemaEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
@@ -20,12 +20,12 @@ import {
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
-import type { Collection } from "metabase-types/api";
-
+import { Collection } from "metabase-types/api";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import type Database from "metabase-lib/metadata/Database";
+import Database from "metabase-lib/metadata/Database";
+import Table from "metabase-lib/metadata/Table";
 
 import type { DataPickerValue, DataPickerFiltersProp } from "../types";
 import useDataPickerValue from "../useDataPickerValue";
@@ -130,26 +130,26 @@ export async function setup({
   const scope = nock(location.origin);
 
   if (hasDataAccess) {
-    const databases: Database[] = [SAMPLE_DATABASE];
+    const databases = [getDatabaseObject(SAMPLE_DATABASE)];
 
     if (hasMultiSchemaDatabase) {
-      databases.push(MULTI_SCHEMA_DATABASE);
+      databases.push(getDatabaseObject(MULTI_SCHEMA_DATABASE));
     }
 
     if (hasEmptyDatabase) {
-      databases.push(ANOTHER_DATABASE);
+      databases.push(getDatabaseObject(ANOTHER_DATABASE));
     }
 
     setupDatabasesEndpoints(scope, databases);
   } else {
-    scope.get("/api/database").reply(200, []);
+    setupDatabasesEndpoints(scope, []);
   }
 
   scope
     .get("/api/search?models=dataset&limit=1")
     .reply(200, { data: hasModels ? [SAMPLE_MODEL] : [] });
 
-  setupCollectionEndpoints(scope, [SAMPLE_COLLECTION, EMPTY_COLLECTION]);
+  setupCollectionsEndpoints(scope, [SAMPLE_COLLECTION, EMPTY_COLLECTION]);
 
   setupCollectionVirtualSchemaEndpoints(
     scope,
@@ -193,4 +193,18 @@ export async function setup({
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
 
   return { onChange };
+}
+
+function getDatabaseObject(database: Database) {
+  return {
+    ...database.getPlainObject(),
+    tables: database.tables.map(getTableObject),
+  };
+}
+
+function getTableObject(table: Table) {
+  return {
+    ...table.getPlainObject(),
+    schema: table.schema_name,
+  };
 }

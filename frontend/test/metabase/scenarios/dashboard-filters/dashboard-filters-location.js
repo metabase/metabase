@@ -1,5 +1,5 @@
 export const DASHBOARD_LOCATION_FILTERS = {
-  Dropdown: {
+  Is: {
     value: "Abbeville",
     representativeResult: "1510",
   },
