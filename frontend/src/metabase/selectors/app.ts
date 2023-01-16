@@ -1,7 +1,6 @@
 import { Location } from "history";
 import { createSelector } from "reselect";
-import { t } from "ttag";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getUser } from "metabase/selectors/user";
 import {
   getIsEditing as getIsEditingDashboard,
   getDashboard,

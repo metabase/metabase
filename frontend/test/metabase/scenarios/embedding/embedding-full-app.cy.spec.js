@@ -130,6 +130,7 @@ describe("scenarios > embedding > full app", () => {
       cy.button("Filter").should("not.exist");
     });
 
+    // TODO: move the whole suite to unit tests
     describe("desktop logo", () => {
       it("should be able to toggle side nav", () => {
         // default logo: true

@@ -111,7 +111,7 @@ function App({
       <ScrollToTop>
         <AppContainer className="spread">
           <AppBanner />
-          {isAppBarVisible && <AppBar isNavBarEnabled={isNavBarEnabled} />}
+          {isAppBarVisible && <AppBar />}
           <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarEnabled && <Navbar />}
             <AppContent ref={setViewportElement}>

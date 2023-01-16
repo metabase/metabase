@@ -4,7 +4,7 @@ import {
   handleActions,
 } from "metabase/lib/redux";
 
-const DEFAULT_OPTIONS = {
+export const DEFAULT_EMBED_OPTIONS = {
   top_nav: true,
   side_nav: "default",
   search: false,
@@ -21,7 +21,10 @@ export const setOptions = createAction(SET_OPTIONS);
 
 const options = handleActions(
   {
-    [SET_OPTIONS]: (state, { payload }) => ({ ...DEFAULT_OPTIONS, ...payload }),
+    [SET_OPTIONS]: (state, { payload }) => ({
+      ...DEFAULT_EMBED_OPTIONS,
+      ...payload,
+    }),
   },
   {},
 );
