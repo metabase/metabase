@@ -2064,11 +2064,11 @@
 
     (testing "It uses the results of the card's query execution"
       (let-url [url (chain-filter-values-url dashboard-id "abc")]
-        (is (= {:values          ["Red Medicine"
+        (is (= {:values          ["Brite Spot Family Restaurant"
+                                  "Red Medicine"
                                   "Stout Burgers & Beers"
                                   "The Apple Pan"
-                                  "Wurstküche"
-                                  "Brite Spot Family Restaurant"]
+                                  "Wurstküche"]
                 :has_more_values false}
                (mt/user-http-request :rasta :get 200 url)))))
 
