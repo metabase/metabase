@@ -28,6 +28,7 @@ export default class GroupMappingsWidget extends React.Component {
       mappings: {},
       saveError: null,
       dnForVisibleDeleteMappingModal: null,
+      groupIdsForVisibleDeleteMappingModal: null,
       whenDeletingMappingGroups: {
         groupsToClearAllPermissions: [],
         groupsToDelete: [],
@@ -84,11 +85,12 @@ export default class GroupMappingsWidget extends React.Component {
     }
   };
 
-  handleShowDeleteMappingModal = dn => {
+  handleShowDeleteMappingModal = (groups, dn) => {
     this.setState({
       showDeleteMappingModal: true,
       showEditModal: false,
       dnForVisibleDeleteMappingModal: dn,
+      groupIdsForVisibleDeleteMappingModal: groups,
     });
   };
 
@@ -97,32 +99,37 @@ export default class GroupMappingsWidget extends React.Component {
       showDeleteMappingModal: false,
       showEditModal: true,
       dnForVisibleDeleteMappingModal: null,
+      groupIdsForVisibleDeleteMappingModal: null,
     });
   };
 
-  handleConfirmDeleteMappingGroup = (whatToDoAboutGroup, dn) => {
-    if (whatToDoAboutGroup === "nothing") {
+  handleConfirmDeleteMappingGroup = (whatToDoAboutGroups, groups, dn) => {
+    this._deleteMapping(dn);
+    this.setState({
+      showDeleteMappingModal: false,
+      showEditModal: true,
+      dnForVisibleDeleteMappingModal: null,
+      groupIdsForVisibleDeleteMappingModal: null,
+    });
+
+    if (whatToDoAboutGroups === "nothing") {
       return;
     }
 
     const stateKey = {
       clearAllPermissions: "groupsToClearAllPermissions",
       delete: "groupsToDelete",
-    }[whatToDoAboutGroup];
+    }[whatToDoAboutGroups];
 
     this.setState(({ whenDeletingMappingGroups }) => ({
       whenDeletingMappingGroups: {
         ...whenDeletingMappingGroups,
-        [stateKey]: whenDeletingMappingGroups[stateKey].push(dn),
+        [stateKey]: _.uniq(whenDeletingMappingGroups[stateKey].concat(groups)),
       },
     }));
-
-    console.log("🚀", "Confirmed", whatToDoAboutGroup, this.state);
   };
 
-  _deleteMapping = dn => e => {
-    e.preventDefault();
-
+  _deleteMapping = dn => {
     this.setState(prevState => ({
       mappings: _.omit(prevState.mappings, dn),
     }));
@@ -130,7 +137,16 @@ export default class GroupMappingsWidget extends React.Component {
 
   _cancelClick = e => {
     e.preventDefault();
-    this.setState({ showEditModal: false, showAddRow: false });
+    this.setState({
+      showEditModal: false,
+      showAddRow: false,
+      dnForVisibleDeleteMappingModal: null,
+      groupIdsForVisibleDeleteMappingModal: null,
+      whenDeletingMappingGroups: {
+        groupsToClearAllPermissions: [],
+        groupsToDelete: [],
+      },
+    });
   };
 
   _saveClick = e => {
@@ -161,6 +177,7 @@ export default class GroupMappingsWidget extends React.Component {
       mappings,
       saveError,
       dnForVisibleDeleteMappingModal,
+      groupIdsForVisibleDeleteMappingModal,
     } = this.state;
 
     return (
@@ -208,7 +225,9 @@ export default class GroupMappingsWidget extends React.Component {
                       groups={groups || []}
                       selectedGroups={ids}
                       onChange={this._changeMapping(dn)}
-                      onDelete={() => this.handleShowDeleteMappingModal(dn)}
+                      onDelete={() =>
+                        this.handleShowDeleteMappingModal(ids, dn)
+                      }
                     />
                   ))}
                 </AdminContentTable>
@@ -231,6 +250,7 @@ export default class GroupMappingsWidget extends React.Component {
         {showDeleteMappingModal ? (
           <DeleteGroupMappingModal
             dn={dnForVisibleDeleteMappingModal}
+            groupIds={groupIdsForVisibleDeleteMappingModal}
             onHide={this.handleHideDeleteMappingModal}
             onConfirm={this.handleConfirmDeleteMappingGroup}
           />
