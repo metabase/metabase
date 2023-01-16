@@ -83,7 +83,7 @@
     "react-sortable-hoc": "^1.11.0",
     "react-textarea-autosize": "^5.2.1",
     "react-transition-group": "1",
-    "react-virtualized": "^9.7.2",
+    "react-virtualized": "^9.22.3",
     "redux": "^4.2.0",
     "redux-actions": "^2.0.1",
     "redux-auth-wrapper": "^1.0.0",
