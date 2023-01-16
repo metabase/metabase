@@ -11,6 +11,8 @@ import Toggle from "metabase/core/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/core/components/Select";
 
+import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
+import { canUseCustomSource } from "metabase/parameters/utils/parameter-type";
 import { getParameterOptionsForField } from "metabase/parameters/utils/template-tag-options";
 
 import { fetchField } from "metabase/redux/metadata";
@@ -273,6 +275,24 @@ export class TagEditorParam extends Component {
             onChange={value => this.setRequired(value)}
           />
         </InputContainer>
+
+        {parameter && canUseCustomSource(parameter) && (
+          <InputContainer>
+            <ContainerLabel>{t`How should users filter on this column?`}</ContainerLabel>
+            <ValuesSourceSettings
+              parameter={parameter}
+              onChangeQueryType={value =>
+                this.setParameterAttribute("values_query_type", value)
+              }
+              onChangeSourceType={value =>
+                this.setParameterAttribute("values_source_type", value)
+              }
+              onChangeSourceConfig={value =>
+                this.setParameterAttribute("values_source_config", value)
+              }
+            />
+          </InputContainer>
+        )}
 
         {((tag.type !== "dimension" && tag.required) ||
           tag.type === "dimension" ||
