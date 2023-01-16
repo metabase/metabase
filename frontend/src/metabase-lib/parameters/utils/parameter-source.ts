@@ -1,11 +1,24 @@
 import {
   Dataset,
   Parameter,
+  ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
 import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
 import Field from "metabase-lib/metadata/Field";
+
+export const getQueryType = (parameter: Parameter): ValuesQueryType => {
+  return parameter.values_query_type ?? "list";
+};
+
+export const getSourceType = (parameter: Parameter): ValuesSourceType => {
+  return parameter.values_source_type ?? null;
+};
+
+export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
+  return parameter.values_source_config ?? {};
+};
 
 export const isValidSourceConfig = (
   sourceType: ValuesSourceType,
@@ -38,9 +51,9 @@ export const getSourceConfigForType = (
 export const canListParameterValues = (parameter: Parameter) => {
   const fields = getFields(parameter);
 
-  if (parameter.values_query_type !== "list") {
+  if (getQueryType(parameter) !== "list") {
     return false;
-  } else if (parameter.values_source_type != null) {
+  } else if (getSourceType(parameter) != null) {
     return true;
   } else {
     return canListFieldValues(fields);
@@ -62,9 +75,9 @@ export const canSearchParameterValues = (
 ) => {
   const fields = getFields(parameter);
 
-  if (parameter.values_query_type === "none") {
+  if (getQueryType(parameter) === "none") {
     return false;
-  } else if (parameter.values_source_type != null) {
+  } else if (getSourceType(parameter) != null) {
     return true;
   } else {
     return canSearchFieldValues(fields, disablePKRemapping);

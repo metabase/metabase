@@ -42,7 +42,6 @@ describe("canListParameterValues", () => {
           }),
         ),
       ],
-      values_query_type: "list",
     });
 
     expect(canListParameterValues(parameter)).toBeTruthy();
@@ -51,7 +50,6 @@ describe("canListParameterValues", () => {
   it("should not list with the default source when there are no fields", () => {
     const parameter = createMockUiParameter({
       fields: [],
-      values_query_type: "list",
     });
 
     expect(canListParameterValues(parameter)).toBeFalsy();
@@ -73,7 +71,6 @@ describe("canListParameterValues", () => {
           }),
         ),
       ],
-      values_query_type: "list",
     });
 
     expect(canListParameterValues(parameter)).toBeFalsy();
@@ -88,7 +85,6 @@ describe("canListParameterValues", () => {
           }),
         ),
       ],
-      values_query_type: "list",
       values_source_type: "card",
       values_source_config: {
         card_id: 1,
@@ -108,7 +104,6 @@ describe("canListParameterValues", () => {
           }),
         ),
       ],
-      values_query_type: "list",
       values_source_type: "static-list",
       values_source_config: {
         values: ["A", "B"],
