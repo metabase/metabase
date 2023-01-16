@@ -28,6 +28,7 @@ import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
+import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
   DataPickerContainer,
   ModalBodyWithSearch,
@@ -195,12 +196,12 @@ export default _.compose(
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     entityAlias: "card",
-    loadingAndErrorWrapper: false,
+    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   Collections.load({
     id: (state: State, { card }: ModalCardProps) =>
       card?.collection_id ?? "root",
-    loadingAndErrorWrapper: false,
+    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(ValuesSourceCardModal);
