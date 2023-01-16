@@ -101,15 +101,16 @@ function ModelActionDetails({
                     action: handleEnableImplicitActions,
                   },
                 ]}
+                triggerProps={{ "data-testid": "new-action-menu" }}
               />
             )}
           </>
         )}
       </ActionsHeader>
       {actions.length > 0 ? (
-        <ActionList>
+        <ActionList aria-label={t`Action list`}>
           {actionsSorted.map(action => (
-            <li key={action.id}>
+            <li key={action.id} aria-label={action.name}>
               <ModelActionListItem
                 action={action}
                 onEdit={canWrite ? () => handleEditAction(action) : undefined}
