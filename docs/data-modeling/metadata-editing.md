@@ -24,7 +24,7 @@ You'll find a playground of knobs and buttons that'll let you:
 
 ## Data Model vs. models
 
-Non-admins can set up mini versions of the **Data Model** with [models](../data-modeling/models.md). Models package up metadata, version control, and visualization features so that your teams can run different command centers for each area of business logic.
+Non-admins can set up mini versions of the **Data Model** with [models](../data-modeling/models.md). Models package up metadata, version control, and visualization features so that teams can run separate command centers for different areas of business logic.
 
 |                                               | Data Model | Models |
 |-----------------------------------------------|------------|--------|
