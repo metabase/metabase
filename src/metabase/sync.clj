@@ -9,24 +9,22 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the `sync-database!` function to do all three at once."
   (:require
-   [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-   [metabase.driver.util :as driver.u]
-   [metabase.models.field :as field]
-   [metabase.models.table :as table]
-   [metabase.sync.analyze :as analyze]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
-   [metabase.sync.field-values :as field-values]
-   [metabase.sync.interface :as i]
-   [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.sync.sync-metadata.tables :as sync-tables]
-   [metabase.sync.util :as sync-util]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
-   [schema.core :as s]
-   [toucan.db :as db])
+    [clojure.tools.logging :as log]
+    [metabase.driver :as driver]
+    [metabase.driver.util :as driver.u]
+    [metabase.models.field :as field]
+    [metabase.models.table :as table]
+    [metabase.sync.analyze :as analyze]
+    [metabase.sync.analyze.fingerprint :as fingerprint]
+    [metabase.sync.field-values :as field-values]
+    [metabase.sync.interface :as i]
+    [metabase.sync.sync-metadata :as sync-metadata]
+    [metabase.sync.sync-metadata.tables :as sync-tables]
+    [metabase.sync.util :as sync-util]
+    [metabase.util :as u]
+    [metabase.util.i18n :refer [trs]]
+    [schema.core :as s]
+    [toucan.db :as db])
   (:import
    (java.time.temporal Temporal)))
 
@@ -91,8 +89,16 @@
   [db :- i/DatabaseInstance
    {:keys [schema-name table-name]} :- {:schema-name s/Str
                                         :table-name  s/Str}]
-  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
-    (if (sql-jdbc.sync.interface/have-select-privilege? (:engine db) conn schema-name table-name)
+  (let [normalize-table-desc (fn [{:keys [schema name]}]
+                               (cond-> {:name (u/lower-case-en name)}
+                                       schema
+                                       (assoc :schema (u/lower-case-en schema))))
+        target-table #{(normalize-table-desc {:schema schema-name :name table-name})}]
+    (if (some->> db
+                 (driver/describe-database (driver.u/database->driver db))
+                 :tables
+                 (map normalize-table-desc)
+                 (some target-table))
       (let [update-spec {:name table-name, :schema schema-name :description nil}]
         (if (->> {:tables #{update-spec}}
                  (sync-tables/sync-tables-and-database! db)
