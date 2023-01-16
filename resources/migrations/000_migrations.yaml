@@ -13973,13 +13973,13 @@ databaseChangeLog:
                         THEN CONCAT('["ref",["field",',
                                     CASE
                                       WHEN SUBSTR((k->1->>2), 1, 1) = '['
-                                      THEN (k->1->2->>0)
+                                      THEN (k->1->2->>1)
                                       ELSE (k->1->>2)
                                     END,
                                     ',{"source-field":',
                                     CASE
                                       WHEN SUBSTR((k->1->>1), 1, 1) = '['
-                                      THEN (k->1->1->>0)
+                                      THEN (k->1->1->>1)
                                       ELSE (k->1->>1)
                                     END,
                                     '}]]')
@@ -14021,13 +14021,13 @@ databaseChangeLog:
                       THEN CONCAT('["ref",["field",',
                                   CASE
                                     WHEN SUBSTRING(JSON_EXTRACT(k, '$[1][2]'), 1, 1) = '['
-                                    THEN JSON_EXTRACT(k, '$[1][2][0]')
+                                    THEN JSON_EXTRACT(k, '$[1][2][1]')
                                     ELSE JSON_EXTRACT(k, '$[1][2]')
                                   END,
                                   ',{"source-field":',
                                   CASE
                                     WHEN SUBSTRING(JSON_EXTRACT(k, '$[1][1]'), 1, 1) = '['
-                                    THEN JSON_EXTRACT(k, '$[1][1][0]')
+                                    THEN JSON_EXTRACT(k, '$[1][1][1]')
                                     ELSE JSON_EXTRACT(k, '$[1][1]')
                                   END,
                                   '}]]')
