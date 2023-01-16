@@ -2088,8 +2088,8 @@
       ;; for the `values_source_config.value_field`, so we need to test to make sure
       ;; the id is a valid field that we could use to retrieve values.
       (mt/with-temp*
-        [;; card with agggregation and binning columns
-         Card [{mbql-card-id :id}
+        ;; card with agggregation and binning columns
+        [Card [{mbql-card-id :id}
                (merge (mt/card-with-source-metadata-for-query
                         (mt/mbql-query venues {:limit 5
                                                :aggregation [:count]
