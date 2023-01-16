@@ -170,7 +170,7 @@ function PivotTable({
       return;
     }
 
-    if (!pivoted?.rowIndexes || columnsChanged) {
+    if (columnsChanged) {
       setHeaderWidths(
         getLeftHeaderWidths({
           rowIndexes: pivoted?.rowIndexes,
@@ -338,9 +338,7 @@ function PivotTable({
                       cellRenderer={({ index, style, key }) => (
                         <LeftHeaderCell
                           key={key}
-                          style={{
-                            ...style,
-                          }}
+                          style={style}
                           item={leftHeaderItems[index]}
                           rowIndex={rowIndex}
                           onUpdateVisualizationSettings={
