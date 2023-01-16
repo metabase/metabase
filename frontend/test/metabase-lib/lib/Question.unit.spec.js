@@ -1227,6 +1227,7 @@ describe("Question", () => {
         "starts-with",
         ["field", PRODUCTS.CATEGORY.id, null],
         "abc",
+        { "case-sensitive": false },
       ]);
     });
   });
