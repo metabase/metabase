@@ -147,15 +147,14 @@ export function dateParameterValueToMBQL(parameterValue, fieldRef) {
 }
 
 export function stringParameterValueToMBQL(parameter, fieldRef) {
-  const operator = deriveFieldOperatorFromParameter(parameter);
   const parameterValue = parameter.value;
+  const operator = deriveFieldOperatorFromParameter(parameter);
+  const subtype = getParameterSubType(parameter);
+  const operatorName = getParameterOperatorName(subtype);
 
-  const filter = [operator.name, fieldRef].concat(parameterValue);
-  if (operator.optionsDefaults) {
-    filter.push(operator.optionsDefaults);
-  }
-
-  return filter;
+  return [operatorName, fieldRef]
+    .concat(parameterValue)
+    .concat(operator?.optionsDefaults ?? []);
 }
 
 export function numberParameterValueToMBQL(parameter, fieldRef) {
