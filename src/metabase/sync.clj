@@ -9,22 +9,22 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the `sync-database!` function to do all three at once."
   (:require
-    [clojure.tools.logging :as log]
-    [metabase.driver :as driver]
-    [metabase.driver.util :as driver.u]
-    [metabase.models.field :as field]
-    [metabase.models.table :as table]
-    [metabase.sync.analyze :as analyze]
-    [metabase.sync.analyze.fingerprint :as fingerprint]
-    [metabase.sync.field-values :as field-values]
-    [metabase.sync.interface :as i]
-    [metabase.sync.sync-metadata :as sync-metadata]
-    [metabase.sync.sync-metadata.tables :as sync-tables]
-    [metabase.sync.util :as sync-util]
-    [metabase.util :as u]
-    [metabase.util.i18n :refer [trs]]
-    [schema.core :as s]
-    [toucan.db :as db])
+   [clojure.tools.logging :as log]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.field :as field]
+   [metabase.models.table :as table]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.field-values :as field-values]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [schema.core :as s]
+   [toucan.db :as db])
   (:import
    (java.time.temporal Temporal)))
 
