@@ -31,6 +31,7 @@ import {
   getFieldSourceValues,
   isValidSourceConfig,
 } from "metabase-lib/parameters/utils/parameter-source";
+import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
   ModalHelpMessage,
   ModalLabel,
@@ -403,10 +404,12 @@ export default _.compose(
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
       card_id ? getQuestionVirtualTableId(card_id) : undefined,
     requestType: "fetchMetadata",
+    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     entityAlias: "card",
+    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(ValuesSourceTypeModal);

@@ -13,6 +13,7 @@ import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupFieldsValuesEndpoints,
+  setupUnauthorizedCardsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import Field from "metabase-lib/metadata/Field";
@@ -144,6 +145,28 @@ describe("ValuesSourceModal", () => {
         value_field: ["field", 2, null],
       });
     });
+
+    it("should display an error message when the user has no access to the card", async () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+          },
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+          }),
+        ],
+        hasDataAccess: false,
+      });
+
+      expect(
+        await screen.findByText("You don't have permissions to do that."),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("list source", () => {
@@ -183,20 +206,26 @@ interface SetupOpts {
   parameter?: UiParameter;
   cards?: Card[];
   fieldsValues?: FieldValues[];
+  hasDataAccess?: boolean;
 }
 
 const setup = ({
   parameter = createMockUiParameter(),
   cards = [],
   fieldsValues = [],
+  hasDataAccess = true,
 }: SetupOpts = {}) => {
   const scope = nock(location.origin);
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
-  setupCollectionsEndpoints(scope, [createMockCollection(ROOT_COLLECTION)]);
-  setupCardsEndpoints(scope, cards);
-  setupFieldsValuesEndpoints(scope, fieldsValues);
+  if (hasDataAccess) {
+    setupCollectionsEndpoints(scope, [createMockCollection(ROOT_COLLECTION)]);
+    setupCardsEndpoints(scope, cards);
+    setupFieldsValuesEndpoints(scope, fieldsValues);
+  } else {
+    setupUnauthorizedCardsEndpoints(scope, cards);
+  }
 
   renderWithProviders(
     <ValuesSourceModal
