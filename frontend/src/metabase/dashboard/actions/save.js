@@ -60,6 +60,7 @@ export const saveDashboardAndCards = createThunkAction(
             }),
           ),
       );
+
       // update parameter mappings
       dashboard.ordered_cards = dashboard.ordered_cards.map(dc => ({
         ...dc,
