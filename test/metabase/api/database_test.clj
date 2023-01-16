@@ -10,7 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models
-    :refer [Card Collection Database Field FieldValues Table]]
+    :refer [Card Collection Database Field FieldValues Table Metric Segment]]
    [metabase.models.database :as database :refer [protected-password]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -152,6 +152,54 @@
     (testing "Invalid `?include` should return an error"
       (is (= {:errors {:include "value may be nil, or if non-nil, value must be one of: `tables`, `tables.fields`."}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
+
+(deftest get-database-usage-info-test
+  (mt/with-temp*
+    [Database [{db-id :id}]
+     Table    [{table-id-1 :id} {:db_id db-id}]
+     Table    [{table-id-2 :id} {:db_id db-id}]
+     ;; question
+     Card     [_                {:database_id db-id
+                                 :table_id    table-id-1
+                                 :dataset     false}]
+     ;; dataset
+     Card     [_                {:database_id db-id
+                                 :table_id    table-id-1
+                                 :dataset     true}]
+     Card     [_                {:database_id db-id
+                                 :table_id    table-id-2
+                                 :dataset     true
+                                 :archived    true}]
+
+     Metric   [_                {:table_id table-id-1}]
+     Metric   [_                {:table_id table-id-1}]
+     Metric   [_                {:table_id table-id-2}]
+     Segment  [_                {:table_id table-id-2}]]
+
+    (testing "should require admin"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 (format "database/%d/usage_info" db-id)))))
+
+    (testing "return the correct usage info"
+      (is (= {:question 1
+              :dataset  2
+              :metric   3
+              :segment  1}
+             (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
+
+    (testing "404 if db does not exist"
+      (let [non-existing-db-id (inc (db/select-one-id Database {:order-by [[:id :desc]]}))]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404
+                                     (format "database/%d/usage_info" non-existing-db-id)))))))
+  (mt/with-temp*
+    [Database [{db-id :id}]]
+    (testing "should work with DB that has no tables"
+      (is (= {:question 0
+              :dataset  0
+              :metric   0
+              :segment  0}
+             (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))))
 
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
