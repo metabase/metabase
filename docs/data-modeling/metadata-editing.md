@@ -24,9 +24,9 @@ You'll find a playground of knobs and buttons that'll let you:
 
 ## Data Model vs. models
 
-Metadata isn't restricted to admins. People can set up mini versions of the admin **Data Model** using [models](../data-modeling/models.md) to act as command centers for different areas of business logic. 
+Metadata isn't restricted to admins. People can set up mini versions of the **Data Model** using [models](../data-modeling/models.md).
 
-You can think of the Data Model admin settings as global defaults for metadata in Metabase. Model metadata will apply on top of the Data Model admin settings, and will be "local" to the model.
+You can think of the Data Model admin settings as global defaults for metadata in Metabase. Model metadata will apply on top of the Data Model admin settings, and will be "local" to the model. For example, models can act as command centers for different areas of business logic.
 
 |                                               | Data Model | Models |
 |-----------------------------------------------|------------|--------|
