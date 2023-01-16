@@ -69,8 +69,13 @@ function CreateActionForm({
   onCancel,
 }: Props) {
   const initialValues = useMemo(
-    () => ({ ...ACTION_SCHEMA.getDefault(), model_id: modelId }),
-    [modelId],
+    () => ({
+      ...ACTION_SCHEMA.getDefault(),
+      name: question.displayName(),
+      description: question.description(),
+      model_id: modelId,
+    }),
+    [question, modelId],
   );
 
   const handleCreate = useCallback(
