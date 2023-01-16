@@ -101,13 +101,6 @@ const ValuesSourceTypeModal = ({
   onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
-  const handleTypeChange = useCallback(
-    (sourceType: ValuesSourceType) => {
-      onChangeSourceType(sourceType);
-    },
-    [onChangeSourceType],
-  );
-
   useEffect(() => {
     onFetchFieldValues(fields);
   }, [fields, onFetchFieldValues]);
@@ -131,7 +124,7 @@ const ValuesSourceTypeModal = ({
           fieldsValues={fieldsValues}
           isLoadingFieldValues={isLoadingFieldValues}
           sourceType={sourceType}
-          onChangeSourceType={handleTypeChange}
+          onChangeSourceType={onChangeSourceType}
         />
       ) : sourceType === "card" ? (
         <CardSourceModal
@@ -139,14 +132,14 @@ const ValuesSourceTypeModal = ({
           sourceType={sourceType}
           sourceConfig={sourceConfig}
           onChangeCard={onChangeCard}
-          onChangeSourceType={handleTypeChange}
+          onChangeSourceType={onChangeSourceType}
           onChangeSourceConfig={onChangeSourceConfig}
         />
       ) : sourceType === "static-list" ? (
         <ListSourceModal
           sourceType={sourceType}
           sourceConfig={sourceConfig}
-          onChangeSourceType={handleTypeChange}
+          onChangeSourceType={onChangeSourceType}
           onChangeSourceConfig={onChangeSourceConfig}
         />
       ) : null}
