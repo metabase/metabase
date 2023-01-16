@@ -89,6 +89,7 @@ export const saveDashboardAndCards = createThunkAction(
                 row: dc.row,
                 size_x: dc.size_x,
                 size_y: dc.size_y,
+                series: dc.series,
                 parameter_mappings: dc.parameter_mappings,
                 visualization_settings: dc.visualization_settings,
               });
