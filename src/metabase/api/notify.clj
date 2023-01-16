@@ -21,7 +21,7 @@
   be added, synched, and scanned.
   This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in
   the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.html#mb_api_key)"
-  [id :as {{:keys [table_id schema_name table_name scan synchronous?] :as body} :body}]
+  [id :as {{:keys [table_id schema_name table_name scan synchronous?]} :body}]
   {table_id    (s/maybe su/IntGreaterThanZero)
    schema_name (s/maybe su/NonBlankString)
    table_name  (s/maybe su/NonBlankString)
