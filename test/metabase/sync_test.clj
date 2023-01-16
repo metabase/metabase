@@ -261,24 +261,24 @@
         ;; create the postgres DB
         (drop-if-exists-and-create-db! db-name)
         (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
-                      (let [sync! #(sync/sync-database! database)]
-                        ;; create a main partitioned table and two partitions for it
-                        (exec! spec ["CREATE TABLE FOO (val bigint NOT NULL);"
-                                     "CREATE TABLE BAR (val bigint NOT NULL);"])
-                        ;; now sync the DB
-                        (sync!)
-                        ;; Assert the baseline - both table exist
-                        (let [tables (tableset database)]
-                          (is (= #{"foo" "bar"} tables)))
-                        ;; Create two new tables in the user/external db
-                        (exec! spec ["CREATE TABLE FERN (val bigint NOT NULL);"
-                                     "CREATE TABLE DOC (val bigint NOT NULL);"])
-                        ;; Add only one of the tables to be synched
-                        (sync/sync-new-table! database {:table-name  "fern"
-                                                        :schema-name "public"})
-                        ;; Assert that the synched table is in the MB db and the unsynched table is not.
-                        (let [tables (tableset database)]
-                          (is (= #{"fern" "foo" "bar"} tables)))))))))
+          (let [sync! #(sync/sync-database! database)]
+            ;; create a main partitioned table and two partitions for it
+            (exec! spec ["CREATE TABLE FOO (val bigint NOT NULL);"
+                         "CREATE TABLE BAR (val bigint NOT NULL);"])
+            ;; now sync the DB
+            (sync!)
+            ;; Assert the baseline - both table exist
+            (let [tables (tableset database)]
+              (is (= #{"foo" "bar"} tables)))
+            ;; Create two new tables in the user/external db
+            (exec! spec ["CREATE TABLE FERN (val bigint NOT NULL);"
+                         "CREATE TABLE DOC (val bigint NOT NULL);"])
+            ;; Add only one of the tables to be synched
+            (sync/sync-new-table! database {:table-name  "fern"
+                                            :schema-name "public"})
+            ;; Assert that the synched table is in the MB db and the unsynched table is not.
+            (let [tables (tableset database)]
+              (is (= #{"fern" "foo" "bar"} tables)))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
