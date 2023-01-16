@@ -167,6 +167,7 @@ function PivotTable({
   useEffect(() => {
     if (!pivoted?.rowIndexes) {
       setHeaderWidths({ leftHeaderWidths: null, totalHeaderWidths: null });
+      return;
     }
 
     if (!pivoted?.rowIndexes || columnsChanged) {
