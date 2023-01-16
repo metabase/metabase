@@ -14,34 +14,34 @@ You'll find a playground of knobs and buttons that'll let you:
 
 - Set display names and descriptions for [tables](#table-display-name) and [columns](#column-name).
 - Hide outdated or irrelevant [tables](#table-visibility) and [columns](#column-visibility).
-- [Cast a text or number column to a date column](#casting-to-a-specific-data-type) (so you can use the column in datetime expressions, and so on).
+- [Cast a text or number column to a date column](#casting-to-a-specific-data-type) (so you can use the column in Metabase features such as datetime-specific [filters](../dashboards/filters.md) and [formulas](../questions/query-builder/expressions.md)).
 - [Change a filter widget](#changing-the-filter-widget) (for example, from a [search box to a dropdown](#changing-a-search-box-filter-to-a-dropdown-filter)).
 - [Link column values to URLs](#linking-a-column-to-a-url).
 - [Refresh or clear cached filter values](#refresh-or-discard-cached-values).
 - Set up reusable [segments and metrics](./segments-and-metrics.md).
 
-> All of the settings on the **Data Model** page deal with the way data's displayed and interpreted in Metabase. None of the settings will change the data in your database.
+> The **Data Model** admin settings only affect the way data's displayed and interpreted in Metabase. None of the settings will change the data in your database.
 
 ## Data Model vs. models
 
-Non-admins can set up mini versions of the Data Model with [models](../data-modeling/models.md). Models package up metadata, version control, and visualization features so that your teams can run different command centers for each area of business logic.
+Non-admins can set up mini versions of the **Data Model** with [models](../data-modeling/models.md). Models package up metadata, version control, and visualization features so that your teams can run different command centers for each area of business logic.
 
-|                                     | Data Model | Models |
-|-------------------------------------|------------|--------|
-| Display names                       | ✅          | ✅     |
-| Descriptions                        | ✅          | ✅     |
-| Hide tables                         | ✅          | ❌     |
-| Hide columns                        | ✅          | ✅     |
-| Edit field types                    | ✅          | ✅     |
-| Cast text or numbers to dates       | ✅          | ❌     |
-| Change the filter widget            | ✅          | ❌     |
-| Remap column values                 | ✅          | ❌     |
-| Refresh cached values               | ✅          | ❌     |
-| Link columns to URLs                | ✅          | ✅     |
-| Number and date formatting          | ✅          | ✅     |
-| Map SQL column to database column   | ❌          | ✅     |
-| Version history                     | ❌          | ✅     |
-| Verification\*                      | ❌          | ✅     |
+|                                               | Data Model | Models |
+|-----------------------------------------------|------------|--------|
+| Display names                                 | ✅          | ✅     |
+| Descriptions                                  | ✅          | ✅     |
+| Hide tables                                   | ✅          | ❌     |
+| Hide columns                                  | ✅          | ✅     |
+| Edit [field types](./field-types.md)          | ✅          | ✅     |
+| Cast text or numbers to dates                 | ✅          | ❌     |
+| Change the filter widget                      | ✅          | ❌     |
+| Remap column values                           | ✅          | ❌     |
+| Refresh cached values                         | ✅          | ❌     |
+| Link columns to URLs                          | ✅          | ✅     |
+| [Number and date formatting](./formatting.md) | ✅          | ✅     |
+| Map SQL columns to database columns           | ❌          | ✅     |
+| Version history                               | ❌          | ✅     |
+| Verification\*                                | ❌          | ✅     |
 
 \* Available on [paid plans](https://www.metabase.com/pricing).
 
@@ -53,7 +53,7 @@ Once you select a database, the tables in that database will appear in the sideb
 - [Add or edit the description](#table-description)
 - [Show or hide the table across Metabase](#table-visibility)
 - [View the original schema](#original-schema)
-- [Edit column (field) settings](#columns-field-settings)
+- [Edit column (field) settings](#column-field-settings)
 
 ### Table display name
 
@@ -70,7 +70,7 @@ To add a table description, click into the box below the table name. Description
 | Queryable  | ✅                                                          | ✅                                                       | ✅                                                                        |
 | Hidden     | ❌                                                          | ✅                                                       | ❌                                                                        |
 
-**Hidden** tables won't show up in the query builder or data refererence, but they're still accessible if someone writes `SELECT * FROM hidden_table` in the SQL editor. To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
+**Hidden** tables won't show up in the query builder or data refererence, but they're still accessible if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
 
 Tip: To hide all of the tables in a database (say, if you've migrated to a new database), click on the **hidden eye** icon beside "# queryable tables" in the left sidebar.
 
@@ -78,7 +78,7 @@ Tip: To hide all of the tables in a database (say, if you've migrated to a new d
 
 To remind yourself of column names and data types as they're stored in your database, click **Original schema** (below **Visibility**).
 
-## Columns (field) settings
+## Column (field) settings
 
 [Select a database](#data-model-admin-settings) and click on a table's name in the sidebar to bring up basic column display settings:
 
@@ -119,13 +119,11 @@ By default, users can see all of the columns in a table.
 
 **Only in detail views** will hide lengthy text from question results. This setting is applied by default if a column's values have an average length of more than 50 characters. You might want to use this setting on a column like "Comments" if you already have a column for "Rating".
 
-**Do not include** columns won't show up in the query builder or data reference, but they're still accessible if someone writes `SELECT hidden_column FROM table` in the SQL editor. You can use this setting on sensitive columns (such as PII) or irrelevant columns (such as the last updated time).
+**Do not include** columns won't show up in the query builder or data reference, but these columns are still accessible if someone writes `SELECT hidden_column FROM table` from the [SQL editor](../questions/native-editor/writing-sql.md). You can set "do not include" on sensitive columns (such as PII) or irrelevant columns.
 
 ### Column order
 
-Metabase defaults to the column order defined in your database schema. 
-
-To reorder the column display order in question results and menus **manually**, click on the grab bar to the right of each column, and drag the column to a new position.
+Metabase defaults to the column order defined in your database schema. To reorder the column display order in question results and menus **manually**, click on the grab bar to the right of each column, and drag the column to a new position.
 
 ![Reordering columns](./images/column-reorder.gif)
 
@@ -146,7 +144,7 @@ Primary keys and foreign keys show up in the [data reference](../exploration-and
 
 ### Casting to a specific data type
 
-If you want Metabase to interpret a text or number column as a datetime data type (for example, if you want to change a filter picker to a calendar style). Like all data model settings, casting types in Metabase won't affect the original data types in your database.
+If you want Metabase to interpret a text or number column as a datetime [data type](https://www.metabase.com/learn/databases/data-types-overview) (for example, if you want to change a filter picker to a calendar style). Casting types from the **Data Model** admin settings won't affect the original data types in your database.
 
 To cast a text or number column:
 
@@ -170,31 +168,9 @@ To cast a text or number column:
 
 Casting is different from changing the [field type](../data-modeling/field-types.md). A field type is meant to give people more context. For example, you can set a "Created At" column to a "Creation timestamp" so that Metabase has some idea that "Creation timestamp" comes before "Deletion timestamp". However, if the "Created At" column is stored as text, Metabase won't give you a calendar option for a filter on that column until you explicitly cast "Created At" to one of the datetime data types above.
 
-### Remapping column values
-
-Let's say you have a column with the values 1, 2, and 3, and you want to map each number to the values "low", "medium" and "high". This kind of mapping can be done on columns that have numeric or foreign key [field types](#field-type).
-
-To manually replace a numeric column's values with different values (numbers or text) from the **Data Model** tab of your **Admin settings**:
-
-1. Go to **Admin settings** > **Data Model**.
-2. Find your database and table.
-3. Click **gear** icon at the right of a column's settings box.
-4. Scroll to **Display values**.
-5. Select "Custom mapping" from the dropdown menu.
-6. Enter the display values under **Mapped values**.
-
-To automatically replace foreign key values with the values from a linked table:
-
-1. Go to **Admin settings** > **Data Model**.
-2. Find your database and table.
-3. Click **gear** icon at the right of a column's settings box.
-4. Scroll to **Display values**.
-5. Select "Use foreign key" from the dropdown menu.
-6. Select a column name from the second dropdown menu.
-
 ### Changing the filter widget
 
-To change the [filter widget](../dashboards/filters.md) in questions and dashboards, you'll have to adjust the **Data Model** settings for the column used in that filter.
+To change the [filter widget](../dashboards/filters.md) in questions and dashboards, you'll have to adjust the **Data Model** admin settings for the column used in that filter.
 
 1. Go to **Admin settings** > **Data Model**.
 2. Find your database and table.
@@ -202,12 +178,12 @@ To change the [filter widget](../dashboards/filters.md) in questions and dashboa
 4. Scroll to **Filtering on this field**.
 5. Select a filter widget option.
 
-Filter widget options:
+#### Filter widget options
 - **Search box**: start typing to search, and Metabase will display checkboxes that match the search term.
 - **A list of all values**: dropdown menu with checkboxes for all values.
 - **Plain input box**: start typing to search, and Metabase will make autocomplete suggestions (no checkboxes).
 
-Default filters:
+#### Default filters
 - Columns with more than 100 unique values will default to a plain input box filter.
 - Columns with fewer values will display a search box filter.
 
@@ -222,6 +198,28 @@ The dropdown filter widget can be finicky, because it depends on a column's [fie
 5. Set **Filtering on this field** to “A list of all values".
 
 When you change a search box filter to a dropdown filter, you'll trigger a query against your database to get the first 1,000 distinct values (ordered ascending) for that column. Metabase will cache the first 100kB of text to display in the dropdown menu. If you have columns with more than 1,000 distinct values, or columns with text-heavy data, we recommend setting **Filtering on this field** to "Search box" instead. For more info, see [How database scans work](../databases/connecting.md#how-database-scans-work).
+
+### Remapping column values
+
+Let's say you have a column with the values 1, 2, and 3, and you want to map each number to the values "low", "medium" and "high". This kind of mapping can be done on columns that have numeric or foreign key [field types](#field-type).
+
+#### Remapping numbers
+
+1. Go to **Admin settings** > **Data Model**.
+2. Find your database and table.
+3. Click **gear** icon at the right of a column's settings box.
+4. Scroll to **Display values**.
+5. Select "Custom mapping" from the dropdown menu.
+6. Enter the display values under **Mapped values**.
+
+#### Remapping foreign keys
+
+1. Go to **Admin settings** > **Data Model**.
+2. Find your database and table.
+3. Click **gear** icon at the right of a column's settings box.
+4. Scroll to **Display values**.
+5. Select "Use foreign key" from the dropdown menu.
+6. Select a column name from the second dropdown menu.
 
 ### Linking a column to a URL
 
@@ -248,24 +246,25 @@ https://www.google.com/search?q=askew
 
 ## Refresh or discard cached values
 
-To update the values in your filter dropdown menus, refresh or reset the cached values.
+To update the values in your filter dropdown menus, refresh or reset the cached values. **Cache actions** include:
 
-**Cache actions**:
 - **Re-scan this table or field** to run a manual scan for new or updated column values. If possible, re-scan the table during off-peak hours, as [scans](../databases/connecting.md#how-database-scans-work) can slow down your database.
 - **Discard cached field values** to clear cached values and stop them from showing up in your [filter widgets](#changing-the-filter-widget).
 
-To find the cache actions for a column:
+### Table cache actions
+
+1. Go to **Admin settings** > **Data Model**.
+2. Find your database and table.
+3. Click the **gear** icon at the top right (below **Exit admin**).
+4. Select a cache action.
+
+### Column cache actions
 
 1. Go to **Admin settings** > **Data Model**.
 2. Find your database and table.
 3. Click **gear** icon at the right of a column's settings box.
 4. Scroll to **Cached field values**.
-
-To find the cache actions for a table:
-
-1. Go to **Admin settings** > **Data Model**.
-2. Find your database and table.
-3. Click the **gear** icon at the top right (below **Exit admin**).
+5. Select a cache action.
 
 ## Further reading
 
