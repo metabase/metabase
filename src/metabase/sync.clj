@@ -24,6 +24,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
    [schema.core :as s]
    [toucan.db :as db])
   (:import
@@ -102,5 +103,5 @@
                                            :schema schema-name
                                            :name table-name)]
             (sync-table! table))
-          (log/debugf "Table '%s' already exists." table-name)))
-      (log/debugf "Table '%s' does not exist or you do not have permission to view it." table-name))))
+          (log/debugf (trs "Table ''{0}'' already exists." table-name))))
+      (log/debugf (trs "Table ''{0}'' does not exist or you do not have permission to view it." table-name)))))
