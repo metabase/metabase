@@ -1,11 +1,9 @@
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 
 import TabContent from "metabase/core/components/TabContent";
 
-import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
-
-import type { Card, Collection } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
 
@@ -25,7 +23,9 @@ import {
 interface Props {
   model: Question;
   mainTable?: Table | null;
-  onChangeModel: (model: Card) => void;
+  hasActionsTab: boolean;
+  onChangeName: (name?: string) => void;
+  onChangeDescription: (description?: string | null) => void;
   onChangeCollection: (collection: Collection) => void;
 }
 
@@ -34,13 +34,12 @@ type ModelTab = "schema" | "usage";
 function ModelDetailPage({
   model,
   mainTable,
-  onChangeModel,
+  hasActionsTab,
+  onChangeName,
+  onChangeDescription,
   onChangeCollection,
 }: Props) {
   const [tab, setTab] = useState<ModelTab>("usage");
-
-  const database = model.database()?.getPlainObject();
-  const hasActionsTab = database && checkDatabaseActionsEnabled(database);
 
   const tabs = [
     { value: "usage", name: t`Used by` },
@@ -48,32 +47,12 @@ function ModelDetailPage({
     hasActionsTab && { value: "actions", name: t`Actions` },
   ].filter(Boolean);
 
-  const handleNameChange = useCallback(
-    name => {
-      if (name && name !== model.displayName()) {
-        const nextCard = model.setDisplayName(name).card();
-        onChangeModel(nextCard as Card);
-      }
-    },
-    [model, onChangeModel],
-  );
-
-  const handleDescriptionChange = useCallback(
-    description => {
-      if (model.description() !== description) {
-        const nextCard = model.setDescription(description).card();
-        onChangeModel(nextCard as Card);
-      }
-    },
-    [model, onChangeModel],
-  );
-
   return (
     <RootLayout>
       <ModelMain>
         <ModelDetailHeader
           model={model}
-          onChangeName={handleNameChange}
+          onChangeName={onChangeName}
           onChangeCollection={onChangeCollection}
         />
         <TabContent value={tab} onChange={setTab}>
@@ -104,7 +83,7 @@ function ModelDetailPage({
       <ModelInfoSidePanel
         model={model}
         mainTable={mainTable}
-        onChangeDescription={handleDescriptionChange}
+        onChangeDescription={onChangeDescription}
       />
     </RootLayout>
   );

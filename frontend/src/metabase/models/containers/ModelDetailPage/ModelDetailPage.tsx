@@ -10,6 +10,7 @@ import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import title from "metabase/hoc/Title";
 
+import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 
 import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
@@ -78,6 +79,11 @@ function ModelDetailPage({
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
+  const database = model.database()?.getPlainObject();
+  const hasActionsEnabled = Boolean(
+    database && checkDatabaseActionsEnabled(database),
+  );
+
   const mainTable = useMemo(
     () => (model.isStructured() ? model.query().sourceTable() : null),
     [model],
@@ -93,6 +99,26 @@ function ModelDetailPage({
       fetchTableForeignKeys({ id: mainTable.id });
     }
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
+
+  const handleNameChange = useCallback(
+    name => {
+      if (name && name !== model.displayName()) {
+        const nextCard = model.setDisplayName(name).card();
+        onChangeModel(nextCard as Card);
+      }
+    },
+    [model, onChangeModel],
+  );
+
+  const handleDescriptionChange = useCallback(
+    description => {
+      if (model.description() !== description) {
+        const nextCard = model.setDescription(description).card();
+        onChangeModel(nextCard as Card);
+      }
+    },
+    [model, onChangeModel],
+  );
 
   const handleCollectionChange = useCallback(
     (collection: Collection) => {
@@ -110,7 +136,9 @@ function ModelDetailPage({
     <ModelDetailPageView
       model={model}
       mainTable={mainTable}
-      onChangeModel={onChangeModel}
+      hasActionsTab={hasActionsEnabled}
+      onChangeName={handleNameChange}
+      onChangeDescription={handleDescriptionChange}
       onChangeCollection={handleCollectionChange}
     />
   );

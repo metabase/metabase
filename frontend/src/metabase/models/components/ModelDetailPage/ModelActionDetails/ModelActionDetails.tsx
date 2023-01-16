@@ -44,11 +44,6 @@ function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
   };
 }
 
-function mostRecentFirst(action: WritebackAction) {
-  const createdAt = new Date(action["created_at"]);
-  return -createdAt.getTime();
-}
-
 function ModelActionDetails({
   model,
   actions,
@@ -64,11 +59,22 @@ function ModelActionDetails({
   ] = useToggle();
 
   const canWrite = model.canWrite();
+  const hasImplicitActions = actions.some(action => action.type === "implicit");
 
   const actionsSorted = useMemo(
     () => _.sortBy(actions, mostRecentFirst),
     [actions],
   );
+
+  const menuItems = useMemo(() => {
+    return [
+      {
+        title: t`Create basic actions`,
+        icon: "bolt",
+        action: handleEnableImplicitActions,
+      },
+    ];
+  }, [handleEnableImplicitActions]);
 
   const handleEditAction = useCallback(
     (action: WritebackAction) => {
@@ -83,54 +89,41 @@ function ModelActionDetails({
     setEditingActionId(undefined);
   }, [hideActionCreator]);
 
-  const hasImplicitActions = actions.some(action => action.type === "implicit");
+  const renderActionListItem = useCallback(
+    (action: WritebackAction) => {
+      const onEdit = canWrite ? () => handleEditAction(action) : undefined;
+      return (
+        <li key={action.id} aria-label={action.name}>
+          <ModelActionListItem action={action} onEdit={onEdit} />
+        </li>
+      );
+    },
+    [canWrite, handleEditAction],
+  );
 
   return (
     <Root>
-      <ActionsHeader>
-        {canWrite && (
-          <>
-            <Button onClick={showActionCreator}>{t`New action`}</Button>
-            {!hasImplicitActions && (
-              <ActionMenu
-                triggerIcon="ellipsis"
-                items={[
-                  {
-                    title: t`Create basic actions`,
-                    icon: "bolt",
-                    action: handleEnableImplicitActions,
-                  },
-                ]}
-                triggerProps={{ "data-testid": "new-action-menu" }}
-              />
-            )}
-          </>
-        )}
-      </ActionsHeader>
+      {canWrite && (
+        <ActionsHeader>
+          <Button onClick={showActionCreator}>{t`New action`}</Button>
+          {!hasImplicitActions && (
+            <ActionMenu
+              triggerIcon="ellipsis"
+              items={menuItems}
+              triggerProps={ACTION_MENU_TRIGGER_PROPS}
+            />
+          )}
+        </ActionsHeader>
+      )}
       {actions.length > 0 ? (
         <ActionList aria-label={t`Action list`}>
-          {actionsSorted.map(action => (
-            <li key={action.id} aria-label={action.name}>
-              <ModelActionListItem
-                action={action}
-                onEdit={canWrite ? () => handleEditAction(action) : undefined}
-              />
-            </li>
-          ))}
+          {actionsSorted.map(renderActionListItem)}
         </ActionList>
       ) : (
-        <EmptyState.Container>
-          <EmptyState.Title>{t`No actions have been created yet.`}</EmptyState.Title>
-          <EmptyState.Message>{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</EmptyState.Message>
-          {canWrite && (
-            <EmptyState.ActionContainer>
-              <Button
-                icon="bolt"
-                onClick={handleEnableImplicitActions}
-              >{t`Create basic actions`}</Button>
-            </EmptyState.ActionContainer>
-          )}
-        </EmptyState.Container>
+        <NoActionsState
+          hasCreateButton={canWrite}
+          onCreateClick={handleEnableImplicitActions}
+        />
       )}
       {isActionCreatorOpen && (
         <ActionCreator
@@ -143,6 +136,38 @@ function ModelActionDetails({
     </Root>
   );
 }
+
+function NoActionsState({
+  hasCreateButton,
+  onCreateClick,
+}: {
+  hasCreateButton: boolean;
+  onCreateClick: () => void;
+}) {
+  return (
+    <EmptyState.Container>
+      <EmptyState.Title>{t`No actions have been created yet.`}</EmptyState.Title>
+      <EmptyState.Message>{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</EmptyState.Message>
+      {hasCreateButton && (
+        <EmptyState.ActionContainer>
+          <Button
+            icon="bolt"
+            onClick={onCreateClick}
+          >{t`Create basic actions`}</Button>
+        </EmptyState.ActionContainer>
+      )}
+    </EmptyState.Container>
+  );
+}
+
+function mostRecentFirst(action: WritebackAction) {
+  const createdAt = new Date(action["created_at"]);
+  return -createdAt.getTime();
+}
+
+const ACTION_MENU_TRIGGER_PROPS = {
+  "data-testid": "new-action-menu",
+};
 
 export default _.compose(
   Actions.loadList({
