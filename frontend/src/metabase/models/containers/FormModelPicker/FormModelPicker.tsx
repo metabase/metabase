@@ -72,7 +72,6 @@ function FormModelPicker({
         <PopoverItemPicker
           value={{ id: value, model: "dataset" }}
           models={ITEM_PICKER_MODELS}
-          entity={Models}
           onChange={({ id }: { id: CardId }) => {
             setValue(id);
             closePopover();
