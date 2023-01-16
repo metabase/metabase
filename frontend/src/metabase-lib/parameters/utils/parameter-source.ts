@@ -1,9 +1,25 @@
 import {
   Dataset,
   FieldValue,
+  Parameter,
+  ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
+import Field from "metabase-lib/metadata/Field";
+
+export const getQueryType = (parameter: Parameter): ValuesQueryType => {
+  return parameter.values_query_type ?? "list";
+};
+
+export const getSourceType = (parameter: Parameter): ValuesSourceType => {
+  return parameter.values_source_type ?? null;
+};
+
+export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
+  return parameter.values_source_config ?? {};
+};
 
 export const isValidSourceConfig = (
   sourceType: ValuesSourceType,
@@ -31,6 +47,59 @@ export const getSourceConfigForType = (
     default:
       return {};
   }
+};
+
+export const canListParameterValues = (parameter: Parameter) => {
+  const fields = getFields(parameter);
+
+  if (getQueryType(parameter) !== "list") {
+    return false;
+  } else if (getSourceType(parameter) != null) {
+    return true;
+  } else {
+    return canListFieldValues(fields);
+  }
+};
+
+export const canListFieldValues = (fields: Field[]) => {
+  const hasFields = fields.length > 0;
+  const hasFieldValues = fields
+    .filter(field => !field.isVirtual())
+    .every(field => field.has_field_values === "list");
+
+  return hasFields && hasFieldValues;
+};
+
+export const canSearchParameterValues = (
+  parameter: Parameter,
+  disablePKRemapping = false,
+) => {
+  const fields = getFields(parameter);
+
+  if (getQueryType(parameter) === "none") {
+    return false;
+  } else if (getSourceType(parameter) != null) {
+    return true;
+  } else {
+    return canSearchFieldValues(fields, disablePKRemapping);
+  }
+};
+
+export const canSearchFieldValues = (
+  fields: Field[],
+  disablePKRemapping = false,
+) => {
+  const hasFields = fields.length > 0;
+  const canSearch = fields.every(field =>
+    field.searchField(disablePKRemapping),
+  );
+  const hasFieldValues = fields.some(
+    field =>
+      field.has_field_values === "search" ||
+      (field.has_field_values === "list" && field.has_more_values === true),
+  );
+
+  return hasFields && canSearch && hasFieldValues;
 };
 
 const getUniqueNonNullValues = (values: unknown[]) => {

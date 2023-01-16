@@ -68,6 +68,7 @@ class FieldInner extends Base {
   table_id?: Table["id"];
   target?: Field;
   has_field_values?: "list" | "search" | "none";
+  has_more_values?: boolean;
   values: any[];
   metadata?: Metadata;
   source?: string;
@@ -442,6 +443,19 @@ class FieldInner extends Base {
   isSearchable() {
     // TODO: ...?
     return this.isString();
+  }
+
+  searchField(disablePKRemapping = false): Field | null {
+    if (disablePKRemapping && this.isPK()) {
+      return this.isSearchable() ? this : null;
+    }
+
+    const remappedField = this.remappedField();
+    if (remappedField && remappedField.isSearchable()) {
+      return remappedField;
+    }
+
+    return this.isSearchable() ? this : null;
   }
 
   column(extra = {}): DatasetColumn {

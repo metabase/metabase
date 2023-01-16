@@ -7,6 +7,7 @@ import {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 import { UiParameter } from "metabase-lib/parameters/types";
 import ValuesSourceModal from "../ValuesSourceModal";
 import {
@@ -28,7 +29,7 @@ const ValuesSourceSettings = ({
   onChangeSourceType,
   onChangeSourceConfig,
 }: ValuesSourceSettingsProps): JSX.Element => {
-  const queryType = parameter.values_query_type;
+  const queryType = getQueryType(parameter);
   const [isModalOpened, setIsModalOpened] = useState(false);
 
   const radioOptions = useMemo(() => {
