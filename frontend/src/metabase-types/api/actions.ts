@@ -147,17 +147,3 @@ export type ActionFormOption = {
   name: string | number;
   value: string | number;
 };
-
-export type ActionFormFieldProps = {
-  name: string;
-  title: string;
-  description?: string;
-  placeholder?: string;
-  type: InputComponentType;
-  optional?: boolean;
-  options?: ActionFormOption[];
-};
-
-export type ActionFormProps = {
-  fields: ActionFormFieldProps[];
-};
