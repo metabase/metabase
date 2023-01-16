@@ -57,7 +57,7 @@ function getParameterOperatorType(parameterType?: string) {
       // id can technically be a FK but doesn't matter as both use default filter operators
       return PRIMARY_KEY;
     default:
-      return undefined;
+      return STRING;
   }
 }
 
