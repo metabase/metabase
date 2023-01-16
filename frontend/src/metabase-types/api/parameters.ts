@@ -35,10 +35,12 @@ export type ActionParameterValue = string | number;
 export interface Parameter {
   id: ParameterId;
   name: string;
+  "display-name"?: string;
   type: string;
   slug: string;
   sectionId?: string;
   default?: any;
+  required?: boolean;
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
