@@ -63,6 +63,20 @@ describe("revision history", () => {
               }
             });
 
+            it("shouldn't create a rearrange revision when adding a card (metabase#6884)", () => {
+              cy.createDashboard().then(({ body }) => {
+                visitAndEditDashboard(body.id);
+              });
+              cy.icon("add").last().click();
+              cy.findByText("Orders, Count").click();
+              saveDashboard();
+              openRevisionHistory();
+              cy.findByText(/added a card/)
+                .siblings("button")
+                .should("not.exist");
+              cy.findByText(/rearranged the cards/).should("not.exist");
+            });
+
             it("should be able to revert a dashboard (metabase#15237)", () => {
               visitDashboard(1);
               openRevisionHistory();
@@ -78,7 +92,7 @@ describe("revision history", () => {
 
               // Should be able to revert back again
               cy.findByText("History");
-              clickRevert(/rearranged the cards/);
+              clickRevert(/added a card/);
 
               cy.wait("@revert").then(({ response: { statusCode, body } }) => {
                 expect(statusCode).to.eq(200);
