@@ -1,6 +1,6 @@
 import React from "react";
 import nock from "nock";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import {
   createMockCard,
   createMockCollection,
@@ -8,6 +8,7 @@ import {
 } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";
 import {
+  createMockAppState,
   createMockEmbedState,
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
@@ -40,6 +41,7 @@ describe("AppBar", () => {
           withRouter: true,
           initialPath: "/question/1",
           storeInitialState: {
+            app: createMockAppState({ isNavbarOpen: false }),
             embed: createMockEmbedState({ side_nav: true }),
             qb: createMockQueryBuilderState({
               card: createMockCard(),
@@ -47,11 +49,9 @@ describe("AppBar", () => {
           },
         });
 
-        expect(
-          screen.getByRole("button", { name: "sidebar-toggle" }),
-        ).toBeInTheDocument();
-        expect(await screen.findByText(/Our analytics/)).toBeInTheDocument();
+        expect(await screen.findByText(/Our analytics/)).toBeVisible();
         expect(screen.getByTestId("main-logo")).toBeInTheDocument();
+        expect(screen.getByText(/Our analytics/)).not.toBeVisible();
       });
     });
   });
