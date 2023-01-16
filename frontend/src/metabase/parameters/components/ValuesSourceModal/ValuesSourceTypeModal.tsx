@@ -20,6 +20,7 @@ import {
   Card,
   ValuesSourceConfig,
   ValuesSourceType,
+  FieldValue,
 } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
@@ -68,7 +69,7 @@ interface ModalCardProps {
 
 interface ModalStateProps {
   question: Question | undefined;
-  fieldsValues: string[][][];
+  fieldsValues: FieldValue[][];
   isLoadingFieldValues: boolean;
 }
 
@@ -155,7 +156,7 @@ const ValuesSourceTypeModal = ({
 
 interface FieldSourceModalProps {
   fields: Field[];
-  fieldsValues: unknown[][][];
+  fieldsValues: FieldValue[][];
   isLoadingFieldValues: boolean;
   sourceType: ValuesSourceType;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;

@@ -1,5 +1,6 @@
 import {
   Dataset,
+  FieldValue,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
@@ -38,7 +39,7 @@ const getUniqueNonNullValues = (values: unknown[]) => {
     .map(value => String(value));
 };
 
-export const getFieldSourceValues = (fieldsValues: unknown[][][]) => {
+export const getFieldSourceValues = (fieldsValues: FieldValue[][]) => {
   const allValues = fieldsValues.flatMap(values => values.map(([key]) => key));
   return getUniqueNonNullValues(allValues);
 };
