@@ -14016,7 +14016,7 @@ databaseChangeLog:
                       WHEN JSON_EXTRACT(k, '$[1][0]') = 'field-id'
                       THEN CONCAT('["ref",["field",', JSON_EXTRACT(k, '$[1][1]'), ',null]]')
                       WHEN JSON_EXTRACT(k, '$[1][0]') = 'field-literal'
-                      THEN CONCAT('["ref",["field","', JSON_EXTRACT(k, '$[1][1]'), '",{"base-type":"', JSON_EXTRACT(k, '$[1][2]'), '"}]]')
+                      THEN CONCAT('["ref",["field","', JSON_UNQUOTE(JSON_EXTRACT(k, '$[1][1]')), '",{"base-type":"', JSON_UNQUOTE(JSON_EXTRACT(k, '$[1][2]')), '"}]]')
                       WHEN JSON_EXTRACT(k, '$[1][0]') = 'fk->'
                       THEN CONCAT('["ref",["field",',
                                   CASE
