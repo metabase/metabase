@@ -12,16 +12,20 @@ import {
   ModalRadioRoot,
 } from "./DeleteGroupMappingModal.styled";
 
+type GroupIds = number[];
+type DNType = string;
 type ValueType = "nothing" | "clearAllPermissions" | "delete";
 
 type DeleteGroupMappingModalProps = {
-  dn: any;
-  onConfirm: () => void;
+  dn: DNType;
+  groupIds: GroupIds;
+  onConfirm: (value: ValueType, groups: number[], dn: DNType) => void;
   onHide: () => void;
 };
 
 const DeleteGroupMappingModal = ({
   dn,
+  groupIds,
   onConfirm,
   onHide,
 }: DeleteGroupMappingModalProps) => {
@@ -32,7 +36,7 @@ const DeleteGroupMappingModal = ({
   };
 
   const handleConfirm = () => {
-    onConfirm(value, dn);
+    onConfirm(value as ValueType, groupIds, dn);
   };
 
   const submitButtonLabels: Record<ValueType, string> = {
@@ -40,8 +44,6 @@ const DeleteGroupMappingModal = ({
     clearAllPermissions: t`Remove mapping and members`,
     delete: t`Remove mapping and delete group`,
   };
-
-  console.log("🚀", { dn });
 
   return (
     <Modal>
