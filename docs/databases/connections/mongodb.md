@@ -107,6 +107,10 @@ Metabase may not sync all of your fields, as it only scans the first ten thousan
 
 One workaround is to include all possible keys in the first document of the collection, and give those keys null values. That way, Metabase will be able to recognize the correct schema for the entire collection.
 
+## I don't see any tables
+
+MongoDB works very differently than other database engines, as it lets you connect to any collection even if it doesn't exist. This means that you might have connected to a collection that does not have any documents, the collection doesn't exist, or you have a spelling mistake on your collection name
+
 ## Further reading
 
 See our troubleshooting guide for [troubleshooting your connection](../../troubleshooting-guide/db-connection.md).
