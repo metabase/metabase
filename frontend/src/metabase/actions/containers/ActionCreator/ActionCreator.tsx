@@ -42,7 +42,7 @@ import {
   ModalLeft,
 } from "./ActionCreator.styled";
 
-import { newQuestion } from "./utils";
+import { newQuestion, convertActionToQuestionCard } from "./utils";
 
 const mapStateToProps = (
   state: State,
@@ -140,7 +140,8 @@ function ActionCreatorComponent({
   };
 
   const handleOnSave = (action: WritebackQueryAction) => {
-    setQuestion(question.setCard(action as unknown as SavedCard));
+    const actionCard = convertActionToQuestionCard(action);
+    setQuestion(question.setCard(actionCard));
     setTimeout(() => setShowSaveModal(false), 1000);
     onClose?.();
   };
