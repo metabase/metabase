@@ -465,3 +465,14 @@ function setParamsEndpoints(prefix) {
     prefix + "/dashboard/:dashId/params/:paramId/search/:query",
   );
 }
+
+export const ActionsApi = {
+  list: GET("/api/action"),
+  get: GET("/api/action/:id"),
+  create: POST("/api/action"),
+  update: PUT("/api/action/:id"),
+  prefetchValues: GET(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+  ),
+  execute: POST("/api/dashboard/:dashboardId/dashcard/:dashcardId/execute"),
+};

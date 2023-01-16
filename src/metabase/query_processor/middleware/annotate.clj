@@ -698,13 +698,17 @@
   [{query-type :type, :as query
     {:keys [:metadata/dataset-metadata :alias/escaped->original]} :info} rff]
   (fn add-column-info-rff* [metadata]
-    (if (= query-type :query)
+    (if (and (= query-type :query)
+             ;; we should have type metadata eiter in the query fields
+             ;; or in the result metadata for the following code to work
+             (or (->> query :query keys (some #{:aggregation :breakout :fields}))
+                 (every? :base_type (:cols metadata))))
       (let [query (cond-> query
                     (seq escaped->original) ;; if we replaced aliases, restore them
                     (escape-join-aliases/restore-aliases escaped->original))]
-       (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-              (seq dataset-metadata)
-              (update :cols qp.util/combine-metadata dataset-metadata))))
+        (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
+               (seq dataset-metadata)
+               (update :cols qp.util/combine-metadata dataset-metadata))))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
       ;; queries...
       (let [metadata (cond-> (update metadata :cols annotate-native-cols)

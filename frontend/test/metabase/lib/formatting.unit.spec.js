@@ -105,7 +105,7 @@ describe("formatting", () => {
 
       it("from positive JPY", () => {
         expect(formatNumber(1234.56, { ...options, currency: "JPY" })).toBe(
-          "1,234.56",
+          "1,235",
         );
       });
 
