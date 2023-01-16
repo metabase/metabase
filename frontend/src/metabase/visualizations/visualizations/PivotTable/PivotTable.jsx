@@ -8,6 +8,7 @@ import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { getScrollBarSize } from "metabase/lib/dom";
+import { getSetting } from "metabase/selectors/settings";
 import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
 import {
@@ -34,7 +35,6 @@ import { Cell } from "./PivotTableCell";
 import {
   PivotTableRoot,
   PivotTableTopLeftCellsContainer,
-  CELL_HEIGHT,
 } from "./PivotTable.styled";
 
 import { partitions } from "./partitions";
@@ -43,16 +43,14 @@ import {
   isColumnValid,
   isFormattablePivotColumn,
   updateValueWithCurrentColumns,
+  getLeftHeaderWidths,
 } from "./utils";
 
-// cell width and height for normal body cells
-const CELL_WIDTH = 100;
-// the left header has a wider cell width and some additional spacing on the left to align with the title
-const LEFT_HEADER_LEFT_SPACING = 24;
-const LEFT_HEADER_CELL_WIDTH = 145;
+import { CELL_WIDTH, CELL_HEIGHT, LEFT_HEADER_LEFT_SPACING } from "./constants";
 
 const mapStateToProps = state => ({
   hasCustomColors: PLUGIN_SELECTORS.getHasCustomColors(state),
+  fontFamily: getSetting(state, "application-font"),
 });
 
 class PivotTable extends Component {
@@ -316,6 +314,7 @@ class PivotTable extends Component {
       onUpdateVisualizationSettings,
       isNightMode,
       isDashboard,
+      fontFamily,
     } = this.props;
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
@@ -358,6 +357,12 @@ class PivotTable extends Component {
       valueIndexes,
     } = pivoted;
 
+    const { leftHeaderWidths, totalHeaderWidths } = getLeftHeaderWidths({
+      rowIndexes: rowIndexes ?? [],
+      getColumnTitle: idx => this.getColumnTitle(idx),
+      fontFamily: fontFamily,
+    });
+
     const leftHeaderCellRenderer = ({ index, key, style }) => {
       const { value, isSubtotal, hasSubtotal, depth, path, clicked } =
         leftHeaderItems[index];
@@ -392,13 +397,23 @@ class PivotTable extends Component {
     };
     const leftHeaderCellSizeAndPositionGetter = ({ index }) => {
       const { offset, span, depth, maxDepthBelow } = leftHeaderItems[index];
+
+      const columnsToSpan = rowIndexes.length - depth - maxDepthBelow;
+
+      // add up all the widths of the columns, other than itself, that this cell spans
+      const spanWidth = leftHeaderWidths
+        .slice(depth + 1, depth + columnsToSpan)
+        .reduce((acc, cellWidth) => acc + cellWidth, 0);
+      const columnPadding = depth === 0 ? LEFT_HEADER_LEFT_SPACING : 0;
+      const columnWidth = leftHeaderWidths[depth];
+
       return {
         height: span * CELL_HEIGHT,
-        width:
-          (rowIndexes.length - depth - maxDepthBelow) * LEFT_HEADER_CELL_WIDTH +
-          (depth === 0 ? LEFT_HEADER_LEFT_SPACING : 0),
+        width: columnWidth + spanWidth + columnPadding,
         x:
-          depth * LEFT_HEADER_CELL_WIDTH +
+          leftHeaderWidths
+            .slice(0, depth)
+            .reduce((acc, cellWidth) => acc + cellWidth, 0) +
           (depth > 0 ? LEFT_HEADER_LEFT_SPACING : 0),
         y: offset * CELL_HEIGHT,
       };
@@ -437,9 +452,7 @@ class PivotTable extends Component {
     };
 
     const leftHeaderWidth =
-      rowIndexes.length > 0
-        ? LEFT_HEADER_LEFT_SPACING + rowIndexes.length * LEFT_HEADER_CELL_WIDTH
-        : 0;
+      rowIndexes.length > 0 ? LEFT_HEADER_LEFT_SPACING + totalHeaderWidths : 0;
 
     // These are tied to the `multiLevelPivot` call, so they're awkwardly shoved in render for now
 
@@ -490,7 +503,10 @@ class PivotTable extends Component {
                       isNightMode={isNightMode}
                       value={this.getColumnTitle(rowIndex)}
                       style={{
-                        width: LEFT_HEADER_CELL_WIDTH,
+                        flex: "0 0 auto",
+                        width:
+                          leftHeaderWidths?.[index] +
+                          (index === 0 ? LEFT_HEADER_LEFT_SPACING : 0),
                         ...(index === 0
                           ? { paddingLeft: LEFT_HEADER_LEFT_SPACING }
                           : {}),

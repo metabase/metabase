@@ -7,7 +7,10 @@ import {
   isFormattablePivotColumn,
   updateValueWithCurrentColumns,
   addMissingCardBreakouts,
+  getLeftHeaderWidths,
 } from "./utils";
+
+import { MAX_HEADER_CELL_WIDTH, MIN_HEADER_CELL_WIDTH } from "./constants";
 
 describe("Visualizations > Visualizations > PivotTable > utils", () => {
   const cols = [
@@ -225,6 +228,43 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
       const result = addMissingCardBreakouts(oldPivotSettings, card);
 
       expect(result).toEqual(newPivotSettings);
+    });
+  });
+
+  describe("getLeftHeaderWidths", () => {
+    it("should return an array of widths", () => {
+      const { leftHeaderWidths } = getLeftHeaderWidths({
+        rowIndexes: [0, 1, 2],
+        getColumnTitle: () => "test-123",
+      });
+      // jest-dom thinks all characters are 1px wide, so we get the minimum
+      expect(leftHeaderWidths).toEqual([
+        MIN_HEADER_CELL_WIDTH,
+        MIN_HEADER_CELL_WIDTH,
+        MIN_HEADER_CELL_WIDTH,
+      ]);
+    });
+
+    it("should return the total of all widths", () => {
+      const { totalHeaderWidths } = getLeftHeaderWidths({
+        rowIndexes: [0, 1, 2],
+        getColumnTitle: () => "test-123",
+      });
+      expect(totalHeaderWidths).toEqual(MIN_HEADER_CELL_WIDTH * 3);
+    });
+
+    it("should not exceed the max width", () => {
+      const { leftHeaderWidths } = getLeftHeaderWidths({
+        rowIndexes: [0, 1, 2],
+        // jest-dom thinks characters are 1px wide
+        getColumnTitle: () => "x".repeat(MAX_HEADER_CELL_WIDTH),
+      });
+
+      expect(leftHeaderWidths).toEqual([
+        MAX_HEADER_CELL_WIDTH,
+        MAX_HEADER_CELL_WIDTH,
+        MAX_HEADER_CELL_WIDTH,
+      ]);
     });
   });
 });

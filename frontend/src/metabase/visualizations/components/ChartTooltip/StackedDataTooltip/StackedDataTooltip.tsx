@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
-import { TooltipModel } from "../types";
+import type { StackedTooltipModel } from "../types";
 import {
   DataPointHeader,
   DataPointTableHeader,
@@ -8,21 +8,33 @@ import {
   DataPointTableBody,
   DataPointTable,
   DataPointTableFooter,
-} from "./DataPointTooltip.styled";
+} from "./StackedDataTooltip.styled";
 import { getPercent, getTotalValue } from "./utils";
 
-type DataPointTooltipProps = TooltipModel;
+type StackedDataTooltipProps = StackedTooltipModel;
 
-const DataPointTooltip = ({
+const StackedDataTooltip = ({
   headerTitle,
   headerRows,
   bodyRows = [],
+  grandTotal,
   showTotal,
   showPercentages,
   totalFormatter = (value: unknown) => String(value),
-}: DataPointTooltipProps) => {
-  const total = getTotalValue(headerRows, bodyRows);
+}: StackedDataTooltipProps) => {
+  const rowsTotal = useMemo(
+    () => getTotalValue(headerRows, bodyRows),
+    [headerRows, bodyRows],
+  );
   const isShowingTotalSensible = headerRows.length + bodyRows.length > 1;
+  const hasColorIndicators = useMemo(
+    () => [...bodyRows, ...headerRows].some(row => row.color != null),
+    [headerRows, bodyRows],
+  );
+
+  // For some charts such as PieChart we intentionally show only certain data rows that do not represent the full data.
+  // In order to calculate percentages correctly we provide the grand total value
+  const percentCalculationTotal = grandTotal ?? rowsTotal;
 
   return (
     <DataPointRoot>
@@ -38,7 +50,7 @@ const DataPointTooltip = ({
               key={index}
               isHeader
               percent={
-                showPercentages ? getPercent(total, row.value) : undefined
+                showPercentages ? getPercent(rowsTotal, row.value) : undefined
               }
               {...row}
             />
@@ -51,7 +63,7 @@ const DataPointTooltip = ({
               <TooltipRow
                 key={index}
                 percent={
-                  showPercentages ? getPercent(total, row.value) : undefined
+                  showPercentages ? getPercent(rowsTotal, row.value) : undefined
                 }
                 {...row}
               />
@@ -62,8 +74,13 @@ const DataPointTooltip = ({
         {showTotal && isShowingTotalSensible && (
           <DataPointTableFooter>
             <TooltipTotalRow
-              value={totalFormatter(total)}
-              showPercentages={showPercentages}
+              value={totalFormatter(rowsTotal)}
+              hasIcon={hasColorIndicators}
+              percent={
+                showPercentages
+                  ? getPercent(percentCalculationTotal, rowsTotal)
+                  : undefined
+              }
             />
           </DataPointTableFooter>
         )}
@@ -72,4 +89,4 @@ const DataPointTooltip = ({
   );
 };
 
-export default DataPointTooltip;
+export default StackedDataTooltip;

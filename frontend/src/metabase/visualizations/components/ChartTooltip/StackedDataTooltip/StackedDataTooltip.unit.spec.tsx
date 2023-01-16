@@ -1,8 +1,8 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import { TooltipModel } from "../types";
-import DataPointTooltip from "./DataPointTooltip";
+import type { StackedTooltipModel } from "../types";
+import StackedDataTooltip from "./StackedDataTooltip";
 
 const defaultHeaderRows = [
   {
@@ -33,9 +33,9 @@ const setup = ({
   headerRows = defaultHeaderRows,
   bodyRows = defaultBodyRows,
   ...rest
-}: Partial<TooltipModel> = {}) => {
+}: Partial<StackedTooltipModel> = {}) => {
   render(
-    <DataPointTooltip
+    <StackedDataTooltip
       headerTitle={headerTitle}
       headerRows={headerRows}
       bodyRows={bodyRows}
@@ -60,7 +60,7 @@ const setup = ({
   };
 };
 
-describe("DataPointTooltip", () => {
+describe("StackedDataTooltip", () => {
   it("renders the header with formatted name—value pairs", () => {
     const { rowNames, rowValues, header } = setup();
     expect(header).toHaveTextContent("header-title");

@@ -290,7 +290,7 @@
     "cljs-server-start": "yarn && shadow-cljs start",
     "cljs-server-stop": "yarn && shadow-cljs stop",
     "cljs-server-restart": "yarn && shadow-cljs restart",
-    "cljs-nrepl": "yarn && shadow-cljs node-repl -d cider/cider-nrepl:0.25.8 -d cider/piggieback:0.5.1 -d refactor-nrepl:2.5.1",
+    "cljs-nrepl": "yarn && shadow-cljs node-repl -d cider/cider-nrepl:0.28.5 -d cider/piggieback:0.5.3 -d refactor-nrepl:3.6.0",
     "test-cljs": "yarn && shadow-cljs compile test && node target/node-tests.js",
     "build": "yarn build:cljs && yarn build:js",
     "build-watch": "yarn concurrently -n 'cljs,js' 'yarn build-watch:cljs' 'yarn build-watch:js'",
