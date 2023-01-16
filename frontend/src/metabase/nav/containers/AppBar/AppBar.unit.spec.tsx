@@ -1,34 +1,32 @@
 import React from "react";
 import nock from "nock";
-import { render, screen } from "@testing-library/react";
-import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import { screen } from "@testing-library/react";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockUnsavedCard,
+} from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";
-import { createMockEmbedState } from "metabase-types/store/mocks";
+import {
+  createMockEmbedState,
+  createMockQueryBuilderState,
+} from "metabase-types/store/mocks";
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import AppBar from "./AppBar";
-
-jest.mock("metabase/selectors/embed", () => {
-  return {
-    ...jest.requireActual("metabase/selectors/embed"),
-    getIsEmbedded: jest.fn().mockReturnValue(true),
-  };
-});
-jest.mock("metabase/selectors/app", () => {
-  return {
-    ...jest.requireActual("metabase/selectors/app"),
-    getIsCollectionPathVisible: jest.fn().mockReturnValue(true),
-  };
-});
 
 describe("AppBar", () => {
   const matchMediaSpy = jest.spyOn(window, "matchMedia");
 
   describe("full-app embedding", () => {
     beforeEach(async () => {
-      setupMock();
+      const scope = nock(location.origin);
+      setupCollectionsEndpoints(scope);
+      mockEmbedding();
     });
 
     afterEach(() => {
       jest.clearAllMocks();
+      reStoreMockEmbedding();
       nock.cleanAll();
     });
 
@@ -38,11 +36,14 @@ describe("AppBar", () => {
       });
 
       it("should be able to toggle side nav", async () => {
-        // setupMock();
         renderWithProviders(<AppBar />, {
           withRouter: true,
+          initialPath: "/question/1",
           storeInitialState: {
             embed: createMockEmbedState({ side_nav: true }),
+            qb: createMockQueryBuilderState({
+              card: createMockCard(),
+            }),
           },
         });
 
@@ -54,8 +55,10 @@ describe("AppBar", () => {
       });
     });
   });
+});
 
-  const getMediaQuery = (opts?: Partial<MediaQueryList>): MediaQueryList => ({
+function getMediaQuery(opts?: Partial<MediaQueryList>): MediaQueryList {
+  return {
     media: "",
     matches: false,
     onchange: jest.fn(),
@@ -65,8 +68,8 @@ describe("AppBar", () => {
     removeListener: jest.fn(),
     removeEventListener: jest.fn(),
     ...opts,
-  });
-});
+  };
+}
 
 function setupMock() {
   nock(location.origin)
@@ -78,4 +81,17 @@ function setupMock() {
         name: "Our analytics",
       }),
     );
+}
+
+const windowSelf = window.self;
+function mockEmbedding() {
+  Object.defineProperty(window, "self", {
+    value: {},
+  });
+}
+
+function reStoreMockEmbedding() {
+  Object.defineProperty(window, "self", {
+    value: windowSelf,
+  });
 }

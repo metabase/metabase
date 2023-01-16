@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import { withRouter } from "react-router";
 
 import cx from "classnames";
-import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
+import { isIframe, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -16,7 +16,7 @@ import LogoBadge from "./LogoBadge";
 import "./EmbedFrame.css";
 
 const DEFAULT_OPTIONS = {
-  bordered: IFRAMED,
+  bordered: isIframe(),
   titled: true,
 };
 

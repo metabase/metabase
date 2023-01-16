@@ -10,7 +10,7 @@ import {
 
 export function setupCollectionsEndpoints(
   scope: Scope,
-  collections: Collection[],
+  collections: (typeof ROOT_COLLECTION | Collection)[] = [ROOT_COLLECTION],
 ) {
   scope.get("/api/collection").reply(200, collections);
   scope.get("/api/collection/tree?tree=true").reply(200, collections);

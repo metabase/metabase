@@ -1,8 +1,8 @@
-import { IFRAMED } from "metabase/lib/dom";
+import { isIframe } from "metabase/lib/dom";
 import { State } from "metabase-types/store";
 
 export const getIsEmbedded = () => {
-  return IFRAMED;
+  return isIframe();
 };
 
 export const getEmbedOptions = (state: State) => {
