@@ -6,7 +6,11 @@ import { measureText } from "metabase/lib/measure-text";
 
 import type { Column } from "metabase-types/types/Dataset";
 import type { Card } from "metabase-types/types/Card";
-import type { PivotSetting, FieldOrAggregationReference } from "./types";
+import type {
+  PivotSetting,
+  FieldOrAggregationReference,
+  LeftHeaderItem,
+} from "./types";
 import { partitions } from "./partitions";
 
 import {
@@ -15,6 +19,7 @@ import {
   MIN_HEADER_CELL_WIDTH,
   MAX_HEADER_CELL_WIDTH,
   PIVOT_TABLE_FONT_SIZE,
+  MAX_ROWS_TO_MEASURE,
 } from "./constants";
 
 // adds or removes columns from the pivot settings based on the current query
@@ -88,25 +93,44 @@ export function isFormattablePivotColumn(column: Column) {
 interface GetLeftHeaderWidthsProps {
   rowIndexes: number[];
   getColumnTitle: (columnIndex: number) => string;
+  leftHeaderItems?: LeftHeaderItem[];
   fontFamily?: string;
 }
 
 export function getLeftHeaderWidths({
   rowIndexes,
   getColumnTitle,
+  leftHeaderItems = [],
   fontFamily = "Lato",
 }: GetLeftHeaderWidthsProps) {
-  const widths = rowIndexes.map(rowIndex => {
+  const cellValues = getColumnValues(leftHeaderItems);
+
+  const widths = rowIndexes.map((rowIndex, depthIndex) => {
+    const computedHeaderWidth = Math.ceil(
+      measureText(getColumnTitle(rowIndex), {
+        weight: "bold",
+        family: fontFamily,
+        size: PIVOT_TABLE_FONT_SIZE,
+      }) + ROW_TOGGLE_ICON_WIDTH,
+    );
+
+    const computedCellWidth = Math.ceil(
+      Math.max(
+        // we need to use the depth index because the data is in depth order, not row index order
+        ...(cellValues[depthIndex]?.values?.map(
+          value =>
+            measureText(value, {
+              weight: "normal",
+              family: fontFamily,
+              size: PIVOT_TABLE_FONT_SIZE,
+            }) +
+            (cellValues[rowIndex]?.hasSubtotal ? ROW_TOGGLE_ICON_WIDTH : 0),
+        ) ?? [0]),
+      ),
+    );
+
     const computedWidth =
-      Math.ceil(
-        measureText(getColumnTitle(rowIndex), {
-          weight: "bold",
-          family: fontFamily,
-          size: PIVOT_TABLE_FONT_SIZE,
-        }),
-      ) +
-      ROW_TOGGLE_ICON_WIDTH +
-      CELL_PADDING;
+      Math.max(computedHeaderWidth, computedCellWidth) + CELL_PADDING;
 
     if (computedWidth > MAX_HEADER_CELL_WIDTH) {
       return MAX_HEADER_CELL_WIDTH;
@@ -122,4 +146,39 @@ export function getLeftHeaderWidths({
   const total = widths.reduce((acc, width) => acc + width, 0);
 
   return { leftHeaderWidths: widths, totalHeaderWidths: total };
+}
+
+type ColumnValueInfo = {
+  values: string[];
+  hasSubtotal: boolean;
+};
+
+export function getColumnValues(leftHeaderItems: LeftHeaderItem[]) {
+  const columnValues: ColumnValueInfo[] = [];
+
+  leftHeaderItems
+    .slice(0, MAX_ROWS_TO_MEASURE)
+    .forEach((leftHeaderItem: LeftHeaderItem) => {
+      const { value, depth, isSubtotal, isGrandTotal, hasSubtotal } =
+        leftHeaderItem;
+
+      // don't size based on subtotals or grand totals
+      if (!isSubtotal && !isGrandTotal) {
+        if (!columnValues[depth]) {
+          columnValues[depth] = {
+            values: [value],
+            hasSubtotal: false,
+          };
+        } else {
+          columnValues[depth].values.push(value);
+        }
+
+        // we need to track whether the column has a subtotal to size for the row expand icon
+        if (hasSubtotal) {
+          columnValues[depth].hasSubtotal = true;
+        }
+      }
+    });
+
+  return columnValues;
 }
