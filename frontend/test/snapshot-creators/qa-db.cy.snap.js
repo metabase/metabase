@@ -39,6 +39,10 @@ function restoreAndAuthenticate() {
 
 function deleteDatabase(idAlias) {
   cy.get("@" + idAlias).then(id => {
-    return cy.request("DELETE", `/api/database/${id}`);
+    return cy.request("GET", `/api/database/${id}/usage_info`).then(response =>
+      cy.request("DELETE", `/api/database/${id}`, {
+        usage_info: response.body,
+      }),
+    );
   });
 }

@@ -270,13 +270,18 @@ describe("snapshots", () => {
         cy.request("POST", `/api/database/${id}/sync_schema`);
         cy.request("POST", `/api/database/${id}/rescan_values`);
         cy.wait(1000); // wait for sync
-        snapshot("withSqlite");
-        // TODO: Temporary HACK that requires further investigation and a better solution.
-        // sqlite driver was messing with the sync of postres database in CY tests
-        // ("probably some weird race condition" @Damon)
-        // Deleting it here keeps snapshots intact, and enables for unobstructed postgres testing.
-        cy.request("DELETE", `/api/database/${id}`);
-        restore("blank");
+        // call /api/database/:id/usage_info to get the useage info
+        cy.request("GET", `/api/database/${id}/usage_info`).then(response => {
+          snapshot("withSqlite");
+          // TODO: Temporary HACK that requires further investigation and a better solution.
+          // sqlite driver was messing with the sync of postres database in CY tests
+          // ("probably some weird race condition" @Damon)
+          // Deleting it here keeps snapshots intact, and enables for unobstructed postgres testing.
+          cy.request("DELETE", `/api/database/${id}`, {
+            usage_info: response.body,
+          });
+          restore("blank");
+        });
       });
     });
   });
