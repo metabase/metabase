@@ -377,9 +377,7 @@ function PivotTable({
                       cellRenderer={({ index, style, key }) => (
                         <LeftHeaderCell
                           key={key}
-                          style={{
-                            ...style,
-                          }}
+                          style={style}
                           item={leftHeaderItems[index]}
                           rowIndex={rowIndex}
                           onUpdateVisualizationSettings={
