@@ -1,5 +1,6 @@
 import {
   Dataset,
+  FieldValue,
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -107,7 +108,7 @@ const getUniqueNonNullValues = (values: unknown[]) => {
     .map(value => String(value));
 };
 
-export const getFieldSourceValues = (fieldsValues: unknown[][][]) => {
+export const getFieldSourceValues = (fieldsValues: FieldValue[][]) => {
   const allValues = fieldsValues.flatMap(values => values.map(([key]) => key));
   return getUniqueNonNullValues(allValues);
 };

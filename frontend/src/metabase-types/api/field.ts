@@ -44,7 +44,7 @@ export type FieldVisibilityType =
   | "retired";
 
 type HumanReadableFieldValue = string;
-type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
+export type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
 
 export type FieldValuesType = "list" | "search" | "none";
 
