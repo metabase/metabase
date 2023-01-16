@@ -5,6 +5,7 @@ import {
   getQuestionVirtualTableId,
   convertSavedQuestionToVirtualTable,
 } from "metabase-lib/metadata/utils/saved-questions";
+import { PERMISSION_ERROR } from "./constants";
 
 export function setupCardEndpoints(scope: Scope, card: Card) {
   scope.get(`/api/card/${card.id}`).reply(200, card);
@@ -26,4 +27,17 @@ export function setupCardEndpoints(scope: Scope, card: Card) {
 export function setupCardsEndpoints(scope: Scope, cards: Card[]) {
   scope.get("/api/card").reply(200, cards);
   cards.forEach(card => setupCardEndpoints(scope, card));
+}
+
+export function setupUnauthorizedCardEndpoints(scope: Scope, card: Card) {
+  scope.get(`/api/card/${card.id}`).reply(403, PERMISSION_ERROR);
+
+  const virtualTableId = getQuestionVirtualTableId(card.id);
+  scope
+    .get(`/api/table/${virtualTableId}/query_metadata`)
+    .reply(403, PERMISSION_ERROR);
+}
+
+export function setupUnauthorizedCardsEndpoints(scope: Scope, cards: Card[]) {
+  cards.forEach(card => setupUnauthorizedCardEndpoints(scope, card));
 }
