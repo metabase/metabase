@@ -17,13 +17,14 @@ type Props = {
   onChangeType?: (type: WritebackActionType) => void;
 };
 
+const OPTS = [{ value: "query", name: t`Query`, disabled: true }];
+
 const ActionCreatorHeader = ({
   name = t`New Action`,
   type,
   onChangeName,
   onChangeType,
 }: Props) => {
-  const OPTS = [{ value: "query", name: t`Query`, disabled: true }];
   return (
     <Container>
       <LeftHeader>

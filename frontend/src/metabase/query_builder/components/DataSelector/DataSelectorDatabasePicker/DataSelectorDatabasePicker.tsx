@@ -54,7 +54,6 @@ const DataSelectorDatabasePicker = ({
     {
       items: databases.map((database: Database, index: number) => ({
         name: database.name,
-        writebackEnabled: checkDatabaseActionsEnabled(database),
         index,
         database: database,
       })),
@@ -84,7 +83,9 @@ const DataSelectorDatabasePicker = ({
       onChange={(item: Item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
       itemIsClickable={
-        requireWriteback ? (item: Item) => item.writebackEnabled : undefined
+        requireWriteback
+          ? (item: Item) => checkDatabaseActionsEnabled(item.database)
+          : undefined
       }
       itemIsSelected={(item: Item) =>
         selectedDatabase && item.database.id === selectedDatabase.id

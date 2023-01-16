@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import InputBase from "metabase/core/components/Input";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -19,7 +18,7 @@ export const AddMorePrompt = styled.div`
   transition: opacity 0.2s ease-in-out;
 `;
 
-export const StyledTextArea = styled.textarea`
+export const TextArea = styled.textarea`
   resize: none;
   border: none;
   outline: 1px solid ${color("border")};

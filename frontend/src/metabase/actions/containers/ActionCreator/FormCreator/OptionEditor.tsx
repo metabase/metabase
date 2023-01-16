@@ -8,7 +8,7 @@ import Icon from "metabase/components/Icon";
 import {
   OptionEditorContainer,
   AddMorePrompt,
-  StyledTextArea,
+  TextArea,
 } from "./OptionEditor.styled";
 
 type ValueOptions = (string | number)[];
@@ -39,7 +39,7 @@ export const OptionPopover = ({
       maxWidth={400}
       popoverContent={({ closePopover }) => (
         <OptionEditorContainer>
-          <StyledTextArea
+          <TextArea
             value={text}
             onChange={e => setText(e.target.value)}
             placeholder={t`Enter one option per line`}
