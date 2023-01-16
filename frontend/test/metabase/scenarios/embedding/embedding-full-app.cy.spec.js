@@ -132,17 +132,6 @@ describe("scenarios > embedding > full app", () => {
 
     // TODO: move the whole suite to unit tests
     describe("desktop logo", () => {
-      it("should hide side nav toggle icon on hover", () => {
-        // default logo: true
-        visitQuestionUrl({ url: "/question/1", qs: { side_nav: false } });
-        cy.findByRole("banner").within(() => {
-          cy.findByText(/Our analytics/i).should("be.visible");
-          cy.findByTestId("main-logo").should("be.visible");
-        });
-
-        cy.findByTestId("sidebar-toggle").should("not.exist");
-      });
-
       it("should always show side nav toggle icon when logo is hidden", () => {
         visitQuestionUrl({
           url: "/question/1",
