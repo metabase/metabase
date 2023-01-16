@@ -54,7 +54,7 @@ export const saveDashboardAndCards = createThunkAction(
         dashboard.ordered_cards
           .filter(dc => dc.isRemoved && !dc.isAdded)
           .map(dc =>
-            DashboardApi.removecard({
+            DashboardApi.removeCard({
               dashId: dashboard.id,
               dashcardId: dc.id,
             }),
@@ -83,7 +83,7 @@ export const saveDashboardAndCards = createThunkAction(
           .filter(dc => !dc.isRemoved)
           .map(async dc => {
             if (dc.isAdded) {
-              const result = await DashboardApi.addcard({
+              const result = await DashboardApi.addCard({
                 dashId: dashboard.id,
                 cardId: dc.card_id,
                 col: dc.col,
