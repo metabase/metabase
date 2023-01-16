@@ -77,6 +77,17 @@
             (post {:scan :full, :table_name table-name})
             (is @long-sync-called?)
             (is (not (realized? short-sync-called?))))))
+      (testing "sync new table when table and schema are names are provided"
+        (let [long-sync-called? (promise)
+              short-sync-called? (promise)
+              new-table-sync-called? (promise)]
+          (with-redefs [metabase.sync/sync-table!                        (fn [_table] (deliver long-sync-called? true))
+                        metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))
+                        metabase.sync/sync-new-table! (fn [_db _args] (deliver new-table-sync-called? true))]
+            (post {:schema_name "public" :table_name "FOO"})
+            (is (not (realized? long-sync-called?)))
+            (is (not (realized? short-sync-called?)))
+            (is @new-table-sync-called?))))
       (testing "only a quick sync when quick parameter is provided"
         (let [long-sync-called? (promise), short-sync-called? (promise)]
           (with-redefs [metabase.sync/sync-table!                        (fn [_table] (deliver long-sync-called? true))
@@ -101,3 +112,19 @@
         (is (= {:errors
                 {:scan "value may be nil, or if non-nil, value must be one of: `full`, `schema`."}}
                (post {:scan :unrecognized} 400)))))))
+
+(deftest bad-request-test
+  (mt/with-temporary-setting-values [api-key "test-api-key"]
+    (testing "POST /api/notify/db/:id"
+      (testing "Attempting to post a new table via table_name, schema_name is a bad request"
+        (let [table-name (->> (mt/db) database/tables first :name)]
+          (is (= {:status 400
+                  :body "This table already exists"}
+                 (try (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
+                                 (merge {:accept       :json
+                                         :content-type :json
+                                         :form-params  {:table_name  table-name
+                                                        :schema_name "public"}}
+                                        api-headers))
+                      (catch clojure.lang.ExceptionInfo e
+                        (select-keys (ex-data e) [:status :body]))))))))))
