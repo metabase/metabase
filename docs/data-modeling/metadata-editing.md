@@ -26,7 +26,7 @@ You'll find a playground of knobs and buttons that'll let you:
 
 Metadata isn't restricted to admins. People can set up mini versions of the **Data Model** using [models](../data-modeling/models.md).
 
-You can think of the Data Model admin settings as global defaults for metadata in Metabase. Model metadata will apply on top of the Data Model admin settings, and will be "local" to the model. For example, models can act as command centers for different areas of business logic.
+You can think of the Data Model admin settings as global defaults for metadata in Metabase. Model metadata will apply on top of the Data Model admin settings, and will be "local" to the model. For example, teams can use models to act as command centers for different areas of business logic.
 
 |                                               | Data Model | Models |
 |-----------------------------------------------|------------|--------|
@@ -67,10 +67,12 @@ To add a table description, click into the box below the table name. Description
 
 ### Table visibility
 
-| Visibility | [Query builder](../questions/query-builder/introduction.md) | [SQL editor](../questions/native-editor/writing-sql.md) | [Data reference](../exploration-and-organization/data-model-reference.md) |
-|------------|-------------------------------------------------------------|---------------------------------------------------------|---------------------------------------------------------------------------|
-| Queryable  | ✅                                                          | ✅                                                       | ✅                                                                        |
-| Hidden     | ❌                                                          | ✅                                                       | ❌                                                                        |
+| Table visibility                                                         | Queryable | Hidden |
+|--------------------------------------------------------------------------|-----------|--------|           
+| [Query builder](../questions/query-builder/introduction.md)              | ✅        | ❌      |
+| [SQL editor](../questions/native-editor/writing-sql.md)                  | ✅        | ✅      |
+| [Data reference](../exploration-and-organization/data-model-reference.md)| ✅        | ❌      |
+
 
 **Hidden** tables won't show up in the query builder or data refererence, but they're still accessible if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
 
@@ -113,13 +115,13 @@ To add a description, click into the box below the column name. Descriptions are
 
 By default, users can see all of the columns in a table.
 
-| Visibility            | [Query builder](../questions/query-builder/introduction.md) | [SQL editor](../questions/native-editor/writing-sql.md) | [Data reference](../exploration-and-organization/data-model-reference.md) |
-|-----------------------|-------------------------------------------------------------|---------------------------------------------------------|---------------------------------------------------------------------------|
-| Everywhere            | ✅                                                          | ✅                                                       | ✅                                                                        | 
-| Only in detail views  | ✅                                                          | ✅                                                       | ✅                                                                        | 
-| Do not include        | ❌                                                          | ✅                                                       | ❌                                                                        | 
+| Column visibility                                                         | Everywhere    | Only in detail views | Do not include |
+|---------------------------------------------------------------------------|---------------|----------------------|----------------|
+| [Query builder](../questions/query-builder/introduction.md)               | ✅            | ✅                    | ✅             | 
+| [SQL editor](../questions/native-editor/writing-sql.md)                   | ✅            | ✅                    | ✅             | 
+| [Data reference](../exploration-and-organization/data-model-reference.md) | ❌            | ✅                    | ❌             | 
 
-**Only in detail views** will hide lengthy text from question results. This setting is applied by default if a column's values have an average length of more than 50 characters. You might want to use this setting on a column like "Comments" if you already have a column for "Rating".
+**Only in detail views** will hide lengthy text from question results. This setting is applied by default if a column's values have an average length of more than 50 characters. For example, you could use this setting on a column like "Customer Comments" if you already have a column for "Customer Rating".
 
 **Do not include** columns won't show up in the query builder or data reference, but these columns are still accessible if someone writes `SELECT hidden_column FROM table` from the [SQL editor](../questions/native-editor/writing-sql.md). You can set "do not include" on sensitive columns (such as PII) or irrelevant columns.
 
