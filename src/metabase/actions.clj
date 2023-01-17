@@ -15,34 +15,12 @@
    [schema.core :as schema]
    [toucan.db :as db]))
 
-(setting/defsetting experimental-enable-actions
-  (i18n/deferred-tru "Whether to enable using the new experimental Actions features globally. (Actions must also be enabled for each Database.)")
-  :default false
-  :type :boolean
-  :visibility :public)
-
 (setting/defsetting database-enable-actions
-  (i18n/deferred-tru "Whether to enable using the new experimental Actions for a specific Database.")
+  (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
   :default false
   :type :boolean
   :visibility :public
   :database-local :only)
-
-(defn check-actions-enabled
-  "Function that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
-  throws a 400 response if not"
-  []
-  (api/check (experimental-enable-actions) 400 (i18n/tru "Actions are not enabled.")))
-
-(defn +check-actions-enabled
-  "Ring middleware that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
-  returns a 400 response if not"
-  [handler]
-  (fn [request respond raise]
-    (if (experimental-enable-actions)
-      (handler request respond raise)
-      (raise (ex-info (i18n/tru "Actions are not enabled.")
-                      {:status-code 400})))))
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
@@ -149,10 +127,6 @@
     (when (s/invalid? (s/conform spec arg-map))
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
-    ;; Check that Actions are enabled globally.
-    (when-not (experimental-enable-actions)
-      (throw (ex-info (i18n/tru "Actions are not enabled.")
-                      {:status-code 400})))
     ;; Check that Actions are enabled for this specific Database.
     (let [{database-id :database}                         arg-map
           {db-settings :settings, driver :engine, :as db} (api/check-404 (db/select-one Database :id database-id))]

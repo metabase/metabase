@@ -2515,10 +2515,6 @@
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                        dashboard-id
                                        dashcard-id)]
-              (testing "Without actions enabled"
-                (is (= "Actions are not enabled."
-                       (mt/user-http-request :crowberto :post 400 execute-path
-                                             {:parameters {"name" "Birds"}}))))
               (testing "Without execute rights on the DB"
                 (mt/with-actions-enabled
                   (is (partial= {:message "You do not have permissions to run this query."}
@@ -2548,10 +2544,6 @@
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                        dashboard-id
                                        dashcard-id)]
-              (testing "Without actions enabled"
-                (is (= "Actions are not enabled."
-                       (mt/user-http-request :crowberto :post 400 execute-path
-                                             {:parameters {"id" 1}}))))
               (testing "Without execute rights on the DB"
                 (mt/with-actions-enabled
                   (is (partial= {:message "You don't have permissions to do that."}

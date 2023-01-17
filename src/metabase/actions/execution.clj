@@ -163,7 +163,6 @@
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
   [dashboard-id dashcard-id request-parameters]
-  (actions/check-actions-enabled)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
@@ -199,7 +198,6 @@
   "Fetch values to pre-fill implicit action execution - custom actions will return no values.
    Must pass in parameters of shape `{<parameter-id> <value>}` for primary keys."
   [dashboard-id dashcard-id request-parameters]
-  (actions/check-actions-enabled)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))

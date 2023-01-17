@@ -235,9 +235,8 @@
 (defn do-with-actions-enabled
   "Impl for [[with-actions-enabled]]."
   [thunk]
-  (tu/with-temporary-setting-values [experimental-enable-actions true]
-    (tu/with-temp-vals-in-db Database (data/id) {:settings {:database-enable-actions true}}
-      (thunk))))
+  (tu/with-temp-vals-in-db Database (data/id) {:settings {:database-enable-actions true}}
+    (thunk)))
 
 (defmacro with-actions-enabled
   "Execute `body` with Actions enabled at the global level and for the current test Database."
