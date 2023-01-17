@@ -9,7 +9,7 @@ import {
 
 export const Root = styled.div<{
   hasScroll: boolean;
-  isBordered: boolean;
+  isBordered?: boolean;
 }>`
   display: flex;
   flex-direction: column;
