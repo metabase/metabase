@@ -1130,9 +1130,6 @@ describe("Question", () => {
           slug: "foo",
           target: ["dimension", ["template-tag", "foo"]],
           type: "category",
-          values_query_type: "list",
-          values_source_type: null,
-          values_source_config: {},
         },
         {
           default: undefined,
@@ -1142,9 +1139,6 @@ describe("Question", () => {
           slug: "bar",
           target: ["variable", ["template-tag", "bar"]],
           type: "category",
-          values_query_type: "list",
-          values_source_type: null,
-          values_source_config: {},
         },
       ]);
     });
@@ -1227,6 +1221,7 @@ describe("Question", () => {
         "starts-with",
         ["field", PRODUCTS.CATEGORY.id, null],
         "abc",
+        { "case-sensitive": false },
       ]);
     });
   });

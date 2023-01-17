@@ -44,7 +44,9 @@ export type FieldVisibilityType =
   | "retired";
 
 type HumanReadableFieldValue = string;
-type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
+export type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
+
+export type FieldValuesType = "list" | "search" | "none";
 
 export type FieldDimension = {
   name: string;
@@ -74,6 +76,7 @@ export interface ConcreteField {
 
   max_value?: number;
   min_value?: number;
+  has_field_values: FieldValuesType;
 
   caveats?: string | null;
   points_of_interest?: string;
@@ -84,6 +87,12 @@ export interface ConcreteField {
   last_analyzed: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface FieldValues {
+  field_id: FieldId;
+  values: FieldValue[];
+  has_more_values: boolean;
 }
 
 export type Field = Omit<ConcreteField, "id"> & {

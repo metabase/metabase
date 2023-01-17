@@ -44,9 +44,9 @@ export interface Parameter {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
-  values_query_type: ValuesQueryType;
-  values_source_type: ValuesSourceType;
-  values_source_config: ValuesSourceConfig;
+  values_query_type?: ValuesQueryType;
+  values_source_type?: ValuesSourceType;
+  values_source_config?: ValuesSourceConfig;
 }
 
 export type ValuesQueryType = "list" | "search" | "none";

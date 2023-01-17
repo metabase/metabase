@@ -428,7 +428,9 @@
 ;; be setting `:archived` to `true` via the `PUT` endpoint instead
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
-  "Delete a Dashboard."
+  "Delete a Dashboard.
+
+  This will remove also any questions/models/segments/metrics that use this database."
   [id]
   (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
                  "`archived` value via PUT /api/dashboard/:id."))
