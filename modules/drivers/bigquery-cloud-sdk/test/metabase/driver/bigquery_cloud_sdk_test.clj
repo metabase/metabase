@@ -380,16 +380,20 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries can be canceled successfully"
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        (binding [bigquery/*page-size*     1000  ; set a relatively small pageSize
+        (binding [bigquery/*page-size*     1000 ; set a relatively small pageSize
                   bigquery/*page-callback* (fn []
                                              (log/debug "*page-callback* called, sending cancel message")
                                              (a/>!! canceled-chan ::cancel))]
-          (mt/dataset sample-dataset
-            (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
-                  row-count (count rows)]
-              (log/debugf "Loaded %d rows before BigQuery query was canceled" row-count)
-              (testing "Somewhere between 0 and the size of the orders table rows were loaded before cancellation"
-                (is (< 0 row-count 10000))))))))))
+          (try
+            ;; there's a race. Some data might be processed, and if so we get the partial result
+            (mt/dataset sample-dataset
+              (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
+                    row-count (count rows)]
+                (log/debugf "Loaded %d rows before BigQuery query was canceled" row-count)
+                (testing "Somewhere between 0 and the size of the orders table rows were loaded before cancellation"
+                  (is (< 0 row-count 10000)))))
+            (catch clojure.lang.ExceptionInfo e
+              (is (= (ex-message e) "Query cancelled")))))))))
 
 (deftest global-max-rows-test
   (mt/test-driver :bigquery-cloud-sdk
