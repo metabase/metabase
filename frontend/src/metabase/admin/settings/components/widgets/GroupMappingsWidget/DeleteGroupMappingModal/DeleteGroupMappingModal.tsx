@@ -42,18 +42,29 @@ const DeleteGroupMappingModal = ({
   const submitButtonLabels: Record<ValueType, string> = {
     nothing: t`Remove mapping`,
     clear: t`Remove mapping and members`,
-    delete: t`Remove mapping and delete group`,
+    delete:
+      groupIds.length > 1
+        ? t`Remove mapping and delete groups`
+        : t`Remove mapping and delete group`,
   };
+
+  const subtitle =
+    groupIds.length > 1
+      ? t`These groups' user memberships will no longer be synced with the directory server.`
+      : t`This group's user membership will no longer be synced with the directory server.`;
+
+  const whatShouldHappenText =
+    groupIds.length > 1
+      ? t`What should happen with the groups themselves in Metabase?`
+      : t`What should happen with the group itself in Metabase?`;
 
   return (
     <Modal>
       <div>
         <ModalHeader>{t`Remove this group mapping?`}</ModalHeader>
-        <ModalSubtitle>
-          {t`This group's user membership will no longer be synced with the directory server.`}
-        </ModalSubtitle>
+        <ModalSubtitle>{subtitle}</ModalSubtitle>
         <ModalRadioRoot>
-          <p>{t`What should happen with the group itself in Metabase?`}</p>
+          <p>{whatShouldHappenText}</p>
 
           <Radio
             className="ml2"
@@ -61,7 +72,7 @@ const DeleteGroupMappingModal = ({
             value={value as ValueType | undefined}
             options={[
               {
-                name: t`Nothing, just remove the mapping.`,
+                name: t`Nothing, just remove the mapping`,
                 value: "nothing",
               },
               {
@@ -69,7 +80,10 @@ const DeleteGroupMappingModal = ({
                 value: "clear",
               },
               {
-                name: t`Also delete the group`,
+                name:
+                  groupIds.length > 1
+                    ? t`Also delete the groups`
+                    : t`Also delete the group`,
                 value: "delete",
               },
             ]}
