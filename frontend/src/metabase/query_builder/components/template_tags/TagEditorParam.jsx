@@ -279,7 +279,7 @@ export class TagEditorParam extends Component {
 
         {parameter && canUseCustomSource(parameter) && (
           <InputContainer>
-            <ContainerLabel>{t`How should users filter on this column?`}</ContainerLabel>
+            <ContainerLabel>{t`How should users filter on this variable?`}</ContainerLabel>
             <ValuesSourceSettings
               parameter={parameter}
               onChangeQueryType={value =>
