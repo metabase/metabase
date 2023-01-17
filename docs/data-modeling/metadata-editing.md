@@ -101,8 +101,6 @@ To add a description, click into the box below the column name. Descriptions are
 
 Metabase defaults to the column order defined in your database schema. To reorder the column display order in question results and menus **manually**, click on the grab bar to the right of each column, and drag the column to a new position.
 
-![Reordering columns](./images/column-reorder.gif)
-
 To sort the columns **automatically**, click on the **sort** icon at the top right of the first column's settings box. The sorting options are:
 
 - **Database.** (Default) The order of columns as they appear in the database.
