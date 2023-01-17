@@ -13932,7 +13932,7 @@ databaseChangeLog:
               - column:
                   name: context
             indexName: idx_query_execution_context
-              
+
   - changeSet:
       id: v46.00-045
       author: calherries
