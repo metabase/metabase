@@ -1,8 +1,6 @@
-import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-// import { LogoLink } from "./AppBarLogo.styled";
 
 interface AppBarRootProps {
   isNavBarOpen?: boolean;
