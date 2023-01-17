@@ -52,16 +52,16 @@
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
      (mapv (fn [[f step-name]] (assoc (f database) :name step-name))
            (filter
-             some?
-             [;; First make sure Tables, Fields, and FK information is up-to-date
-              [sync-metadata/sync-db-metadata! "metadata"]
-              ;; Next, run the 'analysis' step where we do things like scan values of fields and update semantic types
-              ;; accordingly
-              (when (= scan :full)
-                [analyze/analyze-db! "analyze"])
-              ;; Finally, update cached FieldValues
-              (when (= scan :full)
-                [field-values/update-field-values! "field-values"])])))))
+            some?
+            [;; First make sure Tables, Fields, and FK information is up-to-date
+             [sync-metadata/sync-db-metadata! "metadata"]
+             ;; Next, run the 'analysis' step where we do things like scan values of fields and update semantic types
+             ;; accordingly
+             (when (= scan :full)
+               [analyze/analyze-db! "analyze"])
+             ;; Finally, update cached FieldValues
+             (when (= scan :full)
+               [field-values/update-field-values! "field-values"])])))))
 
 (s/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
