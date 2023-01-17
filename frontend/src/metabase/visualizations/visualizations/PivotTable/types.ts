@@ -35,5 +35,6 @@ export type BodyItem = HeaderItem & {
 
 export type HeaderWidthType = {
   leftHeaderWidths: number[] | null;
-  totalHeaderWidths: number | null;
+  totalLeftHeaderWidths: number | null;
+  valueHeaderWidths: number[];
 };
