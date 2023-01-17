@@ -28,8 +28,8 @@ describe("AppBar", () => {
 
     afterEach(() => {
       jest.clearAllMocks();
-      reStoreMockEmbedding();
       nock.cleanAll();
+      reStoreMockEmbedding();
     });
 
     describe("large screens", () => {
@@ -38,19 +38,8 @@ describe("AppBar", () => {
       });
 
       it("should be able to toggle side nav", async () => {
-        const embedOptions: Partial<EmbedOptions> = {
+        renderAppBar({
           side_nav: true,
-        };
-        renderWithProviders(<AppBar />, {
-          withRouter: true,
-          initialPath: "/question/1",
-          storeInitialState: {
-            app: createMockAppState({ isNavbarOpen: false }),
-            embed: createMockEmbedState(embedOptions),
-            qb: createMockQueryBuilderState({
-              card: createMockCard(),
-            }),
-          },
         });
 
         expect(await screen.findByText(/Our analytics/)).toBeVisible();
@@ -60,28 +49,58 @@ describe("AppBar", () => {
       });
 
       it("should hide side nav toggle icon", async () => {
-        const embedOptions: Partial<EmbedOptions> = {
+        renderAppBar({
           side_nav: false,
-        };
-        renderWithProviders(<AppBar />, {
-          withRouter: true,
-          initialPath: "/question/1",
-          storeInitialState: {
-            app: createMockAppState({ isNavbarOpen: false }),
-            embed: createMockEmbedState(embedOptions),
-            qb: createMockQueryBuilderState({
-              card: createMockCard(),
-            }),
-          },
         });
 
         expect(await screen.findByText(/Our analytics/)).toBeVisible();
         expect(screen.getByTestId("main-logo")).toBeVisible();
         expect(screen.queryByTestId("sidebar-toggle")).not.toBeInTheDocument();
       });
+
+      it("should always show side nav toggle icon when logo is hidden", async () => {
+        renderAppBar({
+          side_nav: true,
+          logo: false,
+        });
+
+        expect(await screen.findByText(/Our analytics/)).toBeVisible();
+        expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
+        expect(screen.getByTestId("sidebar-toggle")).toBeVisible();
+
+        screen.getByTestId("sidebar-toggle").click();
+        expect(screen.getByText(/Our analytics/)).not.toBeVisible();
+        expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
+        expect(screen.getByTestId("sidebar-toggle")).toBeVisible();
+      });
+
+      it("should not show either logo or side nav toggle button at all", async () => {
+        renderAppBar({
+          side_nav: false,
+          logo: false,
+        });
+
+        expect(await screen.findByText(/Our analytics/)).toBeVisible();
+        expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("sidebar-toggle")).not.toBeInTheDocument();
+      });
     });
   });
 });
+
+function renderAppBar(embedOptions: Partial<EmbedOptions>) {
+  renderWithProviders(<AppBar />, {
+    withRouter: true,
+    initialRouterPath: "/question/1",
+    storeInitialState: {
+      app: createMockAppState({ isNavbarOpen: false }),
+      embed: createMockEmbedState(embedOptions),
+      qb: createMockQueryBuilderState({
+        card: createMockCard(),
+      }),
+    },
+  });
+}
 
 function getMediaQuery(opts?: Partial<MediaQueryList>): MediaQueryList {
   return {
