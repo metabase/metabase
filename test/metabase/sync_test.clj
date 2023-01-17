@@ -253,10 +253,10 @@
 (deftest get-or-create-named-table!-test
   (mt/test-driver :postgres
     (testing (str "Notify that a new table has been added via API (#25496)")
-      (let [db-name "sync_new_table_test"
-            details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
-            spec (sql-jdbc.conn/connection-details->spec :postgres details)
-            exec! (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
+      (let [db-name  "sync_new_table_test"
+            details  (mt/dbdef->connection-details :postgres :db {:database-name db-name})
+            spec     (sql-jdbc.conn/connection-details->spec :postgres details)
+            exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
             tableset #(set (map :name (db/select 'Table :db_id (:id %))))]
         ;; create the postgres DB
         (drop-if-exists-and-create-db! db-name)
@@ -275,7 +275,7 @@
                          "CREATE TABLE DOC (val bigint NOT NULL);"])
             ;; Add only one of the tables to be synched
             ;(sync/get-or-create-named-table! database {:table-name  "fern" :schema-name "public"})
-            (sync/get-or-create-named-table! database {:table-name  "fern"})
+            (sync/get-or-create-named-table! database {:table-name "fern"})
             ;; Assert that the synched table is in the MB db and the unsynched table is not.
             (let [tables (tableset database)]
               (is (= #{"fern" "foo" "bar"} tables)))
@@ -288,9 +288,9 @@
                      (catch Exception _ :ambiguous-table))))
             ;; Providing a schema + name for an ambiguous table works (This is a get as fern is already present)
             (is (= {:name "fern" :schema "public"}
-                 (select-keys
-                  (sync/get-or-create-named-table! database {:table-name "fern" :schema-name "public"})
-                  [:name :schema])))
+                   (select-keys
+                    (sync/get-or-create-named-table! database {:table-name "fern" :schema-name "public"})
+                    [:name :schema])))
             ;; Doc is now ambiguous and both docs are only in the warehouse
             (exec! spec ["CREATE TABLE private.DOC (val bigint NOT NULL);"
                          "CREATE TABLE private.FROOB (val bigint NOT NULL);"])
