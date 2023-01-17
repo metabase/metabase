@@ -174,7 +174,9 @@ export default class GroupMappingsWidget extends React.Component {
     SettingsApi.put({ key: mappingSetting, value: mappings }).then(
       () => {
         onChangeSetting(mappingSetting, mappings);
+
         this.updateGroupsFromDeletedMappings();
+
         this.setState({
           showEditModal: false,
           showAddRow: false,
@@ -186,13 +188,23 @@ export default class GroupMappingsWidget extends React.Component {
   };
 
   updateGroupsFromDeletedMappings = () => {
-    const { groupsToClearAllPermissions, groupsToDelete } =
-      this.state.whenDeletingMappingGroups;
+    const { groupsToDelete } = this.state.whenDeletingMappingGroups;
 
     groupsToDelete.forEach(id => PermissionsApi.deleteGroup({ id }));
 
-    groupsToClearAllPermissions.forEach(id =>
-      PermissionsApi.clearGroupMembership({ id }),
+    // Avoid calling the API for groups that have just been deleted
+    this.getGroupsToClearAllPermissionsThatAreNotAlsoGroupsToDelete().forEach(
+      id => PermissionsApi.clearGroupMembership({ id }),
+    );
+  };
+
+  getGroupsToClearAllPermissionsThatAreNotAlsoGroupsToDelete = () => {
+    const { groupsToClearAllPermissions, groupsToDelete } =
+      this.state.whenDeletingMappingGroups;
+
+    return groupsToClearAllPermissions.filter(
+      groupToClearAllPermission =>
+        !groupsToDelete.includes(groupToClearAllPermission),
     );
   };
 
