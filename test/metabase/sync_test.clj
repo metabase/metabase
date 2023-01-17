@@ -274,10 +274,30 @@
             (exec! spec ["CREATE TABLE FERN (val bigint NOT NULL);"
                          "CREATE TABLE DOC (val bigint NOT NULL);"])
             ;; Add only one of the tables to be synched
-            (sync/get-or-create-named-table! database {:table-name  "fern" :schema-name "public"})
+            ;(sync/get-or-create-named-table! database {:table-name  "fern" :schema-name "public"})
+            (sync/get-or-create-named-table! database {:table-name  "fern"})
             ;; Assert that the synched table is in the MB db and the unsynched table is not.
             (let [tables (tableset database)]
-              (is (= #{"fern" "foo" "bar"} tables)))))))))
+              (is (= #{"fern" "foo" "bar"} tables)))
+            (exec! spec ["CREATE SCHEMA IF NOT EXISTS private;"
+                         "CREATE TABLE private.FERN (val bigint NOT NULL);"])
+            ;; Now that we've got two FERN tables, a named get is insufficient
+            (is (= :ambiguous-table
+                   (try
+                     (sync/get-or-create-named-table! database {:table-name "fern"})
+                     (catch Exception _ :ambiguous-table))))
+            ;; Providing a schema + name for an ambiguous table works (This is a get as fern is already present)
+            (is (= {:name "fern" :schema "public"}
+                 (select-keys
+                  (sync/get-or-create-named-table! database {:table-name "fern" :schema-name "public"})
+                  [:name :schema])))
+            ;; Doc is now ambiguous and both docs are only in the warehouse
+            (exec! spec ["CREATE TABLE private.DOC (val bigint NOT NULL);"
+                         "CREATE TABLE private.FROOB (val bigint NOT NULL);"])
+            ;; We can create using an ambiguous schema
+            (sync/get-or-create-named-table! database {:table-name "doc" :schema-name "private"})
+            (let [tables (tableset database)]
+              (is (= #{"fern" "foo" "bar" "doc"} tables)))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
