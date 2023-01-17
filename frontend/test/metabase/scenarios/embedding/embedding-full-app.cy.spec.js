@@ -130,7 +130,6 @@ describe("scenarios > embedding > full app", () => {
       cy.button("Filter").should("not.exist");
     });
 
-    // TODO: move the whole suite to unit tests
     describe("desktop logo", () => {
       // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
       it("should hide main header when there's nothing to display there", () => {
@@ -150,69 +149,7 @@ describe("scenarios > embedding > full app", () => {
         cy.viewport("iphone-x");
       });
 
-      it("should be able to toggle side nav", () => {
-        // default logo: true
-        visitQuestionUrl({ url: "/question/1", qs: { side_nav: true } });
-        cy.findByRole("banner").within(() => {
-          cy.findByText(/Our analytics/i).should("be.visible");
-          cy.findByTestId("main-logo").should("be.visible");
-        });
-
-        cy.findByTestId("sidebar-toggle").click();
-        cy.findByText(/Add your own data/i).should("be.visible");
-
-        cy.findByRole("banner").within(() => {
-          cy.findByText(/Our analytics/i).should("not.exist");
-          cy.findByTestId("main-logo").should("be.visible");
-        });
-      });
-
-      it("should hide side nav toggle icon on hover", () => {
-        // default logo: true
-        visitQuestionUrl({ url: "/question/1", qs: { side_nav: false } });
-        cy.findByRole("banner").within(() => {
-          cy.findByText(/Our analytics/i).should("be.visible");
-          cy.findByTestId("main-logo").should("be.visible");
-        });
-
-        cy.findByTestId("sidebar-toggle").should("not.exist");
-      });
-
-      it("should always show side nav toggle icon when logo is hidden", () => {
-        visitQuestionUrl({
-          url: "/question/1",
-          qs: { side_nav: true, logo: false },
-        });
-        cy.findByRole("banner").within(() => {
-          cy.findByText(/Our analytics/i).should("be.visible");
-          cy.findByTestId("main-logo").should("not.exist");
-          cy.icon("sidebar_closed").should("be.visible");
-        });
-
-        cy.findByTestId("sidebar-toggle").click();
-        cy.findByText(/Add your own data/i).should("be.visible");
-
-        cy.findByRole("banner").within(() => {
-          cy.findByText(/Our analytics/i).should("not.exist");
-          cy.findByTestId("main-logo").should("not.exist");
-          cy.icon("sidebar_open").should("be.visible");
-        });
-      });
-
-      it("should not show either logo or side nav toggle button at all", () => {
-        visitQuestionUrl({
-          url: "/question/1",
-          qs: { side_nav: false, logo: false },
-        });
-        cy.findByRole("banner").within(() => {
-          cy.findByText(/Our analytics/i).should("be.visible");
-          cy.findByTestId("main-logo").should("not.exist");
-          cy.icon("sidebar_closed").should("not.exist");
-        });
-
-        cy.findByTestId("sidebar-toggle").should("not.exist");
-      });
-
+      // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
       it("should hide main header when there's nothing to display there", () => {
         visitQuestionUrl({
           url: "/question/1",

@@ -44,8 +44,10 @@ describe("AppBar", () => {
 
         expect(await screen.findByText(/Our analytics/)).toBeVisible();
         expect(screen.getByTestId("main-logo")).toBeVisible();
+
         screen.getByTestId("sidebar-toggle").click();
         expect(screen.getByText(/Our analytics/)).not.toBeVisible();
+        expect(screen.getByTestId("main-logo")).toBeVisible();
       });
 
       it("should hide side nav toggle icon", async () => {
@@ -70,6 +72,62 @@ describe("AppBar", () => {
 
         screen.getByTestId("sidebar-toggle").click();
         expect(screen.getByText(/Our analytics/)).not.toBeVisible();
+        expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
+        expect(screen.getByTestId("sidebar-toggle")).toBeVisible();
+      });
+
+      it("should not show either logo or side nav toggle button at all", async () => {
+        renderAppBar({
+          side_nav: false,
+          logo: false,
+        });
+
+        expect(await screen.findByText(/Our analytics/)).toBeVisible();
+        expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("sidebar-toggle")).not.toBeInTheDocument();
+      });
+    });
+
+    describe("small screens", () => {
+      beforeEach(() => {
+        matchMediaSpy.mockReturnValue(getMediaQuery({ matches: true }));
+      });
+
+      it("should be able to toggle side nav", async () => {
+        renderAppBar({
+          side_nav: true,
+        });
+
+        expect(await screen.findByText(/Our analytics/)).toBeVisible();
+        expect(screen.getByTestId("main-logo")).toBeVisible();
+
+        screen.getByTestId("sidebar-toggle").click();
+        expect(screen.queryByText(/Our analytics/)).not.toBeInTheDocument();
+        expect(screen.getByTestId("main-logo")).toBeVisible();
+      });
+
+      it("should hide side nav toggle icon", async () => {
+        renderAppBar({
+          side_nav: false,
+        });
+
+        expect(await screen.findByText(/Our analytics/)).toBeVisible();
+        expect(screen.getByTestId("main-logo")).toBeVisible();
+        expect(screen.queryByTestId("sidebar-toggle")).not.toBeInTheDocument();
+      });
+
+      it("should always show side nav toggle icon when logo is hidden", async () => {
+        renderAppBar({
+          side_nav: true,
+          logo: false,
+        });
+
+        expect(await screen.findByText(/Our analytics/)).toBeVisible();
+        expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
+        expect(screen.getByTestId("sidebar-toggle")).toBeVisible();
+
+        screen.getByTestId("sidebar-toggle").click();
+        expect(screen.queryByText(/Our analytics/)).not.toBeInTheDocument();
         expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
         expect(screen.getByTestId("sidebar-toggle")).toBeVisible();
       });
