@@ -282,7 +282,6 @@ class ChartSettings extends Component {
     const settings = this._getSettings();
     const widgets = this._getWidgets();
     const rawSeries = this._getRawSeries();
-    console.log(widgets);
 
     const widgetsById = {};
     const sections = {};

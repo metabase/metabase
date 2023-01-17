@@ -3,33 +3,28 @@ import React, { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
-
+import Button from "metabase/core/components/Button";
 import { DatasetColumn } from "metabase-types/api";
-import { DimensionReferenceWithOptions } from "metabase-types/api/query";
+import { ConcreteField, Field } from "metabase-types/types/Query";
+import { isNotNull } from "metabase/core/utils/types";
 
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import { getBaseDimensionReference } from "metabase-lib/references";
 import Question from "metabase-lib/Question";
+import Dimension from "metabase-lib/Dimension";
 
 import {
   TableHeaderContainer,
   TableName,
   FieldCheckbox,
-  FieldBulkActionLink,
 } from "./ChartSettingColumnEditor.styled";
 
 type ColumnSetting = {
   name?: string;
-  fieldRef: DimensionReferenceWithOptions;
+  fieldRef?: Field | null;
   enabled: boolean;
 };
 
-type ColumnDimension = {
-  displayName: string;
-  fieldRef: DimensionReferenceWithOptions;
-};
 interface ChartSettingColumnEditorProps {
   value: ColumnSetting[];
   onChange: (val: ColumnSetting[]) => void;
@@ -49,29 +44,22 @@ const ChartSettingColumnEditor = ({
       const options = query.fieldsOptions();
       return {
         name: query.table()?.display_name || t`Columns`,
-        dimensions: options.dimensions.map(dimension => ({
-          displayName: dimension.displayName(),
-          fieldRef: dimension.mbql(),
-        })) as ColumnDimension[],
+        dimensions: options.dimensions.filter(isNotNull),
         fks: options.fks.map(fk => ({
           name:
             fk.name ||
             (fk.field.target
               ? fk.field.target.table?.display_name
               : fk.field.displayName()),
-          dimensions: fk.dimensions.map(dimension => ({
-            displayName: dimension.displayName(),
-            fieldRef: dimension.mbql(),
-          })) as ColumnDimension[],
+          dimensions: fk.dimensions.filter(isNotNull),
         })),
       };
     } else if (query instanceof NativeQuery && columns) {
       return {
         name: query.table()?.display_name || t`Columns`,
-        dimensions: columns.map(column => ({
-          displayName: getFriendlyName(column),
-          fieldRef: column.field_ref,
-        })) as ColumnDimension[],
+        dimensions: columns
+          .map(column => Dimension.parseMBQL(column.field_ref as ConcreteField))
+          .filter(isNotNull),
         fks: [],
       };
     } else {
@@ -83,69 +71,37 @@ const ChartSettingColumnEditor = ({
     }
   }, [question, columns]);
 
-  const handleEnable = (mbql: DimensionReferenceWithOptions) => {
-    const columnSettingsCopy = [...columnSettings];
-    const index = getColumnSettingIndexByRef(mbql);
-    columnSettingsCopy[index] = { ...columnSettingsCopy[index], enabled: true };
-    onChange(columnSettingsCopy);
-  };
-
-  const handleDisable = (mbql: DimensionReferenceWithOptions) => {
-    const columnSettingsCopy = [...columnSettings];
-    const index = getColumnSettingIndexByRef(mbql);
-    columnSettingsCopy[index] = {
-      ...columnSettingsCopy[index],
-      enabled: false,
-    };
-    onChange(columnSettingsCopy);
-  };
-
-  const handleAddNewField = (fieldRef: DimensionReferenceWithOptions) => {
-    const columnSettingsCopy = [...columnSettings, { fieldRef, enabled: true }];
-    onChange(columnSettingsCopy);
-  };
-
-  const getColumnSettingByRef = (mbql: DimensionReferenceWithOptions) => {
-    return columnSettings[getColumnSettingIndexByRef(mbql)];
-  };
-
-  const getColumnSettingIndexByRef = (mbql: DimensionReferenceWithOptions) => {
-    return columnSettings.findIndex(setting =>
-      _.isEqual(getBaseDimensionReference(setting.fieldRef), mbql),
+  const getColumnSettingByDimension = (dimension: Dimension) => {
+    return columnSettings.find(setting =>
+      dimension.isSameBaseDimension(setting.fieldRef as ConcreteField),
     );
   };
 
-  const columnIsEnabled = (mbql: DimensionReferenceWithOptions) => {
-    console.log(mbql, columnSettings);
-    return getColumnSettingByRef(mbql)?.enabled;
+  const columnIsEnabled = (dimension: Dimension) => {
+    return getColumnSettingByDimension(dimension)?.enabled;
   };
 
-  const toggleColumn = (mbql: DimensionReferenceWithOptions) => {
-    const setting = getColumnSettingByRef(mbql);
+  const toggleColumn = (dimension: Dimension) => {
+    const setting = getColumnSettingByDimension(dimension);
 
-    if (!setting) {
-      handleAddNewField(mbql);
-    } else if (setting.enabled) {
-      handleDisable(mbql);
-    } else if (!setting.enabled) {
-      handleEnable(mbql);
+    if (!setting?.enabled) {
+      enableColumns([dimension]);
+    } else {
+      disableColumns([dimension]);
     }
   };
 
-  const tableInColumnSettings = (dimensions: ColumnDimension[]) => {
+  const tableInColumnSettings = (dimensions: Dimension[]) => {
     return dimensions.some(
-      dimension => getColumnSettingByRef(dimension.fieldRef)?.enabled,
+      dimension => getColumnSettingByDimension(dimension)?.enabled,
     );
   };
 
-  const bulkDisableColumns = (dimensions: ColumnDimension[]) => {
+  const disableColumns = (dimensions: Dimension[]) => {
     const columnSettingsCopy = columnSettings.map(setting => ({
       ...setting,
       enabled: dimensions.some(dimension =>
-        _.isEqual(
-          getBaseDimensionReference(setting.fieldRef),
-          dimension.fieldRef,
-        ),
+        dimension.isSameBaseDimension(setting.fieldRef as ConcreteField),
       )
         ? false
         : setting.enabled,
@@ -154,32 +110,28 @@ const ChartSettingColumnEditor = ({
     onChange(columnSettingsCopy);
   };
 
-  const bulkEnableColumns = (dimensions: ColumnDimension[]) => {
+  const enableColumns = (dimensions: Dimension[]) => {
     const [dimensionsInColumnSettings, dimensionsNotInColumnSettings] =
       _.partition(
         dimensions,
-        dimension => !!getColumnSettingByRef(dimension.fieldRef),
+        dimension => !!getColumnSettingByDimension(dimension),
       );
 
-    //Enable any columns that are in column settings
+    //Enable any columns that are in column settings (used for Native Queries)
     const columnSettingsCopy = columnSettings.map(setting => ({
       ...setting,
       enabled: dimensionsInColumnSettings.some(dimension =>
-        _.isEqual(
-          getBaseDimensionReference(setting.fieldRef),
-          dimension.fieldRef,
-        ),
+        dimension.isSameBaseDimension(setting.fieldRef as ConcreteField),
       )
         ? true
         : setting.enabled,
     }));
 
-    console.log(dimensionsNotInColumnSettings);
-    //Add any that are not in the ColumnSettings
+    //Add any that are not in the ColumnSettings (used for Structured Queries)
     onChange([
       ...columnSettingsCopy,
       ...dimensionsNotInColumnSettings.map(dimension => ({
-        fieldRef: dimension.fieldRef,
+        fieldRef: dimension.mbql(),
         enabled: true,
       })),
     ]);
@@ -189,28 +141,18 @@ const ChartSettingColumnEditor = ({
     <div className="list">
       <TableHeaderContainer>
         <TableName>{fieldOptions.name}</TableName>
-        {tableInColumnSettings(fieldOptions.dimensions) ? (
-          <FieldBulkActionLink
-            as="button"
-            onClick={() => bulkDisableColumns(fieldOptions.dimensions)}
-          >
-            {t`Deselect All`}
-          </FieldBulkActionLink>
-        ) : (
-          <FieldBulkActionLink
-            as="button"
-            onClick={() => bulkEnableColumns(fieldOptions.dimensions)}
-          >
-            {t`Select All`}
-          </FieldBulkActionLink>
-        )}
+        <BulkActionButton
+          tableInColumns={tableInColumnSettings(fieldOptions.dimensions)}
+          bulkEnable={() => enableColumns(fieldOptions.dimensions)}
+          bulkDisable={() => disableColumns(fieldOptions.dimensions)}
+        />
       </TableHeaderContainer>
       {fieldOptions.dimensions.map((dimension, index) => (
         <FieldCheckbox
-          label={dimension.displayName}
-          onClick={() => toggleColumn(dimension.fieldRef)}
-          checked={columnIsEnabled(dimension.fieldRef)}
-          key={`${dimension.displayName}-${index}`}
+          label={dimension.displayName()}
+          onClick={() => toggleColumn(dimension)}
+          checked={columnIsEnabled(dimension)}
+          key={`${dimension.displayName()}-${index}`}
         />
       ))}
       {fieldOptions.fks.length > 0 &&
@@ -218,28 +160,18 @@ const ChartSettingColumnEditor = ({
           <>
             <TableHeaderContainer>
               <TableName>{fk.name}</TableName>
-              {tableInColumnSettings(fk.dimensions) ? (
-                <FieldBulkActionLink
-                  as="button"
-                  onClick={() => bulkDisableColumns(fk.dimensions)}
-                >
-                  {t`Deselect All`}
-                </FieldBulkActionLink>
-              ) : (
-                <FieldBulkActionLink
-                  as="button"
-                  onClick={() => bulkEnableColumns(fk.dimensions)}
-                >
-                  {t`Select All`}
-                </FieldBulkActionLink>
-              )}
+              <BulkActionButton
+                tableInColumns={tableInColumnSettings(fk.dimensions)}
+                bulkEnable={() => enableColumns(fk.dimensions)}
+                bulkDisable={() => disableColumns(fk.dimensions)}
+              />
             </TableHeaderContainer>
             {fk.dimensions.map((dimension, index) => (
               <FieldCheckbox
-                label={dimension.displayName}
-                onClick={() => toggleColumn(dimension.fieldRef)}
-                checked={columnIsEnabled(dimension.fieldRef)}
-                key={`${fk.name}-${dimension.displayName}-${index}`}
+                label={dimension.displayName()}
+                onClick={() => toggleColumn(dimension)}
+                checked={columnIsEnabled(dimension)}
+                key={`${fk.name}-${dimension.displayName()}-${index}`}
               />
             ))}
           </>
@@ -247,5 +179,26 @@ const ChartSettingColumnEditor = ({
     </div>
   );
 };
+
+interface BulkActionButtonProps {
+  tableInColumns: boolean;
+  bulkEnable: () => void;
+  bulkDisable: () => void;
+}
+
+const BulkActionButton = ({
+  tableInColumns,
+  bulkEnable,
+  bulkDisable,
+}: BulkActionButtonProps) =>
+  tableInColumns ? (
+    <Button onlyText onClick={bulkDisable}>
+      {t`Deselect All`}
+    </Button>
+  ) : (
+    <Button onlyText onClick={bulkEnable}>
+      {t`Select All`}
+    </Button>
+  );
 
 export default ChartSettingColumnEditor;
