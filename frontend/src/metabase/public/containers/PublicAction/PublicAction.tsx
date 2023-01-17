@@ -1,5 +1,6 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
@@ -8,13 +9,17 @@ import { ActionsApi } from "metabase/services";
 
 import { ActionForm } from "metabase/actions/components/ActionForm";
 
-import type { WritebackAction } from "metabase-types/api";
+import type {
+  ParametersForActionExecution,
+  WritebackAction,
+} from "metabase-types/api";
 import type { AppErrorDescriptor } from "metabase-types/store";
 
 import {
   LoadingAndErrorWrapper,
   ContentContainer,
   FormTitle,
+  FormResultMessage,
 } from "./PublicAction.styled";
 
 interface OwnProps {
@@ -32,7 +37,8 @@ const mapDispatchToProps = {
 };
 
 function PublicAction({ params, setErrorPage }: Props) {
-  const [action, setAction] = React.useState<WritebackAction | null>(null);
+  const [action, setAction] = useState<WritebackAction | null>(null);
+  const [isSubmitted, setSubmitted] = useState(false);
   const fetchAction = useSafeAsyncFunction(ActionsApi.get);
 
   useOnMount(() => {
@@ -47,24 +53,41 @@ function PublicAction({ params, setErrorPage }: Props) {
     loadAction();
   });
 
+  const handleSubmit = useCallback(
+    (values: ParametersForActionExecution) => {
+      try {
+        setSubmitted(true);
+      } catch (error) {
+        setErrorPage(error as AppErrorDescriptor);
+      }
+    },
+    [setErrorPage],
+  );
+
   const renderContent = useCallback(() => {
     if (!action) {
       return null;
     }
+    if (isSubmitted) {
+      return (
+        <FormResultMessage>{t`Thanks for your submission.`}</FormResultMessage>
+      );
+    }
     return (
-      <ContentContainer>
+      <>
         <FormTitle>{action.name}</FormTitle>
         <ActionForm
           parameters={action.parameters}
           formSettings={action.visualization_settings}
+          onSubmit={handleSubmit}
         />
-      </ContentContainer>
+      </>
     );
-  }, [action]);
+  }, [action, isSubmitted, handleSubmit]);
 
   return (
     <LoadingAndErrorWrapper loading={!action}>
-      {renderContent}
+      {() => <ContentContainer>{renderContent()}</ContentContainer>}
     </LoadingAndErrorWrapper>
   );
 }
