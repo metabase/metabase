@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import BaseLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
@@ -21,11 +22,19 @@ export const ContentContainer = styled.div`
   }
 `;
 
-export const FormTitle = styled.h1`
+const titleStyle = css`
   font-weight: 700;
-  font-size: 18px;
-  line-height: 22px;
+  font-size: 1.125rem;
+  line-height: 1.375rem;
   color: ${color("text-dark")};
+`;
 
+export const FormTitle = styled.h1`
+  ${titleStyle}
   margin-bottom: 21px;
+`;
+
+export const FormResultMessage = styled.h1`
+  ${titleStyle}
+  text-align: center;
 `;
