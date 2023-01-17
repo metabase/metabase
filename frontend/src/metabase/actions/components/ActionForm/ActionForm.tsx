@@ -190,7 +190,7 @@ export const ActionForm = ({
             {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
             <FormSubmitButton
               disabled={!dirty && hasFormFields}
-              title={submitTitle ?? t`Save`}
+              title={submitTitle ?? t`Submit`}
               {...submitButtonVariant}
             />
           </ActionFormButtonContainer>

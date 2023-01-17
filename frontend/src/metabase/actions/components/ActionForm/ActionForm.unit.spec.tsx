@@ -60,6 +60,7 @@ const setup = ({
     <ActionForm
       initialValues={initialValues}
       parameters={parameters}
+      submitTitle="Save"
       formSettings={formSettings}
       setFormSettings={isSettings ? setFormSettings : undefined}
       onSubmit={onSubmit}
