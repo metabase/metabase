@@ -5,9 +5,10 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 
-import { useToggle } from "metabase/hooks/use-toggle";
-
 import Actions from "metabase/entities/actions";
+import { useToggle } from "metabase/hooks/use-toggle";
+import { parseTimestamp } from "metabase/lib/time";
+
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import type { WritebackAction, WritebackActionId } from "metabase-types/api";
@@ -166,8 +167,8 @@ function NoActionsState({
 }
 
 function mostRecentFirst(action: WritebackAction) {
-  const createdAt = new Date(action["created_at"]);
-  return -createdAt.getTime();
+  const createdAt = parseTimestamp(action["created_at"]);
+  return -createdAt.unix();
 }
 
 const ACTION_MENU_TRIGGER_PROPS = {
