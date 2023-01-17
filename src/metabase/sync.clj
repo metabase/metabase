@@ -23,8 +23,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [schema.core :as s]
-   [toucan.db :as db])
+   [schema.core :as s])
   (:import
    (java.time.temporal Temporal)))
 
