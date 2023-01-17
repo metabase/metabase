@@ -47,7 +47,7 @@ describe("scenarios > dashboard > filters", () => {
   });
 
   it("should be able to use a structured question source", () => {
-    cy.createQuestion(structuredQuestionDetails);
+    cy.createQuestion(structuredQuestionDetails, { wrapId: true });
     cy.createQuestionAndDashboard({
       questionDetails: dashboardQuestionDetails,
     }).then(({ body: { dashboard_id } }) => {
@@ -61,10 +61,13 @@ describe("scenarios > dashboard > filters", () => {
     setupStructuredQuestionSource();
     saveDashboard();
     filterDashboard();
+
+    cy.get("@questionId").then(visitQuestion);
+    archiveQuestion();
   });
 
   it("should be able to use a native question source", () => {
-    cy.createNativeQuestion(nativeQuestionDetails);
+    cy.createNativeQuestion(nativeQuestionDetails, { wrapId: true });
     cy.createQuestionAndDashboard({
       questionDetails: dashboardQuestionDetails,
     }).then(({ body: { dashboard_id } }) => {
@@ -78,6 +81,9 @@ describe("scenarios > dashboard > filters", () => {
     setupNativeQuestionSource();
     saveDashboard();
     filterDashboard();
+
+    cy.get("@questionId").then(visitQuestion);
+    archiveQuestion();
   });
 
   it("should be able to use a static list source", () => {
@@ -94,40 +100,6 @@ describe("scenarios > dashboard > filters", () => {
     setupCustomList();
     saveDashboard();
     filterDashboard();
-  });
-
-  it("should result in a warning being shown when archiving a question it uses", () => {
-    cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
-
-    cy.createQuestion(structuredQuestionDetails, {
-      wrapId: true,
-      idAlias: "structuredQuestionId",
-    });
-    cy.createQuestionAndDashboard({
-      questionDetails: dashboardQuestionDetails,
-    }).then(({ body: { dashboard_id } }) => {
-      visitDashboard(dashboard_id);
-    });
-
-    editDashboard();
-    setFilter("Text or Category", "Is");
-    mapFilterToQuestion();
-    editDropdown();
-    setupStructuredQuestionSource();
-    saveDashboard();
-
-    cy.intercept("GET", "/api/collection/root/items**").as("getItems");
-
-    cy.get("@structuredQuestionId").then(question_id => {
-      visitQuestion(question_id);
-      openQuestionActions();
-      cy.findByTestId("archive-button").click();
-      modal().within(() => {
-        cy.findByText(
-          "This question will be removed from any dashboards or pulses using it. It will also be removed from the filter that uses it to populate values.",
-        );
-      });
-    });
   });
 });
 
@@ -216,4 +188,12 @@ const filterDashboard = () => {
     cy.button("Add filter").click();
     cy.wait("@getCardQuery");
   });
+};
+
+const archiveQuestion = () => {
+  openQuestionActions();
+  cy.findByTestId("archive-button").click();
+  cy.findByText(
+    "This question will be removed from any dashboards or pulses using it. It will also be removed from the filter that uses it to populate values.",
+  );
 };
