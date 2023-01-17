@@ -4,7 +4,6 @@
             [cheshire.generate :as json.generate]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [flatland.ordered.map :as ordered-map]
             [java-time :as t]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
@@ -46,16 +45,6 @@
 (nippy/extend-thaw :mongodb/ObjectId
   [data-input]
   (ObjectId. (.readUTF data-input)))
-
-;; flatland.ordered.map.OrderedMap gets encoded and decoded incorrectly, for some reason. See #25915
-
-(nippy/extend-freeze flatland.ordered.map.OrderedMap :flatland/ordered-map
-                     [x data-output]
-                     (nippy/freeze-to-out! data-output (vec x)))
-
-(nippy/extend-thaw :flatland/ordered-map
-                   [data-input]
-                   (ordered-map/ordered-map-reader (nippy/thaw-from-in! data-input)))
 
 (driver/register! :mongo)
 
