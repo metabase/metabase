@@ -13936,8 +13936,7 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-045
       author: calherries
-      comment: Added 0.46.0 -- add public_uuid and made_public_by_id to action
-      validCheckSum: ANY
+      comment: Added 0.46.0 -- add public_uuid and made_public_by_id to action. public_uuid is indexed
       changes:
         - addColumn:
             tableName: action
