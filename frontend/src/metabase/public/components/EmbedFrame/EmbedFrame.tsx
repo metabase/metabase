@@ -1,19 +1,22 @@
 import React, { useState } from "react";
 import { withRouter } from "react-router";
+import { connect } from "react-redux";
 import cx from "classnames";
+import _ from "underscore";
 import type { Location } from "history";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 import { useOnMount } from "metabase/hooks/use-on-mount";
+import { getSetting } from "metabase/selectors/settings";
 import { isWithinIframe, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
-import MetabaseSettings from "metabase/lib/settings";
 
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
+import type { State } from "metabase-types/store";
 
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -40,9 +43,14 @@ interface OwnProps {
   setParameterValue: (parameterId: ParameterId, value: any) => void;
 }
 
-type Props = OwnProps & {
-  location: Location;
-};
+interface StateProps {
+  hasEmbedBranding: boolean;
+}
+
+type Props = OwnProps &
+  StateProps & {
+    location: Location;
+  };
 
 interface HashOptions {
   bordered?: boolean;
@@ -50,6 +58,12 @@ interface HashOptions {
   theme?: string;
   hide_parameters?: string;
   hide_download_button?: boolean;
+}
+
+function mapStateToProps(state: State) {
+  return {
+    hasEmbedBranding: !getSetting(state, "hide-embed-branding?"),
+  };
 }
 
 function EmbedFrame({
@@ -60,6 +74,7 @@ function EmbedFrame({
   dashboard,
   actionButtons,
   location,
+  hasEmbedBranding,
   parameters,
   parameterValues,
   setParameterValue,
@@ -79,8 +94,7 @@ function EmbedFrame({
   } = parseHashOptions(location.hash) as HashOptions;
 
   const showFooter =
-    !MetabaseSettings.hideEmbedBranding() ||
-    (!hide_download_button && actionButtons);
+    hasEmbedBranding || (!hide_download_button && actionButtons);
 
   const finalName = titled ? name : null;
   const hasParameters = parameters?.length > 0;
@@ -124,9 +138,7 @@ function EmbedFrame({
       </ContentContainer>
       {showFooter && (
         <Footer className="EmbedFrame-footer">
-          {!MetabaseSettings.hideEmbedBranding() && (
-            <LogoBadge dark={theme === "night"} />
-          )}
+          {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}
           {actionButtons && (
             <ActionButtonsContainer>{actionButtons}</ActionButtonsContainer>
           )}
@@ -136,4 +148,4 @@ function EmbedFrame({
   );
 }
 
-export default withRouter(EmbedFrame);
+export default _.compose(connect(mapStateToProps), withRouter)(EmbedFrame);
