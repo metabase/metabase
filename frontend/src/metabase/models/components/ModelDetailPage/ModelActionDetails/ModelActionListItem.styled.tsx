@@ -2,8 +2,6 @@ import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
-const BACKGROUND_COLOR = "#12436e";
-
 export const ActionTitle = styled.h4`
   font-size: 1rem;
   font-weight: 700;
@@ -19,7 +17,7 @@ export const Card = styled.div`
   border-radius: 6px;
 
   color: ${color("text-white")};
-  background-color: ${BACKGROUND_COLOR};
+  background-color: ${color("text-dark")};
 `;
 
 export const CodeBlock = styled.pre`
