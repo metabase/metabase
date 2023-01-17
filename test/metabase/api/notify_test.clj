@@ -57,11 +57,32 @@
                                        :form-params  {:table_name "IncorrectToucanFact"}}
                                       api-headers))
                     (catch clojure.lang.ExceptionInfo e
-                      (select-keys (ex-data e) [:status :body])))))))))
+                      (select-keys (ex-data e) [:status :body]))))))
+      (testing "Tables must be exact matches (including schema, if present) when using named params or we get a 404"
+        (let [schema-name (->> (mt/db) database/tables first :schema)
+              table-name (->> (mt/db) database/tables first :name)]
+          (is (= {:status 404
+                  :body   "Not found."}
+                 (try (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
+                                 (merge {:accept       :json
+                                         :content-type :json
+                                         :form-params  {:table_name table-name}}
+                                        api-headers))
+                      (catch clojure.lang.ExceptionInfo e
+                        (select-keys (ex-data e) [:status :body])))))
+          (is (= {:status 200}
+                 (-> (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
+                                (merge {:accept       :json
+                                        :content-type :json
+                                        :form-params  {:schema_name schema-name
+                                                       :table_name  table-name}}
+                                       api-headers))
+                     (select-keys [:status])))))))))
 
 (deftest post-db-id-test
   (mt/test-drivers (mt/normal-drivers)
-    (let [table-name (->> (mt/db) database/tables first :name)
+    (let [schema-name (->> (mt/db) database/tables first :schema)
+          table-name (->> (mt/db) database/tables first :name)
           post       (fn post-api
                        ([payload] (post-api payload 200))
                        ([payload expected-code]
@@ -71,30 +92,19 @@
                                      (merge {:synchronous? true}
                                             payload)))))]
       (testing "sync just table when table is provided"
-        (let [long-sync-called? (promise), short-sync-called? (promise)]
-          (with-redefs [metabase.sync/sync-table!                        (fn [_table] (deliver long-sync-called? true))
-                        metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))]
-            (post {:scan :full, :table_name table-name})
-            (is @long-sync-called?)
-            (is (not (realized? short-sync-called?))))))
-      (testing "sync new table when table and schema are names are provided"
-        (let [long-sync-called? (promise)
-              short-sync-called? (promise)
-              new-table-sync-called? (promise)]
-          (with-redefs [metabase.sync/sync-table!                        (fn [_table] (deliver long-sync-called? true))
-                        metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))
-                        metabase.sync/sync-new-table! (fn [_db _args] (deliver new-table-sync-called? true))]
-            (post {:schema_name "public" :table_name "FOO"})
-            (is (not (realized? long-sync-called?)))
-            (is (not (realized? short-sync-called?)))
-            (is @new-table-sync-called?))))
+        (let [table-sync-called? (promise), metadata-sync-called? (promise)]
+          (with-redefs [metabase.sync/sync-table!                        (fn [_table] (deliver table-sync-called? true))
+                        metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver metadata-sync-called? true))]
+            (post {:scan :full, :table_name table-name :schema_name schema-name})
+            (is @table-sync-called?)
+            (is (not (realized? metadata-sync-called?))))))
       (testing "only a quick sync when quick parameter is provided"
-        (let [long-sync-called? (promise), short-sync-called? (promise)]
-          (with-redefs [metabase.sync/sync-table!                        (fn [_table] (deliver long-sync-called? true))
-                        metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))]
-            (post {:scan :schema, :table_name table-name})
-            (is (not (realized? long-sync-called?)))
-            (is @short-sync-called?))))
+        (let [table-sync-called? (promise), metadata-sync-called? (promise)]
+          (with-redefs [metabase.sync/sync-table!                        (fn [_table] (deliver table-sync-called? true))
+                        metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver metadata-sync-called? true))]
+            (post {:scan :schema, :table_name table-name :schema_name schema-name})
+            (is (not (realized? table-sync-called?)))
+            (is @metadata-sync-called?))))
       (testing "full db sync by default"
         (let [full-sync? (promise)]
           (with-redefs [metabase.sync/sync-database! (fn [_db] (deliver full-sync? true))]
@@ -112,19 +122,3 @@
         (is (= {:errors
                 {:scan "value may be nil, or if non-nil, value must be one of: `full`, `schema`."}}
                (post {:scan :unrecognized} 400)))))))
-
-(deftest bad-request-test
-  (mt/with-temporary-setting-values [api-key "test-api-key"]
-    (testing "POST /api/notify/db/:id"
-      (testing "Attempting to post a new table via table_name, schema_name is a bad request"
-        (let [table-name (->> (mt/db) database/tables first :name)]
-          (is (= {:status 400
-                  :body "This table already exists"}
-                 (try (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
-                                 (merge {:accept       :json
-                                         :content-type :json
-                                         :form-params  {:table_name  table-name
-                                                        :schema_name "public"}}
-                                        api-headers))
-                      (catch clojure.lang.ExceptionInfo e
-                        (select-keys (ex-data e) [:status :body]))))))))))

@@ -250,7 +250,7 @@
                                  db-name db-name)]
                    {:transaction? false})))
 
-(deftest sync-new-table-test
+(deftest get-or-create-named-table!-test
   (mt/test-driver :postgres
     (testing (str "Notify that a new table has been added via API (#25496)")
       (let [db-name "sync_new_table_test"
@@ -274,8 +274,7 @@
             (exec! spec ["CREATE TABLE FERN (val bigint NOT NULL);"
                          "CREATE TABLE DOC (val bigint NOT NULL);"])
             ;; Add only one of the tables to be synched
-            (sync/sync-new-table! database {:table-name  "fern"
-                                            :schema-name "public"})
+            (sync/get-or-create-named-table! database {:table-name  "fern" :schema-name "public"})
             ;; Assert that the synched table is in the MB db and the unsynched table is not.
             (let [tables (tableset database)]
               (is (= #{"fern" "foo" "bar"} tables)))))))))

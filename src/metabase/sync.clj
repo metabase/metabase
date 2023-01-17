@@ -23,7 +23,9 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [schema.core :as s])
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
   (:import
    (java.time.temporal Temporal)))
 
@@ -82,12 +84,12 @@
         (fingerprint/refingerprint-field field))
       :sync/no-connection)))
 
-(s/defn sync-new-table!
-  "Given the name and schema for a new table (one that exists in the user's db but not as a Metabase table), add the
-  table to Metabase and sync the new table's metadata."
+(s/defn get-or-create-named-table!
+  "Given the name and schema for a warehouse table, either 1) return it if it exists, or 2) create and return the
+  table."
   [db :- i/DatabaseInstance
-   {:keys [schema-name table-name]} :- {:schema-name s/Str
-                                        :table-name  s/Str}]
+   {:keys [schema-name table-name]} :- {:schema-name (s/maybe su/NonBlankString)
+                                        :table-name  su/NonBlankString}]
   (let [normalize (fn [{:keys [schema name]}]
                     (cond-> {:name (u/lower-case-en name)}
                             schema
@@ -99,9 +101,7 @@
                           (when (target-table (normalize db-table))
                             db-table))
                         db-tables)]
-      (try
-        (let [table (sync-tables/create-or-reactivate-table! db new-table)]
-          (sync-table! table))
-        (catch Exception _
-          (log/warn (trs "Table ''{0}'' could not be added. It may already exist." table-name))))
+      (or
+       (db/select-one 'Table :name (:name new-table) :schema (:schema new-table))
+       (sync-tables/create-or-reactivate-table! db new-table))
       (log/debug (trs "Table ''{0}'' does not exist or you do not have permission to view it." table-name)))))

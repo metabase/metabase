@@ -31,17 +31,14 @@
         db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
     (api/let-404 [database (db/select-one Database :id id)]
       (cond-> (cond
-                table_id   (api/let-404 [table (db/select-one Table :db_id id, :id (int table_id))]
+                table_id (api/let-404 [table (db/select-one Table :db_id id, :id (int table_id))]
+                           (future (table-sync-fn table)))
+                table_name (api/let-404 [table (sync/get-or-create-named-table!
+                                                database
+                                                {:table-name table_name :schema-name schema_name})]
                              (future (table-sync-fn table)))
-                (and schema_name table_name) (if-not (db/select-one Table :db_id id, :name table_name)
-                                               (future (sync/sync-new-table! database {:schema-name schema_name
-                                                                                       :table-name  table_name}))
-                                               (throw
-                                                 (ex-info "This table already exists" {:status-code 400})))
-                table_name (api/let-404 [table (db/select-one Table :db_id id, :name table_name)]
-                             (future (table-sync-fn table)))
-                :else      (future (db-sync-fn database)))
-        synchronous? deref)))
+                :else (future (db-sync-fn database)))
+              synchronous? deref)))
   {:success true})
 
 
