@@ -14,7 +14,12 @@ import type { WritebackAction, WritebackActionId } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
-import EmptyState from "../EmptyState.styled";
+import {
+  EmptyStateContainer,
+  EmptyStateTitle,
+  EmptyStateMessage,
+  EmptyStateActionContainer,
+} from "../EmptyState.styled";
 import ModelActionListItem from "./ModelActionListItem";
 import {
   Root,
@@ -145,18 +150,18 @@ function NoActionsState({
   onCreateClick: () => void;
 }) {
   return (
-    <EmptyState.Container>
-      <EmptyState.Title>{t`No actions have been created yet.`}</EmptyState.Title>
-      <EmptyState.Message>{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</EmptyState.Message>
+    <EmptyStateContainer>
+      <EmptyStateTitle>{t`No actions have been created yet.`}</EmptyStateTitle>
+      <EmptyStateMessage>{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</EmptyStateMessage>
       {hasCreateButton && (
-        <EmptyState.ActionContainer>
+        <EmptyStateActionContainer>
           <Button
             icon="bolt"
             onClick={onCreateClick}
           >{t`Create basic actions`}</Button>
-        </EmptyState.ActionContainer>
+        </EmptyStateActionContainer>
       )}
-    </EmptyState.Container>
+    </EmptyStateContainer>
   );
 }
 

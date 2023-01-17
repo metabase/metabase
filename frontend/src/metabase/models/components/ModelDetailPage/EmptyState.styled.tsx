@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-const EmptyStateContainer = styled.div`
+export const EmptyStateContainer = styled.div`
   display: flex;
   height: 100%;
   gap: 0.5rem;
@@ -14,13 +14,13 @@ const EmptyStateContainer = styled.div`
   max-width: 400px;
 `;
 
-const EmptyStateTitle = styled.h4`
+export const EmptyStateTitle = styled.h4`
   font-size: 1rem;
   font-weight: 700;
   color: ${color("text-dark")};
 `;
 
-const EmptyStateMessage = styled.p`
+export const EmptyStateMessage = styled.p`
   color: ${color("text-medium")};
   font-size: 0.875rem;
   font-weight: 400;
@@ -29,13 +29,6 @@ const EmptyStateMessage = styled.p`
   margin-top: 0.5rem;
 `;
 
-const ActionContainer = styled.div`
+export const EmptyStateActionContainer = styled.div`
   margin-top: 1rem;
 `;
-
-export default {
-  Container: EmptyStateContainer,
-  Title: EmptyStateTitle,
-  Message: EmptyStateMessage,
-  ActionContainer: ActionContainer,
-};
