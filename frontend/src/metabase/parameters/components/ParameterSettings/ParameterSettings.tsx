@@ -8,11 +8,9 @@ import {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import { getIsMultiSelect } from "../../utils/dashboards";
-import {
-  canUseCustomSource,
-  isSingleOrMultiSelectable,
-} from "../../utils/parameter-type";
+import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import ValuesSourceSettings from "../ValuesSourceSettings";
 import {
   SettingLabel,
