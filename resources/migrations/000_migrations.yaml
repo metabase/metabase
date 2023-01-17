@@ -13932,6 +13932,40 @@ databaseChangeLog:
               - column:
                   name: context
             indexName: idx_query_execution_context
+              
+  - changeSet:
+      id: v46.00-045
+      author: calherries
+      comment: Added 0.46.0 -- add public_uuid and made_public_by_id to action
+      validCheckSum: ANY
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: public_uuid
+                  type: char(36)
+                  remarks: 'Unique UUID used to in publically-accessible links to this Action.'
+                  constraints:
+                    unique: true
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: made_public_by_id
+                  type: int
+                  remarks: 'The ID of the User who first publically shared this Action.'
+                  constraints:
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_action_made_public_by_id
+        - createIndex:
+            tableName: action
+            indexName: idx_action_public_uuid
+            columns:
+              column:
+                name: public_uuid
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
