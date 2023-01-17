@@ -376,7 +376,7 @@ export const PermissionsApi = {
   createMembership: POST("/api/permissions/membership"),
   deleteMembership: DELETE("/api/permissions/membership/:id"),
   updateMembership: PUT("/api/permissions/membership/:id"),
-  clearGroupMembership: PUT("/api/permissions/membership/:group-id/clear"),
+  clearGroupMembership: PUT("/api/permissions/membership/:id/clear"),
   updateGroup: PUT("/api/permissions/group/:id"),
   deleteGroup: DELETE("/api/permissions/group/:id"),
 };

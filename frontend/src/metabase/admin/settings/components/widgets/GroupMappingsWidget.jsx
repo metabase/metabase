@@ -38,14 +38,17 @@ export default class GroupMappingsWidget extends React.Component {
 
   _showEditModal = async e => {
     e.preventDefault();
+
     // just load the setting again to make sure it's up to date
     const setting = _.findWhere(await SettingsApi.list(), {
       key: this.props.mappingSetting,
     });
+
     this.setState({
       mappings: (setting && setting.value) || {},
       showEditModal: true,
     });
+
     PermissionsApi.groups().then(groups =>
       this.setState({ groups: groups.filter(groupIsMappable) }),
     );
@@ -103,8 +106,9 @@ export default class GroupMappingsWidget extends React.Component {
     });
   };
 
-  handleConfirmDeleteMappingGroup = (whatToDoAboutGroups, groups, dn) => {
+  handleConfirmDeleteMapping = (whatToDoAboutGroups, groups, dn) => {
     this._deleteMapping(dn);
+
     this.setState({
       showDeleteMappingModal: false,
       showEditModal: true,
@@ -112,6 +116,16 @@ export default class GroupMappingsWidget extends React.Component {
       groupIdsForVisibleDeleteMappingModal: null,
     });
 
+    this.updateGroupsListsForCallbacksAfterDeletingMappings(
+      whatToDoAboutGroups,
+      groups,
+    );
+  };
+
+  updateGroupsListsForCallbacksAfterDeletingMappings = (
+    whatToDoAboutGroups,
+    groups,
+  ) => {
     if (whatToDoAboutGroups === "nothing") {
       return;
     }
@@ -149,15 +163,18 @@ export default class GroupMappingsWidget extends React.Component {
     });
   };
 
-  _saveClick = e => {
+  handleUpdateMappings = e => {
     e.preventDefault();
+
     const {
       state: { mappings },
       props: { mappingSetting, onChangeSetting },
     } = this;
+
     SettingsApi.put({ key: mappingSetting, value: mappings }).then(
       () => {
         onChangeSetting(mappingSetting, mappings);
+        this.updateGroupsFromDeletedMappings();
         this.setState({
           showEditModal: false,
           showAddRow: false,
@@ -165,6 +182,17 @@ export default class GroupMappingsWidget extends React.Component {
         });
       },
       e => this.setState({ saveError: e }),
+    );
+  };
+
+  updateGroupsFromDeletedMappings = () => {
+    const { groupsToClearAllPermissions, groupsToDelete } =
+      this.state.whenDeletingMappingGroups;
+
+    groupsToDelete.forEach(id => PermissionsApi.deleteGroup({ id }));
+
+    groupsToClearAllPermissions.forEach(id =>
+      PermissionsApi.clearGroupMembership({ id }),
     );
   };
 
@@ -242,17 +270,21 @@ export default class GroupMappingsWidget extends React.Component {
                   type="button"
                   onClick={this._cancelClick}
                 >{t`Cancel`}</Button>
-                <Button primary onClick={this._saveClick}>{t`Save`}</Button>
+                <Button
+                  primary
+                  onClick={this.handleUpdateMappings}
+                >{t`Save`}</Button>
               </ModalFooter>
             </div>
           </Modal>
         ) : null}
+
         {showDeleteMappingModal ? (
           <DeleteGroupMappingModal
             dn={dnForVisibleDeleteMappingModal}
             groupIds={groupIdsForVisibleDeleteMappingModal}
             onHide={this.handleHideDeleteMappingModal}
-            onConfirm={this.handleConfirmDeleteMappingGroup}
+            onConfirm={this.handleConfirmDeleteMapping}
           />
         ) : null}
       </div>
