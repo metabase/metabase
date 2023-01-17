@@ -49,7 +49,7 @@ export function selectFilterValueFromList(value) {
  */
 
 export function applyFilterByType(filter, value) {
-  if (["Dropdown", "Is not"].includes(filter)) {
+  if (["Is", "Is not"].includes(filter)) {
     selectFilterValueFromList(value);
   } else {
     addWidgetStringFilter(value);

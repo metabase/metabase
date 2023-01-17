@@ -27,6 +27,7 @@ DashboardSidebars.propTypes = {
   setParameterName: PropTypes.func.isRequired,
   setParameterDefaultValue: PropTypes.func.isRequired,
   setParameterIsMultiSelect: PropTypes.func.isRequired,
+  setParameterQueryType: PropTypes.func.isRequired,
   setParameterSourceType: PropTypes.func.isRequired,
   setParameterSourceConfig: PropTypes.func.isRequired,
   setParameterFilteringParameters: PropTypes.func.isRequired,
@@ -59,6 +60,7 @@ export function DashboardSidebars({
   setParameterName,
   setParameterDefaultValue,
   setParameterIsMultiSelect,
+  setParameterQueryType,
   setParameterSourceType,
   setParameterSourceConfig,
   setParameterFilteringParameters,
@@ -124,6 +126,7 @@ export function DashboardSidebars({
           onChangeName={setParameterName}
           onChangeDefaultValue={setParameterDefaultValue}
           onChangeIsMultiSelect={setParameterIsMultiSelect}
+          onChangeQueryType={setParameterQueryType}
           onChangeSourceType={setParameterSourceType}
           onChangeSourceConfig={setParameterSourceConfig}
           onChangeFilteringParameters={setParameterFilteringParameters}

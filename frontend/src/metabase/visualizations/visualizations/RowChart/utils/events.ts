@@ -22,7 +22,12 @@ import {
 } from "metabase/visualizations/shared/types/data";
 import { sumMetric } from "metabase/visualizations/shared/utils/data";
 import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
-import { TooltipRowModel } from "metabase/visualizations/components/ChartTooltip/types";
+import {
+  DataPoint,
+  StackedTooltipModel,
+  TooltipRowModel,
+} from "metabase/visualizations/components/ChartTooltip/types";
+import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { isMetric } from "metabase-lib/types/utils/isa";
 
 const getMetricColumnData = (
@@ -193,31 +198,7 @@ const getBreakoutsTooltipRows = <TDatum>(
     };
   });
 
-const getMultipleMetricsTooltipRows = <TDatum>(
-  bar: BarData<TDatum>,
-  settings: VisualizationSettings,
-  multipleSeries: Series<TDatum, SeriesInfo>[],
-  seriesColors: Record<string, string>,
-): TooltipRowModel[] =>
-  multipleSeries.map(series => {
-    const value = series.xAccessor(bar.datum);
-
-    return {
-      name: series.seriesName,
-      color: seriesColors[series.seriesKey],
-      value,
-      formatter: value =>
-        String(
-          formatValueForTooltip({
-            value,
-            settings,
-            column: series.seriesInfo?.metricColumn,
-          }),
-        ),
-    };
-  });
-
-const getTooltipModel = <TDatum>(
+export const getTooltipModel = <TDatum>(
   bar: BarData<TDatum>,
   settings: VisualizationSettings,
   chartColumns: ChartColumns,
@@ -236,54 +217,79 @@ const getTooltipModel = <TDatum>(
   );
 
   const hasBreakout = "breakout" in chartColumns;
-
-  const rows = hasBreakout
-    ? getBreakoutsTooltipRows(bar, settings, multipleSeries, seriesColors)
-    : getMultipleMetricsTooltipRows(
-        bar,
-        settings,
-        multipleSeries,
-        seriesColors,
-      );
+  const rows = getBreakoutsTooltipRows(
+    bar,
+    settings,
+    multipleSeries,
+    seriesColors,
+  );
 
   const [headerRows, bodyRows] = _.partition(
     rows,
     row => row.name === series.seriesName,
   );
 
-  const totalFormatter = hasBreakout
-    ? (value: unknown) =>
-        String(
-          formatValueForTooltip({
-            value,
-            settings,
-            column: chartColumns.metric.column,
-          }),
-        )
-    : undefined;
+  const totalFormatter = (value: unknown) =>
+    String(
+      formatValueForTooltip({
+        value,
+        settings,
+        column: hasBreakout
+          ? chartColumns.metric.column
+          : chartColumns.metrics[0].column,
+      }),
+    );
 
   return {
     headerTitle,
     headerRows,
     bodyRows,
     totalFormatter,
-    showTotal: hasBreakout,
-    showPercentages: hasBreakout,
+    showTotal: true,
+    showPercentages: true,
   };
 };
 
-export const getHoverData = <TDatum>(
-  bar: BarData<TDatum>,
+export const getHoverData = (
+  bar: BarData<GroupedDatum>,
   settings: VisualizationSettings,
   chartColumns: ChartColumns,
-  multipleSeries: Series<TDatum, SeriesInfo>[],
+  datasetColumns: DatasetColumn[],
+  multipleSeries: Series<GroupedDatum, SeriesInfo>[],
   seriesColors: Record<string, string>,
-) => {
-  return {
+): {
+  settings: VisualizationSettings;
+  datumIndex: number;
+  index: number;
+  data?: DataPoint[];
+  stackedTooltipModel?: StackedTooltipModel;
+} => {
+  const hoverData = {
     settings,
     datumIndex: bar.datumIndex,
     index: bar.seriesIndex,
-    dataTooltip: getTooltipModel(
+  };
+
+  const hasMultipleSeries =
+    "breakout" in chartColumns || chartColumns.metrics.length > 1;
+  const isStacked = getStackOffset(settings) != null;
+  if (!isStacked || !hasMultipleSeries) {
+    const data = getColumnsData(
+      chartColumns,
+      bar.series,
+      bar.datum,
+      datasetColumns,
+    );
+
+    return {
+      ...hoverData,
+      data,
+    };
+  }
+
+  return {
+    ...hoverData,
+    stackedTooltipModel: getTooltipModel(
       bar,
       settings,
       chartColumns,

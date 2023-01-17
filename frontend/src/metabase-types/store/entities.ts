@@ -9,9 +9,12 @@ import {
   Table,
   User,
   UserId,
+  WritebackAction,
+  WritebackActionId,
 } from "metabase-types/api";
 
 export interface EntitiesState {
+  actions?: Record<WritebackActionId, WritebackAction>;
   collections?: Record<CollectionId, Collection>;
   databases?: Record<number, Database>;
   fields?: Record<FieldId, Field>;

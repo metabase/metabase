@@ -2,14 +2,16 @@ import React, { ChangeEvent, useCallback } from "react";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Radio from "metabase/core/components/Radio";
-import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
-import { UiParameter } from "metabase-lib/parameters/types";
-import { getIsMultiSelect } from "../../utils/dashboards";
 import {
-  canUseCustomSource,
-  isSingleOrMultiSelectable,
-} from "../../utils/parameter-type";
-import ParameterSourceSettings from "../ParameterSourceSettings";
+  Parameter,
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
+import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
+import { getIsMultiSelect } from "../../utils/dashboards";
+import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
+import ValuesSourceSettings from "../ValuesSourceSettings";
 import {
   SettingLabel,
   SettingRemoveButton,
@@ -24,10 +26,11 @@ const MULTI_SELECT_OPTIONS = [
 ];
 
 export interface ParameterSettingsProps {
-  parameter: UiParameter;
+  parameter: Parameter;
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
+  onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceOptions: ValuesSourceConfig) => void;
   onRemoveParameter: () => void;
@@ -38,6 +41,7 @@ const ParameterSettings = ({
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
+  onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
   onRemoveParameter,
@@ -61,8 +65,9 @@ const ParameterSettings = ({
       {canUseCustomSource(parameter) && (
         <SettingSection>
           <SettingLabel>{t`How should users filter on this column?`}</SettingLabel>
-          <ParameterSourceSettings
+          <ValuesSourceSettings
             parameter={parameter}
+            onChangeQueryType={onChangeQueryType}
             onChangeSourceType={onChangeSourceType}
             onChangeSourceConfig={onChangeSourceConfig}
           />
