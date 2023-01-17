@@ -39,6 +39,8 @@ describe("scenarios > filters > sql filters > values source", () => {
 
     SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
     SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Field Filter");
+    FieldFilter.mapTo({ table: "Products", field: "Category" });
     setFilterQuestionSource({ question: "GUI source", field: "Category" });
     saveQuestion("SQL filter");
   });

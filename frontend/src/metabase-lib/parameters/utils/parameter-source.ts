@@ -30,8 +30,6 @@ export const canUseCustomSource = (parameter: Parameter) => {
     case "string":
     case "location":
       return subType === "=";
-    case "category":
-      return true;
     default:
       return false;
   }

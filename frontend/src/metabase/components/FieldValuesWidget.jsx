@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import TokenField, {
@@ -20,6 +20,7 @@ import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
+import { fetchCardParameterValues } from "metabase/query_builder/actions";
 import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
 
 import Fields from "metabase/entities/fields";
@@ -46,11 +47,14 @@ const optionsMessagePropTypes = {
   message: PropTypes.string.isRequired,
 };
 
-const mapDispatchToProps = {
-  addRemappings,
-  fetchFieldValues,
-  fetchDashboardParameterValues,
-};
+const mapDispatchToProps = dispatch => ({
+  addRemappings: (...args) => dispatch(addRemappings(...args)),
+  fetchFieldValues: (...args) => dispatch(fetchFieldValues(...args)),
+  fetchCardParameterValues: (...args) =>
+    dispatch(fetchCardParameterValues(...args)),
+  fetchDashboardParameterValues: (...args) =>
+    dispatch(fetchDashboardParameterValues(...args)),
+});
 
 function mapStateToProps(state, { fields = [] }) {
   return {
@@ -132,9 +136,15 @@ class FieldValuesWidgetInner extends Component {
     let options = [];
     let valuesMode = this.state.valuesMode;
     try {
-      if (usesChainFilterEndpoints(this.props.dashboard)) {
+      if (shouldFetchValuesForDashboard(this.props.dashboard)) {
         const { results, has_more_values } =
           await this.fetchDashboardParamValues(query);
+        options = results;
+        valuesMode = has_more_values ? "search" : valuesMode;
+      } else if (shouldFetchValuesForCard(this.props.question)) {
+        const { results, has_more_values } = await this.fetchCardParamValues(
+          query,
+        );
         options = results;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else {
@@ -191,15 +201,25 @@ class FieldValuesWidgetInner extends Component {
     }
   };
 
+  fetchCardParamValues = async query => {
+    const { question, parameter } = this.props;
+
+    return this.props.fetchCardParameterValues({
+      cardId: question.id(),
+      parameter,
+      query,
+    });
+  };
+
   fetchDashboardParamValues = async query => {
     const { dashboard, parameter, parameters } = this.props;
-    const args = {
+
+    return this.props.fetchDashboardParameterValues({
       dashboardId: dashboard?.id,
       parameter,
       parameters,
       query,
-    };
-    return this.props.fetchDashboardParameterValues(args);
+    });
   };
 
   updateRemappings(options) {
@@ -452,9 +472,12 @@ OptionsMessage.propTypes = optionsMessagePropTypes;
 
 export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
 
+function shouldFetchValuesForCard(question) {
+  return question?.isSaved();
+}
+
 // if [dashboard] parameter ID is specified use the fancy new Chain Filter API endpoints to fetch parameter values.
-// Otherwise (e.g. for Cards) fall back to the old field/:id/values endpoint
-function usesChainFilterEndpoints(dashboard) {
+function shouldFetchValuesForDashboard(dashboard) {
   return dashboard?.id;
 }
 

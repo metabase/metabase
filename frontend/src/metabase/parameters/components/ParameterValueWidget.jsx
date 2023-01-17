@@ -207,6 +207,7 @@ function Widget({
   placeholder,
   onFocusChanged,
   parameters,
+  question,
   dashboard,
   target,
 }) {
@@ -253,6 +254,7 @@ function Widget({
         target={target}
         parameter={parameter}
         parameters={parameters}
+        question={question}
         dashboard={dashboard}
         placeholder={placeholder}
         value={normalizedValue}
