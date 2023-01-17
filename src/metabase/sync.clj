@@ -89,9 +89,9 @@
    {:keys [schema-name table-name]} :- {:schema-name s/Str
                                         :table-name  s/Str}]
   (let [normalize (fn [{:keys [schema name]}]
-                               (cond-> {:name (u/lower-case-en name)}
-                                       schema
-                                       (assoc :schema (u/lower-case-en schema))))
+                    (cond-> {:name (u/lower-case-en name)}
+                            schema
+                            (assoc :schema (u/lower-case-en schema))))
         {db-tables :tables} (driver/describe-database (driver.u/database->driver db) db)
         target-table #{(normalize {:schema schema-name :name table-name})}]
     (if-let [new-table (some
