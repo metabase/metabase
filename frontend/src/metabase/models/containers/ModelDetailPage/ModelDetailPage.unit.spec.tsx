@@ -14,16 +14,30 @@ import {
 } from "__support__/ui";
 import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_database_fixture";
 import {
+  setupActionsEndpoints,
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 
+import { ActionsApi } from "metabase/services";
 import Models from "metabase/entities/questions";
 
-import type { Card, Collection, Field } from "metabase-types/api";
-import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import type {
+  Card,
+  Collection,
+  Field,
+  WritebackAction,
+  WritebackQueryAction,
+} from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockQueryAction as _createMockQueryAction,
+  createMockImplicitCUDActions,
+  createMockUser,
+  createMockNativeDatasetQuery,
+} from "metabase-types/api/mocks";
 
 import type Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
@@ -44,6 +58,11 @@ jest.mock("metabase/core/components/Link", () => ({ to, ...props }: any) => (
   <a {...props} href={to} />
 ));
 
+// eslint-disable-next-line react/display-name
+jest.mock("metabase/actions/containers/ActionCreator", () => () => (
+  <div data-testid="mock-action-editor" />
+));
+
 const resultMetadata = ORDERS.fields.map(field => field.getPlainObject());
 
 function getStructuredModel(card?: Partial<StructuredSavedCard>) {
@@ -52,6 +71,19 @@ function getStructuredModel(card?: Partial<StructuredSavedCard>) {
 
 function getNativeModel(card?: Partial<NativeSavedCard>) {
   return _getNativeModel({ ...card, result_metadata: resultMetadata });
+}
+
+const TEST_QUERY = "UPDATE orders SET status = 'shipped";
+
+function createMockQueryAction(
+  opts?: Partial<WritebackQueryAction>,
+): WritebackQueryAction {
+  return _createMockQueryAction({
+    ...opts,
+    dataset_query: createMockNativeDatasetQuery({
+      native: { query: TEST_QUERY },
+    }),
+  });
 }
 
 const COLLECTION_1 = createMockCollection({
@@ -68,11 +100,19 @@ const COLLECTION_2 = createMockCollection({
 
 type SetupOpts = {
   model: Question;
+  actions?: WritebackAction[];
+  hasActionsEnabled?: boolean;
   collections?: Collection[];
   usedBy?: Question[];
 };
 
-async function setup({ model, collections = [], usedBy = [] }: SetupOpts) {
+async function setup({
+  model,
+  actions = [],
+  collections = [],
+  usedBy = [],
+  hasActionsEnabled = false,
+}: SetupOpts) {
   const scope = nock(location.origin).persist();
 
   const modelUpdateSpy = jest.spyOn(Models.actions, "update");
@@ -83,7 +123,9 @@ async function setup({ model, collections = [], usedBy = [] }: SetupOpts) {
   const slug = `${card.id}-model-name`;
 
   if (database) {
-    setupDatabasesEndpoints(scope, [getDatabaseObject(database)]);
+    setupDatabasesEndpoints(scope, [
+      getDatabaseObject(database, { hasActionsEnabled }),
+    ]);
     setupTablesEndpoints(scope, tables.map(getTableObject));
   }
 
@@ -96,31 +138,52 @@ async function setup({ model, collections = [], usedBy = [] }: SetupOpts) {
     );
 
   setupCardsEndpoints(scope, [card]);
-
+  setupActionsEndpoints(scope, model.id(), actions);
   setupCollectionsEndpoints(scope, collections);
 
-  renderWithProviders(<ModelDetailPage params={{ slug }} />, {
-    withSampleDatabase: true,
-  });
+  renderWithProviders(<ModelDetailPage params={{ slug }} />);
 
   await waitForElementToBeRemoved(() =>
     screen.queryByTestId("loading-spinner"),
   );
 
-  return { modelUpdateSpy };
+  return { scope, modelUpdateSpy };
 }
 
-function getDatabaseObject(database: Database) {
+type SetupActionsOpts = Omit<SetupOpts, "hasActionsEnabled">;
+
+async function setupActions(opts: SetupActionsOpts) {
+  const result = await setup({ ...opts, hasActionsEnabled: true });
+
+  userEvent.click(screen.getByText("Actions"));
+  await waitForElementToBeRemoved(() =>
+    screen.queryByTestId("loading-spinner"),
+  );
+
+  return result;
+}
+
+function getDatabaseObject(
+  database: Database,
+  { hasActionsEnabled = false } = {},
+) {
+  const object = database.getPlainObject();
   return {
-    ...database.getPlainObject(),
+    ...object,
     tables: database.tables.map(getTableObject),
+    settings: {
+      ...object?.settings,
+      "database-enable-actions": hasActionsEnabled,
+    },
   };
 }
 
 function getTableObject(table: Table) {
   return {
     ...table.getPlainObject(),
+    dimension_options: [],
     schema: table.schema_name,
+    fields: table.fields.map(field => field.getPlainObject()),
   };
 }
 
@@ -297,6 +360,155 @@ describe("ModelDetailPage", () => {
         });
       });
 
+      describe("actions section", () => {
+        it("is shown if actions are enabled for model's database", async () => {
+          await setup({ model: getModel(), hasActionsEnabled: true });
+          expect(screen.getByText("Actions")).toBeInTheDocument();
+        });
+
+        it("isn't shown if actions are disabled for model's database", async () => {
+          await setup({ model: getModel(), hasActionsEnabled: false });
+          expect(screen.queryByText("Actions")).not.toBeInTheDocument();
+        });
+
+        it("shows empty state if there are no actions", async () => {
+          await setupActions({ model: getModel(), actions: [] });
+          expect(
+            screen.queryByRole("list", { name: /Action list/i }),
+          ).not.toBeInTheDocument();
+          expect(
+            screen.getByText(/No actions have been created yet/i),
+          ).toBeInTheDocument();
+        });
+
+        it("allows to create a new query action from the empty state", async () => {
+          await setupActions({ model: getModel(), actions: [] });
+          userEvent.click(screen.getByRole("button", { name: "New action" }));
+          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+        });
+
+        it("lists existing query actions", async () => {
+          const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
+          await setupActions({ model, actions: [action] });
+
+          expect(screen.getByText(action.name)).toBeInTheDocument();
+          expect(screen.getByText(TEST_QUERY)).toBeInTheDocument();
+        });
+
+        it("lists existing implicit actions", async () => {
+          const model = getModel();
+          await setupActions({
+            model,
+            actions: createMockImplicitCUDActions(model.id()),
+          });
+
+          expect(screen.getByText("Create")).toBeInTheDocument();
+          expect(screen.getByText("Update")).toBeInTheDocument();
+          expect(screen.getByText("Delete")).toBeInTheDocument();
+        });
+
+        it("allows to create a new query action", async () => {
+          const model = getModel();
+          await setupActions({
+            model,
+            actions: [createMockQueryAction({ model_id: model.id() })],
+          });
+
+          userEvent.click(screen.getByRole("button", { name: "New action" }));
+
+          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+        });
+
+        it("allows to edit a query action", async () => {
+          const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
+          await setupActions({ model, actions: [action] });
+
+          const listItem = screen.getByRole("listitem", { name: action.name });
+          userEvent.click(within(listItem).getByLabelText("pencil icon"));
+
+          expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+        });
+
+        it("allows to create implicit actions", async () => {
+          const createActionSpy = jest.spyOn(ActionsApi, "create");
+          const model = getModel();
+          const action = createMockQueryAction({ model_id: model.id() });
+          await setupActions({ model, actions: [action] });
+
+          userEvent.click(screen.getByTestId("new-action-menu"));
+          userEvent.click(screen.getByText("Create basic actions"));
+
+          await waitFor(() => {
+            expect(createActionSpy).toHaveBeenCalledWith({
+              name: "Create",
+              type: "implicit",
+              kind: "row/create",
+              model_id: model.id(),
+            });
+          });
+          expect(createActionSpy).toHaveBeenCalledWith({
+            name: "Update",
+            type: "implicit",
+            kind: "row/update",
+            model_id: model.id(),
+          });
+          expect(createActionSpy).toHaveBeenCalledWith({
+            name: "Delete",
+            type: "implicit",
+            kind: "row/delete",
+            model_id: model.id(),
+          });
+        });
+
+        it("allows to create implicit actions from the empty state", async () => {
+          const createActionSpy = jest.spyOn(ActionsApi, "create");
+          const model = getModel();
+          await setupActions({ model, actions: [] });
+
+          userEvent.click(
+            screen.getByRole("button", { name: /Create basic action/i }),
+          );
+
+          await waitFor(() => {
+            expect(createActionSpy).toHaveBeenCalledWith({
+              name: "Create",
+              type: "implicit",
+              kind: "row/create",
+              model_id: model.id(),
+            });
+          });
+          expect(createActionSpy).toHaveBeenCalledWith({
+            name: "Update",
+            type: "implicit",
+            kind: "row/update",
+            model_id: model.id(),
+          });
+          expect(createActionSpy).toHaveBeenCalledWith({
+            name: "Delete",
+            type: "implicit",
+            kind: "row/delete",
+            model_id: model.id(),
+          });
+        });
+
+        it("doesn't allow to create implicit actions when they already exist", async () => {
+          const model = getModel();
+          await setupActions({
+            model,
+            actions: createMockImplicitCUDActions(model.id()),
+          });
+
+          expect(
+            screen.queryByText(/Create basic action/i),
+          ).not.toBeInTheDocument();
+          expect(
+            screen.queryByTestId("new-action-menu"),
+          ).not.toBeInTheDocument();
+        });
+      });
+
       describe("read-only permissions", () => {
         const model = getModel({ can_write: false });
 
@@ -328,6 +540,27 @@ describe("ModelDetailPage", () => {
           await setup({ model });
           userEvent.click(screen.getByText("Schema"));
           expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
+        });
+
+        it("doesn't allow to create actions", async () => {
+          await setupActions({ model, actions: [] });
+          expect(screen.queryByText("New action")).not.toBeInTheDocument();
+          expect(
+            screen.queryByText("Create basic actions"),
+          ).not.toBeInTheDocument();
+          expect(
+            screen.queryByTestId("new-action-menu"),
+          ).not.toBeInTheDocument();
+        });
+
+        it("doesn't allow to edit actions", async () => {
+          const action = createMockQueryAction({ model_id: model.id() });
+          await setupActions({ model, actions: [action] });
+
+          const listItem = screen.getByRole("listitem", { name: action.name });
+          const editButton = within(listItem).queryByLabelText("pencil icon");
+
+          expect(editButton).not.toBeInTheDocument();
         });
       });
     });

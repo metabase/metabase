@@ -18,3 +18,5 @@ export const MAX_HEADER_CELL_WIDTH =
 export const LEFT_HEADER_LEFT_SPACING = 24;
 
 export const MAX_ROWS_TO_MEASURE = 100;
+
+export const RESIZE_HANDLE_WIDTH = 5;
