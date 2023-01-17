@@ -1,7 +1,7 @@
-// Find a text field by label text, type it in, then blur the field.
-// Commonly used in our Admin section as we auto-save settings.
 import { modal } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
 
+// Find a text field by label text, type it in, then blur the field.
+// Commonly used in our Admin section as we auto-save settings.
 export function typeAndBlurUsingLabel(label, value) {
   cy.findByLabelText(label).clear().type(value).blur();
 }
