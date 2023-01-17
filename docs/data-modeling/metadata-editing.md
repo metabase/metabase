@@ -134,16 +134,16 @@ If you want Metabase to treat a text or number column as a datetime column:
 - UNIXMilliSeconds->DateTime
 - UNIXSeconds->DateTime
 
-> Casting data types from the **Data Model** admin settings won't affect the original data types in your database.
-
 Casting is different from setting the [field type](./field-types.md). For example, say you have a "Created At" column with a string [data type](https://www.metabase.com/learn/databases/data-types-overview) in your database. You'll need to cast "Created At" to one of the datetime types above if you want to do things like:
 
 - Create relative date filters, such as "Created At = Last week".
 - Use "Created At" with formulas like [datetimeAdd](../questions/query-builder/expressions/datetimeadd.md).
 
+> Casting data types from the **Data Model** admin settings won't affect the original data types in your database.
+
 ### Changing the filter widget
 
-To change the [filter widget](../dashboards/filters.md) in questions and dashboards, you'll have to adjust the **Data Model** admin settings for the _column_ used in that filter.
+To change a column's [filter widget](../dashboards/filters.md):
 
 1. Go to **Admin settings** > **Data Model**.
 2. Find your database and table.
@@ -152,9 +152,9 @@ To change the [filter widget](../dashboards/filters.md) in questions and dashboa
 5. Select a filter widget option.
 
 #### Filter widget options
-- **Search box**: start typing to search, and Metabase will display checkboxes that match the search term.
-- **A list of all values**: dropdown menu with checkboxes for all values.
-- **Plain input box**: start typing to search, and Metabase will make autocomplete suggestions (no checkboxes).
+- **Search box**: Enter a search term and Metabase will display checkboxes for column values that match the search.
+- **A list of all values**: dropdown menu with checkboxes for all column values.
+- **Plain input box**: Enter a search term and Metabase will make autocomplete suggestions for the search (no checkboxes).
 
 #### Default filters
 - Columns with more than 100 unique values will default to a plain input box filter.
