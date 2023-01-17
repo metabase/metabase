@@ -38,15 +38,9 @@ To add a table description, click into the box below the table name. Description
 
 ### Table visibility
 
-|                                                                          | Queryable | Hidden |
-|--------------------------------------------------------------------------|-----------|--------|           
-| [Query builder](../questions/query-builder/introduction.md)              | ✅        | ❌      |
-| [SQL editor](../questions/native-editor/writing-sql.md)                  | ✅        | ✅      |
-| [Data reference](../exploration-and-organization/data-model-reference.md)| ✅        | ❌      |
-
 **Queryable** tables are visible across all of Metabase.
 
-**Hidden** tables won't show up in the query builder or data reference, but hidden tables can still be used in SQL questions if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
+**Hidden** tables won't show up in the [query builder](../questions/query-builder/introduction.md) or [data reference](./exploration-and-organization/data-model-reference.md), but hidden tables can still be used in SQL questions if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
 
 Tip: To hide all of the tables in a database (say, if you've migrated to a new database), click on the **hidden eye** icon beside "# queryable tables" in the left sidebar.
 
@@ -84,12 +78,6 @@ To add a description, click into the box below the column name. Descriptions are
 - placeholder values, like `9999-99-99`
 
 ### Column visibility
-
-|                                                                           | Everywhere    | Only in detail views | Do not include |
-|---------------------------------------------------------------------------|---------------|----------------------|----------------|
-| [Query builder](../questions/query-builder/introduction.md)               | ✅            | ✅                    | ✅             | 
-| [SQL editor](../questions/native-editor/writing-sql.md)                   | ✅            | ✅                    | ✅             | 
-| [Data reference](../exploration-and-organization/data-model-reference.md) | ❌            | ✅                    | ❌             | 
 
 **Everywhere**: by default, users can see all of the columns in a table.
 
