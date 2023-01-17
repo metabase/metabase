@@ -1,14 +1,22 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
+import {
+  Parameter,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
 import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
-import { UiParameter } from "metabase-lib/parameters/types";
+import {
+  getSourceConfig,
+  getSourceConfigForType,
+  getSourceType,
+} from "metabase-lib/parameters/utils/parameter-source";
 import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 import ValuesSourceCardModal from "./ValuesSourceCardModal";
 
 type ModalStep = "main" | "card";
 
 interface ModalProps {
-  parameter: UiParameter;
+  parameter: Parameter;
   onSubmit: (
     sourceType: ValuesSourceType,
     sourceConfig: ValuesSourceConfig,
@@ -22,10 +30,8 @@ const ValuesSourceModal = ({
   onClose,
 }: ModalProps): JSX.Element => {
   const [step, setStep] = useState<ModalStep>("main");
-  const [sourceType, setSourceType] = useState(parameter.values_source_type);
-  const [sourceConfig, setSourceConfig] = useState(
-    parameter.values_source_config,
-  );
+  const [sourceType, setSourceType] = useState(getSourceType(parameter));
+  const [sourceConfig, setSourceConfig] = useState(getSourceConfig(parameter));
 
   const fields = useMemo(() => {
     return getNonVirtualFields(parameter);
@@ -40,7 +46,7 @@ const ValuesSourceModal = ({
   }, []);
 
   const handleSubmit = useCallback(() => {
-    onSubmit(sourceType, sourceConfig);
+    onSubmit(sourceType, getSourceConfigForType(sourceType, sourceConfig));
     onClose();
   }, [sourceType, sourceConfig, onSubmit, onClose]);
 

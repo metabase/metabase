@@ -121,6 +121,8 @@ Cached column values are displayed in filter dropdown menus. If people type in t
 
 A scan is more intensive than a sync query, so it only runs once during setup, and again once a day by default. If you [disable scans](#scheduling-database-scans) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
 
+To reduce the number of tables and fields Metabase needs to scan in order to stay current with your connected database, Metabase will only scan values for fields that someone has queried in the last fourteen days. 
+
 ### Getting tables, columns, and values for the first time
 
 When Metabase first connects to your database, it performs a **scan** to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md).

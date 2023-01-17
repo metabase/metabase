@@ -7,8 +7,5 @@ export const createMockUiParameter = (
   slug: "slug",
   name: "Name",
   type: "string/=",
-  values_query_type: "list",
-  values_source_type: null,
-  values_source_config: {},
   ...opts,
 });

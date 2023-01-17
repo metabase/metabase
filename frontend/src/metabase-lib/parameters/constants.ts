@@ -148,10 +148,6 @@ export const LOCATION_OPTIONS = [
   },
 ];
 
-export const CUSTOM_SOURCE_PARAMETER_TYPES: Record<string, string[]> = {
-  string: ["="],
-};
-
 export const TYPE_SUPPORTS_LINKED_FILTERS = [
   "string",
   "category",

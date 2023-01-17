@@ -43,6 +43,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -351,6 +352,69 @@
       (mi/can-write? database)     (->
                                      secret/expand-db-details-inferred-secret-values
                                      (assoc :can-manage true)))))
+
+(def ^:private database-usage-models
+  "List of models that are used to report usage on a database."
+  [:question :dataset :metric :segment])
+
+(def ^:private always-false-hsql-expr
+  "A Honey SQL expression that is never true.
+
+    1 = 2"
+  [:= [:inline 1] [:inline 2]])
+
+(defmulti ^:private database-usage-query
+  "Query that will returns the number of `model` that use the database with id `database-id`.
+  The query must returns a scalar, and the method could return `nil` in case no query is available."
+  {:arglists '([model database-id table-ids])}
+  (fn [model _database-id _table-ids] (keyword model)))
+
+(defmethod database-usage-query :question
+  [_ db-id _table-ids]
+  {:select [[:%count.* :question]]
+   :from   [:report_card]
+   :where  [:and
+            [:= :database_id db-id]
+            [:= :dataset false]]})
+
+(defmethod database-usage-query :dataset
+  [_ db-id _table-ids]
+  {:select [[:%count.* :dataset]]
+   :from   [:report_card]
+   :where  [:and
+            [:= :database_id db-id]
+            [:= :dataset true]]})
+
+(defmethod database-usage-query :metric
+  [_ _db-id table-ids]
+  {:select [[:%count.* :metric]]
+   :from   [:metric]
+   :where  (if table-ids
+             [:in :table_id table-ids]
+             always-false-hsql-expr)})
+
+(defmethod database-usage-query :segment
+  [_ _db-id table-ids]
+  {:select [[:%count.* :segment]]
+   :from   [:segment]
+   :where  (if table-ids
+             [:in :table_id table-ids]
+             always-false-hsql-expr)})
+
+(api/defendpoint GET "/:id/usage_info"
+  "Get usage info for a database.
+  Returns a map with keys are models and values are the number of entities that use this database."
+  [id]
+  {id ms/IntGreaterThanZero}
+  (api/check-superuser)
+  (api/check-404 (db/exists? Database :id id))
+  (let [table-ids (db/select-ids Table :db_id id)]
+    (first (mdb.query/query
+             {:select [:*]
+              :from   (for [model database-usage-models
+                            :let [query (database-usage-query model id table-ids)]
+                            :when query]
+                        [query model])}))))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------

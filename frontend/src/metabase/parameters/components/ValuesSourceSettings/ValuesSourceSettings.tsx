@@ -3,11 +3,12 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio/Radio";
 import Modal from "metabase/components/Modal";
 import {
+  Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { UiParameter } from "metabase-lib/parameters/types";
+import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 import ValuesSourceModal from "../ValuesSourceModal";
 import {
   RadioLabelButton,
@@ -16,7 +17,7 @@ import {
 } from "./ValuesSourceSettings.styled";
 
 export interface ValuesSourceSettingsProps {
-  parameter: UiParameter;
+  parameter: Parameter;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
@@ -28,7 +29,7 @@ const ValuesSourceSettings = ({
   onChangeSourceType,
   onChangeSourceConfig,
 }: ValuesSourceSettingsProps): JSX.Element => {
-  const queryType = parameter.values_query_type;
+  const queryType = getQueryType(parameter);
   const [isModalOpened, setIsModalOpened] = useState(false);
 
   const radioOptions = useMemo(() => {

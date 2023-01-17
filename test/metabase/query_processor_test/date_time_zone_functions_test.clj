@@ -115,7 +115,7 @@
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
-     ;; mongo doesn't supports cast string to date
+    ;; mongo doesn't support casting string to date
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with date columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
@@ -138,9 +138,9 @@
                   :get-second      20
                   :get-year        2022}
                  (->> (mt/run-mbql-query times
-                                         {:expressions (into {} (for [op ops]
-                                                                  [(name op) [op "2022-10-03T07:10:20"]]))
-                                          :fields      (into [] (for [op ops] [:expression (name op)]))})
+                        {:expressions (into {} (for [op ops]
+                                                 [(name op) [op "2022-10-03T07:10:20"]]))
+                         :fields      (into [] (for [op ops] [:expression (name op)]))})
                       (mt/formatted-rows (repeat int))
                       first
                       (zipmap ops)))))))
@@ -150,43 +150,43 @@
         (mt/with-report-timezone-id "Asia/Kabul"
           (is (= (if (or (= driver/*driver* :sqlserver)
                          (driver/supports? driver/*driver* :set-timezone))
-                     {:get-year        2004,
-                      :get-quarter     1,
-                      :get-month       1,
-                      :get-day         1,
-                      :get-day-of-week 5,
-                      ;; TIMEZONE FIXME these drivers are returning the extracted hours in
-                      ;; the timezone that they were inserted in
-                      ;; maybe they need explicit convert-timezone to the report-tz before extraction?
-                      :get-hour        (case driver/*driver*
-                                         (:sqlserver :presto :presto-jdbc :snowflake :oracle) 5
-                                         2),
-                      :get-minute      (case driver/*driver*
-                                         (:sqlserver :presto :presto-jdbc :snowflake :oracle) 19
-                                         49),
-                      :get-second      9}
-                     {:get-year        2003,
-                      :get-quarter     4,
-                      :get-month       12,
-                      :get-day         31,
-                      :get-day-of-week 4,
-                      :get-hour        22,
-                      :get-minute      19,
-                      :get-second      9})
+                   {:get-year        2004,
+                    :get-quarter     1,
+                    :get-month       1,
+                    :get-day         1,
+                    :get-day-of-week 5,
+                    ;; TIMEZONE FIXME these drivers are returning the extracted hours in
+                    ;; the timezone that they were inserted in
+                    ;; maybe they need explicit convert-timezone to the report-tz before extraction?
+                    :get-hour        (case driver/*driver*
+                                       (:sqlserver :presto :presto-jdbc :snowflake :oracle) 5
+                                       2),
+                    :get-minute      (case driver/*driver*
+                                       (:sqlserver :presto :presto-jdbc :snowflake :oracle) 19
+                                       49),
+                    :get-second      9}
+                   {:get-year        2003,
+                    :get-quarter     4,
+                    :get-month       12,
+                    :get-day         31,
+                    :get-day-of-week 4,
+                    :get-hour        22,
+                    :get-minute      19,
+                    :get-second      9})
                  (let [ops [:get-year :get-quarter :get-month :get-day
                             :get-day-of-week :get-hour :get-minute :get-second]]
-                    (->> (mt/mbql-query times {:expressions (into {"shifted-day"  [:datetime-subtract $dt_tz 78 :day]
-                                                                   ;; the idea is to extract a column with value = 2004-01-01 02:49:09 +04:30
-                                                                   ;; this way the UTC value is 2003-12-31 22:19:09 +00:00 which will make sure
-                                                                   ;; the year, quarter, month, day, week is extracted correctly
-                                                                   ;; TODO: it's better to use a literal for this, but the function is not working properly
-                                                                   ;; with OffsetDatetime for all drivers, so we'll go wit this for now
-                                                                   "shifted-hour" [:datetime-subtract [:expression "shifted-day"] 4 :hour]}
-                                                                  (for [op ops]
-                                                                    [(name op) [op [:expression "shifted-hour"]]]))
-                                               :fields      (into [] (for [op ops] [:expression (name op)]))
-                                               :filter      [:= $index 1]
-                                               :limit       1})
+                   (->> (mt/mbql-query times {:expressions (into {"shifted-day"  [:datetime-subtract $dt_tz 78 :day]
+                                                                  ;; the idea is to extract a column with value = 2004-01-01 02:49:09 +04:30
+                                                                  ;; this way the UTC value is 2003-12-31 22:19:09 +00:00 which will make sure
+                                                                  ;; the year, quarter, month, day, week is extracted correctly
+                                                                  ;; TODO: it's better to use a literal for this, but the function is not working properly
+                                                                  ;; with OffsetDatetime for all drivers, so we'll go wit this for now
+                                                                  "shifted-hour" [:datetime-subtract [:expression "shifted-day"] 4 :hour]}
+                                                                 (for [op ops]
+                                                                   [(name op) [op [:expression "shifted-hour"]]]))
+                                              :fields      (into [] (for [op ops] [:expression (name op)]))
+                                              :filter      [:= $index 1]
+                                              :limit       1})
                         mt/process-query
                         (mt/formatted-rows (repeat int))
                         first
@@ -332,8 +332,7 @@
 
 (deftest datetime-math-tests
   (mt/dataset times-mixed
-    ;; mongo doesn't supports coercion yet so we exclude it here, Tests for it are in [[metabase.driver.mongo.query-processor-test]]
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
+    (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
       (testing "date arithmetic with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
                 op                  [:datetime-add :datetime-subtract]
@@ -345,15 +344,18 @@
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :fields      [[:expression "expr"]]}}
                  {:expected (into [] (frequencies
-                                       [(datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type) (datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                        (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type) (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
+                                      [(datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type) (datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                                       (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type) (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :aggregation [[:count]]
                              :breakout    [[:expression "expr"]]}}]]
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-            (is (= (set expected) (set (test-datetime-math query)))))))
+            (is (= (set expected) (set (test-datetime-math query))))))))
 
-      (testing "date arithmetic with datetime columns"
+    ;; mongo doesn't support casting string to date so we exclude it here
+    ;; tests for it are in [[metabase.driver.mongo.query-processor-test]]
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
+      (testing "date arithmetic with date columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
                 op                  [:datetime-add :datetime-subtract]
                 unit                [:year :quarter :month :day]
@@ -364,19 +366,21 @@
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :fields      [[:expression "expr"]]}}
                  {:expected (into [] (frequencies
-                                       [(datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type) (datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                        (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type) (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
+                                      [(datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type) (datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                                       (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type) (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :aggregation [[:count]]
                              :breakout    [[:expression "expr"]]}}]]
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-            (is (= (set expected) (set (test-datetime-math query)))))))
+            (is (= (set expected) (set (test-datetime-math query))))))))
+
+    (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
       (testing "date arithmetics with literal date"
         (is (= ["2008-08-20 00:00:00" "2008-04-20 00:00:00"]
                (->> (mt/run-mbql-query times
-                                       {:expressions {"add" [:datetime-add "2008-06-20T00:00:00" 2 :month]
-                                                      "sub" [:datetime-subtract "2008-06-20T00:00:00" 2 :month]}
-                                        :fields      [[:expression "add"] [:expression "sub"]]})
+                      {:expressions {"add" [:datetime-add "2008-06-20T00:00:00" 2 :month]
+                                     "sub" [:datetime-subtract "2008-06-20T00:00:00" 2 :month]}
+                       :fields      [[:expression "add"] [:expression "sub"]]})
                     (mt/formatted-rows [normalize-timestamp-str normalize-timestamp-str])
                     first)))))))
 
@@ -475,8 +479,7 @@
             (is (true? (close-hour? hour (.getHour now))))))))))
 
 (deftest datetime-math-with-extract-test
-  ;; FIXME: mongo doesn't supports parsing strings as dates so we exclude it from this test temporarily (#27111)
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested date math then extract"

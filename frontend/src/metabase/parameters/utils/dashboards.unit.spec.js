@@ -30,9 +30,6 @@ describe("metabase/parameters/utils/dashboards", () => {
         sectionId: "abc",
         slug: "foo_bar",
         type: "category",
-        values_query_type: "list",
-        values_source_type: null,
-        values_source_config: {},
       });
     });
 
@@ -53,9 +50,6 @@ describe("metabase/parameters/utils/dashboards", () => {
         sectionId: "abc",
         slug: "foo_bar_baz",
         type: "category",
-        values_query_type: "list",
-        values_source_type: null,
-        values_source_config: {},
       });
     });
 
@@ -84,9 +78,6 @@ describe("metabase/parameters/utils/dashboards", () => {
         sectionId: "abc",
         slug: "foo_bar_1",
         type: "category",
-        values_query_type: "list",
-        values_source_type: null,
-        values_source_config: {},
       });
     });
   });

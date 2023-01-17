@@ -122,9 +122,6 @@ describe("parameters/utils/cards", () => {
           slug: "a",
           target: ["variable", ["template-tag", "a"]],
           type: "foo",
-          values_query_type: "list",
-          values_source_type: null,
-          values_source_config: {},
         },
         {
           default: undefined,
@@ -133,9 +130,6 @@ describe("parameters/utils/cards", () => {
           slug: "b",
           target: ["variable", ["template-tag", "b"]],
           type: "string/=",
-          values_query_type: "list",
-          values_source_type: null,
-          values_source_config: {},
         },
         {
           default: undefined,
@@ -144,9 +138,6 @@ describe("parameters/utils/cards", () => {
           slug: "c",
           target: ["variable", ["template-tag", "c"]],
           type: "number/=",
-          values_query_type: "list",
-          values_source_type: null,
-          values_source_config: {},
         },
         {
           default: undefined,
@@ -155,9 +146,6 @@ describe("parameters/utils/cards", () => {
           slug: "d",
           target: ["variable", ["template-tag", "d"]],
           type: "date/single",
-          values_query_type: "list",
-          values_source_type: null,
-          values_source_config: {},
         },
         {
           default: undefined,
@@ -166,9 +154,6 @@ describe("parameters/utils/cards", () => {
           slug: "e",
           target: ["dimension", ["template-tag", "e"]],
           type: "foo",
-          values_query_type: "list",
-          values_source_type: null,
-          values_source_config: {},
         },
       ];
 
