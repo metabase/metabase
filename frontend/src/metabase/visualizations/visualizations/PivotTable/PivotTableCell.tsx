@@ -1,15 +1,16 @@
 import React from "react";
 import cx from "classnames";
+import Draggable, { ControlPosition, DraggableBounds } from "react-draggable";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { RowToggleIcon } from "./RowToggleIcon";
-import { PivotTableCell } from "./PivotTable.styled";
+import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
 
 import type { HeaderItem, BodyItem, PivotTableClicked } from "./types";
-import { LEFT_HEADER_LEFT_SPACING } from "./constants";
+import { LEFT_HEADER_LEFT_SPACING, RESIZE_HANDLE_WIDTH } from "./constants";
 
 interface CellProps {
   value: React.ReactNode;
@@ -24,6 +25,7 @@ interface CellProps {
   isTransparent?: boolean;
   hasTopBorder?: boolean;
   onClick?: ((e: React.SyntheticEvent) => void) | undefined;
+  onResize?: (newWidth: number) => void;
 }
 
 export function Cell({
@@ -39,6 +41,7 @@ export function Cell({
   isTransparent,
   hasTopBorder,
   onClick,
+  onResize,
 }: CellProps) {
   return (
     <PivotTableCell
@@ -59,10 +62,30 @@ export function Cell({
       }}
       onClick={onClick}
     >
-      <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
-        <Ellipsified>{value}</Ellipsified>
-        {icon && <div className="pl1">{icon}</div>}
-      </div>
+      <>
+        <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
+          <Ellipsified>{value}</Ellipsified>
+          {icon && <div className="pl1">{icon}</div>}
+        </div>
+        {!!onResize && (
+          <Draggable
+            axis="x"
+            enableUserSelectHack
+            bounds={{ left: RESIZE_HANDLE_WIDTH } as DraggableBounds}
+            position={
+              {
+                x: style?.width ?? 0,
+                y: 0,
+              } as ControlPosition
+            }
+            onStop={(e, { x }) => {
+              onResize(x);
+            }}
+          >
+            <ResizeHandle />
+          </Draggable>
+        )}
+      </>
     </PivotTableCell>
   );
 }
@@ -76,6 +99,7 @@ interface TopHeaderCellProps {
   style: React.CSSProperties;
   isNightMode: boolean;
   getCellClickHandler: CellClickHandler;
+  onResize?: (newWidth: number) => void;
 }
 
 export const TopHeaderCell = ({
@@ -83,6 +107,7 @@ export const TopHeaderCell = ({
   style,
   isNightMode,
   getCellClickHandler,
+  onResize,
 }: TopHeaderCellProps) => {
   const { value, hasChildren, clicked, isSubtotal, maxDepthBelow } = item;
 
@@ -97,6 +122,7 @@ export const TopHeaderCell = ({
       isEmphasized={hasChildren}
       isBold={isSubtotal}
       onClick={getCellClickHandler(clicked)}
+      onResize={onResize}
     />
   );
 };
@@ -115,6 +141,7 @@ export const LeftHeaderCell = ({
   rowIndex,
   settings,
   onUpdateVisualizationSettings,
+  onResize,
 }: LeftHeaderCellProps) => {
   const { value, isSubtotal, hasSubtotal, depth, path, clicked } = item;
 
@@ -129,6 +156,7 @@ export const LeftHeaderCell = ({
       isEmphasized={isSubtotal}
       isBold={isSubtotal}
       onClick={getCellClickHandler(clicked)}
+      onResize={onResize}
       icon={
         (isSubtotal || hasSubtotal) && (
           <RowToggleIcon
