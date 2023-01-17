@@ -131,7 +131,7 @@ export default class GroupMappingsWidget extends React.Component {
     }
 
     const stateKey = {
-      clearAllPermissions: "groupsToClearAllPermissions",
+      clear: "groupsToClearAllPermissions",
       delete: "groupsToDelete",
     }[whatToDoAboutGroups];
 

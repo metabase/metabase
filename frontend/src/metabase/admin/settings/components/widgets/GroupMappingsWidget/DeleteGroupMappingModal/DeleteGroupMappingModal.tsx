@@ -14,7 +14,7 @@ import {
 
 type GroupIds = number[];
 type DNType = string;
-type ValueType = "nothing" | "clearAllPermissions" | "delete";
+type ValueType = "nothing" | "clear" | "delete";
 
 type DeleteGroupMappingModalProps = {
   dn: DNType;
@@ -41,7 +41,7 @@ const DeleteGroupMappingModal = ({
 
   const submitButtonLabels: Record<ValueType, string> = {
     nothing: t`Remove mapping`,
-    clearAllPermissions: t`Remove mapping and members`,
+    clear: t`Remove mapping and members`,
     delete: t`Remove mapping and delete group`,
   };
 
@@ -66,7 +66,7 @@ const DeleteGroupMappingModal = ({
               },
               {
                 name: t`Also remove all group members`,
-                value: "clearAllPermissions",
+                value: "clear",
               },
               {
                 name: t`Also delete the group`,
