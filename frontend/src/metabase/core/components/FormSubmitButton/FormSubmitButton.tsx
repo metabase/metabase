@@ -54,4 +54,6 @@ const getSubmitButtonTitle = (
   }
 };
 
-export default FormSubmitButton;
+export default Object.assign(FormSubmitButton, {
+  Button: Button.Root,
+});
