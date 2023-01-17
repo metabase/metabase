@@ -7,6 +7,7 @@ import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 import {
   ChartSettingMessage,
   ChartSettingOrderedSimpleRoot,
+  ExtraActionButton,
 } from "./ChartSettingOrderedSimple.styled";
 
 interface SortableItem {
@@ -29,6 +30,8 @@ interface ChartSettingOrderedSimpleProps {
   hasOnEnable: boolean;
   listOfSeries: boolean;
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
+  getItemTitle?: (item: SortableItem) => string;
+  extraButton?: { text: string; key: string };
 }
 
 export const ChartSettingOrderedSimple = ({
@@ -40,6 +43,8 @@ export const ChartSettingOrderedSimple = ({
   hasOnEnable = true,
   onChangeSeriesColor,
   listOfSeries = true,
+  getItemTitle = (item: SortableItem) => item.name || "Unknown",
+  extraButton,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = (selectedItem: SortableItem) => {
     const index = orderedItems.findIndex(item => item.key === selectedItem.key);
@@ -56,10 +61,6 @@ export const ChartSettingOrderedSimple = ({
     const itemsCopy = [...orderedItems];
     itemsCopy.splice(newIndex, 0, itemsCopy.splice(oldIndex, 1)[0]);
     onChange(itemsCopy);
-  };
-
-  const getItemTitle = (item: SortableItem) => {
-    return item.name || "Unknown";
   };
 
   const handleOnEdit = (item: SortableItem, ref: HTMLElement | undefined) => {
@@ -79,29 +80,34 @@ export const ChartSettingOrderedSimple = ({
   };
 
   const handleExtra = () => {
-    onSetCurrentWidget({
-      props: {
-        initialKey: "table.columns2",
-      },
-    });
+    if (extraButton) {
+      onSetCurrentWidget({
+        props: {
+          initialKey: extraButton.key,
+        },
+      });
+    }
   };
 
   return (
     <ChartSettingOrderedSimpleRoot>
+      {extraButton && (
+        <ExtraActionButton onClick={handleExtra} as="button">
+          {extraButton.text}
+        </ExtraActionButton>
+      )}
+
       {orderedItems.length > 0 ? (
-        <>
-          <p onClick={handleExtra}>Add some stuff</p>
-          <ChartSettingOrderedItems
-            items={orderedItems}
-            getItemName={getItemTitle}
-            onRemove={hasOnEnable ? toggleDisplay : undefined}
-            onEnable={hasOnEnable ? toggleDisplay : undefined}
-            onSortEnd={handleSortEnd}
-            onEdit={hasEditSettings ? handleOnEdit : undefined}
-            onColorChange={handleColorChange}
-            distance={5}
-          />
-        </>
+        <ChartSettingOrderedItems
+          items={orderedItems}
+          getItemName={getItemTitle}
+          onRemove={hasOnEnable ? toggleDisplay : undefined}
+          onEnable={hasOnEnable ? toggleDisplay : undefined}
+          onSortEnd={handleSortEnd}
+          onEdit={hasEditSettings ? handleOnEdit : undefined}
+          onColorChange={handleColorChange}
+          distance={5}
+        />
       ) : (
         <ChartSettingMessage>{t`Nothing to order`}</ChartSettingMessage>
       )}
