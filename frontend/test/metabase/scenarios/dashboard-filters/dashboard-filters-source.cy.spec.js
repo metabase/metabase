@@ -1,6 +1,5 @@
 import {
   editDashboard,
-  modal,
   popover,
   restore,
   saveDashboard,
@@ -8,6 +7,8 @@ import {
   visitDashboard,
   openQuestionActions,
   visitQuestion,
+  setFilterQuestionSource,
+  setFilterListSource,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -22,7 +23,7 @@ const dashboardQuestionDetails = {
 };
 
 const structuredQuestionDetails = {
-  name: "Categories",
+  name: "GUI source",
   query: {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
@@ -32,7 +33,7 @@ const structuredQuestionDetails = {
 };
 
 const nativeQuestionDetails = {
-  name: "Categories",
+  name: "SQL source",
   native: {
     query: "select distinct CATEGORY from PRODUCTS order by CATEGORY limit 2",
   },
@@ -57,8 +58,7 @@ describe("scenarios > dashboard > filters", () => {
     editDashboard();
     setFilter("Text or Category", "Is");
     mapFilterToQuestion();
-    editDropdown();
-    setupStructuredQuestionSource();
+    setFilterQuestionSource({ question: "GUI source", field: "Category" });
     saveDashboard();
     filterDashboard();
 
@@ -77,8 +77,7 @@ describe("scenarios > dashboard > filters", () => {
     editDashboard();
     setFilter("Text or Category", "Is");
     mapFilterToQuestion();
-    editDropdown();
-    setupNativeQuestionSource();
+    setFilterQuestionSource({ question: "SQL source", field: "CATEGORY" });
     saveDashboard();
     filterDashboard();
 
@@ -96,78 +95,11 @@ describe("scenarios > dashboard > filters", () => {
     editDashboard();
     setFilter("Text or Category", "Is");
     mapFilterToQuestion();
-    editDropdown();
-    setupCustomList();
+    setFilterListSource({ values: ["Doohickey", "Gadget"] });
     saveDashboard();
     filterDashboard();
   });
 });
-
-const editDropdown = () => {
-  cy.findByText("Dropdown list").click();
-  cy.findByText("Edit").click();
-};
-
-const setupStructuredQuestionSource = () => {
-  modal().within(() => {
-    cy.findByText("From another model or question").click();
-    cy.findByText("Pick a model or question…").click();
-  });
-
-  modal().within(() => {
-    cy.findByPlaceholderText(/Search for a question/).type("Categories");
-    cy.findByText("Categories").click();
-    cy.button("Done").click();
-  });
-
-  modal().within(() => {
-    cy.findByText("Pick a column…").click();
-  });
-
-  popover().within(() => {
-    cy.findByText("Category").click();
-  });
-
-  modal().within(() => {
-    cy.wait("@dataset");
-    cy.findByDisplayValue(/Gadget/).should("be.visible");
-    cy.button("Done").click();
-  });
-};
-
-const setupNativeQuestionSource = () => {
-  modal().within(() => {
-    cy.findByText("From another model or question").click();
-    cy.findByText("Pick a model or question…").click();
-  });
-
-  modal().within(() => {
-    cy.findByText("Categories").click();
-    cy.button("Done").click();
-  });
-
-  modal().within(() => {
-    cy.findByText("Pick a column…").click();
-  });
-
-  popover().within(() => {
-    cy.findByText("CATEGORY").click();
-  });
-
-  modal().within(() => {
-    cy.wait("@dataset");
-    cy.findByDisplayValue(/Gadget/).should("be.visible");
-    cy.button("Done").click();
-  });
-};
-
-const setupCustomList = () => {
-  modal().within(() => {
-    cy.findByText("Custom list").click();
-    cy.findByRole("textbox").clear().type("Doohickey\nGadget");
-    cy.button("Done").click();
-  });
-};
 
 const mapFilterToQuestion = () => {
   cy.findByText("Select…").click();
