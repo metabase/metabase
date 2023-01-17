@@ -27,6 +27,13 @@ Let's say we want to email a dashboard. We'll click on the **Email it** option i
 
 ![Dashboard subscription email options](./images/email-options.png)
 
+## How permissions work with dashboard subscriptions
+
+- **Recipients of dashboard subscriptions will be able to see whatever the creator of the dashboard subscription can see.** That is, people will get to see charts in their email or Slack _as if_ they had the subscription creator's permissions to view those charts, _regardless of whether their groups have permission to view those charts_.
+- **Admins can see and edit all subscriptions.** Admins can modify recipients, filters, or delete the subscription without affecting the subscription's permissions; the subscription will continue to send data based on the subscription's creator's permissions. 
+- **Non-admins only see their subscriptions, not subscriptions created by others.** People who are 1) not in the Admin group, and 2) not sandboxed, can only see the subscriptions they've created. They can add anyone in their Metabase to their subscriptions using the dropdown menu.
+- **People in data sandboxes can only send dashboard results to themselves.** People who are sandboxed will only see themselves in the list of recipients for dashboard subscriptions.
+
 ## Email subscription options
 
 For emails, we can:
