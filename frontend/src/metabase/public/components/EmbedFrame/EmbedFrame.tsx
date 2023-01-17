@@ -39,6 +39,7 @@ interface OwnProps {
   question?: Question;
   dashboard?: Dashboard;
   actionButtons?: JSX.Element[];
+  footerVariant?: "default" | "big";
   parameters?: Parameter[];
   parameterValues?: Record<ParameterId, ParameterValueOrArray>;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
@@ -76,6 +77,7 @@ function EmbedFrame({
   question,
   dashboard,
   actionButtons,
+  footerVariant = "default",
   location,
   hasEmbedBranding,
   parameters,
@@ -144,8 +146,10 @@ function EmbedFrame({
         <Body>{children}</Body>
       </ContentContainer>
       {showFooter && (
-        <Footer className="EmbedFrame-footer">
-          {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}
+        <Footer className="EmbedFrame-footer" variant={footerVariant}>
+          {hasEmbedBranding && (
+            <LogoBadge variant={footerVariant} dark={theme === "night"} />
+          )}
           {actionButtons && (
             <ActionButtonsContainer>{actionButtons}</ActionButtonsContainer>
           )}
