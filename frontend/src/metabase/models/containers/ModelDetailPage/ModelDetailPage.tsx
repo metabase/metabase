@@ -5,9 +5,10 @@ import { connect } from "react-redux";
 import * as Urls from "metabase/lib/urls";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 
-import { getMetadata } from "metabase/selectors/metadata";
+import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
+import { getMetadata } from "metabase/selectors/metadata";
 import title from "metabase/hoc/Title";
 
 import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
@@ -29,7 +30,7 @@ type OwnProps = {
   };
 };
 
-type EntityLoaderProps = {
+type ModelEntityLoaderProps = {
   modelCard: Card;
 };
 
@@ -55,9 +56,12 @@ type DispatchProps = {
   ) => void;
 };
 
-type Props = OwnProps & EntityLoaderProps & StateProps & DispatchProps;
+type Props = OwnProps & ModelEntityLoaderProps & StateProps & DispatchProps;
 
-function mapStateToProps(state: State, props: OwnProps & EntityLoaderProps) {
+function mapStateToProps(
+  state: State,
+  props: OwnProps & ModelEntityLoaderProps,
+) {
   const metadata = getMetadata(state);
   const model = new Question(props.modelCard, metadata);
   return { model };
@@ -149,11 +153,15 @@ function getPageTitle({ modelCard }: Props) {
 
 export default _.compose(
   Questions.load({
-    id: (state: State, props: OwnProps) =>
-      Urls.extractEntityId(props.params.slug),
+    id: (state: State, { params }: OwnProps) =>
+      Urls.extractEntityId(params.slug),
     entityAlias: "modelCard",
   }),
-  connect<StateProps, DispatchProps, OwnProps & EntityLoaderProps, State>(
+  Databases.load({
+    id: (state: State, { modelCard }: OwnProps & ModelEntityLoaderProps) =>
+      modelCard.dataset_query.database,
+  }),
+  connect<StateProps, DispatchProps, OwnProps & ModelEntityLoaderProps, State>(
     mapStateToProps,
     mapDispatchToProps,
   ),

@@ -13,7 +13,6 @@ import {
   within,
 } from "__support__/ui";
 import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_database_fixture";
-import { mockSettings } from "__support__/settings";
 import {
   setupActionsEndpoints,
   setupCardsEndpoints,
@@ -32,7 +31,6 @@ import type {
   WritebackAction,
   WritebackQueryAction,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 import {
   createMockCollection,
   createMockQueryAction as _createMockQueryAction,
@@ -143,24 +141,7 @@ async function setup({
   setupActionsEndpoints(scope, model.id(), actions);
   setupCollectionsEndpoints(scope, collections);
 
-  const settings = mockSettings({
-    "experimental-enable-actions": hasActionsEnabled,
-  });
-
-  const storeInitialState: Partial<State> = { settings };
-
-  if (database) {
-    storeInitialState.entities = {
-      databases: {
-        [database.id]: getDatabaseObject(database, { hasActionsEnabled }),
-      },
-    };
-  }
-
-  renderWithProviders(<ModelDetailPage params={{ slug }} />, {
-    withSampleDatabase: true,
-    storeInitialState,
-  });
+  renderWithProviders(<ModelDetailPage params={{ slug }} />);
 
   await waitForElementToBeRemoved(() =>
     screen.queryByTestId("loading-spinner"),
