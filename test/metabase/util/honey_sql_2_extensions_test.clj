@@ -13,7 +13,6 @@
 ;; getting confused.
 (defn- with-database-type-info
   [hsql type-string]
-  #_{:clj-kondo/ignore [:type-mismatch]}
   (h2x/with-database-type-info hsql type-string))
 
 (deftest ^:parallel custom-functions-test
