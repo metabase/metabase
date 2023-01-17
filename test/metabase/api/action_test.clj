@@ -28,8 +28,8 @@
    :parameters             s/Any
    :parameter_mappings     s/Any
    :visualization_settings su/Map
-   :public_uuid            (s/maybe su/UUIDString)
-   :made_public_by_id      (s/maybe su/IntGreaterThanOrEqualToZero)
+   :public_uuid            su/UUIDString
+   :made_public_by_id      su/IntGreaterThanOrEqualToZero
    s/Keyword               s/Any})
 
 (deftest list-actions-test
@@ -216,13 +216,21 @@
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private unshared-action-opts
+  {:public_uuid       nil
+   :made_public_by_id nil})
+
+(defn- shared-action-opts []
+  {:public_uuid       (str (UUID/randomUUID))
+   :made_public_by_id (mt/user->id :crowberto)})
+
 (deftest share-action-test
   (testing "POST /api/action/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (actions.test-util/with-actions-enabled
         (mt/with-non-admin-groups-no-root-collection-perms
           (testing "We can share an action"
-            (actions.test-util/with-actions [{:keys [action-id]} {}]
+            (actions.test-util/with-actions [{:keys [action-id]} unshared-action-opts]
               (let [uuid (:uuid (mt/user-http-request :crowberto :post 200
                                                       (format "action/%d/public_link" action-id)))]
                 (is (db/exists? Action :id action-id, :public_uuid uuid))
@@ -242,13 +250,9 @@
                      (mt/user-http-request :crowberto :post 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))
 
         (testing "We *cannot* share an action if we aren't admins"
-          (actions.test-util/with-actions [{:keys [action-id]} {}]
+          (actions.test-util/with-actions [{:keys [action-id]} unshared-action-opts]
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 (format "action/%d/public_link" action-id))))))))))
-
-(defn- shared-action-opts []
-  {:public_uuid       (str (UUID/randomUUID))
-   :made_public_by_id (mt/user->id :crowberto)})
 
 (deftest disable-sharing-action-test
   (testing "DELETE /api/action/:id/public_link"
@@ -267,10 +271,9 @@
                    (mt/user-http-request :rasta :delete 403 (format "action/%d/public_link" action-id)))))))
 
       (testing "Test that we get a 404 if Action isn't shared"
-        (let [action-opts (shared-action-opts)]
-          (actions.test-util/with-actions [{:keys [action-id]} {}]
-            (is (= "Not found."
-                   (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id)))))))
+        (actions.test-util/with-actions [{:keys [action-id]} unshared-action-opts]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id))))))
 
       (testing "Test that we get a 404 if Action doesn't exist"
         (is (= "Not found."
