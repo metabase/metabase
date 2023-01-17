@@ -25,10 +25,10 @@ function mapStateToProps(state: State) {
 }
 
 function PublicApp({ errorPage, children }: Props) {
-  if (!errorPage) {
-    return children;
+  if (errorPage) {
+    return errorPage.status === 404 ? <PublicNotFound /> : <PublicError />;
   }
-  return errorPage.status === 404 ? <PublicNotFound /> : <PublicError />;
+  return children;
 }
 
 export default connect<StateProps, unknown, OwnProps, State>(mapStateToProps)(
