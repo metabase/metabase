@@ -41,6 +41,7 @@ interface CellProps {
   isTransparent?: boolean;
   hasTopBorder?: boolean;
   onClick?: ((e: React.SyntheticEvent) => void) | undefined;
+  onResize?: (newWidth: number) => void;
 }
 
 export function Cell({
