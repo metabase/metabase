@@ -460,6 +460,12 @@ function setFieldEndpoints(prefix, params) {
 }
 
 function setParamsEndpoints(prefix) {
+  CardApi.parameterValues = GET(
+    prefix + "/card/:cardId/params/:paramId/values",
+  );
+  CardApi.parameterSearch = GET(
+    prefix + "/card/:cardId/params/:paramId/search/:query",
+  );
   DashboardApi.parameterValues = GET(
     prefix + "/dashboard/:dashId/params/:paramId/values",
   );
