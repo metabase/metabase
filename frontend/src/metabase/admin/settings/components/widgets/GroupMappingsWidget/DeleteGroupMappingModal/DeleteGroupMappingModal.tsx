@@ -77,7 +77,7 @@ const DeleteGroupMappingModal = ({
             onChange={handleChange}
           />
         </ModalRadioRoot>
-        <ModalFooter>
+        <ModalFooter fullPageModal={false} formModal={true}>
           <Button onClick={onHide}>{t`Cancel`}</Button>
           <Button danger onClick={handleConfirm}>
             {submitButtonLabels[value as ValueType]}
