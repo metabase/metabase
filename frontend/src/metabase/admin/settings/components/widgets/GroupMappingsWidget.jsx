@@ -265,8 +265,10 @@ export default class GroupMappingsWidget extends React.Component {
                       groups={groups || []}
                       selectedGroups={ids}
                       onChange={this._changeMapping(dn)}
-                      onDelete={() =>
-                        this.handleShowDeleteMappingModal(ids, dn)
+                      onDelete={
+                        ids.length > 0
+                          ? () => this.handleShowDeleteMappingModal(ids, dn)
+                          : () => this._deleteMapping(dn)
                       }
                     />
                   ))}
