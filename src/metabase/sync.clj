@@ -95,10 +95,10 @@
         {db-tables :tables} (driver/describe-database (driver.u/database->driver db) db)
         target-table #{(normalize {:schema schema-name :name table-name})}]
     (if-let [new-table (some
-                         (fn [db-table]
-                           (when (target-table (normalize db-table))
-                             db-table))
-                         db-tables)]
+                        (fn [db-table]
+                          (when (target-table (normalize db-table))
+                            db-table))
+                        db-tables)]
       (try
         (let [table (sync-tables/create-or-reactivate-table! db new-table)]
           (sync-table! table))
