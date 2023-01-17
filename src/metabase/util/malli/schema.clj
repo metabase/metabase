@@ -268,3 +268,9 @@
   (mc/schema
     [:re {:error/fn (constantly (deferred-tru "String must be a valid 21-character NanoID string."))}
      #"^[A-Za-z0-9_\-]{21}$"]))
+
+(def UUIDString
+  "Schema for a UUID string"
+  (mc/schema
+   [:re {:error/fn (constantly (deferred-tru "value must be a valid UUID."))}
+    u/uuid-regex]))
