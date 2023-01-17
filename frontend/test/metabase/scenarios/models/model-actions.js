@@ -16,7 +16,7 @@ const SAMPLE_ORDERS_MODEL = {
   },
 };
 
-describe("scenarios > actions > management", () => {
+describe("scenarios > models > actions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
