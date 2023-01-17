@@ -15,6 +15,7 @@ import type {
 } from "metabase-types/api";
 import type { AppErrorDescriptor } from "metabase-types/store";
 
+import EmbedFrame from "metabase/public/components/EmbedFrame";
 import {
   LoadingAndErrorWrapper,
   ContentContainer,
@@ -86,9 +87,11 @@ function PublicAction({ params, setErrorPage }: Props) {
   }, [action, isSubmitted, handleSubmit]);
 
   return (
-    <LoadingAndErrorWrapper loading={!action}>
-      {() => <ContentContainer>{renderContent()}</ContentContainer>}
-    </LoadingAndErrorWrapper>
+    <EmbedFrame footerVariant="big">
+      <LoadingAndErrorWrapper loading={!action}>
+        {() => <ContentContainer>{renderContent()}</ContentContainer>}
+      </LoadingAndErrorWrapper>
+    </EmbedFrame>
   );
 }
 
