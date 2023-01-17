@@ -89,25 +89,20 @@
   [db :- i/DatabaseInstance
    {:keys [schema-name table-name]} :- {:schema-name s/Str
                                         :table-name  s/Str}]
-  (let [normalize-table-desc (fn [{:keys [schema name]}]
+  (let [normalize (fn [{:keys [schema name]}]
                                (cond-> {:name (u/lower-case-en name)}
                                        schema
                                        (assoc :schema (u/lower-case-en schema))))
-        target-table #{(normalize-table-desc {:schema schema-name :name table-name})}]
-    (if (some->> db
-                 (driver/describe-database (driver.u/database->driver db))
-                 :tables
-                 (map normalize-table-desc)
-                 (some target-table))
-      (let [update-spec {:name table-name, :schema schema-name :description nil}]
-        (if (->> {:tables #{update-spec}}
-                 (sync-tables/sync-tables-and-database! db)
-                 :updated-tables
-                 pos?)
-          (when-some [table (db/select-one 'Table
-                                           :db_id (u/the-id db)
-                                           :schema schema-name
-                                           :name table-name)]
-            (sync-table! table))
-          (log/debugf (trs "Table ''{0}'' already exists." table-name))))
-      (log/debugf (trs "Table ''{0}'' does not exist or you do not have permission to view it." table-name)))))
+        {db-tables :tables} (driver/describe-database (driver.u/database->driver db) db)
+        target-table #{(normalize {:schema schema-name :name table-name})}]
+    (if-let [new-table (some
+                     (fn [db-table]
+                       (when (target-table (normalize db-table))
+                         db-table))
+                     db-tables)]
+      (try
+        (let [table (sync-tables/create-or-reactivate-table! db new-table)]
+          (sync-table! table))
+        (catch Exception _
+          (log/warn (trs "Table ''{0}'' could not be added. It may already exist." table-name))))
+      (log/debug (trs "Table ''{0}'' does not exist or you do not have permission to view it." table-name)))))
