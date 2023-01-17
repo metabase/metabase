@@ -33,14 +33,14 @@ import "./EmbedFrame.css";
 
 interface OwnProps {
   className?: string;
-  children: React.ReactNode;
   name?: string;
   description?: string;
   dashboard?: Dashboard;
-  actionButtons: JSX.Element[];
-  parameters: Parameter[];
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  setParameterValue: (parameterId: ParameterId, value: any) => void;
+  actionButtons?: JSX.Element[];
+  parameters?: Parameter[];
+  parameterValues?: Record<ParameterId, ParameterValueOrArray>;
+  setParameterValue?: (parameterId: ParameterId, value: any) => void;
+  children: React.ReactNode;
 }
 
 interface StateProps {
@@ -97,7 +97,12 @@ function EmbedFrame({
     hasEmbedBranding || (!hide_download_button && actionButtons);
 
   const finalName = titled ? name : null;
-  const hasParameters = parameters?.length > 0;
+
+  const hasParameters =
+    Array.isArray(parameters) &&
+    parameters.length > 0 &&
+    typeof setParameterValue === "function";
+
   const hasHeader = Boolean(finalName || hasParameters);
 
   return (
