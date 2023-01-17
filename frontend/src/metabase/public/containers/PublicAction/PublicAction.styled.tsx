@@ -8,8 +8,7 @@ export const LoadingAndErrorWrapper = styled(BaseLoadingAndErrorWrapper)`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  min-height: 100vh;
+  flex: 1 0 auto;
 `;
 
 export const ContentContainer = styled.div`
