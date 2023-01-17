@@ -13,6 +13,14 @@ import SyncedParametersList from "metabase/parameters/components/SyncedParameter
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import LogoBadge from "./LogoBadge";
+import {
+  Root,
+  ContentContainer,
+  Header,
+  Body,
+  Footer,
+  ActionButtonsContainer,
+} from "./EmbedFrame.styled";
 import "./EmbedFrame.css";
 
 const DEFAULT_OPTIONS = {
@@ -51,22 +59,20 @@ class EmbedFrame extends Component {
       (!hide_download_button && actionButtons);
 
     const name = titled ? this.props.name : null;
+    const hasParameters = parameters?.length > 0;
+    const hasHeader = Boolean(name || hasParameters);
 
     return (
-      <div
-        className={cx("EmbedFrame flex flex-column", className, {
-          spread: innerScroll,
-          "bordered rounded shadowed": bordered,
+      <Root
+        hasScroll={innerScroll}
+        isBordered={bordered}
+        className={cx("EmbedFrame", className, {
           [`Theme--${theme}`]: !!theme,
         })}
       >
-        <div
-          className={cx("flex flex-column flex-full relative", {
-            "scroll-y": innerScroll,
-          })}
-        >
-          {name || parameters?.length > 0 ? (
-            <div className="EmbedFrame-header flex flex-column p1 sm-p2 lg-p3">
+        <ContentContainer hasScroll={innerScroll}>
+          {hasHeader && (
+            <Header className="EmbedFrame-header">
               {name && (
                 <TitleAndDescription
                   title={name}
@@ -74,7 +80,7 @@ class EmbedFrame extends Component {
                   className="my2"
                 />
               )}
-              {parameters?.length > 0 ? (
+              {hasParameters && (
                 <div className="flex">
                   <SyncedParametersList
                     className="mt1"
@@ -87,26 +93,22 @@ class EmbedFrame extends Component {
                     hideParameters={hide_parameters}
                   />
                 </div>
-              ) : null}
-            </div>
-          ) : null}
-          <div className="flex flex-column relative full flex-full">
-            {children}
-          </div>
-        </div>
+              )}
+            </Header>
+          )}
+          <Body>{children}</Body>
+        </ContentContainer>
         {showFooter && (
-          <div className="EmbedFrame-footer p1 md-p2 lg-p3 border-top flex-no-shrink flex align-center">
+          <Footer className="EmbedFrame-footer">
             {!MetabaseSettings.hideEmbedBranding() && (
               <LogoBadge dark={theme === "night"} />
             )}
             {actionButtons && (
-              <div className="flex-align-right text-medium">
-                {actionButtons}
-              </div>
+              <ActionButtonsContainer>{actionButtons}</ActionButtonsContainer>
             )}
-          </div>
+          </Footer>
         )}
-      </div>
+      </Root>
     );
   }
 }
