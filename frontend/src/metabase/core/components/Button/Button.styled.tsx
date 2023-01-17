@@ -31,10 +31,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       border: none;
       padding: 0;
 
-      ${ButtonContent} {
-        color: ${color("brand")};
-      }
-
+      color: ${color("brand")};
       &:hover {
         background-color: unset;
       }
