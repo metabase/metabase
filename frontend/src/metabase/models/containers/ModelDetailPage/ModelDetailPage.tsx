@@ -80,9 +80,8 @@ function ModelDetailPage({
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
   const database = model.database()?.getPlainObject();
-  const hasActionsEnabled = Boolean(
-    database && checkDatabaseActionsEnabled(database),
-  );
+  const hasActionsEnabled =
+    database != null && checkDatabaseActionsEnabled(database);
 
   const mainTable = useMemo(
     () => (model.isStructured() ? model.query().sourceTable() : null),
