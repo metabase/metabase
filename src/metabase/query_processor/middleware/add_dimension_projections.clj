@@ -31,7 +31,6 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.dimension :refer [Dimension]]
-   [metabase.models.field :refer [Field]]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.schema :as su]

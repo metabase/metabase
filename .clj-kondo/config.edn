@@ -620,6 +620,7 @@
    clojurewerkz.quartzite.triggers/build                                        macros.quartz/build-trigger
    metabase-enterprise.sandbox.test-util/with-gtaps                             macros.metabase-enterprise.sandbox.test-util/with-gtaps
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
+   metabase-enterprise.test/with-gtaps                                          macros.metabase-enterprise.sandbox.test-util/with-gtaps
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
@@ -638,7 +639,6 @@
    metabase.test.util/with-temp-env-var-value                                   macros.metabase.test.util/with-temp-env-var-value
    metabase.test.util/with-temporary-raw-setting-values                         macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.test/with-group-for-user                                            macros.metabase.test.data.users/with-group-for-user
-   metabase.test/with-gtaps                                                     macros.metabase-enterprise.sandbox.test-util/with-gtaps
    metabase.test/with-persistence-enabled                                       macros.metabase.test.persistence/with-persistence-enabled
    metabase.test/with-temp-env-var-value                                        macros.metabase.test.util/with-temp-env-var-value
    metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values}}
