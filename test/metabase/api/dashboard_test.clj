@@ -1115,13 +1115,15 @@
       (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
         (let [dashboard-card (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
                                                    {:cardId card-id
-                                                    :row    4
-                                                    :col    4
+                                                    :row     4
+                                                    :col     4
+                                                    :size_x  4
+                                                    :size_y  4
                                                     :series [{:id series-id-1}]})]
-          (is (= {:size_x                 4
-                  :size_y                 4
-                  :col                    4
-                  :row                    4
+          (is (= {:row     4
+                  :col     4
+                  :size_x  4
+                  :size_y  4
                   :parameter_mappings     []
                   :visualization_settings {}
                   :series                 [{:name                   "Series Card"
