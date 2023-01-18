@@ -28,8 +28,8 @@
    :parameters             s/Any
    :parameter_mappings     s/Any
    :visualization_settings su/Map
-   :public_uuid            su/UUIDString
-   :made_public_by_id      su/IntGreaterThanOrEqualToZero
+   :public_uuid            (s/maybe su/UUIDString)
+   :made_public_by_id      (s/maybe su/IntGreaterThanOrEqualToZero)
    s/Keyword               s/Any})
 
 (deftest list-actions-test
