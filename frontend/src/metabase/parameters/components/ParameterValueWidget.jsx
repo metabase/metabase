@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import _ from "underscore";
 
 import {
   getParameterIconName,
@@ -17,7 +16,6 @@ import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
 import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
-import TextWidget from "metabase/components/TextWidget";
 import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
@@ -30,6 +28,7 @@ import {
   isDateParameter,
   isNumberParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
+import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterWidget.css";
@@ -219,18 +218,6 @@ function Widget({
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
     );
-  } else if (parameter.hasVariableTemplateTagTarget) {
-    return (
-      <TextWidget
-        value={value}
-        setValue={setValue}
-        className={className}
-        isEditing={isEditing}
-        commitImmediately={commitImmediately}
-        placeholder={placeholder}
-        focusChanged={onFocusChanged}
-      />
-    );
   } else if (isNumberParameter(parameter)) {
     const arity = getNumberParameterArity(parameter);
     return (
@@ -247,7 +234,7 @@ function Widget({
         label={getParameterWidgetTitle(parameter)}
       />
     );
-  } else if (!_.isEmpty(parameter.fields)) {
+  } else if (getQueryType(parameter) !== "none") {
     return (
       <ParameterFieldWidget
         target={target}
@@ -292,11 +279,9 @@ Widget.propTypes = {
 function getWidgetDefinition(parameter) {
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
-  } else if (parameter.hasVariableTemplateTagTarget) {
-    return TextWidget;
   } else if (isNumberParameter(parameter)) {
     return NumberInputWidget;
-  } else if (!_.isEmpty(parameter.fields)) {
+  } else if (getQueryType(parameter) !== "none") {
     return ParameterFieldWidget;
   } else {
     return StringInputWidget;

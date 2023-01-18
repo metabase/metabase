@@ -46,10 +46,11 @@ export default function ParameterFieldWidget({
   const isEqualsOp = isEqualsOperator(operator);
   const disableSearch = operator && isFuzzyOperator(operator);
   const hasValue = Array.isArray(value) ? value.length > 0 : value != null;
+  const isMultiSelect = !parameter.hasVariableTemplateTagTarget && multi;
 
   const isValid =
     unsavedValue.every(value => value != null) &&
-    (multi || unsavedValue.length === numFields);
+    (isMultiSelect || unsavedValue.length === numFields);
 
   return (
     <WidgetRoot>
@@ -59,8 +60,8 @@ export default function ParameterFieldWidget({
         )}
 
         {_.times(numFields, index => {
-          const value = multi ? unsavedValue : [unsavedValue[index]];
-          const onValueChange = multi
+          const value = isMultiSelect ? unsavedValue : [unsavedValue[index]];
+          const onValueChange = isMultiSelect
             ? newValues => setUnsavedValue(newValues)
             : ([value]) => {
                 const newValues = [...unsavedValue];
@@ -79,7 +80,7 @@ export default function ParameterFieldWidget({
               placeholder={isEditing ? t`Enter a default value…` : undefined}
               fields={fields}
               autoFocus={index === 0}
-              multi={multi}
+              multi={isMultiSelect}
               disableSearch={disableSearch}
               formatOptions={
                 operator && getFilterArgumentFormatOptions(operator, index)
