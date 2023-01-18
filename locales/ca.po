@@ -13499,7 +13499,7 @@ msgstr "Error en programar tasques per a la base de dades {0}"
 msgid "All elements must be distinct."
 msgstr "Tots els elements han de ser diferents."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Tria les columnes que vols incloure"
@@ -17932,12 +17932,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Els polsos s’estan eliminant"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Ara podeu configurar {0}. Eliminarem Polsos en una versió futura i us ajudarem a migrar tot el que encara tingueu."
@@ -17946,7 +17946,7 @@ msgstr "Ara podeu configurar {0}. Eliminarem Polsos en una versió futura i us a
 msgid "dashboard subscriptions"
 msgstr "subscripcions al tauler"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "Els gràfics de {0} a la vostra subscripció no tindran el mateix aspecte que al vostre tauler. {1}"
 
@@ -18095,7 +18095,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Configureu la base de dades d'origen {0} i executeu migracions..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."
@@ -24484,3 +24484,13 @@ msgstr "Temps abans que els usuaris inactius es tanquin la sessió. Per defecte,
 msgid "Reached recursion limit of {0} in \"apply-sandboxing\" middleware"
 msgstr "S'ha assolit el límit de recursivitat de {0} al programari intermedi \"aplicar-sandboxing\"."
 
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditEmailSidebar.jsx:147
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditSlackSidebar.jsx:121
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Els gràfics de les subscripcions poden semblar lleugerament diferents dels gràfics dels taulers."
+
+#: frontend/src/metabase/sharing/components/AddEditSidebar/CaveatMessage.jsx:11
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Els destinataris veuran aquestes dades tal com les veus tu, independentment dels seus permisos."
