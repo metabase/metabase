@@ -139,7 +139,6 @@
                                  (find-nested-fields field-value nested-fields)
                                  nested-fields)))))
 
-;; TODO - use [[metabase.driver.common/class->base-type]] to implement this functionality
 (defn- most-common-object-type
   "Given a sequence of tuples like [Class <number-of-occurances>] return the Class with the highest number of
   occurances. The basic idea here is to take a sample of values for a Field and then determine the most common type
