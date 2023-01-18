@@ -13951,19 +13951,19 @@ databaseChangeLog:
             tableName: report_dashboardcard
             columnName: size_y
       rollback:
-        - dropDefaultValue:
+        - addDefaultValue:
             tableName: report_dashboardcard
             columnName: row
             defaultValue: 4
-        - dropDefaultValue:
+        - addDefaultValue:
             tableName: report_dashboardcard
             columnName: col
             defaultValue: 4
-        - dropDefaultValue:
+        - addDefaultValue:
             tableName: report_dashboardcard
             columnName: size_x
             defaultValue: 4
-        - dropDefaultValue:
+        - addDefaultValue:
             tableName: report_dashboardcard
             columnName: size_y
             defaultValue: 4
