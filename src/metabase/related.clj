@@ -133,7 +133,7 @@
     (->> (db/select-field :table_id Field
            :fk_target_field_id [:in fields]
            :active             true)
-         (map Table)
+         (map (partial db/select-one Table :id))
          filter-visible
          (take max-matches))
     []))
@@ -145,7 +145,7 @@
     (->> (db/select-field :card_id DashboardCard
            :dashboard_id [:in dashboards]
            :card_id      [:not= (:id card)])
-         (map Card)
+         (map (partial db/select-one Card :id))
          filter-visible
          (take max-matches))
     []))
@@ -175,7 +175,7 @@
          :model     "Dashboard"
          :user_id   api/*current-user-id*
          {:order-by [[:timestamp :desc]]})
-       (map Dashboard)
+       (map (partial db/select-one Dashboard :id))
        filter-visible
        (take max-serendipity-matches)))
 
@@ -193,7 +193,7 @@
         best             (->> cards
                               (mapcat (comp card->dashboards :id))
                               distinct
-                              (map Dashboard)
+                              (map (partial db/select-one Dashboard :id))
                               filter-visible
                               (take max-best-matches))]
     (concat best recent)))
@@ -302,8 +302,8 @@
 
 (defmethod related Dashboard
   [dashboard]
-  (let [cards (map Card (db/select-field :card_id DashboardCard
-                          :dashboard_id (:id dashboard)))]
+  (let [cards (map (partial db/select-one Card :id) (db/select-field :card_id DashboardCard
+                                                      :dashboard_id (:id dashboard)))]
     {:cards (->> cards
                  (mapcat (comp similar-questions))
                  (remove (set cards))
