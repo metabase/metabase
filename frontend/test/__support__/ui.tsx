@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { merge } from "icepick";
+import _ from "underscore";
 import { createMemoryHistory } from "history";
 import { Router, Route } from "react-router";
 import { Provider } from "react-redux";
@@ -43,16 +44,19 @@ export function renderWithProviders(
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  const initialReduxState = createMockState(
+  let initialState = createMockState(
     withSampleDatabase
       ? merge(sampleDatabaseReduxState, storeInitialState)
       : storeInitialState,
   );
 
-  const store = getStore(
-    mode === "default" ? mainReducers : publicReducers,
-    initialReduxState,
-  );
+  if (mode === "public") {
+    const publicReducerNames = Object.keys(publicReducers);
+    initialState = _.pick(initialState, ...publicReducerNames) as State;
+  }
+
+  const reducers = mode === "default" ? mainReducers : publicReducers;
+  const store = getStore(reducers, initialState);
 
   const wrapper = (props: any) => (
     <Wrapper
@@ -106,10 +110,11 @@ function MaybeRouter({
   if (!hasRouter) {
     return children;
   }
+
   const history = createMemoryHistory({ entries: ["/"] });
 
   function Page(props: any) {
-    return React.cloneElement(children, props);
+    return React.cloneElement(children, _.omit(props, "children"));
   }
 
   return (
