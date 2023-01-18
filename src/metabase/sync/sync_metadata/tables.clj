@@ -93,7 +93,9 @@
               :details
               (assoc (:details database) :version (:version db-metadata))))
 
-(defn create-or-reactivate-table! [database {schema :schema, table-name :name, :as table}]
+(defn create-or-reactivate-table!
+  "Create a single new table in the database, or mark it as active if it already exists."
+  [database {schema :schema, table-name :name, :as table}]
   (if-let [existing-id (db/select-one-id Table
                          :db_id (u/the-id database)
                          :schema schema
