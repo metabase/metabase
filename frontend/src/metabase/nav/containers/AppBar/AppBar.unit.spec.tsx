@@ -14,6 +14,7 @@ import {
 } from "metabase-types/store/mocks";
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { EmbedOptions } from "metabase-types/store";
+import { DEFAULT_EMBED_OPTIONS } from "metabase/redux/embed";
 import AppBar from "./AppBar";
 
 describe("AppBar", () => {
@@ -152,7 +153,10 @@ function renderAppBar(embedOptions: Partial<EmbedOptions>) {
     initialRouterPath: "/question/1",
     storeInitialState: {
       app: createMockAppState({ isNavbarOpen: false }),
-      embed: createMockEmbedState(embedOptions),
+      embed: createMockEmbedState({
+        ...DEFAULT_EMBED_OPTIONS,
+        ...embedOptions,
+      }),
       qb: createMockQueryBuilderState({
         card: createMockCard(),
       }),
@@ -174,6 +178,7 @@ function getMediaQuery(opts?: Partial<MediaQueryList>): MediaQueryList {
   };
 }
 
+// TODO: Removed unused function
 function setupMock() {
   nock(location.origin)
     .get(`/api/collection/root`)
