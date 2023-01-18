@@ -90,6 +90,9 @@ describe("ValuesSourceModal", () => {
       });
 
       expect(
+        screen.queryByRole("radio", { name: "From connected fields" }),
+      ).not.toBeInTheDocument();
+      expect(
         screen.getByRole("radio", { name: "From another model or question" }),
       ).toBeChecked();
     });
