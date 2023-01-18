@@ -13947,9 +13947,6 @@ databaseChangeLog:
                   remarks: 'Unique UUID used to in publically-accessible links to this Action.'
                   constraints:
                     unique: true
-        - addColumn:
-            tableName: action
-            columns:
               - column:
                   name: made_public_by_id
                   type: int
