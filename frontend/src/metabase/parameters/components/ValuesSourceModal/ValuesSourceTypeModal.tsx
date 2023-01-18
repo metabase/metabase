@@ -46,15 +46,10 @@ import {
 
 const NEW_LINE = "\n";
 
-const SOURCE_TYPE_OPTIONS = [
-  { name: t`From connected fields`, value: null },
-  { name: t`From another model or question`, value: "card" },
-  { name: t`Custom list`, value: "static-list" },
-];
-
 interface ModalOwnProps {
   name: string;
   fields: Field[];
+  hasFields: boolean;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
@@ -87,9 +82,15 @@ type ModalProps = ModalOwnProps &
   ModalStateProps &
   ModalDispatchProps;
 
+interface ValuesSourceTypeOption {
+  name: string;
+  value: ValuesSourceType;
+}
+
 const ValuesSourceTypeModal = ({
   name,
   fields,
+  hasFields,
   fieldsValues,
   isLoadingFieldValues,
   question,
@@ -102,6 +103,10 @@ const ValuesSourceTypeModal = ({
   onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
+  const sourceTypeOptions = useMemo(() => {
+    return getSourceTypeOptions(hasFields);
+  }, [hasFields]);
+
   useEffect(() => {
     onFetchFieldValues(fields);
   }, [fields, onFetchFieldValues]);
@@ -125,12 +130,14 @@ const ValuesSourceTypeModal = ({
           fieldsValues={fieldsValues}
           isLoadingFieldValues={isLoadingFieldValues}
           sourceType={sourceType}
+          sourceTypeOptions={sourceTypeOptions}
           onChangeSourceType={onChangeSourceType}
         />
       ) : sourceType === "card" ? (
         <CardSourceModal
           question={question}
           sourceType={sourceType}
+          sourceTypeOptions={sourceTypeOptions}
           sourceConfig={sourceConfig}
           onChangeCard={onChangeCard}
           onChangeSourceType={onChangeSourceType}
@@ -139,6 +146,7 @@ const ValuesSourceTypeModal = ({
       ) : sourceType === "static-list" ? (
         <ListSourceModal
           sourceType={sourceType}
+          sourceTypeOptions={sourceTypeOptions}
           sourceConfig={sourceConfig}
           onChangeSourceType={onChangeSourceType}
           onChangeSourceConfig={onChangeSourceConfig}
@@ -153,6 +161,7 @@ interface FieldSourceModalProps {
   fieldsValues: FieldValue[][];
   isLoadingFieldValues: boolean;
   sourceType: ValuesSourceType;
+  sourceTypeOptions: ValuesSourceTypeOption[];
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
 }
 
@@ -161,6 +170,7 @@ const FieldSourceModal = ({
   fieldsValues,
   isLoadingFieldValues,
   sourceType,
+  sourceTypeOptions,
   onChangeSourceType,
 }: FieldSourceModalProps) => {
   const fieldValues = useMemo(() => {
@@ -181,7 +191,7 @@ const FieldSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <Radio
             value={sourceType}
-            options={SOURCE_TYPE_OPTIONS}
+            options={sourceTypeOptions}
             vertical
             onChange={onChangeSourceType}
           />
@@ -207,6 +217,7 @@ const FieldSourceModal = ({
 interface CardSourceModalProps {
   question: Question | undefined;
   sourceType: ValuesSourceType;
+  sourceTypeOptions: ValuesSourceTypeOption[];
   sourceConfig: ValuesSourceConfig;
   onChangeCard: () => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
@@ -216,6 +227,7 @@ interface CardSourceModalProps {
 const CardSourceModal = ({
   question,
   sourceType,
+  sourceTypeOptions,
   sourceConfig,
   onChangeCard,
   onChangeSourceType,
@@ -250,7 +262,7 @@ const CardSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <Radio
             value={sourceType}
-            options={SOURCE_TYPE_OPTIONS}
+            options={sourceTypeOptions}
             vertical
             onChange={onChangeSourceType}
           />
@@ -312,6 +324,7 @@ const CardSourceModal = ({
 
 interface ListSourceModalProps {
   sourceType: ValuesSourceType;
+  sourceTypeOptions: ValuesSourceTypeOption[];
   sourceConfig: ValuesSourceConfig;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
@@ -319,6 +332,7 @@ interface ListSourceModalProps {
 
 const ListSourceModal = ({
   sourceType,
+  sourceTypeOptions,
   sourceConfig,
   onChangeSourceType,
   onChangeSourceConfig,
@@ -337,7 +351,7 @@ const ListSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <Radio
             value={sourceType}
-            options={SOURCE_TYPE_OPTIONS}
+            options={sourceTypeOptions}
             vertical
             onChange={onChangeSourceType}
           />
@@ -373,6 +387,14 @@ const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
 const getSupportedFields = (question: Question) => {
   const fields = question.composeThisQuery()?.table()?.fields ?? [];
   return fields.filter(field => field.isString());
+};
+
+const getSourceTypeOptions = (hasFields: boolean): ValuesSourceTypeOption[] => {
+  return [
+    ...(hasFields ? [{ name: t`From connected fields`, value: null }] : []),
+    { name: t`From another model or question`, value: "card" },
+    { name: t`Custom list`, value: "static-list" },
+  ];
 };
 
 const mapStateToProps = (

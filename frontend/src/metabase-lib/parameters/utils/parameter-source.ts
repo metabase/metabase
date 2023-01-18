@@ -11,7 +11,9 @@ import { getFields } from "./parameter-fields";
 import { getParameterSubType, getParameterType } from "./parameter-type";
 
 export const getQueryType = (parameter: Parameter): ValuesQueryType => {
-  return parameter.values_query_type ?? "list";
+  const type = getParameterType(parameter);
+  const defaultValue = type === "category" ? "none" : "list";
+  return parameter.values_query_type ?? defaultValue;
 };
 
 export const getSourceType = (parameter: Parameter): ValuesSourceType => {

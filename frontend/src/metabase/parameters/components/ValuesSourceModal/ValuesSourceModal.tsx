@@ -4,7 +4,10 @@ import {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
+import {
+  getNonVirtualFields,
+  hasFields,
+} from "metabase-lib/parameters/utils/parameter-fields";
 import {
   getSourceConfig,
   getSourceConfigForType,
@@ -30,7 +33,7 @@ const ValuesSourceModal = ({
   onClose,
 }: ModalProps): JSX.Element => {
   const [step, setStep] = useState<ModalStep>("main");
-  const [sourceType, setSourceType] = useState(getSourceType(parameter));
+  const [sourceType, setSourceType] = useState(getInitialSourceType(parameter));
   const [sourceConfig, setSourceConfig] = useState(getSourceConfig(parameter));
 
   const fields = useMemo(() => {
@@ -54,6 +57,7 @@ const ValuesSourceModal = ({
     <ValuesSourceTypeModal
       name={parameter.name}
       fields={fields}
+      hasFields={hasFields(parameter)}
       sourceType={sourceType}
       sourceConfig={sourceConfig}
       onChangeSourceType={setSourceType}
@@ -71,6 +75,11 @@ const ValuesSourceModal = ({
       onClose={onClose}
     />
   );
+};
+
+const getInitialSourceType = (parameter: Parameter) => {
+  const sourceType = getSourceType(parameter);
+  return hasFields(parameter) ? sourceType : sourceType ?? "card";
 };
 
 export default ValuesSourceModal;
