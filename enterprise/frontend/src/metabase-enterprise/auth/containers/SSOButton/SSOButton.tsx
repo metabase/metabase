@@ -1,10 +1,10 @@
 import { connect } from "react-redux";
-import { isIframe } from "metabase/lib/dom";
+import { isWithinIframe } from "metabase/lib/dom";
 import SSOButton from "../../components/SSOButton";
 import { loginSSO } from "../../actions";
 
 const mapStateToProps = () => ({
-  isEmbedded: isIframe(),
+  isEmbedded: isWithinIframe(),
 });
 
 const mapDispatchToProps = {

@@ -11,7 +11,7 @@ export const getScrollY = () =>
 
 // denotes whether the current page is loaded in an iframe or not
 // Cypress renders the whole app within an iframe, but we want to exlude it from this check to avoid certain components (like Nav bar) not rendering
-export const isIframe = function () {
+export const isWithinIframe = function () {
   try {
     return !isCypressActive && window.self !== window.top;
   } catch (e) {
@@ -440,7 +440,7 @@ export function clipPathReference(id) {
 }
 
 export function initializeIframeResizer(readyCallback = () => {}) {
-  if (!isIframe()) {
+  if (!isWithinIframe()) {
     return;
   }
 
