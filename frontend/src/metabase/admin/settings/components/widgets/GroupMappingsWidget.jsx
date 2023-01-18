@@ -10,7 +10,7 @@ import GroupSelect from "metabase/admin/people/components/GroupSelect";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import { PermissionsApi, SettingsApi } from "metabase/services";
-import { isDefaultGroup } from "metabase/lib/groups";
+import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 
 import SettingToggle from "./SettingToggle";
 import DeleteGroupMappingModal from "./GroupMappingsWidget/DeleteGroupMappingModal";
@@ -258,20 +258,32 @@ export default class GroupMappingsWidget extends React.Component {
                       placeholder={this.props.groupPlaceholder}
                     />
                   ) : null}
-                  {Object.entries(mappings).map(([dn, ids]) => (
-                    <MappingRow
-                      key={dn}
-                      dn={dn}
-                      groups={groups || []}
-                      selectedGroups={ids}
-                      onChange={this._changeMapping(dn)}
-                      onDelete={
-                        ids.length > 0
-                          ? () => this.handleShowDeleteMappingModal(ids, dn)
-                          : () => this._deleteMapping(dn)
-                      }
-                    />
-                  ))}
+                  {Object.entries(mappings).map(([dn, ids]) => {
+                    const isMappingLinkedOnlyToAdminGroup =
+                      groups &&
+                      ids.length === 1 &&
+                      isAdminGroup(
+                        _.find(groups, group => group.id === ids[0]),
+                      );
+
+                    const shouldUseDeleteMappingModal =
+                      ids.length > 0 && !isMappingLinkedOnlyToAdminGroup;
+
+                    const onDelete = shouldUseDeleteMappingModal
+                      ? () => this.handleShowDeleteMappingModal(ids, dn)
+                      : () => this._deleteMapping(dn);
+
+                    return (
+                      <MappingRow
+                        key={dn}
+                        dn={dn}
+                        groups={groups || []}
+                        selectedGroups={ids}
+                        onChange={this._changeMapping(dn)}
+                        onDelete={onDelete}
+                      />
+                    );
+                  })}
                 </AdminContentTable>
               </div>
               <ModalFooter>
