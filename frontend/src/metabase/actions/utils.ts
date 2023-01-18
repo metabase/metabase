@@ -3,6 +3,9 @@ import type {
   Database,
   Parameter,
   WritebackAction,
+  ActionDashboardCard,
+  BaseDashboardOrderedCard,
+  Card,
 } from "metabase-types/api";
 
 import { TYPE } from "metabase-lib/types/constants";
@@ -105,3 +108,16 @@ export const getDefaultFieldSettings = (
   width: "medium",
   ...overrides,
 });
+
+export function isActionDashCard(
+  dashCard: BaseDashboardOrderedCard,
+): dashCard is ActionDashboardCard {
+  const virtualCard = dashCard?.visualization_settings?.virtual_card;
+  return isActionCard(virtualCard as Card);
+}
+
+export const isButtonLinkDashCard = (dashCard: BaseDashboardOrderedCard) =>
+  isActionDashCard(dashCard) &&
+  dashCard.visualization_settings?.click_behavior?.type === "link";
+
+export const isActionCard = (card: Card) => card?.display === "action";
