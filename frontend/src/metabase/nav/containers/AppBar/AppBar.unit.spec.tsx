@@ -1,11 +1,7 @@
 import React from "react";
 import nock from "nock";
-import { screen, waitFor } from "@testing-library/react";
-import {
-  createMockCard,
-  createMockCollection,
-  createMockUnsavedCard,
-} from "metabase-types/api/mocks";
+import { screen } from "@testing-library/react";
+import { createMockCard } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";
 import {
   createMockAppState,
@@ -22,8 +18,6 @@ describe("AppBar", () => {
 
   describe("full-app embedding", () => {
     beforeEach(async () => {
-      const scope = nock(location.origin);
-      setupCollectionsEndpoints(scope);
       mockEmbedding();
     });
 
@@ -39,7 +33,7 @@ describe("AppBar", () => {
       });
 
       it("should be able to toggle side nav", async () => {
-        renderAppBar({
+        setup({
           side_nav: true,
         });
 
@@ -52,7 +46,7 @@ describe("AppBar", () => {
       });
 
       it("should hide side nav toggle icon", async () => {
-        renderAppBar({
+        setup({
           side_nav: false,
         });
 
@@ -62,7 +56,7 @@ describe("AppBar", () => {
       });
 
       it("should always show side nav toggle icon when logo is hidden", async () => {
-        renderAppBar({
+        setup({
           side_nav: true,
           logo: false,
         });
@@ -78,7 +72,7 @@ describe("AppBar", () => {
       });
 
       it("should not show either logo or side nav toggle button at all", async () => {
-        renderAppBar({
+        setup({
           side_nav: false,
           logo: false,
         });
@@ -95,7 +89,7 @@ describe("AppBar", () => {
       });
 
       it("should be able to toggle side nav", async () => {
-        renderAppBar({
+        setup({
           side_nav: true,
         });
 
@@ -108,7 +102,7 @@ describe("AppBar", () => {
       });
 
       it("should hide side nav toggle icon", async () => {
-        renderAppBar({
+        setup({
           side_nav: false,
         });
 
@@ -118,7 +112,7 @@ describe("AppBar", () => {
       });
 
       it("should always show side nav toggle icon when logo is hidden", async () => {
-        renderAppBar({
+        setup({
           side_nav: true,
           logo: false,
         });
@@ -134,7 +128,7 @@ describe("AppBar", () => {
       });
 
       it("should not show either logo or side nav toggle button at all", async () => {
-        renderAppBar({
+        setup({
           side_nav: false,
           logo: false,
         });
@@ -147,7 +141,10 @@ describe("AppBar", () => {
   });
 });
 
-function renderAppBar(embedOptions: Partial<EmbedOptions>) {
+function setup(embedOptions: Partial<EmbedOptions>) {
+  const scope = nock(location.origin);
+  setupCollectionsEndpoints(scope);
+
   renderWithProviders(<AppBar />, {
     withRouter: true,
     initialRouterPath: "/question/1",
@@ -176,19 +173,6 @@ function getMediaQuery(opts?: Partial<MediaQueryList>): MediaQueryList {
     removeEventListener: jest.fn(),
     ...opts,
   };
-}
-
-// TODO: Removed unused function
-function setupMock() {
-  nock(location.origin)
-    .get(`/api/collection/root`)
-    .reply(
-      200,
-      createMockCollection({
-        id: "root",
-        name: "Our analytics",
-      }),
-    );
 }
 
 const windowSelf = window.self;
