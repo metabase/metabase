@@ -13964,6 +13964,112 @@ databaseChangeLog:
                   constraints:
                     unique: true
 
+      id: v46.00-046
+      author: adam-james
+      comment: added 0.46.0 -- activity_log added to consolidate events in one place for auditing
+      changes:
+        - createTable:
+            tableName: activity_log
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: topic
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_timestamp
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_activity_log_ref_user_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: model
+                  type: varchar(16)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: details
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v46.00-047
+      author:  adam-james
+      comment: Added 0.46.0 -- index activity_log.user_id
+      changes:
+        - createIndex:
+            tableName: activity_log
+            indexName: idx_activity_log_user_id
+            columns:
+              column:
+                name: user_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
+
+  - changeSet:
+      id: v46.00-048
+      author:  adam-james
+      comment: Added 0.46.0 -- index activity_log.timestamp
+      changes:
+        - createIndex:
+            tableName: activity_log
+            indexName: idx_activity_log_timestamp
+            columns:
+              column:
+                name: timestamp
+
+  - changeSet:
+      id: v46.00-049
+      author:  adam-james
+      comment: Added 0.46.0 -- index activity_log.end_timestamp
+      changes:
+        - createIndex:
+            tableName: activity_log
+            indexName: idx_activity_log_end_timestamp
+            columns:
+              column:
+                name: end_timestamp
+
   - changeSet:
       id: v46.00-051
       author: calherries
@@ -14207,7 +14313,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_sandboxes_ref_permissions
             nullable: true
-
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
