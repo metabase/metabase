@@ -25,7 +25,7 @@ function ModelRelationships({ model, mainTable }: Props) {
     );
   }, [model, mainTable]);
 
-  if (relatedTables.length <= 0) {
+  if (relatedTables.length === 0) {
     return null;
   }
 
