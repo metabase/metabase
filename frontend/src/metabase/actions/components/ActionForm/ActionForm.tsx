@@ -26,7 +26,7 @@ import type {
   ParametersForActionExecution,
 } from "metabase-types/api";
 
-import { reorderFields } from "metabase/actions/containers/ActionCreator/FormCreator";
+import { reorderFields } from "../../utils";
 import { FieldSettingsButtons } from "../../containers/ActionCreator/FormCreator/FieldSettingsButtons";
 import { FormFieldWidget } from "./ActionFormFieldWidget";
 import {

@@ -7,8 +7,11 @@ import { addMissingSettings } from "metabase/entities/actions/utils";
 
 import type { ActionFormSettings, Parameter } from "metabase-types/api";
 
-import { getDefaultFormSettings, sortActionParams } from "../../../utils";
-import { hasNewParams } from "./utils";
+import {
+  hasNewParams,
+  getDefaultFormSettings,
+  sortActionParams,
+} from "../../../utils";
 
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
 import { FormCreatorWrapper } from "./FormCreator.styled";
