@@ -11,6 +11,7 @@
    [humane-are.core :as humane-are]
    [java-time :as t]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -50,7 +51,10 @@
    [toucan.util.test :as tt]))
 
 (humane-are/install!)
-(humane-test-output/activate!)
+
+;; don't enable humane-test-output when running tests from the CLI, it breaks diffs.
+(when-not config/is-test?
+  (humane-test-output/activate!))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
