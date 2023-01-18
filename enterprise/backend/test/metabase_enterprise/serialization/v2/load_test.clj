@@ -980,7 +980,7 @@
                 ingestion (ingestion-in-memory [(assoc @extracted :entity_id new-eid)])]
             (is (some? (serdes.load/load-metabase ingestion)))
             (is (= {:card_id     (:id @card),
-                    :value_field ["field" (:id @field) nil]}
+                    :value_field [:field (:id @field) nil]}
                    (-> (db/select-one-field :parameters Card :entity_id new-eid)
                        first
                        :values_source_config)))))))))
@@ -1017,6 +1017,7 @@
           (is (= [{:id                   "abc",
                    :name                 "CATEGORY",
                    :type                 :category,
+                   :values_query_type    "list"
                    :values_source_config {:card_id     (:entity_id @card),
                                           :value_field [:field
                                                         ["my-db" nil "CUSTOMERS" "NAME"]
@@ -1029,7 +1030,7 @@
                 ingestion (ingestion-in-memory [(assoc @extracted :entity_id new-eid)])]
             (is (some? (serdes.load/load-metabase ingestion)))
             (is (= {:card_id     (:id @card),
-                    :value_field ["field" (:id @field) nil]}
+                    :value_field [:field (:id @field) nil]}
                    (-> (db/select-one-field :parameters Dashboard :entity_id new-eid)
                        first
                        :values_source_config)))))))))
