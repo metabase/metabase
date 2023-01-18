@@ -1,1 +1,1 @@
-export { default } from "./PublicAction";
+export { default } from "./PublicActionLoader";
