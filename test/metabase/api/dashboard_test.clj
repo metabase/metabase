@@ -1089,6 +1089,8 @@
                                          {:cardId                 card-id
                                           :row                    4
                                           :col                    4
+                                          :size_x                 4
+                                          :size_y                 4
                                           :parameter_mappings     [{:parameter_id "abc"
                                                                     :card_id 123
                                                                     :hash "abc"

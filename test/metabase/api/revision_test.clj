@@ -144,7 +144,13 @@
                :description  "rearranged the cards."}]
              (do
                (create-dashboard-revision! dash true :rasta)
-               (let [dashcard (db/insert! DashboardCard :dashboard_id id :card_id (:id card))]
+               (let [dashcard (db/insert! DashboardCard
+                                          :dashboard_id id
+                                          :card_id (:id card)
+                                          :size_x 4
+                                          :size_y 4
+                                          :row    0
+                                          :col    0)]
                  (create-dashboard-revision! dash false :rasta)
                  (db/simple-delete! DashboardCard, :id (:id dashcard)))
                (create-dashboard-revision! dash false :rasta)
