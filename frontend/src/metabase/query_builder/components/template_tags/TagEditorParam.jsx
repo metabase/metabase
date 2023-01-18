@@ -308,14 +308,16 @@ export class TagEditorParam extends Component {
                       ...tag,
                       type:
                         tag["widget-type"] ||
-                        (tag.type === "date" ? "date/single" : null),
+                        (tag.type === "date" ? "date/single" : null) ||
+                        (tag.type === "text" ? "category" : null),
                     }
                   : {
                       fields: [],
                       hasVariableTemplateTagTarget: true,
                       type:
                         tag["widget-type"] ||
-                        (tag.type === "date" ? "date/single" : null),
+                        (tag.type === "date" ? "date/single" : null) ||
+                        (tag.type === "text" ? "category" : null),
                     }
               }
               value={tag.default}
