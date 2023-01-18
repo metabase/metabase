@@ -13936,6 +13936,7 @@ databaseChangeLog:
   - changeSet:
       id: v46.00.51
       author: calherries
+      comment: Added 0.46.0 -- drop defaults for dashcard's position and size
       changes:
         - dropDefaultValue:
             tableName: report_dashboardcard
@@ -13949,6 +13950,23 @@ databaseChangeLog:
         - dropDefaultValue:
             tableName: report_dashboardcard
             columnName: size_y
+      rollback:
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: row
+            defaultValue: 4
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: col
+            defaultValue: 4
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+            defaultValue: 4
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+            defaultValue: 4
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
