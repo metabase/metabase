@@ -421,7 +421,7 @@
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
-  metabase.util.malli/defn                                                             schema.core/defn
+  metabase.util.malli/defn                                                             clj-kondo.lint-as/def-catch-all
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   monger.operators/defoperator                                                         clojure.core/def
   potemkin.types/defprotocol+                                                          clojure.core/defprotocol
@@ -642,6 +642,9 @@
    metabase.test/with-persistence-enabled                                       macros.metabase.test.persistence/with-persistence-enabled
    metabase.test/with-temp-env-var-value                                        macros.metabase.test.util/with-temp-env-var-value
    metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values}}
+
+ :config-in-call
+ {metabase.util.honey-sql-2-extensions/with-database-type-info {:linters {:type-mismatch {:level :off}}}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}

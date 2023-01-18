@@ -100,6 +100,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:dynamic-var-not-earmuffed]}
 (methodical/defmulti ^:dynamic =?-diff
   "Multimethod to use to diff two things with `=?`. Despite not having earmuffs, this is dynamic so it can be rebound at
   runtime."
