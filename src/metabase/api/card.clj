@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.data :as data]
+   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [compojure.core :refer [DELETE GET POST PUT]]
@@ -11,17 +12,20 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
+   [metabase.api.field :as api.field]
    [metabase.api.timeline :as api.timeline]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
    [metabase.models
     :refer [Card
             CardBookmark
             Collection
             Database
+            Field
             PersistedInfo
             Pulse
             Table
@@ -29,6 +33,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.params :as params]
    [metabase.models.params.card-values :as params.card-values]
    [metabase.models.params.static-values :as params.static-values]
    [metabase.models.persisted-info :as persisted-info]
@@ -911,6 +916,20 @@ saved later when it is ready."
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
       api/generic-204-no-content)))
 
+(defn mapping->field-values
+  [card param query]
+  (when-let [field-clause (params/param-target->field-clause (:target param) card)]
+    (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+      (if (str/blank? query)
+        (api.field/check-perms-and-return-field-values field-id)
+        (let [field (api/check-404 (db/select-one Field :id field-id))]
+          ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
+          ;; is what the return-field-values returns above
+          {:values (map (comp vector first) (api.field/search-values field field query))
+           ;; assume there are more
+           :has_more_values true
+           :field_id field-id})))))
+
 (s/defn param-values
   "Fetch values for a parameter.
 
@@ -931,6 +950,7 @@ saved later when it is ready."
      (case source-type
        "static-list" (params.static-values/param->values param query)
        "card"        (params.card-values/param->values param query)
+       nil           (mapping->field-values card param query)
        (throw (ex-info (tru "Invalid values-source-type: {0}" (pr-str source-type))
                        {:values-source-type source-type
                         :status-code        400}))))))

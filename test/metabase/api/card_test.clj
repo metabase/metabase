@@ -2,6 +2,7 @@
   "Tests for /api/card endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
@@ -2317,42 +2318,78 @@
   ([card-values f]
    (mt/with-temp*
      [Card [source-card {:database_id   (mt/id)
-                          :table_id      (mt/id :venues)
-                          :dataset_query (mt/mbql-query venues {:limit 5})}]
+                         :table_id      (mt/id :venues)
+                         :dataset_query (mt/mbql-query venues {:limit 5})}]
+      Card [field-filter-card  {:dataset_query
+                                {:database (mt/id)
+                                 :type     :native
+                                 :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                            :template-tags {"NAME" {:id           "name_param_id"
+                                                                    :name         "NAME"
+                                                                    :display_name "Name"
+                                                                    :type         :dimension
+                                                                    :dimension    [:field (mt/id :venues :name) nil]
+                                                                    :required     true}}}}
+                                :name       "native card with field filter"
+                                :parameters [{:id     "name_param_id",
+                                              :type   :string/=,
+                                              :target [:dimension [:template-tag "NAME"]],
+                                              :name   "Name",
+                                              :slug   "NAME"}]}]
       Card [card        (merge
-                          {:database_id     (mt/id)
-                           :dataset_query   (mt/mbql-query venues)
-                           :parameters      [{:name                  "Static Category",
-                                              :slug                  "static_category"
-                                              :id                    "_STATIC_CATEGORY_",
-                                              :type                  "category",
-                                              :values_source_type    "static-list"
-                                              :values_source_config {:values ["African" "American" "Asian"]}}
-                                             {:name                  "Static Category label",
-                                              :slug                  "static_category_label"
-                                              :id                    "_STATIC_CATEGORY_LABEL_",
-                                              :type                  "category",
-                                              :values_source_type    "static-list"
-                                              :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
-                                             {:name                 "Card as source"
-                                              :slug                 "card"
-                                              :id                   "_CARD_"
-                                              :type                 "category"
-                                              :values_source_type   "card"
-                                              :values_source_config {:card_id     (:id source-card)
-                                                                     :value_field (mt/$ids $venues.name)}}]
-                           :table_id        (mt/id :venues)}
-                          card-values)]]
-     (f {:source-card source-card
-         :card        card
-         :param-keys  {:static-list       "_STATIC_CATEGORY_"
-                       :static-list-label "_STATIC_CATEGORY_LABEL_"
-                       :card              "_CARD_"}}))))
+                         {:database_id   (mt/id)
+                          :dataset_query (mt/mbql-query venues)
+                          :parameters    [{:name                 "Static Category",
+                                           :slug                 "static_category"
+                                           :id                   "_STATIC_CATEGORY_",
+                                           :type                 "category",
+                                           :values_source_type   "static-list"
+                                           :values_source_config {:values ["African" "American" "Asian"]}}
+                                          {:name                 "Static Category label",
+                                           :slug                 "static_category_label"
+                                           :id                   "_STATIC_CATEGORY_LABEL_",
+                                           :type                 "category",
+                                           :values_source_type   "static-list"
+                                           :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
+                                          {:name                 "Card as source"
+                                           :slug                 "card"
+                                           :id                   "_CARD_"
+                                           :type                 "category"
+                                           :values_source_type   "card"
+                                           :values_source_config {:card_id     (:id source-card)
+                                                                  :value_field (mt/$ids $venues.name)}}]
+                          :table_id      (mt/id :venues)}
+                         card-values)]]
+     (f {:source-card       source-card
+         :card              card
+         :field-filter-card field-filter-card
+         :param-keys        {:static-list       "_STATIC_CATEGORY_"
+                             :static-list-label "_STATIC_CATEGORY_LABEL_"
+                             :card              "_CARD_"
+                             :field-values      "name_param_id"}}))))
 
 (defmacro with-card-param-values-fixtures
   "Execute `body` with all needed setup to tests param values on card."
   [[binding card-values] & body]
   `(do-with-card-param-values-fixtures ~card-values (fn [~binding] ~@body)))
+
+(deftest paramters-using-old-style-field-values
+  (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+    (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
+      (testing "without search query"
+        (let [response (mt/user-http-request :rasta :get 200
+                                             (param-values-url field-filter-card (:field-values param-keys)))]
+          (is (false? (:has_more_values response)))
+          (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                           (-> response :values set)))))
+      (testing "with search query"
+        (let [response (mt/user-http-request :rasta :get 200
+                                             (param-values-url field-filter-card
+                                                               (:field-values param-keys)
+                                                               "bar"))]
+          (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                           (-> response :values set)))
+          (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil"))))))))
 
 (deftest parameters-with-source-is-card-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]
