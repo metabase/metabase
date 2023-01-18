@@ -28,7 +28,11 @@ describe("ValuesSourceModal", () => {
 
   describe("fields source", () => {
     it("should show a message about not connected fields", () => {
-      setup();
+      setup({
+        parameter: createMockUiParameter({
+          fields: [],
+        }),
+      });
 
       expect(
         screen.getByText(/You haven’t connected a field to this filter/),
@@ -185,6 +189,7 @@ describe("ValuesSourceModal", () => {
     it("should preserve the list when changing the source type", () => {
       setup({
         parameter: createMockUiParameter({
+          fields: [],
           values_source_type: "static-list",
           values_source_config: {
             values: ["Gadget", "Widget"],
