@@ -16,6 +16,7 @@
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.revision :as revision]
+   [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :as user]
@@ -408,3 +409,16 @@
         (is (= "8cbf93b7"
                (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1) now])
                (serdes.hash/identity-hash dash)))))))
+
+(deftest serdes-descendants-test
+  (testing "dashboard which have parameter's source is another card"
+    (mt/with-temp* [Field     [field     {:name "A field"}]
+                    Card      [card      {:name "A card"}]
+                    Dashboard [dashboard {:name       "A dashboard"
+                                          :parameters [{:id "abc"
+                                                        :type "category"
+                                                        :values_source_type "card"
+                                                        :values_source_config {:card_id     (:id card)
+                                                                               :value_field [:field (:id field) nil]}}]}]]
+      (is (= #{["Card" (:id card)]}
+             (serdes.base/serdes-descendants "Dashboard" (:id dashboard)))))))

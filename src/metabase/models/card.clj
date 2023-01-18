@@ -411,7 +411,7 @@
   (let [card               (db/select-one Card :id id)
         source-table       (some->  card :dataset_query :query :source-table)
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
-        parameters-card-id (some->> card :parameters vals (keep (comp :card_id :values_source_config)))
+        parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
     (set/union
       (when (and (string? source-table)

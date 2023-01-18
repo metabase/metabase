@@ -184,6 +184,18 @@
                                                                :collection_id dave-coll-id
                                                                :creator_id    mark-id
                                                                :parameters    []}]
+                       Dashboard  [{param-dash-id :id
+                                    param-dash    :entity_id} {:name          "Dave's Dash with parameters"
+                                                               :collection_id dave-coll-id
+                                                               :creator_id    mark-id
+                                                               :parameters    [{:id                   "abc"
+                                                                                :type                 "category"
+                                                                                :name                 "CATEGORY"
+                                                                                :values_source_type   "card"
+                                                                                ;; card_id is in a different collection with dashboard's collection
+                                                                                :values_source_config {:card_id     c1-id
+                                                                                                       :value_field [:field field-id nil]}}]}]
+
                        DashboardCard [_                       {:card_id      c1-id
                                                                :dashboard_id dash-id
                                                                :parameter_mappings
@@ -378,37 +390,57 @@
                      [{:model "Collection" :id dave-coll-eid}]}
                    (set (serdes.base/serdes-dependencies ser)))))))
 
-      (testing "collection filtering based on :user option"
-        (testing "only unowned collections are returned with no user"
-          (is (= ["Some Collection"]
-                 (->> (serdes.base/extract-all "Collection" {:collection-set #{coll-id}})
-                      (into [])
-                      (map :name)))))
-        (testing "unowned collections and the personal one with a user"
-          (is (= #{coll-eid mark-coll-eid}
-                 (->> {:collection-set (extract/collection-set-for-user mark-id)}
-                      (serdes.base/extract-all "Collection")
-                      (by-model "Collection"))))
-          (is (= #{coll-eid dave-coll-eid}
-                 (->> {:collection-set (extract/collection-set-for-user dave-id)}
-                      (serdes.base/extract-all "Collection")
-                      (by-model "Collection"))))))
+     (testing "Dashboards with parameters where the source is a card"
+       (let [ser (serdes.base/extract-one "Dashboard" {} (db/select-one 'Dashboard :id param-dash-id))]
+         (is (schema= {:parameters
+                        (s/eq [{:id                   "abc"
+                                :name                 "CATEGORY"
+                                :type                 :category
+                                :values_source_config {:card_id     c1-eid
+                                                       :value_field [:field
+                                                                     ["My Database" nil "Schemaless Table" "Some Field"]
+                                                                     nil]},
+                                :values_source_type "card"}])
+                        s/Keyword s/Any}
+               ser))
+         (is (= #{[{:model "Collection" :id dave-coll-eid}]
+                  [{:model "Card"       :id c1-eid}
+                   [{:model "Database", :id "My Database"}
+                    {:model "Table",    :id "Schemaless Table"}
+                    {:model "Field",    :id "Some Field"}]]}
+                (set (serdes.base/serdes-dependencies ser))))))
 
-      (testing "dashboards are filtered based on :user"
-        (testing "dashboards in unowned collections are always returned"
-          (is (= #{dash-eid}
-                 (->> {:collection-set #{coll-id}}
-                      (serdes.base/extract-all "Dashboard")
-                      (by-model "Dashboard"))))
-          (is (= #{dash-eid}
-                 (->> {:collection-set (extract/collection-set-for-user mark-id)}
-                      (serdes.base/extract-all "Dashboard")
-                      (by-model "Dashboard")))))
-        (testing "dashboards in personal collections are returned for the :user"
-          (is (= #{dash-eid other-dash}
-                 (->> {:collection-set (extract/collection-set-for-user dave-id)}
-                      (serdes.base/extract-all "Dashboard")
-                      (by-model "Dashboard")))))))))
+     (testing "collection filtering based on :user option"
+       (testing "only unowned collections are returned with no user"
+         (is (= ["Some Collection"]
+                (->> (serdes.base/extract-all "Collection" {:collection-set #{coll-id}})
+                     (into [])
+                     (map :name)))))
+       (testing "unowned collections and the personal one with a user"
+         (is (= #{coll-eid mark-coll-eid}
+                (->> {:collection-set (extract/collection-set-for-user mark-id)}
+                     (serdes.base/extract-all "Collection")
+                     (by-model "Collection"))))
+         (is (= #{coll-eid dave-coll-eid}
+                (->> {:collection-set (extract/collection-set-for-user dave-id)}
+                     (serdes.base/extract-all "Collection")
+                     (by-model "Collection"))))))
+
+     (testing "dashboards are filtered based on :user"
+       (testing "dashboards in unowned collections are always returned"
+         (is (= #{dash-eid}
+                (->> {:collection-set #{coll-id}}
+                     (serdes.base/extract-all "Dashboard")
+                     (by-model "Dashboard"))))
+         (is (= #{dash-eid}
+                (->> {:collection-set (extract/collection-set-for-user mark-id)}
+                     (serdes.base/extract-all "Dashboard")
+                     (by-model "Dashboard")))))
+       (testing "dashboards in personal collections are returned for the :user"
+         (is (= #{dash-eid other-dash param-dash}
+                (->> {:collection-set (extract/collection-set-for-user dave-id)}
+                     (serdes.base/extract-all "Dashboard")
+                     (by-model "Dashboard")))))))))
 
 (deftest dimensions-test
   (ts/with-empty-h2-app-db

@@ -201,7 +201,6 @@
           table2d    (atom nil)
           field2d    (atom nil)]
 
-
       (ts/with-source-and-dest-dbs
         (testing "serializing the original database, table, field and card"
           (ts/with-source-db
