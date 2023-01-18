@@ -779,7 +779,7 @@
                   card-defaults
                   (select-keys card [:id :name :entity_id :created_at :updated_at])
                   {:dashboard_count        0
-                   :parameter_card_count   0
+                   :parameter_usage_count  0
                    :creator_id             (mt/user->id :rasta)
                    :creator                (merge
                                             (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])

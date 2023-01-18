@@ -189,8 +189,7 @@
                           :can_write
                           :average_query_time
                           :last_query_start
-                          :collection [:moderation_reviews :moderator_details]
-                          :parameter_card_count)
+                          :collection [:moderation_reviews :moderator_details])
                  (cond-> ;; card
                    (:dataset raw-card) (hydrate :persisted))
                  api/read-check
@@ -921,9 +920,9 @@ saved later when it is ready."
   ([card param-key]
    (param-values card param-key nil))
 
-  ([card      :- su/MapPlumatic
-    param-key :- su/NonBlankStringPlumatic
-    query     :- (s/maybe su/NonBlankStringPlumatic)]
+  ([card      :- su/Map
+    param-key :- su/NonBlankString
+    query     :- (s/maybe su/NonBlankString)]
    (let [param       (get (m/index-by :id (:parameters card)) param-key)
          source-type (:values_source_type param)]
      (when-not param

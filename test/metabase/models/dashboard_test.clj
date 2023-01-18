@@ -11,6 +11,7 @@
     :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :refer [Pulse]]
