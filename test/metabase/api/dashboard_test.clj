@@ -1122,10 +1122,10 @@
                                                     :size_x  4
                                                     :size_y  4
                                                     :series [{:id series-id-1}]})]
-          (is (= {:row     4
-                  :col     4
-                  :size_x  4
-                  :size_y  4
+          (is (= {:row                    4
+                  :col                    4
+                  :size_x                 4
+                  :size_y                 4
                   :parameter_mappings     []
                   :visualization_settings {}
                   :series                 [{:name                   "Series Card"
