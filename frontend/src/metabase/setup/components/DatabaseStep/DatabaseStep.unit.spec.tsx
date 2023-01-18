@@ -15,7 +15,7 @@ describe("DatabaseStep", () => {
 
     render(<DatabaseStep {...props} />);
 
-    expect(screen.getByText("Add your data"));
+    expect(screen.getByText("Add your data")).toBeInTheDocument();
   });
 
   it("should render in completed state", () => {
@@ -27,7 +27,7 @@ describe("DatabaseStep", () => {
 
     render(<DatabaseStep {...props} />);
 
-    expect(screen.getByText("Connecting to Test"));
+    expect(screen.getByText("Connecting to Test")).toBeInTheDocument();
   });
 
   it("should render a user invite form", () => {
@@ -38,7 +38,9 @@ describe("DatabaseStep", () => {
 
     render(<DatabaseStep {...props} />);
 
-    expect(screen.getByText("Need help connecting to your data?"));
+    expect(
+      screen.getByText("Need help connecting to your data?"),
+    ).toBeInTheDocument();
   });
 });
 

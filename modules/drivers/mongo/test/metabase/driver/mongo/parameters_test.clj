@@ -303,7 +303,7 @@
     (testing "text params"
       (testing "using nested fields as parameters (#11597)"
         (mt/dataset geographical-tips
-          (is (= [[5 "tupac"]]
+          (is (= [["tupac" 5]]
                  (mt/rows
                    (qp/process-query
                      (mt/query tips
@@ -311,7 +311,8 @@
                         :native     {:query         (json/generate-string
                                                      [{:$match (json-raw "{{username}}")}
                                                       {:$sort {:_id 1}}
-                                                      {:$project {"username" "$source.username"}}
+                                                      {:$project {"username" "$source.username"
+                                                                  "_id" 1}}
                                                       {:$limit 1}])
                                      :collection    "tips"
                                      :template-tags {"username" {:name         "username"

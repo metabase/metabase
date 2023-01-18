@@ -171,7 +171,7 @@
       (map first matches))))
 
 (s/defn ^:private tableset :- Tableset
-  [db-id :- su/IntGreaterThanZeroPlumatic, schema :- (s/maybe s/Str)]
+  [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str)]
   (table/with-fields
     (de/with-domain-entity
       (db/select 'Table :db_id db-id :schema schema))))
@@ -186,7 +186,7 @@
      cols to the bindings.
   4) Check that all output cards have the expected result shape.
   5) Return the output cards."
-  [db-id :- su/IntGreaterThanZeroPlumatic, schema :- (s/maybe s/Str), spec :- TransformSpec]
+  [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str), spec :- TransformSpec]
   (tf.materialize/fresh-collection-for-transform! spec)
   (some-> (tableset db-id schema)
           (tables-matching-requirements spec)

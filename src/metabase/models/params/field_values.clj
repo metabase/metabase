@@ -103,8 +103,8 @@
   ([fv-type field constraints]
    (let [hash-key (hash-key-for-advanced-field-values fv-type (:id field) constraints)
          fv       (or (db/select-one FieldValues :field_id (:id field)
-                                   :type fv-type
-                                   :hash_key hash-key)
+                                     :type fv-type
+                                     :hash_key hash-key)
                       (create-advanced-field-values! fv-type field hash-key constraints))]
      (cond
        (nil? fv) nil
@@ -123,7 +123,7 @@
   "Fetch FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
   filtered as appropriate for the current User, depending on MB version (e.g. EE sandboxing will filter these values).
   If the Field has a human-readable values remapping (see documentation at the top of
-  `metabase.models.params.chain-filter` for an explanation of what this means), values are returned in the format
+  [[metabase.models.params.chain-filter]] for an explanation of what this means), values are returned in the format
     {:values           [[original-value human-readable-value]]
      :field_id         field-id
      :has_field_values boolean}
@@ -139,7 +139,7 @@
   "Fetch linked-filter FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
   filtered as appropriate for the current User, depending on MB version (e.g. EE sandboxing will filter these values).
   If the Field has a human-readable values remapping (see documentation at the top of
-  `metabase.models.params.chain-filter` for an explanation of what this means), values are returned in the format
+  [[metabase.models.params.chain-filter]] for an explanation of what this means), values are returned in the format
     {:values           [[original-value human-readable-value]]
      :field_id         field-id
      :has_field_values boolean}

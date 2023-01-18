@@ -48,14 +48,14 @@ describe("scenarios > dashboard > filters > text/category", () => {
   });
 
   it(`should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)`, () => {
-    setFilter("Text or Category", "Dropdown");
+    setFilter("Text or Category", "Is");
 
     cy.findByText("Select…").click();
     popover().contains("Source").click();
 
     cy.findByText("Default value").next().click();
 
-    applyFilterByType("Dropdown", "Organic");
+    applyFilterByType("Is", "Organic");
 
     // We need to add another filter only to reproduce metabase#13960
     setFilter("ID");

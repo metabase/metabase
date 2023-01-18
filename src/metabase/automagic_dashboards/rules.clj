@@ -80,7 +80,7 @@
 
 (def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
 
-(def ^:private Visualization [(s/one s/Str "visualization") su/MapPlumatic])
+(def ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
 (def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
                                      (deferred-trs "1 <= width <= {0}" populate/grid-width)))
@@ -96,7 +96,7 @@
                (s/optional-key :dimensions)    [CardDimension]
                (s/optional-key :filters)       [s/Str]
                (s/optional-key :metrics)       [s/Str]
-               (s/optional-key :limit)         su/IntGreaterThanZeroPlumatic
+               (s/optional-key :limit)         su/IntGreaterThanZero
                (s/optional-key :order_by)      [OrderByPair]
                (s/optional-key :description)   LocalizedString
                (s/optional-key :query)         s/Str
@@ -127,7 +127,7 @@
   [(s/one (s/constrained (s/cond-pre s/Str s/Keyword) (comp #{:dimension} qp.util/normalize-token))
           "dimension")
    (s/one s/Str "identifier")
-   su/MapPlumatic])
+   su/Map])
 
 (def ^{:arglists '([form])} dimension-form?
   "Does form denote a dimension referece?"

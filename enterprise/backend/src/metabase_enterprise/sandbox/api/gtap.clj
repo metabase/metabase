@@ -11,12 +11,14 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
-  "Fetch a list of all the GTAPs currently in use."
-  []
-  ;; TODO - do we need to hydrate anything here?
-  (db/select GroupTableAccessPolicy))
+(api/defendpoint GET "/"
+  "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
+  [group_id table_id]
+  {group_id [:maybe pos-int?]
+   table_id [:maybe pos-int?]}
+  (if (and group_id table_id)
+    (db/select-one GroupTableAccessPolicy :group_id group_id :table_id table_id)
+    (db/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
@@ -34,9 +36,9 @@
 (api/defendpoint-schema POST "/"
   "Create a new GTAP."
   [:as {{:keys [table_id card_id group_id attribute_remappings]} :body}]
-  {table_id             su/IntGreaterThanZeroPlumatic
-   card_id              (s/maybe su/IntGreaterThanZeroPlumatic)
-   group_id             su/IntGreaterThanZeroPlumatic
+  {table_id             su/IntGreaterThanZero
+   card_id              (s/maybe su/IntGreaterThanZero)
+   group_id             su/IntGreaterThanZero
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
   (db/insert! GroupTableAccessPolicy
     {:table_id             table_id
@@ -50,7 +52,7 @@
   paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
   one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints."
   [id :as {{:keys [card_id #_attribute_remappings], :as body} :body}]
-  {card_id              (s/maybe su/IntGreaterThanZeroPlumatic)
+  {card_id              (s/maybe su/IntGreaterThanZero)
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
   (api/check-404 (GroupTableAccessPolicy id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.

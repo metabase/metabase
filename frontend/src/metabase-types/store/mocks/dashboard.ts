@@ -23,6 +23,5 @@ export const createMockDashboardState = (
   sidebar: {
     props: {},
   },
-  titleTemplateChange: null,
   ...opts,
 });

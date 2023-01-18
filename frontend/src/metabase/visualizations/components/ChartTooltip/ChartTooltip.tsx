@@ -2,8 +2,8 @@ import React, { MouseEvent, useMemo } from "react";
 import _ from "underscore";
 import { getEventTarget } from "metabase/lib/dom";
 import Tooltip from "metabase/core/components/Tooltip";
-import DataPointTooltip from "./DataPointTooltip";
-import DataPointTooltipOld from "./DataPointTooltipOld";
+import StackedDataTooltip from "./StackedDataTooltip";
+import KeyValuePairChartTooltip from "./KeyValuePairChartTooltip";
 import TimelineEventTooltip from "./TimelineEventTooltip";
 import {
   HoveredObject,
@@ -25,11 +25,11 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
       return <TimelineEventTooltip hovered={hovered as HoveredTimelineEvent} />;
     }
 
-    if (hovered.dataTooltip) {
-      return <DataPointTooltip {...hovered.dataTooltip} />;
+    if (hovered.stackedTooltipModel) {
+      return <StackedDataTooltip {...hovered.stackedTooltipModel} />;
     }
 
-    return <DataPointTooltipOld hovered={hovered} settings={settings} />;
+    return <KeyValuePairChartTooltip hovered={hovered} settings={settings} />;
   }, [hovered, settings]);
 
   const isNotEmpty = useMemo(() => {
@@ -39,7 +39,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
     return (
       hovered.value !== undefined ||
       !_.isEmpty(hovered.timelineEvents) ||
-      !_.isEmpty(hovered.dataTooltip) ||
+      !_.isEmpty(hovered.stackedTooltipModel) ||
       !_.isEmpty(hovered.data) ||
       !_.isEmpty(hovered.dimensions)
     );
@@ -49,6 +49,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
   const hasTargetElement =
     hovered?.element != null && document.body.contains(hovered.element);
   const isOpen = isNotEmpty && (hasTargetElement || hasTargetEvent);
+  const isPadded = hovered?.stackedTooltipModel == null;
 
   const target = hasTargetElement
     ? hovered?.element
@@ -61,7 +62,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
       preventOverflow
       reference={target}
       isOpen={isOpen}
-      isPadded={false}
+      isPadded={isPadded}
       tooltip={tooltip}
       maxWidth="unset"
     />

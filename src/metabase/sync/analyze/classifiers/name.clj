@@ -32,14 +32,20 @@
    *  Convert field name to lowercase before matching against a pattern
    *  Consider a nil set-of-valid-base-types to mean \"match any base type\""
   [[#"^id$"                        any-type         :type/PK]
-   [#"^.*_lat$"                    float-type       :type/Latitude]
+   [#"^lon$"                       float-type       :type/Longitude]
    [#"^.*_lon$"                    float-type       :type/Longitude]
    [#"^.*_lng$"                    float-type       :type/Longitude]
    [#"^.*_long$"                   float-type       :type/Longitude]
    [#"^.*_longitude$"              float-type       :type/Longitude]
+   [#"^lng$"                       float-type       :type/Longitude]
+   [#"^long$"                      float-type       :type/Longitude]
+   [#"^longitude$"                 float-type       :type/Longitude]
+   [#"^lat$"                       float-type       :type/Latitude]
+   [#"^.*_lat$"                    float-type       :type/Latitude]
+   [#"^latitude$"                  float-type       :type/Latitude]
+   [#"^.*_latitude$"               float-type       :type/Latitude]
    [#"^.*_type$"                   int-or-text-type :type/Category]
    [#"^.*_url$"                    text-type        :type/URL]
-   [#"^_latitude$"                 float-type       :type/Latitude]
    [#"^active$"                    bool-or-int-type :type/Category]
    [#"^city$"                      text-type        :type/City]
    [#"^country"                    text-type        :type/Country]
@@ -49,12 +55,6 @@
    [#"^full(?:_?)name$"            text-type        :type/Name]
    [#"^gender$"                    int-or-text-type :type/Category]
    [#"^last(?:_?)name$"            text-type        :type/Name]
-   [#"^lat$"                       float-type       :type/Latitude]
-   [#"^latitude$"                  float-type       :type/Latitude]
-   [#"^lon$"                       float-type       :type/Longitude]
-   [#"^lng$"                       float-type       :type/Longitude]
-   [#"^long$"                      float-type       :type/Longitude]
-   [#"^longitude$"                 float-type       :type/Longitude]
    [#"^name$"                      text-type        :type/Name]
    [#"^postal(?:_?)code$"          int-or-text-type :type/ZipCode]
    [#"^role$"                      int-or-text-type :type/Category]
@@ -119,9 +119,9 @@
     (assert (or (isa? semantic-type :Semantic/*)
                 (isa? semantic-type :Relation/*)))))
 
-(s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldSemanticOrRelationTypePlumatic)
+(s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldSemanticOrRelationType)
   "If `name` and `base-type` matches a known pattern, return the `semantic_type` we should assign to it."
-  [field-name :- su/NonBlankStringPlumatic, base-type :- su/FieldTypePlumatic]
+  [field-name :- su/NonBlankString, base-type :- su/FieldType]
   (let [field-name (str/lower-case field-name)]
     (some (fn [[name-pattern valid-base-types semantic-type]]
             (when (and (some (partial isa? base-type) valid-base-types)

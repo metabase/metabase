@@ -82,7 +82,7 @@
 (models/defmodel FieldValues :metabase_fieldvalues)
 
 (defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
-  (when (s/check (s/maybe [(s/maybe su/NonBlankStringPlumatic)]) human-readable-values)
+  (when (s/check (s/maybe [(s/maybe su/NonBlankString)]) human-readable-values)
     (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
                     {:human-readable-values human-readable-values
                      :status-code           400}))))
@@ -201,9 +201,9 @@
            visibility-type  :visibility_type
            has-field-values :has_field_values
            :as              field} field-or-field-id]
-      (s/check {:visibility_type  su/KeywordOrStringPlumatic
-                :base_type        (s/maybe su/KeywordOrStringPlumatic)
-                :has_field_values (s/maybe su/KeywordOrStringPlumatic)
+      (s/check {:visibility_type  su/KeywordOrString
+                :base_type        (s/maybe su/KeywordOrString)
+                :has_field_values (s/maybe su/KeywordOrString)
                 s/Keyword         s/Any}
                field)
       (boolean
@@ -356,7 +356,9 @@
 
       (and (= (:values field-values) values)
            (= (:has_more_values field-values) has_more_values))
-      (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+      (do
+        (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+        ::fv-skipped)
 
       ;; if the FieldValues object already exists then update values in it
       (and field-values values)
@@ -395,10 +397,17 @@
   (when (field-should-have-field-values? field)
     (let [existing (db/select-one FieldValues :field_id field-id :type :full)]
       (if (or (not existing) (inactive? existing))
-        (when-let [result (#{::fv-created ::fv-updated} (create-or-update-full-field-values! field human-readable-values))]
-          (when (= result ::fv-updated)
-            (db/update! FieldValues (:id existing) :last_used_at :%now))
-          (db/select-one FieldValues :field_id field-id :type :full))
+        (case (create-or-update-full-field-values! field human-readable-values)
+          ::fv-deleted
+          nil
+
+          ::fv-created
+          (db/select-one FieldValues :field_id field-id :type :full)
+
+          (do
+            (when existing
+              (db/update! FieldValues (:id existing) :last_used_at :%now))
+            (db/select-one FieldValues :field_id field-id :type :full)))
         (do
           (db/update! FieldValues (:id existing) :last_used_at :%now)
           existing)))))

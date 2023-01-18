@@ -5,6 +5,7 @@ import * as CardLib from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 
 import * as alert from "metabase/alert/alert";
+import * as questionActions from "metabase/questions/actions";
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import { setErrorPage } from "metabase/redux/app";
@@ -36,7 +37,6 @@ import Question from "metabase-lib/Question";
 import * as querying from "../querying";
 
 import * as core from "./core";
-import * as metadataActions from "./metadata";
 import { initializeQB } from "./initializeQB";
 
 type BaseSetupOpts = {
@@ -228,7 +228,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("fetches question metadata", async () => {
           const loadMetadataForCardSpy = jest.spyOn(
-            metadataActions,
+            questionActions,
             "loadMetadataForCard",
           );
 
@@ -740,12 +740,6 @@ describe("QB Actions > initializeQB", () => {
       expect(filter.raw()).toEqual(["segment", SEGMENT_ID]);
     });
 
-    it("opens summarization sidebar if metric is applied", async () => {
-      const METRIC_ID = 777;
-      const { result } = await setupOrdersTable({ metric: METRIC_ID });
-      expect(result.uiControls.isShowingSummarySidebar).toBe(true);
-    });
-
     it("applies 'metric' param correctly", async () => {
       const METRIC_ID = 777;
 
@@ -778,7 +772,7 @@ describe("QB Actions > initializeQB", () => {
 
     it("fetches question metadata", async () => {
       const loadMetadataForCardSpy = jest.spyOn(
-        metadataActions,
+        questionActions,
         "loadMetadataForCard",
       );
 

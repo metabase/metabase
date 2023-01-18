@@ -149,7 +149,7 @@
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
-  {parameters (s/maybe su/JSONStringPlumatic)}
+  {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -157,7 +157,7 @@
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid export-format :as {{:keys [parameters]} :params}]
-  {parameters    (s/maybe su/JSONStringPlumatic)
+  {parameters    (s/maybe su/JSONString)
    export-format api.dataset/ExportFormat}
   (run-query-for-card-with-public-uuid-async
    uuid
@@ -232,7 +232,7 @@
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [uuid card-id dashcard-id parameters]
-  {parameters (s/maybe su/JSONStringPlumatic)}
+  {parameters (s/maybe su/JSONString)}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (public-dashcard-results-async
@@ -246,8 +246,8 @@
 (api/defendpoint-schema GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [uuid dashcard-id parameters]
-  {dashcard-id su/IntGreaterThanZeroPlumatic
-   parameters su/JSONStringPlumatic}
+  {dashcard-id su/IntGreaterThanZero
+   parameters su/JSONString}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters))))
@@ -261,7 +261,7 @@
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
   [uuid dashcard-id :as {{:keys [parameters], :as _body} :body}]
-  {dashcard-id su/IntGreaterThanZeroPlumatic
+  {dashcard-id su/IntGreaterThanZero
    parameters (s/maybe {s/Keyword s/Any})}
   (let [throttle-message (try
                            (throttle/check dashcard-execution-throttle dashcard-id)
@@ -290,10 +290,10 @@
   [url format maxheight maxwidth]
   ;; the format param is not used by the API, but is required as part of the oEmbed spec: http://oembed.com/#section2
   ;; just return an error if `format` is specified and it's anything other than `json`.
-  {url       su/NonBlankStringPlumatic
+  {url       su/NonBlankString
    format    (s/maybe (s/enum "json"))
-   maxheight (s/maybe su/IntStringPlumatic)
-   maxwidth  (s/maybe su/IntStringPlumatic)}
+   maxheight (s/maybe su/IntString)
+   maxwidth  (s/maybe su/IntString)}
   (let [height (if maxheight (Integer/parseInt maxheight) default-embed-max-height)
         width  (if maxwidth  (Integer/parseInt maxwidth)  default-embed-max-width)]
     {:version "1.0"
@@ -409,8 +409,8 @@
 (api/defendpoint-schema GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
   [uuid field-id search-field-id value limit]
-  {value su/NonBlankStringPlumatic
-   limit (s/maybe su/IntStringGreaterThanZeroPlumatic)}
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
   (validation/check-public-sharing-enabled)
   (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
@@ -419,8 +419,8 @@
 (api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id search-field-id value limit]
-  {value su/NonBlankStringPlumatic
-   limit (s/maybe su/IntStringGreaterThanZeroPlumatic)}
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
@@ -453,7 +453,7 @@
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Cards."
   [uuid field-id remapped-id value]
-  {value su/NonBlankStringPlumatic}
+  {value su/NonBlankString}
   (validation/check-public-sharing-enabled)
   (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
     (card-field-remapped-values card-id field-id remapped-id value)))
@@ -463,7 +463,7 @@
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Dashboards."
   [uuid field-id remapped-id value]
-  {value su/NonBlankStringPlumatic}
+  {value su/NonBlankString}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (db/select-one-id Dashboard :public_uuid uuid, :archived false)]
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
@@ -510,7 +510,7 @@
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
-  {parameters (s/maybe su/JSONStringPlumatic)}
+  {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) :qp-runner qp.pivot/run-pivot-query))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -518,7 +518,7 @@
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [uuid card-id dashcard-id parameters]
-  {parameters (s/maybe su/JSONStringPlumatic)}
+  {parameters (s/maybe su/JSONString)}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (public-dashcard-results-async

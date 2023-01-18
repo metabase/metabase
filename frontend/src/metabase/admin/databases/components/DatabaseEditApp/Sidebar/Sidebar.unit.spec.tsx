@@ -1,16 +1,12 @@
 import React from "react";
 import _ from "underscore";
 import {
-  getByRole,
-  getByText,
   render,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
-import MetabaseSettings from "metabase/lib/settings";
-import Utils from "metabase/lib/utils";
 
 import type { InitialSyncStatus } from "metabase-types/api";
 
@@ -68,22 +64,7 @@ function setup({
   };
 }
 
-function mockMetabaseSettings() {
-  const original = MetabaseSettings.get.bind(MetabaseSettings);
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "site-uuid") {
-      return Utils.uuid();
-    }
-    return original(key);
-  });
-}
-
 describe("DatabaseEditApp/Sidebar", () => {
-  beforeAll(() => {
-    mockMetabaseSettings();
-  });
-
   it("syncs database schema", () => {
     const { database, syncDatabaseSchema } = setup();
     userEvent.click(screen.getByText(/Sync database schema now/i));
@@ -134,7 +115,7 @@ describe("DatabaseEditApp/Sidebar", () => {
       const { database, discardSavedFieldValues } = setup();
 
       userEvent.click(screen.getByText(/Discard saved field values/i));
-      userEvent.click(getByRole(getModal(), "button", { name: "Yes" }));
+      userEvent.click(within(getModal()).getByRole("button", { name: "Yes" }));
 
       expect(discardSavedFieldValues).toHaveBeenCalledWith(database.id);
     });
@@ -143,11 +124,13 @@ describe("DatabaseEditApp/Sidebar", () => {
       const { discardSavedFieldValues } = setup();
 
       userEvent.click(screen.getByText(/Discard saved field values/i));
-      userEvent.click(getByRole(getModal(), "button", { name: "Cancel" }));
+      userEvent.click(
+        within(getModal()).getByRole("button", { name: "Cancel" }),
+      );
       await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();
-      expect(discardSavedFieldValues).not.toBeCalled();
+      expect(discardSavedFieldValues).not.toHaveBeenCalled();
     });
 
     NOT_SYNCED_DB_STATUSES.forEach(initial_sync_status => {
@@ -211,7 +194,7 @@ describe("DatabaseEditApp/Sidebar", () => {
 
       userEvent.click(screen.getByLabelText(/Model actions/i));
 
-      expect(updateDatabase).toBeCalledWith({
+      expect(updateDatabase).toHaveBeenCalledWith({
         id: database.id,
         settings: { "database-enable-actions": true },
       });
@@ -225,7 +208,7 @@ describe("DatabaseEditApp/Sidebar", () => {
 
       userEvent.click(screen.getByLabelText(/Model actions/i));
 
-      expect(updateDatabase).toBeCalledWith({
+      expect(updateDatabase).toHaveBeenCalledWith({
         id: database.id,
         settings: { "database-enable-actions": false },
       });
@@ -296,8 +279,8 @@ describe("DatabaseEditApp/Sidebar", () => {
       const modal = getModal();
 
       // Fill in database name to confirm deletion
-      userEvent.type(getByRole(modal, "textbox"), database.name);
-      userEvent.click(getByRole(modal, "button", { name: "Delete" }));
+      userEvent.type(within(modal).getByRole("textbox"), database.name);
+      userEvent.click(within(modal).getByRole("button", { name: "Delete" }));
       await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();
@@ -309,12 +292,12 @@ describe("DatabaseEditApp/Sidebar", () => {
       userEvent.click(screen.getByText(/Remove this database/i));
       const modal = getModal();
 
-      getByText(modal, `Delete the ${database.name} database?`);
-      userEvent.click(getByRole(modal, "button", { name: "Cancel" }));
+      within(modal).getByText(`Delete the ${database.name} database?`);
+      userEvent.click(within(modal).getByRole("button", { name: "Cancel" }));
       await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();
-      expect(deleteDatabase).not.toBeCalled();
+      expect(deleteDatabase).not.toHaveBeenCalled();
     });
   });
 });

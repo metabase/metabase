@@ -1,5 +1,6 @@
 (ns metabase.shared.util.log
   (:require
+   [goog.log :as glog]
    [goog.string :as gstring]
    [goog.string.format :as gstring.format]
    [lambdaisland.glogi :as log]
@@ -37,4 +38,4 @@
 (defn is-loggable?
   "Part of the impl for [[metabase.shared.util.log/js-logp]] and [[metabase.shared.util.log/js-logf]]."
   [logger-name level]
-  (.isLoggable (log/logger logger-name) (log/levels level)))
+  (glog/isLoggable (log/logger logger-name) (log/levels level)))

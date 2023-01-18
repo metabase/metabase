@@ -68,7 +68,10 @@ export class WindowModal extends Component {
         backdropElement={this._modalElement}
         handleDismissal={this.handleDismissal}
       >
-        <div className={cx(className, "relative bg-white rounded")}>
+        <div
+          className={cx(className, "relative bg-white rounded")}
+          role="dialog"
+        >
           {getModalContent({
             ...this.props,
             fullPageModal: false,
