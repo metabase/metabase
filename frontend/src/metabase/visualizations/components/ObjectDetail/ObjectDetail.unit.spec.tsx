@@ -97,6 +97,7 @@ describe("Object Detail", () => {
         settings={{
           column: () => null,
         }}
+        showHeader
         canZoom={true}
         canZoomPreviousRow={false}
         canZoomNextRow={false}
