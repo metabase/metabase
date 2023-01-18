@@ -10,9 +10,9 @@ redirect_from:
 
 You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people.
 
-## Types of authentication
+## Authentication flows
 
-Metabase supports two types of authentication with JWT:
+Metabase supports two auth flows that can be used with JWT:
 
 - Authorization Code Flow
 - Authorization Code Flow with PKCE
