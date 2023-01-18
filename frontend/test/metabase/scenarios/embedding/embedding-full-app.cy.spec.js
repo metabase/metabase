@@ -43,7 +43,7 @@ describe("scenarios > embedding > full app", () => {
       visitUrl({ url: "/", qs: { logo: false } });
       cy.findByText(/Bobby/).should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
-      cy.button("sidebar-toggle").should("be.visible");
+      cy.button("Toggle sidebar").should("be.visible");
       cy.findByTestId("main-logo").should("not.exist");
     });
 
@@ -140,7 +140,7 @@ describe("scenarios > embedding > full app", () => {
         cy.findByRole("banner").should("not.exist");
         cy.findByTestId("main-logo").should("not.exist");
         cy.icon("sidebar_closed").should("not.exist");
-        cy.findByTestId("sidebar-toggle").should("not.exist");
+        cy.button("Toggle sidebar").should("not.exist");
       });
     });
 
@@ -158,7 +158,7 @@ describe("scenarios > embedding > full app", () => {
         cy.findByRole("banner").should("not.exist");
         cy.findByTestId("main-logo").should("not.exist");
         cy.icon("sidebar_closed").should("not.exist");
-        cy.findByTestId("sidebar-toggle").should("not.exist");
+        cy.button("Toggle sidebar").should("not.exist");
       });
     });
   });

@@ -27,7 +27,7 @@ const AppBarToggle = ({
         isLogoVisible={isLogoVisible}
         onClick={onToggleClick}
         data-testid="sidebar-toggle"
-        aria-label="sidebar-toggle"
+        aria-label={t`Toggle sidebar`}
       >
         <SidebarIcon
           isLogoVisible={isLogoVisible}
