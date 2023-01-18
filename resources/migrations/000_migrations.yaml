@@ -13933,6 +13933,24 @@ databaseChangeLog:
                   name: context
             indexName: idx_query_execution_context
 
+  - changeSet:
+      id: v46.00.51
+      author: calherries
+      changes:
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: row
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: col
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
