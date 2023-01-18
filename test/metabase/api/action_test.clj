@@ -257,24 +257,25 @@
 (deftest disable-sharing-action-test
   (testing "DELETE /api/action/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (testing "Test that we can unshare an action"
-        (let [action-opts (shared-action-opts)]
-          (actions.test-util/with-actions [{:keys [action-id]} action-opts]
-            (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
-            (is (= false
-                   (db/exists? Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
+      (actions.test-util/with-actions-enabled
+        (testing "Test that we can unshare an action"
+          (let [action-opts (shared-action-opts)]
+            (actions.test-util/with-actions [{:keys [action-id]} action-opts]
+              (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
+              (is (= false
+                     (db/exists? Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
 
-      (testing "Test that we *cannot* unshare a action if we are not admins"
-        (let [action-opts (shared-action-opts)]
-          (actions.test-util/with-actions [{:keys [action-id]} action-opts]
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :delete 403 (format "action/%d/public_link" action-id)))))))
+        (testing "Test that we *cannot* unshare a action if we are not admins"
+          (let [action-opts (shared-action-opts)]
+            (actions.test-util/with-actions [{:keys [action-id]} action-opts]
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :delete 403 (format "action/%d/public_link" action-id)))))))
 
-      (testing "Test that we get a 404 if Action isn't shared"
-        (actions.test-util/with-actions [{:keys [action-id]} unshared-action-opts]
+        (testing "Test that we get a 404 if Action isn't shared"
+          (actions.test-util/with-actions [{:keys [action-id]} unshared-action-opts]
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id))))))
+
+        (testing "Test that we get a 404 if Action doesn't exist"
           (is (= "Not found."
-                 (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id))))))
-
-      (testing "Test that we get a 404 if Action doesn't exist"
-        (is (= "Not found."
-               (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" Integer/MAX_VALUE))))))))
+                 (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))))
