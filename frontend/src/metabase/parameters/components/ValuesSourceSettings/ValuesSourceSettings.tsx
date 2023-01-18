@@ -19,15 +19,16 @@ import {
 export interface ValuesSourceSettingsProps {
   parameter: Parameter;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
-  onChangeSourceType: (sourceType: ValuesSourceType) => void;
-  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+  onChangeSourceSettings: (
+    sourceType: ValuesSourceType,
+    sourceConfig: ValuesSourceConfig,
+  ) => void;
 }
 
 const ValuesSourceSettings = ({
   parameter,
   onChangeQueryType,
-  onChangeSourceType,
-  onChangeSourceConfig,
+  onChangeSourceSettings,
 }: ValuesSourceSettingsProps): JSX.Element => {
   const queryType = getQueryType(parameter);
   const [isModalOpened, setIsModalOpened] = useState(false);
@@ -38,10 +39,9 @@ const ValuesSourceSettings = ({
 
   const handleSubmit = useCallback(
     (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
-      onChangeSourceType(sourceType);
-      onChangeSourceConfig(sourceConfig);
+      onChangeSourceSettings(sourceType, sourceConfig);
     },
-    [onChangeSourceType, onChangeSourceConfig],
+    [onChangeSourceSettings],
   );
 
   const handleModalClose = useCallback(() => {
