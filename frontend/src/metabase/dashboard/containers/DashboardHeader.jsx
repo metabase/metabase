@@ -185,6 +185,7 @@ class DashboardHeader extends Component {
       dashboard,
       parametersWidget,
       isBookmarked,
+      isAdmin,
       isEditing,
       isFullscreen,
       isEditable,
@@ -276,6 +277,24 @@ class DashboardHeader extends Component {
           </TippyPopover>
         </span>,
       );
+
+      if (isAdmin) {
+        // TODO: add permissions check
+        buttons.push(
+          <>
+            <DashboardHeaderActionDivider />
+            <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+              <DashboardHeaderButton
+                isActive={activeSidebarName === SIDEBAR_NAME.addActionButton}
+                onClick={() => toggleSidebar(SIDEBAR_NAME.addActionButton)}
+                data-metabase-event={`Dashboard;Add Action Sidebar`}
+              >
+                <Icon name="click" size={18} />
+              </DashboardHeaderButton>
+            </Tooltip>
+          </>,
+        );
+      }
 
       extraButtons.push({
         title: t`Revision history`,
