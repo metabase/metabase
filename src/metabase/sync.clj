@@ -9,9 +9,9 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the `sync-database!` function to do all three at once."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Table]]
    [metabase.models.field :as field]
    [metabase.models.table :as table]
    [metabase.sync.analyze :as analyze]
@@ -22,7 +22,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db])
@@ -116,7 +116,7 @@
                                       :table-name                   su/NonBlankString}]
   (if-some [new-table (match-table db table)]
     (or
-     (db/select-one 'Table :name (:name new-table) :schema (:schema new-table))
+     (db/select-one Table :name (:name new-table) :schema (:schema new-table))
      (sync-tables/create-or-reactivate-table! db new-table))
     (let [msg (trs "Table ''{0}'' does not exist or you do not have permission to view it." table-name)]
       (throw (ex-info msg {:status-code 404})))))
