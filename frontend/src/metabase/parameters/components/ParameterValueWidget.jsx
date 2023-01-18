@@ -16,6 +16,7 @@ import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
 import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
+import TextWidget from "metabase/components/TextWidget";
 import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
@@ -252,6 +253,18 @@ function Widget({
         focusChanged={onFocusChanged}
       />
     );
+  } else if (parameter.hasVariableTemplateTagTarget) {
+    return (
+      <TextWidget
+        value={value}
+        setValue={setValue}
+        className={className}
+        isEditing={isEditing}
+        commitImmediately={commitImmediately}
+        placeholder={placeholder}
+        focusChanged={onFocusChanged}
+      />
+    );
   } else {
     return (
       <StringInputWidget
@@ -283,6 +296,8 @@ function getWidgetDefinition(parameter) {
     return NumberInputWidget;
   } else if (getQueryType(parameter) !== "none") {
     return ParameterFieldWidget;
+  } else if (parameter.hasVariableTemplateTagTarget) {
+    return TextWidget;
   } else {
     return StringInputWidget;
   }
