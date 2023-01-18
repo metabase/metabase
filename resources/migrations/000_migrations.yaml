@@ -13970,6 +13970,7 @@ databaseChangeLog:
       comment: added 0.46.0 -- activity_log added to consolidate events in one place for auditing
       changes:
         - createTable:
+            remarks: "Table for all events for auditing."
             tableName: activity_log
             columns:
               - column:
@@ -13981,21 +13982,25 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: topic
+                  remarks: "Keyword representing what the activity is."
                   type: varchar(32)
                   constraints:
                     nullable: false
               - column:
                   name: timestamp
+                  remarks: "Timestamp of when the activity is logged."
                   type: ${timestamp_type}
                   constraints:
                     nullable: false
               - column:
                   name: end_timestamp
+                  remarks: "Timestamp of when an activity is completed. Eg. query execution succeeds."
                   type: ${timestamp_type}
                   constraints:
                     nullable: true
               - column:
                   name: user_id
+                  remarks: "ID of the user responsible for the activity."
                   type: int
                   constraints:
                     nullable: true
@@ -14006,26 +14011,31 @@ databaseChangeLog:
                     initiallyDeferred: false
               - column:
                   name: model
+                  remarks: "Name of the model representing the activity."
                   type: varchar(16)
                   constraints:
                     nullable: true
               - column:
                   name: model_id
+                  remarks: "ID of the model representing the activity."
                   type: int
                   constraints:
                     nullable: true
               - column:
                   name: database_id
+                  remarks: "ID of the database related to the activity."
                   type: int
                   constraints:
                     nullable: true
               - column:
                   name: table_id
+                  remarks: "ID of the table related to the activity."
                   type: int
                   constraints:
                     nullable: true
               - column:
                   name: details
+                  remarks: "JSON storing additional details relevant to the event."
                   type: ${text.type}
                   constraints:
                     nullable: true
@@ -14036,16 +14046,12 @@ databaseChangeLog:
       comment: Added 0.46.0 -- index activity_log.user_id
       changes:
         - createIndex:
+            remarks: "Index on user_id as it will be common to query activities from a user."
             tableName: activity_log
             indexName: idx_activity_log_user_id
             columns:
               column:
                 name: user_id
-        - modifySql:
-            dbms: postgresql
-            replace:
-              replace: WITHOUT
-              with: WITH
 
   - changeSet:
       id: v46.00-048
@@ -14053,6 +14059,7 @@ databaseChangeLog:
       comment: Added 0.46.0 -- index activity_log.timestamp
       changes:
         - createIndex:
+            remarks: "Index on timestamp as it may be common to query when events occurred."
             tableName: activity_log
             indexName: idx_activity_log_timestamp
             columns:
@@ -14065,6 +14072,7 @@ databaseChangeLog:
       comment: Added 0.46.0 -- index activity_log.end_timestamp
       changes:
         - createIndex:
+            remarks: "Index on end_timestamp as it may be common to create queries about event run times."
             tableName: activity_log
             indexName: idx_activity_log_end_timestamp
             columns:
