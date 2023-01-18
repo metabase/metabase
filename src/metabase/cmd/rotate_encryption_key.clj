@@ -37,7 +37,7 @@
       (doseq [[id details] (db/select-id->field :details Database)]
         (when (encryption/possibly-encrypted-string? details)
           (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))
-        (jdbc/update! t-conn
+        (jdbc/update! {:connection t-conn}
                       :metabase_database
                       {:details (encrypt-str-fn (json/encode details))}
                       ["metabase_database.id = ?" id]))
@@ -55,7 +55,7 @@
       (doseq [[id value] (db/select-id->field :value Secret)]
         (when (encryption/possibly-encrypted-string? value)
           (throw (ex-info (trs "Can''t decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
-        (jdbc/update! t-conn
+        (jdbc/update! {:connection t-conn}
                       :secret
                       {value-column (encrypt-bytes-fn value)}
                       ["secret.id = ?" id])))))

@@ -15,11 +15,6 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-<<<<<<< HEAD
-=======
-   [metabase.models.permissions-group-membership
-    :refer [PermissionsGroupMembership]]
->>>>>>> switch-to-toucan-2-part-2
    [metabase.models.setting
     :as setting
     :refer [*user-local-values* defsetting]]
@@ -241,7 +236,6 @@
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]]
                 :where     [:and
                             [:= :user.is_active true]
-<<<<<<< HEAD
                             [:= :session.id [:raw "?"]]
                             (let [oldest-allowed [:inline (binding [hx/*honey-sql-version* 2]
                                                             (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute))]]
@@ -250,16 +244,6 @@
                                                            :normal         nil
                                                            :full-app-embed [:raw "?"])]]
                 :limit     [:inline 1]}
-=======
-                            [:= :session.id (hsql/raw "?")]
-                            (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
-                              [:> :session.created_at oldest-allowed])
-                            [:= :session.anti_csrf_token (case session-type
-                                                           :normal         nil
-                                                           :full-app-embed "?")]]
-                :limit     1}
-
->>>>>>> switch-to-toucan-2-part-2
          enable-advanced-permissions?
          (->
           (sql.helpers/select
