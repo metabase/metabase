@@ -20,7 +20,7 @@ import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
-import { fetchCardParameterValues } from "metabase/query_builder/actions";
+import { fetchQuestionParameterValues } from "metabase/query_builder/actions";
 import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
 
 import Fields from "metabase/entities/fields";
@@ -50,8 +50,8 @@ const optionsMessagePropTypes = {
 const mapDispatchToProps = dispatch => ({
   addRemappings: (...args) => dispatch(addRemappings(...args)),
   fetchFieldValues: (...args) => dispatch(fetchFieldValues(...args)),
-  fetchCardParameterValues: (...args) =>
-    dispatch(fetchCardParameterValues(...args)),
+  fetchQuestionParameterValues: (...args) =>
+    dispatch(fetchQuestionParameterValues(...args)),
   fetchDashboardParameterValues: (...args) =>
     dispatch(fetchDashboardParameterValues(...args)),
 });
@@ -138,13 +138,12 @@ class FieldValuesWidgetInner extends Component {
     try {
       if (canUseDashboardEndpoints(this.props.dashboard)) {
         const { values, has_more_values } =
-          await this.fetchDashboardParamValues(query);
+          await this.fetchDashboardParameterValues(query);
         options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
-      } else if (canUseCardEndpoints(this.props.question)) {
-        const { values, has_more_values } = await this.fetchCardParamValues(
-          query,
-        );
+      } else if (canUseQuestionEndpoints(this.props.question)) {
+        const { values, has_more_values } =
+          await this.fetchQuestionParameterValues(query);
         options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else {
@@ -201,17 +200,17 @@ class FieldValuesWidgetInner extends Component {
     }
   };
 
-  fetchCardParamValues = async query => {
+  fetchQuestionParameterValues = async query => {
     const { question, parameter } = this.props;
 
-    return this.props.fetchCardParameterValues({
-      cardId: question.id(),
+    return this.props.fetchQuestionParameterValues({
+      question,
       parameter,
       query,
     });
   };
 
-  fetchDashboardParamValues = async query => {
+  fetchDashboardParameterValues = async query => {
     const { dashboard, parameter, parameters } = this.props;
 
     return this.props.fetchDashboardParameterValues({
@@ -472,7 +471,7 @@ OptionsMessage.propTypes = optionsMessagePropTypes;
 
 export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
 
-function canUseCardEndpoints(question) {
+function canUseQuestionEndpoints(question) {
   return question?.isSaved();
 }
 
