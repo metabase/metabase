@@ -67,7 +67,7 @@
   or delete appropriate ParameterCards for each parameter in the dashboard"
   [parameterized-object-type :- ms/NonBlankString
    parameterized-object-id   :- ms/IntGreaterThanZero
-   parameters                :- [:* ms/Parameter]]
+   parameters                :- [:maybe [:sequential ms/Parameter]]]
   (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
                                 (and values_source_type id (:card_id values_source_config)
                                      (= values_source_type "card")))
