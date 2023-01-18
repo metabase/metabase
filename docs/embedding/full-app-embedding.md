@@ -152,11 +152,13 @@ For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav me
 
 ### top_nav
 
-Hidden by default. To show the top navigation bar:
+Shown by default. To hide the top navigation bar:
 
-`top_nav=true`
+`top_nav=false`
 
 ![Top nav bar](./images/top-nav.png)
+
+`search`, `new_button`, and `breadcrumbs` all depend on `top_nav` being set to `true`. If these three children (`search`, `new_button`, and `breadcrumbs`) are all false, Metabase will hide the top nav bar.
 
 ### search
 
@@ -169,6 +171,12 @@ Hidden by default. To show the search box in the top nav:
 Hidden by default. To show the **+ New** button used to create queries or dashboards:
 
 `top_nav=true&new_button=true`
+
+### breadcrumbs
+
+Shown by default in the top nav bar. Collection breadcrumbs show the path to the item (i.e., the collection(s) the item is in). To hide the breadcrumbs:
+
+`breadcrumbs=false`
 
 ### side_nav
 
