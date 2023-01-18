@@ -2058,10 +2058,6 @@
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
-(defn- card-fields-from-table-metadata
-  [card-id]
-  (:fields (mt/user-http-request :rasta :get 200 (format "/table/card__%d/query_metadata" card-id))))
-
 (deftest parameter-values-from-card-test
   ;; TODO add permissions tests
   (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]

@@ -917,6 +917,8 @@ saved later when it is ready."
       api/generic-204-no-content)))
 
 (defn mapping->field-values
+  "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have
+  chain-filter issues or dashcards to worry about."
   [card param query]
   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
     (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
