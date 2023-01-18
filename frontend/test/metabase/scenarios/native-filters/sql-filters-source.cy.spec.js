@@ -35,25 +35,35 @@ describe("scenarios > filters > sql filters > values source", () => {
 
   it("should be able to use a custom source for a text filter", () => {
     cy.createQuestion(structuredQuestionDetails);
-    openNativeEditor();
 
-    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
+    openNativeEditor();
+    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{tag}}");
+
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
     FieldFilter.mapTo({ table: "Products", field: "Category" });
     setFilterQuestionSource({ question: "GUI source", field: "Category" });
     saveQuestion("SQL filter");
+
+    FieldFilter.openEntryForm();
+    FieldFilter.selectFilterValueFromList("Gadget");
+    SQLFilter.runQuery();
   });
 
   it("should be able to use a custom source for a field filter", () => {
     cy.createNativeQuestion(nativeQuestionDetails);
-    openNativeEditor();
 
-    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
+    openNativeEditor();
+    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{tag}}");
+
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
     FieldFilter.mapTo({ table: "Products", field: "Category" });
     setFilterQuestionSource({ question: "SQL source", field: "CATEGORY" });
     saveQuestion("SQL filter");
+
+    FieldFilter.openEntryForm();
+    FieldFilter.selectFilterValueFromList("Gadget");
+    SQLFilter.runQuery();
   });
 });
