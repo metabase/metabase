@@ -13932,7 +13932,7 @@ databaseChangeLog:
               - column:
                   name: context
             indexName: idx_query_execution_context
-
+              
   - changeSet:
       id: v46.00-051
       author: calherries
@@ -13941,28 +13941,49 @@ databaseChangeLog:
         - dropDefaultValue:
             tableName: report_dashboardcard
             columnName: row
-        - dropDefaultValue:
-            tableName: report_dashboardcard
-            columnName: col
-        - dropDefaultValue:
-            tableName: report_dashboardcard
-            columnName: size_x
-        - dropDefaultValue:
-            tableName: report_dashboardcard
-            columnName: size_y
       rollback:
         - addDefaultValue:
             tableName: report_dashboardcard
             columnName: row
             defaultValueNumeric: 4
+
+  - changeSet:
+      id: v46.00-052
+      author: calherries
+      comment: Added 0.46.0 -- drop defaults for dashcard's position and size
+      changes:
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: col
+      rollback:
         - addDefaultValue:
             tableName: report_dashboardcard
             columnName: col
             defaultValueNumeric: 4
+
+  - changeSet:
+      id: v46.00-053
+      author: calherries
+      comment: Added 0.46.0 -- drop defaults for dashcard's position and size
+      changes:
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+      rollback:
         - addDefaultValue:
             tableName: report_dashboardcard
             columnName: size_x
             defaultValueNumeric: 4
+
+  - changeSet:
+      id: v46.00-054
+      author: calherries
+      comment: Added 0.46.0 -- drop defaults for dashcard's position and size
+      changes:
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+      rollback:
         - addDefaultValue:
             tableName: report_dashboardcard
             columnName: size_y
