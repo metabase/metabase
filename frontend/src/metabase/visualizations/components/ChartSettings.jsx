@@ -97,7 +97,6 @@ class ChartSettings extends Component {
   };
 
   handleSetCurrentWidget = widget => {
-    console.log(this.props);
     this.props.setSidebarPropsOverride({
       title: t`Add or Remove Columns`,
       onBack: () => {

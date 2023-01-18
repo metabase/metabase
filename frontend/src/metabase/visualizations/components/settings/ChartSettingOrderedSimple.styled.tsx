@@ -18,12 +18,3 @@ export const ChartSettingMessage = styled.div`
   font-weight: 700;
   border-radius: 0.5rem;
 `;
-
-export const ExtraActionButton = styled(Link)`
-  color: ${color("brand")};
-  cursor: pointer;
-  font-weight: 700;
-  position: absolute;
-  top: 0px;
-  right: 0.5rem;
-`;

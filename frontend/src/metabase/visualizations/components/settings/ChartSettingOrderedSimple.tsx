@@ -3,11 +3,12 @@ import React from "react";
 import { t } from "ttag";
 import { Series } from "metabase-types/types/Visualization";
 
+import Button from "metabase/core/components/Button";
+
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 import {
   ChartSettingMessage,
   ChartSettingOrderedSimpleRoot,
-  ExtraActionButton,
 } from "./ChartSettingOrderedSimple.styled";
 
 interface SortableItem {
@@ -64,7 +65,6 @@ export const ChartSettingOrderedSimple = ({
   };
 
   const handleOnEdit = (item: SortableItem, ref: HTMLElement | undefined) => {
-    console.log(item);
     onShowPopoverWidget(
       {
         props: {
@@ -92,9 +92,9 @@ export const ChartSettingOrderedSimple = ({
   return (
     <ChartSettingOrderedSimpleRoot>
       {extraButton && (
-        <ExtraActionButton onClick={handleExtra} as="button">
+        <Button onClick={handleExtra} onlyText>
           {extraButton.text}
-        </ExtraActionButton>
+        </Button>
       )}
 
       {orderedItems.length > 0 ? (

@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -155,27 +154,26 @@ const ChartSettingColumnEditor = ({
           key={`${dimension.displayName()}-${index}`}
         />
       ))}
-      {fieldOptions.fks.length > 0 &&
-        fieldOptions.fks.map(fk => (
-          <>
-            <TableHeaderContainer>
-              <TableName>{fk.name}</TableName>
-              <BulkActionButton
-                tableInColumns={tableInColumnSettings(fk.dimensions)}
-                bulkEnable={() => enableColumns(fk.dimensions)}
-                bulkDisable={() => disableColumns(fk.dimensions)}
-              />
-            </TableHeaderContainer>
-            {fk.dimensions.map((dimension, index) => (
-              <FieldCheckbox
-                label={dimension.displayName()}
-                onClick={() => toggleColumn(dimension)}
-                checked={columnIsEnabled(dimension)}
-                key={`${fk.name}-${dimension.displayName()}-${index}`}
-              />
-            ))}
-          </>
-        ))}
+      {fieldOptions.fks.map(fk => (
+        <>
+          <TableHeaderContainer>
+            <TableName>{fk.name}</TableName>
+            <BulkActionButton
+              tableInColumns={tableInColumnSettings(fk.dimensions)}
+              bulkEnable={() => enableColumns(fk.dimensions)}
+              bulkDisable={() => disableColumns(fk.dimensions)}
+            />
+          </TableHeaderContainer>
+          {fk.dimensions.map((dimension, index) => (
+            <FieldCheckbox
+              label={dimension.displayName()}
+              onClick={() => toggleColumn(dimension)}
+              checked={columnIsEnabled(dimension)}
+              key={`${fk.name}-${dimension.displayName()}-${index}`}
+            />
+          ))}
+        </>
+      ))}
     </div>
   );
 };
