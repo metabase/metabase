@@ -9,9 +9,7 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the `sync-database!` function to do all three at once."
   (:require
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Table]]
    [metabase.models.field :as field]
    [metabase.models.table :as table]
    [metabase.sync.analyze :as analyze]
@@ -19,13 +17,8 @@
    [metabase.sync.field-values :as field-values]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.db :as db])
+   [schema.core :as s])
   (:import
    (java.time.temporal Temporal)))
 
@@ -83,40 +76,3 @@
                                              (sync-util/name-for-logging field))
         (fingerprint/refingerprint-field field))
       :sync/no-connection)))
-
-(s/defn ^:private match-table
-  "Find the best-match table from describe-database using the provided name and (optional) schema for a warehouse table.
-
-  An exception will be thrown if the match is ambiguous (Multiple tables of the same name with no schema provided)."
-  [db :- i/DatabaseInstance
-   {:keys [schema-name table-name]} :- {(s/optional-key :schema-name) (s/maybe su/NonBlankString)
-                                        :table-name                   su/NonBlankString}]
-  (let [{db-tables :tables} (driver/describe-database (driver.u/database->driver db) db)]
-    (if schema-name
-      (let [normalize    (fn [{:keys [schema name]}]
-                           (cond-> {:name (u/lower-case-en name)}
-                                   schema
-                                   (assoc :schema (u/lower-case-en schema))))
-            target-table #{(normalize {:schema schema-name :name table-name})}]
-        (some (fn [db-table] (when (target-table (normalize db-table)) db-table)) db-tables))
-      (let [[table next-match :as matches] (filter (fn [{:keys [name]}] (= name table-name)) db-tables)]
-        (if-not next-match
-          table
-          (let [msg (trs "Table ''{0}'' is ambiguous ({1} potential tables found). Please provide a schema."
-                         table-name (count matches))]
-            (throw (ex-info msg {:status-code 400}))))))))
-
-(s/defn get-or-create-named-table!
-  "Given the name and optional schema for a warehouse table, either return the metabase table if it exists, or create
-  and return the metabase table.
-
-  An exception will be thrown if the table can't be found in the warehouse (doesn't exist or you don't have permission)."
-  [db :- i/DatabaseInstance
-   {:keys [table-name] :as table} :- {(s/optional-key :schema-name) (s/maybe su/NonBlankString)
-                                      :table-name                   su/NonBlankString}]
-  (if-some [new-table (match-table db table)]
-    (or
-     (db/select-one Table :name (:name new-table) :schema (:schema new-table))
-     (sync-tables/create-or-reactivate-table! db new-table))
-    (let [msg (trs "Table ''{0}'' does not exist or you do not have permission to view it." table-name)]
-      (throw (ex-info msg {:status-code 404})))))

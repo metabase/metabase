@@ -7,6 +7,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -33,7 +34,7 @@
       (cond-> (cond
                 table_id (api/let-404 [table (db/select-one Table :db_id id, :id (int table_id))]
                            (future (table-sync-fn table)))
-                table_name (api/let-404 [table (sync/get-or-create-named-table!
+                table_name (api/let-404 [table (sync-tables/get-or-create-named-table!
                                                 database
                                                 (cond-> {:table-name table_name}
                                                         (contains? body :schema_name)

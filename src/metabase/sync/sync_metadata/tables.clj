@@ -4,6 +4,8 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.models.database :refer [Database]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -16,6 +18,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
 
@@ -93,7 +96,7 @@
               :details
               (assoc (:details database) :version (:version db-metadata))))
 
-(defn create-or-reactivate-table!
+(defn ^:private create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
   [database {schema :schema, table-name :name, :as table}]
   (if-let [existing-id (db/select-one-id Table
@@ -127,6 +130,42 @@
   (doseq [table new-tables]
     (create-or-reactivate-table! database table)))
 
+(s/defn ^:private match-table
+  "Find the best-match table from describe-database using the provided name and (optional) schema for a warehouse table.
+
+  An exception will be thrown if the match is ambiguous (Multiple tables of the same name with no schema provided)."
+  [db :- i/DatabaseInstance
+   {:keys [schema-name table-name]} :- {(s/optional-key :schema-name) (s/maybe su/NonBlankString)
+                                        :table-name                   su/NonBlankString}]
+  (let [{db-tables :tables} (driver/describe-database (driver.u/database->driver db) db)]
+    (if schema-name
+      (let [normalize    (fn [{:keys [schema name]}]
+                           (cond-> {:name (u/lower-case-en name)}
+                                   schema
+                                   (assoc :schema (u/lower-case-en schema))))
+            target-table #{(normalize {:schema schema-name :name table-name})}]
+        (some (fn [db-table] (when (target-table (normalize db-table)) db-table)) db-tables))
+      (let [[table next-match :as matches] (filter (fn [{:keys [name]}] (= name table-name)) db-tables)]
+        (if-not next-match
+          table
+          (let [msg (trs "Table ''{0}'' is ambiguous ({1} potential tables found). Please provide a schema."
+                         table-name (count matches))]
+            (throw (ex-info msg {:status-code 400}))))))))
+
+(s/defn get-or-create-named-table!
+  "Given the name and optional schema for a warehouse table, either return the metabase table if it exists, or create
+  and return the metabase table.
+
+  An exception will be thrown if the table can't be found in the warehouse (doesn't exist or you don't have permission)."
+  [db :- i/DatabaseInstance
+   {:keys [table-name] :as table} :- {(s/optional-key :schema-name) (s/maybe su/NonBlankString)
+                                      :table-name                   su/NonBlankString}]
+  (if-some [new-table (match-table db table)]
+    (or
+     (db/select-one Table :name (:name new-table) :schema (:schema new-table))
+     (create-or-reactivate-table! db new-table))
+    (let [msg (trs "Table ''{0}'' does not exist or you do not have permission to view it." table-name)]
+      (throw (ex-info msg {:status-code 404})))))
 
 (s/defn ^:private retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
