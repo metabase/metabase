@@ -8,14 +8,6 @@
    [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.honeysql-extensions :as hx]))
 
-;; HACK: Workaround for Kondo incorrectly type-checking the original function. (It's a mu/defn-ed function, which
-;; we're linting as if it were defined with schema.core/defn. So Kondo is treating the Malli types as Schema types and
-;; getting confused. Adding this indirection is enough to subvert it. See discussion at
-;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1673966596589579
-(defn- with-database-type-info
-  [hsql type-string]
-  (h2x/with-database-type-info hsql type-string))
-
 (deftest ^:parallel custom-functions-test
   (testing `::h2x/extract
     (is (= ["extract(a from b)"]
@@ -201,14 +193,14 @@
 (deftest ^:parallel with-database-type-info-test
   (testing "should be the same as calling `with-type-info` with `::hx/database-type`"
     (is (= (h2x/with-type-info :field {::hx/database-type "date"})
-           (with-database-type-info :field "date"))))
+           (h2x/with-database-type-info :field "date"))))
   (testing "Passing `nil` should"
     (testing "return untyped clause as-is"
       (is (= :field
-             (with-database-type-info :field nil))))
+             (h2x/with-database-type-info :field nil))))
     (testing "unwrap a typed clause"
       (is (= :field
-             (with-database-type-info (with-database-type-info :field "date") nil))))))
+             (h2x/with-database-type-info (h2x/with-database-type-info :field "date") nil))))))
 
 (deftest ^:parallel is-of-type?-test
   (are [expr tyype expected] (= expected (h2x/is-of-type? expr tyype))
@@ -240,8 +232,8 @@
   (testing "Math operators like `+` should propagate the type info of their args\n"
     ;; just pass along type info of the first arg with type info.
     (doseq [f [#'h2x/+ #'h2x/- #'h2x/* #'h2x// #'h2x/mod]
-            x [(with-database-type-info 1 "int") 1]
-            y [(with-database-type-info 2 "INT") 2]]
+            x [(h2x/with-database-type-info 1 "int") 1]
+            y [(h2x/with-database-type-info 2 "INT") 2]]
       (testing (str (pr-str (list f x y)) \newline)
         (let [expr (f x y)]
           (testing (pr-str expr)
