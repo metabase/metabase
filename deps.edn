@@ -403,7 +403,9 @@
                                    "\\.sh$"
                                    "\\.yaml$"
                                    "\\.yml$"]
-                :exclude-patterns ["resources/i18n/.*\\.edn$"
+                :exclude-patterns [".clj-kondo/better-cond/.*"
+                                   ".clj-kondo/com.github.seancorfield/.*"
+                                   "resources/i18n/.*\\.edn$"
                                    "resources/frontend_client"
                                    "resources/frontend_shared"
                                    "resources/html-entities.edn"
