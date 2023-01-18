@@ -135,6 +135,7 @@
                                               [:= :core_user.id :permissions_group_membership.user_id])
         (some? group_id) (hh/merge-where [:= :permissions_group_membership.group_id group_id])))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of `Users`. By default returns every active user but only active users.
 
@@ -213,6 +214,7 @@
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/current"
   "Fetch the current `User`."
   []
@@ -223,6 +225,7 @@
       maybe-add-advanced-permissions
       maybe-add-sso-source))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [id]
@@ -238,6 +241,7 @@
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
   [:as {{:keys [first_name last_name email user_group_memberships login_attributes] :as body} :body}]
@@ -290,6 +294,7 @@
     (not google_auth)
     (not ldap_auth))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
@@ -305,9 +310,9 @@
    login_attributes       (s/maybe user/LoginAttributes)
    locale                 (s/maybe su/ValidLocale)}
   (try
-   (check-self-or-superuser id)
-   (catch clojure.lang.ExceptionInfo _e
-     (validation/check-group-manager)))
+    (check-self-or-superuser id)
+    (catch clojure.lang.ExceptionInfo _e
+      (validation/check-group-manager)))
 
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
@@ -322,20 +327,20 @@
         "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
-                "email" (tru "Email address already associated to another user."))
+      "email" (tru "Email address already associated to another user."))
     (db/transaction
-     ;; only superuser or self can update user info
-     ;; implicitly prevent group manager from updating users' info
-     (when (or (= id api/*current-user-id*)
-               api/*is-superuser?*)
-       (api/check-500
-        (db/update! User id (u/select-keys-when body
-                              :present (cond-> #{:first_name :last_name :locale}
-                                         api/*is-superuser?* (conj :login_attributes))
-                              :non-nil (cond-> #{:email}
-                                         api/*is-superuser?* (conj :is_superuser)))))
-       (maybe-update-user-personal-collection-name! user-before-update body))
-     (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
+      ;; only superuser or self can update user info
+      ;; implicitly prevent group manager from updating users' info
+      (when (or (= id api/*current-user-id*)
+                api/*is-superuser?*)
+        (api/check-500
+         (db/update! User id (u/select-keys-when body
+                               :present (cond-> #{:first_name :last_name :locale}
+                                          api/*is-superuser?* (conj :login_attributes))
+                               :non-nil (cond-> #{:email}
+                                          api/*is-superuser?* (conj :is_superuser)))))
+        (maybe-update-user-personal-collection-name! user-before-update body))
+      (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
       (hydrate :user_group_memberships)))
 
@@ -356,6 +361,7 @@
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id/reactivate"
   "Reactivate user at `:id`"
   [id]
@@ -372,6 +378,7 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id/password"
   "Update a user's password."
   [id :as {{:keys [password old_password]} :body}]
@@ -393,6 +400,7 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
@@ -405,6 +413,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [id modal]
@@ -418,6 +427,7 @@
     (api/check-500 (db/update! User id, k false)))
   {:success true})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/send_invite"
   "Resend the user invite email for a given user."
   [id]

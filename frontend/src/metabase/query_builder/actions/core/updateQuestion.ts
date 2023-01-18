@@ -1,6 +1,8 @@
 import _ from "underscore";
 import { assocIn } from "icepick";
 
+import { loadMetadataForCard } from "metabase/questions/actions";
+
 import { Dataset } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
@@ -12,7 +14,6 @@ import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import { isSupportedTemplateTagForModel } from "metabase-lib/metadata/utils/models";
 import {
   getFirstQueryResult,
   getIsShowingTemplateTagsEditor,
@@ -26,7 +27,6 @@ import { setIsShowingTemplateTagsEditor } from "../native";
 import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode } from "../ui";
 
-import { loadMetadataForCard } from "./metadata";
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
 function hasNewColumns(question: Question, queryResult: Dataset) {

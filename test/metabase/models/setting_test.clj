@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [medley.core :as m]
+   [metabase.db.query :as mdb.query]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.setting.cache :as setting.cache]
@@ -226,7 +227,7 @@
   (tu/do-with-temporary-setting-value setting db-value
     (fn []
       (tu/do-with-temp-env-var-value
-       (keyword (str "mb-" (name setting)))
+       (setting/setting-env-map-name (keyword setting))
        env-var-value
        (fn []
          (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
@@ -450,9 +451,9 @@
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
 (defn- actual-value-in-db [setting-key]
-  (-> (db/query {:select [:value]
-                 :from   [:setting]
-                 :where  [:= :key (name setting-key)]})
+  (-> (mdb.query/query {:select [:value]
+                        :from   [:setting]
+                        :where  [:= :key (name setting-key)]})
       first :value))
 
 (deftest encrypted-settings-test
@@ -632,7 +633,7 @@
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
                                          (tu/do-with-temp-env-var-value
-                                          (keyword (str "mb-" (name setting-name)))
+                                          (setting/setting-env-map-name setting-name)
                                           site-wide-value
                                           thunk))]]
         ;; clear out Setting if it was already set for some reason (except for `:only` where this is explicitly

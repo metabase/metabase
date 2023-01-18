@@ -32,6 +32,7 @@
    "dashboard"  [Dashboard  DashboardBookmark  :dashboard_id]
    "collection" [Collection CollectionBookmark :collection_id]})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch all bookmarks for the user"
   []
@@ -39,6 +40,7 @@
   ;; below
   (bookmark/bookmarks-for-user api/*current-user-id*))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:model/:id"
   "Create a new bookmark for user."
   [model id]
@@ -51,6 +53,7 @@
       [400 "Bookmark already exists"])
     (db/insert! bookmark-model {item-key id :user_id api/*current-user-id*})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:model/:id"
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."
   [model id]
@@ -63,6 +66,7 @@
                 item-key id)
     api/generic-204-no-content))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/ordering"
   "Sets the order of bookmarks for user."
   [:as {{:keys [orderings]} :body}]

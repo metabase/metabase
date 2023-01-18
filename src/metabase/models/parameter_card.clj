@@ -3,8 +3,8 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan.db :as db]
    [toucan.models :as models]))
 
@@ -62,12 +62,12 @@
       (or (db/update-where! ParameterCard conditions :card_id card-id)
           (db/insert! ParameterCard (merge conditions {:card_id card-id}))))))
 
-(s/defn upsert-or-delete-from-parameters!
+(mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
   or delete appropriate ParameterCards for each parameter in the dashboard"
-  [parameterized-object-type :- su/NonBlankString
-   parameterized-object-id   :- su/IntGreaterThanZero
-   parameters                :- [su/Parameter]]
+  [parameterized-object-type :- ms/NonBlankString
+   parameterized-object-id   :- ms/IntGreaterThanZero
+   parameters                :- [:maybe [:sequential ms/Parameter]]]
   (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
                                 (and values_source_type id (:card_id values_source_config)
                                      (= values_source_type "card")))

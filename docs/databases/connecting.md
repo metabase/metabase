@@ -2,6 +2,7 @@
 title: Adding and managing databases
 redirect_from:
   - /docs/latest/administration-guide/01-managing-databases
+  - /docs/latest/databases/connections/sql-server
 ---
 
 # Adding and managing databases
@@ -25,7 +26,7 @@ The databases listed below have official drivers maintained by the Metabase team
 - Druid
 - [Google Analytics](./connections/google-analytics.md)
 - H2
-- [MongoDB (version 3.6 or higher)](./connections/mongodb.md) <!-- MongoDB supported version is from https://www.mongodb.com/support-policy -->
+- [MongoDB (version 4.2 or higher)](./connections/mongodb.md) 
 - [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](./connections/mysql.md)
 - [Oracle](./connections/oracle.md)
 - [PostgreSQL](connections/postgresql.md)
@@ -33,7 +34,7 @@ The databases listed below have official drivers maintained by the Metabase team
 - Redshift (Amazon Web Services)
 - [Snowflake](./connections/snowflake.md)
 - SparkSQL
-- [SQL Server](./connections/sql-server.md)
+- SQL Server
 - SQLite
 - [Vertica](./connections/vertica.md)
 
@@ -119,6 +120,8 @@ A Metabase **scan** is a query that caches the column _values_ for filter dropdo
 Cached column values are displayed in filter dropdown menus. If people type in the filter search box for values that aren't in the first 1,000 distinct records or 100kB of text, Metabase will run a query against your database to look for those values on the fly.
 
 A scan is more intensive than a sync query, so it only runs once during setup, and again once a day by default. If you [disable scans](#scheduling-database-scans) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
+
+To reduce the number of tables and fields Metabase needs to scan in order to stay current with your connected database, Metabase will only scan values for fields that someone has queried in the last fourteen days. 
 
 ### Getting tables, columns, and values for the first time
 

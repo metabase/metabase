@@ -17,8 +17,12 @@
   [:map
    {:title "Address"}
    [:id string?]
-   ;; TODO it is possible to coerce things like this automatically:
-   ;; [:tags [:set keyword?]]
+   ;; TODO: coerce stuff automatically via:
+   ;; (mc/decode
+   ;;  [:map [:tags [:set keyword?]]]
+   ;;  (json/decode "{\"tags\": [\"a\", \"b\"]}" true)
+   ;;  (mtx/json-transformer))
+   ;; ;; => {:tags #{:b :a}}
    [:tags [:vector string?]]
    [:address
     [:map
@@ -75,7 +79,9 @@
     (is (= {:a 1 :b 2} (:body (post! "/post/any" {:a 1 :b 2}))))
 
     (is (= {:id 1} (:body (post! "/post/id-int" {:id 1}))))
-    (is (= {:errors {:id ["should be an int"]}} (:body (post! "/post/id-int" {:id "1"}))))
+    (is (= {:errors {:id "integer"},
+            :specific-errors {:id ["should be an int"]}}
+           (:body (post! "/post/id-int" {:id "1"}))))
 
     (is (= {:id "myid"
             :tags ["abc"]
@@ -88,12 +94,17 @@
                                     :zip 2999
                                     :lonlat [0.0 0.0]}}))))
 
-    (is (= {:errors {:address {:id ["missing required key"]
-                               :tags ["missing required key"]
-                               :address ["missing required key"]}}}
+    (is (= {:errors
+            {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
+             :specific-errors {:address {:id ["missing required key"],
+                                        :tags ["missing required key"],
+                                        :address ["missing required key"]}}}
            (:body (post! "/post/test-address" {:x "1"}))))
 
-    (is (= {:errors {:address {:id ["should be a string"]
+    (is (= {:errors
+            {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
+            :specific-errors {:address
+                              {:id ["should be a string"]
                                :tags ["invalid type"]
                                :address {:street ["missing required key"]
                                          :zip ["should be an int"]}}}}
@@ -105,9 +116,11 @@
                                                          :lonlat [0.0 0.0]}}))))
 
     (is (= {:errors
-            {:address {:address ["missing required key"]
-                       :a ["disallowed key"]
-                       :b ["disallowed key"]}}}
+            {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>} with no other keys>} with no other keys"},
+            :specific-errors {:address
+                              {:address ["missing required key"],
+                               :a ["disallowed key"],
+                               :b ["disallowed key"]}}}
            (:body (post! "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2}))))))
 
 (deftest route-fn-name-test

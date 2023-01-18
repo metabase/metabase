@@ -10,6 +10,7 @@
    [metabase.util.schema :as su]
    [toucan.db :as db]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/data-model"
   "This endpoint should serialize: the data model, settings.yaml, and all the selected Collections
 

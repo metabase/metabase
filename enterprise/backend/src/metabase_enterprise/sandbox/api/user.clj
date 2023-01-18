@@ -15,6 +15,7 @@
 
 ;; TODO - not sure we need this endpoint now that we're just letting you edit from the regular `PUT /api/user/:id
 ;; endpoint
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id/attributes"
   "Update the `login_attributes` for a User."
   [id :as {{:keys [login_attributes]} :body}]
@@ -22,6 +23,7 @@
   (api/check-404 (db/select-one User :id id))
   (db/update! User id :login_attributes login_attributes))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/attributes"
   "Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for
   existing Users and returns those. "
@@ -33,6 +35,5 @@
      (set (keys login-attributes)))
    ;; combine all the sets of attribute keys into a single set
    (reduce set/union)))
-
 
 (api/define-routes api/+check-superuser)

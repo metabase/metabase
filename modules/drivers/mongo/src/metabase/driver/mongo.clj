@@ -230,6 +230,7 @@
 
 (doseq [feature [:basic-aggregations
                  :nested-fields
+                 :nested-queries
                  :native-parameters
                  :standard-deviation-aggregations]]
   (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
@@ -241,6 +242,12 @@
       (driver.u/semantic-version-gte [4 2])))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics]
+  [_driver _feature db]
+  (-> (:dbms_version db)
+      :semantic-version
+      (driver.u/semantic-version-gte [5])))
+
+(defmethod driver/database-supports? [:mongo :datetime-diff]
   [_driver _feature db]
   (-> (:dbms_version db)
       :semantic-version

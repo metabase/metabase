@@ -1,36 +1,29 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import nock from "nock";
+
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
-import MetabaseSettings from "metabase/lib/settings";
+import { mockSettings } from "__support__/settings";
+
+import type { Collection } from "metabase-types/api";
+import { createMockEntitiesState } from "metabase-types/store/mocks";
+
 import CreateDashboardModal from "./CreateDashboardModal";
 
-function mockCachingEnabled(enabled = true) {
-  const original = MetabaseSettings.get.bind(MetabaseSettings);
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "enable-query-caching") {
-      return enabled;
-    }
-    if (key === "application-name") {
-      return "Metabase Test";
-    }
-    if (key === "version") {
-      return { tag: "" };
-    }
-    if (key === "is-hosted?") {
-      return false;
-    }
-    if (key === "enable-enhancements?") {
-      return false;
-    }
-    return original(key);
-  });
-}
+const ROOT_COLLECTION = {
+  id: "root",
+  name: "Our analytics",
+  can_write: true,
+} as Collection;
 
-function setup({ mockCreateDashboardResponse = true } = {}) {
+function setup({
+  isCachingEnabled = false,
+  mockCreateDashboardResponse = true,
+} = {}) {
   const onClose = jest.fn();
+
+  const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
 
   if (mockCreateDashboardResponse) {
     nock(location.origin)
@@ -38,7 +31,16 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
       .reply(200, (url, body) => body);
   }
 
-  renderWithProviders(<CreateDashboardModal onClose={onClose} />);
+  renderWithProviders(<CreateDashboardModal onClose={onClose} />, {
+    storeInitialState: {
+      entities: createMockEntitiesState({
+        collections: {
+          root: ROOT_COLLECTION,
+        },
+      }),
+      settings,
+    },
+  });
 
   return {
     onClose,
@@ -47,15 +49,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
 
 describe("CreateDashboardModal", () => {
   beforeEach(() => {
-    nock(location.origin)
-      .get("/api/collection")
-      .reply(200, [
-        {
-          id: "root",
-          name: "Our analytics",
-          can_write: true,
-        },
-      ]);
+    nock(location.origin).get("/api/collection").reply(200, [ROOT_COLLECTION]);
   });
 
   afterEach(() => {
@@ -79,26 +73,23 @@ describe("CreateDashboardModal", () => {
 
   it("can't submit if name is empty", async () => {
     setup();
-    const submitButton = await waitFor(() =>
-      screen.getByRole("button", { name: "Create" }),
-    );
-    expect(submitButton).toBeDisabled();
+    expect(
+      await screen.findByRole("button", { name: "Create" }),
+    ).toBeDisabled();
   });
 
-  it("calls onClose when Cancel button is clicked", () => {
+  it("calls onClose when Cancel button is clicked", async () => {
     const { onClose } = setup();
     userEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("Cache TTL field", () => {
-    beforeEach(() => {
-      mockCachingEnabled();
-    });
-
     describe("OSS", () => {
       it("is not shown", () => {
-        setup();
+        setup({ isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -112,7 +103,7 @@ describe("CreateDashboardModal", () => {
       });
 
       it("is not shown", () => {
-        setup();
+        setup({ isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),

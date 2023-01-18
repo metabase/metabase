@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -82,20 +83,24 @@
 (defn- pre-update
   [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (when (some? superuser?)
-    (let [membership-exists? (db/exists? PermissionsGroupMembership
-                               :group_id (:id (perms-group/admin))
-                               :user_id  id)]
+  (let [in-admin-group?  (db/exists? PermissionsGroupMembership
+                           :group_id (:id (perms-group/admin))
+                           :user_id  id)]
+    ;; Do not let the last admin archive themselves
+    (when (and in-admin-group?
+               (false? active?))
+      (perms-group-membership/throw-if-last-admin!))
+    (when (some? superuser?)
       (cond
         (and superuser?
-             (not membership-exists?))
+             (not in-admin-group?))
         (db/insert! PermissionsGroupMembership
           :group_id (u/the-id (perms-group/admin))
           :user_id  id)
         ;; don't use [[db/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
-             membership-exists?)
+             in-admin-group?)
         (db/simple-delete! PermissionsGroupMembership
           :group_id (u/the-id (perms-group/admin))
           :user_id  id))))
@@ -195,11 +200,11 @@
           ;; Current User always gets readwrite perms for their Personal Collection and for its descendants! (1 DB Call)
           (map perms/collection-readwrite-path (collection/user->personal-collection-and-descendant-ids user-or-id))
           ;; include the other Perms entries for any Group this User is in (1 DB Call)
-          (map :object (db/query {:select [:p.object]
-                                  :from   [[:permissions_group_membership :pgm]]
-                                  :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
-                                           [:permissions :p]        [:= :p.group_id :pg.id]]
-                                  :where  [:= :pgm.user_id user-id]}))))))
+          (map :object (mdb.query/query {:select [:p.object]
+                                         :from   [[:permissions_group_membership :pgm]]
+                                         :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
+                                                  [:permissions :p]        [:= :p.group_id :pg.id]]
+                                         :where  [:= :pgm.user_id user-id]}))))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 

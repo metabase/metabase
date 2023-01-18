@@ -11,7 +11,7 @@ import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardM
 
 import type { CollectionId } from "metabase-types/api";
 
-type ModalType = "new-app" | "new-dashboard" | "new-collection";
+type ModalType = "new-dashboard" | "new-collection";
 
 export interface NewItemMenuProps {
   className?: string;

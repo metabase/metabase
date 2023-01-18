@@ -396,6 +396,7 @@
                         (s/eq [{:id                   "abc"
                                 :name                 "CATEGORY"
                                 :type                 :category
+                                :values_query_type    "list"
                                 :values_source_config {:card_id     c1-eid
                                                        :value_field [:field
                                                                      ["My Database" nil "Schemaless Table" "Some Field"]
@@ -416,6 +417,7 @@
                        (s/eq [{:id                   "abc"
                                :name                 "CATEGORY"
                                :type                 :category
+                                :values_query_type    "list"
                                :values_source_config {:card_id     c1-eid
                                                       :value_field [:field
                                                                     ["My Database" nil "Schemaless Table" "Some Field"]

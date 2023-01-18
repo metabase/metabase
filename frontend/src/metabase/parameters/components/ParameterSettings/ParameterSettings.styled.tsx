@@ -13,6 +13,7 @@ export const SettingSection = styled.div`
 
 export const SettingLabel = styled.label`
   display: block;
+  color: ${color("text-medium")};
   margin-bottom: 0.5rem;
   font-weight: bold;
 `;

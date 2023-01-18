@@ -10,7 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models
-    :refer [Card Collection Database Field FieldValues Table]]
+    :refer [Card Collection Database Field FieldValues Table Metric Segment]]
    [metabase.models.database :as database :refer [protected-password]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -152,6 +152,54 @@
     (testing "Invalid `?include` should return an error"
       (is (= {:errors {:include "value may be nil, or if non-nil, value must be one of: `tables`, `tables.fields`."}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
+
+(deftest get-database-usage-info-test
+  (mt/with-temp*
+    [Database [{db-id :id}]
+     Table    [{table-id-1 :id} {:db_id db-id}]
+     Table    [{table-id-2 :id} {:db_id db-id}]
+     ;; question
+     Card     [_                {:database_id db-id
+                                 :table_id    table-id-1
+                                 :dataset     false}]
+     ;; dataset
+     Card     [_                {:database_id db-id
+                                 :table_id    table-id-1
+                                 :dataset     true}]
+     Card     [_                {:database_id db-id
+                                 :table_id    table-id-2
+                                 :dataset     true
+                                 :archived    true}]
+
+     Metric   [_                {:table_id table-id-1}]
+     Metric   [_                {:table_id table-id-1}]
+     Metric   [_                {:table_id table-id-2}]
+     Segment  [_                {:table_id table-id-2}]]
+
+    (testing "should require admin"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 (format "database/%d/usage_info" db-id)))))
+
+    (testing "return the correct usage info"
+      (is (= {:question 1
+              :dataset  2
+              :metric   3
+              :segment  1}
+             (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
+
+    (testing "404 if db does not exist"
+      (let [non-existing-db-id (inc (db/select-one-id Database {:order-by [[:id :desc]]}))]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404
+                                     (format "database/%d/usage_info" non-existing-db-id)))))))
+  (mt/with-temp*
+    [Database [{db-id :id}]]
+    (testing "should work with DB that has no tables"
+      (is (= {:question 0
+              :dataset  0
+              :metric   0
+              :segment  0}
+             (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))))
 
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
@@ -339,6 +387,23 @@
                                      :db_id        (mt/id)})]})
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
+
+(deftest fetch-database-fields-test
+  (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
+    (testing "GET /api/database/:id/fields"
+      (is (partial= {"VENUES.ID"        {:name "ID" :display_name "ID"
+                                         :table_name "VENUES"}
+                     "CHECKINS.USER_ID" {:name "USER_ID" :display_name "User ID"
+                                         :table_name "CHECKINS"}}
+                    (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id))))))
+      (testing "shows display names"
+        (mt/with-temp* [Table [{t-id :id} {:name "FOO_TABLE" :display_name "irrelevant"
+                                           :db_id (mt/id)}]
+                        Field [_ {:name "F_NAME" :display_name "user editable"
+                                  :table_id t-id}]]
+          (is (partial= {"FOO_TABLE.F_NAME" {:name "F_NAME" :display_name "user editable"
+                                             :table_name "FOO_TABLE"}}
+                        (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id)))))))))))
 
 (deftest fetch-database-metadata-include-hidden-test
   ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test

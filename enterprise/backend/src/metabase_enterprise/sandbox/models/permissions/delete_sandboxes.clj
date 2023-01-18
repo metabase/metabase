@@ -1,8 +1,9 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   (:require
    [clojure.tools.logging :as log]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-   [metabase.models.table :refer [Table]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
+   [metabase.db.query :as mdb.query]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -16,12 +17,12 @@
                       [condition])]
       (log/debugf "Deleting GTAPs for Group %d with conditions %s" (u/the-id group-or-id) (pr-str conditions))
       (try
-        (if-let [gtap-ids (not-empty (set (map :id (db/query
-                                                      {:select    [[:gtap.id :id]]
-                                                       :from      [[GroupTableAccessPolicy :gtap]]
-                                                       :left-join [[Table :table]
-                                                                   [:= :gtap.table_id :table.id]]
-                                                       :where     conditions}))))]
+        (if-let [gtap-ids (not-empty (set (map :id (mdb.query/query
+                                                    {:select    [[:gtap.id :id]]
+                                                     :from      [[:group_table_access_policy :gtap]]
+                                                     :left-join [[:metabase_table :table]
+                                                                 [:= :gtap.table_id :table.id]]
+                                                     :where     conditions}))))]
           (do
             (log/debugf "Deleting %d matching GTAPs: %s" (count gtap-ids) (pr-str gtap-ids))
             (db/delete! GroupTableAccessPolicy :id [:in gtap-ids]))

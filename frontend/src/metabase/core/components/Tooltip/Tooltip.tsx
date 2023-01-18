@@ -94,6 +94,8 @@ function Tooltip({
     [preventOverflow],
   );
 
+  // themes styles come from frontend/src/metabase/components/Popover/Popover.css
+  // Tippy theming API: https://atomiks.github.io/tippyjs/v6/themes/
   const theme = `tooltip ${isPadded ? "" : "no-padding"}`;
 
   if (tooltip && targetProps) {

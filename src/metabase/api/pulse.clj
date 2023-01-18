@@ -37,6 +37,7 @@
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
                                           'metabase-enterprise.advanced-permissions.common))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
   associated with that dashboard. If `user_id` is specified, restricts results to pulses or subscriptions
@@ -59,6 +60,7 @@
     (assert (integer? card-id))
     (api/read-check Card card-id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id parameters]} :body}]
@@ -95,12 +97,14 @@
       (api/check-500
        (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
   (-> (api/read-check (pulse/retrieve-pulse id))
       (hydrate :can_write)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a Pulse with `id`."
   [id :as {{:keys [name cards channels skip_if_empty collection_id archived parameters], :as pulse-updates} :body}]
@@ -149,6 +153,7 @@
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
@@ -190,6 +195,7 @@
       :context     :pulse
       :card-id     card-id})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [id]
@@ -203,6 +209,7 @@
                           render/*include-buttons* true]
                   (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result))]])}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
   [id]
@@ -222,6 +229,7 @@
 
 (def ^:private preview-card-width 400)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`."
   [id]
@@ -231,6 +239,7 @@
                  (render/render-pulse-card-to-png (metabase.pulse/defaulted-timezone card) card result preview-card-width))]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/test"
   "Test send an unsaved pulse."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id] :as body} :body}]
@@ -248,6 +257,7 @@
   (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [id]
