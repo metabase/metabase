@@ -37,13 +37,6 @@ const ValuesSourceSettings = ({
     return getRadioOptions(queryType, () => setIsModalOpened(true));
   }, [queryType]);
 
-  const handleSubmit = useCallback(
-    (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
-      onChangeSourceSettings(sourceType, sourceConfig);
-    },
-    [onChangeSourceSettings],
-  );
-
   const handleModalClose = useCallback(() => {
     setIsModalOpened(false);
   }, []);
@@ -60,7 +53,7 @@ const ValuesSourceSettings = ({
         <Modal medium onClose={handleModalClose}>
           <ValuesSourceModal
             parameter={parameter}
-            onSubmit={handleSubmit}
+            onSubmit={onChangeSourceSettings}
             onClose={handleModalClose}
           />
         </Modal>
