@@ -81,6 +81,18 @@ describe("ValuesSourceModal", () => {
         expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
       });
     });
+
+    it("should default to selecting a question when fields cannot be mapped to this parameter", () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: null,
+        }),
+      });
+
+      expect(
+        screen.getByRole("radio", { name: "From another model or question" }),
+      ).toBeChecked();
+    });
   });
 
   describe("card source", () => {
