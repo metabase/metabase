@@ -8,6 +8,7 @@
    [schema.core :as s]
    [toucan.db :as db]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/settings"
   "Update Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."
   [:as {{:keys [google-auth-client-id google-auth-enabled google-auth-auto-create-accounts-domain]} :body}]

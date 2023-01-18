@@ -40,7 +40,7 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 
-import NewModelOptions from "metabase/new_model/containers/NewModelOptions";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
 
 import { Unauthorized } from "metabase/containers/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
@@ -86,6 +86,8 @@ import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
+
+import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -238,6 +240,8 @@ export const getRoutes = store => (
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
+
+        <Route path="/model/:slug/detail" component={ModelDetailPage} />
 
         <Route path="/model">
           <IndexRoute component={QueryBuilder} />

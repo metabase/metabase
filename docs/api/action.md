@@ -20,7 +20,7 @@ Returns cards that can be used for QueryActions.
 
 ### PARAMS:
 
-*  **`model-id`** value must be an integer greater than zero.
+*  **`model-id`** integer greater than 0
 
 ## `GET /api/action/:action-id`
 
@@ -34,38 +34,31 @@ Create a new action.
 
 ### PARAMS:
 
-*  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
+*  **`visualization_settings`** nullable map
 
-*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a map.
+*  **`parameters`** nullable sequence of map
 
-*  **`description`** value may be nil, or if non-nil, value must be a string.
+*  **`description`** nullable string
 
-*  **`error_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`error_handle`** nullable string, and must be a valid json-query, something like '.item.title'
 
-*  **`database_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`database_id`** nullable integer greater than 0
 
-*  **`name`** value must be a string.
+*  **`name`** string
 
-*  **`response_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`response_handle`** nullable string, and must be a valid json-query, something like '.item.title'
 
-*  **`template`** value may be nil, or if non-nil, value must be a map with schema: (
-  body (optional) : value may be nil, or if non-nil, value must be a string.
-  headers (optional) : value may be nil, or if non-nil, value must be a string.
-  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.
-  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.
-  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.
-  url : value must be a string.
-)
+*  **`template`** nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length 1 or longer >, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys
 
-*  **`type`** Unsupported action type
+*  **`type`** nullable Unsupported action type
 
-*  **`dataset_query`** value may be nil, or if non-nil, value must be a map.
+*  **`dataset_query`** nullable map
 
-*  **`model_id`** value must be an integer greater than zero.
+*  **`model_id`** integer greater than 0
 
-*  **`kind`** value may be nil, or if non-nil, Unsupported implicit action kind
+*  **`kind`** nullable Unsupported implicit action kind
 
-*  **`parameter_mappings`** value may be nil, or if non-nil, value must be a map.
+*  **`parameter_mappings`** nullable map
 
 *  **`action`**
 
@@ -73,40 +66,33 @@ Create a new action.
 
 ### PARAMS:
 
-*  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
+*  **`visualization_settings`** nullable map
 
-*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a map.
+*  **`parameters`** nullable sequence of map
 
-*  **`description`** value may be nil, or if non-nil, value must be a string.
+*  **`description`** nullable string
 
-*  **`error_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`error_handle`** nullable string, and must be a valid json-query, something like '.item.title'
 
-*  **`database_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`database_id`** nullable integer greater than 0
 
-*  **`name`** value may be nil, or if non-nil, value must be a string.
+*  **`name`** nullable string
 
-*  **`response_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`response_handle`** nullable string, and must be a valid json-query, something like '.item.title'
 
-*  **`template`** value may be nil, or if non-nil, value must be a map with schema: (
-  body (optional) : value may be nil, or if non-nil, value must be a string.
-  headers (optional) : value may be nil, or if non-nil, value must be a string.
-  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.
-  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.
-  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.
-  url : value must be a string.
-)
+*  **`template`** nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length 1 or longer >, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys
 
-*  **`type`** value may be nil, or if non-nil, Unsupported action type
+*  **`type`** nullable Unsupported action type
 
-*  **`dataset_query`** value may be nil, or if non-nil, value must be a map.
+*  **`dataset_query`** nullable map
 
-*  **`model_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`model_id`** nullable integer greater than 0
 
-*  **`id`** value must be an integer greater than zero.
+*  **`id`** integer greater than 0
 
-*  **`kind`** value may be nil, or if non-nil, Unsupported implicit action kind
+*  **`kind`** nullable Unsupported implicit action kind
 
-*  **`parameter_mappings`** value may be nil, or if non-nil, value must be a map.
+*  **`parameter_mappings`** nullable map
 
 *  **`action`**
 

@@ -747,9 +747,9 @@
 
 (def ^:private StrictDBPermissionsGraph
   {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
-                          (s/optional-key :download) DownloadPermissionsGraph
-                          (s/optional-key :data-model) DataModelPermissionsGraph
-                          (s/optional-key :details) DetailsPermissions}})
+                                  (s/optional-key :download) DownloadPermissionsGraph
+                                  (s/optional-key :data-model) DataModelPermissionsGraph
+                                  (s/optional-key :details) DetailsPermissions}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int

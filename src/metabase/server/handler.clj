@@ -50,8 +50,8 @@
    #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
    #'mw.security/add-security-headers           ; Add HTTP headers to API responses to prevent them from being cached
    #'mw.json/wrap-json-body                     ; extracts json POST body and makes it avaliable on request
-   #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
    #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
+   #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
    #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
    #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params
    #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
@@ -68,7 +68,8 @@
    #'mw.ssl/redirect-to-https-middleware])
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
 
-(defn- apply-middleware [handler]
+(defn- apply-middleware
+  [handler]
   (reduce
    (fn [handler middleware-fn]
      (middleware-fn handler))

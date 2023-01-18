@@ -1,6 +1,7 @@
 (ns metabase.models.dashboard-card
   (:require
    [clojure.set :as set]
+   [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.events :as events]
    [metabase.models.card :refer [Card]]
@@ -100,15 +101,15 @@
   from the visualization with same type (line bar or whatever),
   which is a separate option in line area or bar visualization"
   [dashcard]
-  (db/query {:select [:newcard.*]
-             :from [[:report_dashboardcard :dashcard]]
-             :left-join [[:dashboardcard_series :dashcardseries]
-                         [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                         [:report_card :newcard]
-                         [:= :dashcardseries.card_id :newcard.id]]
-             :where [:and
-                     [:= :newcard.archived false]
-                     [:= :dashcard.id (:id dashcard)]]}))
+  (mdb.query/query {:select    [:newcard.*]
+                    :from      [[:report_dashboardcard :dashcard]]
+                    :left-join [[:dashboardcard_series :dashcardseries]
+                                [:= :dashcard.id :dashcardseries.dashboardcard_id]
+                                [:report_card :newcard]
+                                [:= :dashcardseries.card_id :newcard.id]]
+                    :where     [:and
+                                [:= :newcard.archived false]
+                                [:= :dashcard.id (:id dashcard)]]}))
 
 (s/defn update-dashboard-card-series!
   "Update the DashboardCardSeries for a given DashboardCard.
@@ -188,14 +189,14 @@
    DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
   [dashboard-card :- NewDashboardCard]
   (let [{:keys [dashboard_id card_id action_id parameter_mappings visualization_settings size_x size_y row col series]
-         :or   {size_x 2, size_y 2, series []}} dashboard-card]
+         :or   {size_x 4, size_y 4, series []}} dashboard-card]
     (db/transaction
      (let [dashboard-card (db/insert! DashboardCard
                                       :dashboard_id           dashboard_id
                                       :card_id                card_id
                                       :action_id              action_id
-                                      :size_x                  size_x
-                                      :size_y                  size_y
+                                      :size_x                 size_x
+                                      :size_y                 size_y
                                       :row                    (or row 0)
                                       :col                    (or col 0)
                                       :parameter_mappings     (or parameter_mappings [])

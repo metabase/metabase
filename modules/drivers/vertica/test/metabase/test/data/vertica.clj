@@ -38,7 +38,7 @@
   (defmethod sql.tx/field-base-type->sql-type [:vertica base-type] [_ _] sql-type))
 
 (defn- db-name []
-  (tx/db-test-env-var-or-throw :vertica :db "docker"))
+  (tx/db-test-env-var-or-throw :vertica :db "VMart"))
 
 (def ^:private db-connection-details
   (delay {:host     (tx/db-test-env-var-or-throw :vertica :host "localhost")

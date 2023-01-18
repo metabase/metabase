@@ -64,6 +64,7 @@
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
@@ -143,6 +144,7 @@
   (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
     (apply run-query-for-card-with-id-async card-id export-format parameters options)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming GET "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
@@ -150,6 +152,7 @@
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
    credentials. Public sharing must be enabled."
@@ -186,6 +189,7 @@
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid"
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
@@ -223,6 +227,7 @@
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
@@ -237,6 +242,7 @@
      :export-format :api
      :parameters    parameters)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [uuid dashcard-id parameters]
@@ -248,6 +254,7 @@
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
@@ -277,6 +284,7 @@
             ;; Undo middleware string->keyword coercion
             (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
   [url format maxheight maxwidth]
@@ -355,6 +363,7 @@
   (check-field-is-referenced-by-card field-id card-id)
   (api.field/field->values (db/select-one Field :id field-id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a public Card."
   [uuid field-id]
@@ -369,6 +378,7 @@
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (api.field/field->values (db/select-one Field :id field-id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id]
@@ -395,6 +405,7 @@
   (check-search-field-is-allowed field-id search-id)
   (api.field/search-values (db/select-one Field :id field-id) (db/select-one Field :id search-id) value limit))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
   [uuid field-id search-field-id value limit]
@@ -404,6 +415,7 @@
   (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id search-field-id value limit]
@@ -436,6 +448,7 @@
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (field-remapped-values field-id remapped-field-id value-str))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Cards."
@@ -445,6 +458,7 @@
   (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
     (card-field-remapped-values card-id field-id remapped-id value)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Dashboards."
@@ -456,6 +470,7 @@
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid/params/:param-key/values"
   "Fetch values for a parameter on a public card."
   [uuid param-key]
@@ -463,6 +478,7 @@
   (let [card (db/select-one Card :public_uuid uuid, :archived false)]
     (api.card/param-values card param-key)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid/params/:param-key/search/:query"
   "Fetch values for a parameter on a public card containing `query`."
   [uuid param-key query]
@@ -470,6 +486,7 @@
   (let [card (db/select-one Card :public_uuid uuid, :archived false)]
     (api.card/param-values card param-key query)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
   [uuid param-key :as {:keys [query-params]}]
@@ -477,6 +494,7 @@
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (api.dashboard/param-values dashboard param-key query-params))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
   [uuid param-key query :as {:keys [query-params]}]
@@ -487,6 +505,7 @@
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
 ;; TODO -- why do these endpoints START with `/pivot/` whereas the version in Dash
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming GET "/pivot/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
@@ -494,6 +513,7 @@
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) :qp-runner qp.pivot/run-pivot-query))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."

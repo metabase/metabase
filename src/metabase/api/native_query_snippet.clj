@@ -20,6 +20,7 @@
   (-> (api/read-check (db/select-one NativeQuerySnippet :id id))
       (hydrate :creator)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch all snippets"
   [archived]
@@ -29,6 +30,7 @@
                             {:order-by [[:%lower.name :asc]]})]
     (hydrate (filter mi/can-read? snippets) :creator)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch native query snippet with ID."
   [id]
@@ -39,6 +41,7 @@
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new `NativeQuerySnippet`."
   [:as {{:keys [content description name collection_id]} :body}]
@@ -71,6 +74,7 @@
       (db/update! NativeQuerySnippet id changes))
     (hydrated-native-query-snippet id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update an existing `NativeQuerySnippet`."
   [id :as {{:keys [archived content description name collection_id] :as body} :body}]

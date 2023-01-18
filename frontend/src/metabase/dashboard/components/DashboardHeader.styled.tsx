@@ -72,6 +72,13 @@ export const HeaderLastEditInfoLabel = styled(LastEditInfoLabel)`
   }
 `;
 
+export const EditWarning = styled.div`
+  display: flex;
+  align-items: center;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+`;
+
 interface HeaderContentProps {
   showSubHeader: boolean;
   hasSubHeader: boolean;

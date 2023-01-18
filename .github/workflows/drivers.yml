@@ -207,7 +207,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Spin up Mongo docker container
-        run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-4.2 mongod --dbpath /data/db2/ --sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt
+        run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-4.2 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
       - name: Wait until the port 27017 is ready
         run: while ! nc -z localhost 27017; do sleep 1; done
         timeout-minutes: 5
@@ -663,15 +663,13 @@ jobs:
       DRIVERS: vertica
     services:
       vertica:
-        image: sumitchawla/vertica
+        image: vertica/vertica-ce:12.0.2-0
         ports:
           - "5433:5433"
     steps:
     - uses: actions/checkout@v3
     - name: Make plugins directory
       run: mkdir plugins
-    - name: Fetch JDBC driver
-      run: wget --output-document=plugins/vertica-jdbc-7.1.2-0.jar ${{ secrets.VERTICA_JDBC_JAR }}
     - name: Test Vertica driver
       uses: ./.github/actions/test-driver
       with:

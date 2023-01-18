@@ -13905,6 +13905,50 @@ databaseChangeLog:
                   unique: true
             tableName: parameter_card
 
+  - changeSet:
+      id: v46.00-040
+      author: tsmacdonald
+      comment: Added 0.46.0 -- Bump default dashcard size to 4x4
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+            defaultValue: 4
+
+  - changeSet:
+      id: v46.00-041
+      author: tsmacdonald
+      comment: Added 0.46.0 -- Bump default dashcard size to 4x4
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+            defaultValue: 4
+
+  - changeSet:
+      id: v46.00-042
+      author: tsmacdonald
+      comment: Added 0.46.0 -- index query_execution.executor_id
+      changes:
+        - createIndex:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: executor_id
+            indexName: idx_query_execution_executor_id
+
+  - changeSet:
+      id: v46.00-043
+      author: tsmacdonald
+      comment: Added 0.46.0 -- index query_execution.context
+      changes:
+        - createIndex:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: context
+            indexName: idx_query_execution_context
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

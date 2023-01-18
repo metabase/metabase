@@ -10,7 +10,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql :as sql]
+            [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -272,8 +272,8 @@
     (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
     (-> (if datetimeoffset?
           expr
-          (hx/->AtTimeZone expr (zone-id->windows-zone source-timezone)))
-        (hx/->AtTimeZone (zone-id->windows-zone target-timezone))
+          (hx/at-time-zone expr (zone-id->windows-zone source-timezone)))
+        (hx/at-time-zone (zone-id->windows-zone target-timezone))
         hx/->datetime)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :datetime-diff]
@@ -282,11 +282,11 @@
         y (sql.qp/->honeysql driver y)
         _ (sql.qp/datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
         x (if (hx/is-of-type? x "datetimeoffset")
-            (hx/->AtTimeZone x (zone-id->windows-zone (qp.timezone/results-timezone-id)))
+            (hx/at-time-zone x (zone-id->windows-zone (qp.timezone/results-timezone-id)))
             x)
         x (hx/cast "datetime2" x)
         y (if (hx/is-of-type? y "datetimeoffset")
-            (hx/->AtTimeZone y (zone-id->windows-zone (qp.timezone/results-timezone-id)))
+            (hx/at-time-zone y (zone-id->windows-zone (qp.timezone/results-timezone-id)))
             y)
         y (hx/cast "datetime2" y)]
     (sql.qp/datetime-diff driver unit x y)))
@@ -647,9 +647,9 @@
     (.getObject rs i OffsetDateTime)))
 
 ;; SQL Server doesn't really support boolean types so use bits instead (#11592)
-(defmethod sql/->prepared-substitution [:sqlserver Boolean]
+(defmethod driver.sql/->prepared-substitution [:sqlserver Boolean]
   [driver bool]
-  (sql/->prepared-substitution driver (if bool 1 0)))
+  (driver.sql/->prepared-substitution driver (if bool 1 0)))
 
 (defmethod driver/normalize-db-details :sqlserver
   [_ database]

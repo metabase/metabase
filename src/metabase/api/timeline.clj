@@ -19,6 +19,7 @@
   "Events Query Parameters Schema"
   (s/enum "events"))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new [[Timeline]]."
   [:as {{:keys [name default description icon collection_id archived], :as body} :body}]
@@ -36,6 +37,7 @@
               {:icon timeline/DefaultIcon}))]
     (db/insert! Timeline tl)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
   [include archived]
@@ -53,6 +55,7 @@
       (= include "events")
       (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
@@ -74,6 +77,7 @@
                                                :events/start (when start (u.date/parse start))
                                                :events/end   (when end (u.date/parse end))}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
@@ -95,6 +99,7 @@
       (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
     (hydrate (db/select-one Timeline :id id) :creator [:collection :can_write])))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [id]

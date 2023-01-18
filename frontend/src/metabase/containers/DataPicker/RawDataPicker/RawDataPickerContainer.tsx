@@ -16,13 +16,20 @@ import RawDataPickerView from "./RawDataPickerView";
 
 interface DatabaseListLoaderProps {
   databases: Database[];
+  allLoading: boolean;
+}
+
+interface SchemasListLoaderProps {
+  allLoading: boolean;
 }
 
 interface TableListLoaderProps {
   tables: Table[];
+  allLoading: boolean;
 }
 
 interface RawDataPickerOwnProps extends DataPickerProps {
+  isMultiSelect?: boolean;
   onBack?: () => void;
 }
 
@@ -31,6 +38,8 @@ type RawDataPickerProps = RawDataPickerOwnProps & DatabaseListLoaderProps;
 function RawDataPicker({
   value,
   databases,
+  isMultiSelect,
+  allLoading,
   onChange,
   onBack,
 }: RawDataPickerProps) {
@@ -38,7 +47,7 @@ function RawDataPicker({
 
   const { selectedTableIds, toggleTableIdSelection } = useSelectedTables({
     initialValues: value.tableIds,
-    mode: "multiple",
+    isMultiSelect,
   });
 
   const selectedDatabase = useMemo(() => {
@@ -122,12 +131,19 @@ function RawDataPicker({
   }, [selectedDatabase, selectedSchemaId, handleSelectedSchemaIdChange]);
 
   const renderPicker = useCallback(
-    ({ tables }: { tables?: Table[] } = {}) => {
+    ({
+      tables,
+      isLoading = allLoading,
+    }: {
+      tables?: Table[];
+      isLoading?: boolean;
+    } = {}) => {
       return (
         <RawDataPickerView
           databases={databases}
           tables={tables}
           selectedItems={selectedItems}
+          isLoading={isLoading}
           onSelectDatabase={handleSelectedDatabaseIdChange}
           onSelectSchema={handleSelectedSchemaIdChange}
           onSelectedTable={handleSelectedTablesChange}
@@ -138,6 +154,7 @@ function RawDataPicker({
     [
       databases,
       selectedItems,
+      allLoading,
       handleSelectedDatabaseIdChange,
       handleSelectedSchemaIdChange,
       handleSelectedTablesChange,
@@ -152,9 +169,9 @@ function RawDataPicker({
         loadingAndErrorWrapper={false}
         onLoaded={onDatabaseSchemasLoaded}
       >
-        {() => {
+        {({ allLoading }: SchemasListLoaderProps) => {
           if (!selectedSchema) {
-            return renderPicker();
+            return renderPicker({ isLoading: allLoading });
           }
           return (
             <Tables.ListLoader
@@ -164,7 +181,9 @@ function RawDataPicker({
               }}
               loadingAndErrorWrapper={false}
             >
-              {({ tables }: TableListLoaderProps) => renderPicker({ tables })}
+              {({ tables, allLoading }: TableListLoaderProps) =>
+                renderPicker({ tables, isLoading: allLoading })
+              }
             </Tables.ListLoader>
           );
         }}
@@ -172,7 +191,7 @@ function RawDataPicker({
     );
   }
 
-  return renderPicker();
+  return renderPicker({ isLoading: allLoading });
 }
 
 export default Databases.loadList({ loadingAndErrorWrapper: false })(

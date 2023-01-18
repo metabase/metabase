@@ -37,7 +37,7 @@ describe("scenarios > dashboard > parameters", () => {
     // add a category filter
     cy.icon("filter").click();
     cy.contains("Text or Category").click();
-    cy.findByText("Dropdown").click();
+    cy.findByText("Is").click();
     cy.findByText("A single value").click();
 
     // connect it to people.name and product.category

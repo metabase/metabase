@@ -2,8 +2,10 @@
   "Middleware related to enforcing authentication/API keys (when applicable). Unlike most other middleware most of this
   is not used as part of the normal `app`; it is instead added selectively to appropriate routes."
   (:require
+   [clojure.string :as str]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.server.middleware.util :as mw.util]))
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.util.i18n :refer [deferred-trs]]))
 
 (def ^:private ^:const ^String metabase-api-key-header "x-metabase-apikey")
 
@@ -31,6 +33,15 @@
   "When set, this API key is required for all API requests."
   :visibility :internal)
 
+(def mb-api-key-doc-url
+  "Url for documentation on how to set MB_API_KEY."
+  "https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_api_key")
+
+(def key-not-set-response
+  "Response when the MB_API_KEY is not set."
+  {:status 403
+   :body (deferred-trs "MB_API_KEY is not set. See {0} for details" mb-api-key-doc-url)})
+
 (defn enforce-api-key
   "Middleware that enforces validation of the client via API Key, canceling the request processing if the check fails.
 
@@ -43,7 +54,10 @@
   This variable only works for /api/notify/db/:id endpoint"
   [handler]
   (fn [{:keys [metabase-api-key], :as request} respond raise]
-    (cond (not metabase-api-key)
+    (cond (str/blank? (api-key))
+          (respond key-not-set-response)
+
+          (not metabase-api-key)
           (respond mw.util/response-forbidden)
 
           (= (api-key) metabase-api-key)

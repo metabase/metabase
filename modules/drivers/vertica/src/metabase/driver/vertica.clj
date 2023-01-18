@@ -127,8 +127,8 @@
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           expr
-          (hx/->AtTimeZone expr (or source-timezone (qp.timezone/results-timezone-id))))
-        (hx/->AtTimeZone target-timezone)
+          (hx/at-time-zone expr (or source-timezone (qp.timezone/results-timezone-id))))
+        (hx/at-time-zone target-timezone)
         (hx/with-database-type-info "timestamp"))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]

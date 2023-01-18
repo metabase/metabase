@@ -11,6 +11,7 @@ import { getUser } from "metabase/selectors/user";
 
 import Snippets from "metabase/entities/snippets";
 import Questions from "metabase/entities/questions";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 import {
@@ -34,7 +35,6 @@ import { updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
 import { resetQB } from "./core";
-import { loadMetadataForCard } from "./metadata";
 import {
   propagateDashboardParameters,
   getParameterValuesForQuestion,

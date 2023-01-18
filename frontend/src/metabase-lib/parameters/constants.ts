@@ -32,7 +32,7 @@ export const PARAMETER_OPERATOR_TYPES = {
     {
       type: "string/=",
       operator: "=",
-      name: t`Dropdown`,
+      name: t`Is`,
       description: t`Select one or more values from a list or search box.`,
     },
     {
@@ -147,10 +147,6 @@ export const LOCATION_OPTIONS = [
     name: t`Country`,
   },
 ];
-
-export const CUSTOM_SOURCE_PARAMETER_TYPES: Record<string, string[]> = {
-  string: ["="],
-};
 
 export const TYPE_SUPPORTS_LINKED_FILTERS = [
   "string",

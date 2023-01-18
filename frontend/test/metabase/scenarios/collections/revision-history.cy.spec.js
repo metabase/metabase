@@ -42,27 +42,6 @@ describe("revision history", () => {
 
       cy.findAllByText("Revert").should("not.exist");
     });
-
-    it.skip("dashboard should update properly on revert (metabase#6884)", () => {
-      visitAndEditDashboard(1);
-      // Add another question without changing its size or moving it afterwards
-      cy.icon("add").last().click();
-      cy.findByText("Orders, Count").click();
-      saveDashboard();
-      // Revert the card to the state when the second card was added
-      cy.icon("ellipsis").click();
-      cy.findByText("Revision history").click();
-      clickRevert("added a card.", 0); // the top-most string or the latest card addition
-      cy.wait("@revert");
-      cy.request("GET", "/api/dashboard/1").then(xhr => {
-        const SECOND_CARD = xhr.body.ordered_cards[1];
-        const { col, size_x, size_y } = SECOND_CARD;
-        // The second card shrunk its size and changed the position completely to the left covering the first one
-        expect(col).not.to.eq(0);
-        expect(size_x).to.eq(4);
-        expect(size_y).to.eq(4);
-      });
-    });
   });
 
   Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
@@ -84,6 +63,20 @@ describe("revision history", () => {
               }
             });
 
+            it("shouldn't create a rearrange revision when adding a card (metabase#6884)", () => {
+              cy.createDashboard().then(({ body }) => {
+                visitAndEditDashboard(body.id);
+              });
+              cy.icon("add").last().click();
+              cy.findByText("Orders, Count").click();
+              saveDashboard();
+              openRevisionHistory();
+              cy.findByText(/added a card/)
+                .siblings("button")
+                .should("not.exist");
+              cy.findByText(/rearranged the cards/).should("not.exist");
+            });
+
             it("should be able to revert a dashboard (metabase#15237)", () => {
               visitDashboard(1);
               openRevisionHistory();
@@ -99,7 +92,7 @@ describe("revision history", () => {
 
               // Should be able to revert back again
               cy.findByText("History");
-              clickRevert(/rearranged the cards/);
+              clickRevert(/added a card/);
 
               cy.wait("@revert").then(({ response: { statusCode, body } }) => {
                 expect(statusCode).to.eq(200);

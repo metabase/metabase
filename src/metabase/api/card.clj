@@ -12,6 +12,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.timeline :as api.timeline]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -46,14 +47,15 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
-   (java.util UUID)
-   (metabase.models.card CardInstance)))
+   (java.util UUID)))
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
@@ -92,7 +94,7 @@
   [_ table-id]
   (db/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(s/defn ^:private cards-with-ids :- (s/maybe [CardInstance])
+(s/defn ^:private cards-with-ids :- (s/maybe [(mi/InstanceOf Card)])
   "Return unarchived Cards with `card-ids`.
   Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
   [card-ids :- [su/IntGreaterThanZero]]
@@ -127,15 +129,15 @@
 
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
-  [_ model-id]
-  (->> (db/query {:select [:c.*]
-                  :from [[:report_card :m]]
-                  :join [[:report_card :c] [:and
-                                            [:= :c.database_id :m.database_id]
-                                            [:or
-                                             [:like :c.dataset_query (format "%%card__%s%%" model-id)]
-                                             [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                  :where [:= :m.id model-id]})
+  [_filter-option model-id]
+  (->> (mdb.query/query {:select [:c.*]
+                         :from [[:report_card :m]]
+                         :join [[:report_card :c] [:and
+                                                   [:= :c.database_id :m.database_id]
+                                                   [:or
+                                                    [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+                                                    [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
+                         :where [:= :m.id model-id]})
        (db/do-post-select Card)
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
@@ -150,6 +152,7 @@
   "Schema for a valid card filter option."
   (apply s/enum (map name (keys (methods cards-for-filter-option*)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
@@ -175,6 +178,7 @@
                      card)))
             cards))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
@@ -183,6 +187,7 @@
                  (hydrate :creator
                           :bookmarked
                           :dashboard_count
+                          :parameter_usage_count
                           :can_write
                           :average_query_time
                           :last_query_start
@@ -195,6 +200,7 @@
       (when-not (Boolean/parseBoolean ignore_view)
         (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
   [id include start end]
@@ -370,6 +376,7 @@ saved later when it is ready."
        (when timed-out?
          (schedule-metadata-saving result-metadata-chan <>))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
@@ -391,6 +398,7 @@ saved later when it is ready."
   (collection/check-write-perms-for-collection collection_id)
   (create-card! body))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
   [id]
@@ -596,6 +604,7 @@ saved later when it is ready."
           (:dataset card) (hydrate :persisted))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
@@ -651,6 +660,7 @@ saved later when it is ready."
 
 ;; TODO - Pretty sure this endpoint is not actually used any more, since Cards are supposed to get archived (via PUT
 ;;        /api/card/:id) instead of deleted.  Should we remove this?
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.)"
   [id]
@@ -728,6 +738,7 @@ saved later when it is ready."
           (db/update-where! Card {:id [:in (set cards-without-position)]}
             :collection_id new-collection-id-or-nil))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with
   COLLECTION_ID, or remove them from any Collections by passing a `null` COLLECTION_ID."
@@ -740,6 +751,7 @@ saved later when it is ready."
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
@@ -759,6 +771,7 @@ saved later when it is ready."
    :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
@@ -780,6 +793,7 @@ saved later when it is ready."
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:card-id/public_link"
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
@@ -795,6 +809,7 @@ saved later when it is ready."
                    :public_uuid       <>
                    :made_public_by_id api/*current-user-id*)))}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
   [card-id]
@@ -806,6 +821,7 @@ saved later when it is ready."
     :made_public_by_id nil)
   {:status 204, :body nil})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/public"
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
@@ -813,6 +829,7 @@ saved later when it is ready."
   (validation/check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/embeddable"
   "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
   and a signed JWT."
@@ -821,16 +838,19 @@ saved later when it is ready."
   (validation/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Card :id id) api/read-check related/related))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/related"
   "Return related entities for an ad-hoc query."
   [:as {query :body}]
   (related/related (query/adhoc-query query)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming POST "/pivot/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache]
@@ -841,6 +861,7 @@ saved later when it is ready."
                             :qp-runner qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query."
@@ -865,6 +886,7 @@ saved later when it is ready."
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
       api/generic-204-no-content)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:card-id/refresh"
   "Refresh the persisted model caching `card-id`."
   [card-id]
@@ -879,6 +901,7 @@ saved later when it is ready."
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:card-id/unpersist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
@@ -890,7 +913,7 @@ saved later when it is ready."
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
       api/generic-204-no-content)))
 
-(s/defn param-values
+(mu/defn param-values
   "Fetch values for a parameter.
 
   The source of values could be:
@@ -899,9 +922,9 @@ saved later when it is ready."
   ([card param-key]
    (param-values card param-key nil))
 
-  ([card      :- su/Map
-    param-key :- su/NonBlankString
-    query     :- (s/maybe su/NonBlankString)]
+  ([card      :- ms/Map
+    param-key :- ms/NonBlankString
+    query     :- [:maybe ms/NonBlankString]]
    (let [param       (get (m/index-by :id (:parameters card)) param-key)
          source-type (:values_source_type param)]
      (when-not param
@@ -920,6 +943,8 @@ saved later when it is ready."
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/card/1/params/abc/values"
   [card-id param-key]
+  {card-id   ms/IntGreaterThanZero
+   param-key ms/NonBlankString}
   (let [card (api/read-check Card card-id)]
     (param-values card param-key)))
 
@@ -931,6 +956,9 @@ saved later when it is ready."
 
   Currently limited to first 1000 results."
   [card-id param-key query]
+  {card-id   ms/IntGreaterThanZero
+   param-key ms/NonBlankString
+   query     ms/NonBlankString}
   (let [card (api/read-check Card card-id)]
     (param-values card param-key query)))
 

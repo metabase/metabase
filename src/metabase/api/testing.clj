@@ -33,6 +33,7 @@
     (jdbc/query {:datasource mdb.connection/*application-db*} ["SCRIPT TO ?" path]))
   :ok)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/snapshot/:name"
   "Snapshot the database for testing purposes."
   [name]
@@ -82,12 +83,14 @@
         (.. lock writeLock unlock))))
   :ok)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/restore/:name"
   "Restore a database snapshot for testing purposes."
   [name]
   (restore-snapshot! name)
   nil)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/echo"
   [fail :as {:keys [body]}]
   (if fail
