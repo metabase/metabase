@@ -137,15 +137,15 @@ class FieldValuesWidgetInner extends Component {
     let valuesMode = this.state.valuesMode;
     try {
       if (shouldFetchValuesForDashboard(this.props.dashboard)) {
-        const { results, has_more_values } =
+        const { values, has_more_values } =
           await this.fetchDashboardParamValues(query);
-        options = results;
+        options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else if (shouldFetchValuesForCard(this.props.question)) {
-        const { results, has_more_values } = await this.fetchCardParamValues(
+        const { values, has_more_values } = await this.fetchCardParamValues(
           query,
         );
-        options = results;
+        options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else {
         options = await this.fetchFieldValues(query);
@@ -476,7 +476,6 @@ function shouldFetchValuesForCard(question) {
   return question?.isSaved();
 }
 
-// if [dashboard] parameter ID is specified use the fancy new Chain Filter API endpoints to fetch parameter values.
 function shouldFetchValuesForDashboard(dashboard) {
   return dashboard?.id;
 }

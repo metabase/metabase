@@ -18,21 +18,21 @@ export const fetchCardParameterValues = createThunkAction(
   ({ cardId, parameter, query }: FetchParameterValuesOpts) =>
     async (dispatch: Dispatch, getState: GetState) => {
       const cache = getParameterValuesSearchCache(getState());
-      const queryKey = { cardId, paramId: parameter.id, query };
-      const cacheKey = JSON.stringify(queryKey);
+      const apiArgs = { cardId, paramId: parameter.id, query };
+      const cacheKey = JSON.stringify(apiArgs);
 
       if (cache[cacheKey]) {
         return cache[cacheKey];
       }
 
       const { values, has_more_values } = query
-        ? await CardApi.parameterSearch(queryKey)
-        : await CardApi.parameterValues(queryKey);
+        ? await CardApi.parameterSearch(apiArgs)
+        : await CardApi.parameterValues(apiArgs);
 
-      const results = values.map((value: unknown) =>
-        Array.isArray(value) ? value : [value],
-      );
-
-      return { cacheKey, results, has_more_values };
+      return {
+        cacheKey,
+        values,
+        has_more_values: query ? true : has_more_values,
+      };
     },
 );
