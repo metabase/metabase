@@ -193,16 +193,16 @@
 (deftest order-clause-test
   (testing "it includes all columns and normalizes the query"
     (is (= [[:case
-             [:like [:lower :model]             "%foo%"] 0
-             [:like [:lower :name]              "%foo%"] 0
-             [:like [:lower :display_name]      "%foo%"] 0
-             [:like [:lower :description]       "%foo%"] 0
-             [:like [:lower :collection_name]   "%foo%"] 0
-             [:like [:lower :dataset_query]     "%foo%"] 0
-             [:like [:lower :table_schema]      "%foo%"] 0
-             [:like [:lower :table_name]        "%foo%"] 0
-             [:like [:lower :table_description] "%foo%"] 0
-             :else 1]]
+             [:like [:lower :model]             "%foo%"] [:inline 0]
+             [:like [:lower :name]              "%foo%"] [:inline 0]
+             [:like [:lower :display_name]      "%foo%"] [:inline 0]
+             [:like [:lower :description]       "%foo%"] [:inline 0]
+             [:like [:lower :collection_name]   "%foo%"] [:inline 0]
+             [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
+             [:like [:lower :table_schema]      "%foo%"] [:inline 0]
+             [:like [:lower :table_name]        "%foo%"] [:inline 0]
+             [:like [:lower :table_description] "%foo%"] [:inline 0]
+             :else [:inline 1]]]
            (api.search/order-clause "Foo")))))
 
 (deftest basic-test
@@ -572,11 +572,11 @@
   (testing "Search should only return Collections in the 'default' namespace"
     (mt/with-temp* [Collection [_c1 {:name "Normal Collection"}]
                     Collection [_c2 {:name "Coin Collection", :namespace "currency"}]]
-      (is (= ["Normal Collection"]
-             (->> (search-request-data :crowberto :q "Collection")
-                  (filter #(and (= (:model %) "collection")
-                                (#{"Normal Collection" "Coin Collection"} (:name %))))
-                  (map :name)))))))
+      (assert (not (db/exists? Collection :name "Coin Collection", :namespace nil)))
+      (is (=? [{:name "Normal Collection"}]
+              (->> (search-request-data :crowberto :q "Collection")
+                   (filter #(and (= (:model %) "collection")
+                                 (#{"Normal Collection" "Coin Collection"} (:name %))))))))))
 
 (deftest no-dashboard-subscription-pulses-test
   (testing "Pulses used for Dashboard subscriptions should not be returned by search results (#14190)"

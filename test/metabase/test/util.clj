@@ -56,9 +56,12 @@
    [metabase.test.util.log :as tu.log]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [methodical.core :as methodical]
    [toucan.db :as db]
    [toucan.models :as models]
-   [toucan.util.test :as tt])
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File FileInputStream)
    (java.net ServerSocket)
@@ -264,41 +267,14 @@
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
-    ;; make sure we have the latest version of the class in case it was redefined since we imported it
-    (extend (Class/forName (.getCanonicalName (class model)))
-      tt/WithTempDefaults
-      {:with-temp-defaults defaults-fn})))
+    ;; TODO -- we shouldn't need to ignore this, but it's a product of the custom hook defined for Methodical
+    ;; `defmethod`. Fix the hook upstream
+    #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
+    (methodical/defmethod t2.with-temp/with-temp-defaults model
+      [model]
+      (defaults-fn model))))
 
 (set-with-temp-defaults!)
-
-;; if any of the models get redefined, reload the `with-temp-defaults` so they apply to the new version of the model
-(doseq [model-var [#'Card
-                   #'Collection
-                   #'Dashboard
-                   #'DashboardCardSeries
-                   #'Database
-                   #'Dimension
-                   #'Field
-                   #'Metric
-                   #'NativeQuerySnippet
-                   #'Permissions
-                   #'PermissionsGroup
-                   #'Pulse
-                   #'PulseCard
-                   #'PulseChannel
-                   #'Revision
-                   #'Segment
-                   #'Table
-                   #'TaskHistory
-                   #'Timeline
-                   #'User]]
-  (remove-watch model-var ::reload)
-  (add-watch
-   model-var
-   ::reload
-   (fn [_key _reference _old-state _new-state]
-     (println (format "%s changed, reloading with-temp-defaults" model-var))
-     (set-with-temp-defaults!))))
 
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------
@@ -513,11 +489,7 @@
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model                    (db/resolve-model model)
         [original-column->value] (mdb.query/query {:select (keys column->temp-value)
-                                                   :from   [(u/prog1 (:table model)
-                                                              ;; this will fail once we switch to Toucan 2, since models
-                                                              ;; aren't objects; this is here so we can catch it easily
-                                                              ;; and fix it without hurting our heads
-                                                              (assert (keyword? <>)))]
+                                                   :from   [(keyword (t2/table-name model))]
                                                    :where  [:= :id (u/the-id object-or-id)]})]
     (assert original-column->value
             (format "%s %d not found." (name model) (u/the-id object-or-id)))
@@ -527,7 +499,7 @@
       (f)
       (finally
         (db/execute!
-         {:update model
+         {:update (keyword (t2/table-name model))
           :set    original-column->value
           :where  [:= :id (u/the-id object-or-id)]})))))
 
@@ -676,7 +648,7 @@
                        max-id-condition      [:> (models/primary-key model) old-max-id]
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (db/execute!
-           {:delete-from model
+           {:delete-from (keyword (t2/table-name model))
             :where       (if (seq additional-conditions)
                            [:and max-id-condition additional-conditions]
                            max-id-condition)}))))))

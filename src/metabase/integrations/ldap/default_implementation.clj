@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.integrations.common :as integrations.common]
    [metabase.integrations.ldap.interface :as i]
+   [metabase.models.interface :as mi]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings.premium-features
     :refer [defenterprise-schema]]
@@ -116,7 +117,7 @@
       flatten
       set))
 
-(defenterprise-schema fetch-or-create-user! :- (class User)
+(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   metabase-enterprise.enhancements.integrations.ldap
   [{:keys [first-name last-name email groups]} :- i/UserInfo

@@ -79,7 +79,6 @@
     metabase.public-settings.premium-features/enable-enhancements?               {:namespaces ["metabase\\.models.*"]}
     metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
     metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}
-    metabase.util/key-by                                                         {:namespaces ["metabase(?:-enterprise)?.*"]}
     schema.core/both                                                             {:namespaces ["metabase.*"]}
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
@@ -89,10 +88,7 @@
 
   :unresolved-var
   {:exclude
-   [colorize.core
-    metabase.test/with-gtaps
-    metabase.test/with-gtaps-for-user
-    metabase.test/with-user-attributes]}
+   [colorize.core]}
 
   :unsorted-required-namespaces {:level :warning}
 
@@ -138,6 +134,7 @@
     medley.core                                                     m
     metabase-enterprise.audit-app.pages.common                      common
     metabase-enterprise.sandbox.api.table                           table
+    metabase-enterprise.test                                        met
     metabase.analytics.stats                                        stats
     metabase.api.activity                                           api.activity
     metabase.api.alert                                              api.alert
@@ -326,6 +323,7 @@
     metabase.sync.util                                              sync-util
     metabase.sync.util-test                                         sync.util-test
     metabase.task.sync-databases                                    task.sync-databases
+    metabase.test                                                   mt
     metabase.test-runner.assert-exprs                               test-runner.assert-exprs
     metabase.test-runner.init                                       test-runner.init
     metabase.test-runner.junit                                      test-runner.junit
@@ -440,6 +438,7 @@
    clojure.core/type                                                                                                         hooks.metabase.models.disallow-type-or-class/hook
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
+   metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy                                       hooks.metabase.models.disallow-invoking-model/hook
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan.util.test/with-temp*
    metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
    metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
@@ -447,10 +446,10 @@
    metabase.api.card-test/with-temp-native-card                                                                              hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params                                                                  hooks.common/with-two-bindings
    metabase.api.collection-test/with-french-user-and-personal-collection                                                     hooks.common/with-two-top-level-bindings
-   metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
+   metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings
    metabase.api.embed-test/with-chain-filter-fixtures                                                                        hooks.common/let-one-with-optional-value
@@ -642,8 +641,7 @@
    metabase.test/with-gtaps                                                     macros.metabase-enterprise.sandbox.test-util/with-gtaps
    metabase.test/with-persistence-enabled                                       macros.metabase.test.persistence/with-persistence-enabled
    metabase.test/with-temp-env-var-value                                        macros.metabase.test.util/with-temp-env-var-value
-   metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values
-   toucan.models/defmodel                                                       macros.toucan.models/defmodel}}
+   metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}
@@ -661,7 +659,18 @@
  ;; this list isn't exhaustive because it misses some stuff like the test runner and HTTP client but it's easier to go
  ;; fix those namespaces than it is to make this regex super hairy.
  [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"
-   :name    test-namespaces}]
+   :name    test-namespaces}
+  ;; all `metabase` namespaces except for ones starting with `metabase.driver`,
+  ;; `metabase.util.honey-sql-1-extensions`, or `metabase.util.honeysql-extensions` should be nicely forced to use
+  ;; Honey SQL 2.
+  ;;
+  ;; We don't really need to skip `metabase.util.honeysql-extensions`, but you can't write rules for it if you do
+  ;; because of https://github.com/clj-kondo/clj-kondo/issues/1942
+  {:pattern "^metabase(?:-enterprise)?\\.(?!driver)(?!util\\.(?:(?:honey-sql-1)|(?:honeysql))-extensions).*$"
+   :name    namespaces-that-should-use-honey-sql-2}
+  ;; Namespaces to match 3rd party libs
+  {:pattern "^honeysql\\..*"
+   :name    honey-sql-1}]
 
  :config-in-ns
  {test-namespaces
@@ -671,4 +680,57 @@
     :private-call      {:level :off}
 
     ;; custom linters
-    :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}}}
+    :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
+
+  namespaces-that-should-use-honey-sql-2
+  {:linters
+   {:discouraged-namespace
+    {honey-sql-1 {:message "Use Honey SQL 2"}}
+
+    ;; we can't use `discouraged-namespace` here, because `hx/*honey-sql-version*` is ok, and because of
+    ;; https://github.com/clj-kondo/clj-kondo/issues/1942
+    :discouraged-var
+    {clojure.java.jdbc/with-db-transaction                        {:message "Use t2/with-transaction"}
+     metabase.util.honeysql-extensions/*                          {:message "Use h2x/*"}
+     metabase.util.honeysql-extensions/+                          {:message "Use h2x/+"}
+     metabase.util.honeysql-extensions/-                          {:message "Use h2x/-"}
+     metabase.util.honeysql-extensions/->boolean                  {:message "Use h2x/->boolean"}
+     metabase.util.honeysql-extensions/->date                     {:message "Use h2x/->date"}
+     metabase.util.honeysql-extensions/->datetime                 {:message "Use h2x/->datetime"}
+     metabase.util.honeysql-extensions/->integer                  {:message "Use h2x/->integer"}
+     metabase.util.honeysql-extensions/->time                     {:message "Use h2x/->time"}
+     metabase.util.honeysql-extensions/->timestamp                {:message "Use h2x/->timestamp"}
+     metabase.util.honeysql-extensions/->timestamp-with-time-zone {:message "Use h2x/->timestamp-with-time-zone"}
+     metabase.util.honeysql-extensions//                          {:message "Use h2x//"}
+     metabase.util.honeysql-extensions/IdentifierType             {:message "Use h2x/IdentifierType"}
+     metabase.util.honeysql-extensions/abs                        {:message "Use h2x/abs"}
+     metabase.util.honeysql-extensions/at-time-zone               {:message "Use h2x/at-time-zone"}
+     metabase.util.honeysql-extensions/cast                       {:message "Use h2x/cast"}
+     metabase.util.honeysql-extensions/cast-unless-type-in        {:message "Use h2x/cast-unless-type-in"}
+     metabase.util.honeysql-extensions/ceil                       {:message "Use h2x/ceil"}
+     metabase.util.honeysql-extensions/concat                     {:message "Use h2x/concat"}
+     metabase.util.honeysql-extensions/database-type              {:message "Use h2x/database-type"}
+     metabase.util.honeysql-extensions/day                        {:message "Use h2x/day"}
+     metabase.util.honeysql-extensions/dec                        {:message "Use h2x/dec"}
+     metabase.util.honeysql-extensions/floor                      {:message "Use h2x/floor"}
+     metabase.util.honeysql-extensions/format                     {:message "Use h2x/format"}
+     metabase.util.honeysql-extensions/hour                       {:message "Use h2x/hour"}
+     metabase.util.honeysql-extensions/identifier                 {:message "Use h2x/identifier"}
+     metabase.util.honeysql-extensions/inc                        {:message "Use h2x/inc"}
+     metabase.util.honeysql-extensions/is-of-type?                {:message "Use h2x/is-of-type?"}
+     metabase.util.honeysql-extensions/literal                    {:message "Use h2x/literal"}
+     metabase.util.honeysql-extensions/maybe-cast                 {:message "Use h2x/maybe-cast"}
+     metabase.util.honeysql-extensions/minute                     {:message "Use h2x/minute"}
+     metabase.util.honeysql-extensions/mod                        {:message "Use h2x/mod"}
+     metabase.util.honeysql-extensions/month                      {:message "Use h2x/month"}
+     metabase.util.honeysql-extensions/quarter                    {:message "Use h2x/quarter"}
+     metabase.util.honeysql-extensions/quoted-cast                {:message "Use h2x/quoted-cast"}
+     metabase.util.honeysql-extensions/round                      {:message "Use h2x/round"}
+     metabase.util.honeysql-extensions/second                     {:message "Use h2x/second"}
+     metabase.util.honeysql-extensions/type-info                  {:message "Use h2x/type-info"}
+     metabase.util.honeysql-extensions/type-info->db-type         {:message "Use h2x/type-info->db-type"}
+     metabase.util.honeysql-extensions/unwrap-typed-honeysql-form {:message "Use h2x/unwrap-typed-honeysql-form"}
+     metabase.util.honeysql-extensions/week                       {:message "Use h2x/week"}
+     metabase.util.honeysql-extensions/with-database-type-info    {:message "Use h2x/with-database-type-info"}
+     metabase.util.honeysql-extensions/with-type-info             {:message "Use h2x/with-type-info"}
+     metabase.util.honeysql-extensions/year                       {:message "Use h2x/year"}}}}}}

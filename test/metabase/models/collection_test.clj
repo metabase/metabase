@@ -24,9 +24,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan.hydrate :refer [hydrate]]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -420,7 +418,8 @@
     ;;           |
     ;;           +-> F -> G
     (with-collection-hierarchy [{:keys [a b c d e f g]}]
-      (db/delete! Collection :id (u/the-id a))
+      (is (= true
+             (db/delete! Collection :id (u/the-id a))))
       (is (= 0
              (db/count Collection :id [:in (map u/the-id [a b c d e f g])])))))
 
@@ -1635,7 +1634,7 @@
 
 (deftest identity-hash-test
   (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+    (let [now #t "2022-09-01T12:34:56"]
       (mt/with-temp* [Collection [c1  {:name       "top level"
                                        :created_at now
                                        :namespace  "yolocorp"

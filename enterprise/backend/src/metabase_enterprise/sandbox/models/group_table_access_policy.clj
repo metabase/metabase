@@ -20,7 +20,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel GroupTableAccessPolicy :group_table_access_policy)
 
@@ -146,7 +147,7 @@
 
 (defn- pre-update [{:keys [id], :as updates}]
   (u/prog1 updates
-    (let [original (GroupTableAccessPolicy id)
+    (let [original (t2/original updates)
           updated  (merge original updates)]
       (when-not (= (:table_id original) (:table_id updated))
         (throw (ex-info (tru "You cannot change the Table ID of a GTAP once it has been created.")

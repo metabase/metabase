@@ -10,10 +10,11 @@
    [metabase.models.setting.cache :as setting.cache]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn rotate-encryption-key!
-  "Rotate the current configured db using the current MB_ENCRYPTION_SECRET_KEY env var and `to-key` argument."
+  "Rotate the current configured db using the current `MB_ENCRYPTION_SECRET_KEY` env var and `to-key` argument."
   [to-key]
   (when-not (mdb/db-is-set-up?)
     (log/warnf "Database not found. Metabase will create a new database at %s and proceeed encrypting." "2")
@@ -32,18 +33,18 @@
         setting-where     (if is-h2
                             "setting.\"KEY\" = ?"
                             "setting.key = ?")]
-    (jdbc/with-db-transaction [t-conn {:datasource (mdb.connection/data-source)}]
+    (t2/with-transaction [t-conn {:datasource (mdb.connection/data-source)}]
       (doseq [[id details] (db/select-id->field :details Database)]
         (when (encryption/possibly-encrypted-string? details)
-          (throw (ex-info (trs "Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))
-        (jdbc/update! t-conn
+          (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))
+        (jdbc/update! {:connection t-conn}
                       :metabase_database
                       {:details (encrypt-str-fn (json/encode details))}
                       ["metabase_database.id = ?" id]))
       (doseq [[key value] (db/select-field->field :key :value Setting)]
         (if (= key "settings-last-updated")
           (setting.cache/update-settings-last-updated!)
-          (jdbc/update! t-conn
+          (jdbc/update! {:connection t-conn}
                         :setting
                         {value-column (encrypt-str-fn value)}
                         [setting-where key])))
@@ -53,8 +54,8 @@
       ;; of whether they are the "current version" or not), should be updated with the new key
       (doseq [[id value] (db/select-id->field :value Secret)]
         (when (encryption/possibly-encrypted-string? value)
-          (throw (ex-info (trs "Can't decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
-        (jdbc/update! t-conn
+          (throw (ex-info (trs "Can''t decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
+        (jdbc/update! {:connection t-conn}
                       :secret
                       {value-column (encrypt-bytes-fn value)}
                       ["secret.id = ?" id])))))

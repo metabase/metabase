@@ -45,7 +45,7 @@
 (defmethod api-exception-response Throwable
   [^Throwable e]
   (let [{:keys [status-code], :as info} (ex-data e)
-        other-info                      (dissoc info :status-code :schema :type)
+        other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace)
         body                            (cond
                                           (and status-code (empty? other-info))
                                           ;; If status code was specified but other data wasn't, it's something like a

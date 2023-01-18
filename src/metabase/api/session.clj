@@ -25,8 +25,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan.db :as db]
-   [toucan.models :as models])
+   [toucan.db :as db])
   (:import
    (com.unboundid.util LDAPSDKException)
    (java.util UUID)))
@@ -52,12 +51,9 @@
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
   [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   (let [session-uuid (UUID/randomUUID)
-        session      (or
-                      (db/insert! Session
-                        :id      (str session-uuid)
-                        :user_id (u/the-id user))
-                      ;; HACK !!! For some reason `db/insert` doesn't seem to be working correctly for Session.
-                      (models/post-insert (db/select-one Session :id (str session-uuid))))]
+        session      (db/insert! Session
+                                 :id      (str session-uuid)
+                                 :user_id (u/the-id user))]
     (assert (map? session))
     (events/publish-event! :user-login
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})

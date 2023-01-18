@@ -8,7 +8,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase.api.common
     :as api
@@ -22,14 +21,16 @@
    [metabase.models.serialization.util :as serdes.util]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.schema :as su]
    [potemkin :as p]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models])
+   [toucan.models :as models]
+   [toucan2.core :as t2]
+   [toucan2.protocols :as t2.protocols])
   (:import
    (metabase.models.collection.root RootCollection)))
 
@@ -313,17 +314,15 @@
     (into
      ;; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
      ;; the (1 = 1) is to prevent this
-     [:and (case hx/*honey-sql-version*
-             1 [:= 1 1]
-             2 [:= [:inline 1] [:inline 1]])]
+     [:and [:= [:inline 1] [:inline 1]]]
      (if (= collection-ids :all)
        ;; In the case that visible-collection-ids is all, that means there's no invisible collection ids
        ;; meaning, the effective children are always the direct children. So check for being a direct child.
-       [[:like :location (hx/literal child-literal)]]
+       [[:like :location (h2x/literal child-literal)]]
        (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
              disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
          (for [visible-collection-id disj-collection-ids]
-           [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
+           [:not-like :location (h2x/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
 
 (s/defn ^:private effective-location-path* :- (s/maybe LocationPath)
@@ -481,7 +480,7 @@
     (into
       [:and
        ;; it is a descendant of Collection A
-       [:like :location (hx/literal (str (children-location collection) "%"))]
+       [:like :location (h2x/literal (str (children-location collection) "%"))]
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A
@@ -611,8 +610,8 @@
       (db/update! Collection (u/the-id collection) :location new-location)
       ;; we need to update all the descendant collections as well...
       (db/execute!
-       {:update Collection
-        :set    {:location (hsql/call :replace :location orig-children-location new-children-location)}
+       {:update :collection
+        :set    {:location [:replace :location orig-children-location new-children-location]}
         :where  [:like :location (str orig-children-location "%")]}))))
 
 (s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
@@ -630,10 +629,10 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived false}
         :archived true)
-      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-        (db/update-where! model {:collection_id [:in affected-collection-ids]
-                                 :archived      false}
-          :archived true)))))
+     (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
+       (db/update-where! model {:collection_id [:in affected-collection-ids]
+                                :archived      false}
+                         :archived true)))))
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
@@ -798,7 +797,7 @@
 
   This needs to be done recursively for all descendants as well."
   [collection :- (mi/InstanceOf Collection)]
-  (db/execute! {:delete-from Permissions
+  (db/execute! {:delete-from :permissions
                 :where       [:in :object (for [collection (cons collection (descendants collection))
                                                 path-fn    [perms/collection-read-path
                                                             perms/collection-readwrite-path]]
@@ -887,7 +886,7 @@
     (when (:personal_owner_id collection)
       (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
-  (db/execute! {:delete-from Permissions
+  (db/execute! {:delete-from (keyword (t2/table-name Permissions))
                 :where       [:or
                               [:= :object (perms/collection-readwrite-path collection)]
                               [:= :object (perms/collection-read-path collection)]]}))
@@ -917,9 +916,9 @@
   (let [parent-id (-> coll
                       (hydrate :parent_id)
                       :parent_id)]
-   (if parent-id
-     (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
-     "ROOT")))
+    (if parent-id
+      (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
+      "ROOT")))
 
 (defmethod serdes.hash/identity-hash-fields Collection
   [_collection]
@@ -936,7 +935,7 @@
   :pre-update     pre-update
   :pre-delete     pre-delete})
 
-(defmethod serdes.base/extract-query "Collection" [_ {:keys [collection-set]}]
+(defmethod serdes.base/extract-query "Collection" [_model {:keys [collection-set]}]
   (if (seq collection-set)
     (db/select-reducible Collection :id [:in collection-set])
     (db/select-reducible Collection :personal_owner_id nil)))
@@ -1149,6 +1148,7 @@
     ;; efficiently create a map of user ID -> personal collection ID
     (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection
                                    :personal_owner_id [:in (set (map u/the-id users))])]
+      (assert (map? user-id->collection-id))
       ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
       ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
       ;; as a side-effect. This will ensure this property never comes back as `nil`
@@ -1160,7 +1160,7 @@
   "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
   default namespace (namespace = `nil`)."
   {:arglists '([model])}
-  class)
+  t2.protocols/dispatch-value)
 
 (defmethod allowed-namespaces :default
   [_]

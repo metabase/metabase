@@ -29,8 +29,8 @@
                         (filter some?)
                         [[:not= :pulse.dashboard_id nil]
                          (when-not (str/blank? dashboard-name)
-                           [:like :%lower.dashboard.name (str \% (str/lower-case dashboard-name) \%)])])))
-      (assoc :order-by [[:%lower.dashboard.name :asc]
+                           [:like [:lower :dashboard.name] (str \% (str/lower-case dashboard-name) \%)])])))
+      (assoc :order-by [[[:lower :dashboard.name] :asc]
                         ;; Newest first. ID instead of `created_at` because the column is currently only
                         ;; second-resolution for MySQL which busts our tests
                         [:channel.id :desc]])))

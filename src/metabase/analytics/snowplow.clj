@@ -1,7 +1,6 @@
 (ns metabase.analytics.snowplow
   "Functions for sending Snowplow analytics events"
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.tools.logging :as log]
    [java-time :as t]
    [medley.core :as m]
@@ -12,7 +11,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder)
    (com.snowplowanalytics.snowplow.tracker.emitter BatchEmitter BatchEmitter$Builder Emitter)
@@ -23,10 +23,12 @@
    (org.apache.http.impl.client HttpClients)
    (org.apache.http.impl.conn PoolingHttpClientConnectionManager)))
 
+(set! *warn-on-reflection* true)
+
 (defsetting analytics-uuid
   (deferred-tru
-   (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
-        "This is a public setting since some analytics events are sent prior to initial setup."))
+    (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
+         "This is a public setting since some analytics events are sent prior to initial setup."))
   :visibility :public
   :setter     :none
   :type       ::public-settings/uuid-nonce
@@ -138,14 +140,15 @@
 (defn- app-db-type
   "Returns the type of the Metabase application database as a string (e.g. PostgreSQL, MySQL)"
   []
-  (jdbc/with-db-metadata [metadata (db/connection)]
-    (.getDatabaseProductName metadata)))
+  (t2/with-connection [^java.sql.Connection conn]
+    (.. conn getMetaData getDatabaseProductName)))
 
 (defn- app-db-version
   "Returns the version of the Metabase application database as a string"
   []
-  (jdbc/with-db-metadata [metadata (db/connection)]
-    (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))))
+  (t2/with-connection [^java.sql.Connection conn]
+    (let [metadata (.getMetaData conn)]
+      (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)))))
 
 (defn- context
   "Common context included in every analytics event"

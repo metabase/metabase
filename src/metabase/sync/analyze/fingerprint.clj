@@ -4,7 +4,7 @@
   (:require
    [clojure.set :as set]
    [clojure.tools.logging :as log]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -166,8 +166,8 @@
              (not *refingerprint?*) (conj (cons :or (versions-clauses))))})
 
   ([table :- i/TableInstance]
-   (hh/merge-where (honeysql-for-fields-that-need-fingerprint-updating)
-                   [:= :table_id (u/the-id table)])))
+   (sql.helpers/where (honeysql-for-fields-that-need-fingerprint-updating)
+                      [:= :table_id (u/the-id table)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |

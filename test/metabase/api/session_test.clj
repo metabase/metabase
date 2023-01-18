@@ -469,19 +469,20 @@
           [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (schema= SessionResponse
                        (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
-          (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
-            (is (= true (db/exists? PermissionsGroupMembership :group_id (:id group) (:user_id user-id))))))))))
+          (testing "PermissionsGroupMembership should exist"
+            (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
+              (is (db/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id)))))))))
 
-(deftest no-password-no-login-test
-  (testing "A user with no password should not be able to do password-based login"
-    (mt/with-temp User [user]
-      (db/update! User (u/the-id user) :password nil, :password_salt nil)
-      (let [device-info {:device_id          "Cam's Computer"
-                         :device_description "The computer where Cam wrote this test"
-                         :ip_address         "192.168.1.1"}]
-        (is (= nil
-               (#'api.session/email-login (:email user) nil device-info)))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Password did not match stored password"
-             (#'api.session/login (:email user) "password" device-info)))))))
+  (deftest no-password-no-login-test
+    (testing "A user with no password should not be able to do password-based login"
+      (mt/with-temp User [user]
+        (db/update! User (u/the-id user) :password nil, :password_salt nil)
+        (let [device-info {:device_id          "Cam's Computer"
+                           :device_description "The computer where Cam wrote this test"
+                           :ip_address         "192.168.1.1"}]
+          (is (= nil
+                 (#'api.session/email-login (:email user) nil device-info)))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Password did not match stored password"
+               (#'api.session/login (:email user) "password" device-info))))))))

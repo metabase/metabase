@@ -6,8 +6,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [honeysql.format :as hformat]
-   [metabase.db.connection :as mdb.connection]
    [metabase.db.data-migrations :refer [DataMigrations]]
    [metabase.db.setup :as mdb.setup]
    [metabase.models
@@ -54,7 +52,8 @@
             ViewLog]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [schema.core :as s])
+   [schema.core :as s]
+   [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
 
@@ -134,9 +133,7 @@
   ;; should be ok now that #16344 is resolved -- we might be able to remove this code entirely now. Quoting identifiers
   ;; is still a good idea tho.)
   (let [source-keys (keys (first objs))
-        quote-style (mdb.connection/quoting-style target-db-type)
-        quote-fn    (get @#'hformat/quote-fns quote-style)
-        _           (assert (fn? quote-fn) (str "No function for quote style: " quote-style))
+        quote-fn    (partial mdb.setup/quote-for-application-db target-db-type)
         dest-keys   (for [k source-keys]
                       (quote-fn (name k)))]
     {:cols dest-keys
@@ -162,12 +159,13 @@
 
 (defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type target-db-conn-spec]
   (with-open [source-conn (.getConnection source-data-source)]
-    (doseq [{table-name :table, :as entity} entities
-            :let                            [fragment (table-select-fragments (str/lower-case (name table-name)))
-                                             sql      (str "SELECT * FROM "
-                                                           (name table-name)
-                                                           (when fragment (str " " fragment)))
-                                             results (jdbc/reducible-query {:connection source-conn} sql)]]
+    (doseq [entity entities
+            :let   [table-name (t2/table-name entity)
+                    fragment   (table-select-fragments (str/lower-case (name table-name)))
+                    sql        (str "SELECT * FROM "
+                                    (name table-name)
+                                    (when fragment (str " " fragment)))
+                    results    (jdbc/reducible-query {:connection source-conn} sql)]]
       (transduce
        (partition-all chunk-size)
        ;; cnt    = the total number we've inserted so far
@@ -287,7 +285,7 @@
                       (log/debug (u/colorize :yellow sql))
                       (.addBatch stmt sql))]
               ;; do these in reverse order so child rows get deleted before parents
-              (doseq [{table-name :table} (reverse entities)]
+              (doseq [table-name (map t2/table-name (reverse entities))]
                 (add-batch! (format (if (= target-db-type :postgres)
                                       "TRUNCATE TABLE %s CASCADE;"
                                       "TRUNCATE TABLE %s;")
@@ -317,6 +315,7 @@
 ;; Update the sequence nextvals.
 (defmethod update-sequence-values! :postgres
   [_ data-source]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting Postgres sequence ids to proper values...")
       (doseq [e     entities
@@ -330,14 +329,15 @@
 
 (defmethod update-sequence-values! :h2
   [_ data-source]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting H2 sequence ids to proper values...")
-          (doseq [e     entities
-                  :when (not (contains? entities-without-autoinc-ids e))
-                  :let  [table-name (name (:table e))
-                         sql        (format "ALTER TABLE %s ALTER COLUMN ID RESTART WITH COALESCE((SELECT MAX(ID) + 1 FROM %s), 1)"
-                                            table-name table-name)]]
-            (jdbc/execute! target-db-conn sql)))))
+      (doseq [e     entities
+              :when (not (contains? entities-without-autoinc-ids e))
+              :let  [table-name (name (t2/table-name e))
+                     sql        (format "ALTER TABLE %s ALTER COLUMN ID RESTART WITH COALESCE((SELECT MAX(ID) + 1 FROM %s), 1)"
+                                        table-name table-name)]]
+        (jdbc/execute! target-db-conn sql)))))
 
 
 (s/defn copy!
@@ -362,6 +362,7 @@
   (step (trs "Clearing default entries created by Liquibase migrations...")
     (clear-existing-rows! target-db-type target-data-source))
   ;; create a transaction and load the data.
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-conn-spec {:datasource target-data-source}]
     ;; transaction should be set as rollback-only until it completes. Only then should we disable rollback-only so the
     ;; transaction will commit (i.e., only commit if the whole thing succeeds)

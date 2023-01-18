@@ -14,7 +14,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -162,7 +163,7 @@
 (defmulti ^:private param-fields
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
   Dashboard. Implementations are below in respective sections."
-  name)
+  t2/model)
 
 #_{:clj-kondo/ignore [:unused-private-var]}
 (mi/define-simple-hydration-method ^:private hydrate-param-fields
@@ -209,7 +210,7 @@
             id))
      (dashboard->card-param-field-ids dashboard))))
 
-(defmethod param-fields "Dashboard" [dashboard]
+(defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
   (-> dashboard dashboard->param-field-ids param-field-ids->fields))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -233,5 +234,5 @@
          [:field (id :guard integer?) _]
          id)))
 
-(defmethod param-fields "Card" [card]
+(defmethod param-fields :metabase.models.card/Card [card]
   (-> card card->template-tag-field-ids param-field-ids->fields))

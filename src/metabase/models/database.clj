@@ -1,6 +1,6 @@
 (ns metabase.models.database
   (:require
-   [cheshire.generate :refer [add-encoder encode-map]]
+   [cheshire.generate :as json.generate]
    [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
@@ -17,8 +17,10 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [methodical.core :as methodical]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -92,7 +94,7 @@
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (db/execute! {:delete-from (db/resolve-model 'Permissions)
+  (db/execute! {:delete-from (keyword (t2/table-name (db/resolve-model 'Permissions)))
                 :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
@@ -254,22 +256,20 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
-;; when encoding a Database as JSON remove the `details` and `settings` for any User without write perms for the DB.
-;; Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
-;; an API response!
-(add-encoder
- #_{:clj-kondo/ignore [:unresolved-symbol]}
- DatabaseInstance
- (fn [db json-generator]
-   (encode-map
-    (if (not (mi/can-write? db))
-      (dissoc db :details :settings)
-      (update db :details (fn [details]
-                            (reduce
-                             #(m/update-existing %1 %2 (constantly protected-password))
-                             details
-                             (sensitive-fields-for-db db)))))
-    json-generator)))
+(methodical/defmethod mi/to-json Database
+  "When encoding a Database as JSON remove the `details` and `settings` for any User without write perms for the DB.
+  Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
+  an API response!"
+  [db json-generator]
+  (json.generate/encode-map
+   (if (not (mi/can-write? db))
+     (dissoc db :details :settings)
+     (update db :details (fn [details]
+                           (reduce
+                            #(m/update-existing %1 %2 (constantly protected-password))
+                            details
+                            (sensitive-fields-for-db db)))))
+   json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 

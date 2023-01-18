@@ -5,7 +5,8 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def moderated-item-types
   "Schema enum of the acceptable values for the `moderated_item_type` column"
@@ -20,8 +21,8 @@
 
 (defn- object->type
   "Convert a moderated item instance to the keyword stored in the database"
-  [moderated-item]
-  (str/lower-case (name moderated-item)))
+  [instance]
+  (str/lower-case (name (t2/model instance))))
 
 (mi/define-batched-hydration-method moderation-reviews-for-items
   :moderation_reviews

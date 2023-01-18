@@ -34,7 +34,8 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -42,17 +43,17 @@
   :ordered_cards
   "Return the DashboardCards associated with `dashboard`, in the order they were created."
   [dashboard-or-id]
-  (db/do-post-select DashboardCard
-    (mdb.query/query {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
-                      :from      [[:report_dashboardcard :dashcard]]
-                      :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
-                                  [:collection :collection] [:= :collection.id :card.collection_id]]
-                      :where     [:and
-                                  [:= :dashcard.dashboard_id (u/the-id dashboard-or-id)]
-                                  [:or
-                                   [:= :card.archived false]
-                                   [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
-                      :order-by  [[:dashcard.created_at :asc]]})))
+  (t2/select DashboardCard
+             {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
+              :from      [[:report_dashboardcard :dashcard]]
+              :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
+                          [:collection :collection] [:= :collection.id :card.collection_id]]
+              :where     [:and
+                          [:= :dashcard.dashboard_id (u/the-id dashboard-or-id)]
+                          [:or
+                           [:= :card.archived false]
+                           [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
+              :order-by  [[:dashcard.created_at :asc]]}))
 
 (mi/define-batched-hydration-method collections-authority-level
   :collection_authority_level

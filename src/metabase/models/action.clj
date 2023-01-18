@@ -8,7 +8,8 @@
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel QueryAction :query_action)
 (models/defmodel HTTPAction :http_action)
@@ -78,18 +79,18 @@
   "Inserts an Action and related type table. Returns the action id."
   [action-data]
   (db/transaction
-    (let [action-columns [:type :name :description :model_id :parameters :parameter_mappings :visualization_settings]
-          action (db/insert! Action (select-keys action-data action-columns))
-          model (case (keyword (:type action))
-                  :http HTTPAction
-                  :query QueryAction
-                  :implicit ImplicitAction)]
-      (db/execute! {:insert-into model
-                    :values [(-> (apply dissoc action-data action-columns)
-                                 (u/update-if-exists :template json/encode)
-                                 (u/update-if-exists :dataset_query json/encode)
-                                 (assoc :action_id (:id action)))]})
-      (:id action))))
+   (let [action-columns [:type :name :description :model_id :parameters :parameter_mappings :visualization_settings]
+         action         (db/insert! Action (select-keys action-data action-columns))
+         model          (case (keyword (:type action))
+                          :http     HTTPAction
+                          :query    QueryAction
+                          :implicit ImplicitAction)]
+     (db/execute! {:insert-into (keyword (t2/table-name model))
+                   :values      [(-> (apply dissoc action-data action-columns)
+                                     (u/update-if-exists :template json/encode)
+                                     (u/update-if-exists :dataset_query json/encode)
+                                     (assoc :action_id (:id action)))]})
+     (:id action))))
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)

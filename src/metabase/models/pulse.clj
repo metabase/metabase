@@ -18,7 +18,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
@@ -35,7 +34,8 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -204,18 +204,18 @@
 
 (s/defn ^:private cards* :- [HybridPulseCard]
   [notification-or-id]
-  (map (partial models/do-post-select Card)
-       (mdb.query/query
-        {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls
-                     :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings]] ;; :dc.parameter_mappings - how do you select this?
-         :from      [[:pulse :p]]
-         :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
-                     [:report_card :c] [:= :c.id :pc.card_id]]
-         :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
-         :where     [:and
-                     [:= :p.id (u/the-id notification-or-id)]
-                     [:= :c.archived false]]
-         :order-by [[:pc.position :asc]]})))
+  (t2/select
+   Card
+   {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls
+                :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings]] ;; :dc.parameter_mappings - how do you select this?
+    :from      [[:pulse :p]]
+    :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
+                [:report_card :c] [:= :c.id :pc.card_id]]
+    :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
+    :where     [:and
+                [:= :p.id (u/the-id notification-or-id)]
+                [:= :c.archived false]]
+    :order-by [[:pc.position :asc]]}))
 
 (mi/define-simple-hydration-method cards
   :cards
@@ -229,7 +229,7 @@
   "Hydrate Pulse or Alert with the Fields needed for sending it."
   [notification :- (mi/InstanceOf Pulse)]
   (-> notification
-      (hydrate :creator :cards :dashboard [:channels :recipients])
+      (hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
 (s/defn ^:private hydrate-notifications :- [(mi/InstanceOf Pulse)]
@@ -259,7 +259,8 @@
   "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
   `:cards`."
   [notification-or-id & additional-conditions]
-  (some-> (apply Pulse :id (u/the-id notification-or-id), additional-conditions)
+  {:pre [(even? (count additional-conditions))]}
+  (some-> (apply db/select-one Pulse :id (u/the-id notification-or-id), additional-conditions)
           hydrate-notification))
 
 (s/defn ^:private notification->alert :- (mi/InstanceOf Pulse)
@@ -278,7 +279,7 @@
           notification->alert))
 
 (defn- query-as [model query]
-  (db/do-post-select model (mdb.query/query query)))
+  (t2/select model query))
 
 (s/defn retrieve-alerts :- [(mi/InstanceOf Pulse)]
   "Fetch all Alerts."

@@ -26,7 +26,6 @@
             Database
             Dimension
             Field
-            Permissions
             Pulse
             Setting
             Table
@@ -37,10 +36,13 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection)
    (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -48,7 +50,7 @@
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
     ;; using test-migrations to excercise all drivers
     (impl/test-migrations [1] [_]
-      (let [{:keys [db-type data-source]} mdb.connection/*application-db*
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
             migrate!    (partial db.setup/migrate! db-type data-source)
             get-last-id (fn []
                           (-> {:connection (.getConnection data-source)}
@@ -286,7 +288,7 @@
                            ["setting" "value"]
                            ["task_history" "task_details"]
                            ["view_log" "metadata"]]]
-        (with-open [conn (jdbc/get-connection (db/connection))]
+        (t2/with-connection [conn]
           (doseq [[tbl-nm col-nms] (group-by first all-text-cols)]
             (let [^String exp-type (case driver/*driver*
                                      :mysql "longtext"
@@ -310,7 +312,7 @@
 (deftest convert-query-cache-result-to-blob-test
   (testing "the query_cache.results column was changed to"
     (impl/test-migrations ["v42.00-064"] [migrate!]
-      (with-open [conn (jdbc/get-connection (db/connection))]
+      (t2/with-connection [^java.sql.Connection conn]
         (when (= :mysql driver/*driver*)
           ;; simulate the broken app DB state that existed prior to the fix from #16095
           (with-open [stmt (.prepareStatement conn "ALTER TABLE query_cache MODIFY results BLOB NULL;")]
@@ -364,7 +366,7 @@
                                                          :where  [:= :name perms-group/admin-group-name]})]
             (is (integer? admin-group-id))
             (when existing-entry?
-              (db/execute! {:insert-into Permissions
+              (db/execute! {:insert-into :permissions
                             :values      [{:object   "/"
                                            :group_id admin-group-id}]}))
             (migrate!)
@@ -378,7 +380,7 @@
     (doseq [with-existing-data-migration? [true false]]
       (testing (format "With existing data migration? %s" (pr-str with-existing-data-migration?))
         (impl/test-migrations "v43.00-007" [migrate!]
-          (db/execute! {:insert-into Database
+          (db/execute! {:insert-into :metabase_database
                         :values      [{:name       "My DB"
                                        :engine     "h2"
                                        :created_at :%now
@@ -400,7 +402,7 @@
 (deftest migrate-legacy-site-url-setting-test
   (testing "Migration v43.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
     (impl/test-migrations ["v43.00-008"] [migrate!]
-      (db/execute! {:insert-into Setting
+      (db/execute! {:insert-into :setting
                     :values      [{:key   "-site-url"
                                    :value "http://localhost:3000/"}]})
       (migrate!)
@@ -410,7 +412,7 @@
 (deftest site-url-ensure-protocol-test
   (testing "Migration v43.00-009: ensure `site-url` Setting starts with a protocol (#20403)"
     (impl/test-migrations ["v43.00-009"] [migrate!]
-      (db/execute! {:insert-into Setting
+      (db/execute! {:insert-into :setting
                     :values      [{:key   "site-url"
                                    :value "localhost:3000"}]})
       (migrate!)
@@ -428,7 +430,7 @@
 (deftest add-migrated-collections-test
   (testing "Migrations v43.00-014 - v43.00-019"
     (letfn [(create-user! []
-              (db/execute! {:insert-into User
+              (db/execute! {:insert-into :core_user
                             :values      [{:first_name  "Cam"
                                            :last_name   "Era"
                                            :email       "cam@era.com"
@@ -439,7 +441,7 @@
                 :collection-name  "Migrated Dashboards"
                 :create-instance! (fn []
                                     (create-user!)
-                                    (db/execute! {:insert-into Dashboard
+                                    (db/execute! {:insert-into :report_dashboard
                                                   :values      [{:name          "My Dashboard"
                                                                  :created_at    :%now
                                                                  :updated_at    :%now
@@ -450,7 +452,7 @@
                 :collection-name  "Migrated Pulses"
                 :create-instance! (fn []
                                     (create-user!)
-                                    (db/execute! {:insert-into Pulse
+                                    (db/execute! {:insert-into :pulse
                                                   :values      [{:name          "My Pulse"
                                                                  :created_at    :%now
                                                                  :updated_at    :%now
@@ -461,13 +463,13 @@
                 :collection-name  "Migrated Questions"
                 :create-instance! (fn []
                                     (create-user!)
-                                    (db/execute! {:insert-into Database
+                                    (db/execute! {:insert-into :metabase_database
                                                   :values      [{:name       "My DB"
                                                                  :engine     "h2"
                                                                  :details    "{}"
                                                                  :created_at :%now
                                                                  :updated_at :%now}]})
-                                    (db/execute! {:insert-into Card
+                                    (db/execute! {:insert-into :report_card
                                                   :values      [{:name                   "My Saved Question"
                                                                  :created_at             :%now
                                                                  :updated_at             :%now
@@ -478,10 +480,7 @@
                                                                  :database_id            1
                                                                  :collection_id          nil}]}))}]
 
-              :let [table-name-keyword (u/prog1 (:table model)
-                                         ;; once we switch to Toucan 2 this will fail and make this easier to
-                                         ;; fix
-                                         (assert (keyword? <>)))]]
+              :let [table-name-keyword (keyword (t2/table-name model))]]
         (testing (format "create %s Collection for %s in the Root Collection"
                          (pr-str collection-name)
                          (name model))
@@ -518,7 +517,7 @@
               (testing "Migrated Collection already exists\n"
                 (impl/test-migrations ["v43.00-014" "v43.00-019"] [migrate!]
                   (create-instance!)
-                  (db/execute! {:insert-into Collection
+                  (db/execute! {:insert-into :collection
                                 :values      [{:name collection-name, :slug "existing_collection", :color "#abc123"}]})
                   (migrate!)
                   (is (= [{:name collection-name, :slug "existing_collection"}]
@@ -555,7 +554,7 @@
 
       (testing "entry already exists: don't create an entry"
         (impl/test-migrations ["v43.00-020" "v43.00-021"] [migrate!]
-          (db/execute! {:insert-into Permissions
+          (db/execute! {:insert-into :permissions
                         :values      [{:object   "/collection/root/"
                                        :group_id (all-users-group-id)}]})
           (migrate!)
@@ -565,7 +564,7 @@
 (deftest clear-ldap-user-passwords-test
   (testing "Migration v43.00-029: clear password and password_salt for LDAP users"
     (impl/test-migrations ["v43.00-029"] [migrate!]
-      (db/execute! {:insert-into User
+      (db/execute! {:insert-into :core_user
                     :values      [{:first_name    "Cam"
                                    :last_name     "Era"
                                    :email         "cam@era.com"
@@ -590,7 +589,7 @@
 (deftest grant-download-perms-test
   (testing "Migration v43.00-042: grant download permissions to All Users permissions group"
     (impl/test-migrations ["v43.00-042" "v43.00-043"] [migrate!]
-      (db/execute! {:insert-into Database
+      (db/execute! {:insert-into :metabase_database
                     :values      [{:name       "My DB"
                                    :engine     "h2"
                                    :created_at :%now
@@ -713,7 +712,7 @@
 
       (testing "Should not fail if permissions already exist"
         (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
-          (db/execute! {:insert-into Permissions
+          (db/execute! {:insert-into :permissions
                         :values      [{:object   (perms-path)
                                        :group_id (all-users-group-id)}]})
           (migrate!)

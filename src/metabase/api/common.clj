@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [compojure.core :as compojure]
-   [honeysql.types :as htypes]
    [medley.core :as m]
    [metabase.api.common.internal
     :refer [add-route-param-regexes
@@ -21,7 +20,8 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
    [schema.core :as schema]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (declare check-403 check-404)
 
@@ -420,7 +420,7 @@
    obj)
 
   ([entity id]
-   (read-check (entity id)))
+   (read-check (t2/select-one entity id)))
 
   ([entity id & other-conditions]
    (read-check (apply db/select-one entity :id id other-conditions))))
@@ -435,7 +435,7 @@
    (check-403 (mi/can-write? obj))
    obj)
   ([entity id]
-   (write-check (entity id)))
+   (write-check (t2/select-one entity id)))
   ([entity id & other-conditions]
    (write-check (apply db/select-one entity :id id other-conditions))))
 
@@ -503,7 +503,7 @@
                      (doseq [model '[Card Dashboard Pulse]]
                        (db/update-where! model {:collection_id       collection-id
                                                 :collection_position position-update-clause}
-                         :collection_position (htypes/call plus-or-minus :collection_position 1))))]
+                         :collection_position [plus-or-minus :collection_position 1])))]
     (when (not= new-position old-position)
       (cond
         (and (nil? new-position)

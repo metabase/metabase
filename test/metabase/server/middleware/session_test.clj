@@ -16,6 +16,7 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
+   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :as i18n]
    [ring.mock.request :as ring.mock]
    [toucan.db :as db])
@@ -106,10 +107,11 @@
   (testing "Session expiration time = 1 minute"
     (with-redefs [env/env (assoc env/env :max-session-age "1")]
       (doseq [[created-at expected msg]
-              [[:%now                                                               false "brand-new session"]
-               [#t "1970-01-01T00:00:00Z"                                           true  "really old session"]
-               [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
-               [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
+              (binding [hx/*honey-sql-version* 2]
+                [[:%now                                                               false "brand-new session"]
+                 [#t "1970-01-01T00:00:00Z"                                           true  "really old session"]
+                 [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
+                 [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]])]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
           (mt/with-temp User [{user-id :id}]
             (let [session-id (str (UUID/randomUUID))]
@@ -309,7 +311,7 @@
       (db/insert! Session {:id      (str test-uuid)
                            :user_id (mt/user->id :lucky)})
         ;; use low-level `execute!` because updating is normally disallowed for Sessions
-      (db/execute! {:update Session, :set {:created_at (java.sql.Date. 0)}, :where [:= :id (str test-uuid)]})
+      (db/execute! {:update :core_session, :set {:created_at (t/instant 0)}, :where [:= :id (str test-uuid)]})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally

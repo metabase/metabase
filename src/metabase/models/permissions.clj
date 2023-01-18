@@ -185,7 +185,7 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
@@ -573,7 +573,7 @@
   (set-has-full-permissions? permissions-set (application-perms-path perm-type)))
 
 (s/defn perms-objects-set-for-parent-collection :- #{Path}
-  "Implementation of `IModel` `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
+  "Implementation of `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
   Collection if `collection_id` is `nil`."
   ([this read-or-write]
@@ -793,8 +793,8 @@
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
   (let [group-id->paths (permissions-by-group-ids [:or
-                                                   [:= :object (hx/literal "/")]
-                                                   [:like :object (hx/literal "%/db/%")]])
+                                                   [:= :object (h2x/literal "/")]
+                                                   [:like :object (h2x/literal "%/db/%")]])
         db-ids          (delay (db/select-ids 'Database))
         group-id->graph (m/map-vals
                          (fn [paths]
@@ -811,8 +811,8 @@
   every Group and all permissioned databases."
   []
   (let [group-id->paths (permissions-by-group-ids [:or
-                                                   [:= :object (hx/literal "/")]
-                                                   [:like :object (hx/literal "/execute/%")]])
+                                                   [:= :object (h2x/literal "/")]
+                                                   [:like :object (h2x/literal "/execute/%")]])
         group-id->graph (m/map-vals
                          (fn [paths]
                            (let [permissions-graph (perms-parse/permissions->graph paths)]
@@ -853,7 +853,7 @@
                              :and
                              [:= :group_id (u/the-id group-or-id)]
                              [:or
-                              [:like path (hx/concat :object (hx/literal "%"))]
+                              [:like path (h2x/concat :object (h2x/literal "%"))]
                               [:like :object (str path "%")]]
                              other-conditions)}]
     (when-let [revoked (db/select-field :object Permissions where)]
@@ -1008,8 +1008,8 @@
                    {:where [:and
                             [:= :group_id group-id]
                             [:or
-                             [:= :object (hx/literal "/")]
-                             [:like :object (hx/literal "/download/%")]]]}))
+                             [:= :object (h2x/literal "/")]
+                             [:like :object (h2x/literal "/download/%")]]]}))
 
 (defn- download-permissions-level
   [permissions-set db-id & [schema-name table-id]]

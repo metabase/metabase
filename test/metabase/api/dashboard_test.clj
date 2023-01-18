@@ -29,7 +29,6 @@
             User]]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
-   [metabase.models.dispatch :as models.dispatch]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
@@ -37,7 +36,8 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.server.middleware.util :as mw.util]
@@ -45,7 +45,8 @@
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.protocols :as t2.protocols])
   (:import
    (java.util UUID)))
 
@@ -198,7 +199,7 @@
               (mt/user-http-request :rasta :post 200 "dashboard" {:name                dashboard-name
                                                                   :collection_id       (u/the-id collection)
                                                                   :collection_position 1000})
-              (is (= #metabase.models.dashboard.DashboardInstance{:collection_id true, :collection_position 1000}
+              (is (= {:collection_id true, :collection_position 1000}
                      (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
                              (update :collection_id (partial = (u/the-id collection))))))
               (finally
@@ -932,7 +933,9 @@
   "Return a card \"model\" that reports as a `::dispatches-on-dynamic` model type, and checking `mi/can-write?` checks
   if the `:id` is in the dynamic variable `*writable-card-ids*."
   [card]
-  (with-meta card {`models.dispatch/model
+  (with-meta card {`t2.protocols/model
+                   (fn [_] ::dispatches-on-dynamic)
+                   `t2.protocols/dispatch-value
                    (fn [_] ::dispatches-on-dynamic)}))
 
 (deftest cards-to-copy-test

@@ -5,7 +5,6 @@
    [compojure.core :refer [GET]]
    [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
-   [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.db :as mdb]
@@ -24,7 +23,9 @@
    [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
@@ -125,7 +126,7 @@
 
       ;; This is a column reference, need to add the table alias to the column
       maybe-aliased-col
-      (hsql/qualify (model->alias model) (name maybe-aliased-col))
+      (keyword (name (model->alias model)) (name maybe-aliased-col))
 
       ;; This entity is missing the column, project a null for that column value. For Postgres and H2, cast it to the
       ;; correct type, e.g.
@@ -135,7 +136,7 @@
       ;; For MySQL, this is not needed.
       :else
       [(when-not (= (mdb/db-type) :mysql)
-         (h2x/cast col-type nil))
+         [:cast nil col-type])
        search-col])))
 
 (s/defn ^:private select-clause-for-model :- [HoneySQLColumn]
@@ -152,7 +153,7 @@
                                                    "from clause")]
   [model :- SearchableModel]
   (let [db-model (get search-config/model-to-db-model model)]
-    [[(:table db-model) (-> db-model name str/lower-case keyword)]]))
+    [[(keyword (t2/table-name db-model)) (-> db-model name str/lower-case keyword)]]))
 
 (defmulti ^:private archived-where-clause
   {:arglists '([model archived?])}
@@ -160,21 +161,21 @@
 
 (defmethod archived-where-clause :default
   [model archived?]
-  [:= (hsql/qualify (model->alias model) :archived) archived?])
+  [:= (keyword (name (model->alias model)) "archived") archived?])
 
 ;; Databases can't be archived
 (defmethod archived-where-clause "database"
   [_model archived?]
-  [:= 1 (if archived? 2 1)])
+  [:inline [:= 1 (if archived? 2 1)]])
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-where-clause "table"
   [model archived?]
   (if archived?
-    [:= 1 0]  ; No tables should appear in archive searches
+    [:inline [:= 1 0]]  ; No tables should appear in archive searches
     [:and
-     [:= (hsql/qualify (model->alias model) :active) true]
-     [:= (hsql/qualify (model->alias model) :visibility_type) nil]]))
+     [:= (keyword (name (model->alias model)) "active") true]
+     [:= (keyword (name (model->alias model)) "visibility_type") nil]]))
 
 (defn- wildcard-match
   [s]
@@ -186,9 +187,9 @@
     (into [:or]
           (for [column searchable-columns
                 token (search-util/tokenize (search-util/normalize query))]
-            (if (and (= model "card") (= column (hsql/qualify (model->alias model) :dataset_query)))
+            (if (and (= model "card") (= column (keyword (name (model->alias model)) "dataset_query")))
               [:and
-               [:= (hsql/qualify (model->alias model) :query_type) "native"]
+               [:= (keyword (name (model->alias model)) "query_type") "native"]
                [:like
                 [:lower column]
                 (wildcard-match token)]]
@@ -196,12 +197,14 @@
                [:lower column]
                (wildcard-match token)])))))
 
-(s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and :=) "type") s/Any]
+(s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and := :inline) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
   (let [archived-clause (archived-where-clause model archived?)
         search-clause   (search-string-clause model
                                               search-string
-                                              (map (partial hsql/qualify (model->alias model))
+                                              (map (let [model-alias (name (model->alias model))]
+                                                     (fn [column]
+                                                       (keyword model-alias (name column))))
                                                    (search-config/searchable-columns-for-model model)))]
     (if search-clause
       [:and archived-clause search-clause]
@@ -333,19 +336,19 @@
                        base-query
                        {:select [:id :schema :db_id :name :description :display_name :updated_at :initial_sync_status
                                  [(h2x/concat (h2x/literal "/db/")
-                                             :db_id
-                                             (h2x/literal "/schema/")
-                                             [:case
-                                              [:not= :schema nil] :schema
-                                              :else               (h2x/literal "")]
-                                             (h2x/literal "/table/") :id
-                                             (h2x/literal "/read/"))
+                                              :db_id
+                                              (h2x/literal "/schema/")
+                                              [:case
+                                               [:not= :schema nil] :schema
+                                               :else               (h2x/literal "")]
+                                              (h2x/literal "/table/") :id
+                                              (h2x/literal "/read/"))
                                   :path]]})
                       :table]]
             :where  (if (seq data-perms)
                       (into [:or] (for [path data-perms]
                                     [:like :path (str path "%")]))
-                      [:= 0 1])}))
+                      [:inline [:= 0 1]])}))
        table-db-id))))
 
 (defn order-clause
@@ -358,8 +361,8 @@
                                (remove #{:collection_authority_level :moderated_status :initial_sync_status}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
-                            (interleave <> (repeat 0))
-                            (concat <> [:else 1]))]
+                            (interleave <> (repeat [:inline 0]))
+                            (concat <> [:else [:inline 1]]))]
     [(into [:case] case-clauses)]))
 
 (defmulti ^:private check-permissions-for-model
@@ -384,7 +387,7 @@
   (-> (db/select-one Database :id id) mi/can-read?))
 
 (defn- query-model-set
-  "Queries all models with respect to query for one result, to see if we get a result or not"
+  "Queries all models with respect to query for one result to see if we get a result or not"
   [search-ctx]
   (map #((first %) :model)
        (filter not-empty
@@ -394,9 +397,8 @@
                    (mdb.query/query query-with-limit))))))
 
 (defn- full-search-query
-  "Postgres 9 is not happy with the type munging it needs to do
-  to make the union-all degenerate down to trivial case of one model without errors.
-  Therefore, we degenerate it down for it"
+  "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to trivial case of
+  one model without errors. Therefore we degenerate it down for it"
   [search-ctx]
   (let [models       (or (:models search-ctx)
                          search-config/all-models)
@@ -415,9 +417,12 @@
   "Builds a search query that includes all of the searchable entities and runs it"
   [search-ctx :- SearchContext]
   (let [search-query      (full-search-query search-ctx)
-        _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
+        _                 (log/tracef "Searching with query:\n%s\n%s"
+                                      (u/pprint-to-str search-query)
+                                      (mdb.query/format-sql (first (mdb.query/compile search-query))))
         reducible-results (mdb.query/reducible-query search-query :max-rows search-config/*db-max-results*)
         xf                (comp
+                           (map t2.realize/realize)
                            (filter check-permissions-for-model)
                            ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                            ;; needed

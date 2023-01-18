@@ -12,7 +12,6 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.timeline :as api.timeline]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -48,7 +47,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.util UUID)))
@@ -126,15 +126,14 @@
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
   [_filter-option model-id]
-  (->> (mdb.query/query {:select [:c.*]
-                         :from [[:report_card :m]]
-                         :join [[:report_card :c] [:and
-                                                   [:= :c.database_id :m.database_id]
-                                                   [:or
-                                                    [:like :c.dataset_query (format "%%card__%s%%" model-id)]
-                                                    [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                         :where [:= :m.id model-id]})
-       (db/do-post-select Card)
+  (->> (t2/select Card {:select [:c.*]
+                        :from [[:report_card :m]]
+                        :join [[:report_card :c] [:and
+                                                  [:= :c.database_id :m.database_id]
+                                                  [:or
+                                                   [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+                                                   [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
+                        :where [:= :m.id model-id]})
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
 
@@ -181,7 +180,6 @@
   (let [raw-card (db/select-one Card :id id)
         card (-> raw-card
                  (hydrate :creator
-                          :bookmarked
                           :dashboard_count
                           :parameter_usage_count
                           :can_write

@@ -108,9 +108,9 @@
 
   *  `:remappings`, if specified, is saved as the `:attribute_remappings` property of the GTAP.
 
-    (mt/with-gtaps {:gtaps      {:checkins {:query      {:database (data/id), ...}
-                                            :remappings {:user_category [\"variable\" ...]}}}
-                    :attributes {\"user_category\" 1}}
+    (met/with-gtaps {:gtaps      {:checkins {:query      {:database (data/id), ...}
+                                             :remappings {:user_category [\"variable\" ...]}}}
+                     :attributes {\"user_category\" 1}}
       (mt/run-mbql-query checkins {:limit 2}))
 
   Introduces `&group` anaphor, bound to the PermissionsGroup associated with this GTAP."

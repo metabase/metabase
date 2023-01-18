@@ -17,7 +17,7 @@
 
 (models/defmodel NativeQuerySnippet :native_query_snippet)
 
-(defmethod collection/allowed-namespaces #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class NativeQuerySnippet)
+(defmethod collection/allowed-namespaces NativeQuerySnippet
   [_]
   #{:snippets})
 

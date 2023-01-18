@@ -20,6 +20,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs]]
    [toucan.db :as db]
+   [toucan2.core :as t2]
    [yaml.core :as yaml]
    [yaml.writer :as y.writer])
   (:import
@@ -34,8 +35,11 @@
   (io/make-parents filename)
   (spit filename (yaml/generate-string obj :dumper-options {:flow-style :block})))
 
-(def ^:private as-file?
-  (comp (set (map type [Pulse Dashboard Metric Segment Field User])) type))
+(defn- as-file?
+  [instance]
+  (some (fn [model]
+          (t2/instance-of? model instance))
+        [Pulse Dashboard Metric Segment Field User]))
 
 (defn- spit-entity
   [path entity]

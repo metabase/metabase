@@ -17,9 +17,11 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [methodical.core :as methodical]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
@@ -38,7 +40,7 @@
   and which type of widget should be used to pick values of this Field when filtering by it in the Query Builder."
   ;; AUTOMATICALLY-SET VALUES, SET DURING SYNC
   ;;
-  ;; `nil` -- means infer which widget to use based on logic in `with-has-field-values`; this will either return
+  ;; `nil` -- means infer which widget to use based on logic in [[infer-has-field-values]]; this will either return
   ;; `:search` or `:none`.
   ;;
   ;; This is the default state for Fields not marked `auto-list`. Admins cannot explicitly mark a Field as
@@ -239,6 +241,7 @@
                               (vec)
                               (pop)
                               (conj (first nfc-path)))]
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (apply hx/identifier (cons :field parent-components))))
 
 (mi/define-batched-hydration-method with-values
@@ -301,14 +304,22 @@
      :search
      :none)))
 
-(mi/define-batched-hydration-method with-has-field-values
-  :has_field_values
+(methodical/defmethod t2.hydrate/simple-hydrate [#_model :default #_k :has_field_values]
   "Infer what the value of the `has_field_values` should be for Fields where it's not set. See documentation for
-  [[has-field-values-options]] above for a more detailed explanation of what these values mean."
-  [fields]
-  (for [field fields]
-    (when field
-      (assoc field :has_field_values (infer-has-field-values field)))))
+  [[has-field-values-options]] above for a more detailed explanation of what these values mean.
+
+  This does one important thing: if `:has_field_values` is already present and set to `:auto-list`, it is replaced by
+  `:list` -- presumably because the frontend doesn't need to know `:auto-list` even exists?
+  See [[infer-has-field-values]] for more info."
+  [_model k field]
+  (when field
+    (assoc field k (infer-has-field-values field))))
+
+(methodical/defmethod t2.hydrate/needs-hydration? [#_model :default #_k :has_field_values]
+  "Always (re-)hydrate `:has_field_values`. This is used to convert an existing value of `:auto-list` to
+  `:list` (see [[infer-has-field-values]])."
+  [_model _k _field]
+  true)
 
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"

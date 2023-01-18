@@ -34,8 +34,8 @@
                          ;; if `pulse.alert_condition` is non-NULL then the Pulse is an Alert
                          [:not= :pulse.alert_condition nil]
                          (when-not (str/blank? card-name)
-                           [:like :%lower.card.name (str \% (str/lower-case card-name) \%)])])))
-      (assoc :order-by [[:%lower.card.name :asc]
+                           [:like [:lower :card.name] (str \% (str/lower-case card-name) \%)])])))
+      (assoc :order-by [[[:lower :card.name] :asc]
                         ;; Newest first. ID instead of `created_at` because the column is currently only
                         ;; second-resolution for MySQL which busts our tests
                         [:channel.id :desc]])))

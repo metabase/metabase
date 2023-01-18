@@ -237,10 +237,10 @@
 (defn card-for-unsigned-token
   "Return the info needed for embedding about Card specified in `token`. Additional `constraints` can be passed to the
   `public-card` function that fetches the Card."
-  {:style/indent 1}
   [unsigned-token & {:keys [embedding-params constraints]}]
-  (let [card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+  {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
+  (let [card-id      (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-card :id card-id, constraints)
         add-implicit-card-parameters
         (remove-token-parameters token-params)
@@ -270,8 +270,8 @@
 (defn dashboard-for-unsigned-token
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
   the `public-dashboard` function that fetches the Dashboard."
-  {:style/indent 1}
   [unsigned-token & {:keys [embedding-params constraints]}]
+  {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-dashboard :id dashboard-id, constraints)
@@ -327,8 +327,7 @@
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card/:token"
+(api/defendpoint GET "/card/:token"
   "Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -337,7 +336,7 @@
   [token]
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-card (embed/get-in-unsigned-token-or-throw unsigned [:resource :question]))
-    (card-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
+    (card-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
 
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
@@ -386,8 +385,7 @@
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/dashboard/:token"
+(api/defendpoint GET "/dashboard/:token"
   "Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -396,7 +394,7 @@
   [token]
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
-    (dashboard-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
+    (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
 
 (defn- dashcard-results-for-signed-token-async
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the

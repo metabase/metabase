@@ -17,7 +17,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as schema]
@@ -52,7 +52,7 @@
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
   (when locale
-    (assert (i18n/available-locale? locale)))
+    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   (merge
    insert-default-values
    user
@@ -108,7 +108,7 @@
   (when email
     (assert (u/email? email)))
   (when locale
-    (assert (i18n/available-locale? locale)))
+    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
   (when (false? active?)
     (db/delete! 'PulseChannelRecipient :user_id id))

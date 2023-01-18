@@ -3,7 +3,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [compojure.core :refer [DELETE GET POST PUT]]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.permission-graph :as api.permission-graph]
@@ -100,9 +100,9 @@
   [limit offset query]
   (db/select PermissionsGroup
              (cond-> {:order-by [:%lower.name]}
-               (some? limit)  (hh/limit  limit)
-               (some? offset) (hh/offset offset)
-               (some? query)  (hh/where query))))
+               (some? limit)  (sql.helpers/limit  limit)
+               (some? offset) (sql.helpers/offset offset)
+               (some? query)  (sql.helpers/where query))))
 
 (mi/define-batched-hydration-method add-member-counts
   :member_count
@@ -174,8 +174,7 @@
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/membership"
+(api/defendpoint GET "/membership"
   "Fetch a map describing the group memberships of various users.
    This map's format is:
 
@@ -184,12 +183,11 @@
                  :is_group_manager boolean}]}"
   []
   (validation/check-group-manager)
-  (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id :is_group_manager]
-                                 :group_id :user_id :is_group_manager]
+  (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
                                 (cond-> {}
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
-                                  (hh/merge-where
+                                  (sql.helpers/where
                                    [:in :group_id {:select [:group_id]
                                                    :from   [:permissions_group_membership]
                                                    :where  [:and

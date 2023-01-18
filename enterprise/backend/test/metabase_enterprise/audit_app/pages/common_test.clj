@@ -1,13 +1,14 @@
 (ns metabase-enterprise.audit-app.pages.common-test
   (:require
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.honeysql-extensions :as hx]))
 
 (defn- run-query
@@ -23,24 +24,28 @@
   {:metadata [[:A {:display_name "A", :base_type :type/DateTime}]
               [:B {:display_name "B", :base_type :type/Integer}]]
    :results  (common/query
-              {:union-all [{:select [[a1 :A] [2 :B]]}
-                           {:select [[3 :A] [4 :B]]}]})})
+              {:union-all [{:select [[[:inline a1] :A]
+                                     [[:inline 2] :B]]}
+                           {:select [[[:inline 3] :A]
+                                     [[:inline 4] :B]]}]})})
 
 (defmethod audit.i/internal-query ::reducible-format-query-fn
   [_ a1]
   {:metadata [[:A {:display_name "A", :base_type :type/DateTime}]
               [:B {:display_name "B", :base_type :type/Integer}]]
    :results  (common/reducible-query
-              {:union-all [{:select [[a1 :A] [2 :B]]}
-                           {:select [[3 :A] [4 :B]]}]})
+              {:union-all [{:select [[[:inline a1] :A]
+                                     [[:inline 2] :B]]}
+                           {:select [[[:inline 3] :A]
+                                     [[:inline 4] :B]]}]})
    :xform    (map #(update (vec %) 0 inc))})
 
 (deftest transform-results-test
   (testing "Make sure query function result are transformed to QP results correctly"
     (premium-features-test/with-premium-features #{:audit-app}
-      (doseq [[format-name {:keys [query-type expected-rows]}] {"legacy"    {:query-type          ::legacy-format-query-fn
+      (doseq [[format-name {:keys [query-type expected-rows]}] {"legacy"    {:query-type    ::legacy-format-query-fn
                                                                              :expected-rows [[100 2] [3 4]]}
-                                                                "reducible" {:query-type          ::reducible-format-query-fn
+                                                                "reducible" {:query-type    ::reducible-format-query-fn
                                                                              :expected-rows [[101 2] [4 4]]}}]
         (testing (format "format = %s" format-name)
           (let [results (delay (run-query query-type :args [100]))]
@@ -54,18 +59,19 @@
 
 (deftest add-45-days-clause-test
   (testing "add 45 days clause"
-    (is (=
-          {:where
-           [:>
-            (hx/with-type-info
-              (hsql/call :cast :bob.dobbs #honeysql.types.SqlRaw{:s "date"})
-              {::hx/database-type "date"})
-            nil]}
-          (assoc-in (#'common/add-45-days-clause {} :bob.dobbs) [:where 2] nil)))))
+    (is (= {:where
+            [:>
+             (h2x/with-type-info
+               [:cast :bob.dobbs [:raw "date"]]
+               {::hx/database-type "date"})
+             nil]}
+           (assoc-in (#'common/add-45-days-clause {} :bob.dobbs) [:where 2] nil)))))
 
 (deftest add-search-clause-test
   (testing "add search clause"
-    (is (= {:where `(:or [:like ~(hsql/call :lower :t.name) "%birds%"] [:like ~(hsql/call :lower :db.name) "%birds%"])}
+    (is (= {:where [:or
+                    [:like [:lower :t.name] "%birds%"]
+                    [:like [:lower :db.name] "%birds%"]]}
            (#'common/add-search-clause {} "birds" :t.name :db.name)))))
 
 (deftest query-limit-and-offset-test

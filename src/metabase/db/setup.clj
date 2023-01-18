@@ -19,7 +19,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.jdbc :as t2.jdbc]
+   [toucan2.map-backend.honeysql2 :as t2.honeysql])
   (:import
    (liquibase.exception LockException)))
 
@@ -158,8 +160,10 @@
 ;;; [[*application-db*]]; register this as the default quoting style for Toucan. Then
 (defn quote-for-application-db
   "Quote SQL identifier string `s` appropriately for the currently bound application database."
-  [s]
-  ((get @#'hformat/quote-fns (mdb.connection/quoting-style (mdb.connection/db-type))) s))
+  ([s]
+   (quote-for-application-db (mdb.connection/quoting-style (mdb.connection/db-type)) s))
+  ([db-type s]
+   ((get @#'hformat/quote-fns db-type) s)))
 
 ;;; register with Honey SQL 1
 (alter-var-root #'hformat/quote-fns assoc ::application-db quote-for-application-db)
@@ -171,9 +175,6 @@
  (assoc (sql/get-dialect :ansi)
         :quote quote-for-application-db))
 
-(sql/set-dialect! ::application-db)
-(sql/set-options! {:quoted true})
-
 ;;; Define the default Toucan JDBC connection spec; it's just a proxy DataSource that ultimately calls
 ;;; [[mdb.connection/data-source]]
 (def ^:private ^javax.sql.DataSource data-source*
@@ -183,4 +184,11 @@
 
 (db/set-default-db-connection! {:datasource data-source*})
 
-(db/set-default-jdbc-options! {:read-columns mdb.jdbc-protocols/read-columns})
+(reset! t2.honeysql/global-options
+        {:quoted       true
+         :dialect      ::application-db
+         :quoted-snake false})
+
+(reset! t2.jdbc/global-options
+        {:read-columns mdb.jdbc-protocols/read-columns
+         :label-fn     u/lower-case-en})
