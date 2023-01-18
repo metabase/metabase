@@ -136,12 +136,12 @@ class FieldValuesWidgetInner extends Component {
     let options = [];
     let valuesMode = this.state.valuesMode;
     try {
-      if (shouldFetchValuesForDashboard(this.props.dashboard)) {
+      if (canUseDashboardEndpoints(this.props.dashboard)) {
         const { values, has_more_values } =
           await this.fetchDashboardParamValues(query);
         options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
-      } else if (shouldFetchValuesForCard(this.props.question)) {
+      } else if (canUseCardEndpoints(this.props.question)) {
         const { values, has_more_values } = await this.fetchCardParamValues(
           query,
         );
@@ -472,11 +472,11 @@ OptionsMessage.propTypes = optionsMessagePropTypes;
 
 export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
 
-function shouldFetchValuesForCard(question) {
+function canUseCardEndpoints(question) {
   return question?.isSaved();
 }
 
-function shouldFetchValuesForDashboard(dashboard) {
+function canUseDashboardEndpoints(dashboard) {
   return dashboard?.id;
 }
 
