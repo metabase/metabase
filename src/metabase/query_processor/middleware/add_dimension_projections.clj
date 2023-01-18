@@ -85,7 +85,11 @@
     ;;
     ;; Not sure this isn't broken. Probably better to have [[metabase.query-processor.util.add-alias-info]] do the name
     ;; deduplication instead.
-    (let [unique-name (comp (mbql.u/unique-name-generator) :name Field)]
+    (let [name-generator (mbql.u/unique-name-generator)
+          unique-name    (fn [field-id]
+                           (qp.store/fetch-and-store-fields! #{field-id})
+                           (let [field (qp.store/field field-id)]
+                             (name-generator (:name field))))]
       (vec
        (mbql.u/match fields
          ;; don't match Fields that have been joined from another Table

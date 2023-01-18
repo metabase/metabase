@@ -187,13 +187,13 @@
       (when-not user-email
         (throw (ex-info "User does not exist" {:user user})))
       (try
-        (db/execute! {:update User
+        (db/execute! {:update :core_user
                       :set    {:password      (u.password/hash-bcrypt user-email)
                                :password_salt ""}
                       :where  [:= :id user-id]})
         (apply client/client {:username user-email, :password user-email} args)
         (finally
-          (db/execute! {:update User
+          (db/execute! {:update :core_user
                         :set    old-password-info
                         :where  [:= :id user-id]}))))))
 

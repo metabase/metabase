@@ -23,7 +23,6 @@
     :as database
     :refer [Database protected-password]]
    [metabase.models.field :refer [Field readable-fields-only]]
-   [metabase.models.field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.persisted-info :as persisted-info]
@@ -87,10 +86,10 @@
                                     :write
                                     :none))))
 
-(defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as _card}]
+(defn- card-database-supports-nested-queries? [{{database-id :database, :as database} :dataset_query, :as _card}]
   (when database-id
     (when-let [driver (driver.u/database->driver database-id)]
-      (driver/supports? driver :nested-queries))))
+      (driver/database-supports? driver :nested-queries database))))
 
 (defn- card-has-ambiguous-columns?
   "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
@@ -596,15 +595,15 @@
    substring (s/maybe su/NonBlankString)}
   (api/read-check Database id)
   (when (and (str/blank? prefix) (str/blank? substring))
-    (throw (ex-info "Must include prefix or search" {:status-code 400})))
+    (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
   (try
     (cond
       substring
       (autocomplete-suggestions id (str "%" substring "%"))
       prefix
       (autocomplete-suggestions id (str prefix "%")))
-    (catch Throwable t
-      (log/warn "Error with autocomplete: " (.getMessage t)))))
+    (catch Throwable e
+      (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/card_autocomplete_suggestions"
@@ -619,8 +618,8 @@
     (->> (autocomplete-cards id query)
          (filter mi/can-read?)
          (map #(select-keys % [:id :name :dataset :collection_name])))
-    (catch Throwable t
-      (log/warn "Error with autocomplete: " (.getMessage t)))))
+    (catch Throwable e
+      (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
 
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
@@ -1022,7 +1021,7 @@
 
 (defn- delete-all-field-values-for-database! [database-or-id]
   (when-let [field-values-ids (seq (database->field-values-ids database-or-id))]
-    (db/execute! {:delete-from FieldValues
+    (db/execute! {:delete-from :metabase_fieldvalues
                   :where       [:in :id field-values-ids]})))
 
 
@@ -1099,56 +1098,51 @@
                          :visibility_type nil
                          {:order-by [[:display_name :asc]]})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/schema/:schema"
+(api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
   [id schema]
   (api/check-404 (seq (schema-tables-list id schema))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/schema/"
+(api/defendpoint GET "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
   [id]
   (api/check-404 (seq (concat (schema-tables-list id nil)
                               (schema-tables-list id "")))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET ["/:virtual-db/schema/:schema"
-                             :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+(api/defendpoint GET ["/:virtual-db/schema/:schema"
+                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
   [schema]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
           :card
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
-                                      [:= :collection_id nil]
-                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
+                                     [:= :collection_id nil]
+                                     [:in :collection_id (api/check-404 (not-empty (db/select-ids Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET ["/:virtual-db/datasets/:schema"
-                             :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+(api/defendpoint GET ["/:virtual-db/datasets/:schema"
+                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
   [schema]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
           :dataset
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
-                                      [:= :collection_id nil]
-                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
+                                     [:= :collection_id nil]
+                                     [:in :collection_id (api/check-404 (not-empty (db/select-ids Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/db-ids-with-deprecated-drivers"
+(api/defendpoint GET "/db-ids-with-deprecated-drivers"
   "Return a list of database IDs using currently deprecated drivers."
   []
   (map
-    u/the-id
-    (filter
-      (fn [database]
-        (let [info (driver.u/available-drivers-info)
-              d    (driver.u/database->driver database)]
-          (some? (:superseded-by (d info)))))
-      (db/select-ids Database))))
+   u/the-id
+   (filter
+    (fn [database]
+      (let [info (driver.u/available-drivers-info)
+            d    (driver.u/database->driver database)]
+        (some? (:superseded-by (d info)))))
+    (db/select-ids Database))))
 
 (api/define-routes)

@@ -13,7 +13,7 @@
    [toucan.db :as db]))
 
 (defn rotate-encryption-key!
-  "Rotate the current configured db using the current MB_ENCRYPTION_SECRET_KEY env var and `to-key` argument."
+  "Rotate the current configured db using the current `MB_ENCRYPTION_SECRET_KEY` env var and `to-key` argument."
   [to-key]
   (when-not (mdb/db-is-set-up?)
     (log/warnf "Database not found. Metabase will create a new database at %s and proceeed encrypting." "2")
@@ -35,7 +35,7 @@
     (jdbc/with-db-transaction [t-conn {:datasource (mdb.connection/data-source)}]
       (doseq [[id details] (db/select-id->field :details Database)]
         (when (encryption/possibly-encrypted-string? details)
-          (throw (ex-info (trs "Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))
+          (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))
         (jdbc/update! t-conn
                       :metabase_database
                       {:details (encrypt-str-fn (json/encode details))}
@@ -53,7 +53,7 @@
       ;; of whether they are the "current version" or not), should be updated with the new key
       (doseq [[id value] (db/select-id->field :value Secret)]
         (when (encryption/possibly-encrypted-string? value)
-          (throw (ex-info (trs "Can't decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
+          (throw (ex-info (trs "Can''t decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
         (jdbc/update! t-conn
                       :secret
                       {value-column (encrypt-bytes-fn value)}

@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.test :as met]
    [metabase.email.messages :as messages]
    [metabase.models
     :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
@@ -17,9 +18,9 @@
 (deftest sandboxed-pulse-test
   (testing "Pulses should get sent with the row-level restrictions of the User that created them."
     (letfn [(send-pulse-created-by-user! [user-kw]
-              (mt/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
-                                                    :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
-                              :attributes {"cat" 50}}
+              (met/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
+                                                     :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                               :attributes {"cat" 50}}
                 (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                   ;; `with-gtaps` binds the current test user; we don't want that falsely affecting results
                   (mt/with-test-user nil
@@ -55,15 +56,15 @@
 
 (deftest e2e-sandboxed-pulse-test
   (testing "Sending Pulses w/ sandboxing, end-to-end"
-    (mt/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues
-                                                           {:filter [:= $price 3]})}}}
+    (met/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues
+                                               {:filter [:= $price 3]})}}}
       (let [query (mt/mbql-query venues
-                                 {:aggregation [[:count]]
-                                  :breakout    [$price]})]
+                    {:aggregation [[:count]]
+                     :breakout    [$price]})]
         (is (= [[3 13]]
                (mt/formatted-rows [int int]
-                                  (mt/with-test-user :rasta
-                                    (qp/process-query query))))
+                 (mt/with-test-user :rasta
+                   (qp/process-query query))))
             "Basic sanity check: make sure the query is properly set up to apply GTAPs")
         (testing "GTAPs should apply to Pulses — they should get the same results as if running that query normally"
           (is (= [[3 13]]
@@ -81,8 +82,8 @@
 
 (deftest user-attributes-test
   (testing "Pulses should be sandboxed correctly by User login_attributes"
-    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
-                    :attributes {"price" "1"}}
+    (met/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
+                     :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp Card [card {:dataset_query query}]
@@ -101,8 +102,8 @@
 
 (deftest pulse-preview-test
   (testing "Pulse preview endpoints should be sandboxed"
-    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
-                    :attributes {"price" "1"}}
+    (met/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
+                     :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp Card [card {:dataset_query query}]
@@ -130,8 +131,8 @@
 
 (deftest csv-downloads-test
   (testing "CSV/XLSX downloads should be sandboxed"
-    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
-                    :attributes {"price" "1"}}
+    (met/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
+                     :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp* [Card                 [{card-id :id}  {:dataset_query query}]

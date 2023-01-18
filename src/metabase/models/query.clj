@@ -36,7 +36,7 @@
     :integer))
 
 (defn- update-rolling-average-execution-time!
-  "Update the rolling average execution time for query with QUERY-HASH. Returns `true` if a record was updated,
+  "Update the rolling average execution time for query with `query-hash`. Returns `true` if a record was updated,
    or `false` if no matching records were found."
   ^Boolean [query, ^bytes query-hash, ^Integer execution-time-ms]
   (let [avg-execution-time (hx/cast (int-casting-type) (hx/round (hx/+ (hx/* 0.9 :average_execution_time)
@@ -57,7 +57,7 @@
 (defn- record-new-query-entry!
   "Record a query and its execution time for a `query` with `query-hash` that's not already present in the DB.
   `execution-time-ms` is used as a starting point."
-  [query, ^bytes query-hash, ^Integer execution-time-ms]
+  [query ^bytes query-hash ^Integer execution-time-ms]
   (db/insert! Query
     :query                  query
     :query_hash             query-hash

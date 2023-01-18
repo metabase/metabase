@@ -54,9 +54,9 @@
 
 (defn- type->model [existing-action-type]
   (case existing-action-type
-                          :http HTTPAction
-                          :implicit ImplicitAction
-                          :query QueryAction))
+    :http     HTTPAction
+    :implicit ImplicitAction
+    :query    QueryAction))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:action-id"
