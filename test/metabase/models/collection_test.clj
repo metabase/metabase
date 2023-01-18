@@ -111,16 +111,14 @@
                     Card       [card       {:collection_id (u/the-id collection)}]]
       (db/update! Collection (u/the-id collection)
         :archived true)
-      (is (= true
-             (db/select-one-field :archived Card :id (u/the-id card))))))
+      (is (true? (db/select-one-field :archived Card :id (u/the-id card))))))
 
   (testing "check that unarchiving a Collection unarchives its Cards as well"
     (mt/with-temp* [Collection [collection {:archived true}]
                     Card       [card       {:collection_id (u/the-id collection), :archived true}]]
       (db/update! Collection (u/the-id collection)
         :archived false)
-      (is (= false
-             (db/select-one-field :archived Card :id (u/the-id card)))))))
+      (is (false? (db/select-one-field :archived Card :id (u/the-id card)))))))
 
 (deftest validate-name-test
   (testing "check that collections' names cannot be blank"
@@ -393,8 +391,7 @@
   (testing "We should be able to UPDATE a Collection and give it a new, *valid* location"
     (mt/with-temp* [Collection [collection-1]
                     Collection [collection-2]]
-      (is (= true
-             (db/update! Collection (u/the-id collection-1) :location (collection/location-path collection-2)))))))
+      (is (true? (db/update! Collection (u/the-id collection-1) :location (collection/location-path collection-2)))))))
 
 (deftest crud-validate-ancestors-test
   (testing "Make sure we can't INSERT a Collection with an non-existent ancestors"

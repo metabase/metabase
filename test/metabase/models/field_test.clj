@@ -9,8 +9,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db]
-   [toucan2.core :as t2]))
+   [toucan.db :as db]))
 
 (deftest nfc-field->parent-identifier-test
   (testing "It replaces the last identifier member"
@@ -35,7 +34,7 @@
                                                         :fallback-type nil}]]
     (testing (format "Field with unknown %s in DB should fall back to %s" column fallback-type)
       (mt/with-temp Field [field]
-        (db/execute! {:update (keyword (t2/table-name Field))
+        (db/execute! {:update :metabase_field
                       :set    {column (u/qualified-name unknown-type)}
                       :where  [:= :id (u/the-id field)]})
         (is (= fallback-type

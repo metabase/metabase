@@ -139,8 +139,7 @@
 
 (declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
 
-(models/defmodel Setting
-  :setting)
+(models/defmodel Setting :setting)
 
 (mi/define-methods
  Setting

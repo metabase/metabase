@@ -225,7 +225,7 @@
 (defn- source-question
   [card-or-question]
   (when-let [source-card-id (qp.util/query->source-card-id (:dataset_query card-or-question))]
-    (t2/select-one Card source-card-id)))
+    (db/select-one Card :id source-card-id)))
 
 (defn- table-like?
   [card-or-question]
@@ -704,7 +704,7 @@
     (-> target field/table (assoc :link id))))
 
 (def ^:private ^{:arglists '([source])} source->engine
-  (comp :engine (partial t2/select-one Database :id) (some-fn :db_id :database_id)))
+  (comp :engine (partial db/select-one Database :id) (some-fn :db_id :database_id)))
 
 (defmulti
   ^{:private  true

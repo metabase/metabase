@@ -428,7 +428,7 @@
                  (db/select-one-field :locale User :id user-id)))))
       (testing "invalid locale"
         (is (thrown-with-msg?
-             Exception
+             Throwable
              #"Assert failed: Invalid locale: \"en_XX\""
              (mt/with-temp User [_ {:locale "en_XX"}])))))
 
@@ -440,7 +440,7 @@
                  (db/select-one-field :locale User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
-               Exception
+               Throwable
                #"Assert failed: Invalid locale: \"en_XX\""
                (db/update! User user-id :locale "en_XX"))))))))
 

@@ -3,6 +3,7 @@
    [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.email.messages :as messages]
+   [metabase.models.interface :as mi]
    [metabase.models.setting :refer [defsetting]]
    [metabase.server.request.util :as request.u]
    [metabase.util.date-2 :as u.date]
@@ -90,7 +91,7 @@
 (defn- pre-update [_login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))
 
-(models/define-methods-with-IModel-method-map
+(mi/define-methods
  LoginHistory
  {:post-select post-select
   :post-insert post-insert

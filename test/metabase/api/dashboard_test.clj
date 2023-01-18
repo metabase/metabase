@@ -199,9 +199,9 @@
               (mt/user-http-request :rasta :post 200 "dashboard" {:name                dashboard-name
                                                                   :collection_id       (u/the-id collection)
                                                                   :collection_position 1000})
-              (is (= {:collection_id true, :collection_position 1000}
-                     (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
-                             (update :collection_id (partial = (u/the-id collection))))))
+              (is (=? {:collection_id true, :collection_position 1000}
+                      (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
+                              (update :collection_id (partial = (u/the-id collection))))))
               (finally
                 (db/delete! Dashboard :name dashboard-name)))))
 

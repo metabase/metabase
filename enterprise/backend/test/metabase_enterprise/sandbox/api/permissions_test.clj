@@ -151,33 +151,32 @@
 (deftest persistence-and-permissions
   (mt/with-model-cleanup [PersistedInfo]
     (testing "Queries from cache if not sandboxed"
-      (mt/with-current-user
-          (mt/user->id :rasta)
-          (mt/with-temp*
-            [Card [card {:dataset_query (mt/mbql-query venues)
-                         :dataset true
-                         :database_id (mt/id)}]]
-            (fake-persist-card! card)
-            (is (str/includes?
-                 (:query (qp/compile
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-temp*
+          [Card [card {:dataset_query (mt/mbql-query venues)
+                       :dataset true
+                       :database_id (mt/id)}]]
+          (fake-persist-card! card)
+          (is (str/includes?
+               (:query (qp/compile
 
-                          {:database (mt/id)
-                           :query {:source-table (str "card__" (u/the-id card))}
-                           :type :query}))
-                 "metabase_cache")))))
+                        {:database (mt/id)
+                         :query {:source-table (str "card__" (u/the-id card))}
+                         :type :query}))
+               "metabase_cache")))))
     (testing "Queries from source if sandboxed"
       (met/with-gtaps
-          {:gtaps {:venues {:query (mt/mbql-query venues)
-                            :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
-           :attributes {"cat" 50}}
-          (mt/with-temp*
-            [Card [card {:dataset_query (mt/mbql-query venues)
-                         :dataset true
-                         :database_id (mt/id)}]]
-            (fake-persist-card! card)
-            (is (not (str/includes?
-                      (:query (qp/compile
-                               {:database (mt/id)
-                                :query {:source-table (str "card__" (u/the-id card))}
-                                :type :query}))
-                      "metabase_cache"))))))))
+        {:gtaps {:venues {:query (mt/mbql-query venues)
+                          :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+         :attributes {"cat" 50}}
+        (mt/with-temp*
+          [Card [card {:dataset_query (mt/mbql-query venues)
+                       :dataset true
+                       :database_id (mt/id)}]]
+          (fake-persist-card! card)
+          (is (not (str/includes?
+                    (:query (qp/compile
+                             {:database (mt/id)
+                              :query {:source-table (str "card__" (u/the-id card))}
+                              :type :query}))
+                    "metabase_cache"))))))))

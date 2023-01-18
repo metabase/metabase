@@ -20,8 +20,7 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
    [schema.core :as schema]
-   [toucan.db :as db]
-   [toucan2.core :as t2]))
+   [toucan.db :as db]))
 
 (declare check-403 check-404)
 
@@ -420,7 +419,7 @@
    obj)
 
   ([entity id]
-   (read-check (t2/select-one entity id)))
+   (read-check (db/select-one entity :id id)))
 
   ([entity id & other-conditions]
    (read-check (apply db/select-one entity :id id other-conditions))))
@@ -435,7 +434,7 @@
    (check-403 (mi/can-write? obj))
    obj)
   ([entity id]
-   (write-check (t2/select-one entity id)))
+   (write-check (db/select-one entity :id id)))
   ([entity id & other-conditions]
    (write-check (apply db/select-one entity :id id other-conditions))))
 

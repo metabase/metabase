@@ -64,9 +64,9 @@
       (testing "gtap with remappings"
         (letfn [(hash-for-user-id [user-id login-attributes field-id]
                   (met/with-gtaps-for-user user-id
-                      {:gtaps      {:categories {:remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}}
-                       :attributes login-attributes}
-                      (ee-params.field-values/hash-key-for-sandbox field-id)))]
+                    {:gtaps      {:categories {:remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}}
+                     :attributes login-attributes}
+                    (ee-params.field-values/hash-key-for-sandbox field-id)))]
           (mt/with-temp* [User [{user-id-1 :id}]
                           User [{user-id-2 :id}]]
 

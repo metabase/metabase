@@ -17,8 +17,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.query-processor.util :as qp.util]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan2.core :as t2]))
+   [toucan.db :as db]))
 
 (def ^:private ^Long max-best-matches        3)
 (def ^:private ^Long max-serendipity-matches 2)
@@ -121,9 +120,9 @@
          :table_id           (:id table)
          :fk_target_field_id [:not= nil]
          :active             true)
-       (map (comp (partial t2/select-one Table :id)
+       (map (comp (partial db/select-one Table :id)
                   :table_id
-                  (partial t2/select-one Field :id)))
+                  (partial db/select-one Field :id)))
        distinct
        filter-visible
        (take max-matches)))
@@ -136,7 +135,7 @@
     (->> (db/select-field :table_id Field
            :fk_target_field_id [:in fields]
            :active             true)
-         (map (partial t2/select-one Table :id))
+         (map (partial db/select-one Table :id))
          filter-visible
          (take max-matches))
     []))
@@ -148,7 +147,7 @@
     (->> (db/select-field :card_id DashboardCard
            :dashboard_id [:in dashboards]
            :card_id      [:not= (:id card)])
-         (map (partial t2/select-one Card :id))
+         (map (partial db/select-one Card :id))
          filter-visible
          (take max-matches))
     []))
@@ -178,7 +177,7 @@
          :model     "Dashboard"
          :user_id   api/*current-user-id*
          {:order-by [[:timestamp :desc]]})
-       (map (partial t2/select-one Dashboard :id))
+       (map (partial db/select-one Dashboard :id))
        filter-visible
        (take max-serendipity-matches)))
 
@@ -197,7 +196,7 @@
                               (mapcat (comp card->dashboards :id))
                               distinct
                               ;; TODO -- extremely naughty to be doing a separate select for every single Dashboard ID
-                              (map (partial t2/select-one Dashboard :id))
+                              (map (partial db/select-one Dashboard :id))
                               filter-visible
                               (take max-best-matches))]
     (concat best recent)))
@@ -207,7 +206,7 @@
   (->> cards
        (m/distinct-by :collection_id)
        interesting-mix
-       (keep (comp (partial t2/select-one Collection :id) :collection_id))
+       (keep (comp (partial db/select-one Collection :id) :collection_id))
        filter-visible))
 
 (defmulti related
@@ -306,7 +305,7 @@
 
 (defmethod related Dashboard
   [dashboard]
-  (let [cards (map (partial t2/select-one Card :id)
+  (let [cards (map (partial db/select-one Card :id)
                    (db/select-field :card_id DashboardCard
                                     :dashboard_id (:id dashboard)))]
     {:cards (->> cards

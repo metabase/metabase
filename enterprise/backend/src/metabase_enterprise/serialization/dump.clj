@@ -11,6 +11,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
@@ -20,7 +21,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs]]
    [toucan.db :as db]
-   [toucan2.core :as t2]
    [yaml.core :as yaml]
    [yaml.writer :as y.writer])
   (:import
@@ -38,7 +38,7 @@
 (defn- as-file?
   [instance]
   (some (fn [model]
-          (t2/instance-of? model instance))
+          (mi/instance-of? model instance))
         [Pulse Dashboard Metric Segment Field User]))
 
 (defn- spit-entity

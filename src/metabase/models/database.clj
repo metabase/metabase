@@ -19,8 +19,7 @@
    [metabase.util.i18n :refer [trs]]
    [methodical.core :as methodical]
    [toucan.db :as db]
-   [toucan.models :as models]
-   [toucan2.core :as t2]))
+   [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -94,7 +93,7 @@
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (db/execute! {:delete-from (keyword (t2/table-name (db/resolve-model 'Permissions)))
+  (db/execute! {:delete-from :permissions
                 :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try

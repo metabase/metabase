@@ -16,8 +16,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan2.core :as t2]))
+   [toucan.db :as db]))
 
 (deftest field-should-have-field-values?-test
   (doseq [[group input->expected] {"Text and Category Fields"
@@ -157,7 +156,7 @@
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
                                    :values   (json/generate-string ["1" "2" "3"])}]
-      (is (db/execute! {:update (keyword (t2/table-name FieldValues))
+      (is (db/execute! {:update :metabase_fieldvalues
                         :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
                         :where  [:= :id (:id fv)]}))
       (is (= ["a" "b" "c"]

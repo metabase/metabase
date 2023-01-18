@@ -29,7 +29,6 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
-   [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols])
   (:import
    (metabase.models.collection.root RootCollection)))
@@ -886,7 +885,7 @@
     (when (:personal_owner_id collection)
       (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
-  (db/execute! {:delete-from (keyword (t2/table-name Permissions))
+  (db/execute! {:delete-from :permissions
                 :where       [:or
                               [:= :object (perms/collection-readwrite-path collection)]
                               [:= :object (perms/collection-read-path collection)]]}))

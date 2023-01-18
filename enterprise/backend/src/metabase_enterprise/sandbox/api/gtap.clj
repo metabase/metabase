@@ -9,8 +9,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan2.core :as t2]))
+   [toucan.db :as db]))
 
 (api/defendpoint GET "/"
   "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
@@ -24,7 +23,7 @@
 (api/defendpoint GET "/:id"
   "Fetch GTAP by `id`"
   [id]
-  (api/check-404 (t2/select-one GroupTableAccessPolicy id)))
+  (api/check-404 (db/select-one GroupTableAccessPolicy :id id)))
 
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
@@ -54,19 +53,19 @@
   [id :as {{:keys [card_id #_attribute_remappings], :as body} :body}]
   {card_id              (s/maybe su/IntGreaterThanZero)
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
-  (api/check-404 (t2/select-one GroupTableAccessPolicy id))
+  (api/check-404 (db/select-one GroupTableAccessPolicy :id id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
   (when (some #(contains? body %) [:card_id :attribute_remappings])
     (db/update! GroupTableAccessPolicy id
       (u/select-keys-when body
         :present #{:card_id :attribute_remappings})))
-  (t2/select-one GroupTableAccessPolicy id))
+  (db/select-one GroupTableAccessPolicy :id id))
 
 (api/defendpoint DELETE "/:id"
   "Delete a GTAP entry."
   [id]
-  (api/check-404 (t2/select-one GroupTableAccessPolicy id))
+  (api/check-404 (db/select-one GroupTableAccessPolicy :id id))
   (db/delete! GroupTableAccessPolicy :id id)
   api/generic-204-no-content)
 
