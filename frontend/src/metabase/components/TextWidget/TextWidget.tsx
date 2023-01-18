@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import { t } from "ttag";
 import { forceRedraw } from "metabase/lib/dom";
 import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
+import { TextWidgetInput } from "./TextWidget.styled";
 
 type Props = {
   value: string | number;
@@ -70,7 +71,7 @@ class TextWidget extends React.Component<Props, State> {
       : this.state.value;
 
     return (
-      <input
+      <TextWidgetInput
         className={className}
         type="text"
         value={value ?? ""}
