@@ -12,11 +12,11 @@ import {
   ModalRadioRoot,
 } from "./DeleteGroupMappingModal.styled";
 
-type GroupIds = number[];
-type DNType = string;
-type ValueType = "nothing" | "clear" | "delete";
+export type GroupIds = number[];
+export type DNType = string;
+export type ValueType = "nothing" | "clear" | "delete";
 
-export type DeleteGroupMappingModalProps = {
+type DeleteGroupMappingModalProps = {
   dn: DNType;
   groupIds: GroupIds;
   onConfirm: (value: ValueType, groups: number[], dn: DNType) => void;
@@ -82,7 +82,7 @@ const DeleteGroupMappingModal = ({
               {
                 name:
                   groupIds.length > 1
-                    ? t`Also delete the groups`
+                    ? t`Also delete the groups (except Admin)`
                     : t`Also delete the group`,
                 value: "delete",
               },
