@@ -5,6 +5,7 @@ import {
   saveQuestion,
   setFilterListSource,
   visitEmbeddedPage,
+  visitPublicQuestion,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
@@ -16,6 +17,7 @@ describe("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
@@ -44,6 +46,21 @@ describe("scenarios > filters > sql filters > values source", () => {
           cy.createNativeQuestion(getStructuredTargetQuestion(id)).then(
             ({ body: { id } }) => {
               visitEmbeddedPage(getQuestionResource(id));
+            },
+          );
+        },
+      );
+
+      FieldFilter.openEntryForm();
+      FieldFilter.selectFilterValueFromList("Gadget");
+    });
+
+    it("should be able to use a structured question source when public", () => {
+      cy.createQuestion(getStructuredSourceQuestion()).then(
+        ({ body: { id } }) => {
+          cy.createNativeQuestion(getStructuredTargetQuestion(id)).then(
+            ({ body: { id } }) => {
+              visitPublicQuestion(id);
             },
           );
         },
@@ -84,6 +101,21 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.openEntryForm();
       FieldFilter.selectFilterValueFromList("1018947080336");
     });
+
+    it("should be able to use a native question source when public", () => {
+      cy.createNativeQuestion(getNativeSourceQuestion()).then(
+        ({ body: { id } }) => {
+          cy.createNativeQuestion(getNativeTargetQuestion(id)).then(
+            ({ body: { id } }) => {
+              visitPublicQuestion(id);
+            },
+          );
+        },
+      );
+
+      FieldFilter.openEntryForm();
+      FieldFilter.selectFilterValueFromList("1018947080336");
+    });
   });
 
   describe("static list source", () => {
@@ -104,6 +136,17 @@ describe("scenarios > filters > sql filters > values source", () => {
       cy.createNativeQuestion(getListTargetQuestion()).then(
         ({ body: { id } }) => {
           visitEmbeddedPage(getQuestionResource(id));
+        },
+      );
+
+      FieldFilter.openEntryForm();
+      FieldFilter.selectFilterValueFromList("1018947080336");
+    });
+
+    it("should be able to use a static list source when public", () => {
+      cy.createNativeQuestion(getListTargetQuestion()).then(
+        ({ body: { id } }) => {
+          visitPublicQuestion(id);
         },
       );
 
