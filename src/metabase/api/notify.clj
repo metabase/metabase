@@ -20,11 +20,11 @@
   "Find the table description from describe-database matching the provided name and schema. For databases with no schema
   (e.g. Mongo), pass `nil`. `nil` is returned if there is no matching table."
   [db :- i/DatabaseInstance
-   {:keys [schema-name table-name]} :- {:schema-name (s/maybe su/NonBlankString)
-                                        :table-name  su/NonBlankString}]
+   {:keys [schema_name table_name]} :- {:schema_name (s/maybe su/NonBlankString)
+                                        :table_name  su/NonBlankString}]
   (let [db-driver    (driver.u/database->driver db)
         {db-tables :tables} (driver/describe-database db-driver db)
-        target-table {:schema schema-name :name table-name}]
+        target-table {:schema schema_name :name table_name}]
     (some
      (fn [db-table]
        (when (= target-table (select-keys db-table [:schema :name]))
@@ -35,13 +35,13 @@
   "Given a table name and schema, return the existing metabase table of that name and schema or create and return the
   metabase table if it can be found by `describe-database`."
   [db :- i/DatabaseInstance
-   {:keys [schema-name table-name]} :- {:schema-name (s/maybe su/NonBlankString)
-                                        :table-name  su/NonBlankString}]
+   {:keys [schema_name table_name] :as args} :- {:schema_name (s/maybe su/NonBlankString)
+                                                 :table_name  su/NonBlankString}]
   (or
    ;; Get the metabase table if it exists
-   (db/select-one Table :db_id (:id db) :schema schema-name :name table-name)
+   (db/select-one Table :db_id (:id db) :schema schema_name :name table_name)
    ;; Create and return the table if metabase can find it via `describe-database`
-   (some->> (metabase-table-descriptor db {:schema-name schema-name :table-name table-name})
+   (some->> (metabase-table-descriptor db args)
             (sync-tables/create-or-reactivate-table! db))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -66,23 +66,20 @@
       (cond-> (cond
                 table_id (api/let-404 [table (db/select-one Table :db_id id, :id (int table_id))]
                            (future (table-sync-fn table)))
-                (and
-                 table_name
-                 (contains? body :schema_name)) (if-some [table (get-or-create-table database
-                                                                                     {:schema-name schema_name
-                                                                                      :table-name  table_name})]
-                                                  (future (table-sync-fn table))
-                                                  (let [msg (trs "Table ''{0}'' does not exist or you do not have permission to view it." table_name)]
-                                                    (throw (ex-info msg {:status-code 404}))))
-                table_name (let [[table ambiguous-table :as matches] (db/select Table :db_id id, :name table_name)]
+                table_name (let [table-spec (select-keys body [:schema_name :table_name])
+                                 [table ambiguous-table :as tables] (if (contains? body :schema_name)
+                                                                      [(get-or-create-table database table-spec)]
+                                                                      (db/select Table :db_id id :name table_name))]
                              (cond
                                ambiguous-table (let [msg (trs
                                                           "Table ''{0}'' is ambiguous ({1} potential tables found). Please provide a schema."
                                                           table_name
-                                                          (count matches))]
+                                                          (count tables))]
                                                  (throw (ex-info msg {:status-code 400})))
                                table (future (table-sync-fn table))
-                               :else (let [msg (trs "Table ''{0}'' not found." table_name)]
+                               :else (let [msg (trs
+                                                "Table ''{0}'' does not exist or you do not have permission to view it."
+                                                table_name)]
                                        (throw (ex-info msg {:status-code 404})))))
                 :else (future (db-sync-fn database)))
               synchronous? deref)))
