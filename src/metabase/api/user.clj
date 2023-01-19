@@ -333,12 +333,13 @@
       ;; implicitly prevent group manager from updating users' info
       (when (or (= id api/*current-user-id*)
                 api/*is-superuser?*)
-        (api/check-500
-         (db/update! User id (u/select-keys-when body
-                               :present (cond-> #{:first_name :last_name :locale}
-                                          api/*is-superuser?* (conj :login_attributes))
-                               :non-nil (cond-> #{:email}
-                                          api/*is-superuser?* (conj :is_superuser)))))
+        (when-let [changes (not-empty
+                            (u/select-keys-when body
+                              :present (cond-> #{:first_name :last_name :locale}
+                                         api/*is-superuser?* (conj :login_attributes))
+                              :non-nil (cond-> #{:email}
+                                         api/*is-superuser?* (conj :is_superuser))))]
+          (db/update! User id changes))
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)

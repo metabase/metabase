@@ -11,11 +11,13 @@
     :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.revision :as revision]
+   [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :as user]
@@ -408,3 +410,32 @@
         (is (= "8cbf93b7"
                (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1) now])
                (serdes.hash/identity-hash dash)))))))
+
+(deftest serdes-descendants-test
+  (testing "dashboard which have parameter's source is another card"
+    (mt/with-temp* [Field     [field     {:name "A field"}]
+                    Card      [card      {:name "A card"}]
+                    Dashboard [dashboard {:name       "A dashboard"
+                                          :parameters [{:id "abc"
+                                                        :type "category"
+                                                        :values_source_type "card"
+                                                        :values_source_config {:card_id     (:id card)
+                                                                               :value_field [:field (:id field) nil]}}]}]]
+      (is (= #{["Card" (:id card)]}
+             (serdes.base/serdes-descendants "Dashboard" (:id dashboard))))))
+
+  (testing "dashboard in which its dashcards has parameter_mappings to a card"
+    (mt/with-temp* [Card          [card1     {:name "Card attached to dashcard"}]
+                    Card          [card2     {:name "Card attached to parameters"}]
+                    Dashboard     [dashboard {:parameters [{:name "Category Name"
+                                                            :slug "category_name"
+                                                            :id   "_CATEGORY_NAME_"
+                                                            :type "category"}]}]
+                    DashboardCard [_         {:card_id            (:id card1)
+                                              :dashboard_id       (:id dashboard)
+                                              :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                                    :card_id      (:id card2)
+                                                                    :target       [:dimension (mt/$ids $categories.name)]}]}]]
+      (is (= #{["Card" (:id card1)]
+               ["Card" (:id card2)]}
+             (serdes.base/serdes-descendants "Dashboard" (:id dashboard)))))))

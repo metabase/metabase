@@ -259,7 +259,6 @@
                      result))
         (is (= (db/select-field :id 'User) (set (keys result))))))))
 
-
 (deftest add-group-membership-test
   (testing "POST /api/permissions/membership"
     (mt/with-temp* [User             [user]

@@ -5,9 +5,7 @@
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
-   [metabase.models.revision
-    :as revision
-    :refer [push-revision! Revision revisions]]
+   [metabase.models.revision :as revision :refer [Revision]]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -26,20 +24,23 @@
     (dissoc revision :timestamp :id)))
 
 (defn- create-card-revision [card is-creation? user]
-  (push-revision!
+  (revision/push-revision!
     :object       card
     :entity       Card
     :id           (:id card)
     :user-id      (test.users/user->id user)
     :is-creation? is-creation?))
 
-(defn- create-dashboard-revision! [dash is-creation? user]
-  (push-revision!
-    :object       (db/select-one Dashboard :id (:id dash))
-    :entity       Dashboard
-    :id           (:id dash)
-    :user-id      (test.users/user->id user)
-    :is-creation? is-creation?))
+;;; TODO -- seems weird that this fetches the Dashboard while the Card version above does not ?
+(defn- create-dashboard-revision!
+  "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
+  [dash is-creation? user]
+  (revision/push-revision!
+   :object       (db/select-one Dashboard :id (:id dash))
+   :entity       Dashboard
+   :id           (:id dash)
+   :user-id      (test.users/user->id user)
+   :is-creation? is-creation?))
 
 ;;; # GET /revision
 
@@ -96,7 +97,7 @@
                (create-card-revision card true :rasta)
                (create-card-revision (assoc card :name "something else") false :rasta)
                (db/insert! Revision
-                 :model        (:name Card)
+                 :model        "Card"
                  :model_id     id
                  :user_id      (test.users/user->id :rasta)
                  :object       (revision/serialize-instance Card (:id card) card)
@@ -115,6 +116,21 @@
   (testing "Reverting through API works"
     (tt/with-temp* [Dashboard [{:keys [id] :as dash}]
                     Card      [{card-id :id, :as card}]]
+      (is (=? {:id id}
+              (create-dashboard-revision! dash true :rasta)))
+      (let [dashcard (db/insert! DashboardCard :dashboard_id id :card_id (:id card))]
+        (is (=? {:id id}
+                (create-dashboard-revision! dash false :rasta)))
+        (is (true? (db/simple-delete! DashboardCard, :id (:id dashcard)))))
+      (is (=? {:id id}
+              (create-dashboard-revision! dash false :rasta)))
+      (testing "Revert to the previous revision, allowed because rasta has permissions on parent collection"
+        (let [[_ {previous-revision-id :id}] (revision/revisions Dashboard id)]
+          (is (=? {:id          int?
+                   :description "added a card."}
+                  (mt/user-http-request :rasta :post 200 "revision/revert" {:entity      :dashboard
+                                                                            :id          id
+                                                                            :revision_id previous-revision-id})))))
       (is (= [{:is_reversion true
                :is_creation  false
                :message      nil
@@ -128,38 +144,27 @@
                :user         @rasta-revision-info
                :diff         {:before {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}
                               :after  {:cards nil}}
-               :description "removed a card."}
+               :description  "removed a card."}
               {:is_reversion false
                :is_creation  false
                :message      nil
                :user         @rasta-revision-info
                :diff         {:before {:cards nil}
                               :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
-               :description "added a card."}
+               :description  "added a card."}
               {:is_reversion false
                :is_creation  true
                :message      nil
                :user         @rasta-revision-info
                :diff         nil
                :description  "rearranged the cards."}]
-             (do
-               (create-dashboard-revision! dash true :rasta)
-               (let [dashcard (db/insert! DashboardCard :dashboard_id id :card_id (:id card))]
-                 (create-dashboard-revision! dash false :rasta)
-                 (db/simple-delete! DashboardCard, :id (:id dashcard)))
-               (create-dashboard-revision! dash false :rasta)
-               (let [[_ {previous-revision-id :id}] (revisions Dashboard id)]
-                 ;; Revert to the previous revision, allowed because rasta has permissions on parent collection
-                 (mt/user-http-request :rasta :post "revision/revert" {:entity      :dashboard
-                                                                       :id          id
-                                                                       :revision_id previous-revision-id}))
-               (->> (get-revisions :dashboard id)
-                    (mapv (fn [rev]
-                            (if-not (:diff rev)
-                              rev
-                              (if (get-in rev [:diff :before :cards])
-                                (update-in rev [:diff :before :cards] strip-ids)
-                                (update-in rev [:diff :after :cards] strip-ids))))))))))))
+             (->> (get-revisions :dashboard id)
+                  (mapv (fn [rev]
+                          (if-not (:diff rev)
+                            rev
+                            (if (get-in rev [:diff :before :cards])
+                              (update-in rev [:diff :before :cards] strip-ids)
+                              (update-in rev [:diff :after :cards] strip-ids)))))))))))
 
 (deftest permission-check-on-revert-test
   (testing "Are permissions enforced by the revert action in the revision api?"
@@ -169,7 +174,7 @@
         (create-dashboard-revision! dashboard true :crowberto)
         (create-dashboard-revision! dashboard false :crowberto)
         (let [dashboard-id          (u/the-id dashboard)
-              [_ {prev-rev-id :id}] (revisions Dashboard dashboard-id)
+              [_ {prev-rev-id :id}] (revision/revisions Dashboard dashboard-id)
               update-req            {:entity :dashboard, :id dashboard-id, :revision_id prev-rev-id}]
           ;; rasta should not have permissions to update the dashboard (i.e. revert), because they are not admin and do
           ;; not have any particular permission on the collection where it lives (because of the

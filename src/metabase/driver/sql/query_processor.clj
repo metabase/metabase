@@ -27,7 +27,6 @@
    [pretty.core :refer [PrettyPrintable]]
    [schema.core :as s])
   (:import
-   (metabase.models.field FieldInstance)
    (metabase.util.honey_sql_1_extensions Identifier TypedHoneySQLForm)))
 
 (comment metabase.models.field/keep-me) ; for FieldInstance
@@ -863,15 +862,15 @@
   [:= (->honeysql driver field) (->honeysql driver value)])
 
 (defn- correct-null-behaviour
-  [driver [op & args]]
-  (let [field-arg (mbql.u/match-one args
-                    FieldInstance &match
-                    :field        &match)]
+  [driver [op & args :as clause]]
+  (if-let [field-arg (mbql.u/match-one args
+                       :field          &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
     [:or
      (into [op] (map (partial ->honeysql driver)) args)
-     [:= (->honeysql driver field-arg) nil]]))
+     [:= (->honeysql driver field-arg) nil]]
+    clause))
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]

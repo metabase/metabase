@@ -20,11 +20,10 @@
     (db/select-one GroupTableAccessPolicy :group_id group_id :table_id table_id)
     (db/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch GTAP by `id`"
   [id]
-  (api/check-404 (GroupTableAccessPolicy id)))
+  (api/check-404 (db/select-one GroupTableAccessPolicy :id id)))
 
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
@@ -54,20 +53,19 @@
   [id :as {{:keys [card_id #_attribute_remappings], :as body} :body}]
   {card_id              (s/maybe su/IntGreaterThanZero)
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
-  (api/check-404 (GroupTableAccessPolicy id))
+  (api/check-404 (db/select-one GroupTableAccessPolicy :id id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
   (when (some #(contains? body %) [:card_id :attribute_remappings])
     (db/update! GroupTableAccessPolicy id
       (u/select-keys-when body
         :present #{:card_id :attribute_remappings})))
-  (GroupTableAccessPolicy id))
+  (db/select-one GroupTableAccessPolicy :id id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id"
+(api/defendpoint DELETE "/:id"
   "Delete a GTAP entry."
   [id]
-  (api/check-404 (GroupTableAccessPolicy id))
+  (api/check-404 (db/select-one GroupTableAccessPolicy :id id))
   (db/delete! GroupTableAccessPolicy :id id)
   api/generic-204-no-content)
 

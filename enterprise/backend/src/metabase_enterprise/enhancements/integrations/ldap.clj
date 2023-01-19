@@ -4,6 +4,7 @@
    [metabase.integrations.common :as integrations.common]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.integrations.ldap.interface :as i]
+   [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings.premium-features
@@ -73,7 +74,7 @@
                           (ldap-group-membership-filter))]
       (assoc user-info :attributes (syncable-user-attributes result)))))
 
-(defenterprise-schema fetch-or-create-user! :- (class User)
+(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   :feature :any
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo
