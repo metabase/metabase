@@ -3,14 +3,48 @@
   (:require
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.models.database :refer [Database]]
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
+   [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
+
+(s/defn ^:private metabase-table-descriptor
+  "Find the table description from describe-database matching the provided name and schema. For databases with no schema
+  (e.g. Mongo), pass `nil`. `nil` is returned if there is no match ing table."
+  [db :- i/DatabaseInstance
+   {:keys [schema-name table-name]} :- {:schema-name (s/maybe su/NonBlankString)
+                                        :table-name  su/NonBlankString}]
+  (let [db-driver    (driver.u/database->driver db)
+        {db-tables :tables} (driver/describe-database db-driver db)
+        target-table {:schema schema-name :name table-name}]
+    (some
+     (fn [db-table]
+       (when (= target-table (select-keys db-table [:schema :name]))
+         db-table))
+     db-tables)))
+
+(s/defn ^:private get-or-create-table
+  "Given a table name and schema, return the existing metabase table of that name and schema or create and return the
+  metabase table if it can be found by `describe-database`."
+  [db :- i/DatabaseInstance
+   {:keys [schema-name table-name]} :- {:schema-name (s/maybe su/NonBlankString)
+                                        :table-name  su/NonBlankString}]
+  (or
+   ;; Get the metabase table if it exists
+   (db/select-one Table :db_id (:id db) :schema schema-name :name table-name)
+   ;; Create and return the table if metabase can find it via `describe-database`
+   (some->> (metabase-table-descriptor db {:schema-name schema-name :table-name table-name})
+            (sync-tables/create-or-reactivate-table! db))
+   (let [msg (trs "Table ''{0}'' does not exist or you do not have permission to view it." table-name)]
+     (throw (ex-info msg {:status-code 404})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/db/:id"
@@ -34,12 +68,20 @@
       (cond-> (cond
                 table_id (api/let-404 [table (db/select-one Table :db_id id, :id (int table_id))]
                            (future (table-sync-fn table)))
-                table_name (api/let-404 [table (sync-tables/get-or-create-named-table!
-                                                database
-                                                (cond-> {:table-name table_name}
-                                                        (contains? body :schema_name)
-                                                        (assoc :schema-name schema_name)))]
-                             (future (table-sync-fn table)))
+                (and table_name (contains? body :schema_name)) (future
+                                                                (->> {:schema-name schema_name :table-name table_name}
+                                                                     (get-or-create-table database)
+                                                                     table-sync-fn))
+                table_name (let [[table ambiguous-table :as matches] (db/select Table :db_id id, :name table_name)]
+                             (cond
+                               ambiguous-table (let [msg (trs
+                                                          "Table ''{0}'' is ambiguous ({1} potential tables found). Please provide a schema."
+                                                          table_name
+                                                          (count matches))]
+                                                 (throw (ex-info msg {:status-code 400})))
+                               table (future (table-sync-fn table))
+                               :else (let [msg (trs "Table ''{0}'' not found." table_name)]
+                                       (throw (ex-info msg {:status-code 404})))))
                 :else (future (db-sync-fn database)))
               synchronous? deref)))
   {:success true})
