@@ -112,7 +112,6 @@ export const AddActionSidebar = _.compose(
   Search.loadList({
     query: (_state: State, props: any) => ({
       models: ["dataset"],
-      collection: props.dashboard.collection_id,
     }),
     loadingAndErrorWrapper: false,
     listName: "models",
