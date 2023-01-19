@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { t } from "ttag";
 import { ActionForm } from "metabase/actions/components/ActionForm";
+import Modal from "metabase/components/Modal";
+import ModalContent from "metabase/components/ModalContent";
 
 import {
   getSubmitButtonColor,
@@ -31,7 +33,7 @@ interface Props {
   dashcardParamValues: ParametersForActionExecution;
 
   action: WritebackQueryAction;
-  page?: Dashboard;
+  dashboard?: Dashboard;
   dashcard?: ActionDashboardCard;
   onCancel?: () => void;
   submitButtonColor?: string;
@@ -43,7 +45,7 @@ function ActionParametersInputForm({
   missingParameters,
   dashcardParamValues,
   action,
-  page,
+  dashboard,
   dashcard,
   onCancel,
   onSubmit,
@@ -57,23 +59,29 @@ function ActionParametersInputForm({
   const fetchInitialValues = useCallback(
     () =>
       ActionsApi.prefetchValues({
-        dashboardId: page?.id,
+        dashboardId: dashboard?.id,
         dashcardId: dashcard?.id,
         parameters: JSON.stringify(dashcardParamValues),
       }).then(setPrefetchValues),
-    [page?.id, dashcard?.id, dashcardParamValues],
+    [dashboard?.id, dashcard?.id, dashcardParamValues],
   );
 
   useEffect(() => {
     // we need at least 1 parameter value (a PK) to fetch initial values
     const canPrefetch =
-      Object.keys(dashcardParamValues).length > 0 && page && dashcard;
+      Object.keys(dashcardParamValues).length > 0 && dashboard && dashcard;
 
     if (shouldPrefetch) {
       setPrefetchValues({});
       canPrefetch && fetchInitialValues();
     }
-  }, [shouldPrefetch, page, dashcard, dashcardParamValues, fetchInitialValues]);
+  }, [
+    shouldPrefetch,
+    dashboard,
+    dashcard,
+    dashcardParamValues,
+    fetchInitialValues,
+  ]);
 
   const fieldSettings = useMemo(
     () =>
@@ -141,5 +149,35 @@ function ActionParametersInputForm({
     />
   );
 }
+
+interface ModalProps {
+  onClose: () => void;
+  title: string;
+  showConfirmMessage?: boolean;
+  confirmMessage?: string;
+}
+
+export function ActionParametersInputModal({
+  onClose,
+  title,
+  showConfirmMessage,
+  confirmMessage,
+  ...formProps
+}: ModalProps & Props) {
+  return (
+    <Modal onClose={onClose}>
+      <ModalContent title={title} onClose={onClose}>
+        <>
+          {showConfirmMessage && <ConfirmMessage message={confirmMessage} />}
+          <ActionParametersInputForm {...formProps} />
+        </>
+      </ModalContent>
+    </Modal>
+  );
+}
+
+const ConfirmMessage = ({ message }: { message?: string }) => (
+  <div>{message ?? t`This action cannot be undone.`}</div>
+);
 
 export default ActionParametersInputForm;

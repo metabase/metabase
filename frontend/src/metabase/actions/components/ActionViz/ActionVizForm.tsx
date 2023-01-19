@@ -12,8 +12,9 @@ import type {
 } from "metabase-types/api";
 import { getFormTitle } from "metabase/actions/containers/ActionCreator/FormCreator";
 
-import ActionParametersInputForm from "../../containers/ActionParametersInputForm";
-import ActionParametersInputModal from "../../containers/ActionParametersInputModal";
+import ActionParametersInputForm, {
+  ActionParametersInputModal,
+} from "../../containers/ActionParametersInputForm";
 import ActionButtonView from "./ActionButtonView";
 import { shouldShowConfirmation } from "./utils";
 
@@ -24,7 +25,7 @@ interface ActionFormProps {
   dashcard: ActionDashboardCard;
   settings: VisualizationSettings;
   isSettings: boolean;
-  page: Dashboard;
+  dashboard: Dashboard;
   missingParameters: WritebackParameter[];
   dashcardParamValues: ParametersForActionExecution;
   action: WritebackQueryAction;
@@ -36,7 +37,7 @@ function ActionVizForm({
   dashcard,
   settings,
   isSettings,
-  page,
+  dashboard,
   missingParameters,
   dashcardParamValues,
   action,
@@ -77,24 +78,16 @@ function ActionVizForm({
           <ActionParametersInputModal
             onClose={() => setShowModal(false)}
             title={title}
-          >
-            <>
-              {showConfirmMessage && (
-                <ConfirmMessage
-                  message={action.visualization_settings?.confirmMessage}
-                />
-              )}
-              <ActionParametersInputForm
-                onSubmit={onModalSubmit}
-                page={page}
-                dashcard={dashcard}
-                missingParameters={missingParameters}
-                dashcardParamValues={dashcardParamValues}
-                onCancel={() => setShowModal(false)}
-                action={action}
-              />
-            </>
-          </ActionParametersInputModal>
+            onSubmit={onModalSubmit}
+            showConfirmMessage={!!showConfirmMessage}
+            confirmMessage={action.visualization_settings?.confirmMessage}
+            dashboard={dashboard}
+            dashcard={dashcard}
+            missingParameters={missingParameters}
+            dashcardParamValues={dashcardParamValues}
+            onCancel={() => setShowModal(false)}
+            action={action}
+          />
         )}
       </>
     );
@@ -105,7 +98,7 @@ function ActionVizForm({
       <FormTitle>{title}</FormTitle>
       <ActionParametersInputForm
         onSubmit={onSubmit}
-        page={page}
+        dashboard={dashboard}
         dashcard={dashcard}
         missingParameters={missingParameters}
         dashcardParamValues={dashcardParamValues}
@@ -114,9 +107,5 @@ function ActionVizForm({
     </FormWrapper>
   );
 }
-
-const ConfirmMessage = ({ message }: { message?: string | null }) => (
-  <div>{message ?? t`This action cannot be undone.`}</div>
-);
 
 export default ActionVizForm;

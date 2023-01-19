@@ -1,1 +1,4 @@
-export { default } from "./ActionParametersInputForm";
+export {
+  default,
+  ActionParametersInputModal,
+} from "./ActionParametersInputForm";
