@@ -239,7 +239,7 @@
     (thunk)))
 
 (defmacro with-actions-enabled
-  "Execute `body` with Actions enabled at the global level and for the current test Database."
+  "Execute `body` with Actions enabled for the current test Database."
   {:style/indent 0}
   [& body]
   `(do-with-actions-enabled (fn [] ~@body)))
