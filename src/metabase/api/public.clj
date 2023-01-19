@@ -14,6 +14,7 @@
    [metabase.async.util :as async.u]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action :refer [Action]]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dimension :refer [Dimension]]
@@ -30,6 +31,7 @@
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
@@ -302,6 +304,15 @@
      :height  height
      :html    (embed/iframe url width height)}))
 
+
+;;; ----------------------------------------------- Public Action ------------------------------------------------
+
+(api/defendpoint GET "/action/:uuid"
+  "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
+  [uuid]
+  {uuid ms/UUIDString}
+  (validation/check-public-sharing-enabled)
+  (first (action/actions-with-implicit-params nil :public_uuid uuid)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |

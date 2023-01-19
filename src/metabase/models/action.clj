@@ -5,6 +5,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
+   [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
@@ -72,7 +73,8 @@
 (mi/define-methods
  HTTPAction
  (merge Action-subtype-IModel-impl
-        {:types (constantly {:template ::json-with-nested-parameters})}))
+        {:types       (constantly {:template ::json-with-nested-parameters})
+         :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
 (defn insert!
   "Inserts an Action and related type table. Returns the action id."
