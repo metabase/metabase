@@ -18,7 +18,7 @@
 
 (s/defn ^:private metabase-table-descriptor
   "Find the table description from describe-database matching the provided name and schema. For databases with no schema
-  (e.g. Mongo), pass `nil`. `nil` is returned if there is no match ing table."
+  (e.g. Mongo), pass `nil`. `nil` is returned if there is no matching table."
   [db :- i/DatabaseInstance
    {:keys [schema-name table-name]} :- {:schema-name (s/maybe su/NonBlankString)
                                         :table-name  su/NonBlankString}]
@@ -53,7 +53,7 @@
   `Table`. Optional Parameter `:scan` can be `\"full\"` or `\"schema\"` for a full sync or a schema sync, available
   regardless if a `:table_id` or `:table_name` is passed. Alternatively, if both `:table_name` and `:schema_name` are
   provided the table is assumed to be in the user database but not in metabase. This will cause just the new table to
-  be added, synched, and scanned.
+  be added, synched, or scanned depending on the `:scan` parameter.
   This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in
   the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.html#mb_api_key)"
   [id :as {{:keys [table_id schema_name table_name scan synchronous?] :as body} :body}]
