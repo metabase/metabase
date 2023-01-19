@@ -3,20 +3,20 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import {
-  Parameter,
   ParameterId,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { UiParameter } from "metabase-lib/parameters/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import ParameterSettings from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
 import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
 export interface ParameterSidebarProps {
-  parameter: Parameter;
-  otherParameters: Parameter[];
+  parameter: UiParameter;
+  otherParameters: UiParameter[];
   onChangeName: (parameterId: ParameterId, name: string) => void;
   onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
   onChangeIsMultiSelect: (
@@ -151,7 +151,7 @@ const ParameterSidebar = ({
   );
 };
 
-const getTabs = (parameter: Parameter) => {
+const getTabs = (parameter: UiParameter) => {
   const tabs = [{ value: "settings", name: t`Settings`, icon: "gear" }];
 
   if (canUseLinkedFilters(parameter)) {
