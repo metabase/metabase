@@ -53,8 +53,8 @@
   [:or
    [:enum :all :segmented :none :full :limited]
    [:map
-    [:read [:enum :all :none]]
-    [:query [:enum :all :none :segmented]]]])
+    [:read {:optional true} [:enum :all :none]]
+    [:query {:optional true} [:enum :all :none :segmented]]]])
 
 (def ^:private schema-perms
   [:or
