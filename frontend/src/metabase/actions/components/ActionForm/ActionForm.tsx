@@ -175,7 +175,11 @@ export const ActionForm = ({
       enableReinitialize
     >
       {({ dirty }) => (
-        <Form disabled={!dirty} role="form" data-testid="action-form">
+        <Form
+          disabled={!dirty && !!form.fields.length}
+          role="form"
+          data-testid="action-form"
+        >
           {form.fields.map(field => (
             <FormFieldWidget key={field.name} formField={field} />
           ))}
@@ -183,7 +187,7 @@ export const ActionForm = ({
           <ActionFormButtonContainer>
             {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
             <FormSubmitButton
-              disabled={!dirty}
+              disabled={!dirty && !!form.fields.length}
               title={submitTitle ?? t`Save`}
               {...submitButtonVariant}
             />
