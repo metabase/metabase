@@ -133,7 +133,10 @@ to do the same thing as the `SumIf` formula:
 SumIf([Payment], [Plan] = "Basic")
 ```
 
-The `case` version lets you sum a different column when the condition isn't met. For example, you might want to sum a "Contract" column for rows where the plan isn't "Basic":
+The `case` version lets you sum a different column when the condition isn't met. For example, you could create a column called "Revenue" that:
+
+- sums the "Payments" column when "Plan = Basic", and
+- sums the "Contract" column otherwise.
 
 ```
 sum(case([Plan] = "Basic", [Payment], [Contract]))
@@ -146,7 +149,8 @@ When you run a question using the [query builder](https://www.metabase.com/gloss
 If our [payment sample data](#sumif) is stored in a PostgreSQL database:
 
 ```sql
-SELECT SUM(CASE WHEN plan = "Basic" THEN payment ELSE 0 END) AS total_payments_basic
+SELECT 
+    SUM(CASE WHEN plan = "Basic" THEN payment ELSE 0 END) AS total_payments_basic
 FROM invoices
 ```
 
@@ -159,9 +163,12 @@ SumIf([Payment], [Plan] = "Basic")
 To add [multiple conditions with a grouping column](#conditional-subtotal):
 
 ```sql
-SELECT SUM(CASE WHEN plan = "Business" THEN payment ELSE 0 END) AS total_payments_business_or_premium
+SELECT 
+    DATE_TRUNC("month", date_received)                       AS date_received_month,
+    SUM(CASE WHEN plan = "Business" THEN payment ELSE 0 END) AS total_payments_business_or_premium
 FROM invoices
-GROUP BY DATE_TRUNC("month", date_received)
+GROUP BY 
+    DATE_TRUNC("month", date_received)
 ```
 
 The `SELECT` statement matches the Metabase `SumIf` expression
