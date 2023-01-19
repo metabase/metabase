@@ -82,6 +82,10 @@ describe("scenarios > question > null", () => {
           // add previously created question to the dashboard
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
             cardId: questionId,
+            row: 0,
+            col: 0,
+            size_x: 8,
+            size_y: 6,
           }).then(({ body: { id: dashCardId } }) => {
             // connect filter to that question
             cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
