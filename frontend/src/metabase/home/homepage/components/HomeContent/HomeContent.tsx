@@ -20,7 +20,9 @@ const HomeContent = (props: HomeContentProps): JSX.Element | null => {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (isLinksSection()) {
+  const hasLinksToShow = hasLinksSection(props);
+
+  if (hasLinksSection(props)) {
     return <HomeLinksSection />;
   }
 
@@ -36,7 +38,12 @@ const HomeContent = (props: HomeContentProps): JSX.Element | null => {
     return <HomeXraySection />;
   }
 
-  return null;
+  return (
+    <>
+      <HomeXraySection />
+      <HomeLinksSection />
+    </>
+  );
 };
 
 const isLoading = ({
@@ -78,8 +85,8 @@ const isXraySection = ({ databases = [] }: HomeContentProps): boolean => {
   return databases.some(isSyncCompleted);
 };
 
-const isLinksSection = (): boolean => {
-  return true;
+const hasLinksSection = ({ user }: HomeContentProps): boolean => {
+  return user.is_superuser; // || links.length > 0;
 };
 
 export default HomeContent;
