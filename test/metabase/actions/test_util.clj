@@ -133,7 +133,7 @@
                                            :required false
                                            :target [:variable [:template-tag "name"]]}]
                              :visualization_settings {:inline true}
-                             :public_uuid "3e5d4f06-57ad-4c4f-a4ed-d2dc6eeaa8de"
+                             :public_uuid (str (java.util.UUID/randomUUID))
                              :made_public_by_id 1
                              :database_id (mt/id)
                              :dataset_query {:database (mt/id)
@@ -156,7 +156,7 @@
                                      {:type :implicit
                                       :name "Update Example"
                                       :kind "row/update"
-                                      :public_uuid "3e5d4f06-57ad-4c4f-a4ed-d2dc6eeaa8de"
+                                      :public_uuid (str (java.util.UUID/randomUUID))
                                       :made_public_by_id 1
                                       :model_id model-id}
                                      options-map))]
@@ -178,7 +178,7 @@
                                                     :target [:template-tag "fail"]}]
                                       :response_handle ".body"
                                       :model_id model-id
-                                      :public_uuid "3e5d4f06-57ad-4c4f-a4ed-d2dc6eeaa8de"
+                                      :public_uuid (str (java.util.UUID/randomUUID))
                                       :made_public_by_id 1}
                                      options-map))]
       {:action-id action-id :model-id model-id})))
