@@ -1167,6 +1167,8 @@
                                                   {:cardId             card-id
                                                    :row                0
                                                    :col                0
+                                                   :size_x             4
+                                                   :size_y             4
                                                    :parameter_mappings mappings}))
             :dashcards    (fn [] (db/select DashboardCard :dashboard_id dashboard-id))})))))
 
