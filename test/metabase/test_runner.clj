@@ -1,10 +1,10 @@
 (ns metabase.test-runner
   "The only purpose of this namespace is to make sure all of the other stuff below gets loaded."
   (:require
+   [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.test :refer :all]
    [hawk.core :as hawk]
    [humane-are.core :as humane-are]
    [metabase.bootstrap]
@@ -48,23 +48,20 @@
 (defn- excluded-drivers []
   (set/difference (all-drivers) (tx.env/test-drivers)))
 
-(defn- exclude-driver-pattern [driver]
-  (re-pattern (format "(?!^metabase\\.driver\\.%s)" (name driver))))
-
-(defn- exclude-drivers-pattern []
-  (re-pattern (str/join (map exclude-driver-pattern (excluded-drivers)))))
-
-(defn- namespace-pattern []
-  (re-pattern (str (exclude-drivers-pattern) #"^metabase.*test$")))
-
-(deftest ^:parallel namespace-pattern-test
-  (is (re-matches (namespace-pattern) "metabase.util-test"))
-  (binding [tx.env/*test-drivers* (constantly #{:h2})]
-    (is (re-matches (namespace-pattern) "metabase.driver.h2-test"))
-    (is (not (re-matches (namespace-pattern) "metabase.driver.postgres-test"))))
-  (binding [tx.env/*test-drivers* (constantly #{:postgres})]
-    (is (re-matches (namespace-pattern) "metabase.driver.postgres-test"))
-    (is (not (re-matches (namespace-pattern) "metabase.driver.h2-test")))))
+;;; replace the default method that finds all tests on the classpath with one that ignores driver directories
+(defmethod hawk/find-tests nil
+  [_nil options]
+  (let [excluded-driver-dirs (for [driver (excluded-drivers)]
+                               (format "modules/drivers/%s" (name driver)))
+        exclude-directory?   (fn [dir]
+                               (some (partial str/includes? (str dir))
+                                     excluded-driver-dirs))
+        directories          (for [^java.io.File file (classpath/system-classpath)
+                                   :when              (and (.isDirectory file)
+                                                           (not (str/includes? (str file) ".gitlibs/libs"))
+                                                           (not (exclude-directory? file)))]
+                               file)]
+    (hawk/find-tests directories options)))
 
 (def ^:private excluded-directories
   ["classes"
@@ -80,7 +77,7 @@
    "test_resources"])
 
 (defn- default-options []
-  {:namespace-pattern   (namespace-pattern)
+  {:namespace-pattern   #"^metabase.*test$"
    :exclude-directories excluded-directories})
 
 (defn find-and-run-tests-repl
