@@ -1,3 +1,4 @@
+import _ from "underscore";
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
@@ -440,18 +441,21 @@ export function setEmbedDashboardEndpoints() {
   }
 }
 
-function GET_with(url, params) {
-  return (data, options) => GET(url)({ ...params, ...data }, options);
+function GET_with(url, params, omitKeys) {
+  return (data, options) =>
+    GET(url)({ ...params, ..._.omit(data, omitKeys) }, options);
 }
 
 function setCardEndpoints(prefix, params) {
   CardApi.parameterValues = GET_with(
     prefix + "/params/:paramId/values",
     params,
+    ["cardId"],
   );
   CardApi.parameterSearch = GET_with(
     prefix + "/params/:paramId/search/:query",
     params,
+    ["cardId"],
   );
   MetabaseApi.field_values = GET_with(
     prefix + "/field/:fieldId/values",
@@ -469,10 +473,10 @@ function setCardEndpoints(prefix, params) {
 
 function setDashboardEndpoints(prefix) {
   DashboardApi.parameterValues = GET(
-    prefix + "/dashboard/:dashId/params/:paramId/values",
+    `${prefix}/dashboard/:dashId/params/:paramId/values`,
   );
   DashboardApi.parameterSearch = GET(
-    prefix + "/dashboard/:dashId/params/:paramId/search/:query",
+    `${prefix}/dashboard/:dashId/params/:paramId/search/:query`,
   );
 }
 
