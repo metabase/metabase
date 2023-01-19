@@ -1,21 +1,10 @@
 import type { FieldSettingsMap } from "metabase-types/api";
-import Field from "metabase-lib/metadata/Field";
 
 import {
   getDefaultFieldSettings,
   getDefaultFormSettings,
 } from "../../../utils";
 import { reorderFields, hasNewParams } from "./utils";
-
-const createField = (options?: any) => {
-  return new Field({
-    name: "test_field",
-    display_name: "Test Field",
-    base_type: "type/Text",
-    semantic_type: "type/Text",
-    ...options,
-  });
-};
 
 const createParameter = (options?: any) => {
   return {
@@ -24,10 +13,6 @@ const createParameter = (options?: any) => {
     type: "type/Text",
     ...options,
   };
-};
-
-const getFirstEntry = (obj: any): any => {
-  return Object.entries(obj)[0];
 };
 
 describe("actions > ActionCreator > FormCreator > utils", () => {
