@@ -48,10 +48,12 @@ describe("DataPicker", () => {
       filters: { types: type => type !== "questions" },
     });
 
-    expect(await screen.findByText(SAMPLE_TABLE.name)).toBeInTheDocument();
+    expect(
+      await screen.findByText(SAMPLE_TABLE.display_name),
+    ).toBeInTheDocument();
     expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
     SAMPLE_DATABASE.tables?.forEach(table => {
-      expect(screen.getByText(table.name)).toBeInTheDocument();
+      expect(screen.getByText(table.display_name)).toBeInTheDocument();
     });
 
     expect(screen.queryByText(/Raw Data/i)).not.toBeInTheDocument();

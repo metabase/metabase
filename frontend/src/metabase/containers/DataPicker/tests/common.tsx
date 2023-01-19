@@ -30,24 +30,24 @@ import DataPicker from "../DataPickerContainer";
 
 export const SAMPLE_TABLE = createMockTable({
   id: 1,
-  name: "Table 1",
+  display_name: "Table 1",
 });
 
 export const SAMPLE_TABLE_2 = createMockTable({
   id: 2,
-  name: "Table 2",
+  display_name: "Table 2",
 });
 
 export const SAMPLE_TABLE_3 = createMockTable({
   id: 3,
   db_id: 2,
-  name: "Table 3",
+  display_name: "Table 3",
 });
 
 export const SAMPLE_TABLE_4 = createMockTable({
   id: 4,
   db_id: 2,
-  name: "Table 4",
+  display_name: "Table 4",
   schema: "other",
 });
 
