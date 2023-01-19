@@ -60,7 +60,7 @@ describe("DataPicker — picking raw data", () => {
     expect(onChange).toHaveBeenLastCalledWith({
       type: "raw-data",
       databaseId: SAMPLE_DATABASE.id,
-      schemaId: generateSchemaId(SAMPLE_DATABASE.id, "PUBLIC"),
+      schemaId: generateSchemaId(SAMPLE_DATABASE.id, SAMPLE_TABLE.schema),
       tableIds: [SAMPLE_TABLE.id, SAMPLE_TABLE_2.id],
     });
   });
@@ -178,7 +178,7 @@ describe("DataPicker — picking raw data", () => {
       expect(onChange).toHaveBeenLastCalledWith({
         type: "raw-data",
         databaseId: MULTI_SCHEMA_DATABASE.id,
-        schemaId: schema2,
+        schemaId: generateSchemaId(MULTI_SCHEMA_DATABASE.id, schema2),
         tableIds: [],
       });
     });
@@ -190,7 +190,7 @@ describe("DataPicker — picking raw data", () => {
 
       userEvent.click(screen.getByText(/Raw Data/i));
       userEvent.click(screen.getByText(SAMPLE_DATABASE.name));
-      userEvent.click(await screen.findByText(SAMPLE_TABLE.name));
+      userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
       userEvent.click(screen.getByText(MULTI_SCHEMA_DATABASE.name));
 
       expect(onChange).toHaveBeenLastCalledWith({
@@ -206,7 +206,7 @@ describe("DataPicker — picking raw data", () => {
     const { onChange } = await setup();
 
     userEvent.click(screen.getByText(/Raw Data/i));
-    userEvent.click(await screen.findByText(SAMPLE_TABLE.name));
+    userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
     userEvent.click(screen.getByRole("button", { name: /Back/i }));
 
     expect(onChange).toHaveBeenLastCalledWith({
