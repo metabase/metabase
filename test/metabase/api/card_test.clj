@@ -376,8 +376,12 @@
                     Database [{other-database-id :id}]
                     ;; database doesn't quite match
                     Card [card-6 {:name "Card 6", :database_id other-database-id
-                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]]
-      (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6]
+                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                    ;; same as matching question, but archived
+                    Card [card-7 {:name "Card 7"
+                                  :archived true
+                                  :dataset_query {:query {:source-table (str "card__" model-id)}}}]]
+      (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))))))
