@@ -44,6 +44,16 @@
    (some->> (metabase-table-descriptor db args)
             (sync-tables/create-or-reactivate-table! db))))
 
+(defn- table-not-found-error-message
+  [{:keys [table_name] :as args}]
+  (if (contains? args :schema_name)
+    (trs
+     "Warehouse table ''{0}'' does not exist or you do not have permission to view it."
+     table_name)
+    (trs
+     "Metabase table ''{0}'' does not exist. If it exists in the warehouse you must also specify a schema to sync it."
+     table_name)))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
@@ -77,13 +87,7 @@
                                                           (count tables))]
                                                  (throw (ex-info msg {:status-code 400})))
                                table (future (table-sync-fn table))
-                               :else  (let [msg (if (contains? body :schema_name)
-                                                  (trs
-                                                   "Warehouse table ''{0}'' does not exist or you do not have permission to view it."
-                                                   table_name)
-                                                  (trs
-                                                   "Metabase table ''{0}'' does not exist. If it exists in the warehouse you must also specify a schema to sync it."
-                                                   table_name))]
+                               :else  (let [msg (table-not-found-error-message table-spec)]
                                        (throw (ex-info msg {:status-code 404})))))
                 :else (future (db-sync-fn database)))
               synchronous? deref)))
