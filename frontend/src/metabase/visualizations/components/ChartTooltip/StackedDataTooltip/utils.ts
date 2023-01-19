@@ -17,3 +17,37 @@ export const getPercent = (total: number, value: unknown) => {
 
   return value / total;
 };
+
+export const groupExcessiveTooltipRows = (
+  rows: TooltipRowModel[],
+  maxRows: number,
+  groupedColor?: string,
+) => {
+  if (rows.length <= maxRows) {
+    return rows;
+  }
+
+  const groupStartingFromIndex = maxRows - 1;
+  const result = rows.slice();
+  const rowsToGroup = result.splice(groupStartingFromIndex);
+
+  const groupedRow = rowsToGroup.reduce(
+    (grouped, current) => {
+      if (
+        typeof current.value === "number" &&
+        typeof grouped.value === "number"
+      ) {
+        grouped.value += current.value;
+      }
+      return grouped;
+    },
+    {
+      color: groupedColor,
+      name: `Other`,
+      value: 0,
+      formatter: rowsToGroup[0].formatter,
+    },
+  );
+
+  return [...result, groupedRow];
+};
