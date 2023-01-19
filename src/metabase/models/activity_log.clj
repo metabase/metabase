@@ -45,7 +45,7 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel ActivityLog :activity)
+(models/defmodel ActivityLog :activity_log)
 
 (defn- pre-insert [activity]
   (let [defaults {:timestamp :%now
