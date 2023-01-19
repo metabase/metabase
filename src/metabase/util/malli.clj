@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [defn])
   (:require
    [clojure.core :as core]
-   [clojure.string :as str]
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
