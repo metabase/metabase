@@ -219,4 +219,3 @@
             (is (= 200 (:status (post {:scan :full :table_name "doc" :schema_name "private"}))))
             (let [tables (tableset database)]
               (is (= #{"public.foo" "public.bar" "public.fern" "private.fern" "public.doc" "private.doc"} tables)))))))))
-
