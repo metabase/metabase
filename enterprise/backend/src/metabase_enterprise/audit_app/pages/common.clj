@@ -3,8 +3,6 @@
   (:require
    [clojure.core.async :as a]
    [clojure.core.memoize :as memoize]
-   [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [honeysql.core :as hsql]
    [honeysql.format :as hformat]
