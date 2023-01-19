@@ -36,7 +36,7 @@ import {
   ParameterMapperContainer,
   ParameterFormSection,
   ParameterFormLabel,
-  ParameterMapperTitleContainter,
+  ParameterMapperTitleContainer,
 } from "./ActionOptions.styled";
 
 interface ActionParameterMapperProps {
@@ -122,7 +122,7 @@ export const ActionParameterOptions = ({
             <Icon
               name="bolt"
               size={14}
-              tooltip={t`Assign action paramter values`}
+              tooltip={t`Assign action parameter values`}
             />
           </ActionParameterTriggerContainer>
         )}
@@ -188,7 +188,7 @@ export const ActionParameterMappingForm = ({
 
   return (
     <ParameterMapperContainer>
-      <ParameterMapperTitleContainter>
+      <ParameterMapperTitleContainer>
         <h4>{t`Connect ${actionName}`}</h4>
         {showEditModal && (
           <Button
@@ -199,7 +199,7 @@ export const ActionParameterMappingForm = ({
             onClick={showEditModal}
           />
         )}
-      </ParameterMapperTitleContainter>
+      </ParameterMapperTitleContainer>
       {actionParameters.map((actionParam: WritebackParameter) => (
         <ParameterFormSection key={actionParam.id}>
           <ParameterFormLabel>
