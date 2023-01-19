@@ -234,7 +234,7 @@
               (let [uuid (:uuid (mt/user-http-request :crowberto :post 200
                                                       (format "action/%d/public_link" action-id)))]
                 (is (db/exists? Action :id action-id, :public_uuid uuid))
-                (testing "Test that if an Action has already been shared we reüse the existing UUID"
+                (testing "Test that if an Action has already been shared we reuse the existing UUID"
                   (is (= uuid
                          (:uuid (mt/user-http-request :crowberto :post 200
                                                       (format "action/%d/public_link" action-id)))))))))
