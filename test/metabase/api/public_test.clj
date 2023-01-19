@@ -103,7 +103,7 @@
        (with-temp-public-card [card#]
          (let [~dashboard-binding dash#
                ~card-binding      card#
-               ~dashcard-binding  (add-card-to-dashboard! card# dash# :row 0 :col 0 :size_x 4 :size_y 4)]
+               ~dashcard-binding  (add-card-to-dashboard! card# dash#)]
            ~@body)))))
 
 ;;; ------------------------------------------- GET /api/public/card/:uuid -------------------------------------------
@@ -1108,10 +1108,6 @@
               (let [dashcard (add-card-to-dashboard!
                               card
                               dash
-                              :row 0
-                              :col 0
-                              :size_x 4
-                              :size_y 4
                               :parameter_mappings [{:parameter_id "_STATE_"
                                                     :card_id      (u/the-id card)
                                                     :target       [:dimension (mt/$ids $orders.user_id->people.state)]}])]
