@@ -36,8 +36,12 @@
 ;;; Same for https://github.com/camsaul/humane-are
 (humane-are/install!)
 
-;;; Dynamically generate a `:namespace-pattern` to pass to [[hawk.core]] that will exclude all driver namespaces for
-;;; anything that's not in the [[tx.env/test-drivers]] (i.e., not in `DRIVERS`)
+;;; Ignore any directories for drivers that are not in the [[tx.env/test-drivers]] (i.e., not in `DRIVERS`)
+;;;
+;;; I supposed we COULD do this by dynamically generating `:exclude-directories` but it ends up being a pretty big list
+;;; since we have to include `src`, `test`, `resources`, `resources-ee`; with both relative and absolute versions (since
+;;; `:drivers` adds the deps as `:local/root` deps they're added to the classpath as absolute paths) -- this is
+;;; ultimately easier and less noisy.
 
 (defn- all-drivers []
   (into #{:h2 :postgres :mysql}
@@ -58,7 +62,6 @@
                                      excluded-driver-dirs))
         directories          (for [^java.io.File file (classpath/system-classpath)
                                    :when              (and (.isDirectory file)
-                                                           (not (str/includes? (str file) ".gitlibs/libs"))
                                                            (not (exclude-directory? file)))]
                                file)]
     (hawk/find-tests directories options)))
