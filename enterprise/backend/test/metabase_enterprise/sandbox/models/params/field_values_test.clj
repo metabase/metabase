@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.models.params.field-values-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.models.params.field-values
@@ -53,7 +54,7 @@
             (let [new-query (mt/mbql-query categories
                                            {:filter [:and [:> $id 1] [:< $id 4]]})]
               ;; sleeping should ensure that updated_at changes
-              (Thread/sleep 1)
+              (Thread/sleep (if (= driver/*driver* :mysql) 1000 1))
               (db/update! Card card-id :dataset_query new-query))
             (params.field-values/get-or-create-advanced-field-values!
              :sandbox
