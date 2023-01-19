@@ -229,7 +229,7 @@
   "Hydrate Pulse or Alert with the Fields needed for sending it."
   [notification :- (mi/InstanceOf Pulse)]
   (-> notification
-      (hydrate :creator :cards :dashboard [:channels :recipients])
+      (hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
 (s/defn ^:private hydrate-notifications :- [(mi/InstanceOf Pulse)]
@@ -259,7 +259,8 @@
   "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
   `:cards`."
   [notification-or-id & additional-conditions]
-  (some-> (apply Pulse :id (u/the-id notification-or-id), additional-conditions)
+  {:pre [(even? (count additional-conditions))]}
+  (some-> (apply db/select-one Pulse :id (u/the-id notification-or-id), additional-conditions)
           hydrate-notification))
 
 (s/defn ^:private notification->alert :- (mi/InstanceOf Pulse)

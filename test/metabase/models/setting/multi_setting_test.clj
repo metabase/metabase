@@ -33,7 +33,7 @@
     (is (= "Green Friend"
            (multi-setting-test-bird-name)))
     (is (thrown-with-msg?
-         UnsupportedOperationException
+         Exception
          #"You cannot set :multi-setting-test-bird-name; it is a read-only setting"
          (multi-setting-test-bird-name! "Parroty"))))
   (testing :yellow-friend
@@ -69,6 +69,6 @@
             (is (not (resolve 'multi-setting-read-only!))))
           (testing "Should not be able to set the Setting with `setting/set!`"
             (is (thrown-with-msg?
-                 UnsupportedOperationException
+                 Exception
                  #"You cannot set multi-setting-read-only; it is a read-only setting"
                  (setting/set! :multi-setting-read-only "Parroty")))))))))

@@ -227,24 +227,23 @@
   card. The `:discard` key is a vector of cards which were not copied due to permissions."
   [ordered-cards]
   (letfn [(split-cards [{:keys [card series] :as db-card}]
-
             (cond
-              (nil? (:card_id db-card)) ;; text card
-              []
+              (nil? (:card_id db-card)) ; text card
+              {}
 
               ;; cards without permissions are just a map with an :id from [[hide-unreadable-card]]
               (not (mi/model card))
-              [nil (into [card] series)]
+              {:retain nil, :discard (into [card] series)}
 
               (mi/can-read? card)
               (let [{writable true unwritable false} (group-by (comp boolean mi/can-read?)
                                                                series)]
-                [(into [card] writable) unwritable])
+                {:retain (into [card] writable), :discard unwritable})
               ;; if you can't write the base, we don't have anywhere to put the series
               :else
-              [[] (into [card] series)]))]
+              {:discard (into [card] series)}))]
     (reduce (fn [acc db-card]
-              (let [[retain discard] (split-cards db-card)]
+              (let [{:keys [retain discard]} (split-cards db-card)]
                 (-> acc
                     (update :copy merge (m/index-by :id retain))
                     (update :discard concat discard))))

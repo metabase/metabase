@@ -184,8 +184,7 @@
                  :is_group_manager boolean}]}"
   []
   (validation/check-group-manager)
-  (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id :is_group_manager]
-                                 :group_id :user_id :is_group_manager]
+  (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
                                 (cond-> {}
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)

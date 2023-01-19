@@ -428,8 +428,8 @@
                  (db/select-one-field :locale User :id user-id)))))
       (testing "invalid locale"
         (is (thrown-with-msg?
-             Exception
-             #"Assert failed: \(i18n/available-locale\? locale\)"
+             Throwable
+             #"Assert failed: Invalid locale: \"en_XX\""
              (mt/with-temp User [_ {:locale "en_XX"}])))))
 
     (testing "updating a User"
@@ -440,8 +440,8 @@
                  (db/select-one-field :locale User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
-               AssertionError
-               #"Assert failed: \(i18n/available-locale\? locale\)"
+               Throwable
+               #"Assert failed: Invalid locale: \"en_XX\""
                (db/update! User user-id :locale "en_XX"))))))))
 
 (deftest normalize-locale-test

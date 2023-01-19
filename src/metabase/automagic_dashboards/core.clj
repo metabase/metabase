@@ -221,8 +221,10 @@
 (def ^:private ^{:arglists '([card-or-question])} native-query?
   (comp #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
 
-(def ^:private ^{:arglists '([card-or-question])} source-question
-  (comp Card qp.util/query->source-card-id :dataset_query))
+(defn- source-question
+  [card-or-question]
+  (when-let [source-card-id (qp.util/query->source-card-id (:dataset_query card-or-question))]
+    (db/select-one Card :id source-card-id)))
 
 (defn- table-like?
   [card-or-question]
@@ -701,7 +703,7 @@
     (-> target field/table (assoc :link id))))
 
 (def ^:private ^{:arglists '([source])} source->engine
-  (comp :engine Database (some-fn :db_id :database_id)))
+  (comp :engine (partial db/select-one Database :id) (some-fn :db_id :database_id)))
 
 (defmulti
   ^{:private  true

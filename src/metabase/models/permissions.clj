@@ -573,7 +573,7 @@
   (set-has-full-permissions? permissions-set (application-perms-path perm-type)))
 
 (s/defn perms-objects-set-for-parent-collection :- #{Path}
-  "Implementation of `IModel` `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
+  "Implementation of `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
   Collection if `collection_id` is `nil`."
   ([this read-or-write]
