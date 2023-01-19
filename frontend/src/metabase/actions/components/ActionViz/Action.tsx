@@ -36,7 +36,7 @@ interface ActionProps extends VisualizationProps {
 
 function ActionComponent({
   dashcard,
-  dashboard: page,
+  dashboard,
   dispatch,
   isSettings,
   isEditing,
@@ -84,14 +84,14 @@ function ActionComponent({
       };
 
       return executeRowAction({
-        page,
+        dashboard,
         dashcard,
         parameters: params,
         dispatch,
         shouldToast: shouldDisplayButton,
       });
     },
-    [page, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
+    [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
   );
 
   const showParameterMapper = isEditing && !isSettings;
@@ -100,12 +100,12 @@ function ActionComponent({
     return (
       <>
         {showParameterMapper && (
-          <ActionParameterOptions dashcard={dashcard} page={page} />
+          <ActionParameterOptions dashcard={dashcard} dashboard={dashboard} />
         )}
         <ActionVizForm
           onSubmit={onSubmit}
           dashcard={dashcard}
-          page={page}
+          dashboard={dashboard}
           settings={settings}
           isSettings={isSettings}
           missingParameters={missingParameters}

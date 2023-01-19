@@ -45,7 +45,7 @@ export function updateButtonActionMapping(
 }
 
 export type ExecuteRowActionPayload = {
-  page: Dashboard;
+  dashboard: Dashboard;
   dashcard: ActionDashboardCard;
   parameters: ParametersForActionExecution;
   dispatch: Dispatch;
@@ -84,7 +84,7 @@ function getActionExecutionMessage(action: WritebackAction, result: any) {
 }
 
 export const executeRowAction = async ({
-  page,
+  dashboard,
   dashcard,
   parameters,
   dispatch,
@@ -94,7 +94,7 @@ export const executeRowAction = async ({
 
   try {
     const result = await executeAction({
-      dashboardId: page.id,
+      dashboardId: dashboard.id,
       dashcardId: dashcard.id,
       modelId: dashcard.card_id,
       parameters,

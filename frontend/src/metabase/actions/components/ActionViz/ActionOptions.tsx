@@ -41,7 +41,7 @@ import {
 
 interface ActionParameterMapperProps {
   dashcard: ActionDashboardCard;
-  page: Dashboard;
+  dashboard: Dashboard;
   model?: Question;
   action?: WritebackAction;
 }
@@ -69,7 +69,7 @@ const mapDispatchToProps = {
 
 export const ActionParameterOptions = ({
   dashcard,
-  page,
+  dashboard,
   action,
 }: ActionParameterMapperProps) => {
   const [
@@ -77,7 +77,7 @@ export const ActionParameterOptions = ({
     { toggle: toggleIsActionCreatorVisible, turnOff: hideActionCreator },
   ] = useToggle();
   const actionParameters = dashcard?.action?.parameters ?? [];
-  const dashboardParameters = page.parameters ?? [];
+  const dashboardParameters = dashboard.parameters ?? [];
 
   const canEditAction = dashcard.action?.type !== "implicit";
   const hasParameters = actionParameters.length && dashboardParameters.length;
@@ -129,7 +129,7 @@ export const ActionParameterOptions = ({
         popoverContent={({ closePopover }) => (
           <ConnectedActionParameterMappingForm
             dashcard={dashcard}
-            page={page}
+            dashboard={dashboard}
             showEditModal={
               canEditAction
                 ? () => {
@@ -150,7 +150,7 @@ const getTargetKey = (param: WritebackParameter | ActionParametersMapping) =>
 
 export const ActionParameterMappingForm = ({
   dashcard,
-  page,
+  dashboard,
   action: passedAction,
   setParameterMapping,
   showEditModal,
@@ -158,7 +158,7 @@ export const ActionParameterMappingForm = ({
   DispatchProps & { showEditModal?: () => void }) => {
   const action = passedAction ?? dashcard?.action;
   const actionParameters = action?.parameters ?? [];
-  const dashboardParameters = page.parameters ?? [];
+  const dashboardParameters = dashboard.parameters ?? [];
 
   const actionName = useMemo(
     () => action?.name ?? action?.id ?? t`Action`,
