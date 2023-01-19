@@ -3,7 +3,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.set :as set]
-   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -27,6 +26,7 @@
    [metabase.models.params :as params]
    [metabase.models.params.card-values :as params.card-values]
    [metabase.models.params.chain-filter :as chain-filter]
+   [metabase.models.params.static-values :as params.static-values]
    [metabase.models.query :as query :refer [Query]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
@@ -38,7 +38,6 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
-   [metabase.search.util :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
@@ -227,24 +226,23 @@
   card. The `:discard` key is a vector of cards which were not copied due to permissions."
   [ordered-cards]
   (letfn [(split-cards [{:keys [card series] :as db-card}]
-
             (cond
-              (nil? (:card_id db-card)) ;; text card
-              []
+              (nil? (:card_id db-card)) ; text card
+              {}
 
               ;; cards without permissions are just a map with an :id from [[hide-unreadable-card]]
               (not (mi/model card))
-              [nil (into [card] series)]
+              {:retain nil, :discard (into [card] series)}
 
               (mi/can-read? card)
               (let [{writable true unwritable false} (group-by (comp boolean mi/can-read?)
                                                                series)]
-                [(into [card] writable) unwritable])
+                {:retain (into [card] writable), :discard unwritable})
               ;; if you can't write the base, we don't have anywhere to put the series
               :else
-              [[] (into [card] series)]))]
+              {:discard (into [card] series)}))]
     (reduce (fn [acc db-card]
-              (let [[retain discard] (split-cards db-card)]
+              (let [{:keys [retain discard]} (split-cards db-card)]
                 (-> acc
                     (update :copy merge (m/index-by :id retain))
                     (update :discard concat discard))))
@@ -440,7 +438,7 @@
   api/generic-204-no-content)
 
 (defn- param-target->field-id [target query]
-  (when-let [field-clause (params/param-target->field-clause target {:card {:dataset_query query}})]
+  (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
     (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
@@ -686,7 +684,8 @@
 (s/defn ^:private mappings->field-ids :- (s/maybe #{su/IntGreaterThanZero})
   [parameter-mappings :- (s/maybe (s/cond-pre #{dashboard-card/ParamMapping} [dashboard-card/ParamMapping]))]
   (set (for [param parameter-mappings
-             :let  [field-clause (params/param-target->field-clause (:target param) (:dashcard param))]
+             :let  [field-clause (params/param-target->field-clause (:target param)
+                                                                    (-> param :dashcard :card))]
              :when field-clause
              :let  [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
              :when field-id]
@@ -752,32 +751,6 @@
            (api/throw-403 e)
            (throw e)))))))
 
-(defn- query-matches
-  "Filter the values according to the `search-term`.
-
-  Values could have 2 shapes
-  - [value1, value2]
-  - [[value1, label1], [value2, label2]] - we search using label in this case"
-  [query values]
-  (let [normalized-query (search/normalize query)]
-    (filter #(str/includes? (search/normalize (if (string? %)
-                                                %
-                                                ;; search by label
-                                                (second %)))
-                            normalized-query) values)))
-
-(defn- static-parameter-values
-  [{values-source-options :values_source_config :as _param} query]
-  (when-let [values (:values values-source-options)]
-    {:values          (if query
-                        (query-matches query values)
-                        values)
-     :has_more_values false}))
-
-(defn- card-parameter-values
-  [{config :values_source_config :as _param} query]
-  (params.card-values/values-from-card (:card_id config) (:value_field config) query))
-
 (s/defn param-values
   "Fetch values for a parameter.
 
@@ -799,8 +772,8 @@
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
      (case (:values_source_type param)
-       "static-list" (static-parameter-values param query)
-       "card"        (card-parameter-values param query)
+       "static-list" (params.static-values/param->values param query)
+       "card"        (params.card-values/param->values param query)
        nil           (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

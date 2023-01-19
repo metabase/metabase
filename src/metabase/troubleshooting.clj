@@ -10,6 +10,8 @@
   (:import
    (javax.management ObjectName)))
 
+(set! *warn-on-reflection* true)
+
 (defn system-info
   "System info we ask for for bug reports"
   []

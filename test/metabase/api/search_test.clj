@@ -572,11 +572,11 @@
   (testing "Search should only return Collections in the 'default' namespace"
     (mt/with-temp* [Collection [_c1 {:name "Normal Collection"}]
                     Collection [_c2 {:name "Coin Collection", :namespace "currency"}]]
-      (is (= ["Normal Collection"]
-             (->> (search-request-data :crowberto :q "Collection")
-                  (filter #(and (= (:model %) "collection")
-                                (#{"Normal Collection" "Coin Collection"} (:name %))))
-                  (map :name)))))))
+      (assert (not (db/exists? Collection :name "Coin Collection", :namespace nil)))
+      (is (=? [{:name "Normal Collection"}]
+              (->> (search-request-data :crowberto :q "Collection")
+                   (filter #(and (= (:model %) "collection")
+                                 (#{"Normal Collection" "Coin Collection"} (:name %))))))))))
 
 (deftest no-dashboard-subscription-pulses-test
   (testing "Pulses used for Dashboard subscriptions should not be returned by search results (#14190)"

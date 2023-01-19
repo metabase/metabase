@@ -250,15 +250,16 @@
                                    :query    {:source-table (str "card__" card-id)}}
             save-error            (try
                                     ;; `db/update!` will fail because it will try to validate the query when it saves
-                                    (db/execute! {:update Card
+                                    (db/execute! {:update :report_card
                                                   :set    {:dataset_query (json/generate-string circular-source-query)}
                                                   :where  [:= :id card-id]})
                                     nil
                                     (catch Throwable e
                                       (str "Failed to save Card:" e)))]
         ;; Make sure save isn't the thing throwing the Exception
-        (is (thrown?
+        (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
+             #"Circular dependency"
              (or save-error
                  (resolve-card-id-source-tables circular-source-query)))))))
 
@@ -273,14 +274,15 @@
         ;; Make sure save isn't the thing throwing the Exception
         (let [save-error (try
                            ;; `db/update!` will fail because it will try to validate the query when it saves,
-                           (db/execute! {:update Card
+                           (db/execute! {:update :report_card
                                          :set    {:dataset_query (json/generate-string (circular-source-query card-2-id))}
                                          :where  [:= :id card-1-id]})
                            nil
                            (catch Throwable e
                              (str "Failed to save Card:" e)))]
-          (is (thrown?
+          (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
+               #"Circular dependency"
                (or save-error
                    (resolve-card-id-source-tables (circular-source-query card-1-id))))))))))
 

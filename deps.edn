@@ -199,7 +199,7 @@
   {:extra-deps
    {clj-http-fake/clj-http-fake  {:mvn/version "1.0.3"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2022.08.03"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
+    clj-kondo/clj-kondo          {:mvn/version "2023.01.16"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.13"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.35.0"}                    ; ui for inspecting values
@@ -403,7 +403,9 @@
                                    "\\.sh$"
                                    "\\.yaml$"
                                    "\\.yml$"]
-                :exclude-patterns ["resources/i18n/.*\\.edn$"
+                :exclude-patterns [".clj-kondo/better-cond/.*"
+                                   ".clj-kondo/com.github.seancorfield/.*"
+                                   "resources/i18n/.*\\.edn$"
                                    "resources/frontend_client"
                                    "resources/frontend_shared"
                                    "resources/html-entities.edn"

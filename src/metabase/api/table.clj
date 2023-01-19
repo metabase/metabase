@@ -34,16 +34,14 @@
   "Schema for a valid table field ordering."
   (apply s/enum (map name table/field-orderings)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Get all `Tables`."
   []
   (as-> (db/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (hydrate tables :db)
     (filterv mi/can-read? tables)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Get `Table` with ID."
   [id include_editable_data_model]
   (let [api-perm-check-fn (if (Boolean/parseBoolean include_editable_data_model)
@@ -65,8 +63,8 @@
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
-       (table/update-field-positions! updated-table)
-       (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+        (table/update-field-positions! updated-table)
+        (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
 (defn- sync-unhidden-tables
@@ -399,15 +397,13 @@
         (assoc-dimension-options (driver.u/database->driver database_id))
         remove-nested-pk-fk-semantic-types)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card__:id/fks"
+(api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
   []
   []) ; return empty array
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/fks"
+(api/defendpoint GET "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
   (api/read-check Table id)
@@ -420,9 +416,7 @@
        :destination_id (:fk_target_field_id origin-field)
        :destination    (hydrate (db/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
 
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/rescan_values"
+(api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
@@ -437,8 +431,7 @@
          (sync.field-values/update-field-values-for-table! table))))
     {:status :success}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/discard_values"
+(api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
@@ -447,8 +440,7 @@
     (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/related"
+(api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
   (-> (db/select-one Table :id id) api/read-check related/related))
