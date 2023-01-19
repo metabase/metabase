@@ -13947,6 +13947,15 @@ databaseChangeLog:
                   remarks: 'Unique UUID used to in publically-accessible links to this Action.'
                   constraints:
                     unique: true
+
+  - changeSet:
+      id: v46.00-055
+      author: calherries
+      comment: Added 0.46.0 -- add public_uuid and made_public_by_id to action. public_uuid is indexed
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
               - column:
                   name: made_public_by_id
                   type: int
@@ -13955,6 +13964,12 @@ databaseChangeLog:
                     referencedTableName: core_user
                     referencedColumnNames: id
                     foreignKeyName: fk_action_made_public_by_id
+
+  - changeSet:
+      id: v46.00-056
+      author: calherries
+      comment: Added 0.46.0 -- add public_uuid and made_public_by_id to action. public_uuid is indexed
+      changes:
         - createIndex:
             tableName: action
             indexName: idx_action_public_uuid
