@@ -147,10 +147,97 @@
                                  db-name db-name)]
                    {:transaction? false})))
 
-(deftest nominal-table-notifications-api-test
+(deftest add-new-table-sync-test
   (mt/test-driver :postgres
-    (testing "Ensure we have the ability to add a table without a full sync"
-      (let [db-name "sync_new_table_test"
+    (testing "Ensure we have the ability to add a single new table"
+      (let [db-name "add_new_table_sync_test_table"
+            details (mt/dbdef->connection-details :postgres :db {:database-name db-name})]
+        (drop-if-exists-and-create-db! db-name)
+        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
+          (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
+                exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
+                tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (db/select 'Table :db_id (:id %))))
+                post     (fn post-api
+                           ([payload] (post-api payload 200))
+                           ([payload expected-code]
+                            (mt/with-temporary-setting-values [api-key "test-api-key"]
+                              (mt/client-full-response
+                               :post expected-code (format "notify/db/%d" (:id database))
+                               {:request-options api-headers}
+                               (merge {:synchronous? true}
+                                      payload)))))
+                sync!    #(sync/sync-database! database)]
+            (exec! spec ["CREATE TABLE public.FOO (val bigint NOT NULL);"
+                         "CREATE TABLE public.BAR (val bigint NOT NULL);"])
+            (sync!)
+            ;; Create two more tables
+            (exec! spec ["CREATE TABLE public.FERN (val bigint NOT NULL);"
+                         "CREATE TABLE public.DOC (val bigint NOT NULL);"])
+            ;; Assert that only the synced tables are present.
+            (let [tables (tableset database)]
+              (is (= #{"public.foo" "public.bar"} tables)))
+            ;; While fern exists in the warehouse, it doesn't yet exist in metabase.
+            ;; You can only add it by providing both table name and schema. This is inadequate.
+            (is (= 404 (:status (post {:scan :full :table_name "fern"} 404))))
+            ;; Still no fern
+            (let [tables (tableset database)]
+              (is (= #{"public.foo" "public.bar"} tables)))
+            ;; Posting both table name and schema will succeed
+            (is (= 200 (:status (post {:scan :full :schema_name "public" :table_name "fern"}))))
+            ;; And assert that only the new table is added (doc is not).
+            (let [tables (tableset database)]
+              (is (= #{"public.foo" "public.bar" "public.fern"} tables)))
+            (let [sync-table-metadata-called? (promise)
+                  sync-table-called?          (promise)
+                  sync-db-metadata-called?    (promise)
+                  sync-db-called?             (promise)]
+              (with-redefs [metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver sync-table-metadata-called? true))
+                            metabase.sync/sync-table!                        (fn [_table] (deliver sync-table-called? true))
+                            metabase.sync.sync-metadata/sync-db-metadata!    (fn [_table] (deliver sync-db-metadata-called? true))
+                            metabase.sync/sync-database!                     (fn [_table] (deliver sync-db-called? true))]
+                ;;Finally, call sync for public.doc and ensure that sync-table! is what is called.
+                (is (= 200 (:status (post {:scan :full :schema_name "public" :table_name "doc"}))))
+                (is (not (realized? sync-table-metadata-called?)))
+                (is @sync-table-called?)
+                (is (not (realized? sync-db-metadata-called?)))
+                (is (not (realized? sync-db-called?)))))))))))
+
+(deftest nonexistent-warehouse-table-sync-test
+  (mt/test-driver :postgres
+    (testing "When the warehouse table doesn't exist and you are trying to update or add it, return a 404"
+      (let [db-name "nonexistent_warehouse_table_sync_test_table"
+            details (mt/dbdef->connection-details :postgres :db {:database-name db-name})]
+        (drop-if-exists-and-create-db! db-name)
+        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
+          (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
+                exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
+                tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (db/select 'Table :db_id (:id %))))
+                post     (fn post-api
+                           ([payload] (post-api payload 200))
+                           ([payload expected-code]
+                            (mt/with-temporary-setting-values [api-key "test-api-key"]
+                              (mt/client-full-response
+                               :post expected-code (format "notify/db/%d" (:id database))
+                               {:request-options api-headers}
+                               (merge {:synchronous? true}
+                                      payload)))))
+                sync!    #(sync/sync-database! database)]
+            (exec! spec ["CREATE TABLE public.FOO (val bigint NOT NULL);"])
+            (sync!)
+            ;; After initial sync, there is only one table.
+            (let [tables (tableset database)]
+              (is (= #{"public.foo"} tables)))
+            ;; We can invoke a scan on these because they exist
+            (is (= 200 (:status (post {:scan :full :table_name "foo"}))))
+            ;; We can't invoke a scan on something that doesn't exist at all
+            (is (= 404 (:status (post {:scan :full :table_name "fern"} 404))))
+            ;; We can't invoke a scan on something that doesn't exist at all
+            (is (= 404 (:status (post {:scan :full :table_name "fern" :schema_name "public"} 404))))))))))
+
+(deftest ambiguous-notifications-table-sync-test
+  (mt/test-driver :postgres
+    (testing "When two tables exist in metabase and you query by table name only, it will return a 400"
+      (let [db-name "ambiguous_notifications_table_sync_test_table"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})]
         (drop-if-exists-and-create-db! db-name)
         (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
@@ -173,49 +260,19 @@
             ;; After initial sync, there are only two tables.
             (let [tables (tableset database)]
               (is (= #{"public.foo" "public.bar"} tables)))
-            ;; We can invoke a scan on these OK because they exist
+            ;; We can invoke a scan on these because they exist
             (is (= 200 (:status (post {:scan :full :table_name "foo"}))))
-            ;; We can't invoke a scan on something that doesn't exist at all
-            (is (= 404 (:status (post {:scan :full :table_name "fern"} 404))))
-            ;; Create two more tables
-            (exec! spec ["CREATE TABLE public.FERN (val bigint NOT NULL);"
-                         "CREATE TABLE public.DOC (val bigint NOT NULL);"])
-            ;; Assert that the above are not present in the db.
-            (let [tables (tableset database)]
-              (is (= #{"public.foo" "public.bar"} tables)))
-            ;; While fern exists in the warehouse, it doesn't yet exist in metabase.
-            ;; You can only add it by providing both table name and schema. This is inadequate.
-            (is (= 404 (:status (post {:scan :full :table_name "fern"} 404))))
-            ;; Still no fern
-            (let [tables (tableset database)]
-              (is (= #{"public.foo" "public.bar"} tables)))
-            ;; Posting both table name and schema will succeed
-            (is (= 200 (:status (post {:scan :full :table_name "fern" :schema_name "public"}))))
-            ;; And assert that only the new table is added (doc is not).
-            (let [tables (tableset database)]
-              (is (= #{"public.foo" "public.bar" "public.fern"} tables)))
-            ;; Add some ambiguous cases
             (exec! spec ["CREATE SCHEMA IF NOT EXISTS private;"
-                         "CREATE TABLE private.FERN (val bigint NOT NULL);"
-                         "CREATE TABLE private.DOC (val bigint NOT NULL);"])
-            ;; Note, still have fern (the public one) and no docs
+                         "CREATE TABLE private.FOO (val bigint NOT NULL);"
+                         "CREATE TABLE private.BAR (val bigint NOT NULL);"])
+            ;; This is still ok because we haven't added the private tables to mb yet.
+            (is (= 200 (:status (post {:scan :full :table_name "foo"}))))
+            ;; We now add the private.foo table
+            (is (= 200 (:status (post {:scan :full :table_name "foo" :schema_name "private"}))))
+            ;; Note that private.bar is still absent as we haven't synced it yet
             (let [tables (tableset database)]
-              (is (= #{"public.foo" "public.bar" "public.fern"} tables)))
-            ;; This is not ambiguous, it returns the existing public.fern
-            (is (= 200 (:status (post {:scan :full :table_name "fern"}))))
-            ;; Now we have two ferns (public and private)
-            (is (= 200 (:status (post {:scan :full :table_name "fern" :schema_name "private"}))))
-            (let [tables (tableset database)]
-              (is (= #{"public.foo" "public.bar" "public.fern" "private.fern"} tables)))
+              (is (= #{"public.foo" "public.bar" "private.foo"} tables)))
             ;; This is now ambiguous - you must specify the schema if multiple tables of the same name are in the db
-            (is (= 400 (:status (post {:scan :full :table_name "fern"} 400))))
-            ;; These both work as they are unambiguous
-            (is (= 200 (:status (post {:scan :full :table_name "fern" :schema_name "public"}))))
-            (is (= 200 (:status (post {:scan :full :table_name "fern" :schema_name "private"}))))
-            ;; At this point doc is not present, despite two docs existing in the warehouse
-            (is (= 200 (:status (post {:scan :full :table_name "doc" :schema_name "public"}))))
-            (let [tables (tableset database)]
-              (is (= #{"public.foo" "public.bar" "public.fern" "private.fern" "public.doc"} tables)))
-            (is (= 200 (:status (post {:scan :full :table_name "doc" :schema_name "private"}))))
-            (let [tables (tableset database)]
-              (is (= #{"public.foo" "public.bar" "public.fern" "private.fern" "public.doc" "private.doc"} tables)))))))))
+            (is (= 400 (:status (post {:scan :full :table_name "foo"} 400))))
+            ;; Now that two foos are present, we must specify a namespace for api calls.
+            (is (= 200 (:status (post {:scan :full :table_name "foo" :schema_name "public"}))))))))))

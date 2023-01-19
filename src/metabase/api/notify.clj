@@ -42,9 +42,7 @@
    (db/select-one Table :db_id (:id db) :schema schema-name :name table-name)
    ;; Create and return the table if metabase can find it via `describe-database`
    (some->> (metabase-table-descriptor db {:schema-name schema-name :table-name table-name})
-            (sync-tables/create-or-reactivate-table! db))
-   (let [msg (trs "Table ''{0}'' does not exist or you do not have permission to view it." table-name)]
-     (throw (ex-info msg {:status-code 404})))))
+            (sync-tables/create-or-reactivate-table! db))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/db/:id"
@@ -68,10 +66,14 @@
       (cond-> (cond
                 table_id (api/let-404 [table (db/select-one Table :db_id id, :id (int table_id))]
                            (future (table-sync-fn table)))
-                (and table_name (contains? body :schema_name)) (future
-                                                                (->> {:schema-name schema_name :table-name table_name}
-                                                                     (get-or-create-table database)
-                                                                     table-sync-fn))
+                (and
+                 table_name
+                 (contains? body :schema_name)) (if-some [table (get-or-create-table database
+                                                                                     {:schema-name schema_name
+                                                                                      :table-name  table_name})]
+                                                  (future (table-sync-fn table))
+                                                  (let [msg (trs "Table ''{0}'' does not exist or you do not have permission to view it." table_name)]
+                                                    (throw (ex-info msg {:status-code 404}))))
                 table_name (let [[table ambiguous-table :as matches] (db/select Table :db_id id, :name table_name)]
                              (cond
                                ambiguous-table (let [msg (trs
