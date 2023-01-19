@@ -138,3 +138,5 @@ export const PopularItemSchema = new schema.Entity("popularItems", undefined, {
 export const LoginHistorySchema = new schema.Entity("loginHistory", undefined, {
   idAttribute: ({ timestamp }) => `${timestamp}`,
 });
+
+export const LinkSchema = new schema.Entity("link");

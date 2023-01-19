@@ -12,6 +12,7 @@ export interface LinkProps extends HTMLAttributes<HTMLAnchorElement> {
   activeClassName?: string;
   activeStyle?: CSSProperties;
   onlyActiveOnIndex?: boolean;
+  isExternal?: boolean;
 }
 
 const Link = ({
@@ -19,11 +20,13 @@ const Link = ({
   children,
   disabled,
   tooltip,
+  isExternal,
   ...props
 }: LinkProps): JSX.Element => {
   const link = (
     <LinkRoot
       {...props}
+      rel={isExternal ? "noopener noreferrer" : undefined}
       to={to}
       disabled={disabled}
       tabIndex={disabled ? -1 : undefined}

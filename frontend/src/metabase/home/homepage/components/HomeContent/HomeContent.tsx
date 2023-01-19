@@ -4,6 +4,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Database, PopularItem, RecentItem, User } from "metabase-types/api";
 import HomePopularSection from "../../containers/HomePopularSection";
 import HomeRecentSection from "../../containers/HomeRecentSection";
+import HomeLinksSection from "../../containers/HomeLinksSection";
 import HomeXraySection from "../../containers/HomeXraySection";
 import { isWithinWeeks } from "../../utils";
 
@@ -17,6 +18,10 @@ export interface HomeContentProps {
 const HomeContent = (props: HomeContentProps): JSX.Element | null => {
   if (isLoading(props)) {
     return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (isLinksSection()) {
+    return <HomeLinksSection />;
   }
 
   if (isPopularSection(props)) {
@@ -71,6 +76,10 @@ const isRecentSection = ({
 
 const isXraySection = ({ databases = [] }: HomeContentProps): boolean => {
   return databases.some(isSyncCompleted);
+};
+
+const isLinksSection = (): boolean => {
+  return true;
 };
 
 export default HomeContent;

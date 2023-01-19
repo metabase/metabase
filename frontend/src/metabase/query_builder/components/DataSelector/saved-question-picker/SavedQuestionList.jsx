@@ -57,7 +57,7 @@ function SavedQuestionList({
                   ? schema.tables.filter(table => table.db_id === databaseId)
                   : schema.tables;
               return (
-                <React.Fragment>
+                <>
                   {tables
                     .sort((a, b) =>
                       a.display_name.localeCompare(b.display_name),
@@ -80,7 +80,7 @@ function SavedQuestionList({
                       />
                     ))}
                   {tables.length === 0 ? emptyState : null}
-                </React.Fragment>
+                </>
               );
             }}
           </Schemas.Loader>

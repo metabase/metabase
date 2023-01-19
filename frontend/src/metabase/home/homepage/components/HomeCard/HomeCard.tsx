@@ -6,15 +6,17 @@ export interface HomeCardProps {
   url?: string;
   external?: boolean;
   children?: ReactNode;
+  isExternal?: boolean;
 }
 
 const HomeCard = ({
   className,
   url = "",
   children,
+  isExternal,
 }: HomeCardProps): JSX.Element => {
   return (
-    <CardRoot className={className} to={url}>
+    <CardRoot className={className} to={url} isExternal={isExternal}>
       {children}
     </CardRoot>
   );
