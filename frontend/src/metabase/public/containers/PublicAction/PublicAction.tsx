@@ -11,7 +11,11 @@ import type {
 } from "metabase-types/api";
 import type { AppErrorDescriptor } from "metabase-types/store";
 
-import { FormTitle, FormResultMessage } from "./PublicAction.styled";
+import {
+  FormContainer,
+  FormTitle,
+  FormResultMessage,
+} from "./PublicAction.styled";
 
 interface Props {
   action: WritebackAction;
@@ -39,14 +43,14 @@ function PublicAction({ action, onError }: Props) {
   }
 
   return (
-    <>
+    <FormContainer>
       <FormTitle>{action.name}</FormTitle>
       <ActionForm
         parameters={action.parameters}
         formSettings={action.visualization_settings}
         onSubmit={handleSubmit}
       />
-    </>
+    </FormContainer>
   );
 }
 

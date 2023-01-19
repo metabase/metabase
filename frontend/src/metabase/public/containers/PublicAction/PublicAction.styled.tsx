@@ -6,12 +6,18 @@ import { color } from "metabase/lib/colors";
 
 export const LoadingAndErrorWrapper = styled(BaseLoadingAndErrorWrapper)`
   display: flex;
-  align-items: center;
-  justify-content: center;
   flex: 1 0 auto;
 `;
 
 export const ContentContainer = styled.div`
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+`;
+
+export const FormContainer = styled.div`
   display: flex;
   flex-direction: column;
   width: 430px;
