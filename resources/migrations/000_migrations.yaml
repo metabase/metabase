@@ -13941,7 +13941,7 @@ databaseChangeLog:
         - modifyDataType:
             tableName: parameter_card
             columnName: parameter_id
-            newDataType: char(36)
+            newDataType: varchar(36)
       rollback: #nothing to do, char(32) or char(36) are equivalent
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
