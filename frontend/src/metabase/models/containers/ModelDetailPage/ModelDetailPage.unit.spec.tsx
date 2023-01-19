@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import React from "react";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
@@ -20,6 +19,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
+import { checkNotNull } from "metabase/core/utils/types";
 import { ActionsApi } from "metabase/services";
 import Models from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -626,7 +626,7 @@ describe("ModelDetailPage", () => {
 
     it("displays related tables", async () => {
       const { metadata } = await setup({ model });
-      const TABLE_1 = metadata.table(TEST_FK_TABLE_1_ID)!;
+      const TABLE_1 = checkNotNull(metadata.table(TEST_FK_TABLE_1_ID));
 
       const list = within(screen.getByTestId("model-relationships"));
 
