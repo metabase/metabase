@@ -42,12 +42,12 @@ describe("scenarios > filters > sql filters > values source", () => {
 
     it("should be able to use a structured question source when embedded", () => {
       cy.createQuestion(getStructuredSourceQuestion()).then(
-        ({ body: { id } }) => {
-          cy.createNativeQuestion(getStructuredTargetQuestion(id)).then(
-            ({ body: { id } }) => {
-              visitEmbeddedPage(getQuestionResource(id));
-            },
-          );
+        ({ body: { id: sourceQuestionId } }) => {
+          cy.createNativeQuestion(
+            getStructuredTargetQuestion(sourceQuestionId),
+          ).then(({ body: { id: targetQuestionId } }) => {
+            visitEmbeddedPage(getQuestionResource(targetQuestionId));
+          });
         },
       );
 
@@ -57,12 +57,12 @@ describe("scenarios > filters > sql filters > values source", () => {
 
     it("should be able to use a structured question source when public", () => {
       cy.createQuestion(getStructuredSourceQuestion()).then(
-        ({ body: { id } }) => {
-          cy.createNativeQuestion(getStructuredTargetQuestion(id)).then(
-            ({ body: { id } }) => {
-              visitPublicQuestion(id);
-            },
-          );
+        ({ body: { id: sourceQuestionId } }) => {
+          cy.createNativeQuestion(
+            getStructuredTargetQuestion(sourceQuestionId),
+          ).then(({ body: { id: targetQuestionId } }) => {
+            visitPublicQuestion(targetQuestionId);
+          });
         },
       );
 
@@ -89,12 +89,12 @@ describe("scenarios > filters > sql filters > values source", () => {
 
     it("should be able to use a native question source when embedded", () => {
       cy.createNativeQuestion(getNativeSourceQuestion()).then(
-        ({ body: { id } }) => {
-          cy.createNativeQuestion(getNativeTargetQuestion(id)).then(
-            ({ body: { id } }) => {
-              visitEmbeddedPage(getQuestionResource(id));
-            },
-          );
+        ({ body: { id: sourceQuestionId } }) => {
+          cy.createNativeQuestion(
+            getNativeTargetQuestion(sourceQuestionId),
+          ).then(({ body: { id: targetQuestionId } }) => {
+            visitEmbeddedPage(getQuestionResource(targetQuestionId));
+          });
         },
       );
 
@@ -104,12 +104,12 @@ describe("scenarios > filters > sql filters > values source", () => {
 
     it("should be able to use a native question source when public", () => {
       cy.createNativeQuestion(getNativeSourceQuestion()).then(
-        ({ body: { id } }) => {
-          cy.createNativeQuestion(getNativeTargetQuestion(id)).then(
-            ({ body: { id } }) => {
-              visitPublicQuestion(id);
-            },
-          );
+        ({ body: { id: sourceQuestionId } }) => {
+          cy.createNativeQuestion(
+            getNativeTargetQuestion(sourceQuestionId),
+          ).then(({ body: { id: targetQuestionId } }) => {
+            visitPublicQuestion(targetQuestionId);
+          });
         },
       );
 
@@ -134,8 +134,8 @@ describe("scenarios > filters > sql filters > values source", () => {
 
     it("should be able to use a static list source when embedded", () => {
       cy.createNativeQuestion(getListTargetQuestion()).then(
-        ({ body: { id } }) => {
-          visitEmbeddedPage(getQuestionResource(id));
+        ({ body: { targetQuestionId } }) => {
+          visitEmbeddedPage(getQuestionResource(targetQuestionId));
         },
       );
 
@@ -145,8 +145,8 @@ describe("scenarios > filters > sql filters > values source", () => {
 
     it("should be able to use a static list source when public", () => {
       cy.createNativeQuestion(getListTargetQuestion()).then(
-        ({ body: { id } }) => {
-          visitPublicQuestion(id);
+        ({ body: { id: targetQuestionId } }) => {
+          visitPublicQuestion(targetQuestionId);
         },
       );
 
@@ -156,8 +156,8 @@ describe("scenarios > filters > sql filters > values source", () => {
   });
 });
 
-const getQuestionResource = questionId => ({
-  resource: { question: questionId },
+const getQuestionResource = sourceQuestionId => ({
+  resource: { question: sourceQuestionId },
   params: {},
 });
 
