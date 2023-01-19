@@ -1,35 +1,22 @@
-import React, { useCallback } from "react";
+import React from "react";
 
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type Question from "metabase-lib/Question";
-
-import { getTemplateTagParameters } from "metabase-lib/parameters/utils/template-tags";
 
 function QueryActionEditor({
-  question,
-  setQuestion,
+  query,
+  onChangeQuestionQuery,
 }: {
-  question: Question;
-  setQuestion: (q: Question) => void;
+  query: NativeQuery;
+  onChangeQuestionQuery: (query: NativeQuery) => void;
 }) {
-  const handleChange = useCallback(
-    (newQuery: NativeQuery) => {
-      const newParams = getTemplateTagParameters(
-        newQuery.templateTagsWithoutSnippets(),
-      );
-      setQuestion(question.setQuery(newQuery).setParameters(newParams));
-    },
-    [question, setQuestion],
-  );
-
   return (
     <>
       <NativeQueryEditor
-        query={question.query()}
+        query={query}
         viewHeight="full"
-        setDatasetQuery={handleChange}
+        setDatasetQuery={onChangeQuestionQuery}
         enableRun={false}
         hasEditingSidebar={false}
         isNativeEditorOpen
