@@ -38,9 +38,11 @@ This email address will be displayed in various messages throughout Metabase whe
 
 Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/sharing/alerts.md). 
 
-Adding approved domains allows you to send alerts and subscriptions to email addresses that aren't associated with an account in your Metabase.
+Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to.
 
-To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2"). To allow all domains, leave the field empty. 
+To allow all domains, leave the field empty (allowing all domains is the default).
+
+To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2"). 
 
 This setting doesn't affect existing subscriptions.
 
