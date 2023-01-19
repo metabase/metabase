@@ -53,16 +53,19 @@ export const SAMPLE_TABLE_4 = createMockTable({
 
 export const SAMPLE_DATABASE = createMockDatabase({
   id: 1,
+  name: "Sample Database",
   tables: [SAMPLE_TABLE, SAMPLE_TABLE_2],
 });
 
 export const MULTI_SCHEMA_DATABASE = createMockDatabase({
   id: 2,
+  name: "Multi Schema Database",
   tables: [SAMPLE_TABLE_3, SAMPLE_TABLE_4],
 });
 
 export const EMPTY_DATABASE = createMockDatabase({
   id: 3,
+  name: "Empty Database",
   tables: [],
 });
 
