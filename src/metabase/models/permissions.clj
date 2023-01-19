@@ -1105,8 +1105,6 @@
     :write (grant-native-readwrite-permissions! group-id db-id)
     :none  nil))
 
-
-
 (mu/defn ^:private update-db-data-access-permissions!
   [group-id :- pos-int?
    db-id :- pos-int?

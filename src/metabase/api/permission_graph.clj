@@ -7,7 +7,6 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as gen]
    [clojure.walk :as walk]
-   [malli.util :as mut]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]))
 
@@ -40,11 +39,11 @@
 
 (def ^:private id decodable-kw-int)
 
-;; ids come in asa keywordized numbers
+;; ids come in as keywordized numbers
 (s/def ::id (s/with-gen (s/or :kw->int (s/and keyword? #(re-find #"^\d+$" (name %))))
               #(gen/fmap (comp keyword str) (s/gen pos-int?))))
 
-(def native
+(def ^:private native
   "native permissions"
   [:maybe [:enum :write :none :full :limited]])
 
@@ -78,11 +77,12 @@
    [:schemas {:optional true} schemas]])
 
 (def strict-data-perms
-  "data perms that care about how native and schemas keys related to one another"
+  "data perms that care about how native and schemas keys related to one another.
+  If you have write access for native queries, you must have data access to all schemas."
   [:and
    data-perms
    [:fn {:error/fn (constantly
-                    (trs "Invalid DB permissions: If you have write access for native queries, you must have full data access."))}
+                    (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
     (fn [{:keys [native schemas]}]
       (not (and (= native :write) schemas (not= schemas :all))))]])
 
@@ -93,18 +93,23 @@
     [:data {:optional true} data-perms]
     [:download {:optional true} data-perms]
     [:data-model {:optional true} data-perms]
-    ;; "We use :yes and :no instead of booleans for consistency with the application perms graph, and"
-    ;; "consistency with the language used on the frontend."
+    ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
+    ;; consistency with the language used on the frontend.
     [:details {:optional true} [:enum :yes :no]]
     [:execute {:optional true} [:enum :all :none]]]])
 
 (def strict-db-graph
-  "like db-graph, but strict"
-  (-> db-graph
-      (mut/assoc-in [1 :data] strict-data-perms)
-      (mut/assoc-in [1 :download] strict-data-perms)
-      (mut/assoc-in [1 :data-model] strict-data-perms)
-      (mut/update 0 mut/update-properties assoc :title "Strict Data Graph")))
+  "like db-graph, but if you have write access for native queries, you must have data access to all schemas."
+  [:map-of
+   id
+   [:map
+    [:data {:optional true} strict-data-perms]
+    [:download {:optional true} strict-data-perms]
+    [:data-model {:optional true} strict-data-perms]
+    ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
+    ;; consistency with the language used on the frontend.
+    [:details {:optional true} [:enum :yes :no]]
+    [:execute {:optional true} [:enum :all :none]]]])
 
 (def data-permissions-graph
   "Used to transform, and verify data permissions graph"
