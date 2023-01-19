@@ -10,7 +10,7 @@ import type {
   VisualizationSettings,
   Dashboard,
 } from "metabase-types/api";
-import { getFormTitle } from "metabase/actions/containers/ActionCreator/FormCreator";
+import { getFormTitle } from "metabase/actions/utils";
 
 import ActionParametersInputForm, {
   ActionParametersInputModal,

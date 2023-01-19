@@ -14,7 +14,7 @@ import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { Dispatch } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
-import { generateFieldSettingsFromParameters } from "metabase/actions/containers/ActionCreator/FormCreator";
+import { generateFieldSettingsFromParameters } from "metabase/actions/utils";
 
 import {
   getDashcardParamValues,
