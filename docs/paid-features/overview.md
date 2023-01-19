@@ -48,6 +48,12 @@ Send different groups of people the contents of the dashboard with different fil
 
 - [Customizing filter values for each dashboard subscription](../dashboards/subscriptions.md)
 
+## Email subscriptions and alerts to people without Metabase accounts
+
+You can whitelist domains, which allows you to send alerts and dashboard subscriptions to recipients that don't have accounts in your Metabase.
+
+- [Approved domains for notifications](../configuring-metabase/settings.md#approved-domains-for-notifications)
+
 ## Official collections
 
 You can mark certain collections as [official](../exploration-and-organization/collections.md#official-collections), which helps people find your most important questions, dashboards, and models.
