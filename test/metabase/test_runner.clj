@@ -24,8 +24,11 @@
    [metabase.util.i18n.impl :as i18n.impl]
    [pjstadig.humane-test-output :as humane-test-output]))
 
-;; initialize Humane Test Output if it's not already initialized.
-(humane-test-output/activate!)
+;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
+;; from the CLI, it breaks diffs.
+(when-not config/is-test?
+  (humane-test-output/activate!))
+
 ;;; Same for https://github.com/camsaul/humane-are
 (humane-are/install!)
 

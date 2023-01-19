@@ -11,6 +11,7 @@
    [humane-are.core :as humane-are]
    [java-time :as t]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -18,7 +19,6 @@
    [metabase.http-client :as client]
    [metabase.models :refer [PermissionsGroupMembership User]]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.context :as qp.context]
@@ -42,7 +42,6 @@
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.timezone :as test.tz]
-   [metabase.util :as u]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
    [toucan.db :as db]
@@ -50,7 +49,10 @@
    [toucan.util.test :as tt]))
 
 (humane-are/install!)
-(humane-test-output/activate!)
+
+;; don't enable humane-test-output when running tests from the CLI, it breaks diffs.
+(when-not config/is-test?
+  (humane-test-output/activate!))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
@@ -258,14 +260,6 @@
  [tx.env
   set-test-drivers!
   with-test-drivers])
-
-;; ee-only stuff
-(u/ignore-exceptions
-  (classloader/require 'metabase-enterprise.sandbox.test-util)
-  (eval '(potemkin/import-vars [metabase-enterprise.sandbox.test-util
-                                with-gtaps
-                                with-gtaps-for-user
-                                with-user-attributes])))
 
 ;;; TODO -- move all the stuff below into some other namespace and import it here.
 

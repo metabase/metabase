@@ -57,11 +57,11 @@
             {:status-code 403})))
   (let [session-id (str (UUID/randomUUID))
         new-user   (db/insert! User
-                     :email        email
-                     :first_name   first-name
-                     :last_name    last-name
-                     :password     (str (UUID/randomUUID))
-                     :is_superuser true)
+                               :email        email
+                               :first_name   first-name
+                               :last_name    last-name
+                               :password     (str (UUID/randomUUID))
+                               :is_superuser true)
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.models.params.chain-filter-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
    [metabase.models :refer [FieldValues]]
    [metabase.models.field-values :as field-values]
@@ -11,7 +12,7 @@
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain-filter would normally return cached FieldValues (#13832), make sure sandboxing is respected"
     (mt/with-model-cleanup [FieldValues]
-      (mt/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
+      (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
         (field-values/clear-advanced-field-values-for-field! (mt/id :categories :name))
         (testing "values"
           (is (= {:values          ["African" "American"]

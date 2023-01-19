@@ -133,8 +133,9 @@
        (is (= [{:col "Count"} {:col 100.0}]
               actual))))))
 
-(defn dissoc-id-and-name {:style/indent 0} [obj]
-  (dissoc obj :id :name))
+(defn dissoc-id-and-name [obj]
+  (cond-> obj
+    (map? obj) (dissoc :id :name)))
 
 (def successful-card-info
   "Data that should be returned if `GET /api/embed/card/:token` completes successfully (minus `:id` and `:name`).
@@ -201,8 +202,13 @@
                                                                            :c {:type "date", :name "c", :display_name "c"}
                                                                            :d {:type "date", :name "d", :display_name "d"}}}}
                              :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
-        (is (= [{:id nil, :type "date/single", :target ["variable" ["template-tag" "d"]], :name "d", :slug "d", :default nil}]
-               (:parameters (client/client :get 200 (card-url card {:params {:c 100}})))))))))
+        (is (=? {:parameters [{:id      nil
+                               :type    "date/single"
+                               :target  ["variable" ["template-tag" "d"]]
+                               :name    "d"
+                               :slug    "d"
+                               :default nil}]}
+                (client/client :get 200 (card-url card {:params {:c 100}}))))))))
 
 
 ;;; ------------------------- GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants) --------------------------
@@ -389,7 +395,7 @@
     (mt/with-temp Dashboard [dash {:enable_embedding true}]
       (is (= successful-dashboard-info
              (dissoc-id-and-name
-               (client/client :get 200 (dashboard-url dash))))))))
+              (client/client :get 200 (dashboard-url dash))))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key

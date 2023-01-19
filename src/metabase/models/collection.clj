@@ -611,7 +611,7 @@
       (db/update! Collection (u/the-id collection) :location new-location)
       ;; we need to update all the descendant collections as well...
       (db/execute!
-       {:update Collection
+       {:update :collection
         :set    {:location (hsql/call :replace :location orig-children-location new-children-location)}
         :where  [:like :location (str orig-children-location "%")]}))))
 
@@ -798,7 +798,7 @@
 
   This needs to be done recursively for all descendants as well."
   [collection :- (mi/InstanceOf Collection)]
-  (db/execute! {:delete-from Permissions
+  (db/execute! {:delete-from :permissions
                 :where       [:in :object (for [collection (cons collection (descendants collection))
                                                 path-fn    [perms/collection-read-path
                                                             perms/collection-readwrite-path]]
@@ -887,7 +887,7 @@
     (when (:personal_owner_id collection)
       (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
-  (db/execute! {:delete-from Permissions
+  (db/execute! {:delete-from :permissions
                 :where       [:or
                               [:= :object (perms/collection-readwrite-path collection)]
                               [:= :object (perms/collection-read-path collection)]]}))
@@ -917,9 +917,9 @@
   (let [parent-id (-> coll
                       (hydrate :parent_id)
                       :parent_id)]
-   (if parent-id
-     (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
-     "ROOT")))
+    (if parent-id
+      (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
+      "ROOT")))
 
 (defmethod serdes.hash/identity-hash-fields Collection
   [_collection]
@@ -936,7 +936,7 @@
   :pre-update     pre-update
   :pre-delete     pre-delete})
 
-(defmethod serdes.base/extract-query "Collection" [_ {:keys [collection-set]}]
+(defmethod serdes.base/extract-query "Collection" [_model {:keys [collection-set]}]
   (if (seq collection-set)
     (db/select-reducible Collection :id [:in collection-set])
     (db/select-reducible Collection :personal_owner_id nil)))
@@ -1149,6 +1149,7 @@
     ;; efficiently create a map of user ID -> personal collection ID
     (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection
                                    :personal_owner_id [:in (set (map u/the-id users))])]
+      (assert (map? user-id->collection-id))
       ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
       ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
       ;; as a side-effect. This will ensure this property never comes back as `nil`

@@ -188,7 +188,6 @@
   (let [raw-card (db/select-one Card :id id)
         card (-> raw-card
                  (hydrate :creator
-                          :bookmarked
                           :dashboard_count
                           :parameter_usage_count
                           :can_write
