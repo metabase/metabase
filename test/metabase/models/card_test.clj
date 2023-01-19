@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet]]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.models.card :as card]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
