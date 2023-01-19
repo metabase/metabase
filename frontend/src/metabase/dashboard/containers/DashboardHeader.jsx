@@ -185,7 +185,6 @@ class DashboardHeader extends Component {
       dashboard,
       parametersWidget,
       isBookmarked,
-      isAdmin,
       isEditing,
       isFullscreen,
       isEditable,
