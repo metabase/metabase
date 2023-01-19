@@ -32,12 +32,6 @@
  [shared.u
   qualified-name])
 
-(defn screaming-snake-case
-  "Turns `strings-that-look-like-deafening-vipers` into `STRINGS_THAT_LOOK_LIKE_DEAFENING_VIPERS`."
-  [s]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (str/upper-case (str/replace s "-" "_")))
-
 (defn add-period
   "Fixes strings that don't terminate in a period; also accounts for strings
   that end in `:`. Used for formatting docs."
@@ -65,6 +59,11 @@
   `Locale/US` locale."
   [^CharSequence s]
   (.. s toString (toUpperCase (Locale/US))))
+
+(defn screaming-snake-case
+  "Turns `strings-that-look-like-deafening-vipers` into `STRINGS_THAT_LOOK_LIKE_DEAFENING_VIPERS`."
+  [s]
+  (upper-case-en (str/replace s "-" "_")))
 
 (defn capitalize-first-char
   "Like string/capitalize, only it ignores the rest of the string
