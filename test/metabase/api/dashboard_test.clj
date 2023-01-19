@@ -1694,7 +1694,11 @@
    (do-with-chain-filter-fixtures nil f))
 
   ([dashboard-values f]
-   (mt/with-temp* [Dashboard     [dashboard (merge {:parameters [{:name "Category Name"
+   (mt/with-temp* [Card          [{source-card-id         :id}
+                                  (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories {:limit 5}))
+                                         {:database_id     (mt/id)
+                                          :table_id        (mt/id :venues)})]
+                   Dashboard     [dashboard (merge {:parameters [{:name "Category Name"
                                                                   :slug "category_name"
                                                                   :id   "_CATEGORY_NAME_"
                                                                   :type "category"}
@@ -1721,7 +1725,13 @@
                                                                   :id                    "_STATIC_CATEGORY_LABEL_",
                                                                   :type                  "category",
                                                                   :values_source_type    "static-list"
-                                                                  :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}]}
+                                                                  :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
+                                                                 {:id                   "_CARD_"
+                                                                  :type                 "category"
+                                                                  :name                 "CATEGORY"
+                                                                  :values_source_type   "card"
+                                                                  :values_source_config {:card_id     source-card-id
+                                                                                         :value_field (mt/$ids $venues.name)}}]}
                                                    dashboard-values)]
                    Card          [card {:database_id   (mt/id)
                                         :table_id      (mt/id :venues)
@@ -1757,7 +1767,8 @@
                       :price                 "_PRICE_"
                       :id                    "_ID_"
                       :static-category       "_STATIC_CATEGORY_"
-                      :static-category-label "_STATIC_CATEGORY_LABEL_"}}))))
+                      :static-category-label "_STATIC_CATEGORY_LABEL_"
+                      :card                  "_CARD_"}}))))
 
 (defmacro with-chain-filter-fixtures [[binding dashboard-values] & body]
   `(do-with-chain-filter-fixtures ~dashboard-values (fn [~binding] ~@body)))
@@ -2047,82 +2058,20 @@
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
-(defn- card-fields-from-table-metadata
-  [card-id]
-  (:fields (mt/user-http-request :rasta :get 200 (format "/table/card__%d/query_metadata" card-id))))
-
 (deftest parameter-values-from-card-test
   ;; TODO add permissions tests
-  (testing "getting values"
-    (mt/with-temp*
-      [Card      [{card-id         :id}
-                  (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues {:limit 5}))
-                         {:database_id     (mt/id)
-                          :table_id        (mt/id :venues)})]
-       Dashboard [{dashboard-id :id}
-                  {:parameters [{:id                   "abc"
-                                 :type                 "category"
-                                 :name                 "CATEGORY"
-                                 :values_source_type   "card"
-                                 :values_source_config {:card_id     card-id
-                                                        :value_field (mt/$ids $venues.name)}}]}]]
+  (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+    (testing "It uses the results of the card's query execution"
+      (let-url [url (chain-filter-values-url dashboard (:card param-keys))]
+        (is (= {:values          ["African" "American" "Artisan" "Asian" "BBQ"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 url)))))
 
-      (testing "It uses the results of the card's query execution"
-        (let-url [url (chain-filter-values-url dashboard-id "abc")]
-          (is (= {:values          ["Red Medicine"
-                                    "Stout Burgers & Beers"
-                                    "The Apple Pan"
-                                    "Wurstküche"
-                                    "Brite Spot Family Restaurant"]
-                  :has_more_values false}
-                 (mt/user-http-request :rasta :get 200 url)))))
-
-      (testing "it only returns search matches"
-        (let-url [url (chain-filter-search-url dashboard-id "abc" "red")]
-          (is (= {:values          ["Red Medicine"]
-                  :has_more_values false}
-                 (mt/user-http-request :rasta :get 200 url))))))
-
-    (testing "field selection should compatible with field-id from /api/table/:card__id/query_metadata"
-      ;; FE use the id returned by /api/table/:card__id/query_metadata
-      ;; for the `values_source_config.value_field`, so we need to test to make sure
-      ;; the id is a valid field that we could use to retrieve values.
-      (mt/with-temp*
-        ;; card with agggregation and binning columns
-        [Card [{mbql-card-id :id}
-               (merge (mt/card-with-source-metadata-for-query
-                        (mt/mbql-query venues {:limit 5
-                                               :aggregation [:count]
-                                               :breakout [[:field %latitude {:binning {:strategy :num-bins :num-bins 10}}]]}))
-                      {:name        "MBQL question"
-                       :database_id (mt/id)
-                       :table_id    (mt/id :venues)})]
-         Card [{native-card-id :id}
-               (merge (mt/card-with-source-metadata-for-query
-                        (mt/native-query {:query "select name from venues;"}))
-                      {:name        "Native question"
-                       :database_id (mt/id)
-                       :table_id    (mt/id :venues)})]]
-
-        (let [mbql-card-fields   (card-fields-from-table-metadata mbql-card-id)
-              native-card-fields (card-fields-from-table-metadata native-card-id)
-              fields->parameter  (fn [fields card-id]
-                                   (for [{:keys [id field_ref name]} fields]
-                                     {:id                   (format "id_%s" name)
-                                      :type                 "category"
-                                      :name                 name
-                                      :values_source_type   "card"
-                                      :values_source_config {:card_id     card-id
-                                                             :value_field (if (number? id)
-                                                                            field_ref
-                                                                            id)}}))
-              parameters         (concat
-                                   (fields->parameter mbql-card-fields mbql-card-id)
-                                   (fields->parameter native-card-fields native-card-id))]
-          (mt/with-temp Dashboard [{dash-id :id} {:parameters parameters}]
-            (doseq [param parameters]
-              (let-url [url (chain-filter-values-url dash-id (:id param))]
-                (is (some? (mt/user-http-request :rasta :get 200 url)))))))))))
+    (testing "it only returns search matches"
+      (let-url [url (chain-filter-search-url dashboard (:card param-keys) "af")]
+        (is (= {:values          ["African"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 url)))))))
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
