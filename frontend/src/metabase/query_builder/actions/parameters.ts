@@ -32,7 +32,7 @@ export const fetchQuestionParameterValues = createThunkAction(
 
       return {
         cacheKey,
-        values,
+        results: values.map((value: any) => [].concat(value)),
         has_more_values: query ? true : has_more_values,
       };
     },

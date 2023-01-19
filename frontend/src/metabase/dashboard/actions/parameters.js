@@ -302,7 +302,7 @@ export const fetchDashboardParameterValuesWithCache = createThunkAction(
 
       return {
         cacheKey,
-        values,
+        results: values.map(value => [].concat(value)),
         has_more_values: query ? true : has_more_values,
       };
     },
