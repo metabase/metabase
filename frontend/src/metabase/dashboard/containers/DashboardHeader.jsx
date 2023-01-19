@@ -185,7 +185,6 @@ class DashboardHeader extends Component {
       dashboard,
       parametersWidget,
       isBookmarked,
-      isAdmin,
       isEditing,
       isFullscreen,
       isEditable,
@@ -278,8 +277,7 @@ class DashboardHeader extends Component {
         </span>,
       );
 
-      if (isAdmin) {
-        // TODO: add permissions check
+      if (canEdit) {
         buttons.push(
           <>
             <DashboardHeaderActionDivider />
