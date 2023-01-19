@@ -27,14 +27,14 @@ import ActionVizForm from "./ActionVizForm";
 import { ActionParameterOptions } from "./ActionOptions";
 import { StyledButton } from "./ActionButton.styled";
 
-interface ActionProps extends VisualizationProps {
+export interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
   dispatch: Dispatch;
   parameterValues: { [id: string]: ParameterValueOrArray };
 }
 
-function ActionComponent({
+export function ActionComponent({
   dashcard,
   dashboard,
   dispatch,
