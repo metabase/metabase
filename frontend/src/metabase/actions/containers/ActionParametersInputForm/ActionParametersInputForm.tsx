@@ -7,7 +7,6 @@ import ModalContent from "metabase/components/ModalContent";
 import {
   getSubmitButtonColor,
   getSubmitButtonLabel,
-  generateFieldSettingsFromParameters,
 } from "metabase/actions/containers/ActionCreator/FormCreator";
 import EmptyState from "metabase/components/EmptyState";
 
@@ -22,7 +21,10 @@ import type {
 } from "metabase-types/api";
 
 import { ActionsApi } from "metabase/services";
-import { shouldPrefetchValues } from "metabase/actions/utils";
+import {
+  shouldPrefetchValues,
+  generateFieldSettingsFromParameters,
+} from "metabase/actions/utils";
 
 import type Field from "metabase-lib/metadata/Field";
 
