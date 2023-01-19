@@ -231,7 +231,6 @@ function DashCard({
 
     return (
       mainCard.visualization_settings["dashcard.background"] === false ||
-      mainCard.display === "list" ||
       isAction
     );
   }, [isEditing, isAction, mainCard]);
