@@ -6,7 +6,7 @@ import type {
   BaseDashboardOrderedCard,
   DashboardParameterMapping,
 } from "./dashboard";
-import type { Card } from "./card";
+import type { Card, CardId } from "./card";
 
 export interface WritebackParameter extends Parameter {
   target: ParameterTarget;
@@ -162,7 +162,7 @@ export type ActionParametersMapping = Pick<
 export interface ActionDashboardCard
   extends Omit<BaseDashboardOrderedCard, "parameter_mappings"> {
   action?: WritebackAction;
-  card_id?: number; // model card id for the associated action
+  card_id?: CardId; // model card id for the associated action
   card?: Card;
 
   parameter_mappings?: ActionParametersMapping[] | null;
