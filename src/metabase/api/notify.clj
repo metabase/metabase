@@ -77,8 +77,11 @@
                                                           (count tables))]
                                                  (throw (ex-info msg {:status-code 400})))
                                table (future (table-sync-fn table))
+                               (contains? body :schema_name) (trs
+                                                              "Warehouse table ''{0}'' does not exist or you do not have permission to view it."
+                                                              table_name)
                                :else (let [msg (trs
-                                                "Table ''{0}'' does not exist or you do not have permission to view it."
+                                                "Table ''{0}'' does not exist in metabase. If it exists in the warehouse you must also specify a schema to sync it."
                                                 table_name)]
                                        (throw (ex-info msg {:status-code 404})))))
                 :else (future (db-sync-fn database)))
