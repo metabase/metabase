@@ -141,7 +141,6 @@ function FieldTypeSelect({
         variant="bubble"
         value={value}
         options={fieldTypes}
-        aria-label={t`Field type`}
         onChange={onChange}
       />
     </div>

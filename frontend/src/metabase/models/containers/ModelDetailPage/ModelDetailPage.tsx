@@ -5,13 +5,11 @@ import { connect } from "react-redux";
 import * as Urls from "metabase/lib/urls";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 
-import Databases from "metabase/entities/databases";
+import { getMetadata } from "metabase/selectors/metadata";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
-import { getMetadata } from "metabase/selectors/metadata";
 import title from "metabase/hoc/Title";
 
-import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 
 import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
@@ -30,7 +28,7 @@ type OwnProps = {
   };
 };
 
-type ModelEntityLoaderProps = {
+type EntityLoaderProps = {
   modelCard: Card;
 };
 
@@ -56,12 +54,9 @@ type DispatchProps = {
   ) => void;
 };
 
-type Props = OwnProps & ModelEntityLoaderProps & StateProps & DispatchProps;
+type Props = OwnProps & EntityLoaderProps & StateProps & DispatchProps;
 
-function mapStateToProps(
-  state: State,
-  props: OwnProps & ModelEntityLoaderProps,
-) {
+function mapStateToProps(state: State, props: OwnProps & EntityLoaderProps) {
   const metadata = getMetadata(state);
   const model = new Question(props.modelCard, metadata);
   return { model };
@@ -83,10 +78,6 @@ function ModelDetailPage({
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
-  const database = model.database()?.getPlainObject();
-  const hasActionsEnabled =
-    database != null && checkDatabaseActionsEnabled(database);
-
   const mainTable = useMemo(
     () => (model.isStructured() ? model.query().sourceTable() : null),
     [model],
@@ -102,26 +93,6 @@ function ModelDetailPage({
       fetchTableForeignKeys({ id: mainTable.id });
     }
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
-
-  const handleNameChange = useCallback(
-    name => {
-      if (name && name !== model.displayName()) {
-        const nextCard = model.setDisplayName(name).card();
-        onChangeModel(nextCard as Card);
-      }
-    },
-    [model, onChangeModel],
-  );
-
-  const handleDescriptionChange = useCallback(
-    description => {
-      if (model.description() !== description) {
-        const nextCard = model.setDescription(description).card();
-        onChangeModel(nextCard as Card);
-      }
-    },
-    [model, onChangeModel],
-  );
 
   const handleCollectionChange = useCallback(
     (collection: Collection) => {
@@ -139,9 +110,7 @@ function ModelDetailPage({
     <ModelDetailPageView
       model={model}
       mainTable={mainTable}
-      hasActionsTab={hasActionsEnabled}
-      onChangeName={handleNameChange}
-      onChangeDescription={handleDescriptionChange}
+      onChangeModel={onChangeModel}
       onChangeCollection={handleCollectionChange}
     />
   );
@@ -153,15 +122,11 @@ function getPageTitle({ modelCard }: Props) {
 
 export default _.compose(
   Questions.load({
-    id: (state: State, { params }: OwnProps) =>
-      Urls.extractEntityId(params.slug),
+    id: (state: State, props: OwnProps) =>
+      Urls.extractEntityId(props.params.slug),
     entityAlias: "modelCard",
   }),
-  Databases.load({
-    id: (state: State, { modelCard }: OwnProps & ModelEntityLoaderProps) =>
-      modelCard.dataset_query.database,
-  }),
-  connect<StateProps, DispatchProps, OwnProps & ModelEntityLoaderProps, State>(
+  connect<StateProps, DispatchProps, OwnProps & EntityLoaderProps, State>(
     mapStateToProps,
     mapDispatchToProps,
   ),

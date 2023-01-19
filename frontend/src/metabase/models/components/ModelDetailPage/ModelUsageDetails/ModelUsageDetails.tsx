@@ -18,8 +18,7 @@ import type Question from "metabase-lib/Question";
 import {
   EmptyStateContainer,
   EmptyStateTitle,
-  EmptyStateActionContainer,
-} from "../EmptyState.styled";
+} from "../ModelDetailPage.styled";
 
 import { CardListItem, CardTitle } from "./ModelUsageDetails.styled";
 
@@ -38,13 +37,11 @@ function ModelUsageDetails({ model, cards }: Props) {
     return (
       <EmptyStateContainer>
         <EmptyStateTitle>{t`This model is not used by any questions yet.`}</EmptyStateTitle>
-        <EmptyStateActionContainer>
-          <Button
-            as={Link}
-            to={model.composeDataset().getUrl()}
-            icon="add"
-          >{t`Create a new question`}</Button>
-        </EmptyStateActionContainer>
+        <Button
+          as={Link}
+          to={model.composeDataset().getUrl()}
+          icon="add"
+        >{t`Create a new question`}</Button>
       </EmptyStateContainer>
     );
   }

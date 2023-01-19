@@ -1,5 +1,4 @@
 import {
-  CardId,
   WritebackParameter,
   WritebackQueryAction,
   WritebackImplicitQueryAction,
@@ -53,26 +52,3 @@ export const createMockImplicitQueryAction = (
   ...options,
   type: "implicit",
 });
-
-export const createMockImplicitCUDActions = (
-  modelId: CardId,
-): WritebackImplicitQueryAction[] => [
-  createMockImplicitQueryAction({
-    id: 1,
-    name: "Create",
-    kind: "row/create",
-    model_id: modelId,
-  }),
-  createMockImplicitQueryAction({
-    id: 2,
-    name: "Update",
-    kind: "row/update",
-    model_id: modelId,
-  }),
-  createMockImplicitQueryAction({
-    id: 3,
-    name: "Delete",
-    kind: "row/delete",
-    model_id: modelId,
-  }),
-];

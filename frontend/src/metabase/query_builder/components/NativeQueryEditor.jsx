@@ -175,7 +175,6 @@ class NativeQueryEditor extends Component {
     if (this.props.cancelQueryOnLeave) {
       this.props.cancelQuery?.();
     }
-    this._editor?.destroy?.();
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("contextmenu", this.handleRightClick);
   }
