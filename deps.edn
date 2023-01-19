@@ -203,8 +203,8 @@
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.13"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.35.0"}                    ; ui for inspecting values
-    eftest/eftest                {:mvn/version "0.6.0"}
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
+    io.github.metabase/hawk      {:sha "ca1775da999ed066947bd37ca5710167f4adecaa"}
     jonase/eastwood              {:mvn/version "1.3.0"}                     ; inspects namespaces and reports possible problems using tools.analyzer
     lambdaisland/deep-diff2      {:mvn/version "2.7.169"}                   ; way better diffs
     methodical/methodical        {:mvn/version "0.15.0.1"}                  ; drop-in replacements for Clojure multimethods and adds several advanced features
@@ -240,7 +240,7 @@
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
   {:extra-paths ["test_config"]
-   :exec-fn     metabase.test-runner/run-tests
+   :exec-fn     metabase.test-runner/find-and-run-tests-cli
    :jvm-opts    ["-Dmb.run.mode=test"
                  "-Dmb.db.in.memory=true"
                  "-Dmb.jetty.join=false"
