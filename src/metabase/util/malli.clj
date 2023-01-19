@@ -28,7 +28,7 @@
        (re-find #"#function" url) nil
        ;; cant be too long
        (<= 2000 (count url)) nil
-       :ok! url))))
+       :else url))))
 
 (core/defn- explain-fn-fail!
   "Used as reporting function to minst/instrument!"
