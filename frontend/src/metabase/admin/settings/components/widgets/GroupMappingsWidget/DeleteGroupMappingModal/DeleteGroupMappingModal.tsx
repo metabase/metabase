@@ -76,7 +76,7 @@ const DeleteGroupMappingModal = ({
                 value: "nothing",
               },
               {
-                name: t`Also remove all group members`,
+                name: t`Also remove all group members (except from Admin)`,
                 value: "clear",
               },
               {

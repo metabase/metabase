@@ -37,7 +37,7 @@ describe("DeleteGroupMappingModal", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("Also remove all group members"),
+      screen.getByText("Also remove all group members (except from Admin)"),
     ).toBeInTheDocument();
 
     expect(screen.getByText("Also delete the group")).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe("DeleteGroupMappingModal", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("Also remove all group members"),
+      screen.getByText("Also remove all group members (except from Admin)"),
     ).toBeInTheDocument();
 
     expect(
@@ -70,7 +70,11 @@ describe("DeleteGroupMappingModal", () => {
   it("confirms when clearing members", () => {
     setup();
 
-    userEvent.click(screen.getByLabelText("Also remove all group members"));
+    userEvent.click(
+      screen.getByLabelText(
+        "Also remove all group members (except from Admin)",
+      ),
+    );
 
     userEvent.click(
       screen.getByRole("button", { name: "Remove mapping and members" }),
