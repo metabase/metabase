@@ -76,7 +76,7 @@
    (for [[k v] corrections]
      [k (tru "{0} was autocorrected to {1}"
              (name (mb-to-smtp-settings k))
-             (str/upper-case v))])))
+             (u/upper-case-en v))])))
 
 (defn- env-var-values-by-email-setting
   "Returns a map of setting names (keywords) and env var values.

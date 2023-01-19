@@ -626,10 +626,10 @@
     (unremapped-chain-filter field-id constraints options)))
 
 (defn- matching-unremapped-values [query v->human-readable]
-  (let [query (str/lower-case query)]
+  (let [query (u/lower-case-en query)]
     (for [[orig remapped] v->human-readable
           :when           (and (string? remapped)
-                               (str/includes? (str/lower-case remapped) query))]
+                               (str/includes? (u/lower-case-en remapped) query))]
       orig)))
 
 (s/defn ^:private human-readable-values-remapped-chain-filter-search
@@ -668,10 +668,10 @@
 (defn- cached-field-values-search
   [field-id query constraints {:keys [limit]}]
   (let [{:keys [values has_more_values]} (cached-field-values field-id constraints nil)
-        query                            (str/lower-case query)]
+        query                            (u/lower-case-en query)]
     {:values (cond->> (filter (fn [s]
                                 (when s
-                                  (str/includes? (str/lower-case s) query)))
+                                  (str/includes? (u/lower-case-en s) query)))
                               values)
                limit (take limit))
      :has_more_values has_more_values}))

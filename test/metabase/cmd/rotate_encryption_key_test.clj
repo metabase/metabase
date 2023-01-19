@@ -1,7 +1,6 @@
 (ns metabase.cmd.rotate-encryption-key-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.cmd :as cmd]
    [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
@@ -56,7 +55,7 @@
 (deftest rotate-encryption-key!-test
   (encryption-test/with-secret-key nil
     (let [h2-fixture-db-file @cmd.test-util/fixture-db-file-path
-          db-name            (str "test_" (str/lower-case (mt/random-name)))
+          db-name            (str "test_" (u/lower-case-en (mt/random-name)))
           original-timestamp "2021-02-11 18:38:56.042236+00"
           [k1 k2 k3]         ["89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
                               "yHa/6VEQuIItMyd5CNcgV9nXvzZcX6bWmiY0oOh6pLU="

@@ -482,7 +482,7 @@
   (db/select [Table :id :db_id :schema :name]
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
-                     [:like :%lower.name (str/lower-case search-string)]
+                     [:like :%lower.name (u/lower-case-en search-string)]
                      [:= :visibility_type nil]]
      :order-by [[:%lower.name :asc]]
      :limit    limit}))
@@ -500,7 +500,7 @@
         search-name (-> (re-matches #"\d*-?(.*)" search-card-slug)
                         second
                         (str/replace #"-" " ")
-                        str/lower-case)]
+                        u/lower-case-en)]
     (db/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
                {:where    [:and
                            [:= :report_card.database_id database-id]
@@ -527,7 +527,7 @@
 (defn- autocomplete-fields [db-id search-string limit]
   (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
     :metabase_field.active          true
-    :%lower.metabase_field.name     [:like (str/lower-case search-string)]
+    :%lower.metabase_field.name     [:like (u/lower-case-en search-string)]
     :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
     :table.db_id                    db-id
     {:order-by  [[:%lower.metabase_field.name :asc]
@@ -654,7 +654,7 @@
                                            [check-db-data-model-perms mi/can-write?]
                                            [api/read-check mi/can-read?])]
     (db-perm-check (db/select-one Database :id id))
-    (sort-by (comp str/lower-case :name :table)
+    (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (hydrate :table))))))
 
@@ -1072,7 +1072,7 @@
     (->> (cards-virtual-tables :card)
          (map :schema)
          distinct
-         (sort-by str/lower-case))))
+         (sort-by u/lower-case-en))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET ["/:virtual-db/datasets"
@@ -1083,7 +1083,7 @@
     (->> (cards-virtual-tables :dataset)
          (map :schema)
          distinct
-         (sort-by str/lower-case))))
+         (sort-by u/lower-case-en))))
 
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------

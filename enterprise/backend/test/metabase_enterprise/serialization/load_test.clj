@@ -3,7 +3,6 @@
   (:require
    [clojure.data :as data]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.serialization.cmd :refer [dump load]]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -148,14 +147,14 @@
           (is (some? (:column_settings vs)))
           (is (integer? field-id))
           (is (= "latitude" (-> (db/select-one-field :name Field :id field-id)
-                              str/lower-case)))
+                              u/lower-case-en)))
           (is (= {:show_mini_bar true
                   :column_title "Parallel"} col-val))
           (is (= "Venue Category" col-name))
           (is (true? col-enabled))
           (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
           (is (= "category_id" (-> (db/select-one-field :name Field :id col-field-id)
-                                   str/lower-case))))))
+                                   u/lower-case-en))))))
     card))
 
 (defn- collection-parent-name [collection]

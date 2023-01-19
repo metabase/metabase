@@ -1,9 +1,9 @@
 (ns metabase.models.params.card-values
   "Code related to getting values for a parameter where its source values is a card."
   (:require
-   [clojure.string :as str]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
+   [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -17,14 +17,14 @@
 (defn- values-from-card-query
   [card-id value-field query]
   (let [card        (db/select-one Card :id card-id)]
-    {:database (:database_id card)
-     :type     :query
-     :query    (merge
-                 {:source-table (format "card__%d" card-id)
-                  :fields       [value-field]
-                  :limit        *max-rows*}
-                 (when query
-                   {:filter [:contains [:lower value-field] (str/lower-case query)]}))
+    {:database   (:database_id card)
+     :type       :query
+     :query      (merge
+                  {:source-table (format "card__%d" card-id)
+                   :fields       [value-field]
+                   :limit        *max-rows*}
+                  (when query
+                    {:filter [:contains [:lower value-field] (u/lower-case-en query)]}))
      :middleware {:disable-remaps? true}}))
 
 (s/defn values-from-card
