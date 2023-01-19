@@ -75,3 +75,11 @@ In your Slack workspace, create a public channel named whatever you want — we 
 
 In Metabase, click on the **Save changes** button and that’s it! Metabase will automatically run a quick test to check that the API token and your dedicated Slack channel are working properly. If something goes wrong, it'll give you an error message.
 
+## Further reading
+
+- [Alerts](../questions/sharing/alerts.md)
+- [Dashboard subscriptions](../dashboards/subscriptions.md)
+- [Notification permissions](../permissions/notifications.md)
+- [Setting up email](./email.md)
+- [Auditing Metabase](../usage-and-performance-tools/audit.md)
+
