@@ -13,6 +13,7 @@ import type {
   ActionDashboardCard,
   ActionFormSubmitResult,
   ActionParametersMapping,
+  CardId,
   Dashboard,
   ImplicitQueryAction,
   ParametersForActionExecution,
@@ -24,7 +25,7 @@ import { setDashCardAttributes } from "./core";
 import { reloadDashboardCards } from "./data-fetching";
 
 interface DashboardAttributes {
-  card_id?: number | null;
+  card_id?: CardId | null;
   action?: WritebackAction | null;
   parameter_mappings?: ActionParametersMapping[] | null;
   visualization_settings?: ActionDashboardCard["visualization_settings"];
