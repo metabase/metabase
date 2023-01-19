@@ -146,7 +146,7 @@
 
 (defn- pre-update [{:keys [id], :as updates}]
   (u/prog1 updates
-    (let [original (GroupTableAccessPolicy id)
+    (let [original (db/select-one GroupTableAccessPolicy :id id)
           updated  (merge original updates)]
       (when-not (= (:table_id original) (:table_id updated))
         (throw (ex-info (tru "You cannot change the Table ID of a GTAP once it has been created.")

@@ -103,6 +103,8 @@
   See namespace documentation for [[metabase.db.query]] for pro debugging tips."
   [sql-args-or-honey-sql-map & {:as jdbc-options}]
   (increment-call-count!)
+  ;; make sure [[metabase.db.setup]] gets loaded so default Honey SQL options and the like are loaded.
+  (classloader/require 'metabase.db.setup)
   (let [sql-args (compile sql-args-or-honey-sql-map)]
     ;; catch errors running the query and rethrow with the failing generated SQL and the failing Honey SQL form -- this
     ;; will help with debugging stuff. This should mostly be dev-facing because we should hopefully not be committing
@@ -129,6 +131,8 @@
   See namespace documentation for [[metabase.db.query]] for pro debugging tips."
   [sql-args-or-honey-sql-map & {:as jdbc-options}]
   (increment-call-count!)
+  ;; make sure [[metabase.db.setup]] gets loaded so default Honey SQL options and the like are loaded.
+  (classloader/require 'metabase.db.setup)
   (let [sql-args (compile sql-args-or-honey-sql-map)]
     ;; It doesn't really make sense to put a try-catch around this since it will return immediately and not execute
     ;; until we actually reduce it

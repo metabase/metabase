@@ -179,7 +179,7 @@
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
 (s/defn infer-entity-type :- i/TableInstance
-  "Classifer that infers the semantic type of a TABLE based on its name."
+  "Classifer that infers the semantic type of a `table` based on its name."
   [table :- i/TableInstance]
   (let [table-name (-> table :name u/lower-case-en)]
     (assoc table :entity_type (or (some (fn [[pattern type]]

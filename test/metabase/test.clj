@@ -19,7 +19,6 @@
    [metabase.http-client :as client]
    [metabase.models :refer [PermissionsGroupMembership User]]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.context :as qp.context]
@@ -43,7 +42,6 @@
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.timezone :as test.tz]
-   [metabase.util :as u]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
    [toucan.db :as db]
@@ -262,14 +260,6 @@
  [tx.env
   set-test-drivers!
   with-test-drivers])
-
-;; ee-only stuff
-(u/ignore-exceptions
-  (classloader/require 'metabase-enterprise.sandbox.test-util)
-  (eval '(potemkin/import-vars [metabase-enterprise.sandbox.test-util
-                                with-gtaps
-                                with-gtaps-for-user
-                                with-user-attributes])))
 
 ;;; TODO -- move all the stuff below into some other namespace and import it here.
 

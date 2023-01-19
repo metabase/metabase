@@ -8,7 +8,7 @@ export const createMockTable = (opts?: Partial<Table>): Table => {
     name: "table",
     schema: "public",
     description: null,
-    visibility_type: "normal",
+    visibility_type: null,
     ...opts,
   };
 };

@@ -23,10 +23,12 @@
    (org.apache.http.impl.client HttpClients)
    (org.apache.http.impl.conn PoolingHttpClientConnectionManager)))
 
+(set! *warn-on-reflection* true)
+
 (defsetting analytics-uuid
   (deferred-tru
-   (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
-        "This is a public setting since some analytics events are sent prior to initial setup."))
+    (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
+         "This is a public setting since some analytics events are sent prior to initial setup."))
   :visibility :public
   :setter     :none
   :type       ::public-settings/uuid-nonce

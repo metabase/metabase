@@ -6,6 +6,7 @@
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.actions.execution :as actions.execution]
+   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
@@ -174,6 +175,7 @@
   "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
+  {:pre [(even? (count conditions))]}
   (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
       (hydrate [:ordered_cards :card :series :dashcard/action] :param_fields)
       api.dashboard/add-query-average-durations
@@ -468,6 +470,22 @@
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid/params/:param-key/values"
+  "Fetch values for a parameter on a public card."
+  [uuid param-key]
+  (validation/check-public-sharing-enabled)
+  (let [card (db/select-one Card :public_uuid uuid, :archived false)]
+    (api.card/param-values card param-key)))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid/params/:param-key/search/:query"
+  "Fetch values for a parameter on a public card containing `query`."
+  [uuid param-key query]
+  (validation/check-public-sharing-enabled)
+  (let [card (db/select-one Card :public_uuid uuid, :archived false)]
+    (api.card/param-values card param-key query)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/values"

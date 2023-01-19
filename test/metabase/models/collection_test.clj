@@ -24,9 +24,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan.hydrate :refer [hydrate]]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -113,16 +111,14 @@
                     Card       [card       {:collection_id (u/the-id collection)}]]
       (db/update! Collection (u/the-id collection)
         :archived true)
-      (is (= true
-             (db/select-one-field :archived Card :id (u/the-id card))))))
+      (is (true? (db/select-one-field :archived Card :id (u/the-id card))))))
 
   (testing "check that unarchiving a Collection unarchives its Cards as well"
     (mt/with-temp* [Collection [collection {:archived true}]
                     Card       [card       {:collection_id (u/the-id collection), :archived true}]]
       (db/update! Collection (u/the-id collection)
         :archived false)
-      (is (= false
-             (db/select-one-field :archived Card :id (u/the-id card)))))))
+      (is (false? (db/select-one-field :archived Card :id (u/the-id card)))))))
 
 (deftest validate-name-test
   (testing "check that collections' names cannot be blank"
@@ -395,8 +391,7 @@
   (testing "We should be able to UPDATE a Collection and give it a new, *valid* location"
     (mt/with-temp* [Collection [collection-1]
                     Collection [collection-2]]
-      (is (= true
-             (db/update! Collection (u/the-id collection-1) :location (collection/location-path collection-2)))))))
+      (is (true? (db/update! Collection (u/the-id collection-1) :location (collection/location-path collection-2)))))))
 
 (deftest crud-validate-ancestors-test
   (testing "Make sure we can't INSERT a Collection with an non-existent ancestors"
@@ -1635,7 +1630,7 @@
 
 (deftest identity-hash-test
   (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+    (let [now #t "2022-09-01T12:34:56"]
       (mt/with-temp* [Collection [c1  {:name       "top level"
                                        :created_at now
                                        :namespace  "yolocorp"

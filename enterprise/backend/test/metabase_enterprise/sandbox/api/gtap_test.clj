@@ -147,9 +147,9 @@
 
 (deftest update-gtap-test
   (testing "PUT /api/mt/gtap"
-    (mt/with-temp* [Table                  [{table-id :id}]
-                    PermissionsGroup       [{group-id :id}]
-                    Card                   [{card-id :id}]]
+    (mt/with-temp* [Table            [{table-id :id}]
+                    PermissionsGroup [{group-id :id}]
+                    Card             [{card-id :id}]]
       (premium-features-test/with-premium-features #{:sandboxes}
         (testing "Test that we can update only the attribute remappings for a GTAP"
           (mt/with-temp GroupTableAccessPolicy [{gtap-id :id} {:table_id             table-id
@@ -216,8 +216,9 @@
                               :card_id  card-id-1))))
 
           (testing "Test that we can update a sandbox using the permission graph API"
-            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy {:table_id table-id-1
-                                                                              :group_id group-id})
+            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
+                                                  :table_id table-id-1
+                                                  :group_id group-id)
                   graph      (assoc (perms/data-perms-graph)
                                     :sandboxes [{:id                   sandbox-id
                                                  :card_id              card-id-2
@@ -231,9 +232,10 @@
                                            :table_id table-id-1
                                            :group_id group-id)))))
 
-         (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
-            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy {:table_id table-id-1
-                                                                              :group_id group-id})
+          (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
+            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
+                                                  :table_id table-id-1
+                                                  :group_id group-id)
                   graph      (assoc (perms/data-perms-graph)
                                     :sandboxes [{:id                   sandbox-id
                                                  :card_id              card-id-1
