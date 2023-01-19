@@ -51,7 +51,8 @@ jobs:
       run: >-
         docker run
         --volume $PWD:/work
-        --rm cljkondo/clj-kondo:2022.08.03
+        --rm
+        cljkondo/clj-kondo:2023.01.16
         clj-kondo
         --config /work/.clj-kondo/config.edn
         --config-dir /work/.clj-kondo

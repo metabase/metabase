@@ -1,5 +1,8 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import _ from "underscore";
+import type { VisualizationSettings } from "metabase-types/api";
+import type { Column } from "metabase-types/types/Dataset";
 
 import { PivotTable } from "./PivotTable";
 
@@ -38,7 +41,7 @@ const cols = [
     field_ref: ["aggregation", 2],
     display_name: "aggregation-2",
   },
-];
+] as Column[];
 
 const rows = [
   ["foo1", "bar1", "baz1", 0, 111, 222],
@@ -64,12 +67,12 @@ const pivotSettings = {
 
 const settings = {
   ...pivotSettings,
-  column: c => ({
+  column: (c: any) => ({
     ...pivotSettings,
     column: c,
     column_title: c.display_name,
   }),
-};
+} as unknown as VisualizationSettings;
 
 // 3 isn't a real column, it's a pivot-grouping
 const columnIndexes = [0, 1, 2, 4, 5];
@@ -80,11 +83,11 @@ describe("Visualizations > PivotTable > PivotTable", () => {
   const originalOffsetHeight = Object.getOwnPropertyDescriptor(
     HTMLElement.prototype,
     "offsetHeight",
-  );
+  ) as number;
   const originalOffsetWidth = Object.getOwnPropertyDescriptor(
     HTMLElement.prototype,
     "offsetWidth",
-  );
+  ) as number;
 
   beforeAll(() => {
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
@@ -116,8 +119,8 @@ describe("Visualizations > PivotTable > PivotTable", () => {
         settings={settings}
         data={{ rows, cols }}
         width={600}
-        hasCustomColors={false}
-        onUpdateVisualizationSettings={() => {}}
+        onVisualizationClick={_.noop}
+        onUpdateVisualizationSettings={_.noop}
         isNightMode={false}
         isDashboard={false}
       />,
@@ -132,8 +135,8 @@ describe("Visualizations > PivotTable > PivotTable", () => {
           settings={settings}
           data={{ rows, cols }}
           width={600}
-          hasCustomColors={false}
-          onUpdateVisualizationSettings={() => {}}
+          onVisualizationClick={_.noop}
+          onUpdateVisualizationSettings={_.noop}
           isNightMode={false}
           isDashboard={false}
         />
@@ -153,8 +156,8 @@ describe("Visualizations > PivotTable > PivotTable", () => {
           settings={settings}
           data={{ rows, cols }}
           width={900}
-          hasCustomColors={false}
-          onUpdateVisualizationSettings={() => {}}
+          onVisualizationClick={_.noop}
+          onUpdateVisualizationSettings={_.noop}
           isNightMode={false}
           isDashboard={false}
         />
@@ -177,7 +180,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
         rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
         value: ["2"],
       },
-    };
+    } as unknown as VisualizationSettings;
 
     render(
       <div style={{ height: 800 }}>
@@ -185,8 +188,8 @@ describe("Visualizations > PivotTable > PivotTable", () => {
           settings={hiddenSettings}
           data={{ rows, cols }}
           width={900}
-          hasCustomColors={false}
-          onUpdateVisualizationSettings={() => {}}
+          onVisualizationClick={_.noop}
+          onUpdateVisualizationSettings={_.noop}
           isNightMode={false}
           isDashboard={false}
         />

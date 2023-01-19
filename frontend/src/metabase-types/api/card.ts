@@ -1,6 +1,10 @@
 import type { DatabaseId } from "./database";
 import type { Field } from "./field";
-import type { DatasetQuery } from "./query";
+import type {
+  DatasetQuery,
+  FieldReference,
+  AggregationReference,
+} from "./query";
 
 export interface Card extends UnsavedCard {
   id: CardId;
@@ -46,6 +50,20 @@ export type SeriesOrderSetting = {
   color?: string;
 };
 
+export type ColumnFormattingSetting = {
+  columns: string[]; // column names
+  color?: string;
+  type?: string;
+  operator?: string;
+  value?: string | number;
+  highlight_row?: boolean;
+};
+
+export type PivotTableCollapsedRowsSetting = {
+  rows: (FieldReference | AggregationReference)[];
+  value: string[]; // identifiers for collapsed rows
+};
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: "stacked" | "normalized" | null;
@@ -76,6 +94,9 @@ export type VisualizationSettings = {
 
   // Funnel settings
   "funnel.rows"?: SeriesOrderSetting[];
+
+  "table.column_formatting"?: ColumnFormattingSetting[];
+  "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
   [key: string]: any;
 };

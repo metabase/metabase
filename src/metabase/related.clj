@@ -305,9 +305,8 @@
 
 (defmethod related Dashboard
   [dashboard]
-  (let [cards (map (partial db/select-one Card :id)
-                   (db/select-field :card_id DashboardCard
-                                    :dashboard_id (:id dashboard)))]
+  (let [cards (map (partial db/select-one Card :id) (db/select-field :card_id DashboardCard
+                                                      :dashboard_id (:id dashboard)))]
     {:cards (->> cards
                  (mapcat (comp similar-questions))
                  (remove (set cards))
