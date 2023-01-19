@@ -6,6 +6,7 @@
    [metabase.models :refer [Card]]
    [metabase.models.action :refer [Action]]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
@@ -175,7 +176,7 @@
                               :response_handle ".body"
                               :error_handle ".status >= 400"}
               created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
-              action-path (str "action/" (:id created-action))]
+              action-path (str "action/" (u/the-id created-action))]
           (testing "Validate POST"
             (testing "Required fields"
               (is (partial= {:errors {:name "string"},

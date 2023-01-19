@@ -2,8 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
-   [metabase.models
-    :refer [Card Collection Dashboard DashboardCard]]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.models.card :as card]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
@@ -13,9 +12,7 @@
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.hydrate :as hydrate]
-   [toucan.util.test :as tt])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan.util.test :as tt]))
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
@@ -353,9 +350,9 @@
 
 (deftest identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/" :created_at now}]
-                      Card        [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
+    (let [now #t "2022-09-01T12:34:56"]
+      (mt/with-temp* [Collection [coll  {:name "field-db" :location "/" :created_at now}]
+                      Card       [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
         (is (= "5199edf0"
                (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll) now])
                (serdes.hash/identity-hash card)))))))

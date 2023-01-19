@@ -76,8 +76,8 @@
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       ;; use db/execute! instead of db/update! so the updated_at field doesn't get automatically updated!
       (when (seq pulses-or-ids)
-        (db/execute! {:update Pulse
-                      :set    [[:collection_id (u/the-id collection)]]
+        (db/execute! {:update :pulse
+                      :set    {:collection_id (u/the-id collection)}
                       :where  [:in :id (set (map u/the-id pulses-or-ids))]}))
       (f))))
 
