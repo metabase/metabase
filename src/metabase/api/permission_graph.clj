@@ -81,35 +81,36 @@
   If you have write access for native queries, you must have data access to all schemas."
   [:and
    data-perms
-   [:fn {:error/fn (constantly
-                    (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
+   [:fn {:error/fn (fn [] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
     (fn [{:keys [native schemas]}]
       (not (and (= native :write) schemas (not= schemas :all))))]])
 
 (def ^:private db-graph
-  [:map-of
-   id
-   [:map
-    [:data {:optional true} data-perms]
-    [:download {:optional true} data-perms]
-    [:data-model {:optional true} data-perms]
-    ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
-    ;; consistency with the language used on the frontend.
-    [:details {:optional true} [:enum :yes :no]]
-    [:execute {:optional true} [:enum :all :none]]]])
+  [:schema {:registry {"data-perms" data-perms}}
+   [:map-of
+    id
+    [:map
+     [:data {:optional true} [:ref "data-perms"]]
+     [:download {:optional true} [:ref "data-perms"]]
+     [:data-model {:optional true} [:ref "data-perms"]]
+     ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
+     ;; consistency with the language used on the frontend.
+     [:details {:optional true} [:enum :yes :no]]
+     [:execute {:optional true} [:enum :all :none]]]]])
 
 (def strict-db-graph
   "like db-graph, but if you have write access for native queries, you must have data access to all schemas."
-  [:map-of
-   id
-   [:map
-    [:data {:optional true} strict-data-perms]
-    [:download {:optional true} strict-data-perms]
-    [:data-model {:optional true} strict-data-perms]
-    ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
-    ;; consistency with the language used on the frontend.
-    [:details {:optional true} [:enum :yes :no]]
-    [:execute {:optional true} [:enum :all :none]]]])
+  [:schema {:registry {"strict-data-perms" strict-data-perms}}
+   [:map-of
+    id
+    [:map
+     [:data {:optional true} [:ref "strict-data-perms"]]
+     [:download {:optional true} [:ref "strict-data-perms"]]
+     [:data-model {:optional true} [:ref "strict-data-perms"]]
+     ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
+     ;; consistency with the language used on the frontend.
+     [:details {:optional true} [:enum :yes :no]]
+     [:execute {:optional true} [:enum :all :none]]]]])
 
 (def data-permissions-graph
   "Used to transform, and verify data permissions graph"
