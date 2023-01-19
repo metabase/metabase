@@ -79,7 +79,7 @@ function AddActionSidebarFn({
         <Heading>
           {t`Add a ${
             displayType === "button" ? t`button` : t`form`
-          } to the page`}
+          } to the dashboard`}
         </Heading>
       </BorderedSidebarContent>
 
