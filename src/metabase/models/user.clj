@@ -24,6 +24,7 @@
    [toucan.db :as db]
    [toucan.models :as models])
   (:import
+   (java.time.temporal Temporal)
    (java.util UUID)))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -286,6 +287,18 @@
    (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
    (schema/optional-key :google_auth)      schema/Bool
    (schema/optional-key :ldap_auth)        schema/Bool})
+
+(def HydratedUser
+  "Standard form of a user (for consumption by the frontend and such)"
+  {:id           su/IntGreaterThanOrEqualToZero
+   :email        su/NonBlankString
+   :first_name   su/NonBlankString
+   :last_name    su/NonBlankString
+   :common_name  su/NonBlankString
+   :last_login   Temporal
+   :date_joined  Temporal
+   :is_qbnewb    schema/Bool
+   :is_superuser schema/Bool})
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"

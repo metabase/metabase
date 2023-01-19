@@ -84,7 +84,7 @@
    response_handle        [:maybe json-query-schema]
    error_handle           [:maybe json-query-schema]}
   (api/write-check Card model_id)
-  (let [action-id (action/insert! action)]
+  (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id
       (first (action/actions-with-implicit-params nil :id action-id))
       ;; db/insert! does not return a value when used with h2
