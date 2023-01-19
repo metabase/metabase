@@ -424,19 +424,19 @@ export const TaskApi = {
 };
 
 export function setPublicQuestionEndpoints(uuid) {
-  setFieldEndpoints("/api/public/card/:uuid", { uuid });
+  setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
 export function setPublicDashboardEndpoints() {
-  setParamsEndpoints("/api/public");
+  setDashboardEndpoints("/api/public");
 }
 export function setEmbedQuestionEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
-    setFieldEndpoints("/api/embed/card/:token", { token });
+    setCardEndpoints("/api/embed/card/:token", { token });
   }
 }
 export function setEmbedDashboardEndpoints() {
   if (!IS_EMBED_PREVIEW) {
-    setParamsEndpoints("/api/embed");
+    setDashboardEndpoints("/api/embed");
   }
 }
 
@@ -444,7 +444,15 @@ function GET_with(url, params) {
   return (data, options) => GET(url)({ ...params, ...data }, options);
 }
 
-function setFieldEndpoints(prefix, params) {
+function setCardEndpoints(prefix, params) {
+  CardApi.parameterValues = GET_with(
+    prefix + "/params/:paramId/values",
+    params,
+  );
+  CardApi.parameterSearch = GET_with(
+    prefix + "/params/:paramId/search/:query",
+    params,
+  );
   MetabaseApi.field_values = GET_with(
     prefix + "/field/:fieldId/values",
     params,
@@ -459,13 +467,7 @@ function setFieldEndpoints(prefix, params) {
   );
 }
 
-function setParamsEndpoints(prefix) {
-  CardApi.parameterValues = GET(
-    prefix + "/card/:cardId/params/:paramId/values",
-  );
-  CardApi.parameterSearch = GET(
-    prefix + "/card/:cardId/params/:paramId/search/:query",
-  );
+function setDashboardEndpoints(prefix) {
   DashboardApi.parameterValues = GET(
     prefix + "/dashboard/:dashId/params/:paramId/values",
   );

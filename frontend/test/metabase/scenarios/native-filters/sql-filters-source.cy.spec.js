@@ -37,7 +37,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     cy.createQuestion(structuredQuestionDetails);
 
     openNativeEditor();
-    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{tag}}");
+    SQLFilter.enterParameterizedQuery("select * from PRODUCTS where {{tag}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
@@ -54,7 +54,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     cy.createNativeQuestion(nativeQuestionDetails);
 
     openNativeEditor();
-    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{tag}}");
+    SQLFilter.enterParameterizedQuery("select * from PRODUCTS where {{tag}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
