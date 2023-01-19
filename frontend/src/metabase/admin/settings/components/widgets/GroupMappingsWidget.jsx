@@ -26,6 +26,7 @@ export default class GroupMappingsWidget extends React.Component {
       showAddRow: false,
       groups: null,
       mappings: {},
+      savedMappings: {},
       saveError: null,
       dnForVisibleDeleteMappingModal: null,
       groupIdsForVisibleDeleteMappingModal: null,
@@ -45,7 +46,8 @@ export default class GroupMappingsWidget extends React.Component {
     });
 
     this.setState({
-      mappings: (setting && setting.value) || {},
+      mappings: setting?.value || {},
+      savedMappings: setting?.value || {},
       showEditModal: true,
     });
 
@@ -216,6 +218,7 @@ export default class GroupMappingsWidget extends React.Component {
       groups,
       mappings,
       saveError,
+      savedMappings,
       dnForVisibleDeleteMappingModal,
       groupIdsForVisibleDeleteMappingModal,
     } = this.state;
@@ -266,8 +269,13 @@ export default class GroupMappingsWidget extends React.Component {
                         _.find(groups, group => group.id === ids[0]),
                       );
 
+                    const isSavedMapping =
+                      Object.keys(savedMappings).includes(dn);
+
                     const shouldUseDeleteMappingModal =
-                      ids.length > 0 && !isMappingLinkedOnlyToAdminGroup;
+                      ids.length > 0 &&
+                      !isMappingLinkedOnlyToAdminGroup &&
+                      isSavedMapping;
 
                     const onDelete = shouldUseDeleteMappingModal
                       ? () => this.handleShowDeleteMappingModal(ids, dn)
