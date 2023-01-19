@@ -327,31 +327,33 @@
                             (let [fut (original unhidden)]
                               (when (future? fut)
                                 (deref fut)))))]
-            (let [set-visibility (fn [state]
-                                   (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
-                                                         {:display_name    "Userz"
-                                                          :visibility_type state
-                                                          :description     "What a nice table!"}))
-                  set-name      (fn []
-                                  (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
-                                                         {:display_name (mt/random-name)
-                                                          :description  "What a nice table!"}))]
+            (letfn [(set-visibility! [state]
+                      (testing (format "Set state => %s" (pr-str state))
+                        (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                              {:display_name    "Userz"
+                                               :visibility_type state
+                                               :description     "What a nice table!"})))
+                    (set-name! []
+                      (testing "set display name"
+                        (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                              {:display_name (mt/random-name)
+                                               :description  "What a nice table!"})))]
 
-              (set-visibility "hidden")
-              (set-visibility nil)        ; <- should get synced
+              (set-visibility! "hidden")
+              (set-visibility! nil)     ; <- should get synced
               (is (= 1
                      @called))
-              (set-visibility "hidden")
-              (set-visibility "cruft")
-              (set-visibility "technical")
-              (set-visibility nil)        ; <- should get synced again
+              (set-visibility! "hidden")
+              (set-visibility! "cruft")
+              (set-visibility! "technical")
+              (set-visibility! nil)     ; <- should get synced again
               (is (= 2
                      @called))
-              (set-visibility "technical")
+              (set-visibility! "technical")
               (is (= 2
                      @called))
               (testing "Update table's properties shouldn't trigger sync"
-                (set-name)
+                (set-name!)
                 (is (= 2
                        @called)))))))))
 
@@ -360,17 +362,18 @@
       (mt/with-temp* [Table [{id-1 :id} {}]
                       Table [{id-2 :id} {:visibility_type "hidden"}]]
         (with-redefs [api.table/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
-          (let [set-many-vis (fn [ids state]
-                               (reset! unhidden-ids #{})
-                               (mt/user-http-request :crowberto :put 200 "table/"
-                                                     {:ids ids :visibility_type state}))]
-            (set-many-vis [id-1 id-2] nil) ;; unhides only 2
+          (letfn [(set-many-vis! [ids state]
+                    (reset! unhidden-ids #{})
+                    (testing (format "Set visibility type => %s" (pr-str state))
+                      (mt/user-http-request :crowberto :put 200 "table/"
+                                            {:ids ids :visibility_type state})))]
+            (set-many-vis! [id-1 id-2] nil) ;; unhides only 2
             (is (= @unhidden-ids #{id-2}))
 
-            (set-many-vis [id-1 id-2] "hidden")
+            (set-many-vis! [id-1 id-2] "hidden")
             (is (= @unhidden-ids #{})) ;; no syncing when they are hidden
 
-            (set-many-vis [id-1 id-2] nil) ;; both are made unhidden so both synced
+            (set-many-vis! [id-1 id-2] nil) ;; both are made unhidden so both synced
             (is (= @unhidden-ids #{id-1 id-2}))))))))
 
 (deftest get-fks-test

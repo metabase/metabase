@@ -420,7 +420,7 @@
    obj)
 
   ([entity id]
-   (read-check (entity id)))
+   (read-check (db/select-one entity :id id)))
 
   ([entity id & other-conditions]
    (read-check (apply db/select-one entity :id id other-conditions))))
@@ -435,7 +435,7 @@
    (check-403 (mi/can-write? obj))
    obj)
   ([entity id]
-   (write-check (entity id)))
+   (write-check (db/select-one entity :id id)))
   ([entity id & other-conditions]
    (write-check (apply db/select-one entity :id id other-conditions))))
 

@@ -6,9 +6,8 @@ import {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
 import Field from "metabase-lib/metadata/Field";
-import { getFields } from "./parameter-fields";
-import { getParameterSubType, getParameterType } from "./parameter-type";
 
 export const getQueryType = (parameter: Parameter): ValuesQueryType => {
   return parameter.values_query_type ?? "list";
@@ -20,21 +19,6 @@ export const getSourceType = (parameter: Parameter): ValuesSourceType => {
 
 export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
   return parameter.values_source_config ?? {};
-};
-
-export const canUseCustomSource = (parameter: Parameter) => {
-  const type = getParameterType(parameter);
-  const subType = getParameterSubType(parameter);
-
-  switch (type) {
-    case "string":
-    case "location":
-      return subType === "=";
-    case "category":
-      return true;
-    default:
-      return false;
-  }
 };
 
 export const isValidSourceConfig = (

@@ -23,7 +23,6 @@ jest.mock("metabase/query_builder/components/DataSelector", () => ({
 }));
 
 jest.mock("metabase/entities/schemas", () => ({
-  load: () => children => children,
   Loader: ({ children }) => children(),
 }));
 

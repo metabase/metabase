@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
-import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
@@ -13,6 +12,7 @@ import {
 
 import {
   setup,
+  SAMPLE_DATABASE,
   EMPTY_COLLECTION,
   SAMPLE_COLLECTION,
   SAMPLE_MODEL,
@@ -185,7 +185,7 @@ describe("DataPicker — picking models", () => {
     expect(screen.queryByText(/Models/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Raw Data/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Saved Questions/i)).not.toBeInTheDocument();
-    expect(screen.getByText(SAMPLE_DATABASE.displayName())).toBeInTheDocument();
+    expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Back/i }),
     ).not.toBeInTheDocument();
