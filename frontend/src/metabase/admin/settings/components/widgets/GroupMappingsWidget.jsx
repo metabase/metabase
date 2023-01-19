@@ -126,11 +126,17 @@ export default class GroupMappingsWidget extends React.Component {
 
   updateGroupsListsForCallbacksAfterDeletingMappings = (
     whatToDoAboutGroups,
-    groups,
+    groupIds,
   ) => {
+    const { groups } = this.state;
+
     if (whatToDoAboutGroups === "nothing") {
       return;
     }
+
+    const allGroupIdsExceptAdmin = groupIds.filter(
+      groupId => !isAdminGroup(_.find(groups, group => group.id === groupId)),
+    );
 
     const stateKey = {
       clear: "groupsToClearAllPermissions",
@@ -140,7 +146,9 @@ export default class GroupMappingsWidget extends React.Component {
     this.setState(({ whenDeletingMappingGroups }) => ({
       whenDeletingMappingGroups: {
         ...whenDeletingMappingGroups,
-        [stateKey]: _.uniq(whenDeletingMappingGroups[stateKey].concat(groups)),
+        [stateKey]: _.uniq(
+          whenDeletingMappingGroups[stateKey].concat(allGroupIdsExceptAdmin),
+        ),
       },
     }));
   };
