@@ -251,3 +251,11 @@ export function visitPublicQuestion(id) {
     },
   );
 }
+
+export function visitPublicDashboard(id) {
+  cy.request("POST", `/api/dashboard/${id}/public_link`).then(
+    ({ body: { uuid } }) => {
+      cy.visit(`/public/dashboard/${uuid}`);
+    },
+  );
+}

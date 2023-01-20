@@ -10,6 +10,7 @@ import {
   setFilterQuestionSource,
   setFilterListSource,
   visitEmbeddedPage,
+  visitPublicDashboard,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -53,7 +54,6 @@ describe("scenarios > dashboard > filters", () => {
     restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
   describe("structured question source", () => {
@@ -88,6 +88,24 @@ describe("scenarios > dashboard > filters", () => {
           });
         },
       );
+
+      filterDashboard();
+    });
+
+    it("should be able to use a structured question source when public", () => {
+      cy.createQuestion(structuredSourceQuestion).then(
+        ({ body: { id: questionId } }) => {
+          cy.createQuestionAndDashboard({
+            questionDetails: targetQuestion,
+            dashboardDetails: getTargetDashboard(questionId),
+          }).then(({ body: card }) => {
+            cy.editDashboardCard(card, getTargetParameterMapping(card));
+            visitPublicDashboard(card.dashboard_id);
+          });
+        },
+      );
+
+      filterDashboard();
     });
   });
 
@@ -147,7 +165,6 @@ const filterDashboard = () => {
     cy.findByText("Doohickey").should("not.exist");
     cy.findByText("Gadget").click();
     cy.button("Add filter").click();
-    cy.wait("@getCardQuery");
   });
 };
 
@@ -177,7 +194,7 @@ const getTargetDashboard = questionId => ({
   ],
   enable_embedding: true,
   embedding_params: {
-    [targetParameter.id]: "enabled",
+    [targetParameter.slug]: "enabled",
   },
 });
 
