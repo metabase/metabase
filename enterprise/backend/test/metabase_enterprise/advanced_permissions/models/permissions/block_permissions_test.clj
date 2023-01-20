@@ -143,7 +143,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              ;; TODO -- this error message is totally garbage, fix this
-             #"DB permissions with a valid combination of values for :native and :schemas"
+             #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
              ;; #"DB permissions with a valid combination of values for :native and :schemas"
              (perms/update-data-perms-graph! [group-id (mt/id) :data]
                                              {:schemas :block, :native :write}))))
@@ -152,7 +152,7 @@
               new-graph     (assoc-in current-graph
                                       [:groups group-id (mt/id) :data]
                                       {:schemas :block, :native :write})]
-          (is (schema= {:message  #".*DB permissions with a valid combination of values for :native and :schemas.*"
+          (is (schema= {:message  #".*Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas.*"
                         s/Keyword s/Any}
                        (premium-features-test/with-premium-features #{:advanced-permissions}
                          (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))

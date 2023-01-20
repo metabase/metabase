@@ -15,6 +15,7 @@ export const createMockNativeQuery = (
   opts?: Partial<NativeQuery>,
 ): NativeQuery => ({
   query: "SELECT 1",
+  "template-tags": {},
   ...opts,
 });
 
