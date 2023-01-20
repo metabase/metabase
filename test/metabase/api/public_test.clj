@@ -2,11 +2,9 @@
   "Tests for `api/public/` (public links) endpoints."
   (:require
    [cheshire.core :as json]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [metabase.actions.test-util :as actions.test-util]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.pivots :as api.pivots]
@@ -1065,20 +1063,15 @@
                           (chain-filter-test/take-n-values 3)))))))))
 
     (testing "with card"
-      (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
-        (let [card-uuid (str (random-uuid))
-              field-filter-uuid (str (random-uuid))]
+      (api.card-test/with-card-param-values-fixtures [{:keys [card param-keys]}]
+        (let [uuid (str (UUID/randomUUID))]
           (is (= true
-                 (db/update! Card (u/the-id card) :public_uuid card-uuid))
-              "Enabled public setting on card")
-          (is (= true
-                 (db/update! Card (u/the-id field-filter-card) :public_uuid field-filter-uuid))
-              "Enabled public setting on field-filter-card")
+                 (db/update! Card (u/the-id card) :public_uuid uuid)))
           (testing "GET /api/public/card/:uuid/params/:param-key/values"
             (testing "parameter with source is a static list"
               (is (= {:values          ["African" "American" "Asian"]
                       :has_more_values false}
-                     (client/client :get 200 (param-values-url :card card-uuid (:static-list param-keys))))))
+                     (client/client :get 200 (param-values-url :card uuid (:static-list param-keys))))))
 
             (testing "parameter with source is a card"
               (is (= {:values          ["Red Medicine"
@@ -1087,42 +1080,18 @@
                                         "Wurstküche"
                                         "Brite Spot Family Restaurant"]
                       :has_more_values false}
-                     (client/client :get 200 (param-values-url :card card-uuid (:card param-keys))))))
-
-            (testing "parameter with source is a field filter"
-              (testing "parameter with source is a card"
-                (let [resp (client/client
-                            :get 200
-                            (param-values-url :card field-filter-uuid
-                                              (:field-values param-keys)))]
-                  (is (false? (:has_more_values resp)))
-                  (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
-                                   (-> resp :values set)))))))
+                     (client/client :get 200 (param-values-url :card uuid (:card param-keys)))))))
 
           (testing "GET /api/public/card/:uuid/params/:param-key/search/:query"
             (testing "parameter with source is a static list"
               (is (= {:values          ["African"]
                       :has_more_values false}
-                     (client/client :get 200 (param-values-url :card card-uuid (:static-list param-keys) "af")))))
+                     (client/client :get 200 (param-values-url :card uuid (:static-list param-keys) "af")))))
 
             (testing "parameter with source is a card"
               (is (= {:values          ["Red Medicine"]
                       :has_more_values false}
-                     (client/client :get 200 (param-values-url :card card-uuid (:card param-keys) "red")))))
-
-            (testing "parameter with source is a field-filter"
-              (is (partial= {:values
-                             [["Barney's Beanery"]
-                              ["My Brother's Bar-B-Q"]
-                              ["Tanoshi Sushi & Sake Bar"]
-                              ["The Misfit Restaurant + Bar"]
-                              ["Two Sisters Bar & Books"]
-                              ["bigmista's barbecue"]]
-                             :has_more_values true}
-                            (client/client
-                             :get 200
-                             (param-values-url :card field-filter-uuid
-                                               (:field-values param-keys) "bar")))))))))))
+                     (client/client :get 200 (param-values-url :card uuid (:card param-keys) "red")))))))))))
 
 (deftest param-values-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
@@ -1250,10 +1219,10 @@
                         (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))))
 
 (deftest execute-public-dashcard-action-test
-  (actions.test-util/with-actions-test-data-and-actions-enabled
+  (mt/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash {:parameters []}]
-        (actions.test-util/with-actions [{:keys [action-id model-id]} {}]
+        (mt/with-actions [{:keys [action-id model-id]} {}]
           (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
                                                             :action_id action-id
                                                             :card_id model-id}]]
@@ -1277,10 +1246,10 @@
 (deftest execute-public-dashcard-custom-action-test
   (mt/with-temp-copy-of-db
     (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-    (actions.test-util/with-actions-test-data-and-actions-enabled
+    (mt/with-actions-test-data-and-actions-enabled
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-dashboard [dash {:parameters []}]
-          (actions.test-util/with-actions [{:keys [action-id model-id]} {}]
+          (mt/with-actions [{:keys [action-id model-id]} {}]
             (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
                                                               :action_id action-id
                                                               :card_id model-id}]]
@@ -1293,10 +1262,10 @@
                              {:parameters {:id 1 :name "European"}}))))))))))
 
 (deftest fetch-public-dashcard-action-test
-  (actions.test-util/with-actions-test-data-and-actions-enabled
+  (mt/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash {:parameters []}]
-        (actions.test-util/with-actions [{:keys [action-id model-id]} {:type :implicit}]
+        (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
                                                             :action_id action-id
                                                             :card_id model-id}]]

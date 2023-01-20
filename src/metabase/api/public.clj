@@ -477,8 +477,7 @@
   [uuid param-key]
   (validation/check-public-sharing-enabled)
   (let [card (db/select-one Card :public_uuid uuid, :archived false)]
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (api.card/param-values card param-key))))
+    (api.card/param-values card param-key)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid/params/:param-key/search/:query"
@@ -486,8 +485,7 @@
   [uuid param-key query]
   (validation/check-public-sharing-enabled)
   (let [card (db/select-one Card :public_uuid uuid, :archived false)]
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (api.card/param-values card param-key query))))
+    (api.card/param-values card param-key query)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/values"
