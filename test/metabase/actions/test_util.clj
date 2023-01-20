@@ -6,11 +6,15 @@
    [metabase.http-client :as client]
    [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
-   [metabase.test :as mt]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
+   [metabase.test.data.datasets :as datasets]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
-   [toucan.db :as db]))
+   [metabase.test.util :as tu]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (def ^:dynamic ^:private *actions-test-data-tables*
   #{"categories"})
@@ -75,8 +79,8 @@
   [dataset-definition thunk]
   (let [db (atom nil)]
     (try
-      (mt/dataset dataset-definition
-        (reset! db (mt/db))
+      (data/dataset dataset-definition
+        (reset! db (data/db))
         (thunk))
       (finally
         (when-let [{driver :engine, db-id :id} @db]
@@ -98,18 +102,18 @@
   `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~dataset-definition) (fn [] ~@body)))
 
 (deftest with-actions-test-data-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+  (datasets/test-drivers (qp.test/normal-drivers-with-feature :actions/custom)
     (dotimes [i 2]
       (testing (format "Iteration %d" i)
         (with-actions-test-data
           (letfn [(row-count []
-                    (mt/rows (mt/run-mbql-query categories {:aggregation [[:count]]})))]
+                    (qp.test/rows (data/run-mbql-query categories {:aggregation [[:count]]})))]
             (testing "before"
               (is (= [[75]]
                      (row-count))))
             (testing "delete row"
               (is (= [1]
-                     (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                     (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (data/id))
                                     "DELETE FROM CATEGORIES WHERE ID = 1;"))))
             (testing "after"
               (is (= [[74]]
@@ -133,8 +137,8 @@
                                            :required false
                                            :target [:variable [:template-tag "name"]]}]
                              :visualization_settings {:inline true}
-                             :database_id (mt/id)
-                             :dataset_query {:database (mt/id)
+                             :database_id (data/id)
+                             :dataset_query {:database (data/id)
                                              :type :native
                                              :native {:query (str "UPDATE categories\n"
                                                                   "SET name = concat([[{{name}}, ' ',]] 'Sh', 'op')\n"
@@ -206,12 +210,12 @@
                  (:dataset maybe-model-def)
                  (contains? maybe-model-def :dataset_query))
           [model-part (drop 2 binding-forms-and-option-maps)]
-          ['[_ {:dataset true :dataset_query (mt/mbql-query categories)}]
+          ['[_ {:dataset true :dataset_query (metabase.test.data/mbql-query categories)}]
            binding-forms-and-option-maps])]
     `(do
        (initialize/initialize-if-needed! :web-server)
-       (mt/with-temp Card ~[model model-def]
-         (mt/with-model-cleanup [Action]
+       (tt/with-temp Card ~[model model-def]
+         (tu/with-model-cleanup [Action]
            (let [~custom-binding ~model
                  ~@(mapcat (fn [[binding-form option-map]]
                              [binding-form `(do-with-action (merge {:type :query} ~option-map) (:id ~model))])
@@ -222,7 +226,7 @@
   (with-actions [{id :action-id} {:type :implicit :kind "row/create"}
                  {:keys [action-id model-id]} {:type :http}]
     (something id action-id model-id))
-  (with-actions [{model-card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+  (with-actions [{model-card-id :id} {:dataset true :dataset_query (data/mbql-query types)}
                  {id :action-id} {:type :implicit :kind "row/create"}
                  {:keys [action-id model-id]} {}]
     (something model-card-id id action-id model-id))
@@ -231,8 +235,8 @@
 (defn do-with-actions-enabled
   "Impl for [[with-actions-enabled]]."
   [thunk]
-  (mt/with-temporary-setting-values [experimental-enable-actions true]
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+  (tu/with-temporary-setting-values [experimental-enable-actions true]
+    (tu/with-temp-vals-in-db Database (data/id) {:settings {:database-enable-actions true}}
       (thunk))))
 
 (defmacro with-actions-enabled
