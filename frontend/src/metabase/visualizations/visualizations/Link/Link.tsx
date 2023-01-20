@@ -1,18 +1,13 @@
 import React from "react";
+import SearchBar from "metabase/nav/components/SearchBar";
 
 function Link(props) {
   console.log(props);
   if (props.isPreviewing) {
     return (
-      <input
-        type="text"
-        placeholder="Add a link"
-        onChange={ev =>
-          props.onUpdateVisualizationSettings({ link: ev.target.value })
-        }
-        value={props.settings.link}
-        autoFocus
-      />
+      <div style={{ pointerEvents: "all" }}>
+        <SearchBar style={{ pointerEvents: "all" }} />;
+      </div>
     );
   } else {
     return props.settings.link ? (

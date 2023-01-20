@@ -180,7 +180,7 @@ function DashCardVisualization({
       // Visualization has to be converted to TypeScript before we can remove the ts-ignore
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      className={cx("flex-full overflow-hidden", {
+      className={cx("flex-full", {
         "pointer-events-none": isEditingDashboardLayout,
       })}
       classNameWidgets={cx({
