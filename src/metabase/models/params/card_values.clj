@@ -10,9 +10,9 @@
 
 (def ^:dynamic *max-rows*
   "Maximum number of rows returned when running a card.
-  It's 2000 because this is the limit we use when viewing a question.
-  Maybe we should lower it for the sake of display a parameter dropdown."
-  2000)
+  It's 1000 because it matches with the limit for chain-filter.
+  Maybe we should lower it for the sake of displaying a parameter dropdown."
+  1000)
 
 (defn- values-from-card-query
   [card-id value-field query]
@@ -52,3 +52,8 @@
      {:values          (map first (get-in result [:data :rows]))
       ;; if the row_count returned = the limit we specified, then it's probably has more than that
       :has_more_values (= (:row_count result) query-limit)})))
+
+(defn param->values
+  "Given a param and query returns the values."
+  [{config :values_source_config :as _param} query]
+  (values-from-card (:card_id config) (:value_field config) query))

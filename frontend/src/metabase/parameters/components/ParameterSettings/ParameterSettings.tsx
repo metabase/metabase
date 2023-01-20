@@ -3,14 +3,16 @@ import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Radio from "metabase/core/components/Radio";
 import {
-  Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
+import { UiParameter } from "metabase-lib/parameters/types";
 import { getIsMultiSelect } from "../../utils/dashboards";
-import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
+import {
+  canUseCustomSource,
+  isSingleOrMultiSelectable,
+} from "../../utils/parameter-type";
 import ValuesSourceSettings from "../ValuesSourceSettings";
 import {
   SettingLabel,
@@ -26,7 +28,7 @@ const MULTI_SELECT_OPTIONS = [
 ];
 
 export interface ParameterSettingsProps {
-  parameter: Parameter;
+  parameter: UiParameter;
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
