@@ -308,7 +308,7 @@
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
 (defn- remove-action-non-public-columns
-  "Remove everyting from public `card` that shouldn't be visible to the general public."
+  "Remove everything from an action that shouldn't be visible to the general public."
   [action]
   (mi/instance
    Action
