@@ -98,10 +98,7 @@ function EmbedFrame({
 
   const finalName = titled ? name : null;
 
-  const hasParameters =
-    Array.isArray(parameters) &&
-    parameters.length > 0 &&
-    typeof setParameterValue === "function";
+  const hasParameters = Array.isArray(parameters) && parameters.length > 0;
 
   const hasHeader = Boolean(finalName || hasParameters);
 
