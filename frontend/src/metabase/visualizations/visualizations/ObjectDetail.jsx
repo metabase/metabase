@@ -14,6 +14,7 @@ const ObjectDetailProperties = {
   iconName: "document",
   noun: t`object`,
   hidden: false,
+  disableClickBehavior: true,
   settings: {
     ...columnSettings({ hidden: true }),
     "detail.columns": {

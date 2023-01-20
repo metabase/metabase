@@ -8,6 +8,7 @@ import { IconProps } from "metabase/components/Icon";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
+import { getVisualizationRaw } from "metabase/visualizations";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
@@ -132,7 +133,7 @@ function DashCardVisualization({
           link: t`Link`,
           action: t`Action Button`,
           text: t`Text Card`,
-        }[virtualDashcardType];
+        }[virtualDashcardType] ?? t`This card does not support click mappings`;
 
         return (
           <VirtualDashCardOverlayRoot>
