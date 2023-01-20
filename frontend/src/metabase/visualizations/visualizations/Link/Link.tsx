@@ -1,5 +1,6 @@
 import React from "react";
 import SearchBar from "metabase/nav/components/SearchBar";
+import Icon from "metabase/components/Icon";
 
 function Link(props) {
   console.log(props);
@@ -24,10 +25,15 @@ function Link(props) {
   } else {
     return props.settings.link ? (
       <a
-        className="text-brand-hover text-underline-hover"
+        className="text-brand-hover text-underline-hover flex align-center px2"
         href={props.settings.link}
       >
-        {props.settings.link}
+        <Icon
+          className="mr1"
+          name={props.dashcard.visualization_settings["link.type"] || "link"}
+        />
+        {props.dashcard.visualization_settings["link.title"] ||
+          props.dashcard.visualization_settings.link}
       </a>
     ) : (
       ""
@@ -36,8 +42,12 @@ function Link(props) {
 }
 
 Link.settings = {
-  minSize: { width: 3, height: 1 },
   link: {},
+};
+
+Link.minSize = {
+  height: 1,
+  width: 3,
 };
 
 Link.identifier = "link";
