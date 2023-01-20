@@ -4,6 +4,9 @@
    [clojure.spec.alpha :as s]
    [compojure.core :refer [DELETE GET POST PUT]]
    [honeysql.helpers :as hh]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.permission-graph :as api.permission-graph]
@@ -63,19 +66,24 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
-  (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/data-permissions-graph body)]
-    (when (= graph :clojure.spec.alpha/invalid)
-      (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
-                           (s/explain-str ::api.permission-graph/data-permissions-graph body))
-                      {:status-code 400
-                       :error       (s/explain-data ::api.permission-graph/data-permissions-graph body)})))
+  (let [graph (mc/decode api.permission-graph/data-permissions-graph
+                         body
+                         (mtx/transformer
+                          mtx/string-transformer
+                          (mtx/transformer {:name :perm-graph})))]
+    (when-not (mc/validate api.permission-graph/data-permissions-graph graph)
+      (let [explained (mc/explain api.permission-graph/data-permissions-graph body)]
+        (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
+                             (pr-str explained))
+                        {:status-code 400
+                         :error explained
+                         :humanized (me/humanize explained)}))))
     (db/transaction
       (perms/update-data-perms-graph! (dissoc graph :sandboxes))
       (if-let [sandboxes (:sandboxes body)]
        (let [new-sandboxes (upsert-sandboxes! sandboxes)]
          (assoc (perms/data-perms-graph) :sandboxes new-sandboxes))
        (perms/data-perms-graph)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
