@@ -582,6 +582,7 @@ export const selectedTimelineEventIds = handleActions(
 export const parameterValuesSearchCache = handleActions(
   {
     [INITIALIZE_QB]: { next: () => ({}) },
+    [UPDATE_QUESTION]: { next: () => ({}) },
     [FETCH_QUESTION_PARAMETER_VALUES]: {
       next: (state, { payload }) =>
         payload.cacheKey && state[payload.cacheKey] !== payload
