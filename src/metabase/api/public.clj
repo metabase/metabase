@@ -307,12 +307,31 @@
 
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
+(defn- remove-action-non-public-columns
+  "Remove everyting from public `card` that shouldn't be visible to the general public."
+  [action]
+  (mi/instance
+   Action
+   (select-keys action [:description
+                        :database_id
+                        :name
+                        :type
+                        :dataset_query
+                        :model_id
+                        :id
+                        :parameter_mappings
+                        :visualization_settings
+                        :parameters])))
+
 (api/defendpoint GET "/action/:uuid"
   "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (first (action/actions-with-implicit-params nil :public_uuid uuid)))
+  (-> (action/actions-with-implicit-params nil :public_uuid uuid)
+      first
+      api/check-404
+      remove-action-non-public-columns))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
