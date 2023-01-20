@@ -39,6 +39,7 @@
                              (future (table-sync-fn table)))
                 :else      (future (db-sync-fn database)))
               synchronous? deref)))
+  {:success true})
 
 (defn- without-stacktrace [^Throwable throwable]
   (doto throwable
