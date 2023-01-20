@@ -20,7 +20,10 @@ import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
-import { fetchQuestionParameterValues } from "metabase/query_builder/actions";
+import {
+  fetchParameterValues,
+  fetchQuestionParameterValues,
+} from "metabase/query_builder/actions";
 import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
 
 import Fields from "metabase/entities/fields";
@@ -50,6 +53,7 @@ const optionsMessagePropTypes = {
 const mapDispatchToProps = dispatch => ({
   addRemappings: (...args) => dispatch(addRemappings(...args)),
   fetchFieldValues: (...args) => dispatch(fetchFieldValues(...args)),
+  fetchParameterValues: (...args) => dispatch(fetchParameterValues(...args)),
   fetchQuestionParameterValues: (...args) =>
     dispatch(fetchQuestionParameterValues(...args)),
   fetchDashboardParameterValues: (...args) =>
@@ -146,6 +150,12 @@ class FieldValuesWidgetInner extends Component {
           await this.fetchQuestionParameterValues(query);
         options = results;
         valuesMode = has_more_values ? "search" : valuesMode;
+      } else if (canUseParameterEndpoints(this.props.parameter)) {
+        const { results, has_more_values } = await this.fetchParameterValues(
+          query,
+        );
+        options = results;
+        valuesMode = has_more_values ? "search" : valuesMode;
       } else {
         options = await this.fetchFieldValues(query);
         const {
@@ -205,6 +215,15 @@ class FieldValuesWidgetInner extends Component {
 
     return this.props.fetchQuestionParameterValues({
       question,
+      parameter,
+      query,
+    });
+  };
+
+  fetchParameterValues = async query => {
+    const { parameter } = this.props;
+
+    return this.props.fetchParameterValues({
       parameter,
       query,
     });
@@ -471,12 +490,16 @@ OptionsMessage.propTypes = optionsMessagePropTypes;
 
 export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
 
+function canUseDashboardEndpoints(dashboard) {
+  return dashboard?.id;
+}
+
 function canUseQuestionEndpoints(question) {
   return question?.isSaved();
 }
 
-function canUseDashboardEndpoints(dashboard) {
-  return dashboard?.id;
+function canUseParameterEndpoints(parameter) {
+  return parameter != null;
 }
 
 function showRemapping(fields) {
