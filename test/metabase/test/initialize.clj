@@ -20,7 +20,7 @@
                                      (str/join "\n" [border body border])
                                      "\n")))))
 
-(def ^:private init-timeout-ms (* 30 1000))
+(def ^:private init-timeout-ms (u/seconds->ms 60))
 
 (def ^:private ^:dynamic *initializing*
   "Collection of components that are being currently initialized by the current thread."
