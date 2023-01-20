@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
+   [metabase.api.alert :as api.alert]
    [metabase.email.messages :as messages]
    [metabase.models
     :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
@@ -167,14 +168,14 @@
       (let [recipient-ids (fn [pulses]
                             (let [pulse      (first (filter #(= pulse-id (:id %)) pulses))
                                   recipients (-> pulse :channels first :recipients)]
-                              (map :id recipients)))]
+                              (sort (map :id recipients))))]
         (mt/with-test-user :rasta
           (with-redefs [mt.api.u/segmented-user? (constantly false)]
-            (is (= [(mt/user->id :rasta) (mt/user->id :crowberto)]
+            (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                    (-> (mt/user-http-request :rasta :get 200 "pulse/")
                        recipient-ids)))
 
-            (is (= [(mt/user->id :rasta) (mt/user->id :crowberto)]
+            (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                    (-> (mt/user-http-request :rasta :get 200 (format "pulse/%d" pulse-id))
                        vector
                        recipient-ids))))
@@ -188,3 +189,33 @@
                    (-> (mt/user-http-request :rasta :get 200 (format "pulse/%d" pulse-id))
                        vector
                        recipient-ids)))))))))
+
+(deftest sandboxed-users-cant-delete-pulse-recipients
+  (testing "When sandboxed users update a pulse, Metabase users in the recipients list are not deleted, even if they
+           are not included in the request."
+    (mt/with-temp* [Pulse        [{pulse-id :id} {:name "my pulse"}]
+                    PulseChannel [{pc-id :id :as pc} {:pulse_id     pulse-id
+                                                      :channel_type :email
+                                                      :details      {:emails ["asdf@metabase.com"]}}]
+                    PulseChannelRecipient [_ {:pulse_channel_id pc-id, :user_id (mt/user->id :crowberto)}]
+                    PulseChannelRecipient [_ {:pulse_channel_id pc-id, :user_id (mt/user->id :rasta)}]]
+
+      (mt/with-test-user :rasta
+        (with-redefs [mt.api.u/segmented-user? (constantly true)]
+          ;; Rasta, a sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
+          (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
+                                {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]}))
+
+        ;; Check that both Rasta and Crowberto are still recipients
+        (is (= [(mt/user->id :rasta) (mt/user->id :crowberto)]
+               (->> (api.alert/email-channel (models.pulse/retrieve-pulse pulse-id)) :recipients (map :id) sort)))
+
+        (with-redefs [mt.api.u/segmented-user? (constantly false)]
+          ;; Rasta, a non-sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
+          (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
+                                {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]})
+
+
+          ;; Crowberto should now be removed as a recipient
+          (is (= [(mt/user->id :rasta)]
+                 (->> (api.alert/email-channel (models.pulse/retrieve-pulse pulse-id)) :recipients (map :id) sort))))))))

@@ -127,6 +127,25 @@
       filter-pulse-recipients
       (hydrate :can_write)))
 
+(defn- maybe-add-recipients-for-sandboxed-users
+  "Sandboxed users can't read the full recipient list for a pulse, so we need to merge in existing recipients
+  before writing the pulse updates to avoid them being deleted unintentionally. We only merge in recipients that are
+  Metabase users, not raw email addresses, which sandboxed users can still view and modify."
+  [pulse-updates pulse-before-update]
+  (if-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+    (if (segmented-user?)
+      (let [recipients-to-add (filter
+                               (fn [{id :id}] (and id (not= id api/*current-user-id*)))
+                               (:recipients (api-alert/email-channel pulse-before-update)))]
+        (assoc pulse-updates :channels
+               (for [channel (:channels pulse-updates)]
+                 (if (= "email" (:channel_type channel))
+                   (assoc channel :recipients
+                          (concat (:recipients channel) recipients-to-add))
+                   channel))))
+      pulse-updates)
+    pulse-updates))
+
 (api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."
   [id :as {{:keys [name cards channels skip_if_empty collection_id archived parameters], :as pulse-updates} :body}]
@@ -163,15 +182,16 @@
                        (empty? to-add-recipients))
                    [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
 
-    (db/transaction
-     ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
-     ;; depending on what changed.
-     (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
-     ;; ok, now update the Pulse
-     (pulse/update-pulse!
-      (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                         :archived :parameters])
-             :id id))))
+    (let [pulse-updates (maybe-add-recipients-for-sandboxed-users pulse-updates pulse-before-update)]
+      (db/transaction
+       ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
+       ;; depending on what changed.
+       (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
+       ;; ok, now update the Pulse
+       (pulse/update-pulse!
+        (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
+                                           :archived :parameters])
+               :id id)))))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
