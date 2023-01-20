@@ -222,21 +222,27 @@ SumIf([Payment], [Plan] = "Basic")
 
 To add [multiple conditions with a grouping column](#conditional-subtotals-by-group):
 
-1. Add a column that extracts the month and year.
-    ```python
-    import datetime as dt
-    df['Date Received: Month'] = df['Date Received'].dt.to_period('M')
-    ```
-2. Get a dataframe that's filtered to Plan = "Business" OR Plan = "Premium".
-    ```python
-    df_filtered = df[(df['Plan'] == 'Business') | (df['Plan'] == 'Premium')]
-    ```
-3. Sum the Payment column in the filtered dataframe and group by the Date Received: Month.
-    ```python
-    df_filtered.groupby('Date Received: Month')['Payment'].sum()
-    ```
+```python
+import datetime as dt
 
-This will produce the same result as the Metabase `SumIf` expression (with the [**Group by** column](../../query-builder/introduction.md#summarizing-and-grouping-by) set to "Date Received: Month").
+## Optional: convert the column to a datetime object
+
+    df['Date Received'] = pd.to_datetime(df['Date Received'])
+
+## Extract the month and year
+
+    df['Date Received: Month'] = df['Date Received'].dt.to_period('M')
+
+## Add your conditions
+
+    df_filtered = df[(df['Plan'] == 'Business') | (df['Plan'] == 'Premium')]
+
+## Sum and group by
+
+    df_filtered.groupby('Date Received: Month')['Payment'].sum()
+```
+
+These steps will produce the same result as the Metabase `SumIf` expression (with the [**Group by** column](../../query-builder/introduction#summarizing-and-grouping-by) set to "Date Received: Month").
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
