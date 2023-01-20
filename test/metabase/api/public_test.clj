@@ -1285,39 +1285,42 @@
   (mt/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (let [{:keys [public_uuid] :as action-opts} (shared-obj)]
-        (mt/with-actions [{} action-opts]
-          (testing "Check that we get a 400 if the action doesn't exist"
-            (is (= "An error occurred."
-                   (client/client
-                    :post 400
-                    (format "public/action/%s/execute" (str (UUID/randomUUID)))
-                    {:parameters {:id 1 :name "European"}}))))
-          (testing "Check that we get a 400 if sharing is disabled."
-            (mt/with-temporary-setting-values [enable-public-sharing false]
+        ;; Lift the throttle threshold to 1000 so we don't have to wait 1 second between requests
+        (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1000)]
+          (mt/with-actions [{} action-opts]
+            (testing "Check that we get a 400 if the action doesn't exist"
               (is (= "An error occurred."
                      (client/client
                       :post 400
-                      (format "public/action/%s/execute" public_uuid)
-                      {:parameters {:id 1 :name "European"}})))))
+                      (format "public/action/%s/execute" (str (UUID/randomUUID)))
+                      {:parameters {:id 1 :name "European"}}))))
+            (testing "Check that we get a 400 if sharing is disabled."
+              (mt/with-temporary-setting-values [enable-public-sharing false]
+                (is (= "An error occurred."
+                       (client/client
+                        :post 400
+                        (format "public/action/%s/execute" public_uuid)
+                        {:parameters {:id 1 :name "European"}})))))
           ;; TODO: this needs to pass when this PR is merged https://github.com/metabase/metabase/pull/27716
-          #_(testing "Check that we get a 400 if actions are disabled for the database."
-            (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
-              (is (= "An error occurred."
-                     (client/client
-                      :post 400
-                      (format "public/action/%s/execute" public_uuid)
-                      {:parameters {:id 1 :name "European"}})))))
-          (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1)]
-            (testing "Happy path - we can execute a public action"
-              (is (=? {:rows-affected 1}
-                      (client/client
-                       :post 200
-                       (format "public/action/%s/execute" public_uuid)
-                       {:parameters {:id 1 :name "European"}}))))
-            (testing "Test throttle"
-              (let [throttled-response (client/client-full-response
-                                        :post 429
-                                        (format "public/action/%s/execute" public_uuid)
-                                        {:parameters {:id 1 :name "European"}})]
-                (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
-                (is (contains? (:headers throttled-response) "Retry-After"))))))))))
+            #_(testing "Check that we get a 400 if actions are disabled for the database."
+                (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
+                  (is (= "An error occurred."
+                         (client/client
+                          :post 400
+                          (format "public/action/%s/execute" public_uuid)
+                          {:parameters {:id 1 :name "European"}})))))
+            ;; Now decrease the throttle threshold to 1 so we can test the throttle
+            (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1)]
+              (testing "Happy path - we can execute a public action"
+                (is (=? {:rows-affected 1}
+                        (client/client
+                         :post 200
+                         (format "public/action/%s/execute" public_uuid)
+                         {:parameters {:id 1 :name "European"}}))))
+              (testing "Test throttle"
+                (let [throttled-response (client/client-full-response
+                                          :post 429
+                                          (format "public/action/%s/execute" public_uuid)
+                                          {:parameters {:id 1 :name "European"}})]
+                  (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
+                  (is (contains? (:headers throttled-response) "Retry-After")))))))))))
