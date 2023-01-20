@@ -34,7 +34,10 @@ export const groupExcessiveTooltipRows = (
 
   rowsToGroup.reduce(
     (grouped, current) => {
-      if (typeof current.value === "number") {
+      if (
+        typeof current.value === "number" &&
+        typeof grouped.value === "number"
+      ) {
         grouped.value += current.value;
       }
       return grouped;
