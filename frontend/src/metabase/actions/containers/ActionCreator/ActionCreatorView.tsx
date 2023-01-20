@@ -73,11 +73,16 @@ export default function ActionCreatorView({
       <ModalRoot>
         <ActionCreatorBodyContainer>
           <ModalLeft>
-            <DataReferenceTriggerButton onClick={toggleDataRef} />
             <ActionCreatorHeader
               type="query"
               name={question.displayName() ?? t`New Action`}
               onChangeName={onChangeName}
+              actionButtons={[
+                <DataReferenceTriggerButton
+                  key="data-reference"
+                  onClick={toggleDataRef}
+                />,
+              ]}
             />
             <EditorContainer>
               <QueryActionEditor

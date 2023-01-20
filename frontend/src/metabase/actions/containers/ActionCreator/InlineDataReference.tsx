@@ -2,13 +2,11 @@ import React, { useState } from "react";
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import Button from "metabase/core/components/Button";
 
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 
-import {
-  DataReferenceContainer,
-  TriggerButton,
-} from "./InlineDataReference.styled";
+import { DataReferenceContainer } from "./InlineDataReference.styled";
 
 export const DataReferenceInline = ({ onClose }: { onClose: () => void }) => {
   const [dataRefStack, setDataRefStack] = useState<any[]>([]);
@@ -39,6 +37,6 @@ export const DataReferenceTriggerButton = ({
   onClick: () => void;
 }) => (
   <Tooltip tooltip={t`Data Reference`}>
-    <TriggerButton onlyIcon onClick={onClick} icon="reference" iconSize={16} />
+    <Button onlyIcon onClick={onClick} icon="reference" iconSize={16} />
   </Tooltip>
 );
