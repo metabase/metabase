@@ -22,5 +22,5 @@ export const Message = styled.span`
 `;
 
 export const MetabaseName = styled.span<{ isDark: boolean }>`
-  color: ${props => color(props.isDark ? "text-white" : "brand")};
+  color: ${props => color(props.isDark ? "white" : "brand")};
 `;

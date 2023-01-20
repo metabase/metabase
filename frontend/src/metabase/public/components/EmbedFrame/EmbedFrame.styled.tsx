@@ -39,11 +39,7 @@ export const ContentContainer = styled.div<{ hasScroll: boolean }>`
   flex: 1 0 auto;
   position: relative;
 
-  ${props =>
-    props.hasScroll &&
-    css`
-      overflow-y: auto;
-    `}
+  overflow-y: ${props => props.hasScroll && "auto"};
 `;
 
 export const Header = styled.header`
@@ -64,6 +60,7 @@ export const Body = styled.main`
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
+  width: 100%;
   position: relative;
 `;
 
