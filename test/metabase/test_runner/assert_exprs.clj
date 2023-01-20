@@ -43,34 +43,6 @@
            `(t/do-report
              (query=-report ~message ~expected ~actual)))))
 
-;; `partial=` is like `=` but only compares stuff (using [[data/diff]]) that's in `expected`. Anything else is ignored.
-
-(defn- remove-keys-not-in-expected
-  "Remove all the extra stuff (i.e. extra map keys or extra sequence elements) from the `actual` diff that's not
-  in the original `expected` form."
-  [expected actual]
-  (cond
-    (and (map? expected) (map? actual))
-    (into {}
-          (comp (filter (fn [[k _v]]
-                          (contains? expected k)))
-                (map (fn [[k v]]
-                       [k (remove-keys-not-in-expected (get expected k) v)])))
-          actual)
-
-    (and (sequential? expected)
-         (sequential? actual))
-    (cond
-      (empty? expected) []
-      (empty? actual)   []
-      :else             (into
-                         [(remove-keys-not-in-expected (first expected) (first actual))]
-                         (when (next expected)
-                           (remove-keys-not-in-expected (next expected) (next actual)))))
-
-    :else
-    actual))
-
 (defn sql=-report
   [message expected query]
   (let [sql-map ((requiring-resolve 'metabase.driver.sql.query-processor-test-util/query->sql-map)
