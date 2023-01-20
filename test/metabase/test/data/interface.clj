@@ -51,7 +51,7 @@
    ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
    ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
    ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
-   ;; datasets e.g. [[metabase.actions.test-util/with-actions-test-data]]
+   ;; datasets e.g. [[mt/with-actions-test-data]]
    (s/optional-key :not-null?)         (s/maybe s/Bool)
    (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
    (s/optional-key :effective-type)    (s/maybe su/FieldType)
