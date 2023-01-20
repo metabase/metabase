@@ -38,7 +38,7 @@
                 table_name (api/let-404 [table (db/select-one Table :db_id id, :name table_name)]
                              (future (table-sync-fn table)))
                 :else      (future (db-sync-fn database)))
-              synchronous? deref)))
+        synchronous? deref)))
   {:success true})
 
 (defn- without-stacktrace [^Throwable throwable]
