@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase-enterprise.serialization.v2.load-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.load-test
   (:require
    [clojure.test :refer :all]
    [java-time :as t]

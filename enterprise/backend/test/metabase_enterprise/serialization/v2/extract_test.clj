@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase-enterprise.serialization.v2.extract-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

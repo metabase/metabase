@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase-enterprise.serialization.v2.backfill-ids-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.backfill-ids-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
