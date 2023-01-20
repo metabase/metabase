@@ -25,6 +25,7 @@ export interface WritebackActionBase {
   visualization_settings?: ActionFormSettings;
   updated_at: string;
   created_at: string;
+  public_uuid: string | null;
 }
 
 export interface QueryAction {

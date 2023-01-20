@@ -1,1 +1,1 @@
-export type SideView = "dataReference" | "actionForm";
+export type SideView = "dataReference" | "actionForm" | "actionSettings";

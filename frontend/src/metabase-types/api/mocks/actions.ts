@@ -33,6 +33,7 @@ export const createMockQueryAction = ({
     parameters: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    public_uuid: null,
     ...opts,
     type: "query",
   };
@@ -50,6 +51,7 @@ export const createMockImplicitQueryAction = (
   visualization_settings: undefined,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
+  public_uuid: null,
   ...options,
   type: "implicit",
 });
