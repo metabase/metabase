@@ -78,6 +78,7 @@ class DashboardHeader extends Component {
 
     addCardToDashboard: PropTypes.func.isRequired,
     addTextDashCardToDashboard: PropTypes.func.isRequired,
+    addLinkCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
@@ -111,6 +112,10 @@ class DashboardHeader extends Component {
 
   onAddTextBox() {
     this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
+  }
+
+  onAddLink() {
+    this.props.addLinkCardToDashboard({ dashId: this.props.dashboard.id });
   }
 
   onAddAction() {
@@ -237,6 +242,21 @@ class DashboardHeader extends Component {
           >
             <DashboardHeaderButton>
               <Icon name="string" size={18} />
+            </DashboardHeaderButton>
+          </a>
+        </Tooltip>,
+      );
+
+      buttons.push(
+        <Tooltip key="add-a-link" tooltip={t`Add a link`}>
+          <a
+            data-metabase-event="Dashboard;Add Link"
+            key="add-text"
+            className="text-brand-hover cursor-pointer"
+            onClick={() => this.onAddLink()}
+          >
+            <DashboardHeaderButton>
+              <Icon name="link" size={18} />
             </DashboardHeaderButton>
           </a>
         </Tooltip>,

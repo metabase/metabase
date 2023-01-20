@@ -94,3 +94,20 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
     dashcardOverrides: dashcardOverrides,
   });
 };
+
+export const addLinkCardToDashboard = function ({ dashId }) {
+  const virtualLinkCard = createCard();
+  virtualLinkCard.display = "link";
+  virtualLinkCard.archived = false;
+
+  const dashcardOverrides = {
+    card: virtualLinkCard,
+    visualization_settings: {
+      virtual_card: virtualLinkCard,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+  });
+};

@@ -21,6 +21,7 @@ import Funnel from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./components/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
+import Link from "./visualizations/Link";
 
 export default function () {
   registerVisualization(Scalar);
@@ -41,5 +42,6 @@ export default function () {
   registerVisualization(Funnel);
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
+  registerVisualization(Link);
   setDefaultVisualization(Table);
 }
