@@ -13974,6 +13974,17 @@ databaseChangeLog:
                 name: public_uuid
 
   - changeSet:
+      id: v46.00-057
+      author: dpsutton
+      comment: Added 0.46.0 -- parameter_card.parameter_id long enough to hold a uuid
+      changes:
+        - modifyDataType:
+            tableName: parameter_card
+            columnName: parameter_id
+            newDataType: varchar(36)
+      rollback: #nothing to do, char(32) or char(36) are equivalent
+
+  - changeSet:
       id: v46.00-058
       author: calherries
       comment: Added 0.46.0 -- add FK constraint for action.made_public_by_id with core_user.id
@@ -13985,17 +13996,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_action_made_public_by_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v46.00-057
-      author: dpsutton
-      comment: Added 0.46.0 -- parameter_card.parameter_id long enough to hold a uuid
-      changes:
-        - modifyDataType:
-            tableName: parameter_card
-            columnName: parameter_id
-            newDataType: varchar(36)
-      rollback: #nothing to do, char(32) or char(36) are equivalent
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
