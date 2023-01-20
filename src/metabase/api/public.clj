@@ -307,21 +307,19 @@
 
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
-(defn- remove-action-non-public-columns
+(defn- select-public-keys
   "Remove everything from an action that shouldn't be visible to the general public."
   [action]
-  (mi/instance
-   Action
-   (select-keys action [:description
-                        :database_id
-                        :name
-                        :type
-                        :dataset_query
-                        :model_id
-                        :id
-                        :parameter_mappings
-                        :visualization_settings
-                        :parameters])))
+  (select-keys action [:description
+                       :database_id
+                       :name
+                       :type
+                       :dataset_query
+                       :model_id
+                       :id
+                       :parameter_mappings
+                       :visualization_settings
+                       :parameters]))
 
 (api/defendpoint GET "/action/:uuid"
   "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
@@ -331,7 +329,7 @@
   (-> (action/actions-with-implicit-params nil :public_uuid uuid)
       first
       api/check-404
-      remove-action-non-public-columns))
+      select-public-keys))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
