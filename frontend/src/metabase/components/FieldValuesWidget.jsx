@@ -142,8 +142,8 @@ class FieldValuesWidgetInner extends Component {
         options = results;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else if (canUseQuestionEndpoints(this.props.question)) {
-        const { payload } = await this.fetchQuestionParameterValues(query);
-        const { results, has_more_values } = payload;
+        const { results, has_more_values } =
+          await this.fetchQuestionParameterValues(query);
         options = results;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else {

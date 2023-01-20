@@ -64,7 +64,6 @@ import {
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   SET_DOCUMENT_TITLE_TIMEOUT_ID,
-  FETCH_QUESTION_PARAMETER_VALUES,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -577,19 +576,4 @@ export const selectedTimelineEventIds = handleActions(
     [RESET_QB]: { next: () => [] },
   },
   [],
-);
-
-export const parameterValuesSearchCache = handleActions(
-  {
-    [INITIALIZE_QB]: { next: () => ({}) },
-    [UPDATE_QUESTION]: { next: () => ({}) },
-    [FETCH_QUESTION_PARAMETER_VALUES]: {
-      next: (state, { payload }) =>
-        payload.cacheKey && state[payload.cacheKey] !== payload
-          ? assoc(state, payload.cacheKey, payload)
-          : state,
-    },
-    [RESET_QB]: { next: () => ({}) },
-  },
-  {},
 );
