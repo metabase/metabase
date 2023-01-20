@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.api.setting-test
+(ns ^:mb/once metabase.api.setting-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.common.validation :as validation]

@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.util.schema-test
+(ns ^:mb/once metabase.util.schema-test
   "Tests for utility schemas and various API helper functions."
   (:require
    [clojure.string :as str]

@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.util.malli-test
+(ns ^:mb/once metabase.util.malli-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]

@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.public-settings-test
+(ns ^:mb/once metabase.public-settings-test
   (:require
    [clj-http.fake :as http-fake]
    [clojure.core.memoize :as memoize]

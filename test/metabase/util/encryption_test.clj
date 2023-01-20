@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.util.encryption-test
+(ns ^:mb/once metabase.util.encryption-test
   "Tests for encryption of Metabase DB details."
   (:require
    [clojure.string :as str]

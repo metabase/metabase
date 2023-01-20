@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.sync.util-test
+(ns ^:mb/once metabase.sync.util-test
   "Tests for the utility functions shared by all parts of sync, such as the duplicate ops guard."
   (:require
    [clojure.string :as str]

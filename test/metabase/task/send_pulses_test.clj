@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.task.send-pulses-test
+(ns ^:mb/once metabase.task.send-pulses-test
   (:require
    [clojure.test :refer :all]
    [metabase.email :as email]

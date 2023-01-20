@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.automagic-dashboards.core-test
+(ns ^:mb/once metabase.automagic-dashboards.core-test
   (:require
    [cheshire.core :as json]
    [clojure.core.async :as a]

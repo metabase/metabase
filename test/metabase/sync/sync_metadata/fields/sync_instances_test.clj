@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.sync.sync-metadata.fields.sync-instances-test
+(ns ^:mb/once metabase.sync.sync-metadata.fields.sync-instances-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.database :refer [Database]]

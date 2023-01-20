@@ -1,4 +1,4 @@
-(ns ^{:mb/tag :mb.test/once} metabase.util.i18n-test
+(ns ^:mb/once metabase.util.i18n-test
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
