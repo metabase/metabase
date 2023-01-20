@@ -22,6 +22,22 @@ describe("personal collections", () => {
       cy.signInAsAdmin();
     });
 
+    it.skip("shouldn't get API response containing all other personal collections when visiting the home page (metabase#24330)", () => {
+      cy.intercept("GET", "/api/collection/tree*").as("getCollections");
+
+      cy.visit("/");
+
+      cy.wait("@getCollections").then(({ response: { body } }) => {
+        const personalCollections = body.filter(({ personal_owner_id }) => {
+          return personal_owner_id !== null;
+        });
+
+        // Admin can only see their own personal collection, so this list should return only that
+        // Loading all other users' personal collections can lead to performance issues!
+        expect(personalCollections).to.have.lengthOf(1);
+      });
+    });
+
     it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
       // Turn normal user into another admin
       cy.request("PUT", "/api/user/2", {
