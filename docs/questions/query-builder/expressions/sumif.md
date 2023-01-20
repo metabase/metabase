@@ -41,7 +41,7 @@ To sum a column based on multiple _mandatory_ conditions:
 SumIf([Payment], [Plan] = "Basic" AND month([Date Received]) = 10)
 ```
 
-returns 200.
+This expression would return 200 on the sample data above.
 
 To sum a column with multiple _optional_ conditions:
 
@@ -49,7 +49,7 @@ To sum a column with multiple _optional_ conditions:
 SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business"))
 ```
 
-returns 600.
+Returns 600 on the sample data.
 
 To combine mandatory and optional conditions:
 
@@ -57,9 +57,9 @@ To combine mandatory and optional conditions:
 SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business") AND month([Date Received]) = 10)
 ```
 
-returns 400.
+Returns 400 on the sample data.
 
-> Tip: make it a habit to put brackets around your `AND` and `OR` statements to avoid making mandatory conditions optional, and vice versa.
+> Tip: make it a habit to put brackets around your `AND` and `OR` statements to avoid making mandatory conditions optional (or vice versa).
 
 ## Conditional subtotals by group
 
@@ -95,7 +95,7 @@ To view those payments by month, set the **Group by** column to **Date Received:
 | October              | 200                                           | 
 | November             | 600                                           |
 
-> Tip: when sharing your work with other people, it's often helpful to use the `OR` filter over the `{% raw %} != {% endraw %}` filter (even though the `{% raw %} != {% endraw %}` filter is shorter). This prevents people from wondering which plans are included in the sum.
+> Tip: when sharing your work with other people, it's helpful to use the `OR` filter, even though the **!=** filter is shorter. The inclusive `OR` filter makes it easier to understand which categories are included in the sum.
 
 ## Limitations
 
@@ -204,14 +204,14 @@ produces the same result as
 SumIf([Payment], [Plan] = "Basic")
 ```
 
-To add additional conditions, you'll need to switch to use a spreadsheet **array formula**.
+To add additional conditions, you'll need to switch to a spreadsheet **array formula**.
 
 ### Python
 
 If our [payment sample data](#sumif) is in a `pandas` dataframe column called `df`:
 
 ```python
-df['Total Payments: Basic'] = df.loc[df['Plan'] == "Basic", 'Payments'].sum()
+df.loc[df['Plan'] == "Basic", 'Payment'].sum()
 ```
 
 is equivalent to
