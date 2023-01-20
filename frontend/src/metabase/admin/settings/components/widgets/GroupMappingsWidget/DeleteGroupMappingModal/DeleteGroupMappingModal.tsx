@@ -6,14 +6,13 @@ import { ModalFooter } from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import Button from "metabase/core/components/Button";
 
+import type { DNType, GroupIds } from "../types";
 import {
   ModalHeader,
   ModalSubtitle,
   ModalRadioRoot,
 } from "./DeleteGroupMappingModal.styled";
 
-export type GroupIds = number[];
-export type DNType = string;
 export type ValueType = "nothing" | "clear" | "delete";
 
 export type DeleteGroupMappingModalProps = {

@@ -6,14 +6,13 @@ import _ from "underscore";
 import { ModalFooter } from "metabase/components/ModalContent";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import Button from "metabase/core/components/Button";
-import GroupSelect from "metabase/admin/people/components/GroupSelect";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 
-import SettingToggle from "./SettingToggle";
-import DeleteGroupMappingModal from "./GroupMappingsWidget/DeleteGroupMappingModal";
+import SettingToggle from "../SettingToggle";
+import MappingRow from "./LDAPMappingRow";
+import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
 
 const groupIsMappable = group => !isDefaultGroup(group);
 
@@ -385,47 +384,6 @@ class AddMappingRow extends React.Component {
               disabled={!isValid}
             >{t`Add`}</Button>
           </form>
-        </td>
-      </tr>
-    );
-  }
-}
-
-class MappingGroupSelect extends React.Component {
-  render() {
-    const { groups, selectedGroups, onGroupChange } = this.props;
-
-    if (!groups) {
-      return <LoadingSpinner />;
-    }
-
-    return (
-      <GroupSelect
-        groups={groups}
-        selectedGroupIds={selectedGroups}
-        onGroupChange={onGroupChange}
-        emptyListMessage={t`No mappable groups`}
-      />
-    );
-  }
-}
-
-class MappingRow extends React.Component {
-  render() {
-    const { dn, groups, selectedGroups, onChange, onDelete } = this.props;
-
-    return (
-      <tr>
-        <td>{dn}</td>
-        <td>
-          <MappingGroupSelect
-            groups={groups}
-            selectedGroups={selectedGroups}
-            onGroupChange={onChange}
-          />
-        </td>
-        <td className="Table-actions">
-          <Button warning onClick={onDelete}>{t`Remove`}</Button>
         </td>
       </tr>
     );
