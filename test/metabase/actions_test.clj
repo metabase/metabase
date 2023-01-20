@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions :as actions]
-   [metabase.actions.test-util :as actions.test-util]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Table]]
@@ -13,10 +12,10 @@
    [schema.core :as s]))
 
 (defmacro with-actions-test-data-and-actions-permissively-enabled
-  "Combines [[actions.test-util/with-actions-test-data-and-actions-enabled]] with full permissions."
+  "Combines [[mt/with-actions-test-data-and-actions-enabled]] with full permissions."
   {:style/indent 0}
   [& body]
-  `(actions.test-util/with-actions-test-data-and-actions-enabled
+  `(mt/with-actions-test-data-and-actions-enabled
      (binding [*current-user-permissions-set* (delay #{"/"})]
        ~@body)))
 
@@ -176,7 +175,7 @@
   (= (namespace action) "row"))
 
 (deftest validation-test
-  (actions.test-util/with-actions-enabled
+  (mt/with-actions-enabled
     (doseq [{:keys [action request-body]} (mock-requests)
             :when (row-action? action)]
       (testing (str action " without :query")
@@ -185,7 +184,7 @@
 
 (deftest row-update-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (actions.test-util/with-actions-enabled
+    (mt/with-actions-enabled
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
@@ -198,7 +197,7 @@
 
 (deftest row-delete-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (actions.test-util/with-actions-enabled
+    (mt/with-actions-enabled
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
@@ -229,7 +228,7 @@
   (testing "row/delete"
     (testing "FK constraint violations errors should have nice error messages (at least for Postgres) (#24021)"
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-        (actions.test-util/with-actions-test-data-tables #{"venues" "categories"}
+        (mt/with-actions-test-data-tables #{"venues" "categories"}
           (with-actions-test-data-and-actions-permissively-enabled
 
             ;; attempting to delete the `Pizza` category should fail because there are several rows in `venues` that have
