@@ -9,10 +9,11 @@ import { render, screen } from "__support__/ui";
 import {
   createMockActionParameter,
   createMockQueryAction,
+  createMockImplicitQueryAction,
   createMockDashboard,
 } from "metabase-types/api/mocks";
 
-import { ActionComponent, ActionProps } from "./Action";
+import Action, { ActionComponent, ActionProps } from "./Action";
 
 const defaultProps = {
   dashcard: {
@@ -61,6 +62,10 @@ async function setup(options?: Partial<ActionProps>) {
   return render(<ActionComponent {...defaultProps} {...options} />);
 }
 
+async function setupActionWrapper(options?: Partial<ActionProps>) {
+  return render(<Action {...defaultProps} {...options} />);
+}
+
 describe("Actions > ActionViz > ActionComponent", () => {
   afterEach(() => {
     nock.cleanAll();
@@ -68,6 +73,16 @@ describe("Actions > ActionViz > ActionComponent", () => {
 
   // button actions are just a modal trigger around forms
   describe("Button actions", () => {
+    it("should render an empty state for a button with no action", async () => {
+      await setupActionWrapper({
+        dashcard: {
+          ...defaultProps.dashcard,
+          action: undefined,
+        },
+      });
+      expect(screen.getByText("Assign an action")).toBeInTheDocument();
+    });
+
     it("should render a button with default text", async () => {
       await setup();
       expect(screen.getByRole("button")).toHaveTextContent("Click me");
@@ -198,6 +213,35 @@ describe("Actions > ActionViz > ActionComponent", () => {
       userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => expect(scope.isDone()).toBe(true));
+    });
+  });
+
+  describe("Implicit Actions", () => {
+    it("shows a confirmation modal when clicking an implicit delete action with a provided parameter", async () => {
+      await setup({
+        dashcard: {
+          ...defaultProps.dashcard,
+          action: createMockImplicitQueryAction({
+            name: "My Delete Action",
+            kind: "row/delete",
+            parameters: [
+              createMockActionParameter({
+                id: "1",
+                name: "id",
+                type: "type/Text",
+                target: ["variable", ["template-tag", "1"]],
+              }),
+            ],
+          }),
+        },
+        parameterValues: { "dash-param-1": "foo" },
+      });
+
+      userEvent.click(screen.getByRole("button"));
+      expect(screen.getByRole("dialog")).toHaveTextContent(/cannot be undone/i);
+      expect(
+        screen.getByRole("button", { name: "Delete" }),
+      ).toBeInTheDocument();
     });
   });
 
