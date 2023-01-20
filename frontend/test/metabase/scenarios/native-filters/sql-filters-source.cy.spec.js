@@ -215,7 +215,7 @@ const getNativeTargetQuestion = questionId => {
     values_source_type: "card",
     values_source_config: {
       card_id: questionId,
-      value_field: ["field", "EAN", null],
+      value_field: ["field", "EAN", { "base-type": "type/Text" }],
     },
   });
 };

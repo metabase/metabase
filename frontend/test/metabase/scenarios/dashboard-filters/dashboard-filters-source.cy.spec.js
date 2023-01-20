@@ -34,10 +34,10 @@ const nativeSourceQuestion = {
 };
 
 const targetParameter = {
-  name: "Text",
-  slug: "text",
   id: "f8ec7c71",
   type: "string/=",
+  name: "Text",
+  slug: "text",
   sectionId: "string",
 };
 
@@ -81,9 +81,9 @@ describe("scenarios > dashboard > filters", () => {
         ({ body: { id: questionId } }) => {
           cy.createQuestionAndDashboard({
             questionDetails: targetQuestion,
-            dashboardDetails: getTargetDashboard(questionId),
+            dashboardDetails: getStructuredDashboard(questionId),
           }).then(({ body: card }) => {
-            cy.editDashboardCard(card, getTargetParameterMapping(card));
+            cy.editDashboardCard(card, getParameterMapping(card));
             visitEmbeddedPage(getDashboardResource(card));
           });
         },
@@ -97,9 +97,9 @@ describe("scenarios > dashboard > filters", () => {
         ({ body: { id: questionId } }) => {
           cy.createQuestionAndDashboard({
             questionDetails: targetQuestion,
-            dashboardDetails: getTargetDashboard(questionId),
+            dashboardDetails: getStructuredDashboard(questionId),
           }).then(({ body: card }) => {
-            cy.editDashboardCard(card, getTargetParameterMapping(card));
+            cy.editDashboardCard(card, getParameterMapping(card));
             visitPublicDashboard(card.dashboard_id);
           });
         },
@@ -128,6 +128,38 @@ describe("scenarios > dashboard > filters", () => {
       cy.get("@questionId").then(visitQuestion);
       archiveQuestion();
     });
+
+    it("should be able to use a native question source when embedded", () => {
+      cy.createNativeQuestion(nativeSourceQuestion).then(
+        ({ body: { id: questionId } }) => {
+          cy.createQuestionAndDashboard({
+            questionDetails: targetQuestion,
+            dashboardDetails: getNativeDashboard(questionId),
+          }).then(({ body: card }) => {
+            cy.editDashboardCard(card, getParameterMapping(card));
+            visitEmbeddedPage(getDashboardResource(card));
+          });
+        },
+      );
+
+      filterDashboard();
+    });
+
+    it("should be able to use a native question source when public", () => {
+      cy.createNativeQuestion(nativeSourceQuestion).then(
+        ({ body: { id: questionId } }) => {
+          cy.createQuestionAndDashboard({
+            questionDetails: targetQuestion,
+            dashboardDetails: getNativeDashboard(questionId),
+          }).then(({ body: card }) => {
+            cy.editDashboardCard(card, getParameterMapping(card));
+            visitPublicDashboard(card.dashboard_id);
+          });
+        },
+      );
+
+      filterDashboard();
+    });
   });
 
   describe("static list source", () => {
@@ -143,6 +175,30 @@ describe("scenarios > dashboard > filters", () => {
       mapFilterToQuestion();
       setFilterListSource({ values: ["Doohickey", "Gadget"] });
       saveDashboard();
+      filterDashboard();
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+        dashboardDetails: getListDashboard(),
+      }).then(({ body: card }) => {
+        cy.editDashboardCard(card, getParameterMapping(card));
+        visitEmbeddedPage(getDashboardResource(card));
+      });
+
+      filterDashboard();
+    });
+
+    it("should be able to use a static list source when public", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+        dashboardDetails: getListDashboard(),
+      }).then(({ body: card }) => {
+        cy.editDashboardCard(card, getParameterMapping(card));
+        visitPublicDashboard(card.dashboard_id);
+      });
+
       filterDashboard();
     });
   });
@@ -181,15 +237,11 @@ const getDashboardResource = ({ dashboard_id }) => ({
   params: {},
 });
 
-const getTargetDashboard = questionId => ({
+const getTargetDashboard = sourceSettings => ({
   parameters: [
     {
       ...targetParameter,
-      values_source_type: "card",
-      values_source_config: {
-        card_id: questionId,
-        value_field: ["field", PRODUCTS.CATEGORY, null],
-      },
+      ...sourceSettings,
     },
   ],
   enable_embedding: true,
@@ -198,7 +250,36 @@ const getTargetDashboard = questionId => ({
   },
 });
 
-const getTargetParameterMapping = ({ card_id }) => ({
+const getStructuredDashboard = questionId => {
+  return getTargetDashboard({
+    values_source_type: "card",
+    values_source_config: {
+      card_id: questionId,
+      value_field: ["field", PRODUCTS.CATEGORY, null],
+    },
+  });
+};
+
+const getNativeDashboard = questionId => {
+  return getTargetDashboard({
+    values_source_type: "card",
+    values_source_config: {
+      card_id: questionId,
+      value_field: ["field", "CATEGORY", { "base-type": "type/Text" }],
+    },
+  });
+};
+
+const getListDashboard = () => {
+  return getTargetDashboard({
+    values_source_type: "static-list",
+    values_source_config: {
+      values: ["Doohickey", "Gadget"],
+    },
+  });
+};
+
+const getParameterMapping = ({ card_id }) => ({
   parameter_mappings: [
     {
       card_id,
