@@ -15,6 +15,7 @@
    [metabase.async.util :as async.u]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dimension :refer [Dimension]]
@@ -307,13 +308,12 @@
 
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
-(defn- select-public-keys
-  "Remove everything from an action that shouldn't be visible to the general public."
-  [action]
-  (select-keys action [:name
-                       :id
-                       :visualization_settings
-                       :parameters]))
+(def ^:private action-public-keys
+  "The only keys for an action that should be visible to the general public."
+  #{:name
+    :id
+    :visualization_settings
+    :parameters})
 
 (api/defendpoint GET "/action/:uuid"
   "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
@@ -323,7 +323,7 @@
   (-> (action/actions-with-implicit-params nil :public_uuid uuid)
       first
       api/check-404
-      select-public-keys))
+      (select-keys action-public-keys)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
