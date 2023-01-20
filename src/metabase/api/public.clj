@@ -5,7 +5,6 @@
    [clojure.core.async :as a]
    [compojure.core :refer [GET]]
    [medley.core :as m]
-   [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
