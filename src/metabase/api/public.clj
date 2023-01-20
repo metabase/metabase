@@ -557,7 +557,7 @@
                :body   throttle-message}
         throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
-        (actions/check-actions-enabled)
+        ;; TODO: check-actions-enabled for the database
         (validation/check-public-sharing-enabled)
         ;; Run this query with full superuser perms. We don't want the various perms checks
         ;; failing because there are no current user perms; if this Dashcard is public

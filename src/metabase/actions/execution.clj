@@ -72,8 +72,6 @@
                          :type qp.error-type/invalid-parameter
                          :parameters request-parameters
                          :destination-parameters (:parameters action)}))))
-    (when-not (contains? #{:query :http} action-type)
-      (throw (ex-info (tru "Unknown action type {0}." (name action-type)) action)))
     (try
       (case action-type
         :query
@@ -162,9 +160,12 @@
 (defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
   [action request-parameters]
-  (if (= :implicit (:type action))
+  (case (:type action)
+    :implicit
     (execute-implicit-action action request-parameters)
-    (execute-custom-action action request-parameters)))
+    (:query :http)
+    (execute-custom-action action request-parameters)
+    (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action))))
 
 (defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
