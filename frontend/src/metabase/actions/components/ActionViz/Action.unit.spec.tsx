@@ -66,6 +66,14 @@ async function setupActionWrapper(options?: Partial<ActionProps>) {
   return render(<Action {...defaultProps} {...options} />);
 }
 
+function setupExecutionEndpoint(expectedBody: any) {
+  const scope = nock(location.origin)
+    .post("/api/dashboard/123/dashcard/456/execute", expectedBody)
+    .reply(200, { "rows-updated": [1] });
+
+  return scope;
+}
+
 describe("Actions > ActionViz > ActionComponent", () => {
   afterEach(() => {
     nock.cleanAll();
@@ -123,6 +131,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
 
   describe("Form actions", () => {
     const formSettings = { actionDisplayType: "form" };
+
     it("should render an action form", async () => {
       await setup({ settings: formSettings });
 
@@ -166,9 +175,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         },
       };
 
-      const scope = nock(location.origin)
-        .post("/api/dashboard/123/dashcard/456/execute", expectedBody)
-        .reply(200, { "rows-updated": [1] });
+      const scope = setupExecutionEndpoint(expectedBody);
 
       await setup({ settings: formSettings });
 
@@ -196,9 +203,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         },
       };
 
-      const scope = nock(location.origin)
-        .post("/api/dashboard/123/dashcard/456/execute", expectedBody)
-        .reply(200, { "rows-updated": [1] });
+      const scope = setupExecutionEndpoint(expectedBody);
 
       await setup({
         settings: formSettings,
@@ -252,8 +257,12 @@ describe("Actions > ActionViz > ActionComponent", () => {
         linkType: "url",
         linkTemplate: "https://metabase.com",
       };
-      const { container } = await setup({
-        dashcard: { action: undefined },
+
+      await setup({
+        dashcard: {
+          ...defaultProps.dashcard,
+          action: undefined,
+        },
         settings: {
           "button.label": "Link Button",
           click_behavior: clickBehavior,
@@ -270,7 +279,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         linkType: "url",
         linkTemplate: "https://metabase.com",
       };
-      const { container } = await setup({
+      await setup({
         dashcard: { action: undefined },
         settings: {
           "button.label": "Link Button",
