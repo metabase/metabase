@@ -24,7 +24,7 @@ describe("AppBar", () => {
     afterEach(() => {
       jest.clearAllMocks();
       nock.cleanAll();
-      reStoreMockEmbedding();
+      restoreMockEmbedding();
     });
 
     describe("large screens", () => {
@@ -143,7 +143,7 @@ describe("AppBar", () => {
 
 function setup(embedOptions: Partial<EmbedOptions>) {
   const scope = nock(location.origin);
-  setupCollectionsEndpoints(scope);
+  setupCollectionsEndpoints(scope, []);
 
   renderWithProviders(<AppBar />, {
     withRouter: true,
@@ -182,7 +182,7 @@ function mockEmbedding() {
   });
 }
 
-function reStoreMockEmbedding() {
+function restoreMockEmbedding() {
   Object.defineProperty(window, "self", {
     value: windowSelf,
   });

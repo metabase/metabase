@@ -10,11 +10,8 @@ import {
 
 export function setupCollectionsEndpoints(
   scope: Scope,
-  collections?: Collection[] | undefined,
+  collections: Collection[],
 ) {
-  if (collections == null) {
-    collections = [ROOT_COLLECTION as unknown as Collection];
-  }
   scope.get("/api/collection").reply(200, collections);
   scope.get("/api/collection/tree?tree=true").reply(200, collections);
   scope.get("/api/collection/root").reply(200, ROOT_COLLECTION);
