@@ -11,8 +11,7 @@
    [metabase.api.public :as api.public]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Action
-            Card
+    :refer [Card
             Collection
             Dashboard
             DashboardCard
