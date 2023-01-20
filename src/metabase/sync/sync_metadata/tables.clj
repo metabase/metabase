@@ -90,8 +90,8 @@
   [database :- i/DatabaseInstance db-metadata :- i/DatabaseMetadata]
   (log/info (trs "Found new version for DB: {0}" (:version db-metadata)))
   (db/update! Database (u/the-id database)
-              :details
-              (assoc (:details database) :version (:version db-metadata))))
+    :details
+    (assoc (:details database) :version (:version db-metadata))))
 
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
@@ -101,20 +101,20 @@
                          :schema schema
                          :name table-name
                          :active false)]
-  ;; if the table already exists but is marked *inactive*, mark it as *active*
-  (db/update! Table existing-id
-    :active true)
-  ;; otherwise create a new Table
-  (let [is-crufty? (is-crufty-table? table)]
-    (db/insert! Table
-      :db_id (u/the-id database)
-      :schema schema
-      :name table-name
-      :display_name (humanization/name->human-readable-name table-name)
-      :active true
-      :visibility_type (when is-crufty? :cruft)
-      ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
-      :initial_sync_status (if is-crufty? "complete" "incomplete")))))
+    ;; if the table already exists but is marked *inactive*, mark it as *active*
+    (db/update! Table existing-id
+      :active true)
+    ;; otherwise create a new Table
+    (let [is-crufty? (is-crufty-table? table)]
+      (db/insert! Table
+        :db_id (u/the-id database)
+        :schema schema
+        :name table-name
+        :display_name (humanization/name->human-readable-name table-name)
+        :active true
+        :visibility_type (when is-crufty? :cruft)
+        ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
+        :initial_sync_status (if is-crufty? "complete" "incomplete")))))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
