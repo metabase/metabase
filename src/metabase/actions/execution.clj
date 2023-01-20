@@ -159,6 +159,13 @@
       (catch Exception e
         (handle-action-execution-error e)))))
 
+(defn execute-action!
+  "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
+  [action request-parameters]
+  (if (= :implicit (:type action))
+    (execute-implicit-action action request-parameters)
+    (execute-custom-action action request-parameters)))
+
 (defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
@@ -168,9 +175,7 @@
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
-    (if (= :implicit (:type action))
-      (execute-implicit-action action request-parameters)
-      (execute-custom-action action request-parameters))))
+    (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values
   [dashboard-id action request-parameters]

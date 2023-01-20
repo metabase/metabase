@@ -5,6 +5,7 @@
    [clojure.core.async :as a]
    [compojure.core :refer [GET]]
    [medley.core :as m]
+   [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
@@ -15,6 +16,7 @@
    [metabase.async.util :as async.u]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dimension :refer [Dimension]]
@@ -528,6 +530,43 @@
      :dashcard-id   dashcard-id
      :export-format :api
      :parameters    parameters :qp-runner qp.pivot/run-pivot-query)))
+
+(def ^:private action-execution-throttle
+  "Rate limit 1 action per second on a per action basis. The goal of rate limiting should be to prevent
+   very obvioius abuse, but it should be relatively lax so we don't annoy legitimate users."
+  (throttle/make-throttler :action-uuid :attempts-threshold 1000))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/action/:uuid/execute"
+  "Execute the Action.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values."
+  [uuid :as {{:keys [parameters], :as _body} :body}]
+  {uuid        su/UUIDString
+   parameters  (s/maybe {s/Keyword s/Any})}
+  (let [throttle-message (try
+                           (throttle/check action-execution-throttle uuid)
+                           nil
+                           (catch ExceptionInfo e
+                             (get-in (ex-data e) [:errors :action-uuid])))
+        throttle-time (when throttle-message
+                        (second (re-find #"You must wait ([0-9]+) seconds" throttle-message)))]
+    (if throttle-message
+      (cond-> {:status 429
+               :body   throttle-message}
+        throttle-time (assoc :headers {"Retry-After" throttle-time}))
+      (do
+        (actions/check-actions-enabled)
+        (validation/check-public-sharing-enabled)
+        ;; Run this query with full superuser perms. We don't want the various perms checks
+        ;; failing because there are no current user perms; if this Dashcard is public
+        ;; you're by definition allowed to run it without a perms check anyway
+        (binding [api/*current-user-permissions-set* (delay #{"/"})]
+            ;; Undo middleware string->keyword coercion
+          (let [action (api/check-404 (first (action/actions-with-implicit-params nil :public_uuid uuid)))]
+            (actions.execution/execute-action! action (update-keys parameters name))))))))
+
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 

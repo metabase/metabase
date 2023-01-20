@@ -1218,6 +1218,8 @@
                         (is (= [nil "Google" "Gizmo" 1 52 186] (nth rows 50)))
                         (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))))
 
+;;; ------------------------- POST /api/public/dashboard/:dashboard-uuid/dashcard/:uuid/execute ------------------------------
+
 (deftest execute-public-dashcard-action-test
   (mt/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -1276,3 +1278,23 @@
                                    (:public_uuid dash)
                                    dashcard-id
                                    (json/encode {:id 1})))))))))))
+
+;;; --------------------------------- POST /api/public/action/:uuid/execute ----------------------------------
+
+(deftest execute-public-action-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [{:keys [public_uuid] :as action-opts} (shared-obj)]
+        (mt/with-actions [{:keys [action-id model-id]} action-opts]
+          (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1)]
+            (is (partial= {:rows-affected 1}
+                          (client/client
+                           :post 200
+                           (format "public/action/%s/execute" public_uuid)
+                           {:parameters {:id 1 :name "European"}})))
+            (let [throttled-response (client/client-full-response
+                                      :post 429
+                                      (format "public/action/%s/execute" public_uuid)
+                                      {:parameters {:id 1 :name "European"}})]
+              (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
+              (is (contains? (:headers throttled-response) "Retry-After")))))))))
