@@ -139,15 +139,3 @@ export const PaginationFooter = styled(TableFooter)`
   margin-top: 0.5rem;
   text-align: right;
 `;
-
-export const QuestionLink = styled(Link)`
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  z-index: 1;
-  text-align: right;
-  color: ${color("brand")};
-  &:hover {
-    color: ${lighten("brand", 0.1)};
-  }
-`;

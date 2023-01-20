@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
 
 import { useMount, usePrevious } from "react-use";
 import { State } from "metabase-types/store";
@@ -11,7 +10,6 @@ import type {
 } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
 
-import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
 
@@ -60,7 +58,6 @@ import {
   ErrorWrapper,
   PaginationFooter,
   ObjectDetailWrapperDiv,
-  QuestionLink,
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
@@ -315,18 +312,9 @@ export function ObjectDetailWrapper({
   }
 
   const hasPagination = data?.rows?.length > 1;
-  const hasQuestionLink = dashcard && (question || card);
 
   return (
     <>
-      {hasQuestionLink && (
-        <QuestionLink to={`/question/${question?.id() ?? card?.id}`}>
-          <Icon
-            name="insight"
-            tooltip={question?.displayName() ?? card?.name ?? t`View Question`}
-          />
-        </QuestionLink>
-      )}
       <ObjectDetailFn
         {...props}
         zoomedRow={data.rows[currentObjectIndex]}
