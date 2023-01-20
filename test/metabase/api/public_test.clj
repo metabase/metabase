@@ -778,14 +778,8 @@
               uuid        (:public_uuid action-opts)]
           (actions.test-util/with-actions [{} action-opts]
             (testing "Happy path -- should be able to fetch the Action"
-              (is (= #{:description
-                       :database_id
-                       :name
-                       :type
-                       :dataset_query
-                       :model_id
+              (is (= #{:name
                        :id
-                       :parameter_mappings
                        :visualization_settings
                        :parameters}
                      (set (keys (client/client :get 200 (str "public/action/" uuid)))))))
