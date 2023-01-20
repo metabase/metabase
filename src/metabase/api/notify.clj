@@ -8,9 +8,9 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
-   [metabase.sync.util :as sync-util]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.sync.util :as sync-util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -53,30 +53,29 @@
   {schema_name su/NonBlankString
    table_name  su/NonBlankString}
   (api/let-404 [database (db/select-one Database :id id)]
-    (let [driver    (driver.u/database->driver database)
-          {db-tables :tables} (driver/describe-database driver database)
-          new-table (db/select-one Table :db_id id :name table_name :schema schema_name)]
-      (when new-table
-        (throw (without-stacktrace
-                (ex-info (trs "Table ''{0}.{1}'' already exists"
-                              schema_name table_name)
-                         {:status-code 400
-                          :schema_name schema_name
-                          :table_name  table_name}))))
-      (if-let [table (some (fn [table-in-db]
-                             (when (= (dissoc table-in-db :description)
-                                      {:schema schema_name :name table_name})
-                               table-in-db))
-                           db-tables)]
-        (let [created (sync-tables/create-or-reactivate-table! database table)]
-          (doto created
-            sync/sync-table!
-            sync-util/set-initial-table-sync-complete!))
-        (throw (without-stacktrace
-                (ex-info (trs "Unable to identify table ''{0}.{1}''"
-                              schema_name table_name)
-                         {:status-code 404
-                          :schema_name schema_name
-                          :table_name  table_name})))))))
+    (if-not (db/select-one Table :db_id id :name table_name :schema schema_name)
+      (let [driver (driver.u/database->driver database)
+            {db-tables :tables} (driver/describe-database driver database)]
+        (if-let [table (some (fn [table-in-db]
+                               (when (= (dissoc table-in-db :description)
+                                        {:schema schema_name :name table_name})
+                                 table-in-db))
+                             db-tables)]
+          (let [created (sync-tables/create-or-reactivate-table! database table)]
+            (doto created
+              sync/sync-table!
+              sync-util/set-initial-table-sync-complete!))
+          (throw (without-stacktrace
+                  (ex-info (trs "Unable to identify table ''{0}.{1}''"
+                                schema_name table_name)
+                           {:status-code 404
+                            :schema_name schema_name
+                            :table_name  table_name})))))
+      (throw (without-stacktrace
+              (ex-info (trs "Table ''{0}.{1}'' already exists"
+                            schema_name table_name)
+                       {:status-code 400
+                        :schema_name schema_name
+                        :table_name  table_name}))))))
 
 (api/define-routes)
