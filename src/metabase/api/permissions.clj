@@ -243,7 +243,7 @@
   [group-id]
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
-  (api/check-400 (= group-id (u/the-id (perms-group/admin))))
+  (api/check-400 (not= group-id (u/the-id (perms-group/admin))))
   (db/delete! PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
