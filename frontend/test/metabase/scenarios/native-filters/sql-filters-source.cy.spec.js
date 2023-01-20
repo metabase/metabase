@@ -13,6 +13,23 @@ import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
+const structuredSourceQuestion = {
+  name: "MBQL source",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", PRODUCTS.CATEGORY, null]],
+    filter: ["!=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"],
+  },
+};
+
+const nativeSourceQuestion = {
+  name: "SQL source",
+  native: {
+    query: "SELECT '1018947080336' EAN UNION ALL SELECT '7663515285824'",
+  },
+};
+
 describe("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
     restore();
@@ -26,7 +43,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
   describe("structured question source", () => {
     it("should be able to use a structured question source", () => {
-      cy.createQuestion(getStructuredSourceQuestion());
+      cy.createQuestion(structuredSourceQuestion);
 
       openNativeEditor();
       SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
@@ -41,7 +58,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a structured question source when embedded", () => {
-      cy.createQuestion(getStructuredSourceQuestion()).then(
+      cy.createQuestion(structuredSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
           cy.createNativeQuestion(
             getStructuredTargetQuestion(sourceQuestionId),
@@ -56,7 +73,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a structured question source when public", () => {
-      cy.createQuestion(getStructuredSourceQuestion()).then(
+      cy.createQuestion(structuredSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
           cy.createNativeQuestion(
             getStructuredTargetQuestion(sourceQuestionId),
@@ -73,7 +90,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
   describe("native question source", () => {
     it("should be able to use a native question source in the query builder", () => {
-      cy.createNativeQuestion(getNativeSourceQuestion());
+      cy.createNativeQuestion(nativeSourceQuestion);
 
       openNativeEditor();
       SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
@@ -88,7 +105,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a native question source when embedded", () => {
-      cy.createNativeQuestion(getNativeSourceQuestion()).then(
+      cy.createNativeQuestion(nativeSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
           cy.createNativeQuestion(
             getNativeTargetQuestion(sourceQuestionId),
@@ -103,7 +120,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a native question source when public", () => {
-      cy.createNativeQuestion(getNativeSourceQuestion()).then(
+      cy.createNativeQuestion(nativeSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
           cy.createNativeQuestion(
             getNativeTargetQuestion(sourceQuestionId),
@@ -156,26 +173,9 @@ describe("scenarios > filters > sql filters > values source", () => {
   });
 });
 
-const getQuestionResource = sourceQuestionId => ({
-  resource: { question: sourceQuestionId },
+const getQuestionResource = questionId => ({
+  resource: { question: questionId },
   params: {},
-});
-
-const getStructuredSourceQuestion = () => ({
-  name: "MBQL source",
-  query: {
-    "source-table": PRODUCTS_ID,
-    aggregation: [["count"]],
-    breakout: [["field", PRODUCTS.CATEGORY, null]],
-    filter: ["!=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"],
-  },
-});
-
-const getNativeSourceQuestion = () => ({
-  name: "SQL source",
-  native: {
-    query: "SELECT '1018947080336' EAN UNION ALL SELECT '7663515285824'",
-  },
 });
 
 const getTargetQuestion = tag => ({
