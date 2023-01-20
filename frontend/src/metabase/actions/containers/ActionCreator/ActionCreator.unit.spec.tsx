@@ -73,7 +73,6 @@ describe("ActionCreator", () => {
       await setup();
 
       expect(screen.getByText(/New action/i)).toBeInTheDocument();
-      expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
       expect(
         screen.getByTestId("mock-native-query-editor"),
       ).toBeInTheDocument();
@@ -99,7 +98,6 @@ describe("ActionCreator", () => {
 
       expect(screen.getByText(action.name)).toBeInTheDocument();
       expect(screen.queryByText(/New action/i)).not.toBeInTheDocument();
-      expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
       expect(
         screen.getByTestId("mock-native-query-editor"),
       ).toBeInTheDocument();

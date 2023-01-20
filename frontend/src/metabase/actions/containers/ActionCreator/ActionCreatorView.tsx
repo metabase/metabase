@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import type { ReactNode } from "react";
 import Button from "metabase/core/components/Button";
@@ -23,15 +23,14 @@ import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
 import Question from "metabase-lib/Question";
 
+import type { SideView } from "./types";
+
 interface ActionCreatorProps {
   isNew: boolean;
-  isDataRefOpen: boolean;
   canSave: boolean;
 
   question: Question;
 
-  onToggleDataRef: () => void;
-  onCloseDataRef: () => void;
   onChangeQuestionQuery: (query: NativeQuery) => void;
   onChangeName: (name: string) => void;
   onCloseModal?: () => void;
@@ -40,13 +39,12 @@ interface ActionCreatorProps {
   onClickExample: () => void;
 }
 
+const DEFAULT_SIDE_VIEW: SideView = "actionForm";
+
 export default function ActionCreatorView({
   isNew,
-  isDataRefOpen,
   canSave,
   question,
-  onToggleDataRef,
-  onCloseDataRef,
   onChangeQuestionQuery,
   onChangeName,
   onCloseModal,
@@ -54,12 +52,28 @@ export default function ActionCreatorView({
   onClickSave,
   onClickExample,
 }: ActionCreatorProps) {
+  const [activeSideView, setActiveSideView] =
+    useState<SideView>(DEFAULT_SIDE_VIEW);
+
+  const toggleDataRef = useCallback(() => {
+    setActiveSideView(activeSideView => {
+      if (activeSideView !== "dataReference") {
+        return "dataReference";
+      }
+
+      return DEFAULT_SIDE_VIEW;
+    });
+  }, []);
+
+  const closeSideView = useCallback(() => {
+    setActiveSideView(DEFAULT_SIDE_VIEW);
+  }, []);
   return (
     <Modal wide onClose={onCloseModal}>
       <ModalRoot>
         <ActionCreatorBodyContainer>
           <ModalLeft>
-            <DataReferenceTriggerButton onClick={onToggleDataRef} />
+            <DataReferenceTriggerButton onClick={toggleDataRef} />
             <ActionCreatorHeader
               type="query"
               name={question.displayName() ?? t`New Action`}
@@ -81,21 +95,24 @@ export default function ActionCreatorView({
             </ModalActions>
           </ModalLeft>
 
-          <DataReferenceInline
-            isOpen={isDataRefOpen}
-            onClose={onCloseDataRef}
-          />
-
-          {!isDataRefOpen && (
-            <FormCreator
-              params={question?.parameters() ?? []}
-              formSettings={
-                question?.card()?.visualization_settings as ActionFormSettings
-              }
-              onChange={onChangeFormSettings}
-              onExampleClick={onClickExample}
-            />
-          )}
+          {
+            (
+              {
+                dataReference: <DataReferenceInline onClose={closeSideView} />,
+                actionForm: (
+                  <FormCreator
+                    params={question?.parameters() ?? []}
+                    formSettings={
+                      question?.card()
+                        ?.visualization_settings as ActionFormSettings
+                    }
+                    onChange={onChangeFormSettings}
+                    onExampleClick={onClickExample}
+                  />
+                ),
+              } as Record<SideView, React.ReactElement>
+            )[activeSideView]
+          }
         </ActionCreatorBodyContainer>
       </ModalRoot>
     </Modal>
