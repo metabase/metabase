@@ -144,7 +144,7 @@ function setup() {
 
             cy.wrap(targetDashboardId).as("targetDashboardId");
 
-            // Create a click behavior and resize the question card
+            // Create a click behaviour for the question card
             cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
               cards: [
                 {

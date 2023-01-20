@@ -515,6 +515,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 14,
+          size_y: 10,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           cy.log("Connect dashboard filter to the question");
 
@@ -628,6 +632,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
         // Add previously added question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 10,
+          size_y: 6,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Add click through behavior to that question
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -712,6 +720,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
         // Add question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 14,
+          size_y: 10,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Connect dashboard filter to the question
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -784,6 +796,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
           // Add the first question to the dashboard
           cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
             cardId: QUESTION1_ID,
+            row: 0,
+            col: 0,
+            size_x: 12,
+            size_y: 8,
           }).then(({ body: { id: DASH_CARD1_ID } }) => {
             cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cards: [
@@ -982,6 +998,10 @@ function createDashboard(
 
       cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
         cardId: questionId,
+        row: 0,
+        col: 0,
+        size_x: 6,
+        size_y: 6,
       }).then(({ body: { id: dashCardId } }) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
           cards: [
