@@ -19,7 +19,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
-   [metabase.models.session :refer [Session]]
    [metabase.models.setting
     :as setting
     :refer [*user-local-values* defsetting]]
@@ -232,21 +231,20 @@
    (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
      (first
       (db/honeysql->sql
-       (cond->
-         {:select    [[:session.user_id :metabase-user-id]
-                      [:user.is_superuser :is-superuser?]
-                      [:user.locale :user-locale]]
-          :from      [[Session :session]]
-          :left-join [[User :user] [:= :session.user_id :user.id]]
-          :where     [:and
-                      [:= :user.is_active true]
-                      [:= :session.id (hsql/raw "?")]
-                      (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
-                        [:> :session.created_at oldest-allowed])
-                      [:= :session.anti_csrf_token (case session-type
-                                                     :normal         nil
-                                                     :full-app-embed "?")]]
-          :limit     1}
+       (cond-> {:select    [[:session.user_id :metabase-user-id]
+                            [:user.is_superuser :is-superuser?]
+                            [:user.locale :user-locale]]
+                :from      [[:core_session :session]]
+                :left-join [[:core_user :user] [:= :session.user_id :user.id]]
+                :where     [:and
+                            [:= :user.is_active true]
+                            [:= :session.id (hsql/raw "?")]
+                            (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
+                              [:> :session.created_at oldest-allowed])
+                            [:= :session.anti_csrf_token (case session-type
+                                                           :normal         nil
+                                                           :full-app-embed "?")]]
+                :limit     1}
 
          enable-advanced-permissions?
          (->

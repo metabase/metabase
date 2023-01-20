@@ -48,6 +48,6 @@
       ;; if adding membership fails for one reason or another (i.e. if the group doesn't exist) log the error add the
       ;; user to the other groups rather than failing entirely
       (try
-       (db/insert! PermissionsGroupMembership :group_id id, :user_id user-id)
-       (catch Throwable e
-         (log/error e (trs "Error adding User {0} to Group {1}" user-id id)))))))
+        (db/insert! PermissionsGroupMembership :group_id id, :user_id user-id)
+        (catch Throwable e
+          (log/error e (trs "Error adding User {0} to Group {1}" user-id id)))))))

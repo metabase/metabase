@@ -79,7 +79,7 @@
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
   metabase/saml20-clj                       {:mvn/version "2.1.0"}              ; EE SAML integration
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
-  metosin/malli                             {:mvn/version "0.9.2"}              ; Data-driven Schemas for Clojure/Script and babashka
+  metosin/malli                             {:mvn/version "0.10.0"}              ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.0.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.1"}              ; utils for writing macros for both Clojure & ClojureScript
   net.i2p.crypto/eddsa                      {:mvn/version "0.3.0"}              ; ED25519 key support (optional dependency for org.apache.sshd/sshd-core)
@@ -199,7 +199,7 @@
   {:extra-deps
    {clj-http-fake/clj-http-fake  {:mvn/version "1.0.3"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2022.08.03"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
+    clj-kondo/clj-kondo          {:mvn/version "2023.01.16"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.13"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.35.0"}                    ; ui for inspecting values
@@ -403,7 +403,9 @@
                                    "\\.sh$"
                                    "\\.yaml$"
                                    "\\.yml$"]
-                :exclude-patterns ["resources/i18n/.*\\.edn$"
+                :exclude-patterns [".clj-kondo/better-cond/.*"
+                                   ".clj-kondo/com.github.seancorfield/.*"
+                                   "resources/i18n/.*\\.edn$"
                                    "resources/frontend_client"
                                    "resources/frontend_shared"
                                    "resources/html-entities.edn"

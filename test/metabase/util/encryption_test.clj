@@ -24,8 +24,10 @@
   "Run `body` with the encryption secret key temporarily bound to `secret-key`. Useful for testing how functions behave
   with and without encryption disabled."
   {:style/indent 1}
-  [^String secret-key, & body]
-  `(do-with-secret-key ~secret-key (fn [] ~@body)))
+  [^String secret-key & body]
+  `(let [secret-key# ~secret-key]
+     (testing (format "\nwith secret key %s" (pr-str secret-key#))
+       (do-with-secret-key secret-key# (fn [] ~@body)))))
 
 (def ^:private secret   (encryption/secret-key->hash "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ="))
 (def ^:private secret-2 (encryption/secret-key->hash "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="))

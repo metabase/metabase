@@ -224,6 +224,7 @@ function ActionCreatorComponent({
 export default _.compose(
   Actions.load({
     id: (state: State, props: { actionId?: number }) => props.actionId,
+    loadingAndErrorWrapper: false,
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),

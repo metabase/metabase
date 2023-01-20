@@ -724,8 +724,8 @@
                    (set-perms! {:schemas :none}))))
           (testing "disallow schemas :none + :native :write"
             (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"DB permissions with a valid combination of values for :native and :schemas"
+                 Exception
+                 #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
                  (set-perms! {:schemas :none, :native :write})))
             (is (= nil
                    (perms)))))))))

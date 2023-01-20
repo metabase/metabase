@@ -14,29 +14,37 @@
 
 (core/defn- ->malli-io-link
   ([schema]
-   (->malli-io-link schema (try (mg/generate schema {:seed 1 :size 1})
-                                ;; not all schemas can generate values
-                                (catch Exception _ ::none))))
+   (->malli-io-link schema (try
+                             ;; try to make a sample value
+                             (mg/generate schema {:seed 1 :size 1})
+                             ;; not all schemas can generate values
+                             (catch Exception _ ::none))))
   ([schema value]
    (let [url-schema (codec/url-encode (u/pprint-to-str (mc/form schema)))
          url-value (if (= ::none value)
                      ""
-                     (codec/url-encode (u/pprint-to-str value)))]
-     (str "https://malli.io?schema=" url-schema "&value=" url-value))))
+                     (codec/url-encode (u/pprint-to-str value)))
+         url (str "https://malli.io?schema=" url-schema "&value=" url-value)]
+     (cond
+       ;; functions are not going to work
+       (re-find #"#function" url) nil
+       ;; cant be too long
+       (<= 2000 (count url)) nil
+       :else url))))
 
 (core/defn- explain-fn-fail!
   "Used as reporting function to minst/instrument!"
   [type data]
-  (let [{:keys [input args output value]} data]
+  (let [{:keys [input args output value]} data
+        humanized (cond input (me/humanize (mc/explain input args))
+                        output (me/humanize (mc/explain output value)))]
     (throw (ex-info
-            (str type " " (pr-str data))
+            (pr-str humanized)
             (merge {:type type :data data}
                    (when data
                      {:link (cond input (->malli-io-link input args)
                                   output (->malli-io-link output value))
-                      :humanized
-                      (cond input (me/humanize (mc/explain input args))
-                            output (me/humanize (mc/explain output value)))}))))))
+                      :humanized humanized}))))))
 
 ;; since a reference to the private var is used in the macro, this will trip the eastwood :unused-private-vars linter,
 ;; so just harmlessly "use" the var here.

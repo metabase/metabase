@@ -79,7 +79,6 @@
     metabase.public-settings.premium-features/enable-enhancements?               {:namespaces ["metabase\\.models.*"]}
     metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
     metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}
-    metabase.util/key-by                                                         {:namespaces ["metabase(?:-enterprise)?.*"]}
     schema.core/both                                                             {:namespaces ["metabase.*"]}
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
@@ -89,10 +88,7 @@
 
   :unresolved-var
   {:exclude
-   [colorize.core
-    metabase.test/with-gtaps
-    metabase.test/with-gtaps-for-user
-    metabase.test/with-user-attributes]}
+   [colorize.core]}
 
   :unsorted-required-namespaces {:level :warning}
 
@@ -138,6 +134,7 @@
     medley.core                                                     m
     metabase-enterprise.audit-app.pages.common                      common
     metabase-enterprise.sandbox.api.table                           table
+    metabase-enterprise.test                                        met
     metabase.analytics.stats                                        stats
     metabase.api.activity                                           api.activity
     metabase.api.alert                                              api.alert
@@ -326,6 +323,7 @@
     metabase.sync.util                                              sync-util
     metabase.sync.util-test                                         sync.util-test
     metabase.task.sync-databases                                    task.sync-databases
+    metabase.test                                                   mt
     metabase.test-runner.assert-exprs                               test-runner.assert-exprs
     metabase.test-runner.init                                       test-runner.init
     metabase.test-runner.junit                                      test-runner.junit
@@ -384,8 +382,6 @@
   honeysql.util/defalias                                                               clojure.core/def
   metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
   metabase.actions.test-util/with-actions                                              clojure.core/let
-  metabase.actions.test-util/with-card-emitter                                         clojure.core/let
-  metabase.actions.test-util/with-dashboard-emitter                                    clojure.core/let
   metabase.api.common/let-404                                                          clojure.core/let
   metabase.api.dashboard-test/let-url                                                  clojure.core/let
   metabase.api.search-test/do-test-users                                               clojure.core/let
@@ -417,13 +413,14 @@
   metabase.test.data.interface/defdataset                                              clojure.core/def
   metabase.test.data.interface/defdataset-edn                                          clojure.core/def
   metabase.test/defdataset                                                             clojure.core/def
+  metabase.test/with-actions                                                           clojure.core/let
   metabase.test/with-open-channels                                                     clojure.core/let
   metabase.test/with-single-admin-user                                                 clojure.core/fn
   metabase.test/with-temp-dir                                                          clojure.core/let
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
-  metabase.util.malli/defn                                                             schema.core/defn
+  metabase.util.malli/defn                                                             clj-kondo.lint-as/def-catch-all
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   monger.operators/defoperator                                                         clojure.core/def
   potemkin.types/defprotocol+                                                          clojure.core/defprotocol
@@ -440,6 +437,7 @@
    clojure.core/type                                                                                                         hooks.metabase.models.disallow-type-or-class/hook
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
+   metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy                                       hooks.metabase.models.disallow-invoking-model/hook
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan.util.test/with-temp*
    metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
    metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
@@ -447,11 +445,12 @@
    metabase.api.card-test/with-temp-native-card                                                                              hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params                                                                  hooks.common/with-two-bindings
    metabase.api.collection-test/with-french-user-and-personal-collection                                                     hooks.common/with-two-top-level-bindings
-   metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
+   metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
+   metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings
    metabase.api.embed-test/with-chain-filter-fixtures                                                                        hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-card                                                                                    hooks.common/let-one-with-optional-value
@@ -621,6 +620,7 @@
    clojurewerkz.quartzite.triggers/build                                        macros.quartz/build-trigger
    metabase-enterprise.sandbox.test-util/with-gtaps                             macros.metabase-enterprise.sandbox.test-util/with-gtaps
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
+   metabase-enterprise.test/with-gtaps                                          macros.metabase-enterprise.sandbox.test-util/with-gtaps
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
@@ -639,11 +639,12 @@
    metabase.test.util/with-temp-env-var-value                                   macros.metabase.test.util/with-temp-env-var-value
    metabase.test.util/with-temporary-raw-setting-values                         macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.test/with-group-for-user                                            macros.metabase.test.data.users/with-group-for-user
-   metabase.test/with-gtaps                                                     macros.metabase-enterprise.sandbox.test-util/with-gtaps
    metabase.test/with-persistence-enabled                                       macros.metabase.test.persistence/with-persistence-enabled
    metabase.test/with-temp-env-var-value                                        macros.metabase.test.util/with-temp-env-var-value
-   metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values
-   toucan.models/defmodel                                                       macros.toucan.models/defmodel}}
+   metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values}}
+
+ :config-in-call
+ {metabase.util.honey-sql-2-extensions/with-database-type-info {:linters {:type-mismatch {:level :off}}}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}

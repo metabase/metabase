@@ -173,6 +173,7 @@
    [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
+   [metabase.api.permission-graph :as api.permission-graph]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -187,6 +188,7 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -573,7 +575,7 @@
   (set-has-full-permissions? permissions-set (application-perms-path perm-type)))
 
 (s/defn perms-objects-set-for-parent-collection :- #{Path}
-  "Implementation of `IModel` `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
+  "Implementation of `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
   Collection if `collection_id` is `nil`."
   ([this read-or-write]
@@ -667,13 +669,6 @@
    (s/enum :all :none)
    "Valid execute perms option type"))
 
-(def ^:private DataPermissionsGraph
-  (s/named
-   {(s/optional-key :native)  NativePermissionsGraph
-    (s/optional-key :schemas) (s/cond-pre (s/enum :all :none :block)
-                                          {s/Str SchemaPermissionsGraph})}
-   "Valid perms graph for a Database"))
-
 ;; The "Strict" versions of the various graphs below are intended for schema checking when *updating* the permissions
 ;; graph. In other words, we shouldn't be stopped from returning the graph if it violates the "strict" rules, but we
 ;; *should* refuse to update the graph unless it matches the strict schema.
@@ -682,20 +677,6 @@
 ;;
 ;; TODO -- instead of doing schema validation, why don't we just throw an Exception so the API responses are actually
 ;; somewhat useful?
-(defn- check-native-and-schemas-permissions-allowed-together [{:keys [native schemas]}]
-  ;; Only do the check when we have both, e.g. when the entire graph is coming in
-  (if (and (= native :write)
-           schemas
-           (not= schemas :all))
-    (do (log/warn (trs "Invalid DB permissions: If you have write access for native queries, you must have full data access."))
-        nil)
-    :ok))
-
-(def ^:private StrictDataPermissionsGraph
-  (s/constrained DataPermissionsGraph
-                 check-native-and-schemas-permissions-allowed-together
-                 "DB permissions with a valid combination of values for :native and :schemas"))
-
 (def ^:private DownloadTablePermissionsGraph
   (s/named
    (s/enum :full :limited :none)
@@ -744,16 +725,6 @@
   (s/named
    (s/enum :yes :no)
    "Valid details perms graph for a database"))
-
-(def ^:private StrictDBPermissionsGraph
-  {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
-                                  (s/optional-key :download) DownloadPermissionsGraph
-                                  (s/optional-key :data-model) DataModelPermissionsGraph
-                                  (s/optional-key :details) DetailsPermissions}})
-
-(def ^:private StrictPermissionsGraph
-  {:revision s/Int
-   :groups   {su/IntGreaterThanZero StrictDBPermissionsGraph}})
 
 (def ^:private ExecutionGroupPermissionsGraph
   (s/cond-pre ExecutePermissions
@@ -1134,8 +1105,10 @@
     :write (grant-native-readwrite-permissions! group-id db-id)
     :none  nil))
 
-(s/defn ^:private update-db-data-access-permissions!
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-db-perms :- StrictDataPermissionsGraph]
+(mu/defn ^:private update-db-data-access-permissions!
+  [group-id :- pos-int?
+   db-id :- pos-int?
+   new-db-perms :- metabase.api.permission-graph/strict-data-perms]
   (when-let [new-native-perms (:native new-db-perms)]
     (update-native-data-access-permissions! group-id db-id new-native-perms))
   (when-let [schemas (:schemas new-db-perms)]
@@ -1173,8 +1146,8 @@
     (update-fn group-id db-id new-perms)
     (throw (ee-permissions-exception perm-type))))
 
-(s/defn ^:private update-group-permissions!
-  [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
+(mu/defn ^:private update-group-permissions! :- nil?
+  [group-id :- pos-int? new-group-perms :- api.permission-graph/strict-db-graph]
   (doseq [[db-id new-db-perms] new-group-perms
           [perm-type new-perms] new-db-perms]
     (case perm-type
@@ -1244,7 +1217,7 @@
    "\n" (trs "FROM:") (u/pprint-to-str 'magenta old)
    "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
 
-(s/defn update-data-perms-graph!
+(mu/defn update-data-perms-graph!
   "Update the *data* permissions graph, making any changes necessary to make it match NEW-GRAPH.
    This should take in a graph that is exactly the same as the one obtained by `graph` with any changes made as
    needed. The graph is revisioned, so if it has been updated by a third party since you fetched it this function will
@@ -1252,7 +1225,7 @@
    returns the newly created `PermissionsRevision` entry.
 
   Code for updating the Collection permissions graph is in [[metabase.models.collection.graph]]."
-  ([new-graph :- StrictPermissionsGraph]
+  ([new-graph :- metabase.api.permission-graph/strict-data]
    (let [old-graph (data-perms-graph)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})
@@ -1261,13 +1234,13 @@
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
        (db/transaction
-         (doseq [[group-id changes] new]
-           (update-group-permissions! group-id changes))
-         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
-         (delete-gtaps-if-needed-after-permissions-change! new)))))
+        (doseq [[group-id changes] new]
+          (update-group-permissions! group-id changes))
+        (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
+        (delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
-  ([ks :- [s/Any] new-value]
+  ([ks :- [:vector :any] new-value]
    (update-data-perms-graph! (assoc-in (data-perms-graph) (cons :groups ks) new-value))))
 
 (s/defn update-execution-perms-graph!

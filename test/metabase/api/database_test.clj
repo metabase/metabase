@@ -772,16 +772,18 @@
     (testing "Can we UPDATE the schedules for an existing database?"
       (testing "We cannot if we don't mark `:let-user-control-scheduling`"
         (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
-          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
-                                (assoc db :schedules attempted))
+          (is (=? (select-keys (mt/db) [:cache_field_values_schedule :metadata_sync_schedule])
+                  (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                                        (assoc db :schedules attempted))))
           (is (not= expected
                     (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
       (testing "We can if we mark `:let-user-control-scheduling`"
         (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
-          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
-                                (-> db
-                                    (assoc :schedules attempted)
-                                    (assoc-in [:details :let-user-control-scheduling] true)))
+          (is (=? expected
+                  (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                                        (-> (into {} db)
+                                            (assoc :schedules attempted)
+                                            (assoc-in [:details :let-user-control-scheduling] true)))))
           (is (= expected
                  (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
       (testing "if we update back to metabase managed schedules it randomizes for us"
@@ -789,8 +791,9 @@
           (mt/with-temp Database [db (merge {:engine "h2" :details (assoc (:details (mt/db))
                                                                           :let-user-control-scheduling true)}
                                             original-custom-schedules)]
-            (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
-                                  (assoc-in db [:details :let-user-control-scheduling] false))
+            (is (=? {:id (u/the-id db)}
+                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                                          (assoc-in db [:details :let-user-control-scheduling] false))))
             (let [schedules (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))]
               (is (not= original-custom-schedules schedules))
               (is (= "hourly" (-> schedules :metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))
@@ -874,7 +877,8 @@
                     Field       [field-2  {:table_id (u/the-id table-2)}]
                     FieldValues [values-1 {:field_id (u/the-id field-1), :values [1 2 3 4]}]
                     FieldValues [values-2 {:field_id (u/the-id field-2), :values [1 2 3 4]}]]
-      (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))
+      (is (= {:status "ok"}
+             (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
       (testing "values-1 still exists?"
         (is (= false
                (db/exists? FieldValues :id (u/the-id values-1)))))
@@ -1163,7 +1167,8 @@
                                                  :dataset false)]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
-          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
+          (is (=? {:status "completed"}
+                  (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))))
         (testing "Should be able to get datasets in a specific collection"
           (is (= [{:id               (format "card__%d" (:id card-1))
                    :db_id            (mt/id)
