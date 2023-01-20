@@ -8,8 +8,6 @@ export const DataReferenceContainer = styled.div`
   position: relative;
   height: 100%;
   background-color: ${color("white")};
-  border-left: 1px solid ${color("border")};
-  border-right: 1px solid ${color("border")};
 
   ${SidebarContent.Header.Root} {
     position: sticky;
