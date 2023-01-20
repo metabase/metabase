@@ -10,14 +10,20 @@ function Link(props) {
         onChange={ev =>
           props.onUpdateVisualizationSettings({ link: ev.target.value })
         }
+        value={props.settings.link}
         autoFocus
       />
     );
   } else {
-    return (
-      props.settings.link && (
-        <a href={props.settings.link}>{props.settings.link}</a>
-      )
+    return props.settings.link ? (
+      <a
+        className="text-brand-hover text-underline-hover"
+        href={props.settings.link}
+      >
+        {props.settings.link}
+      </a>
+    ) : (
+      ""
     );
   }
 }
