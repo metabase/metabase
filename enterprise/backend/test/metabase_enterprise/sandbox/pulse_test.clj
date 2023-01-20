@@ -207,7 +207,7 @@
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]}))
 
         ;; Check that both Rasta and Crowberto are still recipients
-        (is (= [(mt/user->id :rasta) (mt/user->id :crowberto)]
+        (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                (->> (api.alert/email-channel (models.pulse/retrieve-pulse pulse-id)) :recipients (map :id) sort)))
 
         (with-redefs [mt.api.u/segmented-user? (constantly false)]
