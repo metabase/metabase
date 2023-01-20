@@ -1,23 +1,27 @@
 (ns metabase-enterprise.sandbox.pulse-test
-  (:require [clojure.data.csv :as csv]
-            [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.email.messages :as messages]
-            [metabase.models :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
-            [metabase.models.pulse :as models.pulse]
-            [metabase.pulse :as pulse]
-            [metabase.pulse.test-util :as pulse.tu]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase-enterprise.sandbox.api.util :as mt.api.u]
+   [metabase-enterprise.sandbox.test-util :as mt.tu]
+   [metabase.email.messages :as messages]
+   [metabase.models
+    :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models.pulse :as models.pulse]
+   [metabase.pulse :as pulse]
+   [metabase.pulse.test-util :as pulse.tu]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest sandboxed-pulse-test
   (testing "Pulses should get sent with the row-level restrictions of the User that created them."
     (letfn [(send-pulse-created-by-user! [user-kw]
-              (mt/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
-                                                    :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
-                              :attributes {"cat" 50}}
+              (mt.tu/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
+                                                       :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                                 :attributes {"cat" 50}}
                 (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                   ;; `with-gtaps` binds the current test user; we don't want that falsely affecting results
                   (mt/with-test-user nil
@@ -53,8 +57,8 @@
 
 (deftest e2e-sandboxed-pulse-test
   (testing "Sending Pulses w/ sandboxing, end-to-end"
-    (mt/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues
-                                                           {:filter [:= $price 3]})}}}
+    (mt.tu/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues
+                                                              {:filter [:= $price 3]})}}}
       (let [query (mt/mbql-query venues
                                  {:aggregation [[:count]]
                                   :breakout    [$price]})]
@@ -79,8 +83,8 @@
 
 (deftest user-attributes-test
   (testing "Pulses should be sandboxed correctly by User login_attributes"
-    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
-                    :attributes {"price" "1"}}
+    (mt.tu/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
+                       :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp Card [card {:dataset_query query}]
@@ -99,8 +103,8 @@
 
 (deftest pulse-preview-test
   (testing "Pulse preview endpoints should be sandboxed"
-    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
-                    :attributes {"price" "1"}}
+    (mt.tu/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
+                       :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp Card [card {:dataset_query query}]
@@ -128,8 +132,8 @@
 
 (deftest csv-downloads-test
   (testing "CSV/XLSX downloads should be sandboxed"
-    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
-                    :attributes {"price" "1"}}
+    (mt.tu/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
+                       :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp* [Card                 [{card-id :id}  {:dataset_query query}]
@@ -152,3 +156,35 @@
                 (testing "CSV attachment"
                   (is (= 23
                          (csv->row-count attachment))))))))))))
+
+(deftest sandboxed-users-cant-read-pulse-recipients
+  (testing "When sandboxed users fetch a pulse hydrated with recipients, they should only see themselves"
+    (mt/with-temp* [Pulse        [{pulse-id :id} {:name "my pulse"}]
+                    PulseChannel [{pc-id :id} {:pulse_id     pulse-id
+                                               :channel_type :email}]
+                    PulseChannelRecipient [_ {:pulse_channel_id pc-id, :user_id (mt/user->id :crowberto)}]
+                    PulseChannelRecipient [_ {:pulse_channel_id pc-id, :user_id (mt/user->id :rasta)}]]
+      (let [recipient-ids (fn [pulses]
+                            (let [pulse      (first (filter #(= pulse-id (:id %)) pulses))
+                                  recipients (-> pulse :channels first :recipients)]
+                              (map :id recipients)))]
+        (mt/with-test-user :rasta
+          (with-redefs [mt.api.u/segmented-user? (constantly false)]
+            (is (= [(mt/user->id :rasta) (mt/user->id :crowberto)]
+                   (-> (mt/user-http-request :rasta :get 200 "pulse/")
+                       recipient-ids)))
+
+            (is (= [(mt/user->id :rasta) (mt/user->id :crowberto)]
+                   (-> (mt/user-http-request :rasta :get 200 (format "pulse/%d" pulse-id))
+                       vector
+                       recipient-ids))))
+
+          (with-redefs [mt.api.u/segmented-user? (constantly true)]
+            (is (= [(mt/user->id :rasta)]
+                   (-> (mt/user-http-request :rasta :get 200 "pulse/")
+                       recipient-ids)))
+
+            (is (= [(mt/user->id :rasta)]
+                   (-> (mt/user-http-request :rasta :get 200 (format "pulse/%d" pulse-id))
+                       vector
+                       recipient-ids)))))))))

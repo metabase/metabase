@@ -33,6 +33,26 @@
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
                                           'metabase-enterprise.advanced-permissions.common))
 
+(defn- filter-pulses-recipients
+  "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
+  themselves. Recipients that are plain email addresses are preserved."
+  [pulses]
+  (if-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+    (if (segmented-user?)
+      (for [pulse pulses]
+        (assoc pulse :channels
+               (for [channel (:channels pulse)]
+                 (assoc channel :recipients
+                        (filter (fn [recipient] (or (not (:id recipient))
+                                                    (= (:id recipient) api/*current-user-id*)))
+                                (:recipients channel))))))
+      pulses)
+    pulses))
+
+(defn- filter-pulse-recipients
+  [pulse]
+  (first (filter-pulses-recipients [pulse])))
+
 (api/defendpoint GET "/"
   "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
   permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
@@ -48,11 +68,12 @@
    can_read            (s/maybe su/BooleanString)}
   (let [can-read? (Boolean/parseBoolean can_read)
         archived? (Boolean/parseBoolean archived)
-        pulses    (->> (pulse/retrieve-pulses {:archived?    archived?
-                                               :dashboard-id dashboard_id
-                                               :user-id      api/*current-user-id*
-                                               :can-read?    can-read?})
-                       (filter (if can-read? mi/can-read? mi/can-write?)))]
+        pulses    (->> (pulse/retrieve-pulses {:archived?     archived?
+                                               :dashboard-id  dashboard_id
+                                               :user-id       api/*current-user-id*
+                                               :can-read?     can-read?})
+                       (filter (if can-read? mi/can-read? mi/can-write?))
+                       filter-pulses-recipients)]
     (hydrate pulses :can_write)))
 
 (defn check-card-read-permissions
@@ -103,6 +124,7 @@
   "Fetch `Pulse` with ID."
   [id]
   (-> (api/read-check (pulse/retrieve-pulse id))
+      filter-pulse-recipients
       (hydrate :can_write)))
 
 (api/defendpoint PUT "/:id"
