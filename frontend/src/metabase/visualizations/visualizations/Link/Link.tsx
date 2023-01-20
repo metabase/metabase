@@ -14,6 +14,7 @@ function Link(props) {
               "link.title": item.name,
               "link.type": item.type,
             });
+            props.onPreviewToggle();
           }}
           value={props.settings.link}
         />

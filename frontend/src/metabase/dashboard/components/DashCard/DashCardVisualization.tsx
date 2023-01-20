@@ -66,6 +66,7 @@ interface DashCardVisualizationProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
+  onPreviewToggle: () => void;
 
   error?: { message?: string; icon?: IconProps["name"] };
   headerIcon?: IconProps;
@@ -115,6 +116,7 @@ function DashCardVisualization({
   showClickBehaviorSidebar,
   onChangeLocation,
   onUpdateVisualizationSettings,
+  onPreviewToggle,
 }: DashCardVisualizationProps) {
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
@@ -213,6 +215,7 @@ function DashCardVisualization({
       onUpdateVisualizationSettings={onUpdateVisualizationSettings}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
+      onPreviewToggle={onPreviewToggle}
     />
   );
 }

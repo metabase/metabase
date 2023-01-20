@@ -340,6 +340,7 @@ function DashCard({
         onUpdateVisualizationSettings={onUpdateVisualizationSettings}
         onChangeCardAndRun={changeCardAndRunHandler}
         onChangeLocation={onChangeLocation}
+        onPreviewToggle={handlePreviewToggle}
       />
     </DashCardRoot>
   );
