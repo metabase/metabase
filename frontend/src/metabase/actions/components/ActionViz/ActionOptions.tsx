@@ -52,7 +52,7 @@ type NewParameterChangeEvent = {
   };
 };
 
-type ParamaterMappingFn = (
+type ParameterMappingFn = (
   parameterId: ParameterId,
   dashcardId: number,
   cardId: number,
@@ -60,7 +60,7 @@ type ParamaterMappingFn = (
 ) => void;
 
 interface DispatchProps {
-  setParameterMapping: ParamaterMappingFn;
+  setParameterMapping: ParameterMappingFn;
 }
 
 const mapDispatchToProps = {

@@ -10,11 +10,11 @@ import {
   createMockActionParameter,
   createMockQueryAction,
   createMockImplicitQueryAction,
+  createMockDashboard,
 } from "metabase-types/api/mocks";
 
-import ActionParametersInputForm, {
-  ActionParametersInputModal,
-} from "./ActionParametersInputForm";
+import ActionParametersInputForm from "./ActionParametersInputForm";
+import ActionParametersInputModal from "./ActionParametersInputModal";
 
 const defaultProps = {
   missingParameters: [
@@ -31,8 +31,8 @@ const defaultProps = {
   ],
   dashcardParamValues: {},
   action: createMockQueryAction(),
-  dashboard: { id: 123 },
-  dashcard: { id: 456 },
+  dashboard: createMockDashboard({ id: 123 }),
+  dashcard: createMockDashboard({ id: 456 }),
   onSubmit: jest.fn(() => ({ success: true })),
   onCancel: _.noop,
   onSubmitSuccess: _.noop,
@@ -77,7 +77,7 @@ describe("Actions > ActionParametersInputForm", () => {
   it("should call onCancel when clicking the cancel button", async () => {
     const cancelSpy = jest.fn();
     await setup({ onCancel: cancelSpy });
-    await userEvent.click(screen.getByText("Cancel"));
+    userEvent.click(screen.getByText("Cancel"));
     expect(cancelSpy).toHaveBeenCalled();
   });
 
@@ -87,17 +87,17 @@ describe("Actions > ActionParametersInputForm", () => {
       onSubmit: submitSpy,
     });
 
-    await userEvent.type(screen.getByLabelText("Parameter 1"), "uno");
+    userEvent.type(screen.getByLabelText("Parameter 1"), "uno");
     await waitFor(() =>
       expect(screen.getByLabelText("Parameter 1")).toHaveValue("uno"),
     );
 
-    await userEvent.type(screen.getByLabelText("Parameter 2"), "dos");
+    userEvent.type(screen.getByLabelText("Parameter 2"), "dos");
     await waitFor(() =>
       expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos"),
     );
 
-    await userEvent.click(screen.getByText("Save"));
+    userEvent.click(screen.getByText("Save"));
 
     await waitFor(() => {
       expect(submitSpy).toHaveBeenCalledWith({
@@ -146,11 +146,11 @@ describe("Actions > ActionParametersInputForm", () => {
     });
 
     await waitFor(async () => {
-      expect(await screen.findByLabelText("Parameter 1")).toHaveValue("uno");
+      expect(screen.getByLabelText("Parameter 1")).toHaveValue("uno");
     });
 
     await waitFor(async () => {
-      expect(await screen.findByLabelText("Parameter 2")).toHaveValue("dos");
+      expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos");
     });
   });
 

@@ -1,8 +1,6 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { t } from "ttag";
 import { ActionForm } from "metabase/actions/components/ActionForm";
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
 
 import {
   getSubmitButtonColor,
@@ -30,7 +28,7 @@ import type Field from "metabase-lib/metadata/Field";
 
 import { getChangedValues, getInitialValues } from "./utils";
 
-interface Props {
+export interface ActionParamatersInputFormProps {
   missingParameters: WritebackParameter[];
   dashcardParamValues: ParametersForActionExecution;
 
@@ -52,26 +50,27 @@ function ActionParametersInputForm({
   onCancel,
   onSubmit,
   onSubmitSuccess,
-}: Props) {
+}: ActionParamatersInputFormProps) {
   const [prefetchValues, setPrefetchValues] =
     useState<ParametersForActionExecution>({});
 
   const shouldPrefetch = useMemo(() => shouldPrefetchValues(action), [action]);
 
-  const fetchInitialValues = useCallback(
-    () =>
-      ActionsApi.prefetchValues({
-        dashboardId: dashboard?.id,
-        dashcardId: dashcard?.id,
-        parameters: JSON.stringify(dashcardParamValues),
-      }).then(setPrefetchValues),
-    [dashboard?.id, dashcard?.id, dashcardParamValues],
-  );
+  const fetchInitialValues = useCallback(async () => {
+    const fetchedValues = await ActionsApi.prefetchValues({
+      dashboardId: dashboard?.id,
+      dashcardId: dashcard?.id,
+      parameters: JSON.stringify(dashcardParamValues),
+    }).catch(() => false);
+
+    if (fetchedValues) {
+      setPrefetchValues(fetchedValues);
+    }
+  }, [dashboard?.id, dashcard?.id, dashcardParamValues]);
 
   useEffect(() => {
-    // we need at least 1 parameter value (a PK) to fetch initial values
-    const canPrefetch =
-      Object.keys(dashcardParamValues).length > 0 && dashboard && dashcard;
+    const hasValueFromDashboard = Object.keys(dashcardParamValues).length > 0;
+    const canPrefetch = hasValueFromDashboard && dashboard && dashcard;
 
     if (shouldPrefetch) {
       setPrefetchValues({});
@@ -151,35 +150,5 @@ function ActionParametersInputForm({
     />
   );
 }
-
-interface ModalProps {
-  onClose: () => void;
-  title: string;
-  showConfirmMessage?: boolean;
-  confirmMessage?: string;
-}
-
-export function ActionParametersInputModal({
-  onClose,
-  title,
-  showConfirmMessage,
-  confirmMessage,
-  ...formProps
-}: ModalProps & Props) {
-  return (
-    <Modal onClose={onClose}>
-      <ModalContent title={title} onClose={onClose}>
-        <>
-          {showConfirmMessage && <ConfirmMessage message={confirmMessage} />}
-          <ActionParametersInputForm {...formProps} />
-        </>
-      </ModalContent>
-    </Modal>
-  );
-}
-
-const ConfirmMessage = ({ message }: { message?: string }) => (
-  <div>{message ?? t`This action cannot be undone.`}</div>
-);
 
 export default ActionParametersInputForm;

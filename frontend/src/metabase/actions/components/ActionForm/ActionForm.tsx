@@ -167,6 +167,8 @@ export const ActionForm = ({
     );
   }
 
+  const hasFormFields = !!form.fields.length;
+
   return (
     <FormProvider
       initialValues={initialValues}
@@ -176,7 +178,7 @@ export const ActionForm = ({
     >
       {({ dirty }) => (
         <Form
-          disabled={!dirty && !!form.fields.length}
+          disabled={!dirty && hasFormFields}
           role="form"
           data-testid="action-form"
         >
@@ -187,7 +189,7 @@ export const ActionForm = ({
           <ActionFormButtonContainer>
             {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
             <FormSubmitButton
-              disabled={!dirty && !!form.fields.length}
+              disabled={!dirty && hasFormFields}
               title={submitTitle ?? t`Save`}
               {...submitButtonVariant}
             />

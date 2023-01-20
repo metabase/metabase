@@ -110,7 +110,7 @@ function AddActionSidebarFn({
 
 export const AddActionSidebar = _.compose(
   Search.loadList({
-    query: (_state: State, props: any) => ({
+    query: () => ({
       models: ["dataset"],
     }),
     loadingAndErrorWrapper: false,

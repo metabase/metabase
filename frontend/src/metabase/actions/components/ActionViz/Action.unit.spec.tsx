@@ -9,7 +9,7 @@ import { render, screen } from "__support__/ui";
 import {
   createMockActionParameter,
   createMockQueryAction,
-  createMockImplicitQueryAction,
+  createMockDashboard,
 } from "metabase-types/api/mocks";
 
 import { ActionComponent, ActionProps } from "./Action";
@@ -48,7 +48,7 @@ const defaultProps = {
       },
     ],
   },
-  dashboard: { id: 123 },
+  dashboard: createMockDashboard({ id: 123 }),
   dispatch: _.noop,
   isSettings: false,
   isEditing: false,
@@ -83,7 +83,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
     it("clicking an action button should open a modal action form", async () => {
       await setup();
 
-      await userEvent.click(screen.getByRole("button"));
+      userEvent.click(screen.getByRole("button"));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
@@ -92,16 +92,16 @@ describe("Actions > ActionViz > ActionComponent", () => {
     it("the modal should have the action name as a title", async () => {
       await setup();
 
-      await userEvent.click(screen.getByRole("button"));
+      userEvent.click(screen.getByRole("button"));
       expect(screen.getByRole("dialog")).toHaveTextContent("My Awesome Action");
     });
 
     it("clicking the cancel button on the form should close the modal", async () => {
       await setup();
 
-      await userEvent.click(screen.getByRole("button"));
+      userEvent.click(screen.getByRole("button"));
       expect(screen.getByRole("dialog")).toHaveTextContent("My Awesome Action");
-      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
@@ -157,17 +157,17 @@ describe("Actions > ActionViz > ActionComponent", () => {
 
       await setup({ settings: formSettings });
 
-      await userEvent.type(screen.getByLabelText("Parameter 1"), "foo");
+      userEvent.type(screen.getByLabelText("Parameter 1"), "foo");
       await waitFor(() =>
         expect(screen.getByLabelText("Parameter 1")).toHaveValue("foo"),
       );
 
-      await userEvent.type(screen.getByLabelText("Parameter 2"), "bar");
+      userEvent.type(screen.getByLabelText("Parameter 2"), "bar");
       await waitFor(() =>
         expect(screen.getByLabelText("Parameter 2")).toHaveValue("bar"),
       );
 
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => expect(scope.isDone()).toBe(true));
     });
@@ -190,12 +190,12 @@ describe("Actions > ActionViz > ActionComponent", () => {
         parameterValues: { "dash-param-2": "baz" },
       });
 
-      await userEvent.type(screen.getByLabelText("Parameter 1"), "foo");
+      userEvent.type(screen.getByLabelText("Parameter 1"), "foo");
       await waitFor(() =>
         expect(screen.getByLabelText("Parameter 1")).toHaveValue("foo"),
       );
 
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => expect(scope.isDone()).toBe(true));
     });
@@ -235,7 +235,7 @@ describe("Actions > ActionViz > ActionComponent", () => {
         onVisualizationClick: clickSpy,
       } as unknown as Partial<ActionProps>);
 
-      await userEvent.click(screen.getByText("Link Button"));
+      userEvent.click(screen.getByText("Link Button"));
       await waitFor(() => expect(clickSpy).toHaveBeenCalled());
     });
   });
