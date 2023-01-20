@@ -239,10 +239,11 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/membership/:group-id/clear"
-  "Remove all members from a `PermissionsGroup`."
+  "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [group-id]
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
+  (api/check-400 (not= group-id (u/the-id (perms-group/admin))))
   (db/delete! PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
