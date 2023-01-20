@@ -310,14 +310,8 @@
 (defn- select-public-keys
   "Remove everything from an action that shouldn't be visible to the general public."
   [action]
-  (select-keys action [:description
-                       :database_id
-                       :name
-                       :type
-                       :dataset_query
-                       :model_id
+  (select-keys action [:name
                        :id
-                       :parameter_mappings
                        :visualization_settings
                        :parameters]))
 
