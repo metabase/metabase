@@ -33,7 +33,7 @@ Example: in the table below, `SumIf([Payment], [Plan] = "Basic")` would return 2
 | 200      | Business    | November 1, 2020  |
 | 400      | Premium     | November 1, 2020  |
 
-Use `AND` to set multiple _mandatory_ conditions:
+To sum a column based on multiple _mandatory_ conditions:
 
 ```
 SumIf([Payment], [Plan] = "Basic" AND month([Date Received]) = 10)
@@ -41,7 +41,7 @@ SumIf([Payment], [Plan] = "Basic" AND month([Date Received]) = 10)
 
 returns 200.
 
-Use `OR` to set multiple _optional_ conditions:
+To sum a column with multiple _optional_ conditions:
 
 ```
 SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business"))
@@ -61,7 +61,7 @@ returns 400.
 
 ## Conditional subtotal
 
-To get a subtotal for a group, you need to add a [**Group by** column](../questions/query-builder/introduction.md#summarizing-and-grouping-by).
+To get a subtotal for a group, you need to add a [**Group by** column](../../query-builder/introduction.md#summarizing-and-grouping-by).
 
 | Payment  | Plan        | Date Received     |
 |----------|-------------| ------------------|
