@@ -13,6 +13,7 @@ import { createQuestionFromAction } from "metabase/actions/selectors";
 import type {
   WritebackQueryAction,
   ActionFormSettings,
+  WritebackActionId,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type { SavedCard } from "metabase-types/types/Card";
@@ -51,7 +52,7 @@ interface OwnProps {
 }
 
 interface StateProps {
-  actionId?: number;
+  actionId?: WritebackActionId;
   question?: Question;
   metadata: Metadata;
 }
