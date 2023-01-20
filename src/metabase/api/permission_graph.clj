@@ -81,7 +81,7 @@
   If you have write access for native queries, you must have data access to all schemas."
   [:and
    data-perms
-   [:fn {:error/fn (fn [] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
+   [:fn {:error/fn (fn [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
     (fn [{:keys [native schemas]}]
       (not (and (= native :write) schemas (not= schemas :all))))]])
 
