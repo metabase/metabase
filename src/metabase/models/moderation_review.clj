@@ -2,6 +2,7 @@
   "TODO -- this should be moved to `metabase-enterprise.content-management.models.moderation-review` since it's a
   premium-only model."
   (:require
+   [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.moderation :as moderation]
@@ -21,8 +22,8 @@
 ;; TODO: Appears to be unused, remove?
 (def ReviewChanges
   "Schema for a ModerationReview that's being updated (so most keys are optional)"
-  {(s/optional-key :id)                  su/IntGreaterThanZeroPlumatic
-   (s/optional-key :moderated_item_id)   su/IntGreaterThanZeroPlumatic
+  {(s/optional-key :id)                  su/IntGreaterThanZero
+   (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
    (s/optional-key :moderated_item_type) moderation/moderated-item-types
    (s/optional-key :status)              Statuses
    (s/optional-key :text)                (s/maybe s/Str)
@@ -48,25 +49,25 @@
   [item-id :- s/Int item-type :- s/Str]
   (let [ids (into #{} (comp (map :id)
                             (drop (dec max-moderation-reviews)))
-                  (db/query {:select [:id]
-                             :from [:moderation_review]
-                             :where [:and
-                                     [:= :moderated_item_id item-id]
-                                     [:= :moderated_item_type item-type]]
-                             ;; cannot put the offset in this query as mysql doesnt place nice. It requires a limit
-                             ;; as well which we do not want to give. The offset is only 10 though so its not a huge
-                             ;; savings and we run this on every entry so the max number is 10, delete the extra,
-                             ;; and insert a new one to arrive at 10 again, our invariant.
-                             :order-by [[:id :desc]]}))]
+                  (mdb.query/query {:select   [:id]
+                                    :from     [:moderation_review]
+                                    :where    [:and
+                                               [:= :moderated_item_id item-id]
+                                               [:= :moderated_item_type item-type]]
+                                    ;; cannot put the offset in this query as mysql doesnt place nice. It requires a limit
+                                    ;; as well which we do not want to give. The offset is only 10 though so its not a huge
+                                    ;; savings and we run this on every entry so the max number is 10, delete the extra,
+                                    ;; and insert a new one to arrive at 10 again, our invariant.
+                                    :order-by [[:id :desc]]}))]
     (when (seq ids)
       (db/delete! ModerationReview :id [:in ids]))))
 
 (s/defn create-review!
   "Create a new ModerationReview"
   [params :-
-   {:moderated_item_id       su/IntGreaterThanZeroPlumatic
+   {:moderated_item_id       su/IntGreaterThanZero
     :moderated_item_type     moderation/moderated-item-types
-    :moderator_id            su/IntGreaterThanZeroPlumatic
+    :moderator_id            su/IntGreaterThanZero
     (s/optional-key :status) Statuses
     (s/optional-key :text)   (s/maybe s/Str)}]
   (db/transaction

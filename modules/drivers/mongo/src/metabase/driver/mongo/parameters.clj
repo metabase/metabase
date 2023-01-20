@@ -89,7 +89,6 @@
                               (format "{%s: {$lt: %s}}"
                                       (field->name field)
                                       (param-value->str field (u.date/parse end ZoneOffset/UTC))))]
-    #_(dev.portal/log [start end])
     (if (and start-condition end-condition)
       (format "{$and: [%s, %s]}" start-condition end-condition)
       (or start-condition

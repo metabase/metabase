@@ -30,12 +30,7 @@
       (is (= nil
              (#'mongo.qp/query->collection-name {:query {:source-query
                                                          {:native []}
-                                                         :joins [{:source-query "wow"}]}}))))
-
-    (testing "should ignore other :collection keys"
-      (is (= nil
-             (#'mongo.qp/query->collection-name {:query {:source-query
-                                                         {:native [{:collection "wow"}]}}}))))))
+                                                         :joins [{:source-query "wow"}]}}))))))
 
 (deftest relative-datetime-test
   (mt/test-driver :mongo
@@ -96,7 +91,7 @@
 
             (testing "should still work even with bucketing bucketing"
               (let [query (mt/with-everything-store
-                            (mongo.qp/mbql->native
+                            (qp/compile
                              (mt/mbql-query attempts
                                {:aggregation [[:count]]
                                 :breakout    [[:field %datetime {:temporal-unit :month}]
@@ -104,13 +99,9 @@
                                 :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
                 (is (= {:projections ["datetime~~~month" "datetime~~~day" "count"]
                         :query       [{"$match"
-                                       {:$expr
-                                        {"$eq"
-                                         [{:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
-                                                  :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month"
-                                                                                :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}
-                                          {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}}
+                                       {"$and"
+                                        [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
+                                         {:$expr {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
                                       {"$group" {"_id"   {"datetime~~~month" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
                                                                                                                    :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
                                                                                      :in   {:$dateFromParts {:year  "$$parts.year"
@@ -127,7 +118,8 @@
                                       {"$project" {"_id"              false
                                                    "datetime~~~month" "$_id.datetime~~~month"
                                                    "datetime~~~day"   "$_id.datetime~~~day"
-                                                   "count"            true}}],
+                                                   "count"            true}}
+                                      {"$sort" {"datetime~~~month" 1}}]
                         :collection  "attempts"
                         :mbql?       true}
                        query))
@@ -202,7 +194,7 @@
                                 {"$project" {"_id" false, "count" true}}],
                   :collection  "tips",
                   :mbql?       true}
-                 (mongo.qp/mbql->native
+                 (qp/compile
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :filter      [:= $tips.source.username "tupac"]}))))
@@ -212,10 +204,11 @@
                                            "count" {"$sum" 1}}}
                                 {"$sort" {"_id" 1}}
                                 ;; Or should this be {"source" {"username" "$_id.source.username"}} ?
-                                {"$project" {"_id" false, "source.username" "$_id.source.username", "count" true}}]
+                                {"$project" {"_id" false, "source.username" "$_id.source.username", "count" true}}
+                                {"$sort" {"source.username" 1}}]
                   :collection  "tips"
                   :mbql?       true}
-                 (mongo.qp/mbql->native
+                 (qp/compile
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :breakout    [$tips.source.username]}))))
@@ -282,7 +275,7 @@
                ["bob"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                {:filters     [[:expression "bob"]]
                                  :expressions {:bob   [:+ $price 300]}
                                  :limit       5}))))))
     (testing "Should be able to deal with a little indirection"
@@ -291,7 +284,7 @@
                ["bob"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                {:filters     [[:expression "bob"]]
                                  :expressions {:bob   [:abs [:- $price 300]]}
                                  :limit       5}))))))
     (testing "Should be able to deal with a little indirection, with an expression in"
@@ -397,29 +390,6 @@
     (mt/dataset qp.datetime-test/times-mixed
       ;; date arithmetic doesn't supports until mongo 5+
       (when (driver/database-supports? :mongo :date-arithmetics (mt/db))
-        (testing "date arithmetic with datetime columns"
-          (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)]
-                                       [:text-as-datetime (mt/id :times :as_dt)]]
-                  op                  [:datetime-add :datetime-subtract]
-                  unit                [:year :quarter :month :day :hour :minute :second :millisecond]
-                  {:keys [expected query]}
-                  [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
-                               (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                               (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
-                               (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
-                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                               :fields      [[:expression "expr"]]}}
-                   {:expected (into [] (frequencies
-                                        [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
-                                         (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                         (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
-                                         (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
-                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                               :aggregation [[:count]]
-                               :breakout    [[:expression "expr"]]}}]]
-            (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-              (is (= (set expected) (set (qp.datetime-test/test-datetime-math query)))))))
-
         (testing "date arithmetic with date columns"
           (let [[col-type field-id] [:date (mt/id :times :d)]]
             (doseq [op               [:datetime-add :datetime-subtract]

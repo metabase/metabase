@@ -18,7 +18,7 @@ describe("EventCard", () => {
 
     render(<EventCard {...props} />);
 
-    expect(screen.getByText("January 1, 2020"));
+    expect(screen.getByText("January 1, 2020")).toBeInTheDocument();
   });
 
   it("should render an event with date and time", () => {
@@ -31,7 +31,7 @@ describe("EventCard", () => {
 
     render(<EventCard {...props} />);
 
-    expect(screen.getByText("January 1, 2020, 10:20 AM"));
+    expect(screen.getByText("January 1, 2020, 10:20 AM")).toBeInTheDocument();
   });
 
   it("should toggle an event's visibility", () => {

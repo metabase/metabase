@@ -39,7 +39,7 @@
 
 (def ^:private SetupToken
   "Schema for a string that matches the instance setup token."
-  (su/with-api-error-message (s/constrained su/NonBlankStringPlumatic setup/token-match?)
+  (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
     "Token does not match the setup token."))
 
 (def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
@@ -57,11 +57,11 @@
             {:status-code 403})))
   (let [session-id (str (UUID/randomUUID))
         new-user   (db/insert! User
-                     :email        email
-                     :first_name   first-name
-                     :last_name    last-name
-                     :password     (str (UUID/randomUUID))
-                     :is_superuser true)
+                               :email        email
+                               :first_name   first-name
+                               :last_name    last-name
+                               :password     (str (UUID/randomUUID))
+                               :is_superuser true)
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
@@ -123,16 +123,16 @@
           invited_email      :email}                    :invite
          {:keys [allow_tracking site_name site_locale]} :prefs} :body, :as request}]
   {token              SetupToken
-   site_name          su/NonBlankStringPlumatic
-   site_locale        (s/maybe su/ValidLocalePlumatic)
-   first_name         (s/maybe su/NonBlankStringPlumatic)
-   last_name          (s/maybe su/NonBlankStringPlumatic)
-   email              su/EmailPlumatic
-   invited_first_name (s/maybe su/NonBlankStringPlumatic)
-   invited_last_name  (s/maybe su/NonBlankStringPlumatic)
-   invited_email      (s/maybe su/EmailPlumatic)
-   password           su/ValidPasswordPlumatic
-   allow_tracking     (s/maybe (s/cond-pre s/Bool su/BooleanStringPlumatic))
+   site_name          su/NonBlankString
+   site_locale        (s/maybe su/ValidLocale)
+   first_name         (s/maybe su/NonBlankString)
+   last_name          (s/maybe su/NonBlankString)
+   email              su/Email
+   invited_first_name (s/maybe su/NonBlankString)
+   invited_last_name  (s/maybe su/NonBlankString)
+   invited_email      (s/maybe su/Email)
+   password           su/ValidPassword
+   allow_tracking     (s/maybe (s/cond-pre s/Bool su/BooleanString))
    schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
    auto_run_queries   (s/maybe s/Bool)}
   (letfn [(create! []

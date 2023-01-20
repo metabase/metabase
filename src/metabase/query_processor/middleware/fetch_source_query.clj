@@ -59,7 +59,7 @@
    {:database        mbql.s/DatabaseID
     :source-metadata [mbql.s/SourceQueryMetadata]
     :source-query    mbql.s/SourceQuery
-    :source-card-id  su/IntGreaterThanZeroPlumatic
+    :source-card-id  su/IntGreaterThanZero
     s/Keyword        s/Any}
    (complement :source-table)
    "`:source-table` should be removed"))
@@ -89,11 +89,11 @@
 ;;; |                                       Resolving card__id -> source query                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private trim-sql-query :- su/NonBlankStringPlumatic
+(s/defn ^:private trim-sql-query :- su/NonBlankString
   "Native queries can have trailing SQL comments. This works when executed directly, but when we use the query in a
   nested query, we wrap it in another query, which can cause the last part of the query to be unintentionally
   commented out, causing it to fail. This function removes any trailing SQL comment."
-  [card-id :- su/IntGreaterThanZeroPlumatic, query-str :- su/NonBlankStringPlumatic]
+  [card-id :- su/IntGreaterThanZero, query-str :- su/NonBlankString]
   (let [trimmed-string (str/replace query-str #"--.*(\n|$)" "")]
     (if (= query-str trimmed-string)
       query-str
@@ -112,9 +112,9 @@
 (s/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
   "Return the source query info for Card with `card-id`. Pass true as the optional second arg `log?` to enable
   logging. (The circularity check calls this and will print more than desired)"
-  ([card-id :- su/IntGreaterThanZeroPlumatic]
+  ([card-id :- su/IntGreaterThanZero]
    (card-id->source-query-and-metadata card-id false))
-  ([card-id :- su/IntGreaterThanZeroPlumatic log? :- s/Bool]
+  ([card-id :- su/IntGreaterThanZero log? :- s/Bool]
    (let [;; todo: we need to cache this. We are running this in preprocess, compile, and then again
          card           (or (db/select-one Card :id card-id)
                             (throw (ex-info (tru "Card {0} does not exist." card-id)
@@ -137,8 +137,12 @@
 
                         native-query
                         ;; rename `:query` to `:native` because source queries have a slightly different shape
-                        (let [native-query (set/rename-keys native-query {:query :native})]
+                        (let [native-query (set/rename-keys native-query {:query :native})
+                              collection (:collection native-query)]
                           (cond-> native-query
+                            ;; MongoDB native  queries consist of a collection and a pipelne (query)
+                            collection (update :native (fn [pipeline] {:collection collection
+                                                                      :query pipeline}))
                             ;; trim trailing comments from SQL, but not other types of native queries
                             (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
                             (empty? template-tags)           (dissoc :template-tags)))
@@ -167,7 +171,7 @@
                                  persisted? sub-cached-field-refs)}
        dataset? (assoc :source-query/dataset? dataset?)))))
 
-(s/defn ^:private source-table-str->card-id :- su/IntGreaterThanZeroPlumatic
+(s/defn ^:private source-table-str->card-id :- su/IntGreaterThanZero
   [source-table-str :- mbql.s/source-table-card-id-regex]
   (when-let [[_ card-id-str] (re-find #"^card__(\d+)$" source-table-str)]
     (Integer/parseInt card-id-str)))
@@ -265,22 +269,22 @@
     (&match :guard (every-pred map? :database (comp integer? :database)))
     (recur (dissoc &match :database))))
 
-(s/defn ^:private extract-resolved-card-id :- {:card-id (s/maybe su/IntGreaterThanZeroPlumatic)
-                                               :query   su/MapPlumatic}
+(s/defn ^:private extract-resolved-card-id :- {:card-id (s/maybe su/IntGreaterThanZero)
+                                               :query   su/Map}
   "If the ID of the Card we've resolved (`:source-card-id`) was added by a previous step, add it
   to `:query` `:info` (so it can be included in the QueryExecution log), then return a map with the resolved
   `:card-id` and updated `:query`."
-  [query :- su/MapPlumatic]
+  [query :- su/Map]
   (let [card-id (get-in query [:query :source-card-id])]
     {:query   (cond-> query
                 card-id (update-in [:info :card-id] #(or % card-id)))
      :card-id card-id}))
 
-(s/defn ^:private resolve-all :- {:card-id (s/maybe su/IntGreaterThanZeroPlumatic)
-                                  :query   su/MapPlumatic}
+(s/defn ^:private resolve-all :- {:card-id (s/maybe su/IntGreaterThanZero)
+                                  :query   su/Map}
   "Recursively replace all Card ID source tables in `query` with resolved `:source-query` and `:source-metadata`. Since
   the `:database` is only useful for top-level source queries, we'll remove it from all other levels."
-  [query :- su/MapPlumatic]
+  [query :- su/Map]
   ;; if a `:source-card-id` is already in the query, remove it, so we don't pull user-supplied input up into `:info`
   ;; allowing someone to bypass permissions
   (-> (m/dissoc-in query [:query :source-card-id])
@@ -290,7 +294,7 @@
       remove-unneeded-database-ids
       extract-resolved-card-id))
 
-(s/defn ^:private resolve-card-id-source-tables* :- {:card-id (s/maybe su/IntGreaterThanZeroPlumatic)
+(s/defn ^:private resolve-card-id-source-tables* :- {:card-id (s/maybe su/IntGreaterThanZero)
                                                      :query   FullyResolvedQuery}
   "Resolve `card__n`-style `:source-tables` in `query`."
   [{inner-query :query, :as outer-query} :- mbql.s/Query]

@@ -47,7 +47,7 @@ describe("scenarios > dashboard > filters > location", () => {
   });
 
   it(`should work when set as the default filter`, () => {
-    setFilter("Location", "Dropdown");
+    setFilter("Location", "Is");
     cy.findByText("Select…").click();
     popover().contains("City").click();
 

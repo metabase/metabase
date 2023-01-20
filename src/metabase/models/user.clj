@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -16,7 +17,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as schema]
@@ -51,7 +52,7 @@
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
   (when locale
-    (assert (i18n/available-locale? locale)))
+    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   (merge
    insert-default-values
    user
@@ -82,20 +83,24 @@
 (defn- pre-update
   [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (when (some? superuser?)
-    (let [membership-exists? (db/exists? PermissionsGroupMembership
-                               :group_id (:id (perms-group/admin))
-                               :user_id  id)]
+  (let [in-admin-group?  (db/exists? PermissionsGroupMembership
+                           :group_id (:id (perms-group/admin))
+                           :user_id  id)]
+    ;; Do not let the last admin archive themselves
+    (when (and in-admin-group?
+               (false? active?))
+      (perms-group-membership/throw-if-last-admin!))
+    (when (some? superuser?)
       (cond
         (and superuser?
-             (not membership-exists?))
+             (not in-admin-group?))
         (db/insert! PermissionsGroupMembership
           :group_id (u/the-id (perms-group/admin))
           :user_id  id)
         ;; don't use [[db/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
-             membership-exists?)
+             in-admin-group?)
         (db/simple-delete! PermissionsGroupMembership
           :group_id (u/the-id (perms-group/admin))
           :user_id  id))))
@@ -103,7 +108,7 @@
   (when email
     (assert (u/email? email)))
   (when locale
-    (assert (i18n/available-locale? locale)))
+    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
   (when (false? active?)
     (db/delete! 'PulseChannelRecipient :user_id id))
@@ -170,7 +175,7 @@
 (def UserGroupMembership
   "Group Membership info of a User.
   In which :is_group_manager is only included if `advanced-permissions` is enabled."
-  {:id                                su/IntGreaterThanZeroPlumatic
+  {:id                                su/IntGreaterThanZero
    ;; is_group_manager only included if `advanced-permissions` is enabled
    (schema/optional-key :is_group_manager) schema/Bool})
 
@@ -195,11 +200,11 @@
           ;; Current User always gets readwrite perms for their Personal Collection and for its descendants! (1 DB Call)
           (map perms/collection-readwrite-path (collection/user->personal-collection-and-descendant-ids user-or-id))
           ;; include the other Perms entries for any Group this User is in (1 DB Call)
-          (map :object (db/query {:select [:p.object]
-                                  :from   [[:permissions_group_membership :pgm]]
-                                  :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
-                                           [:permissions :p]        [:= :p.group_id :pg.id]]
-                                  :where  [:= :pgm.user_id user-id]}))))))
+          (map :object (mdb.query/query {:select [:p.object]
+                                         :from   [[:permissions_group_membership :pgm]]
+                                         :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
+                                                  [:permissions :p]        [:= :p.group_id :pg.id]]
+                                         :where  [:= :pgm.user_id user-id]}))))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -269,23 +274,23 @@
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
   (su/with-api-error-message
-    {su/KeywordOrStringPlumatic schema/Any}
+    {su/KeywordOrString schema/Any}
     (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  {(schema/optional-key :first_name)       (schema/maybe su/NonBlankStringPlumatic)
-   (schema/optional-key :last_name)        (schema/maybe su/NonBlankStringPlumatic)
-   :email                                  su/EmailPlumatic
-   (schema/optional-key :password)         (schema/maybe su/NonBlankStringPlumatic)
+  {(schema/optional-key :first_name)       (schema/maybe su/NonBlankString)
+   (schema/optional-key :last_name)        (schema/maybe su/NonBlankString)
+   :email                                  su/Email
+   (schema/optional-key :password)         (schema/maybe su/NonBlankString)
    (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
    (schema/optional-key :google_auth)      schema/Bool
    (schema/optional-key :ldap_auth)        schema/Bool})
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
-  {:email      su/EmailPlumatic
-   :first_name (schema/maybe su/NonBlankStringPlumatic)
+  {:email      su/Email
+   :first_name (schema/maybe su/NonBlankString)
    schema/Any  schema/Any})
 
 (schema/defn ^:private insert-new-user!

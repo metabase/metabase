@@ -28,8 +28,8 @@
   [dashboard]
   (doseq [url (collect-urls dashboard)]
     (testing (format "\nURL = %s" (pr-str url))
-      (is (schema= {:name        su/NonBlankStringPlumatic
-                    :description su/NonBlankStringPlumatic
+      (is (schema= {:name        su/NonBlankString
+                    :description su/NonBlankString
                     s/Keyword    s/Any}
                    (mt/user-http-request :rasta :get 200 (format "automagic-dashboards/%s" (subs url 16))))))))
 

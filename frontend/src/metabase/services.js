@@ -119,9 +119,9 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  addcard: POST("/api/dashboard/:dashId/cards"),
-  removecard: DELETE("/api/dashboard/:dashId/cards"),
-  reposition_cards: PUT("/api/dashboard/:dashId/cards"),
+  addCard: POST("/api/dashboard/:dashId/cards"),
+  removeCard: DELETE("/api/dashboard/:dashId/cards"),
+  updateCards: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
@@ -465,3 +465,14 @@ function setParamsEndpoints(prefix) {
     prefix + "/dashboard/:dashId/params/:paramId/search/:query",
   );
 }
+
+export const ActionsApi = {
+  list: GET("/api/action"),
+  get: GET("/api/action/:id"),
+  create: POST("/api/action"),
+  update: PUT("/api/action/:id"),
+  prefetchValues: GET(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+  ),
+  execute: POST("/api/dashboard/:dashboardId/dashcard/:dashcardId/execute"),
+};

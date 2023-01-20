@@ -17,6 +17,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.automagic-dashboards.rules :as rules]
    [metabase.automagic-dashboards.visualization-macros :as visualization]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -48,7 +49,7 @@
 (s/defn ->field :- (s/maybe (mi/InstanceOf Field))
   "Return `Field` instance for a given ID or name in the context of root."
   [{{result-metadata :result_metadata} :source, :as root}
-   field-id-or-name-or-clause :- (s/cond-pre su/IntGreaterThanZeroPlumatic su/NonBlankStringPlumatic mbql.s/Field)]
+   field-id-or-name-or-clause :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString mbql.s/Field)]
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (filters/field-reference->id field-id-or-name-or-clause)
                      field-id-or-name-or-clause)]
@@ -220,8 +221,10 @@
 (def ^:private ^{:arglists '([card-or-question])} native-query?
   (comp #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
 
-(def ^:private ^{:arglists '([card-or-question])} source-question
-  (comp Card qp.util/query->source-card-id :dataset_query))
+(defn- source-question
+  [card-or-question]
+  (when-let [source-card-id (qp.util/query->source-card-id (:dataset_query card-or-question))]
+    (db/select-one Card :id source-card-id)))
 
 (defn- table-like?
   [card-or-question]
@@ -700,7 +703,7 @@
     (-> target field/table (assoc :link id))))
 
 (def ^:private ^{:arglists '([source])} source->engine
-  (comp :engine Database (some-fn :db_id :database_id)))
+  (comp :engine (partial db/select-one Database :id) (some-fn :db_id :database_id)))
 
 (defmulti
   ^{:private  true
@@ -1268,33 +1271,33 @@
 (defn- enhance-table-stats
   [tables]
   (when (not-empty tables)
-    (let [field-count (->> (db/query {:select   [:table_id [:%count.* "count"]]
-                                      :from     [Field]
-                                      :where    [:and [:in :table_id (map u/the-id tables)]
-                                                 [:= :active true]]
-                                      :group-by [:table_id]})
+    (let [field-count (->> (mdb.query/query {:select   [:table_id [:%count.* "count"]]
+                                             :from     [:metabase_field]
+                                             :where    [:and [:in :table_id (map u/the-id tables)]
+                                                        [:= :active true]]
+                                             :group-by [:table_id]})
                            (into {} (map (juxt :table_id :count))))
           list-like?  (->> (when-let [candidates (->> field-count
                                                       (filter (comp (partial >= 2) val))
                                                       (map key)
                                                       not-empty)]
-                             (db/query {:select   [:table_id]
-                                        :from     [Field]
-                                        :where    [:and [:in :table_id candidates]
-                                                   [:= :active true]
-                                                   [:or [:not= :semantic_type "type/PK"]
-                                                    [:= :semantic_type nil]]]
-                                        :group-by [:table_id]
-                                        :having   [:= :%count.* 1]}))
+                             (mdb.query/query {:select   [:table_id]
+                                               :from     [:metabase_field]
+                                               :where    [:and [:in :table_id candidates]
+                                                          [:= :active true]
+                                                          [:or [:not= :semantic_type "type/PK"]
+                                                           [:= :semantic_type nil]]]
+                                               :group-by [:table_id]
+                                               :having   [:= :%count.* 1]}))
                            (into #{} (map :table_id)))
           ;; Table comprised entierly of join keys
           link-table? (when (seq field-count)
-                        (->> (db/query {:select   [:table_id [:%count.* "count"]]
-                                        :from     [Field]
-                                        :where    [:and [:in :table_id (keys field-count)]
-                                                   [:= :active true]
-                                                   [:in :semantic_type ["type/PK" "type/FK"]]]
-                                        :group-by [:table_id]})
+                        (->> (mdb.query/query {:select   [:table_id [:%count.* "count"]]
+                                               :from     [:metabase_field]
+                                               :where    [:and [:in :table_id (keys field-count)]
+                                                          [:= :active true]
+                                                          [:in :semantic_type ["type/PK" "type/FK"]]]
+                                               :group-by [:table_id]})
                              (filter (fn [{:keys [table_id count]}]
                                        (= count (field-count table_id))))
                              (into #{} (map :table_id))))]

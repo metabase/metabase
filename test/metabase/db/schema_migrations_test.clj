@@ -15,6 +15,7 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.db.setup :as db.setup]
    [metabase.driver :as driver]
@@ -25,8 +26,6 @@
             Database
             Dimension
             Field
-            Permissions
-            PermissionsGroup
             Pulse
             Setting
             Table
@@ -42,13 +41,15 @@
    (java.sql Connection)
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest rollback-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
     ;; using test-migrations to excercise all drivers
     (impl/test-migrations [1] [_]
-      (let [{:keys [db-type data-source]} mdb.connection/*application-db*
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
             migrate!    (partial db.setup/migrate! db-type data-source)
             get-last-id (fn []
                           (-> {:connection (.getConnection data-source)}
@@ -350,7 +351,7 @@
                                               :updated_at :%now})]
           (migrate!)
           (is (= [{:engine "bigquery-cloud-sdk"}]
-                 (db/query {:select [:engine], :from [Database], :where [:= :id (u/the-id db)]}))))
+                 (mdb.query/query {:select [:engine], :from [:metabase_database], :where [:= :id (u/the-id db)]}))))
         (finally
           (db/simple-delete! Database :name "Legacy BigQuery driver DB"))))))
 
@@ -359,25 +360,26 @@
     (doseq [existing-entry? [true false]]
       (testing (format "Existing root entry? %s" (pr-str existing-entry?))
         (impl/test-migrations "v43.00-006" [migrate!]
-          (let [[{admin-group-id :id}] (db/query {:select [:id], :from [PermissionsGroup],
-                                                  :where [:= :name perms-group/admin-group-name]})]
+          (let [[{admin-group-id :id}] (mdb.query/query {:select [:id]
+                                                         :from   [:permissions_group]
+                                                         :where  [:= :name perms-group/admin-group-name]})]
             (is (integer? admin-group-id))
             (when existing-entry?
-              (db/execute! {:insert-into Permissions
+              (db/execute! {:insert-into :permissions
                             :values      [{:object   "/"
                                            :group_id admin-group-id}]}))
             (migrate!)
             (is (= [{:object "/"}]
-                   (db/query {:select    [:object]
-                              :from      [Permissions]
-                              :where     [:= :group_id admin-group-id]})))))))))
+                   (mdb.query/query {:select [:object]
+                                     :from   [:permissions]
+                                     :where  [:= :group_id admin-group-id]})))))))))
 
 (deftest create-database-entries-for-all-users-group-test
   (testing "Migration v43.00-007: create DB entries for the 'All Users' permissions group"
     (doseq [with-existing-data-migration? [true false]]
       (testing (format "With existing data migration? %s" (pr-str with-existing-data-migration?))
         (impl/test-migrations "v43.00-007" [migrate!]
-          (db/execute! {:insert-into Database
+          (db/execute! {:insert-into :metabase_database
                         :values      [{:name       "My DB"
                                        :engine     "h2"
                                        :created_at :%now
@@ -391,30 +393,30 @@
           (is (= (if with-existing-data-migration?
                    []
                    [{:object "/db/1/"}])
-                 (db/query {:select    [:p.object]
-                            :from      [[Permissions :p]]
-                            :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
-                            :where     [:= :pg.name perms-group/all-users-group-name]}))))))))
+                 (mdb.query/query {:select    [:p.object]
+                                   :from      [[:permissions :p]]
+                                   :left-join [[:permissions_group :pg] [:= :p.group_id :pg.id]]
+                                   :where     [:= :pg.name perms-group/all-users-group-name]}))))))))
 
 (deftest migrate-legacy-site-url-setting-test
   (testing "Migration v43.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
     (impl/test-migrations ["v43.00-008"] [migrate!]
-      (db/execute! {:insert-into Setting
+      (db/execute! {:insert-into :setting
                     :values      [{:key   "-site-url"
                                    :value "http://localhost:3000/"}]})
       (migrate!)
       (is (= [{:key "site-url", :value "http://localhost:3000"}]
-             (db/query {:select [:*], :from [Setting], :where [:= :key "site-url"]}))))))
+             (mdb.query/query {:select [:*], :from [:setting], :where [:= :key "site-url"]}))))))
 
 (deftest site-url-ensure-protocol-test
   (testing "Migration v43.00-009: ensure `site-url` Setting starts with a protocol (#20403)"
     (impl/test-migrations ["v43.00-009"] [migrate!]
-      (db/execute! {:insert-into Setting
+      (db/execute! {:insert-into :setting
                     :values      [{:key   "site-url"
                                    :value "localhost:3000"}]})
       (migrate!)
       (is (= [{:key "site-url", :value "http://localhost:3000"}]
-             (db/query {:select [:*], :from [Setting], :where [:= :key "site-url"]}))))))
+             (mdb.query/query {:select [:*], :from [:setting], :where [:= :key "site-url"]}))))))
 
 (defn- add-legacy-data-migration-entry! [migration-name]
   (db/execute! {:insert-into :data_migrations
@@ -427,7 +429,7 @@
 (deftest add-migrated-collections-test
   (testing "Migrations v43.00-014 - v43.00-019"
     (letfn [(create-user! []
-              (db/execute! {:insert-into User
+              (db/execute! {:insert-into :core_user
                             :values      [{:first_name  "Cam"
                                            :last_name   "Era"
                                            :email       "cam@era.com"
@@ -438,7 +440,7 @@
                 :collection-name  "Migrated Dashboards"
                 :create-instance! (fn []
                                     (create-user!)
-                                    (db/execute! {:insert-into Dashboard
+                                    (db/execute! {:insert-into :report_dashboard
                                                   :values      [{:name          "My Dashboard"
                                                                  :created_at    :%now
                                                                  :updated_at    :%now
@@ -449,7 +451,7 @@
                 :collection-name  "Migrated Pulses"
                 :create-instance! (fn []
                                     (create-user!)
-                                    (db/execute! {:insert-into Pulse
+                                    (db/execute! {:insert-into :pulse
                                                   :values      [{:name          "My Pulse"
                                                                  :created_at    :%now
                                                                  :updated_at    :%now
@@ -460,13 +462,13 @@
                 :collection-name  "Migrated Questions"
                 :create-instance! (fn []
                                     (create-user!)
-                                    (db/execute! {:insert-into Database
+                                    (db/execute! {:insert-into :metabase_database
                                                   :values      [{:name       "My DB"
                                                                  :engine     "h2"
                                                                  :details    "{}"
                                                                  :created_at :%now
                                                                  :updated_at :%now}]})
-                                    (db/execute! {:insert-into Card
+                                    (db/execute! {:insert-into :report_card
                                                   :values      [{:name                   "My Saved Question"
                                                                  :created_at             :%now
                                                                  :updated_at             :%now
@@ -475,12 +477,17 @@
                                                                  :dataset_query          "{}"
                                                                  :visualization_settings "{}"
                                                                  :database_id            1
-                                                                 :collection_id          nil}]}))}]]
+                                                                 :collection_id          nil}]}))}]
+
+              :let [table-name-keyword (u/prog1 (:table model)
+                                         ;; once we switch to Toucan 2 this will fail and make this easier to
+                                         ;; fix
+                                         (assert (keyword? <>)))]]
         (testing (format "create %s Collection for %s in the Root Collection"
                          (pr-str collection-name)
                          (name model))
           (letfn [(collections []
-                    (db/query {:select [:name :slug], :from [Collection]}))
+                    (mdb.query/query {:select [:name :slug], :from [:collection]}))
                   (collection-slug []
                     (-> collection-name
                         str/lower-case
@@ -492,7 +499,7 @@
                      (collections)))
               (testing "Instance should be moved new Collection"
                 (is (= [{:collection_id 1}]
-                       (db/query {:select [:collection_id], :from [model]})))))
+                       (mdb.query/query {:select [:collection_id], :from [table-name-keyword]})))))
             (testing "\nSkip if\n"
               (testing "There are no instances not in a Collection\n"
                 (impl/test-migrations ["v43.00-014" "v43.00-019"] [migrate!]
@@ -508,28 +515,31 @@
                          (collections)))
                   (testing "Instance should NOT be moved"
                     (is (= [{:collection_id nil}]
-                           (db/query {:select [:collection_id], :from [model]}))))))
+                           (mdb.query/query {:select [:collection_id], :from [table-name-keyword]}))))))
               (testing "Migrated Collection already exists\n"
                 (impl/test-migrations ["v43.00-014" "v43.00-019"] [migrate!]
                   (create-instance!)
-                  (db/execute! {:insert-into Collection
+                  (db/execute! {:insert-into :collection
                                 :values      [{:name collection-name, :slug "existing_collection", :color "#abc123"}]})
                   (migrate!)
                   (is (= [{:name collection-name, :slug "existing_collection"}]
                          (collections)))
                   (testing "Collection should not have been created but instance should still be moved"
                     (is (= [{:collection_id 1}]
-                           (db/query {:select [:collection_id], :from [model]})))))))))))))
+                           (mdb.query/query {:select [:collection_id], :from [table-name-keyword]})))))))))))))
 
 (deftest grant-all-users-root-collection-readwrite-perms-test
   (testing "Migration v43.00-020: create a Root Collection entry for All Users"
     (letfn [(all-users-group-id []
-              (let [[{id :id}] (db/query {:select [:id], :from [PermissionsGroup],
-                                          :where [:= :name perms-group/all-users-group-name]})]
+              (let [[{id :id}] (mdb.query/query {:select [:id]
+                                                 :from   [:permissions_group]
+                                                 :where  [:= :name perms-group/all-users-group-name]})]
                 (is (integer? id))
                 id))
             (all-user-perms []
-              (db/query {:select [:object], :from [Permissions], :where [:= :group_id (all-users-group-id)]}))]
+              (mdb.query/query {:select [:object]
+                                :from   [:permissions]
+                                :where  [:= :group_id (all-users-group-id)]}))]
       (impl/test-migrations ["v43.00-020" "v43.00-021"] [migrate!]
         (is (= []
                (all-user-perms)))
@@ -546,7 +556,7 @@
 
       (testing "entry already exists: don't create an entry"
         (impl/test-migrations ["v43.00-020" "v43.00-021"] [migrate!]
-          (db/execute! {:insert-into Permissions
+          (db/execute! {:insert-into :permissions
                         :values      [{:object   "/collection/root/"
                                        :group_id (all-users-group-id)}]})
           (migrate!)
@@ -556,7 +566,7 @@
 (deftest clear-ldap-user-passwords-test
   (testing "Migration v43.00-029: clear password and password_salt for LDAP users"
     (impl/test-migrations ["v43.00-029"] [migrate!]
-      (db/execute! {:insert-into User
+      (db/execute! {:insert-into :core_user
                     :values      [{:first_name    "Cam"
                                    :last_name     "Era"
                                    :email         "cam@era.com"
@@ -574,12 +584,14 @@
       (migrate!)
       (is (= [{:first_name "Cam", :password "password", :password_salt "and pepper", :ldap_auth false}
               {:first_name "LDAP Cam", :password nil, :password_salt nil, :ldap_auth true}]
-             (db/query {:select [:first_name :password :password_salt :ldap_auth], :from [User], :order-by [[:id :asc]]}))))))
+             (mdb.query/query {:select   [:first_name :password :password_salt :ldap_auth]
+                               :from     [:core_user]
+                               :order-by [[:id :asc]]}))))))
 
 (deftest grant-download-perms-test
   (testing "Migration v43.00-042: grant download permissions to All Users permissions group"
     (impl/test-migrations ["v43.00-042" "v43.00-043"] [migrate!]
-      (db/execute! {:insert-into Database
+      (db/execute! {:insert-into :metabase_database
                     :values      [{:name       "My DB"
                                    :engine     "h2"
                                    :created_at :%now
@@ -587,28 +599,28 @@
                                    :details    "{}"}]})
       (migrate!)
       (is (= [{:object "/collection/root/"} {:object "/download/db/1/"}]
-             (db/query {:select    [:p.object]
-                        :from      [[Permissions :p]]
-                        :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
-                        :where     [:= :pg.name perms-group/all-users-group-name]}))))))
+             (mdb.query/query {:select    [:p.object]
+                               :from      [[:permissions :p]]
+                               :left-join [[:permissions_group :pg] [:= :p.group_id :pg.id]]
+                               :where     [:= :pg.name perms-group/all-users-group-name]}))))))
 
 (deftest grant-subscription-permission-test
   (testing "Migration v43.00-047: Grant the 'All Users' Group permissions to create/edit subscriptions and alerts"
     (impl/test-migrations ["v43.00-047" "v43.00-048"] [migrate!]
-        (migrate!)
-        (is (= #{"All Users"}
-               (set (map :name (db/query {:select    [:pg.name]
-                                          :from      [[Permissions :p]]
-                                          :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
-                                          :where     [:= :p.object "/general/subscription/"]}))))))))
+      (migrate!)
+      (is (= #{"All Users"}
+             (set (map :name (mdb.query/query {:select    [:pg.name]
+                                               :from      [[:permissions :p]]
+                                               :left-join [[:permissions_group :pg] [:= :p.group_id :pg.id]]
+                                               :where     [:= :p.object "/general/subscription/"]}))))))))
 
 (deftest rename-general-permissions-to-application-test
   (testing "Migration v43.00-057: Rename general permissions to application permissions"
     (impl/test-migrations ["v43.00-057" "v43.00-058"] [migrate!]
-      (letfn [(get-perms [object] (set (map :name (db/query {:select    [:pg.name]
-                                                             :from      [[Permissions :p]]
-                                                             :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
-                                                             :where     [:= :p.object object]}))))]
+      (letfn [(get-perms [object] (set (map :name (mdb.query/query {:select    [:pg.name]
+                                                                    :from      [[:permissions :p]]
+                                                                    :left-join [[:permissions_group :pg] [:= :p.group_id :pg.id]]
+                                                                    :where     [:= :p.object object]}))))]
         (is (= #{"All Users"} (get-perms "/general/subscription/")))
         (migrate!)
         (is (= #{"All Users"} (get-perms "/application/subscription/")))))))
@@ -664,48 +676,49 @@
 (deftest grant-all-users-root-snippets-collection-readwrite-perms-test
   (letfn [(perms-path [] "/collection/namespace/snippets/root/")
           (all-users-group-id []
-            (-> (db/query {:select [:id], :from [PermissionsGroup],
-                           :where [:= :name perms-group/all-users-group-name]})
+            (-> (mdb.query/query {:select [:id]
+                                  :from   [:permissions_group],
+                                  :where  [:= :name perms-group/all-users-group-name]})
                 first
                 :id))
-          (get-perms [] (map :name (db/query {:select    [:pg.name]
-                                              :from      [[Permissions :p]]
-                                              :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
-                                              :where     [:= :p.object (perms-path)]})))]
+          (get-perms [] (map :name (mdb.query/query {:select    [:pg.name]
+                                                     :from      [[:permissions :p]]
+                                                     :left-join [[:permissions_group :pg] [:= :p.group_id :pg.id]]
+                                                     :where     [:= :p.object (perms-path)]})))]
     (testing "Migration v44.00-033: create a Root Snippets Collection entry for All Users\n"
       (testing "Should run for new OSS instances"
         (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
-                              (migrate!)
-                              (is (= ["All Users"] (get-perms)))))
+          (migrate!)
+          (is (= ["All Users"] (get-perms)))))
 
       (testing "Should run for new EE instances"
         (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
-                              (db/simple-insert! Setting {:key "premium-embedding-token"
-                                                          :value "fake-key"})
-                              (migrate!)
-                              (is (= ["All Users"] (get-perms)))))
+          (db/simple-insert! Setting {:key   "premium-embedding-token"
+                                      :value "fake-key"})
+          (migrate!)
+          (is (= ["All Users"] (get-perms)))))
 
       (testing "Should not run for existing OSS instances"
         (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
-                              (create-raw-user! "ngoc@metabase.com")
-                              (migrate!)
-                              (is (= [] (get-perms)))))
+          (create-raw-user! "ngoc@metabase.com")
+          (migrate!)
+          (is (= [] (get-perms)))))
 
       (testing "Should not run for existing EE instances"
         (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
-                              (create-raw-user! "ngoc@metabase.com")
-                              (db/simple-insert! Setting {:key "premium-embedding-token"
-                                                          :value "fake-key"})
-                              (migrate!)
-                              (is (= [] (get-perms)))))
+          (create-raw-user! "ngoc@metabase.com")
+          (db/simple-insert! Setting {:key   "premium-embedding-token"
+                                      :value "fake-key"})
+          (migrate!)
+          (is (= [] (get-perms)))))
 
       (testing "Should not fail if permissions already exist"
         (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
-                              (db/execute! {:insert-into Permissions
-                                            :values      [{:object   (perms-path)
-                                                           :group_id (all-users-group-id)}]})
-                              (migrate!)
-                              (is (= ["All Users"] (get-perms))))))))
+          (db/execute! {:insert-into :permissions
+                        :values      [{:object   (perms-path)
+                                       :group_id (all-users-group-id)}]})
+          (migrate!)
+          (is (= ["All Users"] (get-perms))))))))
 
 (deftest make-database-details-not-null-test
   (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"

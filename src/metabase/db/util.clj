@@ -18,7 +18,7 @@
 (def ^:private NamespacedKeyword
   (s/constrained s/Keyword (comp seq namespace) "namespaced keyword"))
 
-(s/defn ^:private type-keyword->descendants :- (su/non-empty #{su/NonBlankStringPlumatic})
+(s/defn ^:private type-keyword->descendants :- (su/non-empty #{su/NonBlankString})
   "Return a set of descendents of Metabase `type-keyword`. This includes `type-keyword` itself, so the set will always
   have at least one element.
 

@@ -195,11 +195,11 @@
   (.getName (io/file path)))
 
 (defn- unresolved-names->string
-  ([entity]
-   (unresolved-names->string entity nil))
-  ([entity insert-id]
+  ([model]
+   (unresolved-names->string model nil))
+  ([model insert-id]
    (str
-    (when-let [nm (:name entity)] (str "\"" nm "\""))
+    (when-let [nm (:name model)] (str "\"" nm "\""))
     (when insert-id (format " (inserted as ID %d) " insert-id))
     "missing:\n  "
     (str/join
@@ -207,7 +207,7 @@
      (map
       (fn [[k v]]
         (format "at %s -> %s" (str/join "/" v) k))
-      (::unresolved-names entity))))))
+      (::unresolved-names model))))))
 
 (defmulti load
   "Load an entity of type `model` stored at `path` in the context `context`.

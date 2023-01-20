@@ -1,5 +1,5 @@
 import React from "react";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { delay } from "metabase/lib/promise";
 
@@ -23,13 +23,14 @@ describe("Visualization", () => {
 
   describe("scalar", () => {
     it("should render", async () => {
-      const { container } = await renderViz([
+      await renderViz([
         {
           card: { display: "scalar" },
           data: { rows: [[1]], cols: [NumberColumn({ name: "Count" })] },
         },
       ]);
-      expect(container.querySelector("h1").textContent).toEqual("1");
+
+      expect(screen.getByTestId("scalar-value")).toHaveTextContent("1");
     });
   });
 

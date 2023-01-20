@@ -55,12 +55,12 @@
         (is (schema= SessionResponse
                      response))
         (testing "Login should record a LoginHistory item"
-          (is (schema= {:id                 su/IntGreaterThanZeroPlumatic
+          (is (schema= {:id                 su/IntGreaterThanZero
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
                         :device_id          client/UUIDString
-                        :device_description su/NonBlankStringPlumatic
-                        :ip_address         su/NonBlankStringPlumatic
+                        :device_description su/NonBlankString
+                        :ip_address         su/NonBlankString
                         :active             (s/eq true)
                         s/Keyword s/Any}
                        (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
@@ -210,8 +210,8 @@
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
                         :device_id          client/UUIDString
-                        :device_description su/NonBlankStringPlumatic
-                        :ip_address         su/NonBlankStringPlumatic
+                        :device_description su/NonBlankString
+                        :ip_address         su/NonBlankString
                         :active             (s/eq false)
                         s/Keyword           s/Any}
                        (db/select-one LoginHistory :id login-history-id))))))))
@@ -440,9 +440,9 @@
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
         (mt/with-temp User [_ {:email    "ngoc@metabase.com"
                                :password "securedpassword"}]
-            (is (schema= SessionResponse
-                         (mt/client :post 200 "session" {:username "ngoc@metabase.com"
-                                                         :password "securedpassword"}))))))
+          (is (schema= SessionResponse
+                       (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                       :password "securedpassword"}))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try
@@ -469,8 +469,9 @@
           [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (schema= SessionResponse
                        (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
-          (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
-            (is (= true (db/exists? PermissionsGroupMembership :group_id (:id group) (:user_id user-id))))))))))
+          (testing "PermissionsGroupMembership should exist"
+            (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
+              (is (db/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"

@@ -93,7 +93,7 @@
      (when-let [result-metadata (db/select-one-field :result_metadata Card :id card-id)]
        (check-columns-match-table table-id result-metadata))))
 
-  ([table-id :- su/IntGreaterThanZeroPlumatic result-metadata-columns]
+  ([table-id :- su/IntGreaterThanZero result-metadata-columns]
    ;; prevent circular refs
    (classloader/require 'metabase.query-processor)
    (let [table-cols (table-field-names->cols table-id)]
@@ -146,7 +146,7 @@
 
 (defn- pre-update [{:keys [id], :as updates}]
   (u/prog1 updates
-    (let [original (GroupTableAccessPolicy id)
+    (let [original (db/select-one GroupTableAccessPolicy :id id)
           updated  (merge original updates)]
       (when-not (= (:table_id original) (:table_id updated))
         (throw (ex-info (tru "You cannot change the Table ID of a GTAP once it has been created.")

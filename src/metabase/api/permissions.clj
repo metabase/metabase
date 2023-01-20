@@ -4,9 +4,13 @@
    [clojure.spec.alpha :as s]
    [compojure.core :refer [DELETE GET POST PUT]]
    [honeysql.helpers :as hh]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.permission-graph :as api.permission-graph]
+   [metabase.db.query :as mdb.query]
    [metabase.models :refer [PermissionsGroupMembership User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -60,21 +64,26 @@
   response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the
   `:sandboxes` feature flag is not present."
   [:as {body :body}]
-  {body su/MapPlumatic}
+  {body su/Map}
   (api/check-superuser)
-  (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/data-permissions-graph body)]
-    (when (= graph :clojure.spec.alpha/invalid)
-      (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
-                           (s/explain-str ::api.permission-graph/data-permissions-graph body))
-                      {:status-code 400
-                       :error       (s/explain-data ::api.permission-graph/data-permissions-graph body)})))
+  (let [graph (mc/decode api.permission-graph/data-permissions-graph
+                         body
+                         (mtx/transformer
+                          mtx/string-transformer
+                          (mtx/transformer {:name :perm-graph})))]
+    (when-not (mc/validate api.permission-graph/data-permissions-graph graph)
+      (let [explained (mc/explain api.permission-graph/data-permissions-graph body)]
+        (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
+                             (pr-str explained))
+                        {:status-code 400
+                         :error explained
+                         :humanized (me/humanize explained)}))))
     (db/transaction
       (perms/update-data-perms-graph! (dissoc graph :sandboxes))
       (if-let [sandboxes (:sandboxes body)]
        (let [new-sandboxes (upsert-sandboxes! sandboxes)]
          (assoc (perms/data-perms-graph) :sandboxes new-sandboxes))
        (perms/data-perms-graph)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
@@ -84,15 +93,15 @@
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
   groups.)"
   []
-  (let [results (db/query
-                  {:select    [[:pgm.group_id :group_id] [:%count.pgm.id :members]]
-                   :from      [[:permissions_group_membership :pgm]]
-                   :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
-                   :where     [:= :user.is_active true]
-                   :group-by  [:pgm.group_id]})]
+  (let [results (mdb.query/query
+                 {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
+                  :from      [[:permissions_group_membership :pgm]]
+                  :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
+                  :where     [:= :user.is_active true]
+                  :group-by  [:pgm.group_id]})]
     (zipmap
-      (map :group_id results)
-      (map :members results))))
+     (map :group_id results)
+     (map :members results))))
 
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`."
@@ -145,7 +154,7 @@
 (api/defendpoint-schema POST "/group"
   "Create a new `PermissionsGroup`."
   [:as {{:keys [name]} :body}]
-  {name su/NonBlankStringPlumatic}
+  {name su/NonBlankString}
   (api/check-superuser)
   (db/insert! PermissionsGroup
     :name name))
@@ -154,7 +163,7 @@
 (api/defendpoint-schema PUT "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
   [group-id :as {{:keys [name]} :body}]
-  {name su/NonBlankStringPlumatic}
+  {name su/NonBlankString}
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
   (db/update! PermissionsGroup group-id
@@ -183,8 +192,7 @@
                  :is_group_manager boolean}]}"
   []
   (validation/check-group-manager)
-  (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id :is_group_manager]
-                                 :group_id :user_id :is_group_manager]
+  (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
                                 (cond-> {}
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
@@ -199,8 +207,8 @@
 (api/defendpoint-schema POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [:as {{:keys [group_id user_id is_group_manager]} :body}]
-  {group_id         su/IntGreaterThanZeroPlumatic
-   user_id          su/IntGreaterThanZeroPlumatic
+  {group_id         su/IntGreaterThanZero
+   user_id          su/IntGreaterThanZero
    is_group_manager (schema.core/maybe schema.core/Bool)}
   (let [is_group_manager (boolean is_group_manager)]
     (validation/check-manager-of-group group_id)
@@ -239,10 +247,11 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/membership/:group-id/clear"
-  "Remove all members from a `PermissionsGroup`."
+  "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [group-id]
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
+  (api/check-400 (not= group-id (u/the-id (perms-group/admin))))
   (db/delete! PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
@@ -275,7 +284,7 @@
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
   [:as {body :body}]
-  {body su/MapPlumatic}
+  {body su/Map}
   (api/check-superuser)
   (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/execution-permissions-graph body)]
     (when (= graph :clojure.spec.alpha/invalid)

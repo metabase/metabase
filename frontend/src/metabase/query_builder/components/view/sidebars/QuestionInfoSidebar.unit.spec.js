@@ -20,6 +20,11 @@ import Question from "metabase-lib/Question";
 
 import { QuestionInfoSidebar } from "./QuestionInfoSidebar";
 
+// eslint-disable-next-line react/display-name, react/prop-types
+jest.mock("metabase/core/components/Link", () => ({ to, ...props }) => (
+  <a {...props} href={to} />
+));
+
 const BASE_QUESTION = {
   id: 1,
   name: "Q1",
@@ -117,7 +122,7 @@ describe("QuestionInfoSidebar", () => {
       describe(type, () => {
         it("displays description", async () => {
           await setup({ question: getObject({ description: "Foo bar" }) });
-          expect(screen.queryByText("Foo bar")).toBeInTheDocument();
+          expect(screen.getByText("Foo bar")).toBeInTheDocument();
         });
       });
     });
@@ -140,7 +145,7 @@ describe("QuestionInfoSidebar", () => {
 
       it("is shown if caching is enabled", async () => {
         await setup({ question: getQuestion({ cache_ttl: 2 }) });
-        expect(screen.queryByText("Cache Configuration")).toBeInTheDocument();
+        expect(screen.getByText("Cache Configuration")).toBeInTheDocument();
       });
 
       it("is hidden if caching is disabled", async () => {
@@ -164,7 +169,24 @@ describe("QuestionInfoSidebar", () => {
 
     it("should show verification badge if verified", async () => {
       await setup({ question: getQuestion() });
-      expect(screen.queryByText(/verified this/)).toBeInTheDocument();
+      expect(screen.getByText(/verified this/)).toBeInTheDocument();
+    });
+  });
+
+  describe("model detail link", () => {
+    it("is shown for models", async () => {
+      const model = getDataset();
+      await setup({ question: model });
+
+      const link = screen.getByText("Model details");
+
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", `${model.getUrl()}/detail`);
+    });
+
+    it("isn't shown for questions", async () => {
+      await setup({ question: getQuestion() });
+      expect(screen.queryByText("Model details")).not.toBeInTheDocument();
     });
   });
 
@@ -183,9 +205,7 @@ describe("QuestionInfoSidebar", () => {
       await setup({
         question: getQuestion({ description: null, can_write: false }),
       });
-      expect(
-        screen.queryByPlaceholderText("No description"),
-      ).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("No description")).toBeInTheDocument();
       expect(screen.queryByPlaceholderText("No description")).toBeDisabled();
     });
   });

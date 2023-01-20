@@ -1,31 +1,48 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import moment from "moment-timezone";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import {
-  DEFAULT_DATE_STYLE,
-  DEFAULT_TIME_STYLE,
-} from "metabase/lib/formatting/datetime-utils";
+  default_date_style,
+  default_time_style,
+} from "cljs/metabase.shared.formatting.constants";
 
 import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 
-describe("Collections BaseItemsTable", () => {
-  const timestamp = "2021-06-03T19:46:52.128";
+// eslint-disable-next-line react/display-name, react/prop-types
+jest.mock("metabase/core/components/Link", () => ({ to, ...props }) => (
+  <a {...props} href={to} />
+));
 
-  const ITEM = {
-    id: 1,
-    model: "dashboard",
-    name: "Test Dashboard",
+const timestamp = "2021-06-03T19:46:52.128";
+
+function getCollectionItem({
+  id = 1,
+  model = "dashboard",
+  name = "My Item",
+  icon = "dashboard",
+  url = "/dashboard/1",
+  ...rest
+} = {}) {
+  return {
     "last-edit-info": {
       id: 1,
       first_name: "John",
       last_name: "Doe",
-      timestamp: timestamp,
+      timestamp,
     },
-    getIcon: () => ({ name: "dashboard" }),
-    getUrl: () => "/dashboard/1",
+    ...rest,
+    id,
+    model,
+    name,
+    getIcon: () => icon,
+    getUrl: () => url,
   };
+}
+
+describe("Collections BaseItemsTable", () => {
+  const ITEM = getCollectionItem();
 
   function setup({ items = [ITEM], ...props } = {}) {
     return renderWithProviders(
@@ -40,22 +57,45 @@ describe("Collections BaseItemsTable", () => {
   }
 
   it("displays item data", () => {
-    const { getByText } = setup();
+    setup();
     const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
 
-    expect(getByText(ITEM.name)).toBeInTheDocument();
-    expect(getByText("John Doe")).toBeInTheDocument();
-    expect(getByText(lastEditedAt)).toBeInTheDocument();
+    expect(screen.getByText(ITEM.name)).toBeInTheDocument();
+    expect(screen.getByText("John Doe")).toBeInTheDocument();
+    expect(screen.getByText(lastEditedAt)).toBeInTheDocument();
   });
 
   it("displays last edit time on hover", () => {
-    const { getByText, getByRole } = setup();
+    setup();
     const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
 
-    userEvent.hover(getByText(lastEditedAt));
+    userEvent.hover(screen.getByText(lastEditedAt));
 
-    expect(getByRole("tooltip")).toHaveTextContent(
-      moment(timestamp).format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
+    expect(screen.getByRole("tooltip")).toHaveTextContent(
+      moment(timestamp).format(`${default_date_style}, ${default_time_style}`),
     );
+  });
+
+  it("doesn't show model detail page link", () => {
+    setup();
+    expect(screen.queryByTestId("model-detail-link")).not.toBeInTheDocument();
+  });
+
+  describe("models", () => {
+    const model = getCollectionItem({
+      id: 1,
+      name: "Order",
+      model: "dataset",
+      url: "/model/1",
+    });
+
+    it("shows model detail page link", () => {
+      setup({ items: [model] });
+      expect(screen.getByTestId("model-detail-link")).toBeInTheDocument();
+      expect(screen.getByTestId("model-detail-link")).toHaveAttribute(
+        "href",
+        "/model/1-order/detail",
+      );
+    });
   });
 });

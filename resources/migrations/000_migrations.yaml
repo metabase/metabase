@@ -13889,6 +13889,61 @@ databaseChangeLog:
             constraintName: fk_app_ref_dashboard_id
             onDelete: SET NULL
 
+  - changeSet:
+      id: v46.00-040
+      author: tsmacdonald
+      comment: Added 0.46.0 -- Bump default dashcard size to 4x4
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+            defaultValue: 4
+
+  - changeSet:
+      id: v46.00-041
+      author: tsmacdonald
+      comment: Added 0.46.0 -- Bump default dashcard size to 4x4
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+            defaultValue: 4
+
+  - changeSet:
+      id: v46.00-042
+      author: tsmacdonald
+      comment: Added 0.46.0 -- index query_execution.executor_id
+      changes:
+        - createIndex:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: executor_id
+            indexName: idx_query_execution_executor_id
+
+  - changeSet:
+      id: v46.00-043
+      author: tsmacdonald
+      comment: Added 0.46.0 -- index query_execution.context
+      changes:
+        - createIndex:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: context
+            indexName: idx_query_execution_context
+
+  - changeSet:
+      id: v46.00-057
+      author: dpsutton
+      comment: Added 0.46.0 -- parameter_card.parameter_id long enough to hold a uuid
+      changes:
+        - modifyDataType:
+            tableName: parameter_card
+            columnName: parameter_id
+            newDataType: varchar(36)
+      rollback: #nothing to do, char(32) or char(36) are equivalent
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

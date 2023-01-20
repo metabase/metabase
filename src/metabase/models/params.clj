@@ -23,14 +23,14 @@
 (defn assert-valid-parameters
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
-  (when (s/check (s/maybe [su/ParameterPlumatic]) parameters)
+  (when (s/check (s/maybe [su/Parameter]) parameters)
     (throw (ex-info (tru ":parameters must be a sequence of maps with :id and :type keys")
                     {:parameters parameters}))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameter_mappings]}]
-  (when (s/check (s/maybe [su/ParameterMappingPlumatic]) parameter_mappings)
+  (when (s/check (s/maybe [su/ParameterMapping]) parameter_mappings)
     (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
                     {:parameter_mappings parameter_mappings}))))
 
@@ -61,20 +61,20 @@
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
 
     (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
-  [[_ tag] dashcard]
-  (get-in dashcard [:card :dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
+  [[_ tag] card]
+  (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
 (s/defn param-target->field-clause :- (s/maybe mbql.s/field)
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
-  [target dashcard]
+  [target card]
   (let [target (mbql.normalize/normalize-tokens target :ignore-path)]
     (when (mbql.u/is-clause? :dimension target)
       (let [[_ dimension] target]
         (try
           (unwrap-field-clause
            (if (mbql.u/is-clause? :template-tag dimension)
-             (template-tag->field-form dimension dashcard)
+             (template-tag->field-form dimension card)
              dimension))
           (catch Throwable e
             (log/error e (tru "Could not find matching Field ID for target:") target)))))))
@@ -153,7 +153,7 @@
   "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [field-ids :- (s/maybe #{su/IntGreaterThanZeroPlumatic})]
+  [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq field-ids)
     (m/index-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
                         (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
@@ -182,7 +182,7 @@
   [dashboard]
   (when-let [fields (seq (for [dashcard (:ordered_cards dashboard)
                                param    (:parameter_mappings dashcard)
-                               :let     [field-clause (param-target->field-clause (:target param) dashcard)]
+                               :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
                                :when    field-clause]
                            field-clause))]
     (set fields)))
@@ -198,7 +198,7 @@
    (for [{card :card} (:ordered_cards dashboard)]
      (card->template-tag-field-ids card))))
 
-(s/defn dashboard->param-field-ids :- #{su/IntGreaterThanZeroPlumatic}
+(s/defn dashboard->param-field-ids :- #{su/IntGreaterThanZero}
   "Return a set of Field IDs referenced by parameters in Cards in this `dashboard`, or `nil` if none are referenced. This
   also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters."
   [dashboard]
@@ -225,7 +225,7 @@
              :when                      field]
          field)))
 
-(s/defn card->template-tag-field-ids :- #{su/IntGreaterThanZeroPlumatic}
+(s/defn card->template-tag-field-ids :- #{su/IntGreaterThanZero}
   "Return a set of Field IDs referenced in template tag parameters in `card`. This is mostly used for determining
   Fields referenced by Cards for purposes other than processing queries. Filters out `:field` clauses using names."
   [card]

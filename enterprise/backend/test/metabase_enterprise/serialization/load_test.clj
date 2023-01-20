@@ -310,8 +310,6 @@
                                :sparksql  ; foreign-keys is not supported by this driver
                                ;; foreign-keys is not supported by the below driver even though it has joins
                                :bigquery-cloud-sdk))
-
-
       (let [fingerprint (ts/with-world
                           (qp.store/fetch-and-store-database! db-id)
                           (qp.store/fetch-and-store-tables! [table-id

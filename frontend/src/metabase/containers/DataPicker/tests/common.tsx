@@ -8,28 +8,66 @@ import {
   waitForElementToBeRemoved,
 } from "__support__/ui";
 import {
-  setupCollectionEndpoints,
+  setupCollectionsEndpoints,
   setupCollectionVirtualSchemaEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import {
-  SAMPLE_DATABASE,
-  ANOTHER_DATABASE,
-  MULTI_SCHEMA_DATABASE,
-} from "__support__/sample_database_fixture";
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
-import type { Collection } from "metabase-types/api";
-
-import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
+import { Collection } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockDatabase,
+  createMockTable,
+} from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
-
-import type Database from "metabase-lib/metadata/Database";
 
 import type { DataPickerValue, DataPickerFiltersProp } from "../types";
 import useDataPickerValue from "../useDataPickerValue";
 import DataPicker from "../DataPickerContainer";
+
+export const SAMPLE_TABLE = createMockTable({
+  id: 1,
+  display_name: "Table 1",
+});
+
+export const SAMPLE_TABLE_2 = createMockTable({
+  id: 2,
+  display_name: "Table 2",
+});
+
+export const SAMPLE_TABLE_3 = createMockTable({
+  id: 3,
+  db_id: 2,
+  display_name: "Table 3",
+});
+
+export const SAMPLE_TABLE_4 = createMockTable({
+  id: 4,
+  db_id: 2,
+  display_name: "Table 4",
+  schema: "other",
+});
+
+export const SAMPLE_DATABASE = createMockDatabase({
+  id: 1,
+  name: "Sample Database",
+  tables: [SAMPLE_TABLE, SAMPLE_TABLE_2],
+});
+
+export const MULTI_SCHEMA_DATABASE = createMockDatabase({
+  id: 2,
+  name: "Multi Schema Database",
+  tables: [SAMPLE_TABLE_3, SAMPLE_TABLE_4],
+});
+
+export const EMPTY_DATABASE = createMockDatabase({
+  id: 3,
+  name: "Empty Database",
+  tables: [],
+});
 
 export const SAMPLE_COLLECTION = createMockCollection({
   id: 1,
@@ -82,10 +120,12 @@ export const SAMPLE_QUESTION_3 = createMockCard({
 function DataPickerWrapper({
   value: initialValue,
   filters,
+  isMultiSelect,
   onChange,
 }: {
   value: DataPickerValue;
   filters?: DataPickerFiltersProp;
+  isMultiSelect?: boolean;
   onChange: (value: DataPickerValue) => void;
 }) {
   const [value, setValue] = useDataPickerValue(initialValue);
@@ -93,6 +133,7 @@ function DataPickerWrapper({
     <DataPicker
       value={value}
       filters={filters}
+      isMultiSelect={isMultiSelect}
       onChange={(value: DataPickerValue) => {
         setValue(value);
         onChange(value);
@@ -104,6 +145,7 @@ function DataPickerWrapper({
 interface SetupOpts {
   initialValue?: DataPickerValue;
   filters?: DataPickerFiltersProp;
+  isMultiSelect?: boolean;
   hasDataAccess?: boolean;
   hasEmptyDatabase?: boolean;
   hasMultiSchemaDatabase?: boolean;
@@ -114,6 +156,7 @@ interface SetupOpts {
 export async function setup({
   initialValue = { tableIds: [] },
   filters,
+  isMultiSelect = false,
   hasDataAccess = true,
   hasEmptyDatabase = false,
   hasMultiSchemaDatabase = false,
@@ -125,26 +168,26 @@ export async function setup({
   const scope = nock(location.origin);
 
   if (hasDataAccess) {
-    const databases: Database[] = [SAMPLE_DATABASE];
+    const databases = [SAMPLE_DATABASE];
 
     if (hasMultiSchemaDatabase) {
       databases.push(MULTI_SCHEMA_DATABASE);
     }
 
     if (hasEmptyDatabase) {
-      databases.push(ANOTHER_DATABASE);
+      databases.push(EMPTY_DATABASE);
     }
 
     setupDatabasesEndpoints(scope, databases);
   } else {
-    scope.get("/api/database").reply(200, []);
+    setupDatabasesEndpoints(scope, []);
   }
 
   scope
     .get("/api/search?models=dataset&limit=1")
     .reply(200, { data: hasModels ? [SAMPLE_MODEL] : [] });
 
-  setupCollectionEndpoints(scope, [SAMPLE_COLLECTION, EMPTY_COLLECTION]);
+  setupCollectionsEndpoints(scope, [SAMPLE_COLLECTION, EMPTY_COLLECTION]);
 
   setupCollectionVirtualSchemaEndpoints(
     scope,
@@ -174,13 +217,13 @@ export async function setup({
     <DataPickerWrapper
       value={initialValue}
       filters={filters}
+      isMultiSelect={isMultiSelect}
       onChange={onChange}
     />,
     {
       storeInitialState: {
         settings,
       },
-      withSampleDatabase: hasDataAccess,
     },
   );
 

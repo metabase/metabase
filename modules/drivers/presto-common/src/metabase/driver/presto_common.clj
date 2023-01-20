@@ -205,7 +205,7 @@
 (defn ->date
   "Same as [[hx/->date]], but truncates `x` to the date in the results time zone."
   [x]
-  (hx/->date (hx/->AtTimeZone x (qp.timezone/results-timezone-id))))
+  (hx/->date (hx/at-time-zone x (qp.timezone/results-timezone-id))))
 
 (defmethod sql.qp/datetime-diff [:presto-common :year]    [_driver _unit x y] (date-diff :year (->date x) (->date y)))
 (defmethod sql.qp/datetime-diff [:presto-common :quarter] [_driver _unit x y] (date-diff :quarter (->date x) (->date y)))

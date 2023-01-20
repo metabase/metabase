@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.integrations.common :as integrations.common]
    [metabase.integrations.ldap.interface :as i]
+   [metabase.models.interface :as mi]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings.premium-features
     :refer [defenterprise-schema]]
@@ -23,10 +24,10 @@
 (def ^:private group-membership-filter
   "(member={dn})")
 
-(s/defn search :- (s/maybe su/MapPlumatic)
+(s/defn search :- (s/maybe su/Map)
   "Search for a LDAP user with `username`."
   [ldap-connection                 :- LDAPConnectionPool
-   username                        :- su/NonBlankStringPlumatic
+   username                        :- su/NonBlankString
    {:keys [user-base user-filter]} :- i/LDAPSettings]
   (some-> (first
            (ldap/search
@@ -37,23 +38,23 @@
              :size-limit 1}))
           u/lower-case-map-keys))
 
-(s/defn ^:private process-group-membership-filter :- su/NonBlankStringPlumatic
+(s/defn ^:private process-group-membership-filter :- su/NonBlankString
   "Replace DN and UID placeholders with values returned by the LDAP server."
-  [group-membership-filter :- su/NonBlankStringPlumatic
-   dn                      :- su/NonBlankStringPlumatic
-   uid                     :- (s/maybe su/NonBlankStringPlumatic)]
+  [group-membership-filter :- su/NonBlankString
+   dn                      :- su/NonBlankString
+   uid                     :- (s/maybe su/NonBlankString)]
   (let [uid-string (or uid "")]
     (-> group-membership-filter
         (str/replace "{dn}" (Filter/encodeValue ^String dn))
         (str/replace "{uid}" (Filter/encodeValue ^String uid-string)))))
 
-(s/defn ^:private user-groups :- (s/maybe [su/NonBlankStringPlumatic])
+(s/defn ^:private user-groups :- (s/maybe [su/NonBlankString])
   "Retrieve groups for a supplied DN."
   [ldap-connection         :- LDAPConnectionPool
-   dn                      :- su/NonBlankStringPlumatic
-   uid                     :- (s/maybe su/NonBlankStringPlumatic)
+   dn                      :- su/NonBlankString
+   uid                     :- (s/maybe su/NonBlankString)
    {:keys [group-base]}    :- i/LDAPSettings
-   group-membership-filter :- su/NonBlankStringPlumatic]
+   group-membership-filter :- su/NonBlankString]
   (when group-base
     (let [results (ldap/search
                    ldap-connection
@@ -65,13 +66,13 @@
 (s/defn ldap-search-result->user-info :- (s/maybe i/UserInfo)
   "Convert the result "
   [ldap-connection               :- LDAPConnectionPool
-   {:keys [dn uid], :as result}  :- su/MapPlumatic
+   {:keys [dn uid], :as result}  :- su/Map
    {:keys [first-name-attribute
            last-name-attribute
            email-attribute
            sync-groups?]
     :as   settings}              :- i/LDAPSettings
-   group-membership-filter       :- su/NonBlankStringPlumatic]
+   group-membership-filter       :- su/NonBlankString]
   (let [{first-name (keyword first-name-attribute)
          last-name  (keyword last-name-attribute)
          email      (keyword email-attribute)} result]
@@ -90,7 +91,7 @@
   "Get user information for the supplied username."
   metabase-enterprise.enhancements.integrations.ldap
   [ldap-connection :- LDAPConnectionPool
-   username        :- su/NonBlankStringPlumatic
+   username        :- su/NonBlankString
    settings        :- i/LDAPSettings]
   (when-let [result (search ldap-connection username settings)]
     (ldap-search-result->user-info ldap-connection result settings group-membership-filter)))
@@ -98,9 +99,9 @@
 
 ;;; --------------------------------------------- fetch-or-create-user! ----------------------------------------------
 
-(s/defn ldap-groups->mb-group-ids :- #{su/IntGreaterThanZeroPlumatic}
+(s/defn ldap-groups->mb-group-ids :- #{su/IntGreaterThanZero}
   "Translate a set of a user's group DNs to a set of MB group IDs using the configured mappings."
-  [ldap-groups              :- (s/maybe [su/NonBlankStringPlumatic])
+  [ldap-groups              :- (s/maybe [su/NonBlankString])
    {:keys [group-mappings]} :- (select-keys i/LDAPSettings [:group-mappings s/Keyword])]
   (-> group-mappings
       (select-keys (map #(DN. (str %)) ldap-groups))
@@ -108,7 +109,7 @@
       flatten
       set))
 
-(s/defn all-mapped-group-ids :- #{su/IntGreaterThanZeroPlumatic}
+(s/defn all-mapped-group-ids :- #{su/IntGreaterThanZero}
   "Returns the set of all MB group IDs that have configured mappings."
   [{:keys [group-mappings]} :- (select-keys i/LDAPSettings [:group-mappings s/Keyword])]
   (-> group-mappings
@@ -116,7 +117,7 @@
       flatten
       set))
 
-(defenterprise-schema fetch-or-create-user! :- (class User)
+(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   metabase-enterprise.enhancements.integrations.ldap
   [{:keys [first-name last-name email groups]} :- i/UserInfo

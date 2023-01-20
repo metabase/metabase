@@ -35,6 +35,7 @@
 
 (defn- card-for-source-table
   [table]
+  {:pre [(map? table)]}
   {:creator_id             api/*current-user-id*
    :dataset_query          {:type     :query
                             :query    {:source-table (u/the-id table)}

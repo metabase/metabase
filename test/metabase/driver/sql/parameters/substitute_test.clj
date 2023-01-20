@@ -519,7 +519,7 @@
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
-(s/defn ^:private checkins-identifier :- su/NonBlankStringPlumatic
+(s/defn ^:private checkins-identifier :- su/NonBlankString
   "Get the identifier used for `checkins` for the current driver by looking at what the driver uses when converting MBQL
   to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
   []

@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { isElementOfType } from "react-dom/test-utils";
 import moment from "moment-timezone";
 
@@ -105,7 +105,7 @@ describe("formatting", () => {
 
       it("from positive JPY", () => {
         expect(formatNumber(1234.56, { ...options, currency: "JPY" })).toBe(
-          "1,234.56",
+          "1,235",
         );
       });
 
@@ -415,7 +415,7 @@ describe("formatting", () => {
           time_style: "HH:mm",
           column: {
             base_type: "type/Date",
-            unit: "hour-of-day",
+            unit: "minute",
           },
         }),
       ).toEqual("7/7/2019");
@@ -493,7 +493,7 @@ describe("formatting", () => {
     });
 
     describe("when view_as = link", () => {
-      it("should return link component for type/URL and  view_as = link", () => {
+      it("should return link component for type/URL and view_as = link", () => {
         const formatted = formatUrl("http://whatever", {
           jsx: true,
           rich: true,
@@ -512,10 +512,14 @@ describe("formatting", () => {
           view_as: "link",
           clicked: {},
         });
+        render(formatted);
 
         expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
-        expect(formatted.props.children).toEqual("metabase link");
-        expect(formatted.props.href).toEqual("http://metabase.com");
+        expect(screen.getByText("metabase link")).toBeInTheDocument();
+        expect(screen.getByText("metabase link")).toHaveAttribute(
+          "href",
+          "http://metabase.com",
+        );
       });
 
       it("should return link component using link_text and the value as url when link_url is empty", () => {
@@ -527,10 +531,14 @@ describe("formatting", () => {
           view_as: "link",
           clicked: {},
         });
+        render(formatted);
 
         expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
-        expect(formatted.props.children).toEqual("metabase link");
-        expect(formatted.props.href).toEqual("http://metabase.com");
+        expect(screen.getByText("metabase link")).toBeInTheDocument();
+        expect(screen.getByText("metabase link")).toHaveAttribute(
+          "href",
+          "http://metabase.com",
+        );
       });
 
       it("should return link component using link_url and the value as text when link_text is empty", () => {
@@ -542,10 +550,14 @@ describe("formatting", () => {
           view_as: "link",
           clicked: {},
         });
+        render(formatted);
 
         expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
-        expect(formatted.props.children).toEqual("metabase link");
-        expect(formatted.props.href).toEqual("http://metabase.com");
+        expect(screen.getByText("metabase link")).toBeInTheDocument();
+        expect(screen.getByText("metabase link")).toHaveAttribute(
+          "href",
+          "http://metabase.com",
+        );
       });
 
       it("should not return an ExternalLink in jsx + rich mode if there's click behavior", () => {
@@ -585,7 +597,7 @@ describe("formatting", () => {
   describe("formatDateTimeWithUnit", () => {
     it("should format week ranges", () => {
       expect(
-        formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
+        formatDateTimeWithUnit("2019-07-09T00:00:00.000Z", "week", {
           type: "cell",
         }),
       ).toEqual("July 7, 2019 – July 13, 2019");
@@ -593,13 +605,14 @@ describe("formatting", () => {
 
     it("should always format week ranges according to returned data", () => {
       try {
-        // globally set locale to es
+        // globally set locale to es. That moves the weeks to starting on Mondays, in the abstract unit testing world.
+        // In the full app the first day of the week is a setting.
         moment.locale("es");
         expect(
-          formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
+          formatDateTimeWithUnit("2019-07-09T00:00:00.000Z", "week", {
             type: "cell",
           }),
-        ).toEqual("julio 7, 2019 – julio 13, 2019");
+        ).toEqual("julio 8, 2019 – julio 14, 2019");
       } finally {
         // globally reset locale
         moment.locale("en");
@@ -643,6 +656,26 @@ describe("formatting", () => {
         ),
       ).toEqual("6 AM");
     });
+
+    test.each([
+      ["minute", "Wed, April 27, 2022, 6:00 AM"],
+      ["hour", "Wed, April 27, 2022, 6:00 AM"],
+      ["day", "Wed, April 27, 2022"],
+      ["week", "Wed, April 27, 2022"],
+      ["month", "April, 2022"],
+      ["year", "2022"],
+    ])(
+      "should include weekday when date unit is smaller or equal whan a week",
+      (unit, formatted) => {
+        const dateString = "2022-04-27T06:00:00.000Z";
+
+        expect(
+          formatDateTimeWithUnit(dateString, unit, {
+            weekday_enabled: true,
+          }),
+        ).toEqual(formatted);
+      },
+    );
   });
 
   describe("formatTime", () => {
