@@ -10,14 +10,14 @@ redirect_from:
 
 You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people.
 
-## Types of authentication Metabase supports with JWT
+## Authentication flows
 
-Metabase supports two types of OAuth 2 authentication with JWT:
+Metabase supports two auth flows that can be used with JWT:
 
 - Authorization Code Flow
 - Authorization Code Flow with PKCE
 
-PKCE stands for Proof-Key for Code Exchange, and it's a way to extend the Authorization Code Flow to incorporate random keys generated on demand. For more on these flows, see the [Wikipedia entry on OAuth](https://en.wikipedia.org/wiki/OAuth).
+Metabase's auth flows are custom workflows modelled after OAuth 2.0. You can use the auth flow with PKCE to incorporate random keys generated on demand.
 
 Currently, the only algorithm Metabase supports is [HS256](https://en.wikipedia.org/wiki/JSON_Web_Token) ([HMAC](https://en.wikipedia.org/wiki/HMAC) + [SHA-256](https://en.wikipedia.org/wiki/SHA-2).
 
