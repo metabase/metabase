@@ -61,7 +61,7 @@ returns 400.
 
 ## Conditional subtotal
 
-To get a subtotal for a group, you need to add a **Group by** column.
+To get a subtotal for a group, you need to add a [**Group by** column](../questions/query-builder/introduction.md#summarizing-and-grouping-by).
 
 | Payment  | Plan        | Date Received     |
 |----------|-------------| ------------------|
@@ -71,20 +71,20 @@ To get a subtotal for a group, you need to add a **Group by** column.
 | 200      | Business    | November 1, 2020  |
 | 400      | Premium     | November 1, 2020  |
 
-To get payments by month for the Business and Premium plans, use the expression:
+To sum payments for the Business and Premium plans:
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 ```
 
-Set the **Group by** column to **Date Received: Month**:
+To view those payments by month, set the **Group by** column to **Date Received: Month**:
 
 | Date Received: Month | Total Payments for Business and Premium Plans |
 |----------------------|-----------------------------------------------|
 | October              | 200                                           | 
 | November             | 600                                           |
 
-> In this example, you could also use `SumIf([Payment], [Plan] != "Basic")` to get the Business and Premium plans. But if you're sharing these formulas with other people, it's better to use the `OR` version, since people can see what's explicitly being included (in case there are more plan names that aren't obvious).
+> Tip: In this example, you could also use `SumIf([Payment], [Plan] != "Basic")` to get the Business and Premium plans. But if you're sharing these formulas with other people, it's better to use the `OR` version, since people can see what's explicitly being included (in case there are more plan names that aren't obvious).
 
 ## Limitations
 
@@ -212,23 +212,24 @@ SumIf([Payment], [Plan] = "Basic")
 To add [multiple conditions with a grouping column](#conditional-subtotal):
 
 ```python
+import datetime as dt
+
 ## Add a column that extracts the month and year
-df['Date Received: Month'] = df['Date Received'].dt.month
+df['Date Received: Month'] = df['Date Received'].dt.to_period('M')
 
 ## Get a dataframe that's filtered to Plan = "Business" OR Plan = "Premium"
-df_filtered = df[df['Plan'] in ('Business', 'Premium')]\
+df_filtered = df[(df['Plan'] == 'Business') | (df['Plan'] == 'Premium')]
 
-## Sum the Payment column in the filtered dataframe and group by the Date Received: Month
-df_filtered['Total Payments: Business and Premium'] = df_filtered.groupby('Date Received: Month')['Payment'].sum()
+## Sum the Payment column in the filtered dataframe and
+## group by the Date Received: Month
+df_filtered.groupby('Date Received: Month')['Payment'].sum()
 ```
 
-will match the Metabase `SumIf` expression:
+This will produce the same result as the Metabase `SumIf` expression (with the **Group by** column set to "Date Received: Month").
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 ```
-
-with the Metabase **Group by** column set to "Date Received: Month".
 
 ## Further reading
 
