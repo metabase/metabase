@@ -35,6 +35,7 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
@@ -765,12 +766,12 @@
     param-key                   :- su/NonBlankString
     constraint-param-key->value :- su/Map
     query                       :- (s/maybe su/NonBlankString)]
-   (let [dashboard (hydrate dashboard :resolved-params)
-         param     (get (:resolved-params dashboard) param-key)]
+   (let [{:keys [resolved-params]
+          :as   dashboard} (hydrate dashboard :resolved-params)
+         param             (get resolved-params param-key)]
      (when-not param
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:resolved-params (keys (:resolved-params dashboard))
-                        :status-code     400})))
+                       {:resolved-params (keys resolved-params) :status-code 400})))
      (case (:values_source_type param)
        "static-list" (params.static-values/param->values param query)
        "card"        (params.card-values/param->values param query)
@@ -785,7 +786,9 @@
     GET /api/dashboard/1/params/abc/values?def=100"
   [id param-key :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (param-values dashboard param-key query-params)))
+    ;; If a user can read the dashboard, then they can lookup the chain-filter
+    (binding [qp.perms/*internal-ui-query* true]
+      (param-values dashboard param-key query-params))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/params/:param-key/search/:query"
@@ -799,7 +802,8 @@
   Currently limited to first 1000 results."
   [id param-key query :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (param-values dashboard param-key query-params query)))
+    (binding [qp.perms/*internal-ui-query* true]
+      (param-values dashboard param-key query-params query))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/params/valid-filter-fields"
