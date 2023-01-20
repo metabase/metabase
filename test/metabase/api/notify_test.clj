@@ -149,7 +149,7 @@
             (is (= 400 (:status (post {:schema_name "public" :table_name "foo"} 400))))
             ;; We can't add a nonexistent table
             (is (= 404 (:status (post {:schema_name "public" :table_name "bar"} 404))))
-            ;; Create another table that is not yet synced
+            ;; Create two more tables that are not yet synced
             (exec! spec ["CREATE TABLE public.BAR (val bigint NOT NULL);"
                          "CREATE TABLE public.FERN (val bigint NOT NULL);"])
             ;; This will add bar to metabase (but not fern).
