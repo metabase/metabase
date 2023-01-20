@@ -18,6 +18,8 @@ Example: in the table below, `SumIf([Payment], [Plan] = "Basic")` would return 2
 | 200      | Business    |
 | 400      | Premium     |
 
+> [Aggregation formulas](../expressions-list.md#aggregations) like `sumif` should be added to the query builder's [**Summarize** menu](../../query-builder/introduction.md#summarizing-and-grouping-by) > **Custom expression** (scroll down in the menu if needed).
+
 ## Parameters
 
 - `column` can be the name of a numeric column, or an expression that returns a numeric column.
@@ -57,11 +59,14 @@ SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business") AND month([Date Recei
 
 returns 400.
 
-> Tip: make it a habit to put brackets around your `OR` statements to avoid mixing up your mandatory and optional conditions.
+> Tip: make it a habit to put brackets around your `AND` and `OR` statements to avoid making mandatory conditions optional, and vice versa.
 
-## Conditional subtotal
+## Conditional subtotals by group
 
-To get a subtotal for a group, you need to add a [**Group by** column](../../query-builder/introduction.md#summarizing-and-grouping-by).
+To get a conditional subtotal for a category or group, you'll:
+
+1. Write a `sumif` formula with your conditions.
+2. Add a [**Group by** column](../../query-builder/introduction.md#summarizing-and-grouping-by) in the query builder.
 
 | Payment  | Plan        | Date Received     |
 |----------|-------------| ------------------|
@@ -77,14 +82,20 @@ To sum payments for the Business and Premium plans:
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 ```
 
-To view those payments by month, set the **Group by** column to **Date Received: Month**:
+Or, sum payments for all plans that aren't "Basic": 
+
+```
+{% raw %}SumIf([Payment], [Plan] != "Basic"){% endraw %} 
+```
+
+To view those payments by month, set the **Group by** column to **Date Received: Month**.
 
 | Date Received: Month | Total Payments for Business and Premium Plans |
 |----------------------|-----------------------------------------------|
 | October              | 200                                           | 
 | November             | 600                                           |
 
-> Tip: In this example, you could also use `SumIf([Payment], [Plan] != "Basic")` to get the Business and Premium plans. But if you're sharing these formulas with other people, it's better to use the `OR` version, since people can see what's explicitly being included (in case there are more plan names that aren't obvious).
+> Tip: when sharing your work with other people, it's often helpful to use the `OR` filter over the `{% raw %} != {% endraw %}` filter (even though the `{% raw %} != {% endraw %}` filter is shorter). This prevents people from wondering which plans are included in the sum.
 
 ## Limitations
 
@@ -95,7 +106,7 @@ To view those payments by month, set the **Group by** column to **Date Received:
 | October              | 200                                                | 
 | November             | 800                                                |
 
-You'll need to combine the [CumulativeSum](../expressions-list.md#cumulativesum) aggregation with the `case` formula instead.
+You'll need to combine the [CumulativeSum](../expressions-list.md#cumulativesum) aggregation with the [`case`](./case.md) formula instead.
 
 ## Accepted data types
 
@@ -121,10 +132,10 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### case
 
-You can combine the `sum` and [`case`](./case.md) formulas
+You can combine the `Sum` and [`case`](./case.md) formulas
 
 ```
-sum(case([Plan] = "Basic", [Payment]))
+Sum(case([Plan] = "Basic", [Payment]))
 ```
 
 to do the same thing as the `SumIf` formula:
@@ -160,7 +171,7 @@ is equivalent to the Metabase `SumIf` expression:
 SumIf([Payment], [Plan] = "Basic")
 ```
 
-To add [multiple conditions with a grouping column](#conditional-subtotal):
+To add [multiple conditions with a grouping column](#conditional-subtotals-by-group):
 
 ```sql
 SELECT 
@@ -171,13 +182,13 @@ GROUP BY
     DATE_TRUNC("month", date_received)
 ```
 
-The `SELECT` statement matches the Metabase `SumIf` expression
+The SQL `SELECT` statement matches the Metabase `SumIf` expression:
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 ```
 
-The `GROUP BY` statement maps to a Metabase **Group by** column set to "Date Received: Month".
+The SQL `GROUP BY` statement maps to a Metabase [**Group by** column](../../query-builder/introduction.md#summarizing-and-grouping-by) set to "Date Received: Month".
 
 ### Spreadsheets
 
@@ -209,23 +220,23 @@ is equivalent to
 SumIf([Payment], [Plan] = "Basic")
 ```
 
-To add [multiple conditions with a grouping column](#conditional-subtotal):
+To add [multiple conditions with a grouping column](#conditional-subtotals-by-group):
 
-```python
-import datetime as dt
+1. Add a column that extracts the month and year.
+    ```python
+    import datetime as dt
+    df['Date Received: Month'] = df['Date Received'].dt.to_period('M')
+    ```
+2. Get a dataframe that's filtered to Plan = "Business" OR Plan = "Premium".
+    ```python
+    df_filtered = df[(df['Plan'] == 'Business') | (df['Plan'] == 'Premium')]
+    ```
+3. Sum the Payment column in the filtered dataframe and group by the Date Received: Month.
+    ```python
+    df_filtered.groupby('Date Received: Month')['Payment'].sum()
+    ```
 
-## Add a column that extracts the month and year
-df['Date Received: Month'] = df['Date Received'].dt.to_period('M')
-
-## Get a dataframe that's filtered to Plan = "Business" OR Plan = "Premium"
-df_filtered = df[(df['Plan'] == 'Business') | (df['Plan'] == 'Premium')]
-
-## Sum the Payment column in the filtered dataframe and
-## group by the Date Received: Month
-df_filtered.groupby('Date Received: Month')['Payment'].sum()
-```
-
-This will produce the same result as the Metabase `SumIf` expression (with the **Group by** column set to "Date Received: Month").
+This will produce the same result as the Metabase `SumIf` expression (with the [**Group by** column](../../query-builder/introduction.md#summarizing-and-grouping-by) set to "Date Received: Month").
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
