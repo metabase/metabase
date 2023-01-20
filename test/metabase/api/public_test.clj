@@ -11,7 +11,8 @@
    [metabase.api.public :as api.public]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
+    :refer [Action
+            Card
             Collection
             Dashboard
             DashboardCard
@@ -761,6 +762,37 @@
     (is (thrown?
          Exception
          (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))))))
+
+;;; ------------------------------------------- GET /api/public/action/:uuid -------------------------------------------
+
+(deftest fetch-action-test
+  (testing "GET /api/public/action/:uuid"
+    (actions.test-util/with-actions-enabled
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        ;; TODO -- shouldn't this return a 404? I guess it's because we're 'genericizing' all the errors in public
+        ;; endpoints in [[metabase.server.middleware.exceptions/genericize-exceptions]]
+        (testing "should return 400 if Action doesn't exist"
+          (is (= "An error occurred."
+                 (client/client :get 400 (str "public/action/" (UUID/randomUUID))))))
+        (let [action-opts (shared-obj)
+              uuid        (:public_uuid action-opts)]
+          (actions.test-util/with-actions [{} action-opts]
+            (testing "Happy path -- should be able to fetch the Action"
+              (is (= #{:description
+                       :database_id
+                       :name
+                       :type
+                       :dataset_query
+                       :model_id
+                       :id
+                       :parameter_mappings
+                       :visualization_settings
+                       :parameters}
+                     (set (keys (client/client :get 200 (str "public/action/" uuid)))))))
+            (testing "Check that we cannot fetch a public Action if public sharing is disabled"
+              (mt/with-temporary-setting-values [enable-public-sharing false]
+                (is (= "An error occurred."
+                       (client/client :get 400 (str "public/action/" (:public_uuid action-opts)))))))))))))
 
 
 ;;; ------------------------------- GET /api/public/card/:uuid/field/:field/values nil --------------------------------
