@@ -158,6 +158,11 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
+export const ParameterApi = {
+  parameterValues: GET("/api/parameter/:id/values"),
+  parameterSearch: GET("/api/parameter/:id/search/:query"),
+};
+
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
