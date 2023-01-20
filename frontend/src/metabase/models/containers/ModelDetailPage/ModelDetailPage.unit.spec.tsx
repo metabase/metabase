@@ -12,17 +12,17 @@ import {
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
-import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_database_fixture";
 import {
   setupActionsEndpoints,
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupTablesEndpoints,
 } from "__support__/server-mocks";
 
+import { checkNotNull } from "metabase/core/utils/types";
 import { ActionsApi } from "metabase/services";
 import Models from "metabase/entities/questions";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import type {
   Card,
@@ -33,15 +33,20 @@ import type {
 } from "metabase-types/api";
 import {
   createMockCollection,
-  createMockQueryAction as _createMockQueryAction,
-  createMockImplicitCUDActions,
+  createMockDatabase,
+  createMockField,
+  createMockTable,
   createMockUser,
+  createMockImplicitCUDActions,
+  createMockQueryAction as _createMockQueryAction,
+  createMockStructuredDatasetQuery,
+  createMockStructuredQuery,
   createMockNativeDatasetQuery,
+  createMockNativeQuery,
 } from "metabase-types/api/mocks";
 
+import { TYPE } from "metabase-lib/types/constants";
 import type Question from "metabase-lib/Question";
-import Database from "metabase-lib/metadata/Database";
-import Table from "metabase-lib/metadata/Table";
 import {
   getStructuredModel as _getStructuredModel,
   getNativeModel as _getNativeModel,
@@ -63,14 +68,84 @@ jest.mock("metabase/actions/containers/ActionCreator", () => () => (
   <div data-testid="mock-action-editor" />
 ));
 
-const resultMetadata = ORDERS.fields.map(field => field.getPlainObject());
+const TEST_DATABASE_ID = 1;
+const TEST_TABLE_ID = 1;
+const TEST_FIELD = createMockField({
+  id: 1,
+  display_name: "Field 1",
+  table_id: TEST_TABLE_ID,
+});
+
+const TEST_FK_TABLE_1_ID = 2;
+const TEST_FK_FIELD = createMockField({
+  id: 4,
+  table_id: TEST_FK_TABLE_1_ID,
+});
+
+const TEST_FIELDS = [
+  TEST_FIELD,
+  createMockField({
+    id: 2,
+    display_name: "Field 2",
+    table_id: TEST_TABLE_ID,
+  }),
+  createMockField({
+    id: 3,
+    display_name: "Field 3",
+    table_id: TEST_TABLE_ID,
+    semantic_type: TYPE.FK,
+    fk_target_field_id: TEST_FK_FIELD.id,
+    target: TEST_FK_FIELD,
+  }),
+];
+
+const TEST_TABLE = createMockTable({
+  id: TEST_TABLE_ID,
+  name: "TEST_TABLE",
+  display_name: "TEST_TABLE",
+  fields: TEST_FIELDS,
+  db_id: TEST_DATABASE_ID,
+});
+
+const TEST_FK_TABLE_1 = createMockTable({
+  id: TEST_FK_TABLE_1_ID,
+  name: "TEST_TABLE points to this",
+  fields: [TEST_FK_FIELD],
+});
+
+const TEST_DATABASE = createMockDatabase({
+  id: TEST_DATABASE_ID,
+  name: "Test Database",
+  tables: [TEST_TABLE, TEST_FK_TABLE_1],
+});
+
+const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
+  ...TEST_DATABASE,
+  settings: { "database-enable-actions": true },
+});
 
 function getStructuredModel(card?: Partial<StructuredSavedCard>) {
-  return _getStructuredModel({ ...card, result_metadata: resultMetadata });
+  return _getStructuredModel({
+    ...card,
+    result_metadata: TEST_FIELDS,
+    dataset_query: createMockStructuredDatasetQuery({
+      database: TEST_DATABASE_ID,
+      query: createMockStructuredQuery({ "source-table": TEST_TABLE_ID }),
+    }),
+  });
 }
 
 function getNativeModel(card?: Partial<NativeSavedCard>) {
-  return _getNativeModel({ ...card, result_metadata: resultMetadata });
+  return _getNativeModel({
+    ...card,
+    result_metadata: TEST_FIELDS,
+    dataset_query: createMockNativeDatasetQuery({
+      database: TEST_DATABASE_ID,
+      native: createMockNativeQuery({
+        query: `SELECT * FROM ${TEST_TABLE.name}`,
+      }),
+    }),
+  });
 }
 
 const TEST_QUERY = "UPDATE orders SET status = 'shipped";
@@ -81,7 +156,7 @@ function createMockQueryAction(
   return _createMockQueryAction({
     ...opts,
     dataset_query: createMockNativeDatasetQuery({
-      native: { query: TEST_QUERY },
+      native: createMockNativeQuery({ query: TEST_QUERY }),
     }),
   });
 }
@@ -117,17 +192,12 @@ async function setup({
 
   const modelUpdateSpy = jest.spyOn(Models.actions, "update");
 
-  const database = model.database();
-  const tables = database?.tables || [];
   const card = model.card() as Card;
   const slug = `${card.id}-model-name`;
 
-  if (database) {
-    setupDatabasesEndpoints(scope, [
-      getDatabaseObject(database, { hasActionsEnabled }),
-    ]);
-    setupTablesEndpoints(scope, tables.map(getTableObject));
-  }
+  setupDatabasesEndpoints(scope, [
+    hasActionsEnabled ? TEST_DATABASE_WITH_ACTIONS : TEST_DATABASE,
+  ]);
 
   scope
     .get("/api/card")
@@ -141,13 +211,15 @@ async function setup({
   setupActionsEndpoints(scope, model.id(), actions);
   setupCollectionsEndpoints(scope, collections);
 
-  renderWithProviders(<ModelDetailPage params={{ slug }} />);
+  const { store } = renderWithProviders(<ModelDetailPage params={{ slug }} />);
 
   await waitForElementToBeRemoved(() =>
     screen.queryByTestId("loading-spinner"),
   );
 
-  return { scope, modelUpdateSpy };
+  const metadata = getMetadata(store.getState());
+
+  return { metadata, scope, modelUpdateSpy };
 }
 
 type SetupActionsOpts = Omit<SetupOpts, "hasActionsEnabled">;
@@ -161,30 +233,6 @@ async function setupActions(opts: SetupActionsOpts) {
   );
 
   return result;
-}
-
-function getDatabaseObject(
-  database: Database,
-  { hasActionsEnabled = false } = {},
-) {
-  const object = database.getPlainObject();
-  return {
-    ...object,
-    tables: database.tables.map(getTableObject),
-    settings: {
-      ...object?.settings,
-      "database-enable-actions": hasActionsEnabled,
-    },
-  };
-}
-
-function getTableObject(table: Table) {
-  return {
-    ...table.getPlainObject(),
-    dimension_options: [],
-    schema: table.schema_name,
-    fields: table.fields.map(field => field.getPlainObject()),
-  };
 }
 
 describe("ModelDetailPage", () => {
@@ -572,23 +620,19 @@ describe("ModelDetailPage", () => {
     it("displays backing table", async () => {
       await setup({ model });
       expect(screen.getByLabelText("Backing table")).toHaveTextContent(
-        "Orders",
+        TEST_TABLE.display_name,
       );
     });
 
     it("displays related tables", async () => {
-      await setup({ model });
+      const { metadata } = await setup({ model });
+      const TABLE_1 = checkNotNull(metadata.table(TEST_FK_TABLE_1_ID));
 
       const list = within(screen.getByTestId("model-relationships"));
 
-      expect(list.getByRole("link", { name: "Products" })).toHaveAttribute(
-        "href",
-        PRODUCTS.newQuestion().getUrl(),
-      );
-      expect(list.getByRole("link", { name: "People" })).toHaveAttribute(
-        "href",
-        PEOPLE.newQuestion().getUrl(),
-      );
+      expect(
+        list.getByRole("link", { name: TABLE_1.displayName() }),
+      ).toHaveAttribute("href", TABLE_1.newQuestion().getUrl());
       expect(list.queryByText("Reviews")).not.toBeInTheDocument();
     });
   });
