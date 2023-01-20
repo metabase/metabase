@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.actions.test-util :as actions.test-util]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.pivots :as api.pivots]
@@ -1219,10 +1220,10 @@
                         (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))))
 
 (deftest execute-public-dashcard-action-test
-  (mt/with-actions-test-data-and-actions-enabled
+  (actions.test-util/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash {:parameters []}]
-        (mt/with-actions [{:keys [action-id model-id]} {}]
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {}]
           (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
                                                             :action_id action-id
                                                             :card_id model-id}]]
@@ -1246,10 +1247,10 @@
 (deftest execute-public-dashcard-custom-action-test
   (mt/with-temp-copy-of-db
     (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-    (mt/with-actions-test-data-and-actions-enabled
+    (actions.test-util/with-actions-test-data-and-actions-enabled
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-dashboard [dash {:parameters []}]
-          (mt/with-actions [{:keys [action-id model-id]} {}]
+          (actions.test-util/with-actions [{:keys [action-id model-id]} {}]
             (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
                                                               :action_id action-id
                                                               :card_id model-id}]]
@@ -1262,10 +1263,10 @@
                              {:parameters {:id 1 :name "European"}}))))))))))
 
 (deftest fetch-public-dashcard-action-test
-  (mt/with-actions-test-data-and-actions-enabled
+  (actions.test-util/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash {:parameters []}]
-        (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
                                                             :action_id action-id
                                                             :card_id model-id}]]
