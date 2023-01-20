@@ -723,10 +723,10 @@
             (is (= nil
                    (set-perms! {:schemas :none}))))
           (testing "disallow schemas :none + :native :write"
-            (is (= ["Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."]
-                   (try (set-perms! {:schemas :none, :native :write})
-                        (catch Exception e
-                          (-> (ex-data e) :humanized first (get-in ks))))))
+            (is (thrown-with-msg?
+                 Exception
+                 #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
+                 (set-perms! {:schemas :none, :native :write})))
             (is (= nil
                    (perms)))))))))
 
