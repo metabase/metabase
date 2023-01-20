@@ -766,7 +766,7 @@
 
 (deftest fetch-action-test
   (testing "GET /api/public/action/:uuid"
-    (actions.test-util/with-actions-enabled
+    (mt/with-actions-enabled
       (mt/with-temporary-setting-values [enable-public-sharing true]
         ;; TODO -- shouldn't this return a 404? I guess it's because we're 'genericizing' all the errors in public
         ;; endpoints in [[metabase.server.middleware.exceptions/genericize-exceptions]]
@@ -775,7 +775,7 @@
                  (client/client :get 400 (str "public/action/" (UUID/randomUUID))))))
         (let [action-opts (shared-obj)
               uuid        (:public_uuid action-opts)]
-          (actions.test-util/with-actions [{} action-opts]
+          (mt/with-actions [{} action-opts]
             (testing "Happy path -- should be able to fetch the Action"
               (is (= #{:name
                        :id
