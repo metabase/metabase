@@ -83,7 +83,8 @@
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {toucan.db/query           {:message "Use mdb.query/query instead of toucan.db/query"}
+  {clojure.core/println      {:message "Use clojure.tools.logging instead of clojure.core/println "}
+   toucan.db/query           {:message "Use mdb.query/query instead of toucan.db/query"}
    toucan.db/reducible-query {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
 
   :unresolved-var
