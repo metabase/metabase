@@ -33,12 +33,12 @@
         db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
     (api/let-404 [database (db/select-one Database :id id)]
       (cond-> (cond
-                table_id (api/let-404 [table (db/select-one Table :db_id id, :id (int table_id))]
-                           (future (table-sync-fn table)))
+                table_id   (api/let-404 [table (db/select-one Table :db_id id, :id (int table_id))]
+                             (future (table-sync-fn table)))
                 table_name (api/let-404 [table (db/select-one Table :db_id id, :name table_name)]
                              (future (table-sync-fn table)))
-                :else (future (db-sync-fn database)))
-              synchronous? deref))))
+                :else      (future (db-sync-fn database)))
+              synchronous? deref)))
 
 (defn- without-stacktrace [^Throwable throwable]
   (doto throwable
