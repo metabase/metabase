@@ -5,10 +5,12 @@
    [buddy.sign.util :as buddy-util]
    [clj-time.core :as time]
    [clojure.data.csv :as csv]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed :as api.embed]
    [metabase.api.pivots :as api.pivots]
@@ -131,8 +133,9 @@
        (is (= [{:col "Count"} {:col 100.0}]
               actual))))))
 
-(defn dissoc-id-and-name {:style/indent 0} [obj]
-  (dissoc obj :id :name))
+(defn dissoc-id-and-name [obj]
+  (cond-> obj
+    (map? obj) (dissoc :id :name)))
 
 (def successful-card-info
   "Data that should be returned if `GET /api/embed/card/:token` completes successfully (minus `:id` and `:name`).
@@ -199,8 +202,13 @@
                                                                            :c {:type "date", :name "c", :display_name "c"}
                                                                            :d {:type "date", :name "d", :display_name "d"}}}}
                              :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
-        (is (= [{:id nil, :type "date/single", :target ["variable" ["template-tag" "d"]], :name "d", :slug "d", :default nil}]
-               (:parameters (client/client :get 200 (card-url card {:params {:c 100}})))))))))
+        (is (=? {:parameters [{:id      nil
+                               :type    "date/single"
+                               :target  ["variable" ["template-tag" "d"]]
+                               :name    "d"
+                               :slug    "d"
+                               :default nil}]}
+                (client/client :get 200 (card-url card {:params {:c 100}}))))))))
 
 
 ;;; ------------------------- GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants) --------------------------
@@ -387,7 +395,7 @@
     (mt/with-temp Dashboard [dash {:enable_embedding true}]
       (is (= successful-dashboard-info
              (dissoc-id-and-name
-               (client/client :get 200 (dashboard-url dash))))))))
+              (client/client :get 200 (dashboard-url dash))))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key
@@ -637,6 +645,56 @@
          (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
            (db/update! Card (u/the-id card) :enable_embedding false)
            (client/client :get 400 (field-values-url card (mt/id :venues :name)))))))
+
+(deftest card-param-values
+  (letfn [(search [card param-key prefix]
+            (client/client :get 200 (format "embed/card/%s/params/%s/search/%s"
+                                            (card-token card) param-key prefix)))
+          (dropdown [card param-key]
+            (client/client :get 200 (format "embed/card/%s/params/%s/values"
+                                            (card-token card) param-key)))]
+    (mt/with-temporary-setting-values [enable-embedding true]
+      (with-new-secret-key
+        (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
+          (db/update! Card (:id field-filter-card)
+                      {:enable_embedding true
+                       :embedding_params (zipmap (map :slug (:parameters field-filter-card))
+                                                 (repeat "enabled"))})
+          (db/update! Card (:id card)
+                      {:enable_embedding true
+                       :embedding_params (zipmap (map :slug (:parameters card))
+                                                 (repeat "enabled"))})
+          (testing "field filter based param"
+            (let [response (dropdown field-filter-card (:field-values param-keys))]
+              (is (false? (:has_more_values response)))
+              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                               (-> response :values set))))
+            (let [response (search field-filter-card (:field-values param-keys) "bar")]
+              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                               (-> response :values set)))
+              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
+          (testing "static based param"
+            (let [response (dropdown card (:static-list param-keys))]
+              (is (= {:has_more_values false,
+                      :values          ["African" "American" "Asian"]}
+                     response)))
+            (let [response (search card (:static-list param-keys) "af")]
+              (is (= {:has_more_values false,
+                      :values          ["African"]}
+                     response))))
+          (testing "card based param"
+            (let [response (dropdown card (:card param-keys))]
+              (is (= {:values          ["Red Medicine"
+                                        "Stout Burgers & Beers"
+                                        "The Apple Pan"
+                                        "Wurstküche"
+                                        "Brite Spot Family Restaurant"]
+                      :has_more_values false}
+                     response)))
+            (let [response (search card (:card param-keys) "red")]
+              (is (= {:has_more_values false,
+                      :values          ["Red Medicine"]}
+                     response)))))))))
 
 ;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field/values nil -----------------------------
 

@@ -260,10 +260,9 @@
 
      (pprint-to-str 'green some-obj)"
   (^String [x]
-   (when x
-     (with-open [w (java.io.StringWriter.)]
-       (pprint x w)
-       (str w))))
+   (with-open [w (java.io.StringWriter.)]
+     (pprint x w)
+     (str w)))
 
   (^String [color-symb x]
    (colorize color-symb (pprint-to-str x))))

@@ -11,6 +11,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
@@ -34,8 +35,11 @@
   (io/make-parents filename)
   (spit filename (yaml/generate-string obj :dumper-options {:flow-style :block})))
 
-(def ^:private as-file?
-  (comp (set (map type [Pulse Dashboard Metric Segment Field User])) type))
+(defn- as-file?
+  [instance]
+  (some (fn [model]
+          (mi/instance-of? model instance))
+        [Pulse Dashboard Metric Segment Field User]))
 
 (defn- spit-entity
   [path entity]

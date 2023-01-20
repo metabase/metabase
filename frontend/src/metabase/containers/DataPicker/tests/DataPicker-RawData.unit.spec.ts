@@ -2,15 +2,19 @@ import userEvent from "@testing-library/user-event";
 import nock from "nock";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
-import {
-  SAMPLE_DATABASE,
-  ANOTHER_DATABASE,
-  MULTI_SCHEMA_DATABASE,
-} from "__support__/sample_database_fixture";
 
 import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
 
-import { setup } from "./common";
+import {
+  setup,
+  SAMPLE_DATABASE,
+  EMPTY_DATABASE,
+  MULTI_SCHEMA_DATABASE,
+  SAMPLE_TABLE,
+  SAMPLE_TABLE_2,
+  SAMPLE_TABLE_3,
+  SAMPLE_TABLE_4,
+} from "./common";
 
 describe("DataPicker — picking raw data", () => {
   beforeAll(() => {
@@ -29,9 +33,9 @@ describe("DataPicker — picking raw data", () => {
       screen.queryByTestId("loading-spinner"),
     );
 
-    expect(screen.getByText(SAMPLE_DATABASE.displayName())).toBeInTheDocument();
-    SAMPLE_DATABASE.tables.forEach(table => {
-      expect(screen.getByText(table.displayName())).toBeInTheDocument();
+    expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
+    SAMPLE_DATABASE.tables?.forEach(table => {
+      expect(screen.getByText(table.display_name)).toBeInTheDocument();
     });
     expect(screen.queryByText(/Models/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Saved Questions/i)).not.toBeInTheDocument();
@@ -41,7 +45,7 @@ describe("DataPicker — picking raw data", () => {
     await setup({ hasEmptyDatabase: true });
 
     userEvent.click(screen.getByText(/Raw Data/i));
-    userEvent.click(screen.getByText(ANOTHER_DATABASE.name));
+    userEvent.click(screen.getByText(EMPTY_DATABASE.name));
 
     expect(await screen.findByText(/Nothing here/i)).toBeInTheDocument();
   });
@@ -50,16 +54,14 @@ describe("DataPicker — picking raw data", () => {
     const { onChange } = await setup({ isMultiSelect: true });
 
     userEvent.click(screen.getByText(/Raw Data/i));
-    userEvent.click(await screen.findByText(/Orders/i));
-    userEvent.click(screen.getByText(/Products/i));
-    userEvent.click(screen.getByText(/People/i));
-    userEvent.click(screen.getByText(/Orders/i));
+    userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
+    userEvent.click(screen.getByText(SAMPLE_TABLE_2.display_name));
 
     expect(onChange).toHaveBeenLastCalledWith({
       type: "raw-data",
       databaseId: SAMPLE_DATABASE.id,
-      schemaId: generateSchemaId(SAMPLE_DATABASE.id, "PUBLIC"),
-      tableIds: [SAMPLE_DATABASE.PRODUCTS.id, SAMPLE_DATABASE.PEOPLE.id],
+      schemaId: generateSchemaId(SAMPLE_DATABASE.id, SAMPLE_TABLE.schema),
+      tableIds: [SAMPLE_TABLE.id, SAMPLE_TABLE_2.id],
     });
   });
 
@@ -76,11 +78,9 @@ describe("DataPicker — picking raw data", () => {
     expect(screen.getByText(/Raw Data/i)).toBeInTheDocument();
     expect(screen.getByText(/Saved Questions/i)).toBeInTheDocument();
 
-    expect(
-      screen.queryByText(SAMPLE_DATABASE.displayName()),
-    ).not.toBeInTheDocument();
-    SAMPLE_DATABASE.tables.forEach(table => {
-      expect(screen.queryByText(table.displayName())).not.toBeInTheDocument();
+    expect(screen.queryByText(SAMPLE_DATABASE.name)).not.toBeInTheDocument();
+    SAMPLE_DATABASE.tables?.forEach(table => {
+      expect(screen.queryByText(table.display_name)).not.toBeInTheDocument();
     });
     expect(
       screen.queryByRole("button", { name: /Back/i }),
@@ -91,18 +91,18 @@ describe("DataPicker — picking raw data", () => {
     const { onChange } = await setup();
 
     userEvent.click(screen.getByText(/Raw Data/i));
-    userEvent.click(await screen.findByText("Orders"));
-    userEvent.click(screen.getByText("Products"));
+    userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
+    userEvent.click(screen.getByText(SAMPLE_TABLE_2.display_name));
 
     const selectedItem = screen.getByRole("menuitem", {
-      name: /Products/i,
+      name: SAMPLE_TABLE_2.display_name,
     });
     expect(selectedItem).toHaveAttribute("aria-selected", "true");
     expect(onChange).toHaveBeenCalledWith({
       type: "raw-data",
       databaseId: SAMPLE_DATABASE.id,
-      schemaId: generateSchemaId(SAMPLE_DATABASE.id, "PUBLIC"),
-      tableIds: [SAMPLE_DATABASE.PRODUCTS.id],
+      schemaId: generateSchemaId(SAMPLE_DATABASE.id, SAMPLE_TABLE_2.schema),
+      tableIds: [SAMPLE_TABLE_2.id],
     });
   });
 
@@ -112,8 +112,8 @@ describe("DataPicker — picking raw data", () => {
         initialValue: {
           type: "raw-data",
           databaseId: SAMPLE_DATABASE.id,
-          schemaId: generateSchemaId(SAMPLE_DATABASE.id, "PUBLIC"),
-          tableIds: [SAMPLE_DATABASE.PRODUCTS.id],
+          schemaId: generateSchemaId(SAMPLE_DATABASE.id, SAMPLE_TABLE.schema),
+          tableIds: [SAMPLE_TABLE.id],
         },
         filters: {
           types: type => type === "raw-data",
@@ -121,10 +121,10 @@ describe("DataPicker — picking raw data", () => {
       });
 
       const tableListItem = await screen.findByRole("menuitem", {
-        name: /Products/i,
+        name: SAMPLE_TABLE.display_name,
       });
       const databaseListItem = screen.getByRole("menuitem", {
-        name: SAMPLE_DATABASE.displayName(),
+        name: SAMPLE_DATABASE.name,
       });
 
       expect(tableListItem).toHaveAttribute("aria-selected", "true");
@@ -134,27 +134,27 @@ describe("DataPicker — picking raw data", () => {
 
   describe("given a multiple-schema database", () => {
     it("respects initial value", async () => {
-      const [schema] = MULTI_SCHEMA_DATABASE.schemas;
-      const [table] = schema.tables;
+      const table = SAMPLE_TABLE_3;
+      const schema = table.schema;
 
       await setup({
         hasMultiSchemaDatabase: true,
         initialValue: {
           type: "raw-data",
           databaseId: MULTI_SCHEMA_DATABASE.id,
-          schemaId: generateSchemaId(MULTI_SCHEMA_DATABASE.id, schema.name),
+          schemaId: generateSchemaId(MULTI_SCHEMA_DATABASE.id, schema),
           tableIds: [table.id],
         },
       });
 
       const schemaListItem = await screen.findByRole("menuitem", {
-        name: schema.name,
+        name: schema,
       });
       const tableListItem = await screen.findByRole("menuitem", {
-        name: table.displayName(),
+        name: table.display_name,
       });
       const databaseListItem = screen.getByRole("menuitem", {
-        name: MULTI_SCHEMA_DATABASE.displayName(),
+        name: MULTI_SCHEMA_DATABASE.name,
       });
 
       expect(schemaListItem).toHaveAttribute("aria-selected", "true");
@@ -163,21 +163,22 @@ describe("DataPicker — picking raw data", () => {
     });
 
     it("resets selected tables on schema change", async () => {
-      const [schema1, schema2] = MULTI_SCHEMA_DATABASE.schemas;
-      const [schema1Table] = schema1.tables;
+      const schema1Table = SAMPLE_TABLE_3;
+      const schema1 = SAMPLE_TABLE_3.schema;
+      const schema2 = SAMPLE_TABLE_4.schema;
 
       const { onChange } = await setup({ hasMultiSchemaDatabase: true });
 
       userEvent.click(screen.getByText(/Raw Data/i));
-      userEvent.click(screen.getByText(MULTI_SCHEMA_DATABASE.displayName()));
-      userEvent.click(await screen.findByText(schema1.name));
-      userEvent.click(await screen.findByText(schema1Table.displayName()));
-      userEvent.click(await screen.findByText(schema2.name));
+      userEvent.click(screen.getByText(MULTI_SCHEMA_DATABASE.name));
+      userEvent.click(await screen.findByText(schema1));
+      userEvent.click(await screen.findByText(schema1Table.display_name));
+      userEvent.click(await screen.findByText(schema2));
 
       expect(onChange).toHaveBeenLastCalledWith({
         type: "raw-data",
         databaseId: MULTI_SCHEMA_DATABASE.id,
-        schemaId: schema2.id,
+        schemaId: generateSchemaId(MULTI_SCHEMA_DATABASE.id, schema2),
         tableIds: [],
       });
     });
@@ -188,9 +189,9 @@ describe("DataPicker — picking raw data", () => {
       const { onChange } = await setup({ hasMultiSchemaDatabase: true });
 
       userEvent.click(screen.getByText(/Raw Data/i));
-      userEvent.click(screen.getByText(SAMPLE_DATABASE.displayName()));
-      userEvent.click(await screen.findByText(/Orders/i));
-      userEvent.click(screen.getByText(MULTI_SCHEMA_DATABASE.displayName()));
+      userEvent.click(screen.getByText(SAMPLE_DATABASE.name));
+      userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
+      userEvent.click(screen.getByText(MULTI_SCHEMA_DATABASE.name));
 
       expect(onChange).toHaveBeenLastCalledWith({
         type: "raw-data",
@@ -205,7 +206,7 @@ describe("DataPicker — picking raw data", () => {
     const { onChange } = await setup();
 
     userEvent.click(screen.getByText(/Raw Data/i));
-    userEvent.click(await screen.findByText(/Orders/i));
+    userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
     userEvent.click(screen.getByRole("button", { name: /Back/i }));
 
     expect(onChange).toHaveBeenLastCalledWith({

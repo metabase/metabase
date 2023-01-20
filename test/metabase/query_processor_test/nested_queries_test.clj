@@ -752,10 +752,10 @@
               [980]]
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
-                 {:source-query {:source-table $$checkins
-                                 :order-by     [[:asc $id]]}
+                 {:source-query {:source-table $$checkins}
                   :fields       [$id]
-                  :filter       [:= *date "2014-03-30"]})))))))
+                  :filter       [:= *date "2014-03-30"]
+                  :order-by     [[:asc $id]]})))))))
 
 (deftest aapply-filters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)

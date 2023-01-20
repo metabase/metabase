@@ -126,14 +126,14 @@
           (when (.exists (io/file dump-dir))
             (.delete (io/file dump-dir))))))))
 
-(defmacro with-random-dump-dir {:style/indent 2} [[dump-dir-binding prefix] & body]
+(defmacro with-random-dump-dir {:style/indent 1} [[dump-dir-binding prefix] & body]
   `(do-with-random-dump-dir ~prefix (fn [~dump-dir-binding] ~@body)))
 
 (defmacro with-world
   "Run test in the context of a minimal Metabase instance connected to our test database."
+  {:style/indent 0}
   [& body]
-  `(with-temp-dpc [Database   [{~'db-id :id} (into {:name temp-db-name} (-> (data/id)
-                                                                            Database
+  `(with-temp-dpc [Database   [{~'db-id :id} (into {:name temp-db-name} (-> (data/db)
                                                                             (dissoc :id :features :name)))]
                    Table      [{~'table-id :id :as ~'table} (temp-table (data/id :venues) ~'db-id)]
                    Table      [{~'table-id-categories :id}  (temp-table (data/id :categories) ~'db-id)]
@@ -330,8 +330,7 @@
                    PulseCard           [{~'pulsecard-root-id :id} {:pulse_id ~'pulse-id
                                                                    :card_id  ~'card-id-root}]
                    PulseCard           [{~'pulsecard-collection-id :id} {:pulse_id ~'pulse-id
-                                                                         :card_id  ~'card-id}
-                                                         :query {:source-table (str "card__" ~'card-id-root)}]
+                                                                         :card_id  ~'card-id}]
                    Card                [{~'card-id-template-tags :id}
                                         {:query_type    :native
                                          :name          "My Native Card With Template Tags"

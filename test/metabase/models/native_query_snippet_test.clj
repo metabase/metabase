@@ -12,7 +12,7 @@
   (testing "You shouldn't be allowed to update the creator_id of a NativeQuerySnippet"
     (mt/with-temp NativeQuerySnippet [{snippet-id :id} {:name "my-snippet", :content "wow", :creator_id (mt/user->id :lucky)}]
       (is (thrown-with-msg?
-           UnsupportedOperationException
+           Exception
            #"You cannot update the creator_id of a NativeQuerySnippet\."
            (db/update! NativeQuerySnippet snippet-id :creator_id (mt/user->id :rasta))))
       (is (= (mt/user->id :lucky)

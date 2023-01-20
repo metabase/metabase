@@ -663,15 +663,13 @@ jobs:
       DRIVERS: vertica
     services:
       vertica:
-        image: sumitchawla/vertica
+        image: vertica/vertica-ce:12.0.2-0
         ports:
           - "5433:5433"
     steps:
     - uses: actions/checkout@v3
     - name: Make plugins directory
       run: mkdir plugins
-    - name: Fetch JDBC driver
-      run: wget --output-document=plugins/vertica-jdbc-7.1.2-0.jar ${{ secrets.VERTICA_JDBC_JAR }}
     - name: Test Vertica driver
       uses: ./.github/actions/test-driver
       with:
