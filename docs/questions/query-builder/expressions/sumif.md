@@ -242,7 +242,7 @@ import datetime as dt
     df_filtered.groupby('Date Received: Month')['Payment'].sum()
 ```
 
-These steps will produce the same result as the Metabase `SumIf` expression (with the [**Group by** column](../../query-builder/introduction#summarizing-and-grouping-by) set to "Date Received: Month").
+These steps will produce the same result as the Metabase `SumIf` expression (with the [**Group by** column](../../query-builder/introduction.md#summarizing-and-grouping-by) set to "Date Received: Month").
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
