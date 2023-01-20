@@ -6,7 +6,18 @@ function Link(props) {
   if (props.isPreviewing) {
     return (
       <div style={{ pointerEvents: "all" }}>
-        <SearchBar style={{ pointerEvents: "all" }} />;
+        <SearchBar
+          style={{ pointerEvents: "all" }}
+          onClick={item => {
+            props.onUpdateVisualizationSettings({
+              link: item.getUrl(),
+              "link.title": item.name,
+              "link.type": item.type,
+            });
+          }}
+          value={props.settings.link}
+        />
+        ;
       </div>
     );
   } else {
@@ -25,10 +36,7 @@ function Link(props) {
 
 Link.settings = {
   minSize: { width: 3, height: 1 },
-  link: {
-    value: "https://google.com",
-    description: "",
-  },
+  link: {},
 };
 
 Link.identifier = "link";

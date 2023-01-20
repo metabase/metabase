@@ -16,9 +16,10 @@ const propTypes = {
   list: PropTypes.array,
   onChangeLocation: PropTypes.func,
   searchText: PropTypes.string,
+  onClick: PropTypes.func,
 };
 
-const SearchResults = ({ list, onChangeLocation, searchText }) => {
+const SearchResults = ({ list, onChangeLocation, searchText, onClick }) => {
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation({
     list,
     onEnter: item => onChangeLocation(item.getUrl()),
@@ -40,6 +41,7 @@ const SearchResults = ({ list, onChangeLocation, searchText }) => {
               result={item}
               compact={true}
               isSelected={cursorIndex === index}
+              onClick={result => onClick(result)}
             />
           </li>
         ))

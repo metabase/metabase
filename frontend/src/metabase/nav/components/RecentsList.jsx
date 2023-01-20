@@ -41,11 +41,12 @@ const propTypes = {
   ),
   loading: PropTypes.bool,
   onChangeLocation: PropTypes.func,
+  onClick: PropTypes.func,
 };
 
 const getItemUrl = item => (isItemActive(item) ? Urls.modelToUrl(item) : "");
 
-function RecentsList({ list, loading, onChangeLocation }) {
+function RecentsList({ list, loading, onChangeLocation, onClick }) {
   const { getRef, cursorIndex } = useListKeyboardNavigation({
     list,
     onEnter: item => onChangeLocation(getItemUrl(item)),
@@ -80,41 +81,85 @@ function RecentsList({ list, loading, onChangeLocation }) {
 
                 return (
                   <li key={key} ref={getRef(item)}>
-                    <ResultLink
-                      to={url}
-                      compact={true}
-                      active={active}
-                      isSelected={cursorIndex === index}
-                    >
-                      <RecentListItemContent
-                        align="start"
-                        data-testid="recently-viewed-item"
+                    {onClick ? (
+                      <>
+                        <RecentListItemContent
+                          align="start"
+                          data-testid="recently-viewed-item"
+                          onClick={() =>
+                            onClick({
+                              name: title,
+                              type: item.model,
+                              getUrl: () => url,
+                            })
+                          }
+                        >
+                          <ItemIcon
+                            item={item}
+                            type={item.model}
+                            active={active}
+                          />
+                          <div>
+                            <TitleWrapper>
+                              <Title
+                                active={active}
+                                data-testid="recently-viewed-item-title"
+                              >
+                                {title}
+                              </Title>
+                              <PLUGIN_MODERATION.ModerationStatusIcon
+                                status={moderatedStatus}
+                                size={12}
+                              />
+                            </TitleWrapper>
+                            <Text data-testid="recently-viewed-item-type">
+                              {type}
+                            </Text>
+                          </div>
+                          {loading && (
+                            <ResultSpinner size={24} borderWidth={3} />
+                          )}
+                        </RecentListItemContent>
+                      </>
+                    ) : (
+                      <ResultLink
+                        to={url}
+                        compact={true}
+                        active={active}
+                        isSelected={cursorIndex === index}
                       >
-                        <ItemIcon
-                          item={item}
-                          type={item.model}
-                          active={active}
-                        />
-                        <div>
-                          <TitleWrapper>
-                            <Title
-                              active={active}
-                              data-testid="recently-viewed-item-title"
-                            >
-                              {title}
-                            </Title>
-                            <PLUGIN_MODERATION.ModerationStatusIcon
-                              status={moderatedStatus}
-                              size={12}
-                            />
-                          </TitleWrapper>
-                          <Text data-testid="recently-viewed-item-type">
-                            {type}
-                          </Text>
-                        </div>
-                        {loading && <ResultSpinner size={24} borderWidth={3} />}
-                      </RecentListItemContent>
-                    </ResultLink>
+                        <RecentListItemContent
+                          align="start"
+                          data-testid="recently-viewed-item"
+                        >
+                          <ItemIcon
+                            item={item}
+                            type={item.model}
+                            active={active}
+                          />
+                          <div>
+                            <TitleWrapper>
+                              <Title
+                                active={active}
+                                data-testid="recently-viewed-item-title"
+                              >
+                                {title}
+                              </Title>
+                              <PLUGIN_MODERATION.ModerationStatusIcon
+                                status={moderatedStatus}
+                                size={12}
+                              />
+                            </TitleWrapper>
+                            <Text data-testid="recently-viewed-item-type">
+                              {type}
+                            </Text>
+                          </div>
+                          {loading && (
+                            <ResultSpinner size={24} borderWidth={3} />
+                          )}
+                        </RecentListItemContent>
+                      </ResultLink>
+                    )}
                   </li>
                 );
               })}

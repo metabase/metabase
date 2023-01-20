@@ -48,6 +48,8 @@ type DispatchProps = {
 type OwnProps = {
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
+  onClick?: () => void;
+  value: string;
 };
 
 type Props = RouterProps & DispatchProps & OwnProps;
@@ -73,6 +75,8 @@ function SearchBar({
   onSearchActive,
   onSearchInactive,
   onChangeLocation,
+  onClick,
+  value,
 }: Props) {
   const [searchText, setSearchText] = useState<string>(() =>
     getSearchTextFromLocation(location),
@@ -187,10 +191,21 @@ function SearchBar({
         <SearchResultsFloatingContainer>
           {hasSearchText ? (
             <SearchResultsContainer>
-              <SearchResults searchText={searchText.trim()} />
+              <SearchResults
+                searchText={searchText.trim()}
+                onClick={link => {
+                  onClick(link);
+                  setInactive();
+                }}
+              />
             </SearchResultsContainer>
           ) : (
-            <RecentsList />
+            <RecentsList
+              onClick={link => {
+                onClick(link);
+                setInactive();
+              }}
+            />
           )}
         </SearchResultsFloatingContainer>
       )}
