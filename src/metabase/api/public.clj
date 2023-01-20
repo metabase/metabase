@@ -6,6 +6,7 @@
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.actions.execution :as actions.execution]
+   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
@@ -14,7 +15,6 @@
    [metabase.async.util :as async.u]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.action :as action :refer [Action]]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dimension :refer [Dimension]]
@@ -31,7 +31,6 @@
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
@@ -331,6 +330,7 @@
       api/check-404
       select-public-keys))
 
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -497,6 +497,22 @@
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid/params/:param-key/values"
+  "Fetch values for a parameter on a public card."
+  [uuid param-key]
+  (validation/check-public-sharing-enabled)
+  (let [card (db/select-one Card :public_uuid uuid, :archived false)]
+    (api.card/param-values card param-key)))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:uuid/params/:param-key/search/:query"
+  "Fetch values for a parameter on a public card containing `query`."
+  [uuid param-key query]
+  (validation/check-public-sharing-enabled)
+  (let [card (db/select-one Card :public_uuid uuid, :archived false)]
+    (api.card/param-values card param-key query)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/values"
