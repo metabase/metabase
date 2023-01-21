@@ -6,11 +6,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 
-import {
-  Dashboard,
-  DashboardOrderedCard,
-  VisualizationSettings,
-} from "metabase-types/api";
+import { Dashboard, VisualizationSettings } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 
 import DashCardActionButton from "./DashCardActionButton";
@@ -18,14 +14,12 @@ import DashCardActionButton from "./DashCardActionButton";
 interface Props {
   series: Series;
   dashboard: Dashboard;
-  dashcard?: DashboardOrderedCard;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
 }
 
 function ChartSettingsButton({
   series,
   dashboard,
-  dashcard,
   onReplaceAllVisualizationSettings,
 }: Props) {
   return (
@@ -45,7 +39,6 @@ function ChartSettingsButton({
         onChange={onReplaceAllVisualizationSettings}
         isDashboard
         dashboard={dashboard}
-        dashcard={dashcard}
       />
     </ModalWithTrigger>
   );

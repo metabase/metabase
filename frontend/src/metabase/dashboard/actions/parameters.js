@@ -15,7 +15,6 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardApi } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { isActionDashCard } from "metabase/actions/utils";
 import {
   getDashboard,
   getParameterValues,
@@ -109,17 +108,10 @@ export const setParameterMapping = createThunkAction(
   (parameter_id, dashcard_id, card_id, target) => (dispatch, getState) => {
     const dashcard = getState().dashboard.dashcards[dashcard_id];
     const isVirtual = isVirtualDashCard(dashcard);
-    const isAction = isActionDashCard(dashcard);
-
     let parameter_mappings = dashcard.parameter_mappings || [];
-
-    // allow mapping the same parameeter to multiple action targets
-    if (!isAction) {
-      parameter_mappings = parameter_mappings.filter(
-        m => m.card_id !== card_id || m.parameter_id !== parameter_id,
-      );
-    }
-
+    parameter_mappings = parameter_mappings.filter(
+      m => m.card_id !== card_id || m.parameter_id !== parameter_id,
+    );
     if (target) {
       if (isVirtual) {
         // If this is a virtual (text) card, remove any existing mappings for the target, since text card variables

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -38,23 +38,18 @@ function CustomURLPicker({
   dashcard,
   parameters,
 }: Props) {
-  const [url, setUrl] = useState(clickBehavior?.linkTemplate ?? "");
-  const hasLinkTemplate = !!clickBehavior.linkTemplate;
-  const canSelect = clickBehaviorIsValid({
-    ...clickBehavior,
-    linkTemplate: url,
-  });
+  const hasLinkTemplate = clickBehavior.linkTemplate != null;
+  const canSelect = clickBehaviorIsValid(clickBehavior);
 
-  const handleLinkTemplateChange = useCallback(e => {
-    setUrl(e.currentTarget.value);
-  }, []);
-
-  const handleSubmit = useCallback(() => {
-    updateSettings({
-      ...clickBehavior,
-      linkTemplate: url,
-    });
-  }, [clickBehavior, updateSettings, url]);
+  const handleLinkTemplateChange = useCallback(
+    e => {
+      updateSettings({
+        ...clickBehavior,
+        linkTemplate: e.target.value,
+      });
+    },
+    [clickBehavior, updateSettings],
+  );
 
   const handleReset = useCallback(() => {
     updateSettings({
@@ -91,7 +86,7 @@ function CustomURLPicker({
           </FormDescription>
           <InputBlurChange
             autoFocus
-            value={url}
+            value={clickBehavior.linkTemplate}
             placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
             onChange={handleLinkTemplateChange}
             className="block full"
@@ -105,11 +100,7 @@ function CustomURLPicker({
           <ValuesYouCanReference dashcard={dashcard} parameters={parameters} />
           <DoneButton
             primary
-            type="button"
-            onClick={() => {
-              handleSubmit();
-              onClose();
-            }}
+            onClick={onClose}
             disabled={!canSelect}
           >{t`Done`}</DoneButton>
         </ModalContent>
