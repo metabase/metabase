@@ -1,4 +1,4 @@
-name: Release
+name: Release [WIP]
 
 on:
   push:
@@ -22,10 +22,14 @@ jobs:
         curl -OL $JAR_DOWNLOAD_URL
         stat ./metabase.jar
         date | tee timestamp
+    - name: Verify that this is a valid JAR file
+      run: file --mime-type ./metabase.jar | grep "application/zip"
+    - name: Reveal its version.properties
+      run: jar xf metabase.jar version.properties && cat version.properties
     - name: Calculate SHA256 checksum
       run: sha256sum ./metabase.jar | tee SHA256.sum
     - name: Upload Uberjar as artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: metabase-uberjar-${{ github.ref_name }}
         path: |
@@ -38,14 +42,17 @@ jobs:
     runs-on: ubuntu-20.04
     needs: download-uberjar
     timeout-minutes: 10
+    strategy:
+      matrix:
+        java-version: [11, 17]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
       uses: actions/setup-java@v3
       with:
         java-package: jre
-        java-version: 11
+        java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       name: Retrieve previously downloaded Uberjar
       with:
         name: metabase-uberjar-${{ github.ref_name }}
@@ -76,7 +83,7 @@ jobs:
           - 5000:5000
     steps:
     - uses: actions/checkout@v3
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       name: Retrieve previously downloaded Uberjar
       with:
         name: metabase-uberjar-${{ github.ref_name }}
@@ -84,11 +91,11 @@ jobs:
       run: mv ./metabase.jar bin/docker/.
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
       with:
         driver-opts: network=host
     - name: Build ${{ matrix.edition }} container
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         context: bin/docker/.
         platforms: linux/amd64
@@ -107,22 +114,50 @@ jobs:
     - name: Determine the target Docker Hub repository
       run: |
         if [[ ${{ github.ref_name }} == v1* ]]; then
-          echo "Metabase EE: image is going to be pushed to ${{ github.repository_owner }}/test-metabase-enterprise"
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/test-metabase-enterprise" >> $GITHUB_ENV
+          echo "Metabase EE: image is going to be pushed to ${{ github.repository_owner }}/metabase-enterprise"
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise" >> $GITHUB_ENV
         else
-          echo "Metabase OSS: image is going to be pushed to ${{ github.repository_owner }}/test-metabase"
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/test-metabase" >> $GITHUB_ENV
+          echo "Metabase OSS: image is going to be pushed to ${{ github.repository_owner }}/metabase"
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase" >> $GITHUB_ENV
         fi
 
-
     - name: Login to Docker Hub
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
     - name: Retag and push container image to Docker Hub
       run: |
         echo "Pushing ${{ github.ref_name }} to ${{ env.DOCKERHUB_REPO }} ..."
         docker tag localhost:5000/local-metabase:${{ github.ref_name }} ${{ env.DOCKERHUB_REPO }}:${{ github.ref_name }}
         docker push ${{ env.DOCKERHUB_REPO }}:${{ github.ref_name }}
         echo "Finished!"
+
+  verify-docker-pull:
+    runs-on: ubuntu-20.04
+    needs: containerize
+    timeout-minutes: 15
+    steps:
+    - name: Login to Docker Hub # authenticated, to avoid being rate-throttled
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+    - name: Determine the container image to pull
+      run: |
+        if [[ ${{ github.ref_name }} == v1* ]]; then
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise" >> $GITHUB_ENV
+        else
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase" >> $GITHUB_ENV
+        fi
+    - name: Pull the container image
+      run: |
+        echo "Pulling container image ${{ env.DOCKERHUB_REPO }}:${{ github.ref_name }} ..."
+        docker pull ${{ env.DOCKERHUB_REPO }}:${{ github.ref_name }}
+        echo "Successful!"
+    - name: Launch container
+      run: docker run --rm -dp 3000:3000 ${{ env.DOCKERHUB_REPO }}:${{ github.ref_name }}
+      timeout-minutes: 5
+    - name: Wait for Metabase to start
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      timeout-minutes: 3
