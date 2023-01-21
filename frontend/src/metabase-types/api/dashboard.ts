@@ -40,7 +40,6 @@ export type BaseDashboardOrderedCard = {
     [key: string]: unknown;
     virtual_card?: Card;
   };
-  justAdded?: boolean;
 };
 
 export type DashboardOrderedCard = BaseDashboardOrderedCard & {

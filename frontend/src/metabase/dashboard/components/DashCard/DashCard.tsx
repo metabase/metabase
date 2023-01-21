@@ -18,8 +18,6 @@ import { mergeSettings } from "metabase/visualizations/lib/settings";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 
-import { isActionCard } from "metabase/actions/utils";
-
 import type {
   Card,
   CardId,
@@ -196,7 +194,6 @@ function DashCard({
     return !hasSeries;
   }, [dashcard, series]);
 
-  const isAction = isActionCard(mainCard);
   const isEmbed = Utils.isJWT(dashcard.dashboard_id);
 
   const { expectedDuration, isSlow } = useMemo(() => {
@@ -231,9 +228,9 @@ function DashCard({
 
     return (
       mainCard.visualization_settings["dashcard.background"] === false ||
-      isAction
+      mainCard.display === "list"
     );
-  }, [isEditing, isAction, mainCard]);
+  }, [isEditing, mainCard]);
 
   const isEditingDashboardLayout =
     isEditing && !clickBehaviorSidebarDashcard && !isEditingParameter;
@@ -274,7 +271,6 @@ function DashCard({
           <DashCardActionButtons
             series={series}
             dashboard={dashboard}
-            dashcard={dashcard}
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             isVirtualDashCard={isVirtualDashCard(dashcard)}
@@ -290,7 +286,6 @@ function DashCard({
         </DashboardCardActionsPanel>
       );
     }
-
     return null;
   }, [
     dashcard,
@@ -330,7 +325,6 @@ function DashCard({
         headerIcon={headerIcon}
         expectedDuration={expectedDuration}
         error={error}
-        isAction={isAction}
         isEmbed={isEmbed}
         isEditing={isEditing}
         isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}

@@ -46,11 +46,6 @@ const ValuesYouCanReference = withUserAttributes(
         name: t`User attributes`,
       },
     ].filter(section => section.items.length > 0);
-
-    if (!sections.length) {
-      return null;
-    }
-
     return (
       <PopoverWithTrigger
         triggerElement={
