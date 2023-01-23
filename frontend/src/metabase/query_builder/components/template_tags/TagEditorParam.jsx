@@ -82,6 +82,25 @@ export class TagEditorParam extends Component {
     }
   }
 
+  setQueryType = queryType => {
+    const { tag, setTemplateTag } = this.props;
+
+    setTemplateTag({
+      ...tag,
+      values_query_type: queryType,
+    });
+  };
+
+  setSourceSettings = (sourceType, sourceConfig) => {
+    const { tag, setTemplateTag } = this.props;
+
+    setTemplateTag({
+      ...tag,
+      values_source_type: sourceType,
+      values_source_config: sourceConfig,
+    });
+  };
+
   setParameterAttribute(attr, val) {
     // only register an update if the value actually changes
     if (this.props.tag[attr] !== val) {
@@ -282,15 +301,8 @@ export class TagEditorParam extends Component {
             <ContainerLabel>{t`How should users filter on this variable?`}</ContainerLabel>
             <ValuesSourceSettings
               parameter={parameter}
-              onChangeQueryType={value =>
-                this.setParameterAttribute("values_query_type", value)
-              }
-              onChangeSourceType={value =>
-                this.setParameterAttribute("values_source_type", value)
-              }
-              onChangeSourceConfig={value =>
-                this.setParameterAttribute("values_source_config", value)
-              }
+              onChangeQueryType={this.setQueryType}
+              onChangeSourceSettings={this.setSourceSettings}
             />
           </InputContainer>
         )}

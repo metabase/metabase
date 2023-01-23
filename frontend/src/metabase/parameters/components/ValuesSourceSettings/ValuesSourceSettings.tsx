@@ -19,15 +19,16 @@ import {
 export interface ValuesSourceSettingsProps {
   parameter: Parameter;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
-  onChangeSourceType: (sourceType: ValuesSourceType) => void;
-  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+  onChangeSourceSettings: (
+    sourceType: ValuesSourceType,
+    sourceConfig: ValuesSourceConfig,
+  ) => void;
 }
 
 const ValuesSourceSettings = ({
   parameter,
   onChangeQueryType,
-  onChangeSourceType,
-  onChangeSourceConfig,
+  onChangeSourceSettings,
 }: ValuesSourceSettingsProps): JSX.Element => {
   const queryType = getQueryType(parameter);
   const [isModalOpened, setIsModalOpened] = useState(false);
@@ -35,14 +36,6 @@ const ValuesSourceSettings = ({
   const radioOptions = useMemo(() => {
     return getRadioOptions(queryType, () => setIsModalOpened(true));
   }, [queryType]);
-
-  const handleSubmit = useCallback(
-    (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
-      onChangeSourceType(sourceType);
-      onChangeSourceConfig(sourceConfig);
-    },
-    [onChangeSourceType, onChangeSourceConfig],
-  );
 
   const handleModalClose = useCallback(() => {
     setIsModalOpened(false);
@@ -60,7 +53,7 @@ const ValuesSourceSettings = ({
         <Modal medium onClose={handleModalClose}>
           <ValuesSourceModal
             parameter={parameter}
-            onSubmit={handleSubmit}
+            onSubmit={onChangeSourceSettings}
             onClose={handleModalClose}
           />
         </Modal>

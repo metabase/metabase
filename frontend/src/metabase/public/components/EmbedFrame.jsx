@@ -36,6 +36,8 @@ class EmbedFrame extends Component {
       description,
       actionButtons,
       location,
+      question,
+      dashboard,
       parameters,
       parameterValues,
       setParameterValue,
@@ -78,7 +80,8 @@ class EmbedFrame extends Component {
                 <div className="flex">
                   <SyncedParametersList
                     className="mt1"
-                    dashboard={this.props.dashboard}
+                    question={question}
+                    dashboard={dashboard}
                     parameters={getValuePopulatedParameters(
                       parameters,
                       parameterValues,

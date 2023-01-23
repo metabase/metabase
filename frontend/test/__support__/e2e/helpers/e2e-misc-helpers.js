@@ -243,3 +243,25 @@ export function saveQuestion(
     cy.button("Not now").click();
   });
 }
+
+export function visitPublicQuestion(id) {
+  cy.request("POST", `/api/card/${id}/public_link`).then(
+    ({ body: { uuid } }) => {
+      cy.intercept("GET", `/api/public/card/:${uuid}`).as("@publicCard");
+      cy.visit(`/public/question/${uuid}`);
+      cy.wait("@publicCard");
+    },
+  );
+}
+
+export function visitPublicDashboard(id) {
+  cy.request("POST", `/api/dashboard/${id}/public_link`).then(
+    ({ body: { uuid } }) => {
+      cy.intercept("GET", `/api/public/dashboard/:${uuid}`).as(
+        "publicDashboard",
+      );
+      cy.visit(`/public/dashboard/${uuid}`);
+      cy.wait("@publicDashboard");
+    },
+  );
+}

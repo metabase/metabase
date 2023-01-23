@@ -8,6 +8,7 @@ import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/paramete
 const propTypes = {
   parameters: PropTypes.array.isRequired,
   editingParameter: PropTypes.object,
+  question: PropTypes.object,
   dashboard: PropTypes.object,
 
   className: PropTypes.string,
@@ -26,6 +27,7 @@ const propTypes = {
 export function SyncedParametersList({
   parameters,
   editingParameter,
+  question,
   dashboard,
 
   className,
@@ -54,6 +56,7 @@ export function SyncedParametersList({
     <ParametersList
       className={className}
       parameters={parameters}
+      question={question}
       dashboard={dashboard}
       editingParameter={editingParameter}
       isFullscreen={isFullscreen}

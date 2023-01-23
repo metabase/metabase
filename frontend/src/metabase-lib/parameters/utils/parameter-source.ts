@@ -7,6 +7,7 @@ import {
   ValuesSourceType,
 } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
+import { CUSTOM_SOURCE_PARAMETER_TYPES } from "../constants";
 import { getFields } from "./parameter-fields";
 import { getParameterSubType, getParameterType } from "./parameter-type";
 
@@ -26,15 +27,10 @@ export const canUseCustomSource = (parameter: Parameter) => {
   const type = getParameterType(parameter);
   const subType = getParameterSubType(parameter);
 
-  switch (type) {
-    case "string":
-    case "location":
-      return subType === "=";
-    case "category":
-      return true;
-    default:
-      return false;
-  }
+  return (
+    CUSTOM_SOURCE_PARAMETER_TYPES[type] != null &&
+    CUSTOM_SOURCE_PARAMETER_TYPES[type].includes(subType)
+  );
 };
 
 export const isValidSourceConfig = (

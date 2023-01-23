@@ -32,7 +32,7 @@ export interface ParameterSettingsProps {
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
-  onChangeSourceConfig: (sourceOptions: ValuesSourceConfig) => void;
+  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onRemoveParameter: () => void;
 }
 
@@ -53,6 +53,14 @@ const ParameterSettings = ({
     [onChangeName],
   );
 
+  const handleSourceSettingsChange = useCallback(
+    (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
+      onChangeSourceType(sourceType);
+      onChangeSourceConfig(sourceConfig);
+    },
+    [onChangeSourceType, onChangeSourceConfig],
+  );
+
   return (
     <SettingsRoot>
       <SettingSection>
@@ -68,8 +76,7 @@ const ParameterSettings = ({
           <ValuesSourceSettings
             parameter={parameter}
             onChangeQueryType={onChangeQueryType}
-            onChangeSourceType={onChangeSourceType}
-            onChangeSourceConfig={onChangeSourceConfig}
+            onChangeSourceSettings={handleSourceSettingsChange}
           />
         </SettingSection>
       )}
