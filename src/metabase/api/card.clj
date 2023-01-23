@@ -934,7 +934,7 @@ saved later when it is ready."
 (defn template-tag-parameters
   "Transforms native query's `template-tags` into `parameters`."
   [card]
-  ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/parameters/utils/cards.js
+  ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
   (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
         :when                         (and tag-type
                                            (or widget-type (not= tag-type :dimension)))]
@@ -951,7 +951,8 @@ saved later when it is ready."
      :default (:default tag)}))
 
 (defn parameters
-  "Mirrors `getParametersFromCard` in frontend/src/metabase/parameters/utils/cards.js."
+  "Gets parameters from a card.
+   Should mirror `getParametersFromCard` in frontend/src/metabase-lib/parameters/utils/template-tags.ts"
   [card]
   (or (seq (:parameters card))
       (template-tag-parameters card)))
