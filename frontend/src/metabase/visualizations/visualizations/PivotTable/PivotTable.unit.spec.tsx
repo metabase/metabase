@@ -77,6 +77,30 @@ const settings = {
 // 3 isn't a real column, it's a pivot-grouping
 const columnIndexes = [0, 1, 2, 4, 5];
 
+function setup(options?: any) {
+  render(<PivotTableWrapper {...options} />);
+}
+
+function PivotTableWrapper(props?: any) {
+  const [vizSettings, setVizSettings] = React.useState(
+    props.initialSettings ?? settings,
+  );
+  return (
+    <PivotTable
+      settings={vizSettings}
+      data={{ rows, cols }}
+      width={600}
+      onVisualizationClick={_.noop}
+      onUpdateVisualizationSettings={newSettings =>
+        setVizSettings({ ...vizSettings, ...newSettings })
+      }
+      isNightMode={false}
+      isDashboard={false}
+      {...props}
+    />
+  );
+}
+
 describe("Visualizations > PivotTable > PivotTable", () => {
   // we need to mock offsetHeight and offsetWidth to make react-virtualized work with react-dom
   // https://github.com/bvaughn/react-virtualized/issues/493#issuecomment-447014986
@@ -113,35 +137,13 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     );
   });
 
-  it("should render pivot table wrapper", () => {
-    render(
-      <PivotTable
-        settings={settings}
-        data={{ rows, cols }}
-        width={600}
-        onVisualizationClick={_.noop}
-        onUpdateVisualizationSettings={_.noop}
-        isNightMode={false}
-        isDashboard={false}
-      />,
-    );
-    expect(screen.getByTestId("pivot-table")).toBeInTheDocument();
+  it("should render pivot table wrapper", async () => {
+    setup();
+    expect(await screen.findByTestId("pivot-table")).toBeInTheDocument();
   });
 
   it("should render column names", () => {
-    render(
-      <div style={{ height: 800 }}>
-        <PivotTable
-          settings={settings}
-          data={{ rows, cols }}
-          width={600}
-          onVisualizationClick={_.noop}
-          onUpdateVisualizationSettings={_.noop}
-          isNightMode={false}
-          isDashboard={false}
-        />
-      </div>,
-    );
+    setup();
 
     // all column names except 3, the pivot grouping, should be in the document
     columnIndexes.forEach(colIndex => {
@@ -150,19 +152,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
   });
 
   it("should render column values", () => {
-    render(
-      <div style={{ height: 800 }}>
-        <PivotTable
-          settings={settings}
-          data={{ rows, cols }}
-          width={900}
-          onVisualizationClick={_.noop}
-          onUpdateVisualizationSettings={_.noop}
-          isNightMode={false}
-          isDashboard={false}
-        />
-      </div>,
-    );
+    setup();
 
     rows.forEach(rowData => {
       columnIndexes.forEach(colIndex => {
@@ -182,19 +172,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
       },
     } as unknown as VisualizationSettings;
 
-    render(
-      <div style={{ height: 800 }}>
-        <PivotTable
-          settings={hiddenSettings}
-          data={{ rows, cols }}
-          width={900}
-          onVisualizationClick={_.noop}
-          onUpdateVisualizationSettings={_.noop}
-          isNightMode={false}
-          isDashboard={false}
-        />
-      </div>,
-    );
+    setup({ initialSettings: hiddenSettings });
 
     rows.forEach(rowData => {
       expect(screen.getByText(rowData[0].toString())).toBeInTheDocument();
