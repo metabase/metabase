@@ -3,6 +3,12 @@ import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
 
+import * as Urls from "metabase/lib/urls";
+import { getSetting } from "metabase/selectors/settings";
+
+import type { WritebackAction, WritebackActionId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import Tooltip from "metabase/core/components/Tooltip";
 import Button from "metabase/core/components/Button";
 import Toggle from "metabase/core/components/Toggle";
@@ -10,18 +16,23 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 import Icon from "metabase/components/Icon";
-import type { WritebackAction, WritebackActionId } from "metabase-types/api";
 import Actions from "metabase/entities/actions/actions";
-import { State } from "metabase-types/store";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import { useToggle } from "metabase/hooks/use-toggle";
+import CopyWidget from "metabase/components/CopyWidget";
+
 import {
   ActionSettingsContainer,
   ActionSettingsContent,
+  CopyWidgetContainer,
   ToggleContainer,
   ToggleLabel,
 } from "./InlineActionSettings.styled";
+
+type PublicWritebackAction = WritebackAction & {
+  public_uuid: string;
+};
 
 interface OwnProps {
   onClose: () => void;
@@ -33,6 +44,7 @@ interface EntityLoaderProps {
 }
 
 interface StateProps {
+  siteUrl: string;
   createPublicLink: ({ id }: { id: WritebackActionId }) => void;
   deletePublicLink: ({ id }: { id: WritebackActionId }) => void;
 }
@@ -49,6 +61,10 @@ export const ActionSettingsTriggerButton = ({
   </Tooltip>
 );
 
+const mapStateToProps = (state: State) => ({
+  siteUrl: getSetting(state, "site-url"),
+});
+
 const mapDispatchToProps = {
   createPublicLink: Actions.actions.createPublicLink,
   deletePublicLink: Actions.actions.deletePublicLink,
@@ -56,13 +72,14 @@ const mapDispatchToProps = {
 
 const InlineActionSettings = ({
   onClose,
-  action,
   actionId,
+  action,
+  siteUrl,
   createPublicLink,
   deletePublicLink,
 }: ActionSettingsInlineProps) => {
   const id = useUniqueId();
-  const isPublic = action.public_uuid != null;
+  const isPublic = isActionPublic(action);
 
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
 
@@ -101,15 +118,28 @@ const InlineActionSettings = ({
               />
             </Modal>
           </ToggleContainer>
+          {isPublic && (
+            <CopyWidgetContainer>
+              <CopyWidget
+                value={Urls.publicAction(siteUrl, action.public_uuid)}
+              />
+            </CopyWidgetContainer>
+          )}
         </ActionSettingsContent>
       </SidebarContent>
     </ActionSettingsContainer>
   );
 };
 
+function isActionPublic(
+  action: WritebackAction,
+): action is PublicWritebackAction {
+  return Boolean(action.public_uuid);
+}
+
 export default _.compose(
   Actions.load({
     id: (_: State, props: OwnProps) => props.actionId,
   }),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(InlineActionSettings) as (props: OwnProps) => JSX.Element;
