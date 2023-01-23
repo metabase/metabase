@@ -931,6 +931,31 @@ saved later when it is ready."
            :has_more_values true
            :field_id field-id})))))
 
+(defn template-tag-parameters
+  "Transforms native query's `template-tags` into `parameters`."
+  [card]
+  ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/parameters/utils/cards.js
+  (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
+        :when                         (and tag-type
+                                           (or widget-type (not= tag-type :dimension)))]
+    {:id      (:id tag)
+     :type    (or widget-type (cond (= tag-type :date)   :date/single
+                                    (= tag-type :string) :string/=
+                                    (= tag-type :number) :number/=
+                                    :else                :category))
+     :target  (if (= tag-type :dimension)
+                [:dimension [:template-tag (:name tag)]]
+                [:variable  [:template-tag (:name tag)]])
+     :name    (:display-name tag)
+     :slug    (:name tag)
+     :default (:default tag)}))
+
+(defn parameters
+  "Mirrors `getParametersFromCard` in frontend/src/metabase/parameters/utils/cards.js."
+  [card]
+  (or (seq (:parameters card))
+      (template-tag-parameters card)))
+
 (s/defn param-values
   "Fetch values for a parameter.
 
@@ -943,7 +968,8 @@ saved later when it is ready."
   ([card      :- su/Map
     param-key :- su/NonBlankString
     query     :- (s/maybe su/NonBlankString)]
-   (let [param       (get (m/index-by :id (:parameters card)) param-key)
+   (let [params      (parameters card)
+         param       (get (m/index-by :id params) param-key)
          source-type (:values_source_type param)]
      (when-not param
        (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))

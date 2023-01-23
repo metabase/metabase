@@ -2331,11 +2331,7 @@
                                                                     :dimension    [:field (mt/id :venues :name) nil]
                                                                     :required     true}}}}
                                 :name       "native card with field filter"
-                                :parameters [{:id     "name_param_id",
-                                              :type   :string/=,
-                                              :target [:dimension [:template-tag "NAME"]],
-                                              :name   "Name",
-                                              :slug   "NAME"}]}]
+                                :parameters []}]
       Card [card        (merge
                          {:database_id   (mt/id)
                           :dataset_query (mt/mbql-query venues)

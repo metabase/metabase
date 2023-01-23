@@ -10,6 +10,7 @@
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.api.card :as api.card]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed :as api.embed]
@@ -658,11 +659,11 @@
         (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
           (db/update! Card (:id field-filter-card)
                       {:enable_embedding true
-                       :embedding_params (zipmap (map :slug (:parameters field-filter-card))
+                       :embedding_params (zipmap (map :slug (api.card/parameters field-filter-card))
                                                  (repeat "enabled"))})
           (db/update! Card (:id card)
                       {:enable_embedding true
-                       :embedding_params (zipmap (map :slug (:parameters card))
+                       :embedding_params (zipmap (map :slug (api.card/parameters card))
                                                  (repeat "enabled"))})
           (testing "field filter based param"
             (let [response (dropdown field-filter-card (:field-values param-keys))]
