@@ -1,5 +1,5 @@
 // cell width and height for normal body cells
-export const CELL_WIDTH = 100;
+export const DEFAULT_CELL_WIDTH = 100;
 export const CELL_HEIGHT = 30;
 
 // styling and cell text measurement depend on this font size
