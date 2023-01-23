@@ -2,11 +2,24 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+<<<<<<< HEAD
 import DeleteGroupMappingModal, {
   DeleteGroupMappingModalProps,
 } from "./DeleteGroupMappingModal";
 
 type SetupOpts = Partial<DeleteGroupMappingModalProps>;
+=======
+import type { GroupIds, DNType, ValueType } from "./DeleteGroupMappingModal";
+
+import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
+
+type PropTypes = {
+  dn?: DNType;
+  groupIds?: GroupIds;
+  onConfirm?: (value: ValueType, groups: number[], dn: DNType) => void;
+  onHide?: () => void;
+};
+>>>>>>> 306f71e566 (Update import paths to be explicit)
 
 const DEFAULT_PROPS = {
   name: "cn=People",
