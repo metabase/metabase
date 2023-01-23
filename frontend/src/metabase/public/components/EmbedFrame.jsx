@@ -97,7 +97,7 @@ class EmbedFrame extends Component {
         {showFooter && (
           <div className="EmbedFrame-footer p1 md-p2 lg-p3 border-top flex-no-shrink flex align-center">
             {!MetabaseSettings.hideEmbedBranding() && (
-              <LogoBadge dark={theme} />
+              <LogoBadge dark={theme === "night"} />
             )}
             {actionButtons && (
               <div className="flex-align-right text-medium">
