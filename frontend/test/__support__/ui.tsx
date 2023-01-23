@@ -20,7 +20,7 @@ import publicReducers from "metabase/reducers-public";
 
 import { getStore } from "./entities-store";
 
-type RouterStateOpts = { currentRoute: string; currentLocation: string };
+type RouterStateOpts = { route: string; location: string };
 
 export interface RenderWithProvidersOptions {
   mode?: "default" | "public";
@@ -121,8 +121,8 @@ function MaybeRouter({
   if (!hasRouter) {
     return children;
   }
-  const location = initialState?.currentLocation || "/";
-  const route = initialState?.currentRoute || "/";
+  const location = initialState?.location || "/";
+  const route = initialState?.route || "/";
 
   const history = createMemoryHistory({ entries: [location] });
 

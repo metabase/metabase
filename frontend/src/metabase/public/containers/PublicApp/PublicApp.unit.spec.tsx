@@ -38,8 +38,8 @@ function setup({
       mode: "public",
       storeInitialState: { app, settings },
       initialRouterState: {
-        currentRoute: "/public/dashboard/:id",
-        currentLocation: `/public/dashboard/UUID${hash}`,
+        route: "/public/dashboard/:id",
+        location: `/public/dashboard/UUID${hash}`,
       },
       withRouter: true,
     },

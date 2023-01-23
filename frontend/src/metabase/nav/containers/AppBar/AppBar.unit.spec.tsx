@@ -148,8 +148,8 @@ function setup(embedOptions: Partial<EmbedOptions>) {
   renderWithProviders(<AppBar />, {
     withRouter: true,
     initialRouterState: {
-      currentLocation: "/question/1",
-      currentRoute: "/question/:slug",
+      location: "/question/1",
+      route: "/question/:slug",
     },
     storeInitialState: {
       app: createMockAppState({ isNavbarOpen: false }),
