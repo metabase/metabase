@@ -19,7 +19,7 @@ export type ValueType = "nothing" | "clear" | "delete";
 type DeleteGroupMappingModalProps = {
   dn: DNType;
   groupIds: GroupIds;
-  onConfirm: (value: ValueType, groups: number[], dn: DNType) => void;
+  onConfirm: (value: ValueType, groupIds: GroupIds, dn: DNType) => void;
   onHide: () => void;
 };
 
@@ -29,14 +29,14 @@ const DeleteGroupMappingModal = ({
   onConfirm,
   onHide,
 }: DeleteGroupMappingModalProps) => {
-  const [value, setValue] = useState("nothing");
+  const [value, setValue] = useState<ValueType>("nothing");
 
   const handleChange = (newValue: ValueType) => {
     setValue(newValue);
   };
 
   const handleConfirm = () => {
-    onConfirm(value as ValueType, groupIds, dn);
+    onConfirm(value, groupIds, dn);
   };
 
   const submitButtonLabels: Record<ValueType, string> = {
