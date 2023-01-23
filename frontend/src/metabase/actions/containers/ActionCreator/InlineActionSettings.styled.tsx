@@ -30,3 +30,7 @@ export const ToggleLabel = styled.label`
   font-weight: 700;
   margin-right: ${space(1)};
 `;
+
+export const CopyWidgetContainer = styled.div`
+  margin-top: ${space(2)};
+`;
