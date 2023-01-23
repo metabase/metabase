@@ -13,6 +13,9 @@ import Icon from "metabase/components/Icon";
 import type { WritebackAction, WritebackActionId } from "metabase-types/api";
 import Actions from "metabase/entities/actions/actions";
 import { State } from "metabase-types/store";
+import ConfirmContent from "metabase/components/ConfirmContent";
+import Modal from "metabase/components/Modal";
+import { useToggle } from "metabase/hooks/use-toggle";
 import {
   ActionSettingsContainer,
   ActionSettingsContent,
@@ -59,15 +62,20 @@ const InlineActionSettings = ({
   deletePublicLink,
 }: ActionSettingsInlineProps) => {
   const id = useUniqueId();
-
   const isPublic = action.public_uuid != null;
 
-  const handleTogglePublic = (value: boolean) => {
-    if (value) {
+  const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
+
+  const handleTogglePublic = (isPublic: boolean) => {
+    if (isPublic) {
       createPublicLink({ id: actionId });
     } else {
-      deletePublicLink({ id: actionId });
+      openModal();
     }
+  };
+
+  const handleDisablePublicLink = () => {
+    deletePublicLink({ id: actionId });
   };
 
   return (
@@ -84,6 +92,14 @@ const InlineActionSettings = ({
               </Tooltip>
             </span>
             <Toggle id={id} value={isPublic} onChange={handleTogglePublic} />
+            <Modal isOpen={isModalOpen}>
+              <ConfirmContent
+                title={t`Disable this public link?`}
+                content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
+                onAction={handleDisablePublicLink}
+                onClose={closeModal}
+              />
+            </Modal>
           </ToggleContainer>
         </ActionSettingsContent>
       </SidebarContent>
