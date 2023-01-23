@@ -59,6 +59,7 @@ function ModelActionPicker({
   model: Card;
   actions: WritebackAction[];
 }) {
+  const [isCollapsed, { toggle: toggleIsCollapsed }] = useToggle(true);
   const [editingActionId, setEditingActionId] = useState<number | undefined>(
     undefined,
   );
