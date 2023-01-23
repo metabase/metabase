@@ -135,7 +135,7 @@ export default class GroupMappingsWidget extends React.Component {
     }
 
     const allGroupIdsExceptAdmin = groupIds.filter(
-      groupId => !isAdminGroup(_.find(groups, group => group.id === groupId)),
+      groupId => !isAdminGroup(groups.find(group => group.id === groupId)),
     );
 
     const stateKey = {
@@ -273,9 +273,7 @@ export default class GroupMappingsWidget extends React.Component {
                     const isMappingLinkedOnlyToAdminGroup =
                       groups &&
                       ids.length === 1 &&
-                      isAdminGroup(
-                        _.find(groups, group => group.id === ids[0]),
-                      );
+                      isAdminGroup(groups.find(group => group.id === ids[0]));
 
                     const isSavedMapping =
                       Object.keys(savedMappings).includes(dn);
