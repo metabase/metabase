@@ -688,16 +688,6 @@ export const SANKEY_DATA_SETTINGS = {
     ) => cols,
     hidden: true,
   }),
-  "graph._start_filter": {
-    getDefault: ([{ card }]) => {
-      return isDimension
-    },
-    useRawSeries: true,
-  },
-  "graph._destinations_filter": {
-    getDefault: ([{ card }]) => isDimension,
-    useRawSeries: true,
-  },
   "graph._metric_filter": {
     getDefault: ([{ card }]) => isMetric,
     useRawSeries: true,
@@ -707,32 +697,22 @@ export const SANKEY_DATA_SETTINGS = {
     title: t`Starting Point`,
     widget: "fields",
     isValid: (series, vizSettings) =>
-      series.some(
-        ({ card, data }) =>
-          columnsAreValid(
-            card.visualization_settings["graph.start"],
-            data,
-            vizSettings["graph._start_filter"],
-          ),
+      series.some(({ card, data }) =>
+        columnsAreValid(card.visualization_settings["graph.start"], data),
       ),
     getDefault: (series, vizSettings) =>
-      preserveExistingColumnsOrder(
-        vizSettings["graph.start"] ?? [],
-        [getDefaultColumns(series).dimensions[0]],
-      ),
+      preserveExistingColumnsOrder(vizSettings["graph.start"] ?? [], [
+        getDefaultColumns(series).dimensions[0],
+      ]),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
-      const addedDimensions = vizSettings["graph.start"];
-      const options = data.cols
-        .filter(vizSettings["graph._start_filter"])
-        .map(getOptionFromColumn);
+      const options = data.cols.map(getOptionFromColumn);
       return {
         options,
         columns: data.cols,
         showColumnSetting: false,
       };
     },
-    readDependencies: ["graph._destinations_filter","graph._start_filter", "graph._metric_filter"],
     writeDependencies: ["graph.metrics"],
     dashboard: false,
     useRawSeries: true,
@@ -742,25 +722,24 @@ export const SANKEY_DATA_SETTINGS = {
     title: t`Destination(s)`,
     widget: "fields",
     isValid: (series, vizSettings) =>
-      series.some(
-        ({ card, data }) =>
+      series.some(({ card, data }) =>
         columnsAreValid(
           card.visualization_settings["graph.destinations"],
           data,
-          vizSettings["graph._destinations_filter"],
         ),
       ),
-    getDefault: (series, vizSettings) =>
-      preserveExistingColumnsOrder(
+    getDefault: (series, vizSettings) => {
+      return preserveExistingColumnsOrder(
         vizSettings["graph.destinations"] ?? [],
-        getDefaultColumns(series).dimensions.slice(1),
-      ),
+        [
+          getDefaultColumns(series).metrics.slice(1),
+          getDefaultColumns(series).dimensions.slice(1),
+        ].flat(),
+      );
+    },
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
-      const value = vizSettings["graph.destinations"];
-      const options = data.cols
-        .filter(vizSettings["graph._destinations_filter"])
-        .map(getOptionFromColumn);
+      const options = data.cols.map(getOptionFromColumn);
       return {
         options,
         addAnother: t`Add Destination...`,
@@ -768,7 +747,6 @@ export const SANKEY_DATA_SETTINGS = {
         showColumnSetting: false,
       };
     },
-    readDependencies: ["graph._destinations_filter", "graph._start_filter", "graph._metric_filter"],
     writeDependencies: ["graph.metrics"],
     dashboard: false,
     useRawSeries: true,
@@ -778,23 +756,12 @@ export const SANKEY_DATA_SETTINGS = {
     title: t`Value`,
     widget: "fields",
     isValid: (series, vizSettings) =>
-      series.some(
-        ({ card, data }) =>
-          columnsAreValid(
-            card.visualization_settings["graph.start"],
-            data,
-            vizSettings["graph._start_filter"],
-          ) &&
-          columnsAreValid(
-            card.visualization_settings["graph.destinations"],
-            data,
-            vizSettings["graph._destinations_filter"],
-          ) &&
-          columnsAreValid(
-            card.visualization_settings["graph.metrics"],
-            data,
-            vizSettings["graph._metric_filter"],
-          ),
+      series.some(({ card, data }) =>
+        columnsAreValid(
+          card.visualization_settings["graph.metrics"],
+          data,
+          vizSettings["graph._metric_filter"],
+        ),
       ),
     getDefault: (series, vizSettings) => [getDefaultColumns(series).metrics[0]],
     persistDefault: true,
@@ -808,7 +775,7 @@ export const SANKEY_DATA_SETTINGS = {
         showColumnSetting: false,
       };
     },
-    readDependencies: ["graph._start_filter","graph._destinations_filter", "graph._metric_filter"],
+    readDependencies: ["graph._metric_filter"],
     writeDependencies: ["graph.start", "graph.destinations"],
     dashboard: false,
     useRawSeries: true,
