@@ -252,8 +252,15 @@ class ChartSettings extends Component {
   };
 
   render() {
-    const { className, question, addField, noPreview, dashboard, isDashboard } =
-      this.props;
+    const {
+      className,
+      question,
+      addField,
+      noPreview,
+      dashboard,
+      dashcard,
+      isDashboard,
+    } = this.props;
     const { currentWidget, popoverRef } = this.state;
 
     const settings = this._getSettings();
@@ -398,6 +405,7 @@ class ChartSettings extends Component {
                   isEditing
                   isDashboard
                   dashboard={dashboard}
+                  dashcard={dashcard}
                   isSettings
                   showWarnings
                   onUpdateVisualizationSettings={this.handleChangeSettings}
