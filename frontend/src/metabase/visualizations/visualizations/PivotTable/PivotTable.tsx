@@ -54,6 +54,7 @@ import {
   leftHeaderCellSizeAndPositionGetter,
   topHeaderCellSizeAndPositionGetter,
   getCellWidthsForSection,
+  getWidthForRange,
 } from "./utils";
 
 import {
@@ -96,7 +97,7 @@ function PivotTable({
   ] = useState<HeaderWidthType>({
     leftHeaderWidths: null,
     totalLeftHeaderWidths: null,
-    valueHeaderWidths: [],
+    valueHeaderWidths: {},
   });
 
   const bodyRef = useRef(null);
@@ -190,9 +191,7 @@ function PivotTable({
           leftHeaderItems: pivoted?.leftHeaderItems,
           fontFamily: fontFamily,
         }),
-        valueHeaderWidths: new Array(
-          pivoted?.columnCount * pivoted.valueIndexes.length,
-        ).fill(DEFAULT_CELL_WIDTH),
+        valueHeaderWidths: {},
       }));
     }
   }, [pivoted, fontFamily, getColumnTitle, columnsChanged]);
@@ -218,7 +217,7 @@ function PivotTable({
         totalLeftHeaderWidths: newTotalWidth,
       };
     } else if (columnType === "value") {
-      const newValueHeaderWidths = [...(valueHeaderWidths as number[])];
+      const newValueHeaderWidths = { ...(valueHeaderWidths ?? {}) };
       newValueHeaderWidths[columnIndex] = Math.max(
         newWidth,
         MIN_HEADER_CELL_WIDTH,

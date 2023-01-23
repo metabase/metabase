@@ -15,6 +15,7 @@ import type {
   PivotSetting,
   FieldOrAggregationReference,
   HeaderItem,
+  CustomColumnWidth,
 } from "./types";
 
 import { partitions } from "./partitions";
@@ -28,6 +29,7 @@ import {
   MAX_ROWS_TO_MEASURE,
   LEFT_HEADER_LEFT_SPACING,
   CELL_HEIGHT,
+  DEFAULT_CELL_WIDTH,
 } from "./constants";
 
 // adds or removes columns from the pivot settings based on the current query
@@ -252,13 +254,12 @@ export const leftHeaderCellSizeAndPositionGetter = (
 export const topHeaderCellSizeAndPositionGetter = (
   item: HeaderItem,
   topHeaderRows: number,
-  valueHeaderWidths: number[],
+  valueHeaderWidths: CustomColumnWidth,
 ) => {
   const { offset, span, maxDepthBelow } = item;
 
-  const leftOffset = sumArray(valueHeaderWidths.slice(0, offset));
-
-  const width = sumArray(valueHeaderWidths.slice(offset, offset + span));
+  const leftOffset = getWidthForRange(valueHeaderWidths, 0, offset);
+  const width = getWidthForRange(valueHeaderWidths, offset, offset + span);
 
   return {
     height: CELL_HEIGHT,
@@ -268,12 +269,28 @@ export const topHeaderCellSizeAndPositionGetter = (
   };
 };
 
+export const getWidthForRange = (
+  widths: CustomColumnWidth,
+  start: number,
+  end: number,
+) => {
+  let total = 0;
+  for (let i = start ?? 0; i < (end ?? Object.keys(widths).length); i++) {
+    total += widths[i] ?? DEFAULT_CELL_WIDTH;
+  }
+  return total;
+};
+
 export const getCellWidthsForSection = (
-  valueHeaderWidths: number[],
+  valueHeaderWidths: CustomColumnWidth,
   valueIndexes: number[],
   startIndex: number,
-) =>
-  valueHeaderWidths.slice(
-    startIndex * valueIndexes.length,
-    startIndex * valueIndexes.length + valueIndexes.length,
-  );
+) => {
+  const widths = [];
+  const startCol = startIndex * valueIndexes.length;
+  const endCol = startIndex * valueIndexes.length + valueIndexes.length;
+  for (let i = startCol; i < endCol; i++) {
+    widths.push(valueHeaderWidths[i] ?? DEFAULT_CELL_WIDTH);
+  }
+  return widths;
+};
