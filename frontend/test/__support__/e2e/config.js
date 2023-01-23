@@ -20,6 +20,7 @@ const targetVersion = process.env["CROSS_VERSION_TARGET"];
 // the project's config changing)
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
+const { Client } = require("pg");
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
@@ -59,6 +60,22 @@ const defaultConfig = {
       }
 
       return launchOptions;
+    });
+
+    /********************************************************************
+     **                           TASKS                                **
+     ********************************************************************/
+
+    on("task", {
+      async connectAndQueryDB({ connectionString, connectionConfig, query }) {
+        const client = new Client(connectionString || connectionConfig);
+
+        await client.connect();
+        const res = await client.query(query);
+        await client.end();
+
+        return res;
+      },
     });
 
     /********************************************************************
