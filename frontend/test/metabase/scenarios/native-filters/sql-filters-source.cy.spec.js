@@ -194,16 +194,6 @@ const getTargetQuestion = sourceSettings => ({
       },
     },
   },
-  parameters: [
-    {
-      id: "93961154-c3d5-7c93-7b59-f4e494fda499",
-      name: "Tag",
-      slug: "tag",
-      target: ["dimension", ["template-tag", "tag"]],
-      type: "string/=",
-      ...sourceSettings,
-    },
-  ],
   enable_embedding: true,
   embedding_params: {
     tag: "enabled",
