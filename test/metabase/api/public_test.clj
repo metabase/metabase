@@ -1285,21 +1285,22 @@
   (mt/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (let [{:keys [public_uuid] :as action-opts} (shared-obj)]
-        ;; Set the throttle delay high enough the throttle will definitely trigger
-        (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 20000)]
-          (testing "Happy path - we can execute a public action"
-            (is (=? {:rows-affected 1}
-                    (client/client
-                     :post 200
-                     (format "public/action/%s/execute" public_uuid)
-                     {:parameters {:id 1 :name "European"}}))))
-          (testing "Test throttle"
-            (let [throttled-response (client/client-full-response
-                                      :post 429
-                                      (format "public/action/%s/execute" public_uuid)
-                                      {:parameters {:id 1 :name "European"}})]
-              (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
-              (is (contains? (:headers throttled-response) "Retry-After")))))
+        (mt/with-actions [{} action-opts]
+          ;; Set the throttle delay high enough the throttle will definitely trigger
+          (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 20000)]
+            (testing "Happy path - we can execute a public action"
+              (is (=? {:rows-affected 1}
+                      (client/client
+                       :post 200
+                       (format "public/action/%s/execute" public_uuid)
+                       {:parameters {:id 1 :name "European"}}))))
+            (testing "Test throttle"
+              (let [throttled-response (client/client-full-response
+                                        :post 429
+                                        (format "public/action/%s/execute" public_uuid)
+                                        {:parameters {:id 1 :name "European"}})]
+                (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
+                (is (contains? (:headers throttled-response) "Retry-After"))))))
         ;; Lift the throttle attempts threshold so we don't have to wait between requests
         (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1000)]
           (mt/with-actions [{} action-opts]
