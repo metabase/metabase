@@ -218,7 +218,7 @@ function PivotTable({
           fontFamily: fontFamily,
         }),
         valueHeaderWidths: {},
-      }));
+      });
     }
   }, [pivoted, fontFamily, getColumnTitle, columnsChanged, setHeaderWidths]);
 
