@@ -762,6 +762,31 @@
          Exception
          (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))))))
 
+;;; ------------------------------------------- GET /api/public/action/:uuid -------------------------------------------
+
+(deftest fetch-action-test
+  (testing "GET /api/public/action/:uuid"
+    (mt/with-actions-enabled
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        ;; TODO -- shouldn't this return a 404? I guess it's because we're 'genericizing' all the errors in public
+        ;; endpoints in [[metabase.server.middleware.exceptions/genericize-exceptions]]
+        (testing "should return 400 if Action doesn't exist"
+          (is (= "An error occurred."
+                 (client/client :get 400 (str "public/action/" (UUID/randomUUID))))))
+        (let [action-opts (shared-obj)
+              uuid        (:public_uuid action-opts)]
+          (mt/with-actions [{} action-opts]
+            (testing "Happy path -- should be able to fetch the Action"
+              (is (= #{:name
+                       :id
+                       :visualization_settings
+                       :parameters}
+                     (set (keys (client/client :get 200 (str "public/action/" uuid)))))))
+            (testing "Check that we cannot fetch a public Action if public sharing is disabled"
+              (mt/with-temporary-setting-values [enable-public-sharing false]
+                (is (= "An error occurred."
+                       (client/client :get 400 (str "public/action/" (:public_uuid action-opts)))))))))))))
+
 
 ;;; ------------------------------- GET /api/public/card/:uuid/field/:field/values nil --------------------------------
 

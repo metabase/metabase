@@ -15,6 +15,7 @@
    [metabase.async.util :as async.u]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dimension :refer [Dimension]]
@@ -31,6 +32,7 @@
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
@@ -302,6 +304,26 @@
      :width   width
      :height  height
      :html    (embed/iframe url width height)}))
+
+
+;;; ----------------------------------------------- Public Action ------------------------------------------------
+
+(def ^:private action-public-keys
+  "The only keys for an action that should be visible to the general public."
+  #{:name
+    :id
+    :visualization_settings
+    :parameters})
+
+(api/defendpoint GET "/action/:uuid"
+  "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
+  [uuid]
+  {uuid ms/UUIDString}
+  (validation/check-public-sharing-enabled)
+  (-> (action/actions-with-implicit-params nil :public_uuid uuid)
+      first
+      api/check-404
+      (select-keys action-public-keys)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
