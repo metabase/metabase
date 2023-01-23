@@ -6,6 +6,7 @@ import {
   setFilterListSource,
   visitEmbeddedPage,
   visitPublicQuestion,
+  popover,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
@@ -52,7 +53,9 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.mapTo({ table: "Products", field: "Category" });
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
       saveQuestion("SQL filter");
+
       FieldFilter.openEntryForm();
+      checkFilterValueNotInList("Gizmo");
       FieldFilter.selectFilterValueFromList("Gadget");
       SQLFilter.runQuery("cardQuery");
     });
@@ -69,6 +72,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       );
 
       FieldFilter.openEntryForm();
+      checkFilterValueNotInList("Gizmo");
       FieldFilter.selectFilterValueFromList("Gadget");
     });
 
@@ -84,6 +88,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       );
 
       FieldFilter.openEntryForm();
+      checkFilterValueNotInList("Gizmo");
       FieldFilter.selectFilterValueFromList("Gadget");
     });
   });
@@ -99,7 +104,9 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.mapTo({ table: "Products", field: "Ean" });
       setFilterQuestionSource({ question: "SQL source", field: "EAN" });
       saveQuestion("SQL filter");
+
       FieldFilter.openEntryForm();
+      checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
       SQLFilter.runQuery("cardQuery");
     });
@@ -116,6 +123,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       );
 
       FieldFilter.openEntryForm();
+      checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
     });
 
@@ -131,6 +139,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       );
 
       FieldFilter.openEntryForm();
+      checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
     });
   });
@@ -144,7 +153,9 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.mapTo({ table: "Products", field: "Ean" });
       setFilterListSource({ values: ["1018947080336", "7663515285824"] });
       saveQuestion("SQL filter");
+
       FieldFilter.openEntryForm();
+      checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
       SQLFilter.runQuery("cardQuery");
     });
@@ -157,6 +168,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       );
 
       FieldFilter.openEntryForm();
+      checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
     });
 
@@ -168,6 +180,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       );
 
       FieldFilter.openEntryForm();
+      checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
     });
   });
@@ -178,7 +191,7 @@ const getQuestionResource = questionId => ({
   params: {},
 });
 
-const getTargetQuestion = sourceSettings => ({
+const getTargetQuestion = tag => ({
   name: "Embedded",
   native: {
     query: "SELECT * FROM PRODUCTS WHERE {{tag}}",
@@ -188,9 +201,8 @@ const getTargetQuestion = sourceSettings => ({
         name: "tag",
         "display-name": "Tag",
         type: "dimension",
-        dimension: ["field", PRODUCTS.EAN, null],
         "widget-type": "string/=",
-        ...sourceSettings,
+        ...tag,
       },
     },
   },
@@ -202,6 +214,7 @@ const getTargetQuestion = sourceSettings => ({
 
 const getStructuredTargetQuestion = questionId => {
   return getTargetQuestion({
+    dimension: ["field", PRODUCTS.CATEGORY, null],
     values_source_type: "card",
     values_source_config: {
       card_id: questionId,
@@ -212,6 +225,7 @@ const getStructuredTargetQuestion = questionId => {
 
 const getNativeTargetQuestion = questionId => {
   return getTargetQuestion({
+    dimension: ["field", PRODUCTS.EAN, null],
     values_source_type: "card",
     values_source_config: {
       card_id: questionId,
@@ -222,9 +236,16 @@ const getNativeTargetQuestion = questionId => {
 
 const getListTargetQuestion = () => {
   return getTargetQuestion({
+    dimension: ["field", PRODUCTS.EAN, null],
     values_source_type: "static-list",
     values_source_config: {
       values: ["1018947080336", "7663515285824"],
     },
+  });
+};
+
+const checkFilterValueNotInList = value => {
+  popover().within(() => {
+    cy.findByText(value).should("not.exist");
   });
 };
