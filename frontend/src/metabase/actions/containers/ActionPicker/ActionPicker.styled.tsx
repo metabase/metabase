@@ -9,17 +9,10 @@ import Button from "metabase/core/components/Button";
 
 export const ModelActionList = styled.div`
   margin-bottom: ${space(2)};
-  &:not(:last-child) {
-    border-bottom: 1px solid ${color("border")};
-  }
 `;
 
 export const ModelTitle = styled.h4`
-  color: ${color("text-dark")};
   margin-bottom: ${space(2)};
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 `;
 
 export const ActionItem = styled.li`
@@ -27,15 +20,6 @@ export const ActionItem = styled.li`
   justify-content: space-between;
   padding-left: ${space(3)};
   margin-bottom: ${space(2)};
-`;
-
-export const ActionName = styled.span`
-  color: ${color("brand")};
-  font-weight: bold;
-  cursor: pointer;
-  &:hover: {
-    color: ${lighten("brand", 0.1)};
-  }
 `;
 
 export const EmptyState = styled(UnstyledEmptyState)`

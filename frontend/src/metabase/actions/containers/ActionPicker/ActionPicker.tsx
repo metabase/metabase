@@ -10,7 +10,6 @@ import Questions from "metabase/entities/questions";
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
 
 import { isImplicitAction } from "metabase/actions/utils";
@@ -19,7 +18,6 @@ import ActionCreator from "metabase/actions/containers/ActionCreator";
 import {
   ModelTitle,
   ActionItem,
-  ActionName,
   EditButton,
   ModelActionList,
   EmptyState,
@@ -62,6 +60,7 @@ function ModelActionPicker({
   model: Card;
   actions: WritebackAction[];
 }) {
+  const [isCollapsed, { toggle: toggleIsCollapsed }] = useToggle(true);
   const [editingActionId, setEditingActionId] = useState<number | undefined>(
     undefined,
   );
@@ -80,40 +79,48 @@ function ModelActionPicker({
     <>
       <ModelActionList>
         <ModelTitle>
-          <div>
-            <Icon name="model" size={16} className="mr2" />
+          <Button
+            onlyText
+            onClick={toggleIsCollapsed}
+            icon={isCollapsed ? "chevronright" : "chevrondown"}
+          >
             {model.name}
-          </div>
-          <Button onlyIcon icon="add" onClick={toggleIsActionCreatorVisible} />
+          </Button>
         </ModelTitle>
-        {actions?.length ? (
-          <ul>
-            {actions?.map(action => (
-              <ActionItem key={action.id}>
-                <ActionName onClick={() => onClick(action)}>
-                  {action.name}
-                </ActionName>
-                {!isImplicitAction(action) && (
-                  <EditButton
-                    icon="pencil"
-                    onlyIcon
-                    onClick={() => {
-                      setEditingActionId(action.id);
-                      toggleIsActionCreatorVisible();
-                    }}
-                  />
-                )}
+        {!isCollapsed &&
+          (actions?.length ? (
+            <ul>
+              {actions?.map(action => (
+                <ActionItem key={action.id}>
+                  <Button onlyText onClick={() => onClick(action)}>
+                    <span>{action.name}</span>
+                  </Button>
+                  {!isImplicitAction(action) && (
+                    <EditButton
+                      icon="pencil"
+                      onlyIcon
+                      onClick={() => {
+                        setEditingActionId(action.id);
+                        toggleIsActionCreatorVisible();
+                      }}
+                    />
+                  )}
+                </ActionItem>
+              ))}
+              <ActionItem>
+                <Button onlyText onClick={toggleIsActionCreatorVisible}>
+                  {t`Create new action`}
+                </Button>
               </ActionItem>
-            ))}
-          </ul>
-        ) : (
-          <EmptyModelStateContainer>
-            <div>{t`There are no actions for this model`}</div>
-            <Button onClick={toggleIsActionCreatorVisible} borderless>
-              {t`Create new action`}
-            </Button>
-          </EmptyModelStateContainer>
-        )}
+            </ul>
+          ) : (
+            <EmptyModelStateContainer>
+              <div>{t`There are no actions for this model`}</div>
+              <Button onClick={toggleIsActionCreatorVisible} borderless>
+                {t`Create new action`}
+              </Button>
+            </EmptyModelStateContainer>
+          ))}
       </ModelActionList>
       {isActionCreatorOpen && (
         <ActionCreator
