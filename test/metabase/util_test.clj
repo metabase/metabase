@@ -1,4 +1,4 @@
-(ns metabase.util-test
+(ns ^:mb/once metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
    [clojure.test :refer :all]

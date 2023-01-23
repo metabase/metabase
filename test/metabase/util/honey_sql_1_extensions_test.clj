@@ -1,4 +1,4 @@
-(ns metabase.util.honey-sql-1-extensions-test
+(ns ^:mb/once metabase.util.honey-sql-1-extensions-test
   (:require
    [clojure.test :refer :all]
    [honeysql.core :as hsql]
