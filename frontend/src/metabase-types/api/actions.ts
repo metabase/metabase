@@ -28,6 +28,11 @@ export interface WritebackActionBase {
   public_uuid: string | null;
 }
 
+export type PublicWritebackAction = Pick<
+  WritebackActionBase,
+  "id" | "name" | "parameters" | "visualization_settings"
+>;
+
 export interface QueryAction {
   type: "query";
   dataset_query: NativeDatasetQuery;

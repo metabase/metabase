@@ -1,5 +1,6 @@
 import {
   CardId,
+  PublicWritebackAction,
   WritebackParameter,
   WritebackQueryAction,
   WritebackImplicitQueryAction,
@@ -78,3 +79,12 @@ export const createMockImplicitCUDActions = (
     model_id: modelId,
   }),
 ];
+
+export const createMockPublicAction = (
+  opts?: Partial<PublicWritebackAction>,
+): PublicWritebackAction => ({
+  id: 1,
+  name: "Public Action",
+  parameters: [],
+  ...opts,
+});
