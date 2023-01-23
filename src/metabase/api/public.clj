@@ -551,6 +551,44 @@
      :export-format :api
      :parameters    parameters :qp-runner qp.pivot/run-pivot-query)))
 
+(def ^:private action-execution-throttle
+  "Rate limit at 1 action per second on a per action basis.
+   The goal of rate limiting should be to prevent very obvioius abuse, but it should
+   be relatively lax so we don't annoy legitimate users."
+  (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 1000 :delay-exponent 1))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/action/:uuid/execute"
+  "Execute the Action.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values."
+  [uuid :as {{:keys [parameters], :as _body} :body}]
+  {uuid        su/UUIDString
+   parameters  (s/maybe {s/Keyword s/Any})}
+  (let [throttle-message (try
+                           (throttle/check action-execution-throttle uuid)
+                           nil
+                           (catch ExceptionInfo e
+                             (get-in (ex-data e) [:errors :action-uuid])))
+        throttle-time (when throttle-message
+                        (second (re-find #"You must wait ([0-9]+) seconds" throttle-message)))]
+    (if throttle-message
+      (cond-> {:status 429
+               :body   throttle-message}
+        throttle-time (assoc :headers {"Retry-After" throttle-time}))
+      (do
+        ;; TODO: check-actions-enabled for the database
+        (validation/check-public-sharing-enabled)
+        ;; Run this query with full superuser perms. We don't want the various perms checks
+        ;; failing because there are no current user perms; if this Dashcard is public
+        ;; you're by definition allowed to run it without a perms check anyway
+        (binding [api/*current-user-permissions-set* (delay #{"/"})]
+            ;; Undo middleware string->keyword coercion
+          (let [action (api/check-404 (first (action/actions-with-implicit-params nil :public_uuid uuid)))]
+            (actions.execution/execute-action! action (update-keys parameters name))))))))
+
+
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
 ;; TODO - why don't we just make these routes have a bit of middleware that includes the

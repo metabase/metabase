@@ -1243,6 +1243,8 @@
                         (is (= [nil "Google" "Gizmo" 1 52 186] (nth rows 50)))
                         (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))))
 
+;;; ------------------------- POST /api/public/dashboard/:dashboard-uuid/dashcard/:uuid/execute ------------------------------
+
 (deftest execute-public-dashcard-action-test
   (mt/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -1301,3 +1303,52 @@
                                    (:public_uuid dash)
                                    dashcard-id
                                    (json/encode {:id 1})))))))))))
+
+;;; --------------------------------- POST /api/public/action/:uuid/execute ----------------------------------
+
+(deftest execute-public-action-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [{:keys [public_uuid] :as action-opts} (shared-obj)]
+        (mt/with-actions [{} action-opts]
+          ;; Set the throttle delay high enough the throttle will definitely trigger
+          (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 20000)]
+            (testing "Happy path - we can execute a public action"
+              (is (=? {:rows-affected 1}
+                      (client/client
+                       :post 200
+                       (format "public/action/%s/execute" public_uuid)
+                       {:parameters {:id 1 :name "European"}}))))
+            (testing "Test throttle"
+              (let [throttled-response (client/client-full-response
+                                        :post 429
+                                        (format "public/action/%s/execute" public_uuid)
+                                        {:parameters {:id 1 :name "European"}})]
+                (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
+                (is (contains? (:headers throttled-response) "Retry-After"))))))
+        ;; Lift the throttle attempts threshold so we don't have to wait between requests
+        (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1000)]
+          (mt/with-actions [{} action-opts]
+            (testing "Check that we get a 400 if the action doesn't exist"
+              (is (= "An error occurred."
+                     (client/client
+                      :post 400
+                      (format "public/action/%s/execute" (str (UUID/randomUUID)))
+                      {:parameters {:id 1 :name "European"}}))))
+            (testing "Check that we get a 400 if sharing is disabled."
+              (mt/with-temporary-setting-values [enable-public-sharing false]
+                (is (= "An error occurred."
+                       (client/client
+                        :post 400
+                        (format "public/action/%s/execute" public_uuid)
+                        {:parameters {:id 1 :name "European"}})))))
+          ;; TODO: this needs to pass when this PR is merged https://github.com/metabase/metabase/pull/27716
+            #_(testing "Check that we get a 400 if actions are disabled for the database."
+                (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
+                  (is (= "An error occurred."
+                         (client/client
+                          :post 400
+                          (format "public/action/%s/execute" public_uuid)
+                          {:parameters {:id 1 :name "European"}})))))
+            ;; Now decrease the throttle threshold to 1 so we can test the throttle
+            ))))))
