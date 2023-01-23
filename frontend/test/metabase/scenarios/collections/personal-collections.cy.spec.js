@@ -29,11 +29,11 @@ describe("personal collections", () => {
      * Thus, test might not work as expected by that point.
      *
      * For example:
-     *  1. FE might devide to not fetch the full collection tree on the home page or
+     *  1. FE might decide not to fetch the full collection tree on the home page or
      *  2. BE might alter this endpoint
      *
      * TODO:
-     *  - When the solution for this problem is ready, either adjust this test or completely remove it!
+     *  - When the solution for this problem is ready, either adjust the test or completely remove it!
      */
 
     it.skip("shouldn't get API response containing all other personal collections when visiting the home page (metabase#24330)", () => {
