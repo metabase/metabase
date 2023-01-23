@@ -370,7 +370,7 @@
   (testing "specific test for various monthly scheduling permutations"
     (letfn [(retrieve-channels [& args]
               (for [channel (apply pc/retrieve-scheduled-channels args)]
-                (dissoc (into {} channel) :id :pulse_id)))]
+                (dissoc (into {} channel) :id)))]
       (mt/with-temp* [Pulse        [{pulse-1-id :id}]
                       Pulse        [{pulse-2-id :id}]
                       PulseChannel [_ {:pulse_id pulse-1-id, :channel_type :email, :schedule_type :monthly, :schedule_hour 12, :schedule_frame :first}]
