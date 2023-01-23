@@ -37,7 +37,7 @@ function setup({
     {
       mode: "public",
       storeInitialState: { app, settings },
-      router: {
+      initialRouterState: {
         currentRoute: "/public/dashboard/:id",
         currentLocation: `/public/dashboard/UUID${hash}`,
       },

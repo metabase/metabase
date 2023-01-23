@@ -147,7 +147,7 @@ function setup(embedOptions: Partial<EmbedOptions>) {
 
   renderWithProviders(<AppBar />, {
     withRouter: true,
-    router: {
+    initialRouterState: {
       currentLocation: "/question/1",
       currentRoute: "/question/:slug",
     },
