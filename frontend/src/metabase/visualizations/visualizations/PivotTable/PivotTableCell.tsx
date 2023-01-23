@@ -98,7 +98,7 @@ export function Cell({
               onResize(x);
             }}
           >
-            <ResizeHandle />
+            <ResizeHandle data-testid="pivot-table-resize-handle" />
           </Draggable>
         )}
       </>
