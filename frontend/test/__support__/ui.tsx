@@ -25,6 +25,7 @@ export interface RenderWithProvidersOptions {
   storeInitialState?: Partial<State>;
   withSampleDatabase?: boolean;
   withRouter?: boolean;
+  initialRouterPath?: string;
   withDND?: boolean;
 }
 
@@ -40,6 +41,7 @@ export function renderWithProviders(
     storeInitialState = {},
     withSampleDatabase,
     withRouter = false,
+    initialRouterPath,
     withDND = false,
     ...options
   }: RenderWithProvidersOptions = {},
@@ -63,6 +65,7 @@ export function renderWithProviders(
       {...props}
       store={store}
       withRouter={withRouter}
+      initialRouterPath={initialRouterPath}
       withDND={withDND}
     />
   );
@@ -82,18 +85,25 @@ function Wrapper({
   children,
   store,
   withRouter,
+  initialRouterPath,
   withDND,
 }: {
   children: React.ReactElement;
   store: any;
   withRouter: boolean;
+  initialRouterPath?: string;
   withDND: boolean;
 }): JSX.Element {
   return (
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <ThemeProvider theme={{}}>
-          <MaybeRouter hasRouter={withRouter}>{children}</MaybeRouter>
+          <MaybeRouter
+            hasRouter={withRouter}
+            initialRouterPath={initialRouterPath}
+          >
+            {children}
+          </MaybeRouter>
         </ThemeProvider>
       </MaybeDNDProvider>
     </Provider>
@@ -103,15 +113,16 @@ function Wrapper({
 function MaybeRouter({
   children,
   hasRouter,
+  initialRouterPath = "/",
 }: {
   children: React.ReactElement;
   hasRouter: boolean;
+  initialRouterPath?: string;
 }): JSX.Element {
   if (!hasRouter) {
     return children;
   }
-
-  const history = createMemoryHistory({ entries: ["/"] });
+  const history = createMemoryHistory({ entries: [initialRouterPath] });
 
   function Page(props: any) {
     return React.cloneElement(children, _.omit(props, "children"));
@@ -119,7 +130,7 @@ function MaybeRouter({
 
   return (
     <Router history={history}>
-      <Route path="/" component={Page} />
+      <Route path={initialRouterPath} component={Page} />
     </Router>
   );
 }

@@ -10,27 +10,46 @@ describe("scenarios > embedding > full app", () => {
     cy.intercept("GET", "/api/automagic-dashboards/**").as("getXrayDashboard");
   });
 
-  describe("navigation", () => {
+  describe("home page navigation", () => {
+    it("should hide the top nav when nothing is shown", () => {
+      visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+      cy.findByText(/Bobby/).should("be.visible");
+      cy.findByText("Our analytics").should("not.exist");
+      cy.findByTestId("main-logo").should("not.exist");
+    });
+
     it("should show the top nav and breadcrumbs by default", () => {
       visitUrl({ url: "/" });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByText("Our analytics").should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
     });
 
     it("should hide the top nav by a param", () => {
       visitUrl({ url: "/", qs: { top_nav: false } });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
       cy.findByTestId("main-logo").should("not.exist");
     });
 
-    it("should hide the top nav when all nav elements are hidden", () => {
+    it("should not hide the top nav when the logo is still visible", () => {
       visitUrl({ url: "/", qs: { breadcrumbs: false } });
+      cy.findByText(/Bobby/).should("be.visible");
+      cy.findByText("Our analytics").should("be.visible");
+      cy.findByTestId("main-logo").should("be.visible");
+    });
+
+    it("should hide the top nav when all nav elements are hidden", () => {
+      visitUrl({ url: "/", qs: { logo: false } });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
+      cy.button("Toggle sidebar").should("be.visible");
       cy.findByTestId("main-logo").should("not.exist");
     });
 
     it("should show the top nav by a param", () => {
       visitUrl({ url: "/" });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
       cy.button(/New/).should("not.exist");
       cy.findByPlaceholderText("Search").should("not.exist");
@@ -38,27 +57,40 @@ describe("scenarios > embedding > full app", () => {
 
     it("should hide the side nav by a param", () => {
       visitUrl({ url: "/", qs: { side_nav: false } });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
     });
 
     it("should show question creation controls by a param", () => {
       visitUrl({ url: "/", qs: { new_button: true } });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.button(/New/).should("be.visible");
     });
 
     it("should show search controls by a param", () => {
       visitUrl({ url: "/", qs: { search: true } });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByPlaceholderText("Search…").should("be.visible");
     });
 
     it("should preserve params when navigating", () => {
       visitUrl({ url: "/" });
+      cy.findByText(/Bobby/).should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
 
       cy.findByText("Our analytics").click();
       cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
+    });
+  });
+
+  describe("browse data", () => {
+    it("should hide the top nav when nothing is shown", () => {
+      visitUrl({ url: "/browse", qs: { side_nav: false, logo: false } });
+      cy.findByText("Our data").should("be.visible");
+      cy.findByText("Our analytics").should("not.exist");
+      cy.findByTestId("main-logo").should("not.exist");
     });
   });
 
@@ -96,6 +128,38 @@ describe("scenarios > embedding > full app", () => {
       cy.icon("notebook").should("not.exist");
       cy.button("Summarize").should("not.exist");
       cy.button("Filter").should("not.exist");
+    });
+
+    describe("desktop logo", () => {
+      // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
+      it("should hide main header when there's nothing to display there", () => {
+        visitQuestionUrl({
+          url: "/question/1",
+          qs: { side_nav: false, logo: false, breadcrumbs: false },
+        });
+        cy.findByRole("banner").should("not.exist");
+        cy.findByTestId("main-logo").should("not.exist");
+        cy.icon("sidebar_closed").should("not.exist");
+        cy.button("Toggle sidebar").should("not.exist");
+      });
+    });
+
+    describe("mobile logo", () => {
+      beforeEach(() => {
+        cy.viewport("iphone-x");
+      });
+
+      // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
+      it("should hide main header when there's nothing to display there", () => {
+        visitQuestionUrl({
+          url: "/question/1",
+          qs: { side_nav: false, logo: false, breadcrumbs: false },
+        });
+        cy.findByRole("banner").should("not.exist");
+        cy.findByTestId("main-logo").should("not.exist");
+        cy.icon("sidebar_closed").should("not.exist");
+        cy.button("Toggle sidebar").should("not.exist");
+      });
     });
   });
 
@@ -135,6 +199,13 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findAllByRole("cell").first().click();
       cy.wait("@getCardQuery");
+
+      // I don't know why this test starts to fail, but this command
+      // will force the cursor to move away from the app bar, if
+      // the cursor is still on the app bar, the logo will not be
+      // be visible, since we'll only see the side bar toggle button.
+      cy.findByRole("button", { name: /Filter/i }).realHover();
+
       cy.findByTestId("main-logo").should("be.visible");
     });
   });

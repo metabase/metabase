@@ -1,4 +1,3 @@
-import { TemplateTags } from "metabase-types/types/Query";
 import { DatabaseId } from "./database";
 import { FieldId } from "./field";
 import { TableId } from "./table";
@@ -9,7 +8,6 @@ export interface StructuredQuery {
 
 export interface NativeQuery {
   query: string;
-  "template-tags": TemplateTags;
 }
 
 export interface StructuredDatasetQuery {
