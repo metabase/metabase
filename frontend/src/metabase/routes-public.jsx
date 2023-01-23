@@ -13,7 +13,7 @@ import PublicDashboard from "metabase/public/containers/PublicDashboard";
 export const getRoutes = store => (
   <Route title={t`Metabase`}>
     <Route path="public" component={PublicApp}>
-      <Route path="action/:actionId" component={PublicAction} />
+      <Route path="action/:uuid" component={PublicAction} />
       <Route path="question/:uuid" component={PublicQuestion} />
       <Route path="dashboard/:uuid" component={PublicDashboard} />
       <Route path="*" component={PublicNotFound} />
