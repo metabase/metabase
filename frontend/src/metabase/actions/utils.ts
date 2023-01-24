@@ -201,10 +201,6 @@ export function isActionDashCard(
   return isActionCard(virtualCard as Card);
 }
 
-export const isButtonLinkDashCard = (dashCard: BaseDashboardOrderedCard) =>
-  isActionDashCard(dashCard) &&
-  dashCard.visualization_settings?.click_behavior?.type === "link";
-
 export const isActionCard = (card: Card) => card?.display === "action";
 
 export const getFormTitle = (action: WritebackAction): string => {

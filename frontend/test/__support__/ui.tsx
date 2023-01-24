@@ -20,12 +20,14 @@ import publicReducers from "metabase/reducers-public";
 
 import { getStore } from "./entities-store";
 
+type RouterStateOpts = { route: string; location: string };
+
 export interface RenderWithProvidersOptions {
   mode?: "default" | "public";
+  initialRouterState?: RouterStateOpts;
   storeInitialState?: Partial<State>;
   withSampleDatabase?: boolean;
   withRouter?: boolean;
-  initialRouterPath?: string;
   withDND?: boolean;
 }
 
@@ -39,9 +41,9 @@ export function renderWithProviders(
   {
     mode = "default",
     storeInitialState = {},
+    initialRouterState,
     withSampleDatabase,
     withRouter = false,
-    initialRouterPath,
     withDND = false,
     ...options
   }: RenderWithProvidersOptions = {},
@@ -64,8 +66,8 @@ export function renderWithProviders(
     <Wrapper
       {...props}
       store={store}
+      initialRouterState={initialRouterState}
       withRouter={withRouter}
-      initialRouterPath={initialRouterPath}
       withDND={withDND}
     />
   );
@@ -84,24 +86,21 @@ export function renderWithProviders(
 function Wrapper({
   children,
   store,
+  initialRouterState,
   withRouter,
-  initialRouterPath,
   withDND,
 }: {
   children: React.ReactElement;
   store: any;
+  initialRouterState?: RouterStateOpts;
   withRouter: boolean;
-  initialRouterPath?: string;
   withDND: boolean;
 }): JSX.Element {
   return (
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <ThemeProvider theme={{}}>
-          <MaybeRouter
-            hasRouter={withRouter}
-            initialRouterPath={initialRouterPath}
-          >
+          <MaybeRouter hasRouter={withRouter} initialState={initialRouterState}>
             {children}
           </MaybeRouter>
         </ThemeProvider>
@@ -113,16 +112,19 @@ function Wrapper({
 function MaybeRouter({
   children,
   hasRouter,
-  initialRouterPath = "/",
+  initialState,
 }: {
   children: React.ReactElement;
   hasRouter: boolean;
-  initialRouterPath?: string;
+  initialState?: RouterStateOpts;
 }): JSX.Element {
   if (!hasRouter) {
     return children;
   }
-  const history = createMemoryHistory({ entries: [initialRouterPath] });
+  const location = initialState?.location || "/";
+  const route = initialState?.route || "/";
+
+  const history = createMemoryHistory({ entries: [location] });
 
   function Page(props: any) {
     return React.cloneElement(children, _.omit(props, "children"));
@@ -130,7 +132,7 @@ function MaybeRouter({
 
   return (
     <Router history={history}>
-      <Route path={initialRouterPath} component={Page} />
+      <Route path={route} component={Page} />
     </Router>
   );
 }
