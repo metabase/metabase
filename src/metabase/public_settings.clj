@@ -223,8 +223,8 @@
 
 (defsetting enable-query-caching
   (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
-  :type    :boolean
-  :default    :false
+  :type       :boolean
+  :default    false
   :visibility :authenticated)
 
 (defsetting persisted-models-enabled
