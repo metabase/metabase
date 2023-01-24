@@ -226,6 +226,18 @@
   {:public_uuid       (str (UUID/randomUUID))
    :made_public_by_id (mt/user->id :crowberto)})
 
+(deftest fetch-public-actions-test
+  (testing "GET /api/action/public"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [action-opts (assoc (shared-action-opts) :name "Test action")]
+        (mt/with-actions [{:keys [action-id]} action-opts]
+          (testing "Test that it requires superuser"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "action/public"))))
+          (testing "Test that superusers can fetch a list of publicly-accessible actions"
+            (is (= [{:name "Test action" :id action-id :public_uuid (:public_uuid action-opts)}]
+                   (filter #(= (:id %) action-id) (mt/user-http-request :crowberto :get 200 "action/public"))))))))))
+
 (deftest share-action-test
   (testing "POST /api/action/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
