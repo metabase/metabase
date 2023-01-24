@@ -24,7 +24,6 @@
    [toucan.db :as db]
    [toucan.models :as models])
   (:import
-   (java.time.temporal Temporal)
    (java.util UUID)))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -295,8 +294,8 @@
    :first_name   su/NonBlankString
    :last_name    su/NonBlankString
    :common_name  su/NonBlankString
-   :last_login   Temporal
-   :date_joined  Temporal
+   :last_login   schema/Any
+   :date_joined  schema/Any
    :is_qbnewb    schema/Bool
    :is_superuser schema/Bool})
 
