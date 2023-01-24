@@ -82,7 +82,7 @@
                          :destination-parameters (:parameters action)}))))
     (when-not (contains? #{:query :http} action-type)
       (throw (ex-info (tru "Unknown action type {0}." (name action-type)) action)))
-    (actions/check-if-actions-enabled! database)
+    (actions/check-actions-enabled! database)
     (try
       (case action-type
         :query

@@ -114,7 +114,7 @@
           (swap! *misc-value-cache* assoc unique-key value))
         value)))
 
-(defn check-if-actions-enabled!
+(defn check-actions-enabled!
   "Throws an appropriate error if actions are unsupported or disabled, otherwise returns nil."
   [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
   (when-not (driver/database-supports? driver :actions db)
@@ -143,7 +143,7 @@
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
     (let [{driver :engine :as db} (api/check-404 (db/select-one Database :id (:database arg-map)))]
-      (check-if-actions-enabled! db)
+      (check-actions-enabled! db)
       (binding [*misc-value-cache* (atom {})]
         (qp.perms/check-query-action-permissions* arg-map)
         (perform-action!* driver action db arg-map)))))
