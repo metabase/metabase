@@ -109,6 +109,7 @@ function EmbedFrame({
       className={cx("EmbedFrame", className, {
         [`Theme--${theme}`]: !!theme,
       })}
+      data-testid="embed-frame"
     >
       <ContentContainer hasScroll={hasInnerScroll}>
         {hasHeader && (

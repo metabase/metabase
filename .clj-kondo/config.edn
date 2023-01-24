@@ -643,9 +643,6 @@
    metabase.test/with-temp-env-var-value                                        macros.metabase.test.util/with-temp-env-var-value
    metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values}}
 
- :config-in-call
- {metabase.util.honey-sql-2-extensions/with-database-type-info {:linters {:type-mismatch {:level :off}}}}
-
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}
 
