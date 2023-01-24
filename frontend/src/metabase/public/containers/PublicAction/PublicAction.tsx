@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import title from "metabase/hoc/Title";
+import { PublicApi } from "metabase/services";
 
 import { ActionForm } from "metabase/actions/components/ActionForm";
 
@@ -19,21 +20,23 @@ import {
 
 interface Props {
   action: WritebackAction;
+  publicId: string;
   onError: (error: AppErrorDescriptor) => void;
 }
 
-function PublicAction({ action, onError }: Props) {
+function PublicAction({ action, publicId, onError }: Props) {
   const [isSubmitted, setSubmitted] = useState(false);
 
   const handleSubmit = useCallback(
-    (values: ParametersForActionExecution) => {
+    async (values: ParametersForActionExecution) => {
       try {
+        await PublicApi.executeAction({ uuid: publicId, parameters: values });
         setSubmitted(true);
       } catch (error) {
         onError(error as AppErrorDescriptor);
       }
     },
-    [onError],
+    [publicId, onError],
   );
 
   if (isSubmitted) {
