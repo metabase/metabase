@@ -13,6 +13,7 @@
    [metabase.models
     :refer [Card
             Collection
+            Database
             Dashboard
             DashboardCard
             DashboardCardSeries
@@ -1311,7 +1312,8 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (let [{:keys [public_uuid] :as action-opts} (shared-obj)]
         (mt/with-actions [{} action-opts]
-          ;; Set the throttle delay high enough the throttle will definitely trigger
+          ;; Decrease the throttle threshold to 1 so we can test the throttle,
+          ;; and set the throttle delay high enough the throttle will definitely trigger
           (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 20000)]
             (testing "Happy path - we can execute a public action"
               (is (=? {:rows-affected 1}
@@ -1342,13 +1344,10 @@
                         :post 400
                         (format "public/action/%s/execute" public_uuid)
                         {:parameters {:id 1 :name "European"}})))))
-          ;; TODO: this needs to pass when this PR is merged https://github.com/metabase/metabase/pull/27716
-            #_(testing "Check that we get a 400 if actions are disabled for the database."
+            (testing "Check that we get a 400 if actions are disabled for the database."
                 (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
                   (is (= "An error occurred."
                          (client/client
                           :post 400
                           (format "public/action/%s/execute" public_uuid)
-                          {:parameters {:id 1 :name "European"}})))))
-            ;; Now decrease the throttle threshold to 1 so we can test the throttle
-            ))))))
+                          {:parameters {:id 1 :name "European"}})))))))))))
