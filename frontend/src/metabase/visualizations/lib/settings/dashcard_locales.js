@@ -423,6 +423,34 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.teacher.education.except.low.grade': {
     'en': 'Statistics of Education Degree',
     'bn': 'শিক্ষাগত ডিগ্রীর পরিসংখ্যান'
+  },
+  'case.management.number.ongoing.cases': {
+    'en': 'Ongoing cases',
+    'bn': 'চলমান মামলা'
+  },
+  'case.management.type.based.summary': {
+    'en': 'Based on case type',
+    'bn': 'মামলার টাইপ অনুযায়ী'
+  },
+  'case.management.status.based.summary': {
+    'en': 'Based on case status',
+    'bn': 'মামলার স্ট্যাটাস অনুযায়ী'
+  },
+  'case.management.subject.based.summary': {
+    'en': 'Based on case subject',
+    'bn': 'মামলার বিষয় অনুযায়ী'
+  },
+  'case.management.court.based.summary': {
+    'en': 'Based on case court',
+    'bn': 'মামলার আদালত অনুযায়ী'
+  },
+  'case.management.last.action.type.based.summary': {
+    'en': 'Based on last case action',
+    'bn': 'মামলার শেষ একশন অনুযায়ী'
+  },
+  'case.management.subject.based.summary.preview': {
+    'en': 'Based on case subject',
+    'bn': 'মামলার বিষয় অনুযায়ী'
   }
 }
 
