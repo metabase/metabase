@@ -922,7 +922,7 @@
   "Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
   [:as {{:keys [namespace], :as body} :body}]
-  {body      PermissionsGraph
+  {body      [:map {:title "Permissions Graph"}]
    namespace [:maybe [:string {:min 1}]]}
   (api/check-superuser)
   (->> (dissoc body :namespace)
