@@ -1,5 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import _ from "underscore";
+import { t } from "ttag";
 
 import type { StackedTooltipModel } from "../types";
 import StackedDataTooltip from "./StackedDataTooltip";
@@ -82,5 +84,43 @@ describe("StackedDataTooltip", () => {
     const { rowNames, rowValues } = setup({ showTotal: true });
     expect(rowNames[rowNames.length - 1]).toBe("Total");
     expect(rowValues[rowValues.length - 1]).toBe("600");
+  });
+
+  it("groups excessive tooltip rows", () => {
+    const bodyRows = _.range(10).map(rowNumber => ({
+      color: "red",
+      name: t`body row ${rowNumber}`,
+      value: rowNumber * 100,
+    }));
+
+    const { rowNames, rowValues } = setup({
+      showTotal: true,
+      headerRows: [],
+      bodyRows,
+    });
+
+    expect(rowNames).toStrictEqual([
+      "body row 0",
+      "body row 1",
+      "body row 2",
+      "body row 3",
+      "body row 4",
+      "body row 5",
+      "body row 6",
+      "Other",
+      "Total",
+    ]);
+
+    expect(rowValues).toStrictEqual([
+      "0",
+      "100",
+      "200",
+      "300",
+      "400",
+      "500",
+      "600",
+      "2400",
+      "4500",
+    ]);
   });
 });
