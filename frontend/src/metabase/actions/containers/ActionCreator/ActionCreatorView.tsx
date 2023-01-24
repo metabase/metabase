@@ -31,6 +31,7 @@ import InlineActionSettings, {
 
 interface ActionCreatorProps {
   isNew: boolean;
+  hasSharingPermission: boolean;
   canSave: boolean;
 
   actionId?: WritebackActionId;
@@ -48,6 +49,7 @@ const DEFAULT_SIDE_VIEW: SideView = "actionForm";
 
 export default function ActionCreatorView({
   isNew,
+  hasSharingPermission,
   canSave,
   actionId,
   question,
@@ -98,8 +100,7 @@ export default function ActionCreatorView({
                   key="dataReference"
                   onClick={toggleDataRef}
                 />,
-                // XXX: Check permission before showing this button
-                !isNew ? (
+                !isNew && hasSharingPermission ? (
                   <ActionSettingsTriggerButton
                     key="actionSettings"
                     onClick={toggleActionSettings}
