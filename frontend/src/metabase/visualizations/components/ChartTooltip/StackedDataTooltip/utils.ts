@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import { TooltipRowModel } from "../types";
 
 export const getTotalValue = (
@@ -28,8 +29,8 @@ export const groupExcessiveTooltipRows = (
   }
 
   const groupStartingFromIndex = maxRows - 1;
-  const result = rows.slice();
-  const rowsToGroup = result.splice(groupStartingFromIndex);
+  const rowsToKeep = rows.slice(0, groupStartingFromIndex);
+  const rowsToGroup = rows.slice(groupStartingFromIndex);
 
   const groupedRow = rowsToGroup.reduce(
     (grouped, current) => {
@@ -43,11 +44,11 @@ export const groupExcessiveTooltipRows = (
     },
     {
       color: groupedColor,
-      name: `Other`,
+      name: t`Other`,
       value: 0,
       formatter: rowsToGroup[0].formatter,
     },
   );
 
-  return [...result, groupedRow];
+  return [...rowsToKeep, groupedRow];
 };
