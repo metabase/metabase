@@ -34,6 +34,7 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -911,23 +912,22 @@
    [:revision int?]
    [:groups [:map-of GroupID GroupPermissionsGraph]]])
 
-(def ^:private graph-decoder
+(def ^:private graph-coercer
   "Building it this way is a lot faster then calling mc/decode <value> <schema> <transformer>"
-  (mc/decoder PermissionsGraph (mtx/string-transformer)))
+  (mc/coercer PermissionsGraph (mtx/string-transformer)))
 
-(defn- decode-graph [permission-graph]
-  (graph-decoder permission-graph))
+(defn- coerce-graph [permission-graph]
+  (graph-coercer permission-graph))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/graph"
+(api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
   [:as {{:keys [namespace], :as body} :body}]
-  {body      su/Map
-   namespace (s/maybe su/NonBlankString)}
+  {body      PermissionsGraph
+   namespace [:maybe [:string {:min 1}]]}
   (api/check-superuser)
   (->> (dissoc body :namespace)
-       decode-graph
+       coerce-graph
        (graph/update-graph! namespace))
   (graph/graph namespace))
 
