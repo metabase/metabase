@@ -22,7 +22,6 @@ import {
   shouldShowConfirmation,
   setNumericValues,
 } from "./utils";
-import LinkButton from "./LinkButton";
 import ActionVizForm from "./ActionVizForm";
 import { ActionParameterOptions } from "./ActionOptions";
 import { StyledButton } from "./ActionButton.styled";
@@ -41,7 +40,6 @@ export function ActionComponent({
   isSettings,
   isEditing,
   settings,
-  onVisualizationClick,
   parameterValues,
 }: ActionProps) {
   const actionSettings = dashcard.action?.visualization_settings;
@@ -96,43 +94,30 @@ export function ActionComponent({
 
   const showParameterMapper = isEditing && !isSettings;
 
-  if (dashcard.action) {
-    return (
-      <>
-        {showParameterMapper && (
-          <ActionParameterOptions dashcard={dashcard} dashboard={dashboard} />
-        )}
-        <ActionVizForm
-          onSubmit={onSubmit}
-          dashcard={dashcard}
-          dashboard={dashboard}
-          settings={settings}
-          isSettings={isSettings}
-          missingParameters={missingParameters}
-          dashcardParamValues={dashcardParamValues}
-          action={dashcard.action as WritebackQueryAction}
-          shouldDisplayButton={shouldDisplayButton}
-        />
-      </>
-    );
-  }
-
   return (
-    <LinkButton
-      isSettings={isSettings}
-      settings={settings}
-      onVisualizationClick={onVisualizationClick}
-    />
+    <>
+      {showParameterMapper && (
+        <ActionParameterOptions dashcard={dashcard} dashboard={dashboard} />
+      )}
+      <ActionVizForm
+        onSubmit={onSubmit}
+        dashcard={dashcard}
+        dashboard={dashboard}
+        settings={settings}
+        isSettings={isSettings}
+        missingParameters={missingParameters}
+        dashcardParamValues={dashcardParamValues}
+        action={dashcard.action as WritebackQueryAction}
+        shouldDisplayButton={shouldDisplayButton}
+      />
+    </>
   );
 }
 
 const ConnectedActionComponent = connect()(ActionComponent);
 
 export default function Action(props: ActionProps) {
-  if (
-    !props.dashcard?.action &&
-    !props.dashcard?.visualization_settings?.click_behavior
-  ) {
+  if (!props.dashcard?.action) {
     return (
       <StyledButton>
         <strong>{t`Assign an action`}</strong>

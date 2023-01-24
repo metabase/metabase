@@ -8,21 +8,14 @@ import type {
   Dashboard,
   WritebackAction,
   Card,
-  CustomDestinationClickBehavior,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import Search from "metabase/entities/search";
 
 import ActionPicker from "metabase/actions/containers/ActionPicker";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import {
-  addActionToDashboard,
-  addLinkToDashboard,
-  closeSidebar,
-} from "metabase/dashboard/actions";
+import { addActionToDashboard, closeSidebar } from "metabase/dashboard/actions";
 
-import { ButtonOptions } from "./ButtonOptions";
 import {
   Heading,
   SidebarContent,
@@ -31,7 +24,6 @@ import {
 
 const mapDispatchToProps = {
   addAction: addActionToDashboard,
-  addLink: addLinkToDashboard,
   closeSidebar,
 };
 
@@ -46,14 +38,6 @@ interface ActionSidebarProps {
     action: WritebackAction;
     displayType: ActionDisplayType;
   }) => void;
-  addLink: ({
-    dashId,
-    clickBehavior,
-  }: {
-    dashId: number;
-    clickBehavior: CustomDestinationClickBehavior;
-  }) => void;
-  closeSidebar: () => void;
   models: Card[];
   displayType: ActionDisplayType;
 }
@@ -61,8 +45,6 @@ interface ActionSidebarProps {
 function AddActionSidebarFn({
   dashboard,
   addAction,
-  addLink,
-  closeSidebar,
   models,
   displayType,
 }: ActionSidebarProps) {
@@ -70,8 +52,6 @@ function AddActionSidebarFn({
     await addAction({ dashId: dashboard.id, action, displayType });
   };
   const modelIds = models?.map(model => model.id) ?? [];
-  const showButtonOptions = displayType === "button";
-  const showActionPicker = displayType === "form";
 
   return (
     <Sidebar>
@@ -83,27 +63,9 @@ function AddActionSidebarFn({
         </Heading>
       </BorderedSidebarContent>
 
-      {showActionPicker && (
-        <SidebarContent>
-          <ActionPicker modelIds={modelIds} onClick={handleActionSelected} />
-        </SidebarContent>
-      )}
-
-      {showButtonOptions && (
-        <ButtonOptions
-          addLink={addLink}
-          closeSidebar={closeSidebar}
-          dashboard={dashboard}
-          ActionPicker={
-            <SidebarContent>
-              <ActionPicker
-                modelIds={modelIds}
-                onClick={handleActionSelected}
-              />
-            </SidebarContent>
-          }
-        />
-      )}
+      <SidebarContent>
+        <ActionPicker modelIds={modelIds} onClick={handleActionSelected} />
+      </SidebarContent>
     </Sidebar>
   );
 }
