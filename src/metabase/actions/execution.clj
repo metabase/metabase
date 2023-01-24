@@ -69,16 +69,16 @@
 (defn- execute-custom-action [action request-parameters]
   (let [{action-type :type}          action
         destination-parameters-by-id (m/index-by :id (:parameters action))
-        db-id                        (:db_id (implicit-action-table (:model_id action)))
+        db-id                        (db/select-one-field :database_id Card :id (:model_id action))
         database                     (db/select-one Database :id db-id)]
     (doseq [[parameter-id _value] request-parameters]
       (when-not (contains? destination-parameters-by-id parameter-id)
         (throw (ex-info (tru "No destination parameter found for id {0}. Found: {1}"
                              (pr-str parameter-id)
                              (pr-str (set (keys destination-parameters-by-id))))
-                        {:status-code 400
-                         :type qp.error-type/invalid-parameter
-                         :parameters request-parameters
+                        {:status-code            400
+                         :type                   qp.error-type/invalid-parameter
+                         :parameters             request-parameters
                          :destination-parameters (:parameters action)}))))
     (when-not (contains? #{:query :http} action-type)
       (throw (ex-info (tru "Unknown action type {0}." (name action-type)) action)))
@@ -95,27 +95,28 @@
 
 (defn- build-implicit-query
   [{:keys [model_id parameters] :as _action} implicit-action request-parameters]
-  (let [{database-id :db_id table-id :id :as table} (implicit-action-table model_id)
-        table-fields                                (:fields table)
-        pk-fields                                   (filterv #(isa? (:semantic_type %) :type/PK) table-fields)
-        slug->field-name                            (->> table-fields
-                                                         (map (juxt (comp u/slugify :name) :name))
-                                                         (into {})
-                                                         (m/filter-keys (set (map :id parameters))))
-        _                                           (api/check (action/unique-field-slugs? table-fields)
-                                                      400
-                                                      (tru "Cannot execute implicit action on a table with ambiguous column names."))
-        _                                           (api/check (= (count pk-fields) 1)
-                                                      400
-                                                      (tru "Must execute implicit action on a table with a single primary key."))
-        extra-parameters                            (set/difference (set (keys request-parameters))
-                                                                    (set (keys slug->field-name)))
-        pk-field                                    (first pk-fields)
-        simple-parameters                           (update-keys request-parameters (comp keyword slug->field-name))
-        pk-field-name                               (keyword (:name pk-field))
-        row-parameters                              (cond-> simple-parameters
-                                                      (not= implicit-action :row/create) (dissoc pk-field-name))
-        requires_pk                                 (contains? #{:row/delete :row/update} implicit-action)]
+  (let [{database-id :db_id
+         table-id :id :as table} (implicit-action-table model_id)
+        table-fields             (:fields table)
+        pk-fields                (filterv #(isa? (:semantic_type %) :type/PK) table-fields)
+        slug->field-name         (->> table-fields
+                                      (map (juxt (comp u/slugify :name) :name))
+                                      (into {})
+                                      (m/filter-keys (set (map :id parameters))))
+        _                        (api/check (action/unique-field-slugs? table-fields)
+                                   400
+                                   (tru "Cannot execute implicit action on a table with ambiguous column names."))
+        _                        (api/check (= (count pk-fields) 1)
+                                   400
+                                   (tru "Must execute implicit action on a table with a single primary key."))
+        extra-parameters         (set/difference (set (keys request-parameters))
+                                                 (set (keys slug->field-name)))
+        pk-field                 (first pk-fields)
+        simple-parameters        (update-keys request-parameters (comp keyword slug->field-name))
+        pk-field-name            (keyword (:name pk-field))
+        row-parameters           (cond-> simple-parameters
+                                   (not= implicit-action :row/create) (dissoc pk-field-name))
+        requires_pk              (contains? #{:row/delete :row/update} implicit-action)]
     (api/check (or (not requires_pk)
                    (some? (get simple-parameters pk-field-name)))
                400
