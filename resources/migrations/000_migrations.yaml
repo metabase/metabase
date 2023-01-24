@@ -13956,11 +13956,6 @@ databaseChangeLog:
                   name: creator_id
                   type: int
                   remarks: 'The user who created the action'
-                  constraints:
-                    nullable: true
-                    referencedTableName: core_user
-                    referencedColumnNames: id
-                    foreignKeyName: fk_action_creator_id
       rollback:
         - dropColumn:
             tableName: action
@@ -13981,6 +13976,19 @@ databaseChangeLog:
         - dropIndex:
             tableName: action
             indexName: idx_action_creator_id
+
+  - changeSet:
+      id: v46.00-061
+      author: tsmacdonald
+      comment: Added 0.46.0 -- action.creator_id index
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_action_creator_id
+            nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
