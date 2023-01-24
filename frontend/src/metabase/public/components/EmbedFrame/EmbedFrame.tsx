@@ -18,6 +18,7 @@ import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 import type { State } from "metabase-types/store";
 
+import Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import LogoBadge from "./LogoBadge";
@@ -35,6 +36,7 @@ interface OwnProps {
   className?: string;
   name?: string;
   description?: string;
+  question?: Question;
   dashboard?: Dashboard;
   actionButtons?: JSX.Element[];
   parameters?: Parameter[];
@@ -71,6 +73,7 @@ function EmbedFrame({
   children,
   name,
   description,
+  question,
   dashboard,
   actionButtons,
   location,
@@ -125,6 +128,7 @@ function EmbedFrame({
               <div className="flex">
                 <SyncedParametersList
                   className="mt1"
+                  question={question}
                   dashboard={dashboard}
                   parameters={getValuePopulatedParameters(
                     parameters,
