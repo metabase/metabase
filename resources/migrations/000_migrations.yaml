@@ -14051,7 +14051,7 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-048
       author:  adam-james
-      comment: Added 0.46.0 -- index activity_log.timestamp and activity_log.end_timestamp
+      comment: Added 0.46.0 -- index activity_log.timestamp
       changes:
         - createIndex:
             remarks: "Index on timestamp as it may be common to query when events occurred."
@@ -14060,13 +14060,6 @@ databaseChangeLog:
             columns:
               column:
                 name: timestamp
-        - createIndex:
-            remarks: "Index on end_timestamp as it may be common to create queries about event run times."
-            tableName: activity_log
-            indexName: idx_activity_log_end_timestamp
-            columns:
-              column:
-                name: end_timestamp
 
   - changeSet:
       id: v46.00-049
