@@ -30,6 +30,7 @@
             Pulse
             Table
             ViewLog]]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
@@ -943,7 +944,11 @@ saved later when it is ready."
   ([card      :- su/Map
     param-key :- su/NonBlankString
     query     :- (s/maybe su/NonBlankString)]
-   (let [param       (get (m/index-by :id (:parameters card)) param-key)
+   (let [param       (get (m/index-by :id (or (seq (:parameters card))
+                                              ;; some older cards or cards in e2e just use the template tags on native
+                                              ;; queries
+                                              (card/template-tag-parameters card)))
+                          param-key)
          source-type (:values_source_type param)]
      (when-not param
        (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
