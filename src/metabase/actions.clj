@@ -15,34 +15,12 @@
    [schema.core :as schema]
    [toucan.db :as db]))
 
-(setting/defsetting experimental-enable-actions
-  (i18n/deferred-tru "Whether to enable using the new experimental Actions features globally. (Actions must also be enabled for each Database.)")
-  :default false
-  :type :boolean
-  :visibility :public)
-
 (setting/defsetting database-enable-actions
-  (i18n/deferred-tru "Whether to enable using the new experimental Actions for a specific Database.")
+  (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
   :default false
   :type :boolean
   :visibility :public
   :database-local :only)
-
-(defn check-actions-enabled
-  "Function that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
-  throws a 400 response if not"
-  []
-  (api/check (experimental-enable-actions) 400 (i18n/tru "Actions are not enabled.")))
-
-(defn +check-actions-enabled
-  "Ring middleware that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
-  returns a 400 response if not"
-  [handler]
-  (fn [request respond raise]
-    (if (experimental-enable-actions)
-      (handler request respond raise)
-      (raise (ex-info (i18n/tru "Actions are not enabled.")
-                      {:status-code 400})))))
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
@@ -136,42 +114,38 @@
           (swap! *misc-value-cache* assoc unique-key value))
         value)))
 
+(defn check-actions-enabled!
+  "Throws an appropriate error if actions are unsupported or disabled, otherwise returns nil."
+  [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  (when-not (driver/database-supports? driver :actions db)
+    (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
+                              (u/qualified-name driver)
+                              (format "%d %s" db-id (pr-str db-name)))
+                    {:status-code 400, :database-id db-id})))
+
+  (binding [setting/*database-local-values* db-settings]
+    (when-not (database-enable-actions)
+      (throw (ex-info (i18n/tru "Actions are not enabled.")
+                      {:status-code 400, :database-id db-id}))))
+
+  nil)
+
 (defn perform-action!
   "Perform an `action`. Invoke this function for performing actions, e.g. in API endpoints;
   implement [[perform-action!*]] to add support for a new driver/action combo. The shape of `arg-map` depends on the
   `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
   `action`."
   [action arg-map]
-  ;; Validate the arg map.
   (let [action  (keyword action)
         spec    (action-arg-map-spec action)
         arg-map (normalize-action-arg-map action arg-map)]
     (when (s/invalid? (s/conform spec arg-map))
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
-    ;; Check that Actions are enabled globally.
-    (when-not (experimental-enable-actions)
-      (throw (ex-info (i18n/tru "Actions are not enabled.")
-                      {:status-code 400})))
-    ;; Check that Actions are enabled for this specific Database.
-    (let [{database-id :database}                         arg-map
-          {db-settings :settings, driver :engine, :as db} (api/check-404 (db/select-one Database :id database-id))]
-      ;; make sure the Driver supports Actions.
-      (when-not (driver/database-supports? driver :actions db)
-        (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
-                                  (u/qualified-name driver)
-                                  (format "%d %s" (:id db) (pr-str (:name db))))
-                        {:status-code 400, :database-id (:id db)})))
-      ;; bind Database-local Settings for this Database and the misc value cache
-      (binding [setting/*database-local-values* db-settings
-                *misc-value-cache*              (atom {})]
-        ;; make sure Actions are enabled for this Database
-        (when-not (database-enable-actions)
-          (throw (ex-info (i18n/tru "Actions are not enabled.")
-                          {:status-code 400, :database-id (:id db)})))
-        ;; check action permissions
+    (let [{driver :engine :as db} (api/check-404 (db/select-one Database :id (:database arg-map)))]
+      (check-actions-enabled! db)
+      (binding [*misc-value-cache* (atom {})]
         (qp.perms/check-query-action-permissions* arg-map)
-        ;; Ok, now we can hand off to [[perform-action!*]]
         (perform-action!* driver action db arg-map)))))
 
 ;;;; Action definitions.
