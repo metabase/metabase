@@ -446,7 +446,7 @@ const TITLE_LOCALES_BN = {
   },
   'case.management.last.action.type.based.summary': {
     'en': 'Based on last case action',
-    'bn': 'মামলার শেষ একশন অনুযায়ী'
+    'bn': 'মামলার সর্বশেষ একশন অনুযায়ী'
   },
   'case.management.subject.based.summary.preview': {
     'en': 'Based on case subject',
