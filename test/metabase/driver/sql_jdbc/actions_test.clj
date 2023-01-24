@@ -4,7 +4,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions :as actions]
-   [metabase.actions.test-util :as actions.test-util]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
@@ -40,8 +39,8 @@
 (deftest parse-sql-error-catch-exceptions-test
   (testing "If parse-sql-error throws an Exception, log it and return the unparsed exception instead of failing entirely (#24021)"
     (driver/with-driver ::parse-sql-error-exception
-      (actions.test-util/with-actions-test-data-tables #{"venues" "categories"}
-        (actions.test-util/with-actions-test-data-and-actions-enabled
+      (mt/with-actions-test-data-tables #{"venues" "categories"}
+        (mt/with-actions-test-data-and-actions-enabled
           (reset! parse-sql-error-called? false)
           ;; attempting to delete the `Pizza` category should fail because there are several rows in `venues` that have
           ;; this `category_id` -- it's an FK constraint violation.

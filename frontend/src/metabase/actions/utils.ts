@@ -1,14 +1,22 @@
+import { t } from "ttag";
 import type {
   ActionFormSettings,
   Database,
   Parameter,
   WritebackAction,
+  ActionDashboardCard,
+  BaseDashboardOrderedCard,
+  Card,
+  FieldSettings,
+  ParameterId,
 } from "metabase-types/api";
 
-import { TYPE } from "metabase-lib/types/constants";
-import type Field from "metabase-lib/metadata/Field";
+import { slugify } from "metabase/lib/formatting";
 
-import type { FieldSettings } from "./types";
+import { TYPE } from "metabase-lib/types/constants";
+import Field from "metabase-lib/metadata/Field";
+
+import type { FieldSettings as LocalFieldSettings } from "./types";
 
 export const checkDatabaseSupportsActions = (database: Database) =>
   database.features.includes("actions");
@@ -90,7 +98,7 @@ export const getDefaultFormSettings = (
 });
 
 export const getDefaultFieldSettings = (
-  overrides: Partial<FieldSettings> = {},
+  overrides: Partial<LocalFieldSettings> = {},
 ): FieldSettings => ({
   id: "",
   name: "",
@@ -105,3 +113,100 @@ export const getDefaultFieldSettings = (
   width: "medium",
   ...overrides,
 });
+
+export const generateFieldSettingsFromParameters = (
+  params: Parameter[],
+  fields?: Field[],
+) => {
+  const fieldSettings: Record<ParameterId, LocalFieldSettings> = {};
+
+  const fieldMetadataMap = Object.fromEntries(
+    fields?.map(f => [slugify(f.name), f]) ?? [],
+  );
+
+  params.forEach((param, index) => {
+    const field = fieldMetadataMap[param.id]
+      ? new Field(fieldMetadataMap[param.id])
+      : undefined;
+
+    const name = param["display-name"] ?? param.name ?? param.id;
+    const displayName = field?.displayName?.() ?? name;
+
+    fieldSettings[param.id] = getDefaultFieldSettings({
+      id: param.id,
+      name,
+      title: displayName,
+      placeholder: displayName,
+      required: !!param?.required,
+      order: index,
+      description: field?.description ?? "",
+      fieldType: getFieldType(param),
+      inputType: getInputType(param, field),
+      field: field ?? undefined,
+    });
+  });
+  return fieldSettings;
+};
+
+const getFieldType = (param: Parameter): "number" | "string" => {
+  return isNumericParameter(param) ? "number" : "string";
+};
+
+const isNumericParameter = (param: Parameter): boolean =>
+  /integer|float/gi.test(param.type);
+
+export const getInputType = (param: Parameter, field?: Field) => {
+  if (!field) {
+    return isNumericParameter(param) ? "number" : "string";
+  }
+
+  if (field.isFK()) {
+    return field.isNumeric() ? "number" : "string";
+  }
+  if (field.isNumeric()) {
+    return "number";
+  }
+  if (field.isBoolean()) {
+    return "boolean";
+  }
+  if (field.isTime()) {
+    return "time";
+  }
+  if (field.isDate()) {
+    return field.isDateWithoutTime() ? "date" : "datetime";
+  }
+  if (
+    field.semantic_type === TYPE.Description ||
+    field.semantic_type === TYPE.Comment ||
+    field.base_type === TYPE.Structured
+  ) {
+    return "text";
+  }
+  if (
+    field.semantic_type === TYPE.Title ||
+    field.semantic_type === TYPE.Email
+  ) {
+    return "string";
+  }
+  if (field.isCategory() && field.semantic_type !== TYPE.Name) {
+    return "category";
+  }
+  return "string";
+};
+
+export function isActionDashCard(
+  dashCard: BaseDashboardOrderedCard,
+): dashCard is ActionDashboardCard {
+  const virtualCard = dashCard?.visualization_settings?.virtual_card;
+  return isActionCard(virtualCard as Card);
+}
+
+export const isButtonLinkDashCard = (dashCard: BaseDashboardOrderedCard) =>
+  isActionDashCard(dashCard) &&
+  dashCard.visualization_settings?.click_behavior?.type === "link";
+
+export const isActionCard = (card: Card) => card?.display === "action";
+
+export const getFormTitle = (action: WritebackAction): string => {
+  return action.visualization_settings?.name || action.name || t`Action form`;
+};

@@ -184,8 +184,8 @@ describe("entities > actions > utils", () => {
       const tags = (newQuestion.card().dataset_query as NativeDatasetQuery)
         .native["template-tags"];
 
-      expect(tags.name.type).toEqual("text");
-      expect(tags.price.type).toEqual("number");
+      expect(tags?.name.type).toEqual("text");
+      expect(tags?.price.type).toEqual("number");
     });
 
     it("should set date template tag types", () => {
@@ -207,8 +207,8 @@ describe("entities > actions > utils", () => {
       const tags = (newQuestion.card().dataset_query as NativeDatasetQuery)
         .native["template-tags"];
 
-      expect(tags.name.type).toEqual("date");
-      expect(tags.price.type).toEqual("date");
+      expect(tags?.name.type).toEqual("date");
+      expect(tags?.price.type).toEqual("date");
     });
   });
 });
