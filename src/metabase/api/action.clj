@@ -129,8 +129,8 @@
   (first (action/actions-with-implicit-params nil :id id)))
 
 (api/defendpoint POST "/:id/public_link"
-  "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
-  Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
+  "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
+  Action has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
   [id]
   (api/check-superuser)
@@ -140,7 +140,7 @@
   {:uuid (or (db/select-one-field :public_uuid Action :id id)
              (u/prog1 (str (UUID/randomUUID))
                       (db/update! Action id
-                                  :public_uuid       <>
+                                  :public_uuid <>
                                   :made_public_by_id api/*current-user-id*)))})
 
 (api/defendpoint DELETE "/:id/public_link"
