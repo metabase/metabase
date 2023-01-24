@@ -92,20 +92,25 @@ function PivotTable({
 }: PivotTableProps) {
   const [gridElement, setGridElement] = useState<HTMLElement | null>(null);
   const columnWidthSettings = settings["pivot_table.column_widths"];
+  const previousColumnWidthSettings = usePrevious(columnWidthSettings);
 
-  const { leftHeaderWidths, totalLeftHeaderWidths, valueHeaderWidths } =
-    useMemo(
-      () => ({
-        leftHeaderWidths: null,
-        totalLeftHeaderWidths: null,
-        valueHeaderWidths: {},
-        ...(columnWidthSettings ?? {}),
-      }),
-      [columnWidthSettings],
-    );
+  const [
+    { leftHeaderWidths, totalLeftHeaderWidths, valueHeaderWidths },
+    setHeaderWidths,
+  ] = useState<HeaderWidthType>({
+    leftHeaderWidths: null,
+    totalLeftHeaderWidths: null,
+    valueHeaderWidths: {},
+    ...(columnWidthSettings ?? {}),
+  });
 
-  const setHeaderWidths = useCallback(
+  const updateHeaderWidths = useCallback(
     (newHeaderWidths: Partial<HeaderWidthType>) => {
+      setHeaderWidths(prevHeaderWidths => ({
+        ...prevHeaderWidths,
+        ...newHeaderWidths,
+      }));
+
       onUpdateVisualizationSettings({
         "pivot_table.column_widths": {
           leftHeaderWidths,
@@ -145,7 +150,6 @@ function PivotTable({
     );
     return showTotals;
   }
-
   useEffect(() => {
     // This is needed in case the cell counts didn't change, but the data or cell sizes did
     (
@@ -175,9 +179,11 @@ function PivotTable({
   }, [data, settings]);
 
   const previousRowIndexes = usePrevious(pivoted?.rowIndexes);
-  const hasColumnWidths =
-    columnWidthSettings &&
-    [leftHeaderWidths, totalLeftHeaderWidths, valueHeaderWidths].every(Boolean);
+  const hasColumnWidths = [
+    leftHeaderWidths,
+    totalLeftHeaderWidths,
+    valueHeaderWidths,
+  ].every(Boolean);
   const columnsChanged =
     !hasColumnWidths ||
     (previousRowIndexes && !_.isEqual(pivoted?.rowIndexes, previousRowIndexes));
@@ -205,6 +211,7 @@ function PivotTable({
       setHeaderWidths({
         leftHeaderWidths: null,
         totalLeftHeaderWidths: null,
+        valueHeaderWidths: {},
       });
       return;
     }
@@ -254,7 +261,7 @@ function PivotTable({
       };
     }
 
-    setHeaderWidths(newColumnWidths);
+    updateHeaderWidths(newColumnWidths);
   };
 
   if (pivoted === null || !leftHeaderWidths || columnsChanged) {
