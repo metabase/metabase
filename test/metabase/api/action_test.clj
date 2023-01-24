@@ -44,7 +44,7 @@
                                             :url "https://example.com/{{x}}"}
                                  :parameters [{:id "x" :type "text"}]
                                  :public_uuid (str (UUID/randomUUID))
-                                 :made_public_by_id (test.users/user->id :crowberto)
+                                 :made_public_by_id (mt/user->id :crowberto)
                                  :response_handle ".body"
                                  :error_handle ".status >= 400"}
                                 {:name "Query example"
