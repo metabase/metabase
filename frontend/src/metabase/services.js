@@ -159,6 +159,7 @@ const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
   action: GET("/api/public/action/:uuid"),
+  executeAction: POST("/api/public/action/:uuid/execute"),
   card: GET("/api/public/card/:uuid"),
   cardQuery: GET("/api/public/card/:uuid/query"),
   cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
