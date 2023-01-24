@@ -4,14 +4,11 @@ import userEvent from "@testing-library/user-event";
 
 import type { GroupIds, DNType, ValueType } from "./DeleteGroupMappingModal";
 
-import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
+import DeleteGroupMappingModal, {
+  DeleteGroupMappingModalProps,
+} from "./DeleteGroupMappingModal";
 
-type PropTypes = {
-  dn?: DNType;
-  groupIds?: GroupIds;
-  onConfirm?: (value: ValueType, groups: number[], dn: DNType) => void;
-  onHide?: () => void;
-};
+type SetupOpts = Partial<DeleteGroupMappingModalProps>;
 
 const DEFAULT_PROPS = {
   dn: "cn=People",
@@ -20,7 +17,7 @@ const DEFAULT_PROPS = {
   onHide: jest.fn(),
 };
 
-const setup = (props?: PropTypes) => {
+const setup = (props?: SetupOpts) => {
   render(<DeleteGroupMappingModal {...DEFAULT_PROPS} {...props} />);
 };
 

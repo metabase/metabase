@@ -16,7 +16,7 @@ export type GroupIds = number[];
 export type DNType = string;
 export type ValueType = "nothing" | "clear" | "delete";
 
-type DeleteGroupMappingModalProps = {
+export type DeleteGroupMappingModalProps = {
   dn: DNType;
   groupIds: GroupIds;
   onConfirm: (value: ValueType, groupIds: GroupIds, dn: DNType) => void;
