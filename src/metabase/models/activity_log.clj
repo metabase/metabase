@@ -105,7 +105,6 @@
       :model_id    (or model-id (events/object->model-id topic object))
       :database_id database-id
       :table_id    table-id
-      :custom_id   (:custom_id object)
       :details     (if (fn? details-fn)
                      (details-fn object)
                      object))))
