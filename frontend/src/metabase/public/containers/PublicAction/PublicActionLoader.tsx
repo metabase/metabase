@@ -52,10 +52,14 @@ function PublicActionLoader({ params, setErrorPage }: Props) {
     }
     return (
       <ContentContainer>
-        <PublicAction action={action} onError={setErrorPage} />
+        <PublicAction
+          action={action}
+          publicId={params.uuid}
+          onError={setErrorPage}
+        />
       </ContentContainer>
     );
-  }, [action, setErrorPage]);
+  }, [action, params.uuid, setErrorPage]);
 
   return (
     <EmbedFrame footerVariant="big">
