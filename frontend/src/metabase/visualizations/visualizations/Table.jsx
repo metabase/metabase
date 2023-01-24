@@ -173,7 +173,7 @@ export default class Table extends Component {
     "table.columns": {
       section: t`Columns`,
       title: t`Columns`,
-      widget: ChartSettingOrderedSimple, //ChartSettingOrderedColumns,
+      widget: ChartSettingOrderedSimple,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
       isValid: ([{ card, data }], vizSettings) =>
         // If "table.columns" happened to be an empty array,
@@ -185,10 +185,6 @@ export default class Table extends Component {
           card.visualization_settings["table.columns"],
           columnSetting =>
             findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-        ) &&
-        _.all(
-          card.visualization_settings["table.columns"],
-          columnSetting => !!columnSetting.key,
         ),
       getDefault: ([
         {
@@ -199,7 +195,6 @@ export default class Table extends Component {
           name: col.name,
           fieldRef: col.field_ref,
           enabled: col.visibility_type !== "details-only",
-          key: getColumnKey(col),
         })),
       getProps: ([
         {
@@ -208,7 +203,14 @@ export default class Table extends Component {
       ]) => ({
         columns: cols,
         hasOnEnable: false,
-        listOfSeries: false,
+        getPopoverProps: columnSetting => ({
+          id: "column_settings",
+          props: {
+            initialKey: getColumnKey(
+              findColumnForColumnSetting(cols, columnSetting),
+            ),
+          },
+        }),
         extraButton: { text: t`Add or remove columns`, key: "table.columns2" },
         getItemTitle: columnSetting =>
           getFriendlyName(
@@ -224,12 +226,19 @@ export default class Table extends Component {
       readDependencies: ["table.columns"],
       widget: ChartSettingColumnEditor,
       getValue: (_series, vizSettings) => vizSettings["table.columns"],
-      getProps: ([
-        {
-          data: { cols },
-        },
-      ]) => ({
+      getProps: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        _settings,
+        _onChange,
+        extra,
+      ) => ({
         columns: cols,
+        isDashboard: extra.isDashboard,
+        metadata: extra.metadata,
       }),
     },
     "table.column_widths": {},

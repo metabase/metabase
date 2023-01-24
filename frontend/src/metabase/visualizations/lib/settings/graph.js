@@ -222,6 +222,15 @@ export const GRAPH_DATA_SETTINGS = {
     getHidden: (series, settings) => {
       return settings["graph.dimensions"]?.length < 2 || series.length > 20;
     },
+    getProps: (series, settings) => {
+      return {
+        getPopoverProps: item => ({
+          props: {
+            seriesKey: item.key,
+          },
+        }),
+      };
+    },
     dashboard: false,
     readDependencies: ["series_settings.colors", "series_settings"],
     writeDependencies: ["graph.series_order_dimension"],

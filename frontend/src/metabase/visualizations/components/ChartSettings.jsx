@@ -30,7 +30,11 @@ import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
-import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
+import {
+  SectionContainer,
+  SectionWarnings,
+  TitleButton,
+} from "./ChartSettings.styled";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Data`];
@@ -45,6 +49,7 @@ const withTransientSettingState = ComposedComponent =>
       super(props);
       this.state = {
         settings: props.settings,
+        overrideProps: {},
       };
     }
 
@@ -63,6 +68,10 @@ const withTransientSettingState = ComposedComponent =>
           onDone={settings =>
             this.props.onChange(settings || this.state.settings)
           }
+          setSidebarPropsOverride={overrideProps =>
+            this.setState({ overrideProps })
+          }
+          {...this.state.overrideProps}
         />
       );
     }
@@ -156,13 +165,14 @@ class ChartSettings extends Component {
     if (this.props.widgets) {
       return this.props.widgets;
     } else {
-      const { isDashboard } = this.props;
+      const { isDashboard, metadata } = this.props;
       const transformedSeries = this._getTransformedSeries();
 
       return getSettingsWidgetsForSeries(
         transformedSeries,
         this.handleChangeSettings,
         isDashboard,
+        metadata,
       );
     }
   }
@@ -256,8 +266,9 @@ class ChartSettings extends Component {
   getFormattingWidget = () => {
     const widgets = this._getWidgets();
     const { popoverWidget } = this.state;
+    console.log(widgets, popoverWidget);
     const widget =
-      popoverWidget && widgets.find(widget => widget.id === "column_settings");
+      popoverWidget && widgets.find(widget => widget.id === popoverWidget.id);
 
     if (widget) {
       return { ...widget, props: { ...widget.props, ...popoverWidget.props } };
@@ -275,6 +286,8 @@ class ChartSettings extends Component {
       dashboard,
       dashcard,
       isDashboard,
+      title,
+      onBack,
     } = this.props;
     const { popoverWidget, popoverRef, currentWidget } = this.state;
 
@@ -408,6 +421,11 @@ class ChartSettings extends Component {
               className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4"
               data-testid="chartsettings-sidebar"
             >
+              {title && (
+                <TitleButton onClick={onBack} icon="chevronleft" onlyText>
+                  {title}
+                </TitleButton>
+              )}
               <ChartSettingsWidgetList
                 widgets={visibleWidgets}
                 extraWidgetProps={extraWidgetProps}

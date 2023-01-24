@@ -88,6 +88,7 @@ export function getSettingsWidgetsForSeries(
   series,
   onChangeSettings,
   isDashboard = false,
+  metadata,
 ) {
   const settingsDefs = getSettingDefintionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
@@ -99,7 +100,7 @@ export function getSettingsWidgetsForSeries(
     computedSettings,
     series,
     onChangeSettings,
-    { isDashboard },
+    { isDashboard, metadata },
   ).filter(
     widget =>
       widget.dashboard === undefined || widget.dashboard === isDashboard,

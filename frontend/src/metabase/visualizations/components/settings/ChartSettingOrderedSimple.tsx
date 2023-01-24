@@ -3,12 +3,11 @@ import React from "react";
 import { t } from "ttag";
 import { Series } from "metabase-types/types/Visualization";
 
-import Button from "metabase/core/components/Button";
-
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 import {
   ChartSettingMessage,
   ChartSettingOrderedSimpleRoot,
+  ExtraButton,
 } from "./ChartSettingOrderedSimple.styled";
 
 interface SortableItem {
@@ -22,16 +21,25 @@ interface ChartSettingOrderedSimpleProps {
   onChange: (rows: SortableItem[]) => void;
   value: SortableItem[];
   onShowPopoverWidget: (
-    widget: { props: { seriesKey?: string; initialKey?: string } },
+    widget: {
+      id?: string;
+      props?: { seriesKey?: string; initialKey?: string };
+    },
     ref: HTMLElement | undefined,
   ) => void;
   onSetCurrentWidget: (widget: { props: { initialKey?: string } }) => void;
   series: Series;
   hasEditSettings: boolean;
   hasOnEnable: boolean;
-  listOfSeries: boolean;
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
   getItemTitle?: (item: SortableItem) => string;
+  getPopoverProps?: (item: SortableItem) => {
+    id?: string;
+    props?: {
+      seriesKey?: string;
+      initialKey?: string;
+    };
+  };
   extraButton?: { text: string; key: string };
 }
 
@@ -43,8 +51,8 @@ export const ChartSettingOrderedSimple = ({
   hasEditSettings = true,
   hasOnEnable = true,
   onChangeSeriesColor,
-  listOfSeries = true,
   getItemTitle = (item: SortableItem) => item.name || "Unknown",
+  getPopoverProps = (item: SortableItem) => ({}),
   extraButton,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = (selectedItem: SortableItem) => {
@@ -65,14 +73,7 @@ export const ChartSettingOrderedSimple = ({
   };
 
   const handleOnEdit = (item: SortableItem, ref: HTMLElement | undefined) => {
-    onShowPopoverWidget(
-      {
-        props: {
-          [listOfSeries ? "seriesKey" : "initialKey"]: item.key,
-        },
-      },
-      ref,
-    );
+    onShowPopoverWidget(getPopoverProps(item), ref);
   };
 
   const handleColorChange = (item: SortableItem, color: string) => {
@@ -92,9 +93,9 @@ export const ChartSettingOrderedSimple = ({
   return (
     <ChartSettingOrderedSimpleRoot>
       {extraButton && (
-        <Button onClick={handleExtra} onlyText>
+        <ExtraButton onClick={handleExtra} onlyText>
           {extraButton.text}
-        </Button>
+        </ExtraButton>
       )}
 
       {orderedItems.length > 0 ? (

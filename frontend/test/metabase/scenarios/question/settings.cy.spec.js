@@ -34,29 +34,19 @@ describe("scenarios > question > settings", () => {
 
       cy.findByTestId("sidebar-content").as("tableOptions");
 
+      cy.get("@tableOptions").contains("Add or remove columns").click();
+
       // remove Total column
-      cy.get("@tableOptions")
-        .contains("Total")
-        .scrollIntoView()
-        .nextAll(".Icon-eye_outline")
-        .click();
+      cy.get("@tableOptions").contains("Total").scrollIntoView().click();
 
       // Add people.category
-      cy.get("@tableOptions")
-        .contains("Category")
-        .scrollIntoView()
-        .nextAll(".Icon-add")
-        .click();
+      cy.get("@tableOptions").contains("Category").scrollIntoView().click();
 
       // wait a Category value to appear in the table, so we know the query completed
       cy.contains("Widget");
 
       // Add people.ean
-      cy.get("@tableOptions")
-        .contains("Ean")
-        .scrollIntoView()
-        .nextAll(".Icon-add")
-        .click();
+      cy.get("@tableOptions").contains("Ean").scrollIntoView().click();
 
       // wait a Ean value to appear in the table, so we know the query completed
       cy.contains("8833419218504");

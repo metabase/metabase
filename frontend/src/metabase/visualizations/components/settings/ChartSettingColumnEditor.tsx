@@ -7,6 +7,7 @@ import { DatasetColumn } from "metabase-types/api";
 import { ConcreteField, Field } from "metabase-types/types/Query";
 import { isNotNull } from "metabase/core/utils/types";
 
+import Metadata from "metabase-lib/metadata/Metadata";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
@@ -29,6 +30,8 @@ interface ChartSettingColumnEditorProps {
   onChange: (val: ColumnSetting[]) => void;
   columns: DatasetColumn[];
   question: Question;
+  isDashboard?: boolean;
+  metadata?: Metadata;
 }
 
 const ChartSettingColumnEditor = ({
@@ -36,14 +39,39 @@ const ChartSettingColumnEditor = ({
   value: columnSettings,
   columns,
   question,
+  isDashboard,
+  metadata,
 }: ChartSettingColumnEditorProps) => {
   const fieldOptions = useMemo(() => {
     const query = question && question.query();
-    if (query instanceof StructuredQuery) {
+    if (query instanceof StructuredQuery && !isDashboard) {
       const options = query.fieldsOptions();
+      const allFields = options.dimensions.concat(
+        options.fks.reduce(
+          (memo, fk) => memo.concat(fk.dimensions),
+          [] as Dimension[],
+        ),
+      );
+      const missingDimensions = columns
+        .filter(
+          column =>
+            !allFields.some(dimension =>
+              dimension.isSameBaseDimension(column.field_ref as ConcreteField),
+            ),
+        )
+        .map(column =>
+          Dimension.parseMBQL(
+            column.field_ref as ConcreteField,
+            query.metadata(),
+            query,
+          ),
+        )
+        .filter(isNotNull);
       return {
         name: query.table()?.display_name || t`Columns`,
-        dimensions: options.dimensions.filter(isNotNull),
+        dimensions: options.dimensions
+          .concat(missingDimensions)
+          .filter(isNotNull),
         fks: options.fks.map(fk => ({
           name:
             fk.name ||
@@ -53,22 +81,38 @@ const ChartSettingColumnEditor = ({
           dimensions: fk.dimensions.filter(isNotNull),
         })),
       };
-    } else if (query instanceof NativeQuery && columns) {
+    } else if ((query instanceof NativeQuery || isDashboard) && columns) {
+      //const tableName = query?.table()?.display_name || t`Columns`;
+      const allDimensions = columns
+        .map(column =>
+          Dimension.parseMBQL(column.field_ref as ConcreteField, metadata),
+        )
+        .filter(isNotNull);
+
+      const groupedDimensions = _.groupBy(
+        allDimensions,
+        dimension => dimension.field().table?.displayName() || t`Columns`,
+      );
+      const tables = Object.keys(groupedDimensions);
+      const firstTable = tables[0];
       return {
-        name: query.table()?.display_name || t`Columns`,
-        dimensions: columns
-          .map(column => Dimension.parseMBQL(column.field_ref as ConcreteField))
-          .filter(isNotNull),
-        fks: [],
+        name: firstTable,
+        dimensions: groupedDimensions[firstTable],
+        fks: tables
+          .filter(table => table !== firstTable)
+          .map(table => ({
+            name: table,
+            dimensions: groupedDimensions[table],
+          })),
       };
     } else {
       return {
-        count: 0,
+        name: "",
         dimensions: [],
         fks: [],
       };
     }
-  }, [question, columns]);
+  }, [question, columns, isDashboard, metadata]);
 
   const getColumnSettingByDimension = (dimension: Dimension) => {
     return columnSettings.find(setting =>

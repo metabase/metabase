@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Link from "metabase/core/components/Link";
+import Button from "metabase/core/components/Button";
 
 export const ChartSettingOrderedSimpleRoot = styled.div`
   padding-left: 1rem;
@@ -17,4 +17,10 @@ export const ChartSettingMessage = styled.div`
   color: ${color("text-light")};
   font-weight: 700;
   border-radius: 0.5rem;
+`;
+
+export const ExtraButton = styled(Button)`
+  position: absolute;
+  top: 0;
+  right: 0;
 `;
