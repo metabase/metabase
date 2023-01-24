@@ -11,7 +11,7 @@
    [metabase.events :as events]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
-   [metabase.models :refer [Activity Database Table User]]
+   [metabase.models :refer [ActivityLog Database Table User]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.public-settings :as public-settings]
@@ -96,7 +96,7 @@
                             :user_id       (schema/eq user-id)
                             :model         (schema/eq "user")
                             schema/Keyword schema/Any}
-                           (wait-for-result #(db/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
+                           (wait-for-result #(db/select-one ActivityLog :topic "user-joined", :user_id user-id)))))))))))
 
 (deftest invite-user-test
   (testing "POST /api/setup"
