@@ -346,7 +346,9 @@ describe("scenarios > dashboard", () => {
     // Add cross-filter click behavior manually
     cy.icon("pencil").click();
     showDashboardCardActions();
-    cy.icon("click").click();
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("click").click();
+    });
     cy.findByText("COUNT(*)").click();
     cy.findByText("Update a dashboard filter").click();
 

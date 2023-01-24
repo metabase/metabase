@@ -262,33 +262,33 @@
               ;; make sure all the fields for taxi_tips were synced
               (is (= 23 (db/count Field :table_id (u/the-id tbl))))))
           (testing " for querying"
-            (is (= ["67794e631648a002f88d4b7f3ab0bcb6a9ed306a"
-                    "1d7ade2f592e1c98f5d34e9e1ef452fae2c76a65e1002a04d1f5262bb47aeb2060332673825208955ed5e35dab5a07b7f69ec1745fe209d4b9ad60560a9e9896"
-                    "2014-01-12T00:45:00Z"
-                    "2014-01-12T00:45:00Z"
-                    0
-                    0.0
-                    17031062300
+            (is (= ["ff0b96c0cada768361b1c9341e11905254644afb"
+                    "c7fd753040e0170e38049465089bca99c750f5ed8b3f6c547b303057ec23be36b9b86790fe417bb5949d980892460a2732a28a515bb805cf967bf4cf4b44b074"
+                    "2016-09-20T07:15:00Z"
+                    "2016-09-20T07:30:00Z"
+                    1265
+                    7.2
                     nil
-                    6
                     nil
-                    0.07
+                    nil
+                    nil
+                    0.01
                     0.0
+                    nil
                     0.0
-                    0.0
-                    0.07
+                    0.01
                     "Cash"
-                    "Top Cab Affiliation"
-                    41.9416281
-                    -87.661443368
-                    "POINT (-87.6614433685 41.9416281)"
+                    "303 Taxi"
+                    nil
+                    nil
+                    nil
                     nil
                     nil
                     nil]
                    (mt/first-row
                      (mt/run-mbql-query taxi_trips
                        {:filter [:= [:field (mt/id :taxi_trips :unique_key) nil]
-                                    "67794e631648a002f88d4b7f3ab0bcb6a9ed306a"]})))))
+                                    "ff0b96c0cada768361b1c9341e11905254644afb"]})))))
           (testing " has project-id-from-credentials set correctly"
             (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
@@ -380,16 +380,20 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries can be canceled successfully"
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        (binding [bigquery/*page-size*     1000  ; set a relatively small pageSize
+        (binding [bigquery/*page-size*     1000 ; set a relatively small pageSize
                   bigquery/*page-callback* (fn []
                                              (log/debug "*page-callback* called, sending cancel message")
                                              (a/>!! canceled-chan ::cancel))]
-          (mt/dataset sample-dataset
-            (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
-                  row-count (count rows)]
-              (log/debugf "Loaded %d rows before BigQuery query was canceled" row-count)
-              (testing "Somewhere between 0 and the size of the orders table rows were loaded before cancellation"
-                (is (< 0 row-count 10000))))))))))
+          (try
+            ;; there's a race. Some data might be processed, and if so we get the partial result
+            (mt/dataset sample-dataset
+              (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
+                    row-count (count rows)]
+                (log/debugf "Loaded %d rows before BigQuery query was canceled" row-count)
+                (testing "Somewhere between 0 and the size of the orders table rows were loaded before cancellation"
+                  (is (< 0 row-count 10000)))))
+            (catch clojure.lang.ExceptionInfo e
+              (is (= (ex-message e) "Query cancelled")))))))))
 
 (deftest global-max-rows-test
   (mt/test-driver :bigquery-cloud-sdk

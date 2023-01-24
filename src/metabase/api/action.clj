@@ -2,7 +2,6 @@
   "`/api/action/` endpoints."
   (:require
    [compojure.core :as compojure :refer [POST]]
-   [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -152,4 +151,4 @@
   (db/update! Action id :public_uuid nil, :made_public_by_id nil)
   {:status 204, :body nil})
 
-(api/define-routes actions/+check-actions-enabled)
+(api/define-routes)
