@@ -234,12 +234,12 @@
   (is (= {"dashboard" #{41 43 42}
           "card"      #{113 108 109 111 112 114}
           "user"      #{90}}
-         (#'api.activity/activities->referenced-objects fake-activities))))
+         (#'api.activity-log/activities->referenced-objects fake-activities))))
 
 (deftest referenced-objects->existing-objects-test
   (mt/with-temp Dashboard [{dashboard-id :id}]
     (is (= {"dashboard" #{dashboard-id}}
-           (#'api.activity/referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
+           (#'api.activity-log/referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
                                                                  "card"      #{0}})))))
 (deftest add-model-exists-info-test
   (mt/with-temp* [Dashboard [{dashboard-id :id}]
@@ -255,7 +255,7 @@
              :details      {:dashcards [{:card_id card-id, :exists true}
                                         {:card_id 0, :exists false}
                                         {:card_id dataset-id, :exists true}]}}]
-           (#'api.activity/add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
+           (#'api.activity-log/add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
                                                   {:model "card", :model_id 0}
                                                   {:model "card", :model_id dataset-id}
                                                   {:model    "dashboard"
