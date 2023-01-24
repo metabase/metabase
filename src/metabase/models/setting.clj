@@ -812,7 +812,7 @@
 (defn- setting-fn-docstring [{:keys [default description], setting-type :type, :as setting}]
   ;; indentation below is intentional to make it clearer what shape the generated documentation is going to take.
   (str
-   description \newline
+   (description) \newline
    \newline
    (format "`%s` is a `%s` Setting. You can get its value by calling:\n" (setting-name setting) setting-type)
    \newline
@@ -878,14 +878,18 @@
   "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n/deferred-tru]]). Returns `description-form`
   as-is."
   [description-form]
-  (when-not (valid-trs-or-tru? description-form)
-    ;; this doesn't need to be i18n'ed because it's a compile-time error.
-    (throw (ex-info (str "defsetting docstrings must be an *deferred* i18n form unless the Setting has"
-                         " `:visibilty` `:internal` or `:setter` `:none`."
-                         (format " Got: ^%s %s"
-                                 (some-> description-form class (.getCanonicalName))
-                                 (pr-str description-form)))
-                    {:description-form description-form})))
+  (if (and (list? description-form)
+           (symbol? (first description-form))
+           (= 'fn* (first description-form)))
+    (validate-description-form (nth description-form 2))
+    (when-not (valid-trs-or-tru? description-form)
+      ;; this doesn't need to be i18n'ed because it's a compile-time error.
+      (throw (ex-info (str "defsetting docstrings must be an *deferred* i18n form unless the Setting has"
+                           " `:visibilty` `:internal` or `:setter` `:none`."
+                           (format " Got: ^%s %s"
+                                   (some-> description-form class (.getCanonicalName))
+                                   (pr-str description-form)))
+                      {:description-form description-form}))))
   description-form)
 
 (defmacro defsetting
@@ -978,10 +982,14 @@
          ;; don't put exclamation points in your Setting names. We don't want functions like `exciting!` for the getter
          ;; and `exciting!!` for the setter.
          (not (str/includes? (name setting-symbol) "!"))]}
-  (let [description               (if (or (= (:visibility options) :internal)
-                                          (= (:setter options) :none))
-                                    description
-                                    (validate-description-form description))
+  (let [description               `(if (fn? ~description)
+                                    ~description
+                                    (constantly ~description))
+        ;; TODO: fix validation
+        ;; description               (if (or (= (:visibility options) :internal)
+        ;;                                   (= (:setter options) :none))
+        ;;                             description
+        ;;                             (validate-description-form description))
         definition-form           (assoc options
                                          :name (keyword setting-symbol)
                                          :description description
@@ -1076,7 +1084,7 @@
                          (log/error e (trs "Error fetching value of Setting"))))
      :is_env_setting set-via-env-var?
      :env_name       (env-var-name setting)
-     :description    (str description)
+     :description    (str (description))
      :default        (if set-via-env-var?
                        (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
