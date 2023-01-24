@@ -4,6 +4,7 @@
    [compojure.route :as route]
    [metabase.api.action :as api.action]
    [metabase.api.activity :as api.activity]
+   [metabase.api.activity-log :as api.activity-log]
    [metabase.api.alert :as api.alert]
    [metabase.api.automagic-dashboards :as api.magic]
    [metabase.api.bookmark :as api.bookmark]
@@ -67,6 +68,7 @@
   ee-routes
   (context "/action"               [] (+auth api.action/routes))
   (context "/activity"             [] (+auth api.activity/routes))
+  (context "/activity-log"         [] (+auth api.activity-log/routes))
   (context "/alert"                [] (+auth api.alert/routes))
   (context "/automagic-dashboards" [] (+auth api.magic/routes))
   (context "/card"                 [] (+auth api.card/routes))

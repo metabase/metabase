@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time :as t]
-   [metabase.api.activity :as api.activity]
+   [metabase.api.activity-log :as api.activity-log]
    [metabase.models.activity-log :refer [ActivityLog]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -26,12 +26,12 @@
 ;;  2. :user and :model_exists are hydrated
 
 (def ^:private activity-defaults
-  {:model_exists false
-   :database_id  nil
-   :database     nil
-   :table_id     nil
-   :table        nil
-   :custom_id    nil})
+  {:model_exists  false
+   :database_id   nil
+   :database      nil
+   :table_id      nil
+   :table         nil
+   :end_timestamp nil})
 
 (defn- activity-user-info [user-kw]
   (merge
@@ -42,7 +42,7 @@
 
 ;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
 (deftest activity-list-test
-  (testing "GET /api/activity_log"
+  (testing "GET /api/activity-log"
     (mt/with-temp* [ActivityLog [activity1 {:topic     "install"
                                             :details   {}
                                             :timestamp #t "2015-09-09T12:13:14.888Z[UTC]"}]
@@ -77,7 +77,7 @@
                   :user    nil})]
                ;; remove other activities from the API response just in case -- we're not interested in those
                (let [these-activity-ids (set (map u/the-id [activity1 activity2 activity3]))]
-                 (for [activity (mt/user-http-request :crowberto :get 200 "activity")
+                 (for [activity (mt/user-http-request :crowberto :get 200 "activity-log")
                        :when    (contains? these-activity-ids (u/the-id activity))]
                    (dissoc activity :timestamp)))))))))
 
@@ -141,7 +141,7 @@
                       [(mt/user->id :crowberto) "card"      (:id archived)]
                       [(mt/user->id :crowberto) "table"     (:id hidden-table)]
                       [(mt/user->id :rasta)     "card"      (:id card1)]])
-      (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
+      (let [recent-views (mt/user-http-request :crowberto :get 200 "activity-log/recent_views")]
         (is (partial= [{:model "table"     :model_id (:id table1)}
                        {:model "dashboard" :model_id (:id dash)}
                        {:model "card"      :model_id (:id card1)}
@@ -181,7 +181,7 @@
         (is (= [["dashboard" (:id dash1)]
                 ["card" (:id card1)]]
                ;; all views are from :rasta, but :crowberto can still see popular items
-               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity-log/popular_items")]
                  ((juxt :model :model_id) popular-item))))))
     (testing "Items viewed by other users can still show up in popular items."
       (mt/with-model-cleanup [ViewLog QueryExecution]
@@ -194,7 +194,7 @@
                 ["dataset" (:id dataset)]
                 ["table" (:id table1)]]
                ;; all views are from :rasta, but :crowberto can still see popular items
-               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity-log/popular_items")]
                  ((juxt :model :model_id) popular-item))))))
     (testing "Items with more views show up sooner in popular items."
       (mt/with-model-cleanup [ViewLog QueryExecution]
@@ -211,7 +211,7 @@
                        {:model "dataset"   :model_id (:id dataset)}
                        {:model "table"     :model_id (:id table1)}]
                       ;; all views are from :rasta, but :crowberto can still see popular items
-                      (mt/user-http-request :crowberto :get 200 "activity/popular_items")))))))
+                      (mt/user-http-request :crowberto :get 200 "activity-log/popular_items")))))))
 
 ;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
 
@@ -271,7 +271,7 @@
                                        :timestamp (java.time.ZonedDateTime/now)}]
     (letfn [(activity-topics [user]
               (into #{} (map :topic)
-                    (mt/user-http-request user :get 200 "activity")))]
+                    (mt/user-http-request user :get 200 "activity-log")))]
       (testing "Only admins should get to see user-joined activities"
         (testing "admin should see `:user-joined` activities"
           (testing "Sanity check: admin should be able to read the activity"
