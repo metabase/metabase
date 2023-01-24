@@ -58,7 +58,7 @@ function question(
     visualization_settings = {},
     collection_id,
     collection_position,
-    embedding_params = {},
+    embedding_params,
     enable_embedding = false,
   } = {},
   {
