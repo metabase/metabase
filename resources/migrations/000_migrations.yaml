@@ -14046,6 +14046,55 @@ databaseChangeLog:
             constraintName: fk_action_creator_id
             nullable: false
 
+  - changeSet:
+      id: v46.00-064
+      author: noahmoss
+      comment: Added 0.46.0 -- rename `group_table_access_policy` to `sandboxes`
+      changes:
+        - renameTable:
+            newTableName: sandboxes
+            oldTableName: group_table_access_policy
+
+  - changeSet:
+      id: v46.00-065
+      author: noahmoss
+      comment: Added 0.46.0 -- add `permission_id` to `sandboxes`
+      changes:
+      - addColumn:
+          tableName: sandboxes
+          columns:
+          - column:
+              name: permission_id
+              type: int
+              constraints:
+                foreignKeyName: fk_sandboxes_ref_permissions
+                nullable: true
+                referencedTableName: permissions
+                referencedColumnNames: id
+
+  - changeSet:
+      id: v46.00-066
+      author: noahmoss
+      comment: Added 0.46.0 -- backfill `permission_id` values in `sandboxes`
+      changes:
+        - sql: >-
+            UPDATE sandboxes s
+            SET permission_id = (
+              SELECT id
+              FROM permissions p
+              WHERE
+                p.object LIKE '%/table/' || s.table_id || '/query/segmented/'
+                AND p.group_id = s.group_id
+            );
+
+  - changeSet:
+      id: v46.00-067
+      author: noahmoss
+      comment: Added 0.46.0 -- remove orphaned entries in `sandboxes`
+      changes:
+        - sql: >-
+            DELETE FROM sandboxes
+            WHERE permission_id IS NULL;
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
