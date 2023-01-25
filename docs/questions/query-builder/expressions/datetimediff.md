@@ -28,23 +28,6 @@ title: DatetimeDiff
 - "second"
 - "millisecond"
 
-## Limitations
-
-`datetimeDiff` is currently unavailable for the following databases:
-
-- Amazon Athena
-- Druid
-- Google Analytics
-- H2
-- MongoDB
-- Oracle
-- Presto
-- Redshift
-- SparkSQL
-- SQLite
-- SQL Server
-- Vertica
-
 ## Calculating age
 
 Let's say you're a cheesemaker, and you want to keep track of your ripening process:
@@ -97,6 +80,13 @@ datetimeDiff([Aging Start], [Today], "month")
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase.
 
 If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
+
+## Limitations
+
+`datetimeDiff` is currently unavailable for the following databases:
+
+- Druid
+- Google Analytics
 
 ## Related functions
 
