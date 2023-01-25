@@ -51,7 +51,7 @@
     ;; readable if the model is readable.
     (action/actions-with-implicit-params [model] :model_id model-id)))
 
-(api/defendpoint-schema GET "/public"
+(api/defendpoint GET "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
   []
   (validation/check-has-application-permission :setting)
