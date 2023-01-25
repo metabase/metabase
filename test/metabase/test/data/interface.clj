@@ -277,14 +277,6 @@
 (defmethod has-questionable-timezone-support? ::test-extensions [driver]
   (not (driver/supports? driver :set-timezone)))
 
-(defmulti id-field-type
-  "Return the `base_type` of the `id` Field (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to `:type/Integer`."
-  {:arglists '([driver])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod id-field-type ::test-extensions [_] :type/Integer)
-
 (defmulti sorts-nil-first?
   "Whether this database will sort nil values (of type `base-type`) before or after non-nil values. Defaults to `true`.
   Of course, in real queries, multiple sort columns can be specified, so considering only one `base-type` isn't 100%

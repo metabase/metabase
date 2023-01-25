@@ -54,15 +54,9 @@
                                                       ;; allowed.
                                                       ";USER=GUEST;PASSWORD=guest"))})
 
-(defmethod sql.tx/pk-sql-type :h2 [_] "BIGINT AUTO_INCREMENT")
-
-(defmethod sql.tx/pk-field-name :h2 [_] "ID")
-
 (defmethod ddl.i/format-name :h2
   [_ s]
   (str/upper-case s))
-
-(defmethod tx/id-field-type :h2 [_] :type/BigInteger)
 
 (defmethod tx/aggregate-column-info :h2
   ([driver ag-type]
