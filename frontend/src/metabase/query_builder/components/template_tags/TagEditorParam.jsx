@@ -56,6 +56,7 @@ export class TagEditorParam extends Component {
       setTemplateTag({
         ...tag,
         type: type,
+        default: null,
         dimension: undefined,
         "widget-type": undefined,
       });
