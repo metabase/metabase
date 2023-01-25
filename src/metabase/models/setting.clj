@@ -879,7 +879,7 @@
   as-is."
   [description-form]
   (when-not (valid-trs-or-tru? description-form)
-      ;; this doesn't need to be i18n'ed because it's a compile-time error.
+    ;; this doesn't need to be i18n'ed because it's a compile-time error.
     (throw (ex-info (str "defsetting docstrings must be an *deferred* i18n form unless the Setting has"
                          " `:visibilty` `:internal` or `:setter` `:none`."
                          (format " Got: ^%s %s"
