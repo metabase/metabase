@@ -547,7 +547,7 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   _setQueryText(newQueryText: string) {
-    return this.this.setDatasetQuery(
+    return this.setDatasetQuery(
       chain(this.datasetQuery())
         .assocIn(["native", "query"], newQueryText)
         .assocIn(
