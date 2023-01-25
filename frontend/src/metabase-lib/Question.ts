@@ -1142,7 +1142,7 @@ class QuestionInner {
 
   setParameter(newParameter) {
     const newParameters = this.parameters().map(oldParameter =>
-      oldParameter.id === tag.id ? newParameter : oldParameter,
+      oldParameter.id === newParameter.id ? newParameter : oldParameter,
     );
 
     return this.setParameters(newParameters);
