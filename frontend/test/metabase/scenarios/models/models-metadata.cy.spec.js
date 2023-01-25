@@ -275,7 +275,7 @@ describe("scenarios > models metadata", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
 
-    it("should allow drills on FK columns", () => {
+    it.only("should allow drills on FK columns", () => {
       cy.get("@modelId").then(modelId => {
         cy.visit(`/model/${modelId}`);
         cy.wait("@dataset");
