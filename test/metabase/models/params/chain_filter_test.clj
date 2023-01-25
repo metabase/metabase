@@ -524,7 +524,7 @@
 
 (deftest nil-values-test
   (testing "Chain filter fns should work for fields that have nil or empty values (#17659)"
-    (mt/dataset :nil-values-dataset
+    (mt/dataset nil-values-dataset
       (mt/$ids tbl
         (letfn [(thunk []
                   (doseq [[field expected-values] {:mytype  {:values          ["empty" "null" "value"]
