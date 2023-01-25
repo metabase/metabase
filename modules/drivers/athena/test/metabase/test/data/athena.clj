@@ -153,6 +153,14 @@
             fields
             (s3-location-for-table driver database-name table-name))))
 
+(comment
+  (let [test-data-dbdef (tx/get-dataset-definition @(requiring-resolve 'metabase.test.data.dataset-definitions/test-data))
+        venues-tabledef (some (fn [tabledef]
+                                (when (= (:table-name tabledef) "venues")
+                                  tabledef))
+                              (:table-definitions test-data-dbdef))]
+    (sql.tx/create-table-sql :athena {:database-name "test-data"} venues-tabledef)))
+
 ;; The Athena JDBC driver doesn't support parameterized queries.
 ;; So go ahead and deparameterize all the statements for now.
 (defmethod ddl/insert-rows-ddl-statements :athena
