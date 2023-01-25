@@ -3,7 +3,7 @@ import querystring from "querystring";
 import EventEmitter from "events";
 
 import { delay } from "metabase/lib/promise";
-import { IFRAMED } from "metabase/lib/dom";
+import { isWithinIframe } from "metabase/lib/dom";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
@@ -84,7 +84,7 @@ export class Api extends EventEmitter {
           ? { Accept: "application/json", "Content-Type": "application/json" }
           : {};
 
-        if (IFRAMED) {
+        if (isWithinIframe()) {
           headers["X-Metabase-Embedded"] = "true";
         }
 

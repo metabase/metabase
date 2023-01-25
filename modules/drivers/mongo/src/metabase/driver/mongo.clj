@@ -139,17 +139,14 @@
                                  (find-nested-fields field-value nested-fields)
                                  nested-fields)))))
 
-;; TODO - use [[metabase.driver.common/class->base-type]] to implement this functionality
 (defn- most-common-object-type
   "Given a sequence of tuples like [Class <number-of-occurances>] return the Class with the highest number of
   occurances. The basic idea here is to take a sample of values for a Field and then determine the most common type
   for its values, and use that as the Metabase base type. For example if we have a Field called `zip_code` and it's a
   number 90% of the time and a string the other 10%, we'll just call it a `:type/Number`."
   ^Class [field-types]
-  (->> field-types
-       (sort-by second)
-       last
-       first))
+  (when (seq field-types)
+    (first (apply max-key second field-types))))
 
 (defn- class->base-type [^Class klass]
   (if (isa? klass org.bson.types.ObjectId)
@@ -157,7 +154,7 @@
     (driver.common/class->base-type klass)))
 
 (defn- describe-table-field [field-kw field-info idx]
-  (let [most-common-object-type  (most-common-object-type (vec (:types field-info)))
+  (let [most-common-object-type  (most-common-object-type (:types field-info))
         [nested-fields idx-next]
         (reduce
          (fn [[nested-fields idx] nested-field]

@@ -5,7 +5,7 @@ import { push } from "react-router-redux";
 import cx from "classnames";
 
 import _ from "underscore";
-import { IFRAMED } from "metabase/lib/dom";
+import { isWithinIframe } from "metabase/lib/dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
@@ -109,7 +109,7 @@ class PublicDashboard extends Component {
       isFullscreen,
       isNightMode,
     } = this.props;
-    const buttons = !IFRAMED
+    const buttons = !isWithinIframe()
       ? getDashboardActions(this, { ...this.props, isPublic: true })
       : [];
 

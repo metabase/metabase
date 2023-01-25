@@ -270,7 +270,10 @@ function DashCard({
   const renderDashCardActions = useCallback(() => {
     if (isEditingDashboardLayout) {
       return (
-        <DashboardCardActionsPanel onMouseDown={preventDragging}>
+        <DashboardCardActionsPanel
+          onMouseDown={preventDragging}
+          data-testid="dashboardcard-actions-panel"
+        >
           <DashCardActionButtons
             series={series}
             dashboard={dashboard}
