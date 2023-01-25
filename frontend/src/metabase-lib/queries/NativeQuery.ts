@@ -391,7 +391,10 @@ export default class NativeQuery extends AtomicQuery {
 
   setTemplateTag(name: string, tag: TemplateTag, parameter?: Parameter) {
     const newQuery = this.setDatasetQuery(
-      assocIn(this.datasetQuery(), ["native", "template-tags", name], tag),
+      updateIn(this.datasetQuery(), ["native", "template-tags"], tags => ({
+        ...tags,
+        [name]: tag,
+      })),
     );
 
     return newQuery
