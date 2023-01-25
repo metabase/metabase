@@ -7,11 +7,11 @@
    [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
    [metabase.query-processor-test :as qp.test]
-   [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.datasets :as datasets]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [toucan.db :as db]
@@ -139,7 +139,7 @@
                                            :target [:variable [:template-tag "name"]]}]
                              :visualization_settings {:inline true}
                              :public_uuid (str (java.util.UUID/randomUUID))
-                             :made_public_by_id (mt/user->id :crowberto)
+                             :made_public_by_id (test.users/user->id :crowberto)
                              :database_id (data/id)
                              :dataset_query {:database (data/id)
                                              :type :native
@@ -162,7 +162,7 @@
                                       :name "Update Example"
                                       :kind "row/update"
                                       :public_uuid (str (java.util.UUID/randomUUID))
-                                      :made_public_by_id (mt/user->id :crowberto)
+                                      :made_public_by_id (test.users/user->id :crowberto)
                                       :model_id model-id}
                                      options-map))]
       {:action-id action-id :model-id model-id})
@@ -184,7 +184,7 @@
                                       :response_handle ".body"
                                       :model_id model-id
                                       :public_uuid (str (java.util.UUID/randomUUID))
-                                      :made_public_by_id (mt/user->id :crowberto)}
+                                      :made_public_by_id (test.users/user->id :crowberto)}
                                      options-map))]
       {:action-id action-id :model-id model-id})))
 
