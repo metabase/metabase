@@ -18,12 +18,16 @@ export function addPostgresDatabase(name = "QA Postgres12") {
   addQADatabase("postgres", name, QA_POSTGRES_PORT);
 }
 
+export function addWritablePostgresDatabase(name = "Writable Postgres12") {
+  addQADatabase("postgres", name, 5433, true);
+}
+
 export function addMySQLDatabase(name = "QA MySQL8") {
   // https://hub.docker.com/layers/metabase/qa-databases/mysql-sample-8/images/sha256-df67db50379ec59ac3a437b5205871f85ab519ce8d2cdc526e9313354d00f9d4
   addQADatabase("mysql", name, QA_MYSQL_PORT);
 }
 
-function addQADatabase(engine, db_display_name, port) {
+function addQADatabase(engine, db_display_name, port, enable_actions = false) {
   const PASS_KEY = engine === "mongo" ? "pass" : "password";
   const AUTH_DB = engine === "mongo" ? "admin" : null;
   const OPTIONS = engine === "mysql" ? "allowPublicKeyRetrieval=true" : null;
@@ -33,7 +37,7 @@ function addQADatabase(engine, db_display_name, port) {
     engine: engine,
     name: db_display_name,
     details: {
-      dbname: "sample",
+      dbname: "actions_db", // FIXME
       host: "localhost",
       port: port,
       user: "metabase",
@@ -59,13 +63,25 @@ function addQADatabase(engine, db_display_name, port) {
         schedule_type: "hourly",
       },
     },
-  }).then(({ status, body }) => {
-    expect(status).to.equal(200);
-    cy.wrap(body.id).as(`${engine}ID`);
-  });
+  })
+    .then(({ status, body }) => {
+      expect(status).to.equal(200);
+      cy.wrap(body.id).as(`${engine}ID`);
+    })
+    .then(dbId => {
+      // Make sure we have all the metadata because we'll need to use it in tests
+      assertOnDatabaseMetadata(engine);
 
-  // Make sure we have all the metadata because we'll need to use it in tests
-  assertOnDatabaseMetadata(engine);
+      // it's important that we don't enable actions until sync is complete
+      if (dbId && enable_actions) {
+        cy.log(`**-- Enabling actions --**`);
+        cy.request("PUT", `/api/database/${dbId}`, {
+          settings: { "database-enable-actions": true },
+        }).then(({ status }) => {
+          expect(status).to.equal(200);
+        });
+      }
+    });
 }
 
 function assertOnDatabaseMetadata(engine) {
@@ -90,5 +106,57 @@ function recursiveCheck(id, i = 0) {
     if (database.initial_sync_status !== "complete") {
       recursiveCheck(id, ++i);
     }
+  });
+}
+
+const sampleConfig = {
+  user: "metabase",
+  password: "metasample123",
+  host: "localhost",
+  database: "sample",
+  ssl: false,
+  port: 5432,
+};
+
+const actionsConfig = {
+  ...sampleConfig,
+  database: "actions_db",
+};
+
+export function restoreActionsDB() {
+  // we need to initially connect to the db we know exists to create the actions_db
+  cy.task("connectAndQueryDB", {
+    connectionConfig: sampleConfig,
+    query: `SELECT FROM pg_database WHERE datname = 'actions_db';`,
+  }).then(results => {
+    if (!results.rows.length) {
+      cy.log("**-- Adding Postgres DB for actions --**");
+      cy.task("connectAndQueryDB", {
+        connectionConfig: sampleConfig,
+        query: `CREATE DATABASE IF NOT EXISTS actions_db;`,
+      });
+    }
+  });
+
+  // https://www.postgresql.org/docs/current/sql-copy.html ??
+  cy.log("-- Restoring Actions DB Data --");
+  cy.task("connectAndQueryDB", {
+    connectionConfig: actionsConfig,
+    query: /*sql*/ `
+      DROP TABLE IF EXISTS test_table;
+      CREATE TABLE test_table (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255),
+        rating INTEGER DEFAULT 0
+      );
+      INSERT INTO test_table (name) VALUES ('John'), ('Jane'), ('Jack'), ('Jill'), ('Jenny');
+    `,
+  });
+}
+
+export function queryActionsDB(query) {
+  return cy.task("connectAndQueryDB", {
+    connectionConfig: actionsConfig,
+    query: query,
   });
 }
