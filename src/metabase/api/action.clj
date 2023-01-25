@@ -55,12 +55,12 @@
     ;; We don't check the permissions on the actions, we assume they are
     ;; readable if the model is readable.
     (hydrate
-     (action/select-actions [model] :model_id model-id)
+     (action/select-actions [model] :model_id model-id :archived false)
      :creator)))
 
 (api/defendpoint GET "/:action-id"
   [action-id]
-  (-> (action/select-action :id action-id)
+  (-> (action/select-action :id action-id :archived false)
       (hydrate :creator)
       api/read-check))
 
@@ -106,9 +106,10 @@
 
 (api/defendpoint PUT "/:id"
   [id :as
-   {{:keys [type name description model_id parameters parameter_mappings visualization_settings
-            kind database_id dataset_query template response_handle error_handle] :as action} :body}]
+   {{:keys [archived database_id dataset_query description error_handle kind model_id name parameter_mappings parameters
+            response_handle template type visualization_settings] :as action} :body}]
   {id                     pos-int?
+   archived               [:maybe boolean?]
    database_id            [:maybe pos-int?]
    dataset_query          [:maybe map?]
    description            [:maybe :string]
@@ -135,13 +136,13 @@
   {id pos-int?}
   (api/check-superuser)
   (validation/check-public-sharing-enabled)
-  (api/read-check Action id)
   (actions/check-actions-enabled! id)
-  {:uuid (or (db/select-one-field :public_uuid Action :id id)
-             (u/prog1 (str (UUID/randomUUID))
-                      (db/update! Action id
-                                  :public_uuid <>
-                                  :made_public_by_id api/*current-user-id*)))})
+  (let [action (api/read-check Action id :archived false)]
+    {:uuid (or (:public_uuid action)
+               (u/prog1 (str (UUID/randomUUID))
+                 (db/update! Action id
+                             :public_uuid <>
+                             :made_public_by_id api/*current-user-id*)))}))
 
 (api/defendpoint DELETE "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
@@ -150,7 +151,7 @@
   ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (api/check-exists? Action :id id, :public_uuid [:not= nil])
+  (api/check-exists? Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)
   (db/update! Action id :public_uuid nil, :made_public_by_id nil)
   {:status 204, :body nil})

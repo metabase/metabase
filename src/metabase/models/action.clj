@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [medley.core :as m]
    [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
    [metabase.models.serialization.base :as serdes.base]
@@ -46,6 +47,12 @@
                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
              mi/json-out-with-keywordization))
 
+(t2/define-before-update Action
+  [{archived? :archived, id :id, :as changes}]
+  (u/prog1 changes
+    (when archived?
+      (t2/delete! DashboardCard :action_id id))))
+
 (mi/define-methods
  Action
  {:types      (constantly {:type                   :keyword
@@ -76,8 +83,8 @@
 
 (def action-columns
   "The columns that are common to all Action types."
-  [:type :name :description :model_id :parameters :parameter_mappings :visualization_settings :creator_id
-   :created_at :updated_at :entity_id :public_uuid :made_public_by_id])
+  [:archived :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name :parameter_mappings
+   :parameters :public_uuid :type :updated_at :visualization_settings])
 
 (defn insert!
   "Inserts an Action and related type table. Returns the action id."
@@ -149,9 +156,9 @@
    `options` is passed to `db/select` `& options` arg."
   [& options]
   (let [{:keys [query http implicit]} (group-by :type (apply db/select Action options))
-        query-actions (normalize-query-actions query)
-        http-actions (normalize-http-actions http)
-        implicit-actions (normalize-implicit-actions implicit)]
+        query-actions                 (normalize-query-actions query)
+        http-actions                  (normalize-http-actions http)
+        implicit-actions              (normalize-implicit-actions implicit)]
     (sort-by :updated_at (concat query-actions http-actions implicit-actions))))
 
 (defn unique-field-slugs?
