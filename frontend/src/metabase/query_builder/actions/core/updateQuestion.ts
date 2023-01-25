@@ -202,8 +202,11 @@ export const updateQuestion = (
     // Sync card's parameters with the template tags;
     if (newDatasetQuery.type === "native") {
       const templateTags = getTemplateTagsForParameters(newQuestion.card());
-      const parameters = getTemplateTagParameters(templateTags);
-      newQuestion = newQuestion.setParameters(parameters);
+      const newParameters = getTemplateTagParameters(
+        templateTags,
+        newQuestion.parameters(),
+      );
+      newQuestion = newQuestion.setParameters(newParameters);
     }
 
     await dispatch({

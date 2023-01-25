@@ -187,7 +187,10 @@ export const setTemplateTag = createThunkAction(
       return assoc(
         updatedTagsCard,
         "parameters",
-        getTemplateTagParameters(getTemplateTagsForParameters(updatedTagsCard)),
+        getTemplateTagParameters(
+          getTemplateTagsForParameters(updatedTagsCard),
+          updatedTagsCard.parameters,
+        ),
       );
     };
   },

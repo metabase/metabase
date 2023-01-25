@@ -30,8 +30,12 @@ export function getTemplateTagParameterTarget(
     : ["variable", ["template-tag", tag.name]];
 }
 
-export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
+export function getTemplateTagParameter(
+  tag: TemplateTag,
+  parameter?: Parameter,
+): ParameterWithTarget {
   return {
+    ...parameter,
     id: tag.id,
     type: tag["widget-type"] || getTemplateTagType(tag),
     target: getTemplateTagParameterTarget(tag),
@@ -44,13 +48,17 @@ export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
 export function getTemplateTagParameters(
   tags: TemplateTag[],
+  parameters: Parameter[] = [],
 ): ParameterWithTarget[] {
+  const parametersById = _.indexBy(parameters, "id");
+
   return tags
-    .filter(
-      tag =>
-        tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
-    )
-    .map(getTemplateTagParameter);
+    .filter(isTemplateTagParameter)
+    .map(tag => getTemplateTagParameter(tag, parametersById[tag.id]));
+}
+
+function isTemplateTagParameter(tag: TemplateTag) {
+  return tag.type != null && (tag["widget-type"] || tag.type !== "dimension");
 }
 
 export function getTemplateTagsForParameters(card: Card) {
