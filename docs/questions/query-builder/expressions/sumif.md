@@ -59,14 +59,14 @@ SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business") AND month([Date Recei
 
 Returns 400 on the sample data.
 
-> Tip: make it a habit to put parentheses around groups of conditions to avoid making mandatory conditions optional (or vice versa).
+> Tip: make it a habit to put parentheses around your `AND` and `OR` groups to avoid making mandatory conditions optional (or vice versa).
 
 ## Conditional subtotals by group
 
 To get a conditional subtotal for a category or group, such as the total payments per plan, you'll:
 
 1. Write a `sumif` formula with your conditions.
-2. Add a [**Group by** column](../../query-builder/introduction.md#summarizing-and-grouping-by) in the query builder.
+2. Add a [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column in the query builder.
 
 | Payment  | Plan        | Date Received     |
 |----------|-------------| ------------------|
@@ -88,16 +88,16 @@ Or, sum payments for all plans that aren't "Basic":
 {% raw %}SumIf([Payment], [Plan] != "Basic"){% endraw %} 
 ```
 
-> The "not equal" operator `!=` should be written as **!=** in a custom expression.
+> The "not equal" operator `!=` should be written as "!=".
 
-To view those payments by month, set the **Group by** column to **Date Received: Month**.
+To view those payments by month, set the **Group by** column to "Date Received: Month".
 
 | Date Received: Month | Total Payments for Business and Premium Plans |
 |----------------------|-----------------------------------------------|
 | October              | 200                                           | 
 | November             | 600                                           |
 
-> Tip: when sharing your work with other people, it's helpful to use the `OR` filter, even though the **!=** filter is shorter. The inclusive `OR` filter makes it easier to understand which categories are included in the sum.
+> Tip: when sharing your work with other people, it's helpful to use the `OR` filter, even though the `!=` filter is shorter. The inclusive `OR` filter makes it easier to understand which categories (e.g., plans) are included in the sum.
 
 ## Accepted data types
 
@@ -160,7 +160,7 @@ Create an aggregation from **Summarize** > **Custom expression**:
 CumulativeSum(case(([Plan] = "Basic" OR [Plan] = "Premium"), [Payment], 0))
 ```
 
-Don't forget to set the **Group by** column to **Date Received: Month**.
+Don't forget to set the **Group by** column to "Date Received: Month".
 
 ### SQL
 
@@ -197,7 +197,7 @@ The SQL `SELECT` statement matches the Metabase `SumIf` expression:
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 ```
 
-The SQL `GROUP BY` statement maps to a Metabase [**Group by** column](../../query-builder/introduction.md#summarizing-and-grouping-by) set to "Date Received: Month".
+The SQL `GROUP BY` statement maps to a Metabase [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column set to "Date Received: Month".
 
 ### Spreadsheets
 
@@ -251,7 +251,7 @@ import datetime as dt
     df_filtered.groupby('Date Received: Month')['Payment'].sum()
 ```
 
-These steps will produce the same result as the Metabase `SumIf` expression (with the [**Group by** column](../../query-builder/introduction.md#summarizing-and-grouping-by) set to "Date Received: Month").
+These steps will produce the same result as the Metabase `SumIf` expression (with the [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column set to "Date Received: Month").
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
