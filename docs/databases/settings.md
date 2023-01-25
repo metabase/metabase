@@ -4,7 +4,7 @@ title: "Database connection settings"
 
 # Database connection settings
 
-Below is a list of different connection options. For which options Metabase supports for your database, see the [page for your database](./connecting.md#connecting-to-supported-database.md).
+Below is a list of different connection options. Options available differ database to database. For which options Metabase supports for your database, see the [page for your database](./connecting.md#connecting-to-supported-database.md).
 
 > Remember to SAVE your changes!
 
@@ -15,6 +15,28 @@ The kind of database you're connecting to (PostgreSQL, MySQL, BigQuery, etc.)
 ## Display name
 
 What you want Metabase to call the database in its user interface.
+
+## Region
+
+The AWS region where your database is hosted, for Amazon Athena. For example, you might enter `us-east-1`.
+
+## Workgroup
+
+AWS workgroup. For example: `primary`. See [documentation on workgroups](https://docs.aws.amazon.com/athena/latest/ug/user-created-workgroups.html)
+
+
+### S3 Staging directory
+
+This S3 staging directory must be in the same region you specify above.
+
+### Catalog
+
+You can use a different [catalog](https://docs.aws.amazon.com/athena/latest/ug/understanding-tables-databases-and-the-data-catalog.html) (for example if you're using federated queries).
+
+## Access key
+
+## Secret Key
+
 
 ## Host
 
@@ -33,8 +55,6 @@ The name of the database you're connecting to.
 The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of privileges.
 
 ## Password
-
-_Required_
 
 The password for the username that you use to connect to the database.
 
@@ -114,7 +134,7 @@ See our [guide to SSH tunneling](./ssh-tunnel.md).
 
 ## Unfold JSON Columns
 
-Metabase can unfold JSON columns into component fields to yield a table where each JSON key becomes a column. JSON unfolding is on by default, but you can turn off JSON folding if performance is slow.
+In some databases, Metabase can unfold JSON columns into component fields to yield a table where each JSON key becomes a column. JSON unfolding is on by default, but you can turn off JSON folding if performance is slow.
 
 ## Additional JDBC connection string options
 
@@ -155,3 +175,6 @@ Turn this option **ON** to scan a _sample_ of values every time Metabase runs a 
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you turn this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
+## Default result cache duration
+
+How long to keep question results. By default, Metabase will use the value you supply on the cache settings page, but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.

@@ -26,6 +26,7 @@ See [Adding a database connection](../connecting.md#adding-a-database-connection
 - [Rerun queries for simple explorations](../settings.md#rerun-queries-for-simple-explorations)
 - [Choose when syncs and scans happen](../settings.md#choose-when-syncs-and-scans-happen)
 - [Periodically refingerprint tables](../settings.md#periodically-refingerprint-tables)
+- [Default result cache duration](../settings.md#default-result-cache-duration)
 
 ## Connecting to MySQL 8+ servers
 
