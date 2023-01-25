@@ -6,16 +6,32 @@ redirect_from:
 
 # MySQL
 
-- [Connecting to MySQL 8+ servers](#connecting-to-mysql-8-servers)
-- [Unable to log in with correct credentials](#unable-to-log-in-with-correct-credentials)
-- [Raising a MySQL Docker container of MySQL 8+](#raising-a-mysql-docker-container-of-mysql-8)
-- [Note on syncing records that include JSON](#note-on-syncing-records-that-include-json)
+Connecting Metabase to a MySQL database.
+
+## Connection settings
+
+See [Adding a database connection](../connecting.md#adding-a-database-connection).
+
+- [Display name](../settings.md#display-name)
+- [Host](../settings.md#host)
+- [Port](../settings.md#port)
+- [Database name](../settings.md#database-name)
+- [Username](../settings.md#username)
+- [Password](../settings.md#password)
+- [Use a secure connection (SSL)](../settings.md#use-a-secure-connection-ssl)
+- [Use an SSH-tunnel](../settings.md#use-an-ssh-tunnel)
+- [Authenticate client certificate](../settings.md#authenticate-client-certificate)
+- [Unfold JSON columns](../settings.md#unfold-json-columns)
+- [Additional JDBC connection string options](../settings.md#additional-jdbc-connection-string-options)
+- [Rerun queries for simple explorations](../settings.md#rerun-queries-for-simple-explorations)
+- [Choose when syncs and scans happen](../settings.md#choose-when-syncs-and-scans-happen)
+- [Periodically refingerprint tables](../settings.md#periodically-refingerprint-tables)
 
 ## Connecting to MySQL 8+ servers
 
 Metabase uses the MariaDB connector to connect to MariaDB and MySQL servers. The MariaDB connector does not currently support MySQL 8's default authentication plugin, so in order to connect, you'll need to change the plugin used by the Metabase user to `mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_password BY 'thepassword';`
 
-## Unable to log in with correct credentials
+### Unable to log in with correct credentials
 
 **How to detect this:** Metabase fails to connect to your MySQL server with the error message "Looks like the username or password is incorrect", but you're sure that the username and password is correct. You may have created the MySQL user with an allowed host other than the host you're connecting from.
 
@@ -35,6 +51,14 @@ FLUSH PRIVILEGES;
 ```
 
 Remember to drop the old user: `DROP USER 'metabase'@'localhost';`.
+
+# Syncing records that include JSON
+
+**Metabase will infer the JSON "schema" based on the keys in the first five hundred rows of a table.** MySQL JSON fields lack schema, so Metabase can't rely on table metadata to define which keys a JSON field has. To work around the lack of schema, Metabase will get the first five hundred records and parse the JSON in those records to infer the JSON's "schema". The reason Metabase limits itself to five hundred records is so that syncing metadata doesn't put unnecessary strain on your database.
+
+The problem is that, if the keys in the JSON vary record to record, the first five hundred rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys, you'll need to add the additional keys to the JSON objects in the first five hundred rows.
+
+**This JSON "schema" inference doesn't work with MariaDB**, due to implementation differences between MySQL and MariaDB.
 
 ## Raising a MySQL Docker container of MySQL 8+
 
@@ -66,16 +90,3 @@ mysql:
     command: ['--default-authentication-plugin=mysql_native_password']
 ```
 
-## Note on syncing records that include JSON
-
-1. **Metabase will infer the JSON "schema" based on the keys in the first five hundred rows of a table.** MySQL JSON fields lack schema, so Metabase can't rely on table metadata to define which keys a JSON field has. To work around the lack of schema, Metabase will get the first five hundred records and parse the JSON in those records to infer the JSON's "schema". The reason Metabase limits itself to five hundred records is so that syncing metadata doesn't put unnecessary strain on your database.
-
-The problem is that if the keys in the JSON vary record to record, the first five hundred rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys, you'll need to add the additional keys to the JSON objects in the first five hundred rows.
-
-2. **This JSON support doesn't work with MariaDB**, due to implementation differences between MySQL and MariaDB.
-
-## Model caching
-
-Metabase can create tables with model data in your database and refresh them on a schedule you define. Metabase's connection's credentials to that database must be able to read and write to the schema displayed in the info tooltip.
-
-See [Models](../../data-modeling/models.md).
