@@ -64,6 +64,7 @@ import {
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   SET_DOCUMENT_TITLE_TIMEOUT_ID,
+  SET_TEMPLATE_TAG_PARAMETER,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -356,6 +357,7 @@ export const card = handleActions(
     [CANCEL_DATASET_CHANGES]: { next: (state, { payload }) => payload.card },
 
     [SET_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
+    [SET_TEMPLATE_TAG_PARAMETER]: { next: (state, { payload }) => payload },
 
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 

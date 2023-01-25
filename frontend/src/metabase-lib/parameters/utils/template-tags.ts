@@ -35,13 +35,15 @@ export function getTemplateTagParameter(
   parameter?: Parameter,
 ): ParameterWithTarget {
   return {
-    ...parameter,
     id: tag.id,
     type: tag["widget-type"] || getTemplateTagType(tag),
     target: getTemplateTagParameterTarget(tag),
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
+    values_query_type: parameter?.values_query_type,
+    values_source_type: parameter?.values_source_type,
+    values_source_config: parameter?.values_source_config,
   };
 }
 

@@ -24,6 +24,7 @@ export default class TagEditorSidebar extends React.Component {
     sampleDatabaseId: PropTypes.number,
     setDatasetQuery: PropTypes.func.isRequired,
     setTemplateTag: PropTypes.func.isRequired,
+    setTemplateTagParameter: PropTypes.func.isRequired,
     setParameterValue: PropTypes.func.isRequired,
   };
 
@@ -44,6 +45,7 @@ export default class TagEditorSidebar extends React.Component {
       setDatasetQuery,
       query,
       setTemplateTag,
+      setTemplateTagParameter,
       setParameterValue,
       onClose,
     } = this.props;
@@ -85,6 +87,7 @@ export default class TagEditorSidebar extends React.Component {
               database={database}
               databases={databases}
               setTemplateTag={setTemplateTag}
+              setTemplateTagParameter={setTemplateTagParameter}
               setParameterValue={setParameterValue}
             />
           ) : (
@@ -108,6 +111,7 @@ const SettingsPane = ({
   database,
   databases,
   setTemplateTag,
+  setTemplateTagParameter,
   setParameterValue,
 }) => (
   <div>
@@ -121,6 +125,7 @@ const SettingsPane = ({
           database={database}
           databases={databases}
           setTemplateTag={setTemplateTag}
+          setTemplateTagParameter={setTemplateTagParameter}
           setParameterValue={setParameterValue}
         />
       </div>

@@ -9,8 +9,8 @@ import Utils from "metabase/lib/utils";
 import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
-  getTemplateTagsForParameters,
   getTemplateTagParameters,
+  getTemplateTagsForParameters,
 } from "metabase-lib/parameters/utils/template-tags";
 import {
   getDataReferenceStack,
@@ -192,6 +192,21 @@ export const setTemplateTag = createThunkAction(
           updatedTagsCard.parameters,
         ),
       );
+    };
+  },
+);
+
+export const SET_TEMPLATE_TAG_PARAMETER =
+  "metabase/qb/SET_TEMPLATE_TAG_PARAMETER";
+export const setTemplateTagParameter = createThunkAction(
+  SET_TEMPLATE_TAG_PARAMETER,
+  (tag, parameter) => {
+    return (dispatch, getState) => {
+      return getQuestion(getState())
+        .query()
+        .setTemplateTagParameter(tag, parameter)
+        .question()
+        .card();
     };
   },
 );

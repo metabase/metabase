@@ -6,6 +6,7 @@ import _ from "underscore";
 import slugg from "slugg";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
+import { Parameter } from "metabase-types/api";
 import {
   Card,
   DatasetQuery,
@@ -21,6 +22,7 @@ import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 import Database from "metabase-lib/metadata/Database";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
+import { getTemplateTagParameter } from "metabase-lib/parameters/utils/template-tags";
 import Variable from "metabase-lib/variables/Variable";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { createTemplateTag } from "metabase-lib/queries/TemplateTag";
@@ -391,6 +393,17 @@ export default class NativeQuery extends AtomicQuery {
     return this.setDatasetQuery(
       assocIn(this.datasetQuery(), ["native", "template-tags", name], tag),
     );
+  }
+
+  setTemplateTagParameter(tag: TemplateTag, newParameter: Parameter) {
+    const oldParameters = this.question().parameters();
+    const newParameters = oldParameters.map(oldParameter =>
+      oldParameter.id === tag.id
+        ? getTemplateTagParameter(tag, newParameter)
+        : oldParameter,
+    );
+
+    return this.question().setParameters(newParameters).query();
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
