@@ -1,9 +1,11 @@
+import fs from "fs";
 /**
  * This env var provides the token to the backend.
  * If it is not present, we skip some tests that depend on a valid token.
  *
  * @type {boolean}
  */
+
 const hasEnterpriseToken =
   process.env["MB_PREMIUM_EMBEDDING_TOKEN"] &&
   process.env["MB_EDITION"] === "ee";
@@ -21,6 +23,20 @@ const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
 const { Client } = require("pg");
+
+async function connectAndQueryDB({
+  connectionString,
+  connectionConfig,
+  query,
+}) {
+  const client = new Client(connectionString || connectionConfig);
+
+  await client.connect();
+  const res = await client.query(query);
+  await client.end();
+
+  return res;
+}
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
@@ -65,16 +81,42 @@ const defaultConfig = {
     /********************************************************************
      **                           TASKS                                **
      ********************************************************************/
+    const sampleConfig = {
+      user: "metabase",
+      password: "metasample123",
+      host: "localhost",
+      database: "sample",
+      ssl: false,
+      port: 5432,
+    };
+
+    const actionsConfig = {
+      ...sampleConfig,
+      database: "actions_db",
+    };
 
     on("task", {
-      async connectAndQueryDB({ connectionString, connectionConfig, query }) {
-        const client = new Client(connectionString || connectionConfig);
+      connectAndQueryDB,
 
-        await client.connect();
-        const res = await client.query(query);
-        await client.end();
+      async resetActionsDb() {
+        const sampleSQL = fs.readFileSync(
+          "./helpers/sample_schema.sql",
+          "utf8",
+        );
 
-        return res;
+        const sampleInsert = await connectAndQueryDB({
+          connectionConfig: actionsConfig,
+          query: sampleSQL,
+        });
+
+        const testSql = fs.readFileSync("./helpers/test_schema.sql", "utf8");
+
+        const testInsert = await connectAndQueryDB({
+          connectionConfig: actionsConfig,
+          query: testSql,
+        });
+
+        return [...sampleInsert, ...testInsert];
       },
     });
 

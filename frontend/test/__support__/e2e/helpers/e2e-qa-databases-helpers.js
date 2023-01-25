@@ -154,6 +154,7 @@ export function restoreActionsDB() {
       INSERT INTO test_table (name) VALUES ('John'), ('Jane'), ('Jack'), ('Jill'), ('Jenny');
     `,
   });
+  cy.task("resetActionsDb");
 }
 
 export function queryActionsDB(query) {

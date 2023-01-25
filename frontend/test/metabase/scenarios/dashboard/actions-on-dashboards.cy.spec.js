@@ -38,7 +38,7 @@ describe("Write Actions on Dashboards", () => {
         database: 2,
         name: "Test Model",
         query: {
-          "source-table": 9,
+          "source-table": 12,
         },
         dataset: true,
       },
