@@ -41,6 +41,8 @@ interface ChartSettingOrderedSimpleProps {
     };
   };
   extraButton?: { text: string; key: string };
+  paddingLeft?: string;
+  hideOnDisabled: boolean;
 }
 
 export const ChartSettingOrderedSimple = ({
@@ -54,6 +56,8 @@ export const ChartSettingOrderedSimple = ({
   getItemTitle = (item: SortableItem) => item.name || "Unknown",
   getPopoverProps = (item: SortableItem) => ({}),
   extraButton,
+  paddingLeft,
+  hideOnDisabled = false,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = (selectedItem: SortableItem) => {
     const index = orderedItems.findIndex(item => item.key === selectedItem.key);
@@ -91,7 +95,7 @@ export const ChartSettingOrderedSimple = ({
   };
 
   return (
-    <ChartSettingOrderedSimpleRoot>
+    <ChartSettingOrderedSimpleRoot paddingLeft={paddingLeft}>
       {extraButton && (
         <ExtraButton onClick={handleExtra} onlyText>
           {extraButton.text}
@@ -108,6 +112,7 @@ export const ChartSettingOrderedSimple = ({
           onEdit={hasEditSettings ? handleOnEdit : undefined}
           onColorChange={handleColorChange}
           distance={5}
+          hideOnDisabled={hideOnDisabled}
         />
       ) : (
         <ChartSettingMessage>{t`Nothing to order`}</ChartSettingMessage>

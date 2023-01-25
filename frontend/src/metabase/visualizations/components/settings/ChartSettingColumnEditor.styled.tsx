@@ -7,6 +7,7 @@ export const TableName = styled.p`
   text-transform: uppercase;
   color: ${color("text-medium")};
   display: inline-block;
+  font-weight: 700;
 `;
 
 export const TableHeaderContainer = styled.div`

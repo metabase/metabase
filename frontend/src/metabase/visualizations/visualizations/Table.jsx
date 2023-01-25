@@ -203,6 +203,8 @@ export default class Table extends Component {
       ]) => ({
         columns: cols,
         hasOnEnable: false,
+        paddingLeft: "0",
+        hideOnDisabled: true,
         getPopoverProps: columnSetting => ({
           id: "column_settings",
           props: {
