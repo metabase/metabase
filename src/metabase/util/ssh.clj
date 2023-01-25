@@ -6,8 +6,8 @@
    [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]])
   (:import
    (java.io ByteArrayInputStream)
    (java.util.concurrent TimeUnit)
