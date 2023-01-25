@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  context: server
-  file: times-mixed.server.sql
-- type: sql
-  context: db
-  file: times-mixed.db.sql
