@@ -6,6 +6,8 @@ import {
   MONGO_DATABASE,
 } from "__support__/sample_database_fixture";
 
+import { createMockParameter } from "metabase-types/api/mocks";
+
 import NativeQuery, {
   recognizeTemplateTags,
   cardIdFromTagName,
@@ -266,6 +268,28 @@ describe("NativeQuery", () => {
         );
         expect(q.templateTags().map(v => v["card-id"])).toEqual([1, 2, 1]);
       });
+    });
+  });
+  describe("values source settings", () => {
+    it("should allow setting source settings for tags", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
+      );
+      const newQuery = oldQuery.setTemplateTag(
+        "t1",
+        oldQuery.templateTagsMap()["t1"],
+        createMockParameter({
+          values_query_type: "search",
+          values_source_type: "static-list",
+          values_source_config: { values: ["A"] },
+        }),
+      );
+
+      const newParameters = newQuery.question().parameters();
+      expect(newParameters).toHaveLength(2);
+      expect(newParameters[0].values_query_type).toEqual("search");
+      expect(newParameters[0].values_source_type).toEqual("static-list");
+      expect(newParameters[0].values_source_config).toEqual({ values: ["A"] });
     });
   });
   describe("variables", () => {
