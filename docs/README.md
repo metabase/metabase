@@ -51,6 +51,7 @@ Metabase's reference documentation.
 
 - [Databases overview](./databases/start.md)
 - [Adding and managing databases](./databases/connecting.md)
+- [Connection settings](./databases/settings.md)
 - [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
 - [SSH tunneling](./databases/ssh-tunnel.md)
 - [SSL certificate](./databases/ssl-certificates.md)
@@ -195,10 +196,6 @@ Metabase's reference documentation.
 [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
 
 ## More resources
-
-### [Learn Metabase](https://www.metabase.com/learn)
-
-Guides on working with data.
 
 ### [Discussion](https://discourse.metabase.com)
 
