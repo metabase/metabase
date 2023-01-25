@@ -42,6 +42,7 @@
 (def ^:private FieldDefinitionSchema
   {:field-name                         su/NonBlankString
    :base-type                          (s/conditional
+                                        ;; map of driver => native type.
                                         #(and (map? %) (contains? % :natives))
                                         {:natives {s/Keyword su/NonBlankString}}
                                         #(and (map? %) (contains? % :native))
