@@ -36,19 +36,37 @@
 (defn- random-schema-migrations-test-db-name []
   (format "schema-migrations-test-db-%05d" (rand-int 100000)))
 
-(defmethod do-with-temp-empty-app-db* :default
+(defn- jdbc-spec [driver database-name server-or-db]
+  (let [connection-details (tx/dbdef->connection-details driver server-or-db {:database-name database-name})]
+    (sql-jdbc.conn/connection-details->spec driver connection-details)))
+
+(defmethod do-with-temp-empty-app-db* :postgres
   [driver f]
-  (log/debugf "Creating empty %s app db..." driver)
-  (let [dbdef {:database-name     (random-schema-migrations-test-db-name)
-               :table-definitions []}]
+  (let [database-name    (random-schema-migrations-test-db-name)
+        server-jdbc-spec (jdbc-spec driver database-name :server)
+        db-jdbc-spec     (jdbc-spec driver database-name :db)]
+    (doseq [sql [(format "DROP DATABASE IF EXISTS \"%s\";" database-name)
+                 (format "CREATE DATABASE \"%s\";" database-name)]]
+      (jdbc/execute! server-jdbc-spec [sql]))
     (try
-      (tx/create-db! driver dbdef)
-      (let [connection-details (tx/dbdef->connection-details driver :db dbdef)
-            jdbc-spec          (sql-jdbc.conn/connection-details->spec driver connection-details)]
-        (f (mdb.test-util/->ClojureJDBCSpecDataSource jdbc-spec)))
+      (f (mdb.test-util/->ClojureJDBCSpecDataSource db-jdbc-spec))
       (finally
         (log/debugf "Destroying empty %s app db..." driver)
-        (tx/destroy-db! driver dbdef)))))
+        (jdbc/execute! server-jdbc-spec [(format "DROP DATABASE \"%s\";" database-name)])))))
+
+(defmethod do-with-temp-empty-app-db* :mysql
+  [driver f]
+  (let [database-name    (random-schema-migrations-test-db-name)
+        server-jdbc-spec (jdbc-spec driver database-name :server)
+        db-jdbc-spec     (jdbc-spec driver database-name :db)]
+    (doseq [sql [(format "DROP DATABASE IF EXISTS \"%s\";" database-name)
+                 (format "CREATE DATABASE \"%s\";" database-name)]]
+      (jdbc/execute! server-jdbc-spec [sql]))
+    (try
+      (f (mdb.test-util/->ClojureJDBCSpecDataSource db-jdbc-spec))
+      (finally
+        (log/debugf "Destroying empty %s app db..." driver)
+        (jdbc/execute! server-jdbc-spec [(format "DROP DATABASE \"%s\";" database-name)])))))
 
 (defmethod do-with-temp-empty-app-db* :h2
   [_driver f]

@@ -1,7 +1,10 @@
 (ns metabase.test.data.h2
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
   (:require
+   [clojure.string :as str]
    [metabase.db :as mdb]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.h2 :as h2]
    [metabase.models.database :refer [Database]]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -28,8 +31,9 @@
 
 (defmethod data.impl/get-or-create-database! :h2
   [driver dataset-name]
-  (destroy-test-database-if-created-by-another-instance! dataset-name)
-  ((get-method data.impl/get-or-create-database! :default) driver dataset-name))
+  (let [dataset-name (name dataset-name)]
+    (destroy-test-database-if-created-by-another-instance! dataset-name)
+    ((get-method data.impl/get-or-create-database! :default) driver dataset-name)))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOLEAN"
@@ -54,6 +58,10 @@
 
 (defmethod sql.tx/pk-field-name :h2 [_] "ID")
 
+(defmethod ddl.i/format-name :h2
+  [_ s]
+  (str/upper-case s))
+
 (defmethod tx/id-field-type :h2 [_] :type/BigInteger)
 
 (defmethod tx/aggregate-column-info :h2
@@ -68,7 +76,8 @@
 
 (defmethod execute/execute-sql! :h2
   [driver _context dbdef sql]
-  ;; we always want to use 'server' context when execute-sql! is called (never
-  ;; try connect as GUEST, since we're not giving them priviledges to create
-  ;; tables / etc)
-  ((get-method execute/execute-sql! :sql-jdbc/test-extensions) driver :server dbdef sql))
+  (binding [h2/*connection-string-set-safe-options* false]
+    ;; we always want to use 'server' context when execute-sql! is called (never
+    ;; try connect as GUEST, since we're not giving them priviledges to create
+    ;; tables / etc)
+    ((get-method execute/execute-sql! :sql-jdbc/test-extensions) driver :server dbdef sql)))

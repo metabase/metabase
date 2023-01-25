@@ -20,7 +20,7 @@
   "Impl for [[with-actions-test-data-tables]]."
   [tables thunk]
   ;; make sure all the table names are valid so we can catch errors/typos
-  (let [valid-table-names-set #{"users" "venues" "checkins"}]
+  (let [valid-table-names-set #{"users" "venues" "checkins" "categories"}]
     (doseq [table-name tables]
       (assert (contains? valid-table-names-set table-name)
               (format "Invalid table for `with-actions-test-data-tables` %s. Valid tables: %s"
@@ -51,13 +51,13 @@
   that gets destroyed at the conclusion of `body`. Use this to test destructive actions that may modify the data."
   {:style/indent 0}
   [& body]
-  `(data/dataset test-data ~@body))
+  `(data/dataset :test-data ~@body))
 
 (defmacro with-temp-test-data
   "Sets the current dataset to a freshly created dataset-definition that gets destroyed at the conclusion of `body`.
    Use this to test destructive actions that may modify the data."
   {:style/indent 0}
-  [dataset-definition & body]
+  [_dataset-definition & body]
   `(do
      (println "FIXME: metabase.actions.test-util/with-temp-test-data")
      (println ~(format "FIXME: %s" (ns-name *ns*)))

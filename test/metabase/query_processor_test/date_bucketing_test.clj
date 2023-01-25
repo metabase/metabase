@@ -28,14 +28,15 @@
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.test :as mt]
-   [metabase.util :as u]
+   [metabase.test.data.impl :as data.impl]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
    [toucan.db :as db])
-  (:import [java.time LocalDate LocalDateTime]))
+  (:import
+   (java.time LocalDate LocalDateTime)))
 
 (defn- ->long-if-number [x]
   (if (number? x)
@@ -866,7 +867,7 @@
                 :breakout    [!year.date]}))))))
 
 ;; RELATIVE DATES
-(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds]
+(p.types/deftype+ ^:private ^:deprecated TimestampDatasetDef [intervalSeconds]
   pretty/PrettyPrintable
   (pretty [_]
     (list 'TimestampDatasetDef. intervalSeconds)))
@@ -882,49 +883,6 @@
       (when-not (str/blank? db-type)
         (sql-jdbc.sync/database-type->base-type d db-type)))))
 
-(defmethod mt/get-dataset-definition TimestampDatasetDef
-  [^TimestampDatasetDef this]
-  (let [interval-seconds (.intervalSeconds this)]
-    (mt/dataset-definition (str "checkins_interval_" interval-seconds)
-      ["checkins"
-       [{:field-name "timestamp"
-         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
-       (vec (for [i (range -15 15)]
-              ;; TIMESTAMP FIXME — not sure if still needed
-              ;;
-              ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
-              ;; generating Java classes here so they'll be in the DB's native timezone. Some DBs refuse to use
-              ;; the same timezone we're running the tests from *cough* SQL Server *cough*
-              [(u/prog1 (if (and (isa? driver/hierarchy driver/*driver* :sql)
-                                 ;; BigQuery/Vertica don't insert rows using SQL statements
-                                 ;;
-                                 ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
-                                 ;; hardcode the whitelist here.
-                                 (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
-                          (sql.qp/add-interval-honeysql-form driver/*driver*
-                                                             (sql.qp/current-datetime-honeysql-form driver/*driver*)
-                                                             (* i interval-seconds)
-                                                             :second)
-                          (u.date/add :second (* i interval-seconds)))
-                 (assert <>))]))])))
-
-(defn- dataset-def-with-timestamps [interval-seconds]
-  (TimestampDatasetDef. interval-seconds))
-
-(def ^:private checkins:4-per-minute
-  "Dynamically generated dataset with 30 checkins spaced 15 seconds apart, from 3 mins 45 seconds ago to 3 minutes 30
-  seconds in the future."
-  (dataset-def-with-timestamps 15))
-
-(def ^:private checkins:4-per-hour
-  "Dynamically generated dataset with 30 checkins spaced 15 minutes apart, from 3 hours 45 minutes ago to 3 hours 30
-  minutes in the future."
-  (dataset-def-with-timestamps (u/minutes->seconds 15)))
-
-(def ^:private checkins:1-per-day
-  "Dynamically generated dataset with 30 checkins spaced 24 hours apart, from 15 days ago to 14 days in the future."
-  (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60))))
-
 (defn- checkins-db-is-old?
   "Determine whether we need to recreate one of the dynamically-generated datasets above, if the data has grown a little
   stale."
@@ -934,25 +892,30 @@
 
 (def ^:private ^:dynamic *recreate-db-if-stale?* true)
 
-(defn- count-of-grouping [^TimestampDatasetDef dataset field-grouping & relative-datetime-args]
-  (mt/dataset dataset
-    ;; DB has values in the range of now() - (interval-seconds * 15) and now() + (interval-seconds * 15). So if it
-    ;; was created more than (interval-seconds * 5) seconds ago, delete the Database and recreate it to make sure
-    ;; the tests pass.
-    ;;
-    ;; TODO - perhaps this should be rolled into `mt/dataset` itself -- it seems like a useful feature?
-    (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
-      (binding [*recreate-db-if-stale?* false]
-        (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
-        (db/delete! Database :id (mt/id))
-        (apply count-of-grouping dataset field-grouping relative-datetime-args))
-      (let [results (mt/run-mbql-query checkins
-                      {:aggregation [[:count]]
-                       :filter      [:=
-                                     [:field %timestamp {:temporal-unit field-grouping}]
-                                     (cons :relative-datetime relative-datetime-args)]})]
-        (or (some-> results mt/first-row first int)
-            results)))))
+(defn- count-of-grouping [dataset field-grouping & relative-datetime-args]
+  (let [seconds-between-checkin (case dataset
+                                  :checkins-4-per-minute 15
+                                  :checkins-4-per-hour   (* 15 60)
+                                  :checkins-4-per-day    (* 15 60 25))]
+    (data.impl/do-with-dataset
+     dataset
+     (fn []
+       ;; DB has values in the range of now() - (interval-seconds * 15) and now() + (interval-seconds * 15). So if it
+       ;; was created more than (interval-seconds * 5) seconds ago, delete the Database and recreate it to make sure
+       ;; the tests pass.
+       (if (and (checkins-db-is-old? (* seconds-between-checkin 5)) *recreate-db-if-stale?*)
+         (binding [*recreate-db-if-stale?* false]
+           (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
+           (db/delete! Database :id (mt/id))
+           (apply count-of-grouping dataset field-grouping relative-datetime-args))
+         (let [results (mt/run-mbql-query
+                           checkins
+                           {:aggregation [[:count]],
+                            :filter
+                            [:=
+                             [:field %timestamp {:temporal-unit field-grouping}]
+                             (cons :relative-datetime relative-datetime-args)]})]
+           (or (some-> results mt/first-row first int) results)))))))
 
 ;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests are
 ;;        ran and loading data into these DBs is mind-bogglingly slow. This also applies to Athena for now, because
@@ -967,24 +930,24 @@
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
           (is (= 4
-                 (apply count-of-grouping checkins:4-per-minute :minute args))
+                 (apply count-of-grouping :checkins:4-per-minute :minute args))
               (format "filter by minute = %s" (into [:relative-datetime] args)))))))
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per hour dataset"
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
           (is (= 4
-                 (apply count-of-grouping checkins:4-per-hour :hour args))
+                 (apply count-of-grouping :checkins:4-per-hour :hour args))
               (format "filter by hour = %s" (into [:relative-datetime] args))))))
     (testing "1 checkin per day dataset"
       (testing "group by day"
         (doseq [args [[:current] [-1 :day] [1 :day]]]
           (is (= 1
-                 (apply count-of-grouping checkins:1-per-day :day args))
+                 (apply count-of-grouping :checkins:1-per-day :day args))
               (format "filter by day = %s" (into [:relative-datetime] args)))))
       (testing "group by week"
         (is (= 7
-               (count-of-grouping checkins:1-per-day :week :current))
+               (count-of-grouping :checkins:1-per-day :week :current))
             "filter by week = [:relative-datetime :current]")))))
 
 (deftest time-interval-test

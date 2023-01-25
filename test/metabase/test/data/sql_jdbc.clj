@@ -28,7 +28,7 @@
   (let [context (keyword context)]
     (when-not (#{:db :server} context)
       (throw (ex-info "Step should include either 'context: db' or 'context: server'" {})))
-    (let [file-name-in-class-path (format "metabase/driver/%s/%s" (name driver) file)
+    (let [file-name-in-class-path (format "%s/%s" (name driver) file)
           resource                (or (io/resource file-name-in-class-path)
                                       (throw (ex-info (format "Cannot find %s in class path"
                                                               (pr-str file-name-in-class-path))

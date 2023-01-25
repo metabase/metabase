@@ -244,9 +244,9 @@
 
 (methodical/defmethod load-dataset! :default
   [driver dataset-name]
-  (let [recipe-filename (format "metabase/driver/%s/%s.yaml" (name driver) (name dataset-name))]
+  (let [recipe-file-name-on-class-path (format "%s/%s.yaml" (name driver) (name dataset-name))]
     (try
-      (let [recipe-resource (or (io/resource recipe-filename)
+      (let [recipe-resource (or (io/resource recipe-file-name-on-class-path)
                                 (throw (ex-info "Recipe file does not exist" {})))
             recipe          (yaml/parse-string (slurp recipe-resource))
             steps           (or (not-empty (:steps recipe))
@@ -259,8 +259,10 @@
                               {:step step}
                               e))))))
       (catch Throwable e
-        (throw (ex-info (format "Error loading data from recipe %s: %s" (pr-str recipe-filename) (ex-message e))
-                        {:driver driver, :dataset dataset-name, :file recipe-filename}
+        (throw (ex-info (format "Error loading data from recipe %s: %s"
+                                (pr-str recipe-file-name-on-class-path)
+                                (ex-message e))
+                        {:driver driver, :dataset dataset-name, :file recipe-file-name-on-class-path}
                         e))))))
 
 (defmethod ddl.i/format-name ::test-extensions [_ table-or-field-name] table-or-field-name)

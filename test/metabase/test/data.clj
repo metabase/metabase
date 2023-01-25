@@ -34,8 +34,6 @@
 
      (There are several variations of this macro; see documentation below for more details.)"
   (:require
-   [clojure.test :as t]
-   [colorize.core :as colorize]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.query-processor :as qp]
    [metabase.test-runner.init :as test-runner.init]
@@ -212,12 +210,7 @@
   used."
   {:style/indent 1}
   [dataset & body]
-  `(t/testing (colorize/magenta ~(str (if (symbol? dataset)
-                                        (format "using %s dataset" dataset)
-                                        "using inline dataset")
-                                      \newline))
-     (data.impl/do-with-dataset ~(keyword dataset)
-                                (fn [] ~@body))))
+  `(data.impl/do-with-dataset ~(keyword dataset) (fn [] ~@body)))
 
 (defmacro with-temp-copy-of-db
   "Run `body` with the current DB (i.e., the one that powers `data/db` and `data/id`) bound to a temporary copy of the

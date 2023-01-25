@@ -321,55 +321,28 @@
 ;;; |                                                 MISC BUG FIXES                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; need more fields than seq chunking size
-(defrecord ^:private NoLazinessDatasetDefinition [num-fields])
-
-(defn- no-laziness-dataset-definition-field-names [num-fields]
-  (for [i (range num-fields)]
-    (format "field_%04d" i)))
-
-(defmethod mt/get-dataset-definition NoLazinessDatasetDefinition
-  [{:keys [num-fields]}]
-  (mt/dataset-definition
-   (format "no-laziness-%d" num-fields)
-   ["lots-of-fields"
-    (concat
-     [{:field-name "a", :base-type :type/Integer}
-      {:field-name "b", :base-type :type/Integer}]
-     (for [field (no-laziness-dataset-definition-field-names num-fields)]
-       {:field-name (name field), :base-type :type/Integer}))
-    ;; one row
-    [(range (+ num-fields 2))]]))
-
-(defn- no-laziness-dataset-definition [num-fields]
-  (->NoLazinessDatasetDefinition num-fields))
-
 ;; Make sure no part of query compilation is lazy as that won't play well with dynamic bindings.
 ;; This is not an issue limited to expressions, but using expressions is the most straightforward
 ;; way to reproducing it.
 (deftest no-lazyness-test
-  ;; Sometimes Kondo thinks this is unused, depending on the state of the cache -- see comments in
-  ;; [[hooks.metabase.test.data]] for more information. It's definitely used to.
-  #_{:clj-kondo/ignore [:unused-binding]}
-  (let [dataset-def (no-laziness-dataset-definition 300)]
-    (mt/dataset dataset-def
-      (let [query (mt/mbql-query lots-of-fields
-                    {:expressions {:c [:+
-                                       [:field (mt/id :lots-of-fields :a) nil]
-                                       [:field (mt/id :lots-of-fields :b) nil]]}
-                     :fields      (into [[:expression "c"]]
-                                        (for [{:keys [id]} (db/select [Field :id]
-                                                             :table_id (mt/id :lots-of-fields)
-                                                             :id       [:not-in #{(mt/id :lots-of-fields :a)
-                                                                                  (mt/id :lots-of-fields :b)}]
-                                                             {:order-by [[:name :asc]]})]
-                                          [:field id nil]))})]
-        (db/with-call-counting [call-count-fn]
-          (mt/with-native-query-testing-context query
-            (is (= 1
-                   (-> (qp/process-query query) mt/rows ffirst))))
-          (testing "# of app DB calls should not be some insane number"
-            (is (< (call-count-fn) 20))))))))
+  (mt/dataset no-laziness
+    (let [query (mt/mbql-query lots-of-fields
+                               {:expressions {:c [:+
+                                                  [:field (mt/id :lots-of-fields :a) nil]
+                                                  [:field (mt/id :lots-of-fields :b) nil]]}
+                                :fields      (into [[:expression "c"]]
+                                                   (for [{:keys [id]} (db/select [Field :id]
+                                                                                 :table_id (mt/id :lots-of-fields)
+                                                                                 :id       [:not-in #{(mt/id :lots-of-fields :a)
+                                                                                                      (mt/id :lots-of-fields :b)}]
+                                                                                 {:order-by [[:name :asc]]})]
+                                                     [:field id nil]))})]
+      (db/with-call-counting [call-count-fn]
+        (mt/with-native-query-testing-context query
+          (is (= 1
+                 (-> (qp/process-query query) mt/rows ffirst))))
+        (testing "# of app DB calls should not be some insane number"
+          (is (< (call-count-fn) 20)))))))
 
 (deftest expression-with-slashes
   (mt/test-drivers (disj

@@ -364,6 +364,11 @@
   (apply str file (for [[k v] options]
                     (str ";" k "=" v))))
 
+(def ^:dynamic *connection-string-set-safe-options*
+  "Whether we should set safe options in the connection string. Normally this is true, but to allow loading test data
+  this should be set to false."
+  true)
+
 (defn- connection-string-set-safe-options
   "Add Metabase Security Settings™ to this `connection-string` (i.e. try to keep shady users from writing nasty SQL)."
   [connection-string]
@@ -379,9 +384,12 @@
                                             "ACCESS_MODE_DATA" "r"}))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2
-  [_ details]
+  [_driver details]
   {:pre [(map? details)]}
-  (mdb.spec/spec :h2 (update details :db connection-string-set-safe-options)))
+  (let [details (cond-> details
+                  *connection-string-set-safe-options*
+                  (update :db connection-string-set-safe-options))]
+    (mdb.spec/spec :h2 details)))
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]

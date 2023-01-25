@@ -1,7 +1,9 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require
+   [clojure.test :refer [testing]]
    [clojure.tools.logging :as log]
+   [colorize.core :as colorize]
    [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
@@ -337,14 +339,15 @@
 (defn do-with-dataset
   "Impl for [[metabase.test/dataset]] macro."
   [dataset-name f]
-  (let [get-db-for-driver (mdb.connection/memoize-for-application-db
-                           (fn [driver]
-                             (binding [db/*disable-db-logging* true]
-                               (let [db (get-or-create-database! driver dataset-name)]
-                                 (assert db)
-                                 (assert (db/exists? Database :id (u/the-id db)))
-                                 db))))]
-    (binding [*get-db* (fn []
-                         (locking do-with-dataset
-                           (get-db-for-driver (tx/driver))))]
-      (f))))
+  (testing (colorize/magenta (format "using %s dataset\n" dataset-name))
+    (let [get-db-for-driver (mdb.connection/memoize-for-application-db
+                             (fn [driver]
+                               (binding [db/*disable-db-logging* true]
+                                 (let [db (get-or-create-database! driver dataset-name)]
+                                   (assert db)
+                                   (assert (db/exists? Database :id (u/the-id db)))
+                                   db))))]
+      (binding [*get-db* (fn []
+                           (locking do-with-dataset
+                             (get-db-for-driver (tx/driver))))]
+        (f)))))

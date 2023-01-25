@@ -87,7 +87,7 @@
 (methodical/defmethod tx/load-dataset-step! [:vertica :default :csv]
   "Load rows from a CSV file into a Table."
   [driver dataset-name {:keys [table file]}]
-  (let [file-name-on-class-path (format "metabase/driver/%s/%s" (name driver) file)]
+  (let [file-name-on-class-path (format "%s/%s" (name driver) file)]
     (try
       (let [resource (or (io/resource file-name-on-class-path)
                          (throw (ex-info "Cannot find file on class path" {:file file-name-on-class-path})))]
