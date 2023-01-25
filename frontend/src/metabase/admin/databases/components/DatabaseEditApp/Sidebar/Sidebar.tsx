@@ -106,7 +106,6 @@ const DatabaseEditAppSidebar = ({
     <SidebarRoot>
       <SidebarContent data-testid="database-actions-panel">
         <SidebarGroup>
-          <SidebarGroup.Name>{t`Actions`}</SidebarGroup.Name>
           <SidebarGroup.List>
             {!isSynced && (
               <SidebarGroup.ListItem hasMarginTop={false}>

@@ -2,7 +2,6 @@
   "`/api/action/` endpoints."
   (:require
    [compojure.core :as compojure :refer [POST]]
-   [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.models :refer [Action Card HTTPAction ImplicitAction QueryAction]]
@@ -124,4 +123,4 @@
         (db/update! existing-model id type-row))))
   (first (action/actions-with-implicit-params nil :id id)))
 
-(api/define-routes actions/+check-actions-enabled)
+(api/define-routes)

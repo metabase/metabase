@@ -1,6 +1,12 @@
 import type { ParameterTarget } from "metabase-types/types/Parameter";
 import type { Parameter, ParameterId } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
+import type { ClickBehavior } from "./click-behavior";
+import type {
+  BaseDashboardOrderedCard,
+  DashboardParameterMapping,
+} from "./dashboard";
+import type { Card, CardId } from "./card";
 
 export interface WritebackParameter extends Parameter {
   target: ParameterTarget;
@@ -147,3 +153,23 @@ export type ActionFormOption = {
   name: string | number;
   value: string | number;
 };
+
+export type ActionParametersMapping = Pick<
+  DashboardParameterMapping,
+  "parameter_id" | "target"
+>;
+
+export interface ActionDashboardCard
+  extends Omit<BaseDashboardOrderedCard, "parameter_mappings"> {
+  action?: WritebackAction;
+  card_id?: CardId; // model card id for the associated action
+  card?: Card;
+
+  parameter_mappings?: ActionParametersMapping[] | null;
+  visualization_settings: {
+    [key: string]: unknown;
+    "button.label"?: string;
+    click_behavior?: ClickBehavior;
+    actionDisplayType?: ActionDisplayType;
+  };
+}
