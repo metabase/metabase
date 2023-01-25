@@ -878,9 +878,7 @@
   "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n/deferred-tru]]). Returns `description-form`
   as-is."
   [description-form]
-  (if (and (list? description-form)
-           (symbol? (first description-form))
-           (= 'fn* (first description-form)))
+  (if (= 'fn* (first description-form))
     (validate-description-form (nth description-form 2))
     (when-not (valid-trs-or-tru? description-form)
       ;; this doesn't need to be i18n'ed because it's a compile-time error.
@@ -982,14 +980,13 @@
          ;; don't put exclamation points in your Setting names. We don't want functions like `exciting!` for the getter
          ;; and `exciting!!` for the setter.
          (not (str/includes? (name setting-symbol) "!"))]}
-  (let [description               `(if (fn? ~description)
-                                    ~description
-                                    (constantly ~description))
-        ;; TODO: fix validation
-        ;; description               (if (or (= (:visibility options) :internal)
-        ;;                                   (= (:setter options) :none))
-        ;;                             description
-        ;;                             (validate-description-form description))
+  (let [description               (if (or (= (:visibility options) :internal)
+                                          (= (:setter options) :none))
+                                    description
+                                    (validate-description-form description))
+        description               (if (= 'fn* (first description))
+                                     description
+                                     `(constantly ~description))
         definition-form           (assoc options
                                          :name (keyword setting-symbol)
                                          :description description
