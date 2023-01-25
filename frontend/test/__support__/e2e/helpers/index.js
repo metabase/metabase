@@ -6,6 +6,7 @@ export * from "./e2e-database-metadata-helpers";
 export * from "./e2e-qa-databases-helpers";
 export * from "./e2e-ad-hoc-question-helpers";
 export * from "./e2e-enterprise-helpers";
+export * from "./e2e-filter-helpers";
 export * from "./e2e-mock-app-settings-helpers";
 export * from "./e2e-notebook-helpers";
 export * from "./e2e-cloud-helpers";

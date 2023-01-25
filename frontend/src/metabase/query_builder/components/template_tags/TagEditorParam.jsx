@@ -11,12 +11,15 @@ import Toggle from "metabase/core/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/core/components/Select";
 
+import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
 import { getParameterOptionsForField } from "metabase/parameters/utils/template-tag-options";
 
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import MetabaseSettings from "metabase/lib/settings";
+
+import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 
 import {
   ErrorSpan,
@@ -78,6 +81,25 @@ export class TagEditorParam extends Component {
       setTemplateTag({ ...tag, required: required, default: undefined });
     }
   }
+
+  setQueryType = queryType => {
+    const { tag, setTemplateTag } = this.props;
+
+    setTemplateTag({
+      ...tag,
+      values_query_type: queryType,
+    });
+  };
+
+  setSourceSettings = (sourceType, sourceConfig) => {
+    const { tag, setTemplateTag } = this.props;
+
+    setTemplateTag({
+      ...tag,
+      values_source_type: sourceType,
+      values_source_config: sourceConfig,
+    });
+  };
 
   setParameterAttribute(attr, val) {
     // only register an update if the value actually changes
@@ -273,6 +295,17 @@ export class TagEditorParam extends Component {
             onChange={value => this.setRequired(value)}
           />
         </InputContainer>
+
+        {parameter && canUseCustomSource(parameter) && (
+          <InputContainer>
+            <ContainerLabel>{t`How should users filter on this variable?`}</ContainerLabel>
+            <ValuesSourceSettings
+              parameter={parameter}
+              onChangeQueryType={this.setQueryType}
+              onChangeSourceSettings={this.setSourceSettings}
+            />
+          </InputContainer>
+        )}
 
         {((tag.type !== "dimension" && tag.required) ||
           tag.type === "dimension" ||

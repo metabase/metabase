@@ -42,6 +42,9 @@ export function getTemplateTagParameter(
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
+    values_query_type: tag.values_query_type,
+    values_source_type: tag.values_source_type,
+    values_source_config: tag.values_source_config,
   };
 }
 
