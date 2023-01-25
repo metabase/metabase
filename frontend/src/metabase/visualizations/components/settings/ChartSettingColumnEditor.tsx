@@ -82,7 +82,6 @@ const ChartSettingColumnEditor = ({
         })),
       };
     } else if ((query instanceof NativeQuery || isDashboard) && columns) {
-      //const tableName = query?.table()?.display_name || t`Columns`;
       const allDimensions = columns
         .map(column =>
           Dimension.parseMBQL(column.field_ref as ConcreteField, metadata),
@@ -188,6 +187,7 @@ const ChartSettingColumnEditor = ({
           tableInColumns={tableInColumnSettings(fieldOptions.dimensions)}
           bulkEnable={() => enableColumns(fieldOptions.dimensions)}
           bulkDisable={() => disableColumns(fieldOptions.dimensions)}
+          testid={`bulk-action-${fieldOptions.name}`}
         />
       </TableHeaderContainer>
       {fieldOptions.dimensions.map((dimension, index) => (
@@ -206,6 +206,7 @@ const ChartSettingColumnEditor = ({
               tableInColumns={tableInColumnSettings(fk.dimensions)}
               bulkEnable={() => enableColumns(fk.dimensions)}
               bulkDisable={() => disableColumns(fk.dimensions)}
+              testid={`bulk-action-${fk.name}`}
             />
           </TableHeaderContainer>
           {fk.dimensions.map((dimension, index) => (
@@ -226,19 +227,21 @@ interface BulkActionButtonProps {
   tableInColumns: boolean;
   bulkEnable: () => void;
   bulkDisable: () => void;
+  testid: string;
 }
 
 const BulkActionButton = ({
   tableInColumns,
   bulkEnable,
   bulkDisable,
+  testid,
 }: BulkActionButtonProps) =>
   tableInColumns ? (
-    <Button onlyText onClick={bulkDisable}>
+    <Button onlyText onClick={bulkDisable} data-testid={testid}>
       {t`Deselect All`}
     </Button>
   ) : (
-    <Button onlyText onClick={bulkEnable}>
+    <Button onlyText onClick={bulkEnable} data-testid={testid}>
       {t`Select All`}
     </Button>
   );

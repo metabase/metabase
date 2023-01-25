@@ -12,7 +12,6 @@ export interface LinkProps extends HTMLAttributes<HTMLAnchorElement> {
   activeClassName?: string;
   activeStyle?: CSSProperties;
   onlyActiveOnIndex?: boolean;
-  as?: string;
 }
 
 const Link = ({

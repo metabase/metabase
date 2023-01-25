@@ -266,7 +266,6 @@ class ChartSettings extends Component {
   getFormattingWidget = () => {
     const widgets = this._getWidgets();
     const { popoverWidget } = this.state;
-    console.log(widgets, popoverWidget);
     const widget =
       popoverWidget && widgets.find(widget => widget.id === popoverWidget.id);
 
