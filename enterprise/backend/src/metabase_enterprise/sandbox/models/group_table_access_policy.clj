@@ -10,6 +10,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.table :as table]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -20,10 +21,9 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]
-   [metabase.models.permissions :as perms :refer [Permissions]]))
+   [toucan.models :as models]))
 
-(models/defmodel GroupTableAccessPolicy :group_table_access_policy)
+(models/defmodel GroupTableAccessPolicy :sandboxes)
 
 ;;; only admins can work with GTAPs
 (derive GroupTableAccessPolicy ::mi/read-policy.superuser)
