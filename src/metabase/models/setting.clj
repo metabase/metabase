@@ -982,6 +982,7 @@
                                           (= (:setter options) :none))
                                     description
                                     (validate-description-form description))
+        ;; wrap the description form in a thunk, so its result updates with its dependencies
         description               `(fn [] ~description)
         definition-form           (assoc options
                                          :name (keyword setting-symbol)
