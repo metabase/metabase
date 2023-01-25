@@ -14071,7 +14071,7 @@ databaseChangeLog:
             baseColumnNames: user_id
             referencedTableName: core_user
             referencedColumnNames: id
-            constraintName: fk_activity_ref_user_id
+            constraintName: fk_activity_log_ref_user_id
             onDelete: CASCADE
 
   - changeSet:
