@@ -11,7 +11,7 @@ import {
   checkDatabaseSupportsActions,
   checkDatabaseActionsEnabled,
 } from "metabase/actions/utils";
-import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModal.jsx";
+import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 
 import type { Database as IDatabase, DatabaseId } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
