@@ -4,9 +4,13 @@ title: Amazon Athena
 
 # Amazon Athena
 
-Connecting Metabase to Athena depends on where Metabase is running.
+To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+
+Fill out the fields for that database, and click **Save changes** at the bottom.
 
 ## Connection settings
+
+Connecting Metabase to Athena depends on where Metabase is running.
 
 - [Display name](../settings.md#display-name)
 - [Region](../settings.md#region)
@@ -41,5 +45,9 @@ If you're running Metabase on AWS and want to use [AWS Default Credentials Chain
 
 In both cases, the Athena driver will automatically fetch session credentials based on which IAM role you've configured.
 
+## Further reading
+
+- [Adding and managing databases](../connecting.md)
+- [Connection settings](../settings.md)
 
 

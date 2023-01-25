@@ -6,11 +6,13 @@ redirect_from:
 
 # PostgreSQL
 
-Connecting Metabase to a PostgreSQL database.
+To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+
+Fill out the fields for that database, and click **Save changes** at the bottom.
 
 ## Connection settings
 
-See [Adding a database connection](../connecting.md#adding-a-database-connection).
+Connection details for a PostgreSQL database.
 
 - [Display name](../settings.md#display-name)
 - [Host](../settings.md#host)
@@ -28,3 +30,8 @@ See [Adding a database connection](../connecting.md#adding-a-database-connection
 - [Choose when syncs and scans happen](../settings.md#choose-when-syncs-and-scans-happen)
 - [Periodically refingerprint tables](../settings.md#periodically-refingerprint-tables)
 - [Default result cache duration](../settings.md#default-result-cache-duration)
+
+## Further reading
+
+- [Adding and managing databases](../connecting.md)
+- [Connection settings](../settings.md)

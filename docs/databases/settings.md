@@ -24,19 +24,13 @@ The AWS region where your database is hosted, for Amazon Athena. For example, yo
 
 AWS workgroup. For example: `primary`. See [documentation on workgroups](https://docs.aws.amazon.com/athena/latest/ug/user-created-workgroups.html)
 
-
-### S3 Staging directory
+## S3 Staging directory
 
 This S3 staging directory must be in the same region you specify above.
 
-### Catalog
+## Catalog
 
 You can use a different [catalog](https://docs.aws.amazon.com/athena/latest/ug/understanding-tables-databases-and-the-data-catalog.html) (for example if you're using federated queries).
-
-## Access key
-
-## Secret Key
-
 
 ## Host
 
@@ -101,8 +95,7 @@ SSL Mode options include:
 - verify-ca
 - verify-full
 
-See the PostgreSQL docs for a table about the different [SSL Modes](https://jdbc.postgresql.org/documentation/ssl/#configuring-the-client
-), and select the option that works for you.
+See the PostgreSQL docs for a table about the different [SSL Modes](https://jdbc.postgresql.org/documentation/ssl/#configuring-the-client), and select the option that works for you.
 
 ### SSL root certificate (PEM)
 
@@ -159,7 +152,7 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll see t
 
 ### Scanning for filter values
 
-Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database. 
+Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
 
