@@ -4,9 +4,13 @@ title: Databases overview
 
 # Databases overview
 
-## [Adding data sources](./connecting.md)
+## [Adding and managing databases](./connecting.md)
 
 Connect to and manage your databases.
+
+## [Connection settings](./settings.md)
+
+A list of connection settings and what they do. The set of settings available depends on the type of database you're connecting to.
 
 ## [Encrypting your database connection](./encrypting-details-at-rest.md)
 
