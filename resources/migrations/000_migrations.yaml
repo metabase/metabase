@@ -14066,6 +14066,7 @@ databaseChangeLog:
           - column:
               name: permission_id
               type: int
+              remarks: The ID of the corresponding permissions path for this sandbox
               constraints:
                 foreignKeyName: fk_sandboxes_ref_permissions
                 nullable: true
@@ -14086,6 +14087,8 @@ databaseChangeLog:
                 p.object LIKE '%/table/' || s.table_id || '/query/segmented/'
                 AND p.group_id = s.group_id
             );
+      rollback:
+        # not required, new values added here are dropped in the rollback of v46.00-065
 
   - changeSet:
       id: v46.00-067
@@ -14095,6 +14098,8 @@ databaseChangeLog:
         - sql: >-
             DELETE FROM sandboxes
             WHERE permission_id IS NULL;
+      rollback:
+        # not required, orphaned sandboxes should not be re-added to the DB
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
