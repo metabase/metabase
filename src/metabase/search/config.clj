@@ -8,7 +8,7 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting search-typeahead-enabled
-  #(deferred-tru "Enable typeahead search in the {0} navbar?" (public-settings/application-name))
+  (deferred-tru "Enable typeahead search in the {0} navbar?" (public-settings/application-name))
   :type       :boolean
   :default    true
   :visibility :authenticated)

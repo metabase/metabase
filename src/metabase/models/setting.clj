@@ -878,16 +878,14 @@
   "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n/deferred-tru]]). Returns `description-form`
   as-is."
   [description-form]
-  (if (= 'fn* (first description-form))
-    (validate-description-form (nth description-form 2))
-    (when-not (valid-trs-or-tru? description-form)
+  (when-not (valid-trs-or-tru? description-form)
       ;; this doesn't need to be i18n'ed because it's a compile-time error.
-      (throw (ex-info (str "defsetting docstrings must be an *deferred* i18n form unless the Setting has"
-                           " `:visibilty` `:internal` or `:setter` `:none`."
-                           (format " Got: ^%s %s"
-                                   (some-> description-form class (.getCanonicalName))
-                                   (pr-str description-form)))
-                      {:description-form description-form}))))
+    (throw (ex-info (str "defsetting docstrings must be an *deferred* i18n form unless the Setting has"
+                         " `:visibilty` `:internal` or `:setter` `:none`."
+                         (format " Got: ^%s %s"
+                                 (some-> description-form class (.getCanonicalName))
+                                 (pr-str description-form)))
+                    {:description-form description-form})))
   description-form)
 
 (defmacro defsetting
@@ -984,9 +982,7 @@
                                           (= (:setter options) :none))
                                     description
                                     (validate-description-form description))
-        description               (if (= 'fn* (first description))
-                                     description
-                                     `(constantly ~description))
+        description               `(fn [] ~description)
         definition-form           (assoc options
                                          :name (keyword setting-symbol)
                                          :description description
