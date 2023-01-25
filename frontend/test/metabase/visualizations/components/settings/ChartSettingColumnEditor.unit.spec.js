@@ -28,30 +28,6 @@ const STRUCTURED_QUERY_PROPS = {
   columns: ORDERS.dimensions().map(dimension => dimension.column()),
 };
 
-const fieldRefFromColumn = (column, native = false) => [
-  "field",
-  native ? column.name : column.id,
-  native ? { "base-type": column.base_type } : null,
-];
-
-const SubtotalFieldRef = (native = false) => [
-  "field",
-  native ? "SUBTOTAL" : 4,
-  native ? { "base-type": "type/Float" } : null,
-];
-
-const ProductIdFieldRef = (native = false) => [
-  "field",
-  native ? "PRODUCT_ID" : 3,
-  native ? { "base-type": "type/Integer" } : null,
-];
-
-const TaxFieldRef = (native = false) => [
-  "field",
-  native ? "TAX" : 5,
-  native ? { "base-type": "type/Float" } : null,
-];
-
 const NATIVE_QUERY_PROPS = {
   columns: ORDERS.dimensions()
     .map(dimension => dimension.column())
@@ -70,7 +46,7 @@ const NATIVE_QUERY_PROPS = {
   ),
 };
 
-const TEST_CASES = [
+const STRUCTURED_QUERY_TEST_CASES = [
   {
     name: "Structured Query",
     props: STRUCTURED_QUERY_PROPS,
@@ -83,173 +59,160 @@ const TEST_CASES = [
       metadata,
     },
   },
-  {
-    name: "Native Query",
-    props: NATIVE_QUERY_PROPS,
-    native: true,
-  },
 ];
 
 describe("ChartSettingOrderedColumns", () => {
-  TEST_CASES.map(({ name, props, native = false }) => {
-    describe(name, () => {
-      it("Should render values correctly", () => {
-        renderChartSettingOrderedColumns({
-          value: [
-            { fieldRef: SubtotalFieldRef(native), enabled: true },
-            { fieldRef: ProductIdFieldRef(native), enabled: false },
-          ],
-          ...props,
-        });
-        expect(
-          screen.getByRole("checkbox", { name: /Subtotal/i }),
-        ).toBeChecked();
-        expect(
-          screen.getByRole("checkbox", { name: /product[_ ]id/i }),
-        ).not.toBeChecked();
-      });
-
-      it("should add a column", () => {
-        const onChange = jest.fn();
-        renderChartSettingOrderedColumns({
-          value: [
-            { fieldRef: SubtotalFieldRef(native), enabled: true },
-            { fieldRef: ProductIdFieldRef(native), enabled: false },
-          ],
-          onChange,
-          ...props,
-        });
-        const ADD = screen.getByRole("checkbox", { name: /product[_ ]id/i });
-
-        fireEvent.click(ADD);
-        expect(onChange.mock.calls).toEqual([
-          [
-            [
-              { fieldRef: SubtotalFieldRef(native), enabled: true },
-              { fieldRef: ProductIdFieldRef(native), enabled: true },
+  describe("structured queryies", () => {
+    STRUCTURED_QUERY_TEST_CASES.map(({ name, props }) => {
+      describe(name, () => {
+        it("Should render values correctly", () => {
+          renderChartSettingOrderedColumns({
+            value: [
+              { fieldRef: ["field", 4, null], enabled: true },
+              { fieldRef: ["field", 3, null], enabled: false },
             ],
-          ],
-        ]);
-      });
-
-      it("should remove a column", () => {
-        const onChange = jest.fn();
-        renderChartSettingOrderedColumns({
-          value: [
-            { fieldRef: SubtotalFieldRef(native), enabled: true },
-            { fieldRef: ProductIdFieldRef(native), enabled: false },
-          ],
-          onChange,
-          ...props,
+            ...props,
+          });
+          expect(
+            screen.getByRole("checkbox", { name: /Subtotal/i }),
+          ).toBeChecked();
+          expect(
+            screen.getByRole("checkbox", { name: /product id/i }),
+          ).not.toBeChecked();
         });
-        fireEvent.click(screen.getByRole("checkbox", { name: /Subtotal/i }));
-        expect(onChange.mock.calls).toEqual([
-          [
-            [
-              { fieldRef: SubtotalFieldRef(native), enabled: false },
-              { fieldRef: ProductIdFieldRef(native), enabled: false },
+
+        it("should add a column", () => {
+          const onChange = jest.fn();
+          renderChartSettingOrderedColumns({
+            value: [
+              { fieldRef: ["field", 4, null], enabled: true },
+              { fieldRef: ["field", 3, null], enabled: false },
             ],
-          ],
-        ]);
-      });
+            onChange,
+            ...props,
+          });
+          const ADD = screen.getByRole("checkbox", { name: /product id/i });
 
-      it("should properly show bulk actions - Deselect All", () => {
-        renderChartSettingOrderedColumns({
-          value: [
-            { fieldRef: SubtotalFieldRef(native), enabled: true },
-            { fieldRef: ProductIdFieldRef(native), enabled: false },
-          ],
-          ...props,
+          fireEvent.click(ADD);
+          expect(onChange.mock.calls).toEqual([
+            [
+              [
+                { fieldRef: ["field", 4, null], enabled: true },
+                { fieldRef: ["field", 3, null], enabled: true },
+              ],
+            ],
+          ]);
         });
 
-        expect(
-          screen.getByTestId(
-            native ? "bulk-action-Columns" : "bulk-action-Orders",
-          ),
-        ).toHaveTextContent("Deselect All");
-      });
-
-      it("should properly show bulk actions - Select All", () => {
-        renderChartSettingOrderedColumns({
-          value: [
-            { fieldRef: SubtotalFieldRef(native), enabled: false },
-            { fieldRef: ProductIdFieldRef(native), enabled: false },
-          ],
-          ...props,
+        it("should remove a column", () => {
+          const onChange = jest.fn();
+          renderChartSettingOrderedColumns({
+            value: [
+              { fieldRef: ["field", 4, null], enabled: true },
+              { fieldRef: ["field", 3, null], enabled: false },
+            ],
+            onChange,
+            ...props,
+          });
+          fireEvent.click(screen.getByRole("checkbox", { name: /Subtotal/i }));
+          expect(onChange.mock.calls).toEqual([
+            [
+              [
+                { fieldRef: ["field", 4, null], enabled: false },
+                { fieldRef: ["field", 3, null], enabled: false },
+              ],
+            ],
+          ]);
         });
 
-        expect(
-          screen.getByTestId(
-            native ? "bulk-action-Columns" : "bulk-action-Orders",
-          ),
-        ).toHaveTextContent("Select All");
-      });
+        it("should properly show bulk actions - Deselect All", () => {
+          renderChartSettingOrderedColumns({
+            value: [
+              { fieldRef: ["field", 4, null], enabled: true },
+              { fieldRef: ["field", 3, null], enabled: false },
+            ],
+            ...props,
+          });
 
-      it("should bulk enable", () => {
-        const onChange = jest.fn();
-        renderChartSettingOrderedColumns({
-          value: [
-            { fieldRef: SubtotalFieldRef(native), enabled: false },
-            { fieldRef: ProductIdFieldRef(native), enabled: false },
-          ],
-          onChange,
-          ...props,
+          expect(screen.getByTestId("bulk-action-Orders")).toHaveTextContent(
+            "Deselect All",
+          );
         });
 
-        //Because the order of the columns is preserved and all new fields are appended, we need to exclude these
-        const EXPECTED = ORDERS.dimensions()
-          .filter(
-            dimension =>
-              dimension.fieldIdOrName() !== 4 &&
-              dimension.fieldIdOrName() !== 3 &&
-              dimension.fieldIdOrName() !== "SUBTOTAL" &&
-              dimension.fieldIdOrName() !== "PRODUCT_ID",
-          )
-          .map(dimension => ({
-            enabled: true,
-            fieldRef: fieldRefFromColumn(dimension.column(), native),
-          }));
+        it("should properly show bulk actions - Select All", () => {
+          renderChartSettingOrderedColumns({
+            value: [
+              { fieldRef: ["field", 4, null], enabled: false },
+              { fieldRef: ["field", 3, null], enabled: false },
+            ],
+            ...props,
+          });
 
-        const bulkActionButton = screen.getByTestId(
-          native ? "bulk-action-Columns" : "bulk-action-Orders",
-        );
-
-        expect(bulkActionButton).toHaveTextContent("Select All");
-
-        fireEvent.click(bulkActionButton);
-
-        expect(onChange).toHaveBeenCalledWith([
-          { fieldRef: SubtotalFieldRef(native), enabled: true },
-          { fieldRef: ProductIdFieldRef(native), enabled: true },
-          ...EXPECTED,
-        ]);
-      });
-
-      it("should bulk disable", () => {
-        const onChange = jest.fn();
-        renderChartSettingOrderedColumns({
-          value: [
-            { fieldRef: SubtotalFieldRef(native), enabled: true },
-            { fieldRef: ProductIdFieldRef(native), enabled: true },
-            { fieldRef: TaxFieldRef(native), enabled: true },
-          ],
-          ...props,
-          onChange,
+          expect(screen.getByTestId("bulk-action-Orders")).toHaveTextContent(
+            "Select All",
+          );
         });
 
-        const bulkActionButton = screen.getByTestId(
-          native ? "bulk-action-Columns" : "bulk-action-Orders",
-        );
+        it("should bulk enable", () => {
+          const onChange = jest.fn();
+          renderChartSettingOrderedColumns({
+            value: [
+              { fieldRef: ["field", 4, null], enabled: false },
+              { fieldRef: ["field", 3, null], enabled: false },
+            ],
+            onChange,
+            ...props,
+          });
 
-        expect(bulkActionButton).toHaveTextContent("Deselect All");
+          //Because the order of the columns is preserved and all new fields are appended, we need to exclude these
+          const EXPECTED = ORDERS.dimensions()
+            .filter(
+              dimension =>
+                dimension.fieldIdOrName() !== 4 &&
+                dimension.fieldIdOrName() !== 3,
+            )
+            .map(dimension => ({
+              enabled: true,
+              fieldRef: dimension.mbql(),
+            }));
 
-        fireEvent.click(bulkActionButton);
+          const bulkActionButton = screen.getByTestId("bulk-action-Orders");
 
-        expect(onChange).toHaveBeenCalledWith([
-          { fieldRef: SubtotalFieldRef(native), enabled: false },
-          { fieldRef: ProductIdFieldRef(native), enabled: false },
-          { fieldRef: TaxFieldRef(native), enabled: false },
-        ]);
+          expect(bulkActionButton).toHaveTextContent("Select All");
+
+          fireEvent.click(bulkActionButton);
+
+          expect(onChange).toHaveBeenCalledWith([
+            { fieldRef: ["field", 4, null], enabled: true },
+            { fieldRef: ["field", 3, null], enabled: true },
+            ...EXPECTED,
+          ]);
+        });
+
+        it("should bulk disable", () => {
+          const onChange = jest.fn();
+          renderChartSettingOrderedColumns({
+            value: [
+              { fieldRef: ["field", 4, null], enabled: true },
+              { fieldRef: ["field", 3, null], enabled: true },
+              { fieldRef: ["field", 5, null], enabled: true },
+            ],
+            ...props,
+            onChange,
+          });
+
+          const bulkActionButton = screen.getByTestId("bulk-action-Orders");
+
+          expect(bulkActionButton).toHaveTextContent("Deselect All");
+
+          fireEvent.click(bulkActionButton);
+
+          expect(onChange).toHaveBeenCalledWith([
+            { fieldRef: ["field", 4, null], enabled: false },
+            { fieldRef: ["field", 3, null], enabled: false },
+            { fieldRef: ["field", 5, null], enabled: false },
+          ]);
+        });
       });
     });
   });
@@ -306,9 +269,250 @@ describe("ChartSettingOrderedColumns", () => {
         ...EXPECTED,
       ]);
     });
+
+    it("should not list additional columns when in a dashboard", () => {
+      const onChange = jest.fn();
+      renderChartSettingOrderedColumns({
+        value: [],
+        onChange,
+        ...STRUCTURED_QUERY_PROPS,
+        isDashboard: true,
+        metadata: metadata,
+      });
+
+      expect(screen.getByText(/orders/i)).toBeInTheDocument();
+      expect(screen.queryByText(/products/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/people/i)).not.toBeInTheDocument();
+      expect(screen.getAllByRole("checkbox")).toHaveLength(7);
+    });
   });
 
-  describe("Native Query - table name", () => {
+  describe("Native Query", () => {
+    it("Should render values correctly", () => {
+      renderChartSettingOrderedColumns({
+        value: [
+          {
+            fieldRef: ["field", "SUBTOTAL", { "base-type": "type/Float" }],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+            enabled: false,
+          },
+        ],
+        ...NATIVE_QUERY_PROPS,
+      });
+      expect(screen.getByRole("checkbox", { name: /Subtotal/i })).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: /product_id/i }),
+      ).not.toBeChecked();
+    });
+
+    it("should add a column", () => {
+      const onChange = jest.fn();
+      renderChartSettingOrderedColumns({
+        value: [
+          {
+            fieldRef: ["field", "SUBTOTAL", { "base-type": "type/Float" }],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+            enabled: false,
+          },
+        ],
+        onChange,
+        ...NATIVE_QUERY_PROPS,
+      });
+      const ADD = screen.getByRole("checkbox", { name: /product_id/i });
+
+      fireEvent.click(ADD);
+      expect(onChange.mock.calls).toEqual([
+        [
+          [
+            {
+              fieldRef: ["field", "SUBTOTAL", { "base-type": "type/Float" }],
+              enabled: true,
+            },
+            {
+              fieldRef: [
+                "field",
+                "PRODUCT_ID",
+                { "base-type": "type/Integer" },
+              ],
+              enabled: true,
+            },
+          ],
+        ],
+      ]);
+    });
+
+    it("should remove a column", () => {
+      const onChange = jest.fn();
+      renderChartSettingOrderedColumns({
+        value: [
+          {
+            fieldRef: ["field", "SUBTOTAL", { "base-type": "type/Float" }],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+            enabled: false,
+          },
+        ],
+        onChange,
+        ...NATIVE_QUERY_PROPS,
+      });
+      fireEvent.click(screen.getByRole("checkbox", { name: /Subtotal/i }));
+      expect(onChange.mock.calls).toEqual([
+        [
+          [
+            {
+              fieldRef: ["field", "SUBTOTAL", { "base-type": "type/Float" }],
+              enabled: false,
+            },
+            {
+              fieldRef: [
+                "field",
+                "PRODUCT_ID",
+                { "base-type": "type/Integer" },
+              ],
+              enabled: false,
+            },
+          ],
+        ],
+      ]);
+    });
+
+    it("should properly show bulk actions - Deselect All", () => {
+      renderChartSettingOrderedColumns({
+        value: [
+          {
+            fieldRef: ["field", "SUBTOTAL", { "base-type": "type/Float" }],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+            enabled: false,
+          },
+        ],
+        ...NATIVE_QUERY_PROPS,
+      });
+
+      expect(screen.getByTestId("bulk-action-Columns")).toHaveTextContent(
+        "Deselect All",
+      );
+    });
+
+    it("should properly show bulk actions - Select All", () => {
+      renderChartSettingOrderedColumns({
+        value: [
+          {
+            fieldRef: ["field", "SUBTOTAL", { "base-type": "type/Float" }],
+            enabled: false,
+          },
+          {
+            fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+            enabled: false,
+          },
+        ],
+        ...NATIVE_QUERY_PROPS,
+      });
+
+      expect(screen.getByTestId("bulk-action-Columns")).toHaveTextContent(
+        "Select All",
+      );
+    });
+
+    it("should bulk enable", () => {
+      const onChange = jest.fn();
+      renderChartSettingOrderedColumns({
+        value: [
+          {
+            fieldRef: ["field", "SUBTOTAL", { "base-type": "type/Float" }],
+            enabled: false,
+          },
+          {
+            fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+            enabled: false,
+          },
+        ],
+        onChange,
+        ...NATIVE_QUERY_PROPS,
+      });
+
+      //Because the order of the columns is preserved and all new fields are appended, we need to exclude these
+      const EXPECTED = NATIVE_QUERY_PROPS.columns
+        .filter(
+          column => column.name !== "SUBTOTAL" && column.name !== "PRODUCT_ID",
+        )
+        .map(column => ({
+          enabled: true,
+          fieldRef: ["field", column.name, { "base-type": column.base_type }],
+        }));
+
+      const bulkActionButton = screen.getByTestId("bulk-action-Columns");
+
+      expect(bulkActionButton).toHaveTextContent("Select All");
+
+      fireEvent.click(bulkActionButton);
+
+      expect(onChange).toHaveBeenCalledWith([
+        {
+          fieldRef: ["field", "SUBTOTAL", { "base-type": "type/Float" }],
+          enabled: true,
+        },
+        {
+          fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+          enabled: true,
+        },
+        ...EXPECTED,
+      ]);
+    });
+
+    it("should bulk disable", () => {
+      const onChange = jest.fn();
+      renderChartSettingOrderedColumns({
+        value: [
+          {
+            fieldRef: ["field", "SUBTOTAL", { "base-type": "type/Float" }],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", "TAX", { "base-type": "type/Float" }],
+            enabled: true,
+          },
+        ],
+        ...NATIVE_QUERY_PROPS,
+        onChange,
+      });
+
+      const bulkActionButton = screen.getByTestId("bulk-action-Columns");
+
+      expect(bulkActionButton).toHaveTextContent("Deselect All");
+
+      fireEvent.click(bulkActionButton);
+
+      expect(onChange).toHaveBeenCalledWith([
+        {
+          fieldRef: ["field", "SUBTOTAL", { "base-type": "type/Float" }],
+          enabled: false,
+        },
+        {
+          fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+          enabled: false,
+        },
+        {
+          fieldRef: ["field", "TAX", { "base-type": "type/Float" }],
+          enabled: false,
+        },
+      ]);
+    });
+
     it("should substitute `Columns` for table name", () => {
       renderChartSettingOrderedColumns({
         value: [
