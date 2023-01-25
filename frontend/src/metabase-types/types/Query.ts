@@ -65,11 +65,6 @@ export type TemplateTag = {
   // Snippet specific
   "snippet-id"?: number;
   "snippet-name"?: string;
-
-  // Values source
-  values_query_type?: ValuesQueryType;
-  values_source_type?: ValuesSourceType;
-  values_source_config?: ValuesSourceConfig;
 };
 
 export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
