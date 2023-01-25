@@ -113,7 +113,7 @@ To view those payments by month, set the **Group by** column to **Date Received:
 
 **Metabase**
 - [case](#case)
-- [CumulativeSum]()
+- [CumulativeSum](#cumulativesum)
 
 **Other tools**
 - [SQL](#sql)
@@ -145,18 +145,22 @@ sum(case([Plan] = "Basic", [Payment], [Contract]))
 
 ## CumulativeSum
 
-`SumIf` doesn't do cumulative totals like this:
+`SumIf` doesn't do running totals. You'll need to combine the [CumulativeSum](../expressions-list#cumulativesum) aggregation with the [`case`](./case) formula.
 
-| Date Received: Month | Cumulative Payments for Business and Premium Plans |
-|----------------------|----------------------------------------------------|
-| October              | 200                                                | 
-| November             | 800                                                |
+For example, to get the running total of payments for the Business and Premium plans by month (using our [payment sample data](#conditional-subtotals-by-group)):
 
-You'll need to combine the [CumulativeSum](../expressions-list.md#cumulativesum) aggregation with the [`case`](./case.md) formula instead. For example:
+| Date Received: Month | Total Payments for Business and Premium Plans |
+|----------------------|-----------------------------------------------|
+| October              | 200                                           | 
+| November             | 800                                           |
+
+Create an aggregation from **Summarize** > **Custom expression**:
 
 ```
-case([Date Received: Month] = 10, CumulativeSum([Payment]))
+CumulativeSum(case(([Plan] = "Basic" OR [Plan] = "Premium"), [Payment], 0))
 ```
+
+Don't forget to set the **Group by** column to **Date Received: Month**.
 
 ### SQL
 
