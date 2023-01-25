@@ -354,7 +354,6 @@ class TableInteractive extends Component {
   }
 
   onVisualizationClick(clicked, element) {
-    console.log("🚀", { clicked, element });
     const { onVisualizationClick } = this.props;
     if (this.visualizationIsClickable(clicked)) {
       onVisualizationClick({ ...clicked, element });

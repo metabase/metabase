@@ -129,21 +129,27 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
 export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
-  ({ nextCard, previousCard, objectId }) => {
+  ({ nextCard, previousCard, objectId, rowIndex = 1 }) => {
     return async (dispatch, getState) => {
+      console.log("🚀", "In navigateToNewCardInsideQB");
       if (previousCard === nextCard) {
+        console.log("🚀", "In previousCard === nextCard");
         // Do not reload questions with breakouts when clicked on a legend item
       } else if (cardIsEquivalent(previousCard, nextCard)) {
+        console.log("🚀", "in cardIsEquivalent(previousCard, nextCard))");
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(
           setCardAndRun(await loadCard(nextCard.id, { dispatch, getState })),
         );
       } else {
+        console.log("🚀", "In else number 1");
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
         const url = Urls.serializedQuestion(card);
         if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
+          console.log("🚀", "in shouldOpenInBlankWindow");
           dispatch(openUrl(url));
         } else {
+          console.log("🚀", "In else 2");
           dispatch(onCloseSidebars());
           if (!cardQueryIsEquivalent(previousCard, nextCard)) {
             // clear the query result so we don't try to display the new visualization before running the new query
@@ -153,8 +159,8 @@ export const navigateToNewCardInsideQB = createThunkAction(
           // to start building a new ad-hoc question based on a dataset
           dispatch(setCardAndRun({ ...card, dataset: false }));
         }
-        if (objectId !== undefined) {
-          dispatch(zoomInRow({ objectId }));
+        if (rowIndex !== undefined) {
+          dispatch(zoomInRow({ rowIndex }));
         }
       }
     };

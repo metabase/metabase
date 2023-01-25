@@ -7,6 +7,7 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
   console.log("🚀", { action });
   let didPerform = false;
   if (action.action) {
+    console.log("🚀", "action.action");
     const reduxAction = action.action();
     if (reduxAction) {
       dispatch(reduxAction);
@@ -14,6 +15,7 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
     }
   }
   if (action.url) {
+    console.log("🚀", "action.url");
     const url = action.url();
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
@@ -28,13 +30,16 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
     }
   }
   if (action.question) {
+    console.log("🚀", "action.question");
     const question = action.question();
     const extra = action?.extra?.() ?? {};
+    console.log("🚀", { action, question, extra });
     if (question) {
       onChangeCardAndRun({
         nextCard: question.card(),
         ...extra,
-        objectId: extra.objectId,
+        // objectId: extra.objectId,
+        rowIndex: 0,
       });
       didPerform = true;
     }

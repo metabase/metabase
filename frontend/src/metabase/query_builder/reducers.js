@@ -423,7 +423,10 @@ export const originalCard = handleActions(
 export const tableForeignKeyReferences = handleActions(
   {
     [LOAD_OBJECT_DETAIL_FK_REFERENCES]: {
-      next: (state, { payload }) => payload,
+      next: (state, { payload }) => {
+        console.log("🚀", "In tableForeignKeyReferences", { payload });
+        return payload;
+      },
     },
     [CLEAR_OBJECT_DETAIL_FK_REFERENCES]: () => null,
   },

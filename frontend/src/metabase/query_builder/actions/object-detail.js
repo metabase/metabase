@@ -22,6 +22,7 @@ export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
 export const zoomInRow =
   ({ rowIndex }) =>
   (dispatch, getState) => {
+    console.log("🚀", "Back in zoomInRow", { rowIndex });
     dispatch({ type: ZOOM_IN_ROW, payload: { rowIndex } });
 
     // don't show object id in url if it is a row index
