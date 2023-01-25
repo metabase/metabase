@@ -263,7 +263,8 @@
                                 (pr-str recipe-file-name-on-class-path)
                                 (ex-message e))
                         {:driver driver, :dataset dataset-name, :file recipe-file-name-on-class-path}
-                        e))))))
+                        e)))))
+  dataset-name)
 
 (defmethod ddl.i/format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
 

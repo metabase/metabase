@@ -35,12 +35,15 @@
      (There are several variations of this macro; see documentation below for more details.)"
   (:require
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
    [metabase.test-runner.init :as test-runner.init]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [methodical.core :as methodical]
+   [toucan.db :as db]))
 
 ;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------
 
@@ -218,3 +221,90 @@
   {:style/indent 0}
   [& body]
   `(data.impl/do-with-temp-copy-of-db (fn [] ~@body)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                 [[data.impl/add-extra-metadata!]] definitions                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(methodical/defmethod data.impl/add-extra-metadata! [:default :test-data]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :venues :price)
+              {:semantic_type (u/qualified-name :type/Category)})
+  (db/update! Field (id :users :password)
+              {:visibility_type (u/qualified-name :sensitive)}))
+
+(methodical/defmethod data.impl/add-extra-metadata! [:default :test-data-with-time]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :users :password)
+              {:visibility_type (u/qualified-name :sensitive)}))
+
+(methodical/defmethod data.impl/add-extra-metadata! [:default :test-data-with-timezones]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :venues :price)
+              {:semantic_type (u/qualified-name :type/Category)})
+  (db/update! Field (id :users :password)
+              {:visibility_type (u/qualified-name :sensitive)}))
+
+(methodical/defmethod data.impl/add-extra-metadata! [:default :test-data-self-referencing-user]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :venues :price)
+              {:semantic_type (u/qualified-name :type/Category)})
+  (db/update! Field (id :users :password)
+              {:visibility_type (u/qualified-name :sensitive)}))
+
+(methodical/defmethod data.impl/add-extra-metadata! [:default :test-data-with-null-date-checkins]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :venues :price)
+              {:semantic_type (u/qualified-name :type/Category)})
+  (db/update! Field (id :users :password)
+              {:visibility_type (u/qualified-name :sensitive)}))
+
+(methodical/defmethod data.impl/add-extra-metadata! [:default :sad-toucan-incidents]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :incidents :timestamp)
+    {:coercion_strategy (u/qualified-name :Coercion/UNIXMilliSeconds->DateTime)
+     :effective_type    (u/qualified-name :type/Instant)}))
+
+(methodical/defmethod data.impl/add-extra-metadata! [:default :tupac-sightings]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :sightings :timestamp)
+              {:coercion_strategy (u/qualified-name :Coercion/UNIXSeconds->DateTime)
+               :effective_type    (u/qualified-name :type/Instant)}))
+
+(methodical/defmethod data.impl/add-extra-metadata! [:default :json]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :json :json_bit)
+              {:semantic_type (u/qualified-name :type/SerializedJSON)})
+  (db/update! Field (id :big_json :json_bit)
+              {:semantic_type (u/qualified-name :type/SerializedJSON)}))
+
+(methodical/defmethod data.impl/add-extra-metadata! [:default :string-times]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :times :ts)
+              {:effective_type    (u/qualified-name :type/DateTime)
+               :coercion_strategy (u/qualified-name :Coercion/ISO8601->DateTime)})
+  (db/update! Field (id :times :d)
+              {:effective_type    (u/qualified-name :type/Date)
+               :coercion_strategy (u/qualified-name :Coercion/ISO8601->Date)})
+  (db/update! Field (id :times :t)
+              {:effective_type    (u/qualified-name :type/Time)
+               :coercion_strategy (u/qualified-name :Coercion/ISO8601->Time)}))
+
+(methodical/defmethod data.impl/add-extra-metadata! [:default :yyyymmddhhss-times]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :times :as_text)
+              {:effective_type    (u/qualified-name :type/DateTime)
+               :coercion_strategy (u/qualified-name :Coercion/YYYYMMDDHHMMSSString->Temporal)}))
+
+ (methodical/defmethod data.impl/add-extra-metadata! [:default :yyyymmddhhss-binary-times]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :times :as_bytes)
+              {:effective_type    (u/qualified-name :type/DateTime)
+               :coercion_strategy (u/qualified-name :Coercion/YYYYMMDDHHMMSSBytes->Temporal)}))
+
+(methodical/defmethod data.impl/add-extra-metadata! [:default :toucan-microsecond-incidents]
+  [_driver _dataset-name _db]
+  (db/update! Field (id :incidents :timestamp)
+              {:effective_type    (u/qualified-name :type/DateTime)
+               :coercion_strategy (u/qualified-name :Coercion/UNIXMicroSeconds->DateTime)}))

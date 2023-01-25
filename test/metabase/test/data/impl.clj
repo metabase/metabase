@@ -18,6 +18,7 @@
    [metabase.test.initialize :as initialize]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
+   [methodical.core :as methodical]
    [potemkin :as p]
    [toucan.db :as db]))
 
@@ -26,10 +27,11 @@
 (p/import-vars
  [verify verify-data-loaded-correctly])
 
+(declare ^:dynamic *get-db*)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          get-or-create-database!; db                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
 
 (defonce ^:private ^{:arglists '([driver]), :doc "We'll have a very bad time if any sort of test runs that calls
   `data/db` for the first time calls it multiple times in parallel -- for example my Oracle test that runs 30 sync
@@ -58,25 +60,18 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defn- add-extra-metadata!
+(methodical/defmulti add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [driver dataset-name db]
-  (println "FIXME:" metabase.test.data.impl/add-extra-metadata!)
-  #_(doseq [{:keys [table-name], :as table-definition} table-definitions]
-      (let [table (delay (or (tx/metabase-instance table-definition db)
-                             (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
-                                                        table-name
-                                                        (u/pprint-to-str (dissoc table-definition :rows))
-                                                        (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
-        (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
-          (let [field (delay (or (tx/metabase-instance field-definition @table)
-                                 (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
-                                                            field-name
-                                                            (u/pprint-to-str field-definition))))))]
-            (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
-              (when-let [v (get field-definition property)]
-                (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
-                (db/update! Field (:id @field) (keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)))))))))
+  {:arglists '([driver dataset-name db])}
+  (fn [driver dataset-name _db]
+    [(tx/dispatch-on-driver-with-test-extensions driver)
+     (keyword dataset-name)])
+  :hierarchy #'driver/hierarchy)
+
+(methodical/defmethod add-extra-metadata! :default
+  "No-op."
+  [_driver _dataset-name _db]
+  nil)
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -115,7 +110,9 @@
           (sync/sync-database! db (when quick-sync? {:scan :schema})))
         ;; add extra metadata for fields
         (try
-          (add-extra-metadata! driver dataset-name db)
+          (driver/with-driver driver
+            (binding [*get-db* (constantly db)]
+              (add-extra-metadata! driver dataset-name db)))
           (catch Throwable e
             (log/error e "Error adding extra metadata")))))))
 

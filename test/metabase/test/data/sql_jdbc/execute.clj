@@ -14,7 +14,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- jdbc-execute! [db-spec sql]
-  (println "db-spec:" (pr-str db-spec)) ; NOCOMMIT
   (log/tracef "[execute %s] %s" driver/*driver* (str/join (take 10000 sql)))
   (jdbc/execute! db-spec [sql] {:transaction? false, :multi? true}))
 

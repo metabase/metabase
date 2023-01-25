@@ -896,7 +896,8 @@
   (let [seconds-between-checkin (case dataset
                                   :checkins-4-per-minute 15
                                   :checkins-4-per-hour   (* 15 60)
-                                  :checkins-4-per-day    (* 15 60 25))]
+                                  :checkins-4-per-day    (* 15 60 24)
+                                  :checkins-1-per-day    (* 15 60 24 4))]
     (data.impl/do-with-dataset
      dataset
      (fn []
