@@ -26,8 +26,8 @@ import { memoizeClass, sortObject } from "metabase-lib/utils";
 import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
-  CardApi,
   DashboardApi,
+  CardApi,
   maybeUsePivotEndpoint,
   MetabaseApi,
 } from "metabase/services";
@@ -49,10 +49,7 @@ import {
   getParameterValuesBySlug,
   normalizeParameters,
 } from "metabase-lib/parameters/utils/parameter-values";
-import {
-  getTemplateTagParametersFromCard,
-  remapParameterValuesToTemplateTags,
-} from "metabase-lib/parameters/utils/template-tags";
+import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
@@ -150,14 +147,6 @@ class QuestionInner {
   setCard(card: CardObject): Question {
     const q = this.clone();
     q._card = card;
-
-    if (card.dataset_query.type === "native") {
-      const parameters = getTemplateTagParametersFromCard(card);
-      q._card = { ...card, parameters };
-    } else {
-      q._card = card;
-    }
-
     return q;
   }
 

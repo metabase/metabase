@@ -9,6 +9,7 @@ import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import {
   getFirstQueryResult,
@@ -192,6 +193,13 @@ export const updateQuestion = (
           shouldUpdateUrl: false,
         }),
       );
+    }
+
+    const newDatasetQuery = newQuestion.query().datasetQuery();
+    // Sync card's parameters with the template tags;
+    if (newDatasetQuery.type === "native") {
+      const parameters = getTemplateTagParametersFromCard(newQuestion.card());
+      newQuestion = newQuestion.setParameters(parameters);
     }
 
     await dispatch({
