@@ -10,6 +10,19 @@
     [clojure.string :as str]
     [clojure.zip :as z]))
 
+;; Since amazon is still not putting their athena jdbc on to maven, the easiest thing for us to do is setup a maven-y s3 repo and copy their jar into it.
+;;
+;; This script allows you to run:
+;; ./bin/athena.bb <version> [--deploy]
+;;
+;; For example:
+;; ./bin/athena.bb 2.0.35 --deploy
+;;
+;; Will download the 2.0.35 jar from amazon's release bucket, create and update the necessary maven repo files, then upload all those files to our maven repo.
+;;
+;; It uses the jar build WITHOUT the AWS SDK.
+;;
+;; You must have bb (babashka), aws (awscli), and shasum commands available. You must have aws credentials available, e.g. through aws configure
 
 (defn find-pred [z p?]
   (loop [z z]
