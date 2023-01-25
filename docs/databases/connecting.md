@@ -15,7 +15,7 @@ To add a database connection, click on the **gear** icon in the top right, and n
 
 Fill out the fields for that database, and click **Save changes** at the bottom.
 
-The [connection settings](./connecting-settings.md) differ database to database. For the list of connection settings available for your database, click on the link to your database below.
+The [connection settings](./settings.md) differ database to database. For the list of connection settings available for your database, click on the link to your database below.
 
 ## Connecting to supported databases
 
