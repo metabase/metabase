@@ -249,47 +249,4 @@ describe("Actions > ActionViz > ActionComponent", () => {
       ).toBeInTheDocument();
     });
   });
-
-  describe("Link buttons", () => {
-    it("renders a link button", async () => {
-      const clickBehavior = {
-        type: "link",
-        linkType: "url",
-        linkTemplate: "https://metabase.com",
-      };
-
-      await setup({
-        dashcard: {
-          ...defaultProps.dashcard,
-          action: undefined,
-        },
-        settings: {
-          "button.label": "Link Button",
-          click_behavior: clickBehavior,
-        },
-      } as unknown as Partial<ActionProps>);
-
-      expect(screen.getByRole("button")).toHaveTextContent("Link Button");
-    });
-
-    it("triggers onVisualizationClick when clicking a link button", async () => {
-      const clickSpy = jest.fn();
-      const clickBehavior = {
-        type: "link",
-        linkType: "url",
-        linkTemplate: "https://metabase.com",
-      };
-      await setup({
-        dashcard: { action: undefined },
-        settings: {
-          "button.label": "Link Button",
-          click_behavior: clickBehavior,
-        },
-        onVisualizationClick: clickSpy,
-      } as unknown as Partial<ActionProps>);
-
-      userEvent.click(screen.getByText("Link Button"));
-      await waitFor(() => expect(clickSpy).toHaveBeenCalled());
-    });
-  });
 });
