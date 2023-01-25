@@ -20,7 +20,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [metabase.models.permissions :as perms :refer [Permissions]]))
 
 (models/defmodel GroupTableAccessPolicy :group_table_access_policy)
 
@@ -125,19 +126,21 @@
 
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be
-  created."
+  created. New sandboxes must have a `:table_id` corresponding to a sandboxed query path in the `permissions` table;
+  if this does not exist, the sandbox will not be created."
   :feature :sandboxes
   [sandboxes]
   (for [sandbox sandboxes]
     (if-let [id (:id sandbox)]
-      (do
-        ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
-        ;; This allows existing values to be "cleared" by being set to nil
-        (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
-          (db/update! GroupTableAccessPolicy
-                      id
-                      (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-        (db/select-one GroupTableAccessPolicy :id id))
+      (let [expected-permission-path (perms/table-segmented-query-path (:table_id sandbox))]
+        (when-let [permission-path-id (db/select-one-field :id Permissions :object expected-permission-path)]
+          ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
+          ;; This allows existing values to be "cleared" by being set to nil
+          (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
+            (db/update! GroupTableAccessPolicy
+                        id
+                        (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
+          (db/select-one GroupTableAccessPolicy :id id)))
       (db/insert! GroupTableAccessPolicy sandbox))))
 
 (defn- pre-insert [gtap]
