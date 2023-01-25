@@ -202,11 +202,12 @@ export const setTemplateTagParameter = createThunkAction(
   SET_TEMPLATE_TAG_PARAMETER,
   (tag, parameter) => {
     return (dispatch, getState) => {
-      return getQuestion(getState())
+      const newQuestion = getQuestion(getState())
         .query()
         .setTemplateTagParameter(tag, parameter)
-        .question()
-        .card();
+        .question();
+
+      dispatch(updateQuestion(newQuestion));
     };
   },
 );

@@ -1173,12 +1173,10 @@ class QuestionInner {
     const [a, b] = [this, originalQuestion].map(q => {
       return (
         q &&
-        new Question(q.card(), this.metadata())
-          .setParameters([])
-          .setDashboardProps({
-            dashboardId: undefined,
-            dashcardId: undefined,
-          })
+        new Question(q.card(), this.metadata()).setDashboardProps({
+          dashboardId: undefined,
+          dashcardId: undefined,
+        })
       );
     });
     return a.isDirtyComparedTo(b);
