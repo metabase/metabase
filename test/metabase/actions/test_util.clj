@@ -11,7 +11,10 @@
    [metabase.test.data.datasets :as datasets]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan.db :as db]
+   [metabase.driver :as driver]
+   [metabase.test.data.interface :as tx]))
 
 (def ^:dynamic ^:private ^:deprecated *actions-test-data-tables*
   #{"categories"})
@@ -46,12 +49,22 @@
   [tables & body]
   `(do-with-actions-test-data-tables ~tables (^:once fn* [] ~@body)))
 
+(defn do-with-actions-test-data
+  "Impl for [[with-actions-test-data]]."
+  [thunk]
+  (data/dataset :test-data
+    (try
+      (thunk)
+      (finally
+        ;; delete the test data database so it gets recreated. NOT IDEAL! FIXME!
+        (db/delete! Database :engine (name (tx/driver)), :name "test-data")))))
+
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table
   that gets destroyed at the conclusion of `body`. Use this to test destructive actions that may modify the data."
   {:style/indent 0}
   [& body]
-  `(data/dataset :test-data ~@body))
+  `(do-with-actions-test-data (fn [] ~@body)))
 
 (defmacro with-temp-test-data
   "Sets the current dataset to a freshly created dataset-definition that gets destroyed at the conclusion of `body`.
