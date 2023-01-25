@@ -146,6 +146,9 @@ const Actions = createEntity({
       }
     }
   },
+  objectSelectors: {
+    getUrl: (action, opts) => action && "oh-no",
+  },
 });
 
 export default Actions;
