@@ -6,6 +6,10 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { Dataset } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
+import {
+  getTemplateTagsForParameters,
+  getTemplateTagParameters,
+} from "metabase-lib/parameters/utils/template-tags";
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -192,6 +196,17 @@ export const updateQuestion = (
           shouldUpdateUrl: false,
         }),
       );
+    }
+
+    const newDatasetQuery = newQuestion.query().datasetQuery();
+    // Sync card's parameters with the template tags;
+    if (newDatasetQuery.type === "native") {
+      const templateTags = getTemplateTagsForParameters(newQuestion.card());
+      const newParameters = getTemplateTagParameters(
+        templateTags,
+        newQuestion.parameters(),
+      );
+      newQuestion = newQuestion.setParameters(newParameters);
     }
 
     await dispatch({

@@ -5,6 +5,8 @@ import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEdit
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Question from "metabase-lib/Question";
 
+import { getTemplateTagParameters } from "metabase-lib/parameters/utils/template-tags";
+
 function QueryActionEditor({
   question,
   setQuestion,
@@ -14,7 +16,11 @@ function QueryActionEditor({
 }) {
   const handleChange = useCallback(
     (newQuery: NativeQuery) => {
-      setQuestion(question.setQuery(newQuery));
+      const newParams = getTemplateTagParameters(
+        newQuery.templateTagsWithoutSnippets(),
+        newQuery.question().parameters(),
+      );
+      setQuestion(question.setQuery(newQuery).setParameters(newParams));
     },
     [question, setQuestion],
   );
