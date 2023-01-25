@@ -33,14 +33,14 @@ const getErrorMessage = (error: any) => {
   let errorMessage = t`Server error encountered`;
   if (error.data && error.data.message) {
     errorMessage = error.data.message;
-  } else {
+  } else if (error.message) {
     errorMessage = error.message;
   }
 
-  return <span className="text-error px2">{errorMessage}</span>;
+  return errorMessage;
 };
 
-interface DeleteDatabaseModalProps {
+export interface DeleteDatabaseModalProps {
   onClose: () => void;
   onDelete: (database: Database) => void;
   database: Database;
@@ -72,7 +72,7 @@ const DeleteDatabaseModal = ({
     }
   };
 
-  const handleEditConnectionDetailsClick = e => {
+  const handleEditConnectionDetailsClick: React.MouseEventHandler = e => {
     e.preventDefault();
     onClose();
   };

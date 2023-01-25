@@ -1,61 +1,67 @@
 import { render } from "@testing-library/react";
 import React from "react";
-import nock from "nock";
 import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";
+import useFetch from "metabase/hooks/use-fetch";
 import type Database from "metabase-lib/metadata/Database";
-import DeleteDatabaseModal from "./DeleteDatabaseModal";
+import DeleteDatabaseModal, {
+  DeleteDatabaseModalProps,
+} from "./DeleteDatabaseModal";
+
+const getUsageInfo = (hasContent: boolean) => ({
+  question: hasContent ? 10 : 0,
+  dataset: hasContent ? 20 : 0,
+  metric: hasContent ? 30 : 0,
+  segment: hasContent ? 40 : 0,
+});
+
+jest.mock("metabase/hooks/use-fetch", () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
 
 const database = { name: "database name", id: 1 } as Database;
 
-const setup = async (hasContent: boolean) => {
-  nock(location.origin)
-    .get("/api/database/1/usage_info")
-    .reply(200, {
-      question: hasContent ? 10 : 0,
-      dataset: hasContent ? 20 : 0,
-      metric: hasContent ? 30 : 0,
-      segment: hasContent ? 40 : 0,
-    });
-
-  const onClose = jest.fn();
-  const onDelete = jest.fn();
-
+const setup = ({
+  onDelete = jest.fn(),
+}: {
+  onDelete?: DeleteDatabaseModalProps["onDelete"];
+} = {}) => {
   render(
     <DeleteDatabaseModal
-      onClose={onClose}
+      onClose={jest.fn()}
       onDelete={onDelete}
       database={database}
     />,
   );
 
   return {
-    onClose,
     onDelete,
   };
 };
 
 describe("DeleteDatabaseModal", () => {
+  const useFetchMock = useFetch as jest.Mock<typeof useFetch>;
+
   afterEach(() => {
-    nock.cleanAll();
-    jest.restoreAllMocks();
+    jest.clearAllMocks();
   });
 
-  it("should allow deleting database without content after confirming its name", async () => {
-    const { onDelete } = await setup(false);
+  it("should allow deleting database without content after confirming its name", () => {
+    useFetchMock.mockReturnValue({ data: getUsageInfo(false) } as any);
 
-    const deleteButton = await screen.findByText("Delete");
+    const { onDelete } = setup();
+
+    const deleteButton = screen.getByRole("button", { name: "Delete" });
 
     expect(
-      await screen.findByText("Delete 10 saved questions"),
+      screen.queryByText("Delete 10 saved questions"),
     ).not.toBeInTheDocument();
 
     expect(deleteButton).toBeDisabled();
 
-    expect(deleteButton).toBeDisabled();
-
     userEvent.type(
-      await screen.findByTestId("database-name-confirmation-input"),
+      screen.getByTestId("database-name-confirmation-input"),
       "database name",
     );
 
@@ -66,24 +72,26 @@ describe("DeleteDatabaseModal", () => {
     expect(onDelete).toHaveBeenCalledWith(database);
   });
 
-  it("should allow deleting database with content after confirming its name and its content removal", async () => {
-    const { onDelete } = await setup(true);
+  it("should allow deleting database with content after confirming its name and its content removal", () => {
+    useFetchMock.mockReturnValue({ data: getUsageInfo(true) } as any);
 
-    const deleteButton = await screen.findByText(
-      "Delete this content and the DB connection",
-    );
+    const { onDelete } = setup();
+
+    const deleteButton = screen.getByRole("button", {
+      name: "Delete this content and the DB connection",
+    });
 
     expect(deleteButton).toBeDisabled();
 
-    userEvent.click(await screen.findByText("Delete 10 saved questions"));
-    userEvent.click(await screen.findByText("Delete 20 saved models"));
-    userEvent.click(await screen.findByText("Delete 30 saved metrics"));
-    userEvent.click(await screen.findByText("Delete 40 saved questions"));
+    userEvent.click(screen.getByText("Delete 10 saved questions"));
+    userEvent.click(screen.getByText("Delete 20 models"));
+    userEvent.click(screen.getByText("Delete 30 metric"));
+    userEvent.click(screen.getByText("Delete 40 segments"));
 
     expect(deleteButton).toBeDisabled();
 
     userEvent.type(
-      await screen.findByTestId("database-name-confirmation-input"),
+      screen.getByTestId("database-name-confirmation-input"),
       "database name",
     );
 
@@ -92,5 +100,25 @@ describe("DeleteDatabaseModal", () => {
     userEvent.click(deleteButton);
 
     expect(onDelete).toHaveBeenCalledWith(database);
+  });
+
+  it("shows an error if removal failed", () => {
+    useFetchMock.mockReturnValue({ data: getUsageInfo(false) } as any);
+
+    const { onDelete } = setup({
+      onDelete: () => {
+        throw new Error("Something went wrong");
+      },
+    });
+
+    const deleteButton = screen.getByRole("button", { name: "Delete" });
+    userEvent.type(
+      screen.getByTestId("database-name-confirmation-input"),
+      "database name",
+    );
+
+    userEvent.click(deleteButton);
+
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
   });
 });
