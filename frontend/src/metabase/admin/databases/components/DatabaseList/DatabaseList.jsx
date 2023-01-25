@@ -98,35 +98,41 @@ export default class DatabaseList extends Component {
             <tbody>
               {databases ? (
                 [
-                  databases.map(database => {
-                    const isDeleting =
-                      this.props.deletes.indexOf(database.id) !== -1;
-                    return (
-                      <tr
-                        key={database.id}
-                        className={cx({ disabled: isDeleting })}
-                      >
-                        <td>
-                          <TableCellContent>
-                            {!isSyncCompleted(database) && (
-                              <TableCellSpinner size={16} borderWidth={2} />
-                            )}
-                            <Link
-                              to={"/admin/databases/" + database.id}
-                              className="text-bold link"
-                            >
-                              {database.name}
-                            </Link>
-                          </TableCellContent>
-                        </td>
-                        <td>
-                          {engines && engines[database.engine]
-                            ? engines[database.engine]["driver-name"]
-                            : database.engine}
-                        </td>
-                      </tr>
-                    );
-                  }),
+                  databases
+                    .filter(
+                      database =>
+                        database.name !== "Sample Database" &&
+                        database.engine !== "h2",
+                    )
+                    .map(database => {
+                      const isDeleting =
+                        this.props.deletes.indexOf(database.id) !== -1;
+                      return (
+                        <tr
+                          key={database.id}
+                          className={cx({ disabled: isDeleting })}
+                        >
+                          <td>
+                            <TableCellContent>
+                              {!isSyncCompleted(database) && (
+                                <TableCellSpinner size={16} borderWidth={2} />
+                              )}
+                              <Link
+                                to={"/admin/databases/" + database.id}
+                                className="text-bold link"
+                              >
+                                {database.name}
+                              </Link>
+                            </TableCellContent>
+                          </td>
+                          <td>
+                            {engines && engines[database.engine]
+                              ? engines[database.engine]["driver-name"]
+                              : database.engine}
+                          </td>
+                        </tr>
+                      );
+                    }),
                 ]
               ) : (
                 <tr>

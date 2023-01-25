@@ -23,26 +23,31 @@ function DatabaseBrowser({ databases }) {
       <BrowseHeader crumbs={[{ title: t`Our data` }]} />
 
       <Grid>
-        {databases.map(database => (
-          <DatabaseGridItem key={database.id}>
-            <Link
-              to={Urls.browseDatabase(database)}
-              data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
-              display="block"
-              hover={{ color: color("brand") }}
-            >
-              <Card p={3} hover={{ color: color("brand") }}>
-                <Icon
-                  name="database"
-                  color={color("accent2")}
-                  mb={3}
-                  size={28}
-                />
-                <h3 className="text-wrap">{database.name}</h3>
-              </Card>
-            </Link>
-          </DatabaseGridItem>
-        ))}
+        {databases
+          .filter(
+            database =>
+              database.name !== "Sample Database" && database.engine !== "h2",
+          )
+          .map(database => (
+            <DatabaseGridItem key={database.id}>
+              <Link
+                to={Urls.browseDatabase(database)}
+                data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
+                display="block"
+                hover={{ color: color("brand") }}
+              >
+                <Card p={3} hover={{ color: color("brand") }}>
+                  <Icon
+                    name="database"
+                    color={color("accent2")}
+                    mb={3}
+                    size={28}
+                  />
+                  <h3 className="text-wrap">{database.name}</h3>
+                </Card>
+              </Link>
+            </DatabaseGridItem>
+          ))}
       </Grid>
     </div>
   );
