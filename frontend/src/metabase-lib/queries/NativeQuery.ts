@@ -270,7 +270,8 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   setQueryText(newQueryText: string): NativeQuery {
-    return this._setQueryText(newQueryText)._syncParametersWithTemplateTags();
+    const newQuery = this._setQueryText(newQueryText);
+    return newQuery._syncParametersWithTemplateTags();
   }
 
   collection(): string | null | undefined {
@@ -384,8 +385,9 @@ export default class NativeQuery extends AtomicQuery {
     return tagErrors.length === 0;
   }
 
-  setTemplateTag(name: string, tag: TemplateTag) {
-    return this._setTemplateTag(name, tag)._syncParametersWithTemplateTags();
+  setTemplateTag(name: string, tag: TemplateTag, parameter?: Parameter) {
+    const newQuery = this._setTemplateTag(name, tag);
+    return newQuery._syncParameterWithTemplateTag(tag, parameter);
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
@@ -564,12 +566,24 @@ export default class NativeQuery extends AtomicQuery {
     );
   }
 
+  _syncParameterWithTemplateTag(tag: TemplateTag, newParameter?: Parameter) {
+    const oldParameters = this.question().parameters();
+    const newParameters = oldParameters.map(oldParameter =>
+      oldParameter.id === tag.id
+        ? getTemplateTagParameter(tag, newParameter ?? oldParameter)
+        : oldParameter,
+    );
+
+    return this.question().setParameters(newParameters).query();
+  }
+
   _syncParametersWithTemplateTags() {
     const question = this.question();
     const tags = getTemplateTagsForParameters(question.card());
-    const parameters = getTemplateTagParameters(tags, question.parameters());
+    const oldParameters = question.parameters();
+    const newParameters = getTemplateTagParameters(tags, oldParameters);
 
-    return question.setParameters(parameters).query() as NativeQuery;
+    return question.setParameters(newParameters).query() as NativeQuery;
   }
 
   dependentMetadata(): DependentMetadataItem[] {

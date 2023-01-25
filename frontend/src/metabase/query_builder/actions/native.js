@@ -147,11 +147,11 @@ export const insertSnippet = snip => (dispatch, getState) => {
 export const SET_TEMPLATE_TAG = "metabase/qb/SET_TEMPLATE_TAG";
 export const setTemplateTag = createThunkAction(
   SET_TEMPLATE_TAG,
-  templateTag => {
+  (tag, parameter) => {
     return (dispatch, getState) => {
       const newQuestion = getQuestion(getState())
         .query()
-        .setTemplateTag(templateTag.name, templateTag)
+        .setTemplateTag(tag.name, tag, parameter)
         .question();
 
       dispatch(updateQuestion(newQuestion));
