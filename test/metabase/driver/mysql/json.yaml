@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: json.server.sql
+  context: server
+- type: sql
+  file: json.db.sql
+  context: db

@@ -1,0 +1,16 @@
+steps:
+- type: sql
+  file: sample-dataset.sql
+  context: server
+- type: csv
+  file: sample-dataset.0.products.csv
+  table: products
+- type: csv
+  file: sample-dataset.1.people.csv
+  table: people
+- type: csv
+  file: sample-dataset.2.reviews.csv
+  table: reviews
+- type: csv
+  file: sample-dataset.3.orders.csv
+  table: orders

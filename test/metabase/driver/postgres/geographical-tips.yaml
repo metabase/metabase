@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: geographical-tips.server.sql
+  context: server
+- type: sql
+  file: geographical-tips.db.sql
+  context: db

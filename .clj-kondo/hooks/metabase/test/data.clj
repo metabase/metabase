@@ -11,67 +11,15 @@
   []
   (not-empty (set (keys (:clj (hooks/ns-analysis 'metabase.test.data.dataset-definitions))))))
 
-(defn- dataset-type
-  "`dataset` can be one of:
-
-  - a qualified symbol
-  - an unqualified symbol referring to a a var in [[metabase.test.data.dataset-definitions]]
-  - an unqualified symbol (referring to a let-bound value or a var in the current namespace
-  - some sort of non-symbol form like a function call
-
-  We can only determine if an unqualified symbol refers to something in the dataset definitions namespace if there are
-  cached results available from [[global-dataset-symbols]]."
-  [dataset]
-  (let [sexpr       (hooks/sexpr dataset)
-        global-defs (global-dataset-symbols)]
-    (cond
-      (not (symbol? sexpr))
-      :non-symbol
-
-      (namespace sexpr)
-      :qualified
-
-      (empty? global-defs)
-      :unqualified/unknown
-
-      (contains? global-defs sexpr)
-      :unqualified/from-dataset-defs-namespace
-
-      ;; either something defined in the current namespace or let-bound in the current scope.
-      :else
-      :unqualified/local-def)))
-
 (defn dataset
   [{{[_ dataset & body] :children} :node}]
-  (let [body (case (dataset-type dataset)
-               ;; non-symbol, qualified symbols, and unqualified symbols from the current namespace/let-bound can all
-               ;; get converted from something like
-               ;;
-               ;;    (dataset whatever
-               ;;      ...)
-               ;;
-               ;; to
-               ;;
-               ;;    (let [_ whatever]
-               ;;      ...)
-               (:non-symbol :qualified :unqualified/local-def)
-               (list* (hooks/token-node 'let)
-                      (hooks/vector-node [(hooks/token-node '_) dataset])
-                      body)
-
-               ;; for ones that came from the dataset defs namespace or ones whose origin is unknown, just ignore them
-               ;; and generate a `print` form:
-               ;;
-               ;;    (print ...)
-               ;;
-               ;; (this used to be a `do` form (which makes a lot more semantic sense), but that resulted in warnings
-               ;; about unused values
-               (:unqualified/from-dataset-defs-namespace :unqualified/unknown)
-               (list* (hooks/token-node 'print)
-                      body))]
-    {:node (with-meta (hooks/list-node (with-meta body
-                                                  (meta dataset)))
-                      (meta dataset))}))
+  (let [body (with-meta (hooks/list-node
+                         (with-meta (list*
+                                     (hooks/token-node 'do)
+                                     body)
+                                    (meta dataset)))
+                        (meta dataset))]
+    {:node body}))
 
 (defn- special-token-node?
   "Whether this node is one of the special symbols like `$field`."

@@ -1,0 +1,10 @@
+steps:
+- type: sql
+  context: server
+  file: shutdown.sql
+- type: sql
+  file: yyyymmddhhss-times.server.sql
+  context: server
+- type: sql
+  file: yyyymmddhhss-times.db.sql
+  context: db

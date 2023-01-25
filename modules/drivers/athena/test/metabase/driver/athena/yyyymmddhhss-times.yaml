@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  context: server
+  file: yyyymmddhhss-times.server.sql
+- type: sql
+  context: db
+  file: yyyymmddhhss-times.db.sql

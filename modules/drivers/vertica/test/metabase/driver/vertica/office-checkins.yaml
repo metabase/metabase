@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: office-checkins.sql
+  context: server
+- type: csv
+  file: office-checkins.0.checkins.csv
+  table: checkins

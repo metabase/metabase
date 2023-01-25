@@ -78,7 +78,7 @@
 ;; as descriptions during sync, is not tested. Opt-in to testing by implementing one or more of these methods. Default
 ;; implementations are provided below by the functions prefixed by `standard-`.
 
-(defmulti inline-column-comment-sql
+(defmulti ^:deprecated inline-column-comment-sql
   "Return an inline `COMMENT` statement for a column."
   {:arglists '([driver comment])}
   tx/dispatch-on-driver-with-test-extensions
@@ -86,14 +86,14 @@
 
 (defmethod inline-column-comment-sql :sql/test-extensions [_ _] nil)
 
-(defn standard-inline-column-comment-sql
+(defn ^:deprecated standard-inline-column-comment-sql
   "Implementation of `inline-column-comment-sql` for driver test extensions that wish to use it."
   [_ field-comment]
   (when (seq field-comment)
     (format "COMMENT '%s'" field-comment)))
 
 
-(defmulti standalone-column-comment-sql
+(defmulti ^:deprecated standalone-column-comment-sql
   "Return standalone `COMMENT` statement for a column."
   {:arglists '([driver dbdef tabledef fielddef])}
   tx/dispatch-on-driver-with-test-extensions
@@ -101,7 +101,7 @@
 
 (defmethod standalone-column-comment-sql :sql/test-extensions [_ _ _ _] nil)
 
-(defn standard-standalone-column-comment-sql
+(defn ^:deprecated standard-standalone-column-comment-sql
   "Implementation of `standalone-column-comment-sql` for driver test extensions that wish to use it."
   [driver {:keys [database-name]} {:keys [table-name]} {:keys [field-name field-comment]}]
   (when (seq field-comment)
@@ -110,7 +110,7 @@
       field-comment)))
 
 
-(defmulti inline-table-comment-sql
+(defmulti ^:deprecated inline-table-comment-sql
   "Return an inline `COMMENT` statement for a table."
   {:arglists '([driver comment])}
   tx/dispatch-on-driver-with-test-extensions
@@ -118,14 +118,14 @@
 
 (defmethod inline-table-comment-sql :sql/test-extensions [_ _] nil)
 
-(defn standard-inline-table-comment-sql
+(defn ^:deprecated standard-inline-table-comment-sql
   "Implementation of `inline-table-comment-sql` for driver test extenstions that wish to use it."
   [_ table-comment]
   (when (seq table-comment)
     (format "COMMENT '%s'" table-comment)))
 
 
-(defmulti standalone-table-comment-sql
+(defmulti ^:deprecated standalone-table-comment-sql
   "Return standalone `COMMENT` statement for a table."
   {:arglists '([driver dbdef tabledef])}
   tx/dispatch-on-driver-with-test-extensions
@@ -133,7 +133,7 @@
 
 (defmethod standalone-table-comment-sql :sql/test-extensions [_ _ _] nil)
 
-(defn standard-standalone-table-comment-sql
+(defn ^:deprecated standard-standalone-table-comment-sql
   "Implementation of `standalone-table-comment-sql` for driver test extenstions that wish to use it."
   [driver {:keys [database-name]} {:keys [table-name table-comment]}]
   (when (seq table-comment)
@@ -146,7 +146,7 @@
 ;;; |                                         Interface (DDL SQL Statements)                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti field-base-type->sql-type
+(defmulti ^:deprecated field-base-type->sql-type
   "Return a native SQL type that should be used for fields of `base-type`."
   {:arglists '([driver base-type])}
   (fn [driver base-type] [(tx/dispatch-on-driver-with-test-extensions driver) base-type])
@@ -168,13 +168,13 @@
                 driver base-type)))))
 
 
-(defmulti pk-sql-type
+(defmulti ^:deprecated pk-sql-type
   "SQL type of a primary key field."
   {:arglists '([driver])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmulti create-db-sql
+(defmulti ^:deprecated create-db-sql
   "Return a `CREATE DATABASE` statement."
   {:arglists '([driver dbdef])}
   tx/dispatch-on-driver-with-test-extensions
@@ -201,7 +201,7 @@
 (defn- format-and-quote-field-name [driver field-name]
   (sql.u/quote-name driver :field (ddl.i/format-name driver field-name)))
 
-(defn- field-definition-sql
+(defn- ^:deprecated field-definition-sql
   [driver {:keys [field-name base-type field-comment not-null?], :as field-definition}]
   (let [field-name (format-and-quote-field-name driver field-name)
         field-type (or (cond
@@ -235,7 +235,7 @@
             pk-field-name
             (or (inline-table-comment-sql driver table-comment) ""))))
 
-(defmulti drop-table-if-exists-sql
+(defmulti ^:deprecated drop-table-if-exists-sql
   {:arglists '([driver dbdef tabledef])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -243,13 +243,13 @@
 (defmethod drop-table-if-exists-sql :sql/test-extensions [driver {:keys [database-name]} {:keys [table-name]}]
   (format "DROP TABLE IF EXISTS %s;" (qualify-and-quote driver database-name table-name)))
 
-(defn drop-table-if-exists-cascade-sql
+(defn ^:deprecated drop-table-if-exists-cascade-sql
   "Alternate implementation of `drop-table-if-exists-sql` that adds `CASCADE` to the statement for DBs that support it."
   [driver {:keys [database-name]} {:keys [table-name]}]
   (format "DROP TABLE IF EXISTS %s CASCADE;" (qualify-and-quote driver database-name table-name)))
 
 
-(defmulti add-fk-sql
+(defmulti ^:deprecated add-fk-sql
   "Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement."
   {:arglists '([driver dbdef tabledef fielddef])}
   tx/dispatch-on-driver-with-test-extensions

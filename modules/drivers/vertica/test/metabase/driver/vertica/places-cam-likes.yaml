@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: places-cam-likes.sql
+  context: server
+- type: csv
+  file: places-cam-likes.0.places.csv
+  table: places

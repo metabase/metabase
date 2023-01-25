@@ -1,0 +1,10 @@
+steps:
+- type: sql
+  file: bird-flocks.sql
+  context: server
+- type: csv
+  file: bird-flocks.0.bird.csv
+  table: bird
+- type: csv
+  file: bird-flocks.1.flock.csv
+  table: flock

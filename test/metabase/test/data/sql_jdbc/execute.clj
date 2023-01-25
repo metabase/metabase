@@ -14,7 +14,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- jdbc-execute! [db-spec sql]
-  (log/tracef "[execute %s] %s" driver/*driver* (pr-str sql))
+  (println "db-spec:" (pr-str db-spec)) ; NOCOMMIT
+  (log/tracef "[execute %s] %s" driver/*driver* (str/join (take 10000 sql)))
   (jdbc/execute! db-spec [sql] {:transaction? false, :multi? true}))
 
 (defn default-execute-sql! [driver context dbdef sql & {:keys [execute!]
@@ -38,7 +39,7 @@
                     (with-out-str (.printStackTrace e)))
             (throw e)))))))
 
-(defn sequentially-execute-sql!
+(defn ^:deprecated sequentially-execute-sql!
   "Alternative implementation of `execute-sql!` that executes statements one at a time for drivers
   that don't support executing multiple statements at once.
 
@@ -57,9 +58,10 @@
 
 (defmulti execute-sql!
   "Execute a string of raw SQL. `context` is either `:server` or `:db`. `sql` is a SQL string."
-  {:arglists '([driver context dbdef sql]), :style/indent 2}
+  {:arglists '([driver context dbdef sql])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod execute-sql! :sql-jdbc/test-extensions [driver context defdef sql]
+(defmethod execute-sql! :sql-jdbc/test-extensions
+  [driver context defdef sql]
   (default-execute-sql! driver context defdef sql))

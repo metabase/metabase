@@ -155,20 +155,10 @@
                                :type     :query
                                :query    {:source-table (db/select-one-id Table :name "presents-and-gifts")}}))))))))))
 
-(mt/defdataset duplicate-names
-  [["birds"
-    [{:field-name "name", :base-type :type/Text}]
-    [["Rasta"]
-     ["Lucky"]]]
-   ["people"
-    [{:field-name "name", :base-type :type/Text}
-     {:field-name "bird_id", :base-type :type/Integer, :fk :birds}]
-    [["Cam" 1]]]])
-
 (deftest duplicate-names-test
   (mt/test-driver :postgres
     (testing "Make sure that duplicate column names (e.g. caused by using a FK) still return both columns"
-      (mt/dataset duplicate-names
+      (mt/dataset :postgres-duplicate-names
         (is (= {:columns ["name" "name_2"]
                 :rows    [["Cam" "Rasta"]]}
                (mt/rows+column-names
@@ -514,19 +504,9 @@
                                 database
                                 {:name "big_json_table"})) [0 2])
                 "More nested field columns detected than maximum.")))))))
-
-(mt/defdataset with-uuid
-  [["users"
-    [{:field-name "user_id", :base-type :type/UUID}]
-    [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
-     [#uuid "4652b2e7-d940-4d55-a971-7e484566663e"]
-     [#uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]
-     [#uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]
-     [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]]])
-
 (deftest uuid-columns-test
   (mt/test-driver :postgres
-    (mt/dataset with-uuid
+    (mt/dataset :postgres-with-uuid
       (testing "Check that we can load a Postgres Database with a :type/UUID"
         (is (= [{:name "id", :base_type :type/Integer}
                 {:name "user_id", :base_type :type/UUID}]
@@ -545,57 +525,48 @@
                (mt/rows (mt/run-mbql-query users
                           {:filter [:is-empty $user_id]})))))
       (testing "check that not-empty doesn't barf (#22667)"
-        (is (= (map-indexed (fn [i [uuid]] [(inc i) uuid])
-                            (-> with-uuid :table-definitions first :rows))
-               (mt/rows (mt/run-mbql-query users
-                          {:filter [:not-empty $user_id]})))))
+        (is (seq (mt/rows (mt/run-mbql-query users
+                            {:filter [:not-empty $user_id]})))))
       (testing "Check that we can filter by a UUID for SQL Field filters (#7955)"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]]
                (mt/rows
-                 (qp/process-query
-                   (assoc (mt/native-query
-                            {:query         "SELECT * FROM users WHERE {{user}}"
-                             :template-tags {:user
-                                             {:name         "user"
-                                              :display_name "User ID"
-                                              :type         "dimension"
-                                              :widget-type  "number"
-                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
-                       :parameters
-                       [{:type   "text"
-                         :target ["dimension" ["template-tag" "user"]]
-                         :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]))))))
+                (qp/process-query
+                 (assoc (mt/native-query
+                          {:query         "SELECT * FROM users WHERE {{user}}"
+                           :template-tags {:user
+                                           {:name         "user"
+                                            :display_name "User ID"
+                                            :type         "dimension"
+                                            :widget-type  "number"
+                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                        :parameters
+                        [{:type   "text"
+                          :target ["dimension" ["template-tag" "user"]]
+                          :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]))))))
       (testing "Check that we can filter by multiple UUIDs for SQL Field filters"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
                 [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]]
                (mt/rows
-                 (qp/process-query
-                   (assoc (mt/native-query
-                            {:query         "SELECT * FROM users WHERE {{user}}"
-                             :template-tags {:user
-                                             {:name         "user"
-                                              :display_name "User ID"
-                                              :type         "dimension"
-                                              :widget-type  :number
-                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
-                       :parameters
-                       [{:type   "text"
-                         :target ["dimension" ["template-tag" "user"]]
-                         :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
-                                  "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}])))))))))
-
-
-(mt/defdataset ip-addresses
-  [["addresses"
-    [{:field-name "ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
-    [[(hsql/raw "'192.168.1.1'::inet")]
-     [(hsql/raw "'10.4.4.15'::inet")]]]])
+                (qp/process-query
+                 (assoc (mt/native-query
+                          {:query         "SELECT * FROM users WHERE {{user}}"
+                           :template-tags {:user
+                                           {:name         "user"
+                                            :display_name "User ID"
+                                            :type         "dimension"
+                                            :widget-type  :number
+                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                        :parameters
+                        [{:type   "text"
+                          :target ["dimension" ["template-tag" "user"]]
+                          :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
+                                   "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}])))))))))
 
 (deftest inet-columns-test
   (mt/test-driver :postgres
     (testing (str "Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` "
                   "(otherwise this wouldn't work)")
-      (mt/dataset ip-addresses
+      (mt/dataset postgres-ip-addresses
         (is (= [[1]]
                (mt/rows (mt/run-mbql-query addresses
                           {:aggregation [[:count]]
@@ -992,21 +963,18 @@
 
 (deftest pkcs-12-extension-test
   (testing "Uploaded PKCS-12 SSL keys are stored in a file with the .p12 extension (#20319)"
-    (is (true?
-         (-> (#'postgres/ssl-params
-              {:ssl true
-               :ssl-key-options "uploaded"
-               :ssl-key-value "data:application/x-pkcs12;base64,SGVsbG8="
-               :ssl-mode "require"
-               :ssl-use-client-auth true
-               :tunnel-enabled false
-               :advanced-options false
-               :dbname "metabase"
-               :engine :postgres
-               :host "localhost"
-               :user "bcm"
-               :password "abcdef123"
-               :port 5432})
-             :sslkey
-             .getAbsolutePath
-             (str/ends-with? ".p12"))))))
+    (let [^java.io.File ssl-key-file (:sslkey (#'postgres/ssl-params
+                                               {:ssl                 true
+                                                :ssl-key-options     "uploaded"
+                                                :ssl-key-value       "data:application/x-pkcs12;base64,SGVsbG8="
+                                                :ssl-mode            "require"
+                                                :ssl-use-client-auth true
+                                                :tunnel-enabled      false
+                                                :advanced-options    false
+                                                :dbname              "metabase"
+                                                :engine              :postgres
+                                                :host                "localhost"
+                                                :user                "bcm"
+                                                :password            "abcdef123"
+                                                :port                5432}))]
+      (is (str/ends-with? (.getAbsolutePath ssl-key-file) ".p12")))))

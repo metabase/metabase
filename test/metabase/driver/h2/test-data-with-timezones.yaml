@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  context: server
+  file: shutdown.sql
+- type: sql
+  file: test-data-with-timezones.db.sql
+  context: db

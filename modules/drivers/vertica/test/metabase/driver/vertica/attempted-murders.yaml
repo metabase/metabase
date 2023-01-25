@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: attempted-murders.sql
+  context: server
+- type: csv
+  file: attempted-murders.0.attempts.csv
+  table: attempts

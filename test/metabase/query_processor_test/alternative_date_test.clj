@@ -24,16 +24,6 @@
          #"Semantic type must be a UNIXTimestamp"
          (sql.qp/semantic-type->unix-timestamp-unit :type/Integer)))))
 
-(mt/defdataset toucan-microsecond-incidents
-  [["incidents" [{:field-name "severity"
-                  :base-type  :type/Integer}
-                 {:field-name        "timestamp"
-                  :base-type         :type/BigInteger
-                  :effective-type    :type/DateTime
-                  :coercion-strategy :Coercion/UNIXMicroSeconds->DateTime}]
-    [[4 1433587200000000]
-     [0 1433965860000000]]]])
-
 (deftest microseconds-test
   (mt/test-drivers (disj (mt/normal-drivers) :sqlite)
     (let [results (get {:sqlite #{[1 4 "2015-06-06 10:40:00"] [2 0 "2015-06-10 19:51:00"]}
@@ -141,42 +131,6 @@
 
 ;;; :type/ISO8601DateTimeString tests
 
-(mt/defdataset just-dates
-  [["just_dates" [{:field-name     "name"
-                   :base-type      :type/Text
-                   :effective-type :type/Text}
-                  {:field-name        "ts"
-                   :base-type         :type/Text
-                   :effective-type    :type/DateTime
-                   :coercion-strategy :Coercion/ISO8601->DateTime}
-                  {:field-name        "d"
-                   :base-type         :type/Text
-                   :effective-type    :type/Date
-                   :coercion-strategy :Coercion/ISO8601->Date}]
-    [["foo" "2004-10-19 10:23:54" "2004-10-19"]
-     ["bar" "2008-10-19 10:23:54" "2008-10-19"]
-     ["baz" "2012-10-19 10:23:54" "2012-10-19"]]]])
-
-(mt/defdataset string-times
-  [["times" [{:field-name "name"
-              :effective-type :type/Text
-              :base-type :type/Text}
-             {:field-name "ts"
-              :base-type :type/Text
-              :effective-type :type/DateTime
-              :coercion-strategy :Coercion/ISO8601->DateTime}
-             {:field-name "d"
-              :base-type :type/Text
-              :effective-type :type/Date
-              :coercion-strategy :Coercion/ISO8601->Date}
-             {:field-name "t"
-              :base-type :type/Text
-              :effective-type :type/Time
-              :coercion-strategy :Coercion/ISO8601->Time}]
-    [["foo" "2004-10-19 10:23:54" "2004-10-19" "10:23:54"]
-     ["bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
-     ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]])
-
 (deftest iso-8601-text-fields
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"
     (testing "return as dates"
@@ -270,32 +224,6 @@
                          {:filter [:= !day.d "2008-10-19"]})
                        mt/rows
                        count)))))))))
-
-(mt/defdataset yyyymmddhhss-times
-  [["times" [{:field-name "name"
-              :effective-type :type/Text
-              :base-type :type/Text}
-             {:field-name "as_text"
-              :base-type :type/Text
-              :effective-type :type/DateTime
-              :coercion-strategy :Coercion/YYYYMMDDHHMMSSString->Temporal}]
-    [["foo" "20190421164300"]
-     ["bar" "20200421164300"]
-     ["baz" "20210421164300"]]]])
-
-(mt/defdataset yyyymmddhhss-binary-times
-  [["times" [{:field-name "name"
-              :effective-type :type/Text
-              :base-type :type/Text}
-             {:field-name "as_bytes"
-              :base-type {:natives {:postgres "BYTEA"
-                                    :h2       "BYTEA"
-                                    :mysql    "VARBINARY(100)"}}
-              :effective-type :type/DateTime
-              :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
-    [["foo" (.getBytes "20190421164300")]
-     ["bar" (.getBytes "20200421164300")]
-     ["baz" (.getBytes "20210421164300")]]]])
 
 (deftest yyyymmddhhmmss-binary-dates
   (mt/test-drivers #{:postgres :h2 :mysql}

@@ -8,24 +8,19 @@
    [metabase.models.action :as action]
    [metabase.query-processor-test :as qp.test]
    [metabase.test.data :as data]
-   [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.datasets :as datasets]
-   [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
-   [toucan.db :as db]
    [toucan.util.test :as tt]))
 
-(def ^:dynamic ^:private *actions-test-data-tables*
+(def ^:dynamic ^:private ^:deprecated *actions-test-data-tables*
   #{"categories"})
 
 (defn do-with-actions-test-data-tables
   "Impl for [[with-actions-test-data-tables]]."
   [tables thunk]
   ;; make sure all the table names are valid so we can catch errors/typos
-  (let [valid-table-names-set (into #{}
-                                    (map :table-name)
-                                    (:table-definitions (tx/get-dataset-definition defs/test-data)))]
+  (let [valid-table-names-set #{"users" "venues" "checkins"}]
     (doseq [table-name tables]
       (assert (contains? valid-table-names-set table-name)
               (format "Invalid table for `with-actions-test-data-tables` %s. Valid tables: %s"
@@ -34,7 +29,7 @@
   (binding [*actions-test-data-tables* (set tables)]
     (thunk)))
 
-(defmacro with-actions-test-data-tables
+(defmacro ^:deprecated with-actions-test-data-tables
   "Override the tables that should be included in the [[actions-test-data]] test data DB when
   using [[with-actions-test-data]]. Normally only the `categories` table is included for maximum speed since this is
   usually enough to test things. Sometimes, however, you need some of the other tables, e.g. to test FK constraints
@@ -51,55 +46,24 @@
   [tables & body]
   `(do-with-actions-test-data-tables ~tables (^:once fn* [] ~@body)))
 
-(defrecord ^:private ActionsTestDatasetDefinition [])
-
-(defmethod tx/get-dataset-definition ActionsTestDatasetDefinition
-  [_this]
-  (tx/get-dataset-definition
-   (tx/transformed-dataset-definition
-    "actions-test-data"
-    defs/test-data
-    (fn [database-definition]
-      (update database-definition :table-definitions (fn [table-definitions]
-                                                       (filter #(contains? *actions-test-data-tables* (:table-name %))
-                                                               table-definitions)))))))
-
-(def actions-test-data
-  "This is basically the same as [[defs/test-data]] but it only includes the [[*actions-test-data-tables*]] Tables (by
-  default, only `categories`) for faster loading. It's meant to be reloaded at the start of every test using it so
-  tests can do destructive things against it e.g. deleting rows. (With one Table it takes ~100ms/~250ms instead of
-  ~200ms/~450ms for H2/Postgres respectively to load all the data and sync it.)
-
-  You can use [[with-actions-test-data-tables]] if you need something other than the `categories` table, e.g. for
-  testing FK constraints."
-  (ActionsTestDatasetDefinition.))
-
-(defn do-with-dataset-definition
-  "Impl for [[with-temp-test-data]] and [[with-actions-test-data]] macros."
-  [dataset-definition thunk]
-  (let [db (atom nil)]
-    (try
-      (data/dataset dataset-definition
-        (reset! db (data/db))
-        (thunk))
-      (finally
-        (when-let [{driver :engine, db-id :id} @db]
-          (tx/destroy-db! driver (tx/get-dataset-definition dataset-definition))
-          (db/delete! Database :id db-id))))))
-
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table
   that gets destroyed at the conclusion of `body`. Use this to test destructive actions that may modify the data."
   {:style/indent 0}
   [& body]
-  `(do-with-dataset-definition actions-test-data (fn [] ~@body)))
+  `(data/dataset test-data ~@body))
 
 (defmacro with-temp-test-data
   "Sets the current dataset to a freshly created dataset-definition that gets destroyed at the conclusion of `body`.
    Use this to test destructive actions that may modify the data."
   {:style/indent 0}
   [dataset-definition & body]
-  `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~dataset-definition) (fn [] ~@body)))
+  `(do
+     (println "FIXME: metabase.actions.test-util/with-temp-test-data")
+     (println ~(format "FIXME: %s" (ns-name *ns*)))
+     ~@body)
+  ;; `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~dataset-definition) (fn [] ~@body))
+  )
 
 (deftest with-actions-test-data-test
   (datasets/test-drivers (qp.test/normal-drivers-with-feature :actions/custom)

@@ -1,0 +1,10 @@
+steps:
+- type: sql
+  context: server
+  file: shutdown.sql
+- type: sql
+  file: diff-time-zones-cases.server.sql
+  context: server
+- type: sql
+  file: diff-time-zones-cases.db.sql
+  context: db

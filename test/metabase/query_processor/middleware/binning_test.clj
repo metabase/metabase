@@ -156,18 +156,9 @@
                  :aggregation  [[:count]]})
               (mt/formatted-rows [int int]))))))
 
-(mt/defdataset single-row
-  [["t" [{:field-name    "lat"
-          :base-type     :type/Decimal
-          :semantic-type :type/Latitude}
-         {:field-name    "lon"
-          :base-type     :type/Decimal
-          :semantic-type :type/Longitude}]
-    [[-27.137453079223633 -52.5982666015625]]]])
-
 (deftest auto-bin-single-row-test
   (testing "Make sure we can auto-bin a Table that only has a single row (#13914)"
-    (mt/dataset single-row
+    (mt/dataset :single-row
       ;; sync the Database so we have valid fingerprints for our columns.
       (sync/sync-database! (mt/db))
       (let [query (mt/mbql-query t

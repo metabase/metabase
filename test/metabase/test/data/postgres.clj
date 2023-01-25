@@ -3,9 +3,9 @@
   (:require
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-   [metabase.test.data.sql-jdbc.load-data :as load-data]
-   [metabase.test.data.sql.ddl :as ddl]))
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]))
+
+(set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :postgres)
 
@@ -41,7 +41,7 @@
   (defmethod sql.tx/field-base-type->sql-type [:postgres base-type] [_ _] db-type))
 
 (defmethod tx/dbdef->connection-details :postgres
-  [_ context {:keys [database-name]}]
+  [_driver context {:keys [database-name]}]
   (merge
    {:host     (tx/db-test-env-var-or-throw :postgresql :host "localhost")
     :port     (tx/db-test-env-var-or-throw :postgresql :port 5432)
@@ -52,34 +52,3 @@
      {:password password})
    (when (= context :db)
      {:db database-name})))
-
-(defn- kill-connections-to-db-sql
-  "Return a SQL `SELECT` statement that will kill all connections to a database with DATABASE-NAME."
-  ^String [database-name]
-  (format (str "DO $$ BEGIN\n"
-               "  PERFORM pg_terminate_backend(pg_stat_activity.pid)\n"
-               "  FROM pg_stat_activity\n"
-               "  WHERE pid <> pg_backend_pid()\n"
-               "    AND pg_stat_activity.datname = '%s';\n"
-               "END $$;\n")
-          (name database-name)))
-
-(defmethod ddl/drop-db-ddl-statements :postgres
-  [driver {:keys [database-name], :as dbdef} & options]
-  (when-not (string? database-name)
-    (throw (ex-info (format "Expected String database name; got ^%s %s"
-                            (some-> database-name class .getCanonicalName) (pr-str database-name))
-                    {:driver driver, :dbdef dbdef})))
-  ;; add an additional statement to the front to kill open connections to the DB before dropping
-  (cons
-   (kill-connections-to-db-sql database-name)
-   (apply (get-method ddl/drop-db-ddl-statements :sql-jdbc/test-extensions) driver dbdef options)))
-
-(defmethod load-data/load-data! :postgres [& args]
-  (apply load-data/load-data-all-at-once! args))
-
-(defmethod sql.tx/standalone-column-comment-sql :postgres [& args]
-  (apply sql.tx/standard-standalone-column-comment-sql args))
-
-(defmethod sql.tx/standalone-table-comment-sql :postgres [& args]
-  (apply sql.tx/standard-standalone-table-comment-sql args))

@@ -5,27 +5,12 @@
    [metabase.models :refer [Database Table]]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [toucan.db :as db]))
 
-(tx/defdataset db-with-some-cruft
-  [["acquired_toucans"
-     [{:field-name "species",              :base-type :type/Text}
-      {:field-name "cam_has_acquired_one", :base-type :type/Boolean}]
-     [["Toco"               false]
-      ["Chestnut-Mandibled" true]
-      ["Keel-billed"        false]
-      ["Channel-billed"     false]]]
-   ["south_migrationhistory"
-    [{:field-name "app_name",  :base-type :type/Text}
-     {:field-name "migration", :base-type :type/Text}]
-    [["main" "0001_initial"]
-     ["main" "0002_add_toucans"]]]])
-
 (deftest crufty-tables-test
   (testing "south_migrationhistory, being a CRUFTY table, should still be synced, but marked as such"
-    (mt/dataset metabase.sync.sync-metadata.tables-test/db-with-some-cruft
+    (mt/dataset :db-with-some-cruft
       (is (= #{{:name "SOUTH_MIGRATIONHISTORY", :visibility_type :cruft, :initial_sync_status "complete"}
                {:name "ACQUIRED_TOUCANS",       :visibility_type nil,    :initial_sync_status "complete"}}
              (set (for [table (db/select [Table :name :visibility_type :initial_sync_status], :db_id (mt/id))]

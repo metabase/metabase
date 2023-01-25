@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: test-data-self-referencing-user.server.sql
+  context: server
+- type: sql
+  file: test-data-self-referencing-user.db.sql
+  context: db

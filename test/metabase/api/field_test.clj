@@ -85,11 +85,6 @@
                       :fk_target_field_id
                       :nfc_path]))
 
-(mt/defdataset integer-coerceable
-  [["t" [{:field-name "f"
-          :base-type  :type/Integer}]
-    [[100000] [200000] [300000]]]])
-
 (deftest update-field-test
   (testing "PUT /api/field/:id"
     (testing "test that we can do basic field update work, including unsetting some fields such as semantic-type"
@@ -155,7 +150,7 @@
                                         {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime}))))))
       (testing "Refingerprints field when updated"
         (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
-          (mt/dataset integer-coerceable
+          (mt/dataset :integer-coerceable
             (sync/sync-database! (db/select-one Database :id (mt/id)))
             (let [field-id      (mt/id :t :f)
                   set-strategy! (fn [strategy]

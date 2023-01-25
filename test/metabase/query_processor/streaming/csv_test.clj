@@ -6,8 +6,7 @@
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.test :as mt]
-   [metabase.test.data.dataset-definitions :as defs])
+   [metabase.test :as mt])
   (:import
    (java.io BufferedOutputStream ByteArrayOutputStream)))
 
@@ -31,7 +30,7 @@
 
 (deftest check-an-empty-date-column
   (testing "NULL values should be written correctly"
-    (mt/dataset defs/test-data-with-null-date-checkins
+    (mt/dataset test-data-with-null-date-checkins
       (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
                                          (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
         (is (= [["1" "2014-04-07" "" "5" "12"]

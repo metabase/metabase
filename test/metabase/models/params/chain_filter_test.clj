@@ -522,17 +522,9 @@
       (is (= [:time-interval $checkins.date -32 :week {:include-current false}]
              (#'chain-filter/filter-clause $$checkins %checkins.date "past32weeks"))))))
 
-(mt/defdataset nil-values-dataset
-  [["tbl"
-    [{:field-name "mytype", :base-type :type/Text}
-     {:field-name "myfield", :base-type :type/Text}]
-    [["value" "value"]
-     ["null" nil]
-     ["empty" ""]]]])
-
 (deftest nil-values-test
   (testing "Chain filter fns should work for fields that have nil or empty values (#17659)"
-    (mt/dataset nil-values-dataset
+    (mt/dataset :nil-values-dataset
       (mt/$ids tbl
         (letfn [(thunk []
                   (doseq [[field expected-values] {:mytype  {:values          ["empty" "null" "value"]

@@ -1,0 +1,6 @@
+id,bloop,json_bit
+1,doopyboop,{"boop": "2012-04-23T18:44:43.511Z"\, "title": "meep meep weep"\, "genres": ["Productivity"\, "Reference"]\, "published": true}
+2,moopywoop,{"zoop": "2012-04-23T18:44:43.511Z"\, "doop": "boop"\, "title": "meep meep weep"\, "genres": ["Productivity"\, "Reference"]\, "published": true}
+3,doopdoopy,{"1234123412314": "2012-04-23T18:44:43.511Z"\, "doop": "boop"\, "title": "meep meep weep"\, "genres": ["Productivity"\, "Reference"]\, "published": true}
+4,zoopyzoop,{"zoop": "2012-04-23T18:44:43.511Z"\, "doop": "boop"\, "title": "meep meep weep"\, "genres": ["Productivity"\, "Reference"]\, "1234": 1234\, "published": 1234}
+5,woopywoop,{"noop": "2012-04-23T18:44:43.511Z"\, "doop": "boop"\, "title": "meep meep weep"\, "genres": ["Productivity"\, "Reference"]\, "published": true}

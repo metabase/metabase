@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: dots-in-names.sql
+  context: server
+- type: csv
+  file: dots-in-names.0.objects.stuff.csv
+  table: stuff

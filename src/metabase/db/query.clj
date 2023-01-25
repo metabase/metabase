@@ -44,7 +44,7 @@
      (let [formatter (SqlFormatter/of (case db-type
                                         :mysql    Dialect/MySql
                                         :postgres Dialect/PostgreSql
-                                        :h2       Dialect/StandardSql))]
+                                        Dialect/StandardSql))]
        (.format formatter sql)))))
 
 (defmulti compile

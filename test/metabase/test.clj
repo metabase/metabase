@@ -251,17 +251,13 @@
  [tx
   count-with-template-tag-query
   count-with-field-filter-query
-  dataset-definition
   db-qualified-table-name
   db-test-env-var
   db-test-env-var-or-throw
   dbdef->connection-details
-  defdataset
   dispatch-on-driver-with-test-extensions
-  get-dataset-definition
   has-questionable-timezone-support?
   has-test-extensions?
-  metabase-instance
   sorts-nil-first?
   supports-time-type?
   supports-timestamptz-type?]

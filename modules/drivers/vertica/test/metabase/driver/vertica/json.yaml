@@ -1,0 +1,10 @@
+steps:
+- type: sql
+  file: json.sql
+  context: server
+- type: csv
+  file: json.0.json.csv
+  table: json
+- type: csv
+  file: json.1.big_json.csv
+  table: big_json

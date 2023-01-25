@@ -59,24 +59,16 @@
                      (mt/rows
                       (mt/run-mbql-query exciting-moments-in-history)))))))))))
 
-;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
-;; correct additional options, we should be able to change that -- see
-;; https://github.com/metabase/metabase/issues/3506
-(tx/defdataset tiny-int-ones
-  [["number-of-cans"
-     [{:field-name "thing",          :base-type :type/Text}
-      {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}, :effective-type :type/Integer}]
-     [["Six Pack"              6]
-      ["Toucan"                2]
-      ["Empty Vending Machine" 0]]]])
-
 (defn- db->fields [db]
   (let [table-ids (db/select-ids 'Table :db_id (u/the-id db))]
     (set (map (partial into {}) (db/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
 
 (deftest tiny-int-1-test
+  ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
+  ;; correct additional options, we should be able to change that -- see
+  ;; https://github.com/metabase/metabase/issues/3506
   (mt/test-driver :mysql
-    (mt/dataset tiny-int-ones
+    (mt/dataset :mysql-tiny-int-ones
       ;; trigger a full sync on this database so fields are categorized correctly
       (sync/sync-database! (mt/db))
       (testing "By default TINYINT(1) should be a boolean"
@@ -95,14 +87,9 @@
                    {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                  (db->fields db))))))))
 
-(tx/defdataset year-db
-  [["years"
-    [{:field-name "year_column", :base-type {:native "YEAR"}, :effective-type :type/Date}]
-    [[2001] [2002] [1999]]]])
-
 (deftest year-test
   (mt/test-driver :mysql
-    (mt/dataset year-db
+    (mt/dataset :mysql-year-db
       (testing "By default YEAR"
         (is (= #{{:name "year_column", :base_type :type/Date, :semantic_type nil}
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}}
@@ -497,18 +484,10 @@
                   (is (= ["((floor(((convert(json_extract(json.json_bit, ?), UNSIGNED) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
                          (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
-(tx/defdataset json-unwrap-bigint-and-boolean
-  "Used for testing mysql json value unwrapping"
-  [["bigint-and-bool-table"
-    [{:field-name "jsoncol" :base-type :type/JSON}]
-    [["{\"mybool\":true, \"myint\":1234567890123456789}"]
-     ["{\"mybool\":false,\"myint\":12345678901234567890}"]
-     ["{\"mybool\":true, \"myint\":123}"]]]])
-
 (deftest json-unwrapping-bigint-and-boolean
   (mt/test-driver :mysql
     (when-not (is-mariadb? (mt/id))
-      (mt/dataset json-unwrap-bigint-and-boolean
+      (mt/dataset :mysql-json-unwrap-bigint-and-boolean
         (sync/sync-database! (mt/db))
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}

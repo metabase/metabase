@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: postgres-ip-addresses.server.sql
+  context: server
+- type: sql
+  file: postgres-ip-addresses.db.sql
+  context: db

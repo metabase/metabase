@@ -1,0 +1,3 @@
+DROP DATABASE IF EXISTS `test-data`;
+
+CREATE DATABASE `test-data`;

@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: sample-dataset.server.sql
+  context: server
+- type: sql
+  file: sample-dataset.db.sql
+  context: db

@@ -207,35 +207,16 @@
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
   current DB (for [[metabase.test.data]] functions like [[id]] and [[db]]), and execute `body`.
 
-  `dataset` can be one of the following:
-
-  *  A symbol...
-     *  ...naming a dataset definition in either the current namespace, or in `metabase.test.data.dataset-definitions`.
-
-        (data/dataset sad-toucan-incidents ...)
-
-     *  ...qualified by a namespace, naming a dataset definition in that namespace.
-
-        (data/dataset my-namespace/my-dataset-def ...)
-
-     *  ...naming a local binding.
-
-       (let [my-dataset-def (get-dataset-definition)]
-         (data/dataset my-dataset-def ...)
-
-  *  An inline dataset definition:
-
-     (data/dataset (get-dataset-definition) ...)"
+  `dataset` should be a symbol or keyword corresponding to a dataset loading recipe for the current driver, e.g. if
+  `driver` is `:postgres` and dataset is `:test-data`, then the recipe `metabase/driver/postgres/test-data.yaml` is
+  used."
   {:style/indent 1}
   [dataset & body]
   `(t/testing (colorize/magenta ~(str (if (symbol? dataset)
                                         (format "using %s dataset" dataset)
                                         "using inline dataset")
                                       \newline))
-     (data.impl/do-with-dataset ~(if (and (symbol? dataset)
-                                          (not (get &env dataset)))
-                                   `(data.impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)
-                                   dataset)
+     (data.impl/do-with-dataset ~(keyword dataset)
                                 (fn [] ~@body))))
 
 (defmacro with-temp-copy-of-db

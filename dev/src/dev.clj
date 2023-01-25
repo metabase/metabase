@@ -125,7 +125,7 @@
                       {:cols (sql-jdbc.execute/column-metadata driver rsmeta)
                        :rows (reduce conj [] (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan))})))]
           (if dataset
-            (data.impl/do-with-dataset (data.impl/resolve-dataset-definition *ns* dataset) thunk)
+            (data.impl/do-with-dataset dataset thunk)
             (thunk))))
       (catch InterruptedException e
         (a/>!! canceled-chan :cancel)

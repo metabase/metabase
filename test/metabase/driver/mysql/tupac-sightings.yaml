@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: tupac-sightings.server.sql
+  context: server
+- type: sql
+  file: tupac-sightings.db.sql
+  context: db

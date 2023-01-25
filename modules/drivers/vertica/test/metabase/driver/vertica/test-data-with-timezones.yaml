@@ -1,0 +1,16 @@
+steps:
+- type: sql
+  file: test-data-with-timezones.sql
+  context: server
+- type: csv
+  file: test-data-with-timezones.0.users.csv
+  table: users
+- type: csv
+  file: test-data-with-timezones.1.categories.csv
+  table: categories
+- type: csv
+  file: test-data-with-timezones.2.venues.csv
+  table: venues
+- type: csv
+  file: test-data-with-timezones.3.checkins.csv
+  table: checkins

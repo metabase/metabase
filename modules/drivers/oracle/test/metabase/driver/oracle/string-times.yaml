@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  context: server
+  file: string-times.server.sql
+- type: sql
+  context: db
+  file: string-times.db.sql

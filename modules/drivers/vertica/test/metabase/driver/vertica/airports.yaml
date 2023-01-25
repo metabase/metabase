@@ -1,0 +1,19 @@
+steps:
+- type: sql
+  file: airports.sql
+  context: server
+- type: csv
+  file: airports.0.continent.csv
+  table: continent
+- type: csv
+  file: airports.1.country.csv
+  table: country
+- type: csv
+  file: airports.2.region.csv
+  table: region
+- type: csv
+  file: airports.3.municipality.csv
+  table: municipality
+- type: csv
+  file: airports.4.airport.csv
+  table: airport

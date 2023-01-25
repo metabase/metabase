@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: sad-toucan-incidents.server.sql
+  context: server
+- type: sql
+  file: sad-toucan-incidents.db.sql
+  context: db

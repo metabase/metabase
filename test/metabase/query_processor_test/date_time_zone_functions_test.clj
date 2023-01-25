@@ -32,51 +32,6 @@
          (mt/formatted-rows [int])
          (map first))))
 
-(mt/defdataset times-mixed
-  [["times" [{:field-name "index"
-              :base-type :type/Integer}
-             {:field-name "dt"
-              :base-type :type/DateTime}
-             {:field-name "dt_tz"
-              :base-type  :type/DateTimeWithTZ}
-             {:field-name "d"
-              :base-type :type/Date}
-             {:field-name "as_dt"
-              :base-type :type/Text
-              :effective-type :type/DateTime
-              :coercion-strategy :Coercion/ISO8601->DateTime}
-             {:field-name "as_d"
-              :base-type :type/Text
-              :effective-type :type/Date
-              :coercion-strategy :Coercion/ISO8601->Date}]
-    (for [[idx t]
-          (map-indexed vector [#t "2004-03-19 09:19:09+07:00[Asia/Ho_Chi_Minh]"
-                               #t "2008-06-20 10:20:10+07:00[Asia/Ho_Chi_Minh]"
-                               #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"
-                               #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"])]
-      [(inc idx)
-       (t/local-date-time t)                                  ;; dt
-       (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")        ;; dt_tz
-       (t/local-date t)                                       ;; d
-       (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as _dt
-       (t/format "yyyy-MM-dd" (t/local-date-time t))])]       ;; as_d
-   ["weeks" [{:field-name "index"
-              :base-type :type/Integer}
-             {:field-name "description"
-              :base-type :type/Text}
-             {:field-name "d"
-              :base-type :type/Date}]
-    [[1 "1st saturday"   #t "2000-01-01"]
-     [2 "1st sunday"     #t "2000-01-02"]
-     [3 "1st monday"     #t "2000-01-03"]
-     [4 "1st wednesday"  #t "2000-01-04"]
-     [5 "1st tuesday"    #t "2000-01-05"]
-     [6 "1st thursday"   #t "2000-01-06"]
-     [7 "1st friday"     #t "2000-01-07"]
-     [8 "2nd saturday"   #t "2000-01-08"]
-     [9 "2nd sunday"     #t "2000-01-09"]
-     [10 "2005 saturday" #t "2005-01-01"]]]])
-
 (def ^:private temporal-extraction-op->unit
   {:get-second      :second-of-minute
    :get-minute      :minute-of-hour
@@ -812,53 +767,9 @@
           (is (= [3600 3600]
                  (->> results
                       (mt/formatted-rows [int int])
-                      first))))))))
+                      first)))))))) ; b_dt_tz_text
 
-(mt/defdataset diff-time-zones-cases
-  [["times"
-    [{:field-name "a_dt_tz",      :base-type :type/DateTimeWithTZ}
-     {:field-name "b_dt_tz",      :base-type :type/DateTimeWithTZ}
-     {:field-name "a_dt_tz_text", :base-type :type/Text}
-     {:field-name "b_dt_tz_text", :base-type :type/Text}]
-    (let [times [#t "2022-10-02T00:00:00Z[UTC]"
-                 #t "2022-10-02T01:00:00+01:00[Africa/Lagos]"
-                 #t "2022-10-03T00:00:00Z[UTC]"
-                 #t "2022-10-03T00:00:00+01:00[Africa/Lagos]"
-                 #t "2022-10-09T00:00:00Z[UTC]"
-                 #t "2022-10-09T00:00:00+01:00[Africa/Lagos]"
-                 #t "2022-11-02T00:00:00Z[UTC]"
-                 #t "2022-11-02T00:00:00+01:00[Africa/Lagos]"
-                 #t "2023-01-02T00:00:00Z[UTC]"
-                 #t "2023-01-02T00:00:00+01:00[Africa/Lagos]"
-                 #t "2023-10-02T00:00:00Z[UTC]"
-                 #t "2023-10-02T00:00:00+01:00[Africa/Lagos]"]]
-      (for [a times
-            b times
-            :when (and (t/before? a b)
-                       (not= (t/zone-id a) (t/zone-id b)))]
-        [a                                        ; a_dt_tz
-         b                                        ; b_dt_tz
-         (t/format :iso-offset-date-time a)       ; a_dt_tz_text
-         (t/format :iso-offset-date-time b)]))]]) ; b_dt_tz_text
-
-(mt/defdataset diff-time-zones-athena-cases
-  ;; This dataset contains the same set of values as [[diff-time-zones-cases]], but without the time zones.
-  ;; It is needed to test `datetime-diff` with Athena, since Athena supports `timestamp with time zone`
-  ;; in query expressions but not in a table. [[diff-time-zones-athena-cases-query]] uses this dataset
-  ;; to recreate [[diff-time-zones-cases]] for Athena as a query.
-  [["times"
-    [{:field-name "dt",      :base-type :type/DateTime}
-     {:field-name "dt_text", :base-type :type/Text}]
-    (for [dt [#t "2022-10-02T00:00:00"
-              #t "2022-10-02T01:00:00"
-              #t "2022-10-03T00:00:00"
-              #t "2022-10-09T00:00:00"
-              #t "2022-11-02T00:00:00"
-              #t "2023-01-02T00:00:00"
-              #t "2023-10-02T00:00:00"]]
-      [dt (u.date/format dt)])]])
-
-(def diff-time-zones-athena-cases-query
+(def ^:private diff-time-zones-athena-cases-query
   ;; This query recreates [[diff-time-zones-cases]] for Athena from [[diff-time-zones-athena-cases]].
   "with x as (
      select

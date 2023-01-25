@@ -1,20 +1,13 @@
 (ns metabase.test.data.h2
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
   (:require
-   [clojure.string :as str]
    [metabase.db :as mdb]
-   [metabase.db.spec :as mdb.spec]
-   [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.sql.util :as sql.u]
    [metabase.models.database :refer [Database]]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.execute :as execute]
-   [metabase.test.data.sql-jdbc.load-data :as load-data]
-   [metabase.test.data.sql-jdbc.spec :as spec]
-   [metabase.test.data.sql.ddl :as ddl]
    [toucan.db :as db]))
 
 (sql-jdbc.tx/add-test-extensions! :h2)
@@ -34,10 +27,9 @@
         (swap! h2-test-dbs-created-by-this-instance conj database-name)))))
 
 (defmethod data.impl/get-or-create-database! :h2
-  [driver dbdef]
-  (let [{:keys [database-name], :as dbdef} (tx/get-dataset-definition dbdef)]
-    (destroy-test-database-if-created-by-another-instance! database-name)
-    ((get-method data.impl/get-or-create-database! :default) driver dbdef)))
+  [driver dataset-name]
+  (destroy-test-database-if-created-by-another-instance! dataset-name)
+  ((get-method data.impl/get-or-create-database! :default) driver dataset-name))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOLEAN"
@@ -62,34 +54,6 @@
 
 (defmethod sql.tx/pk-field-name :h2 [_] "ID")
 
-(defmethod sql.tx/drop-db-if-exists-sql :h2 [& _] nil)
-
-(defmethod sql.tx/create-db-sql :h2
-  [& _]
-  (str
-   ;; Create a non-admin account 'GUEST' which will be used from here on out
-   "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';\n"
-
-   ;; Set DB_CLOSE_DELAY here because only admins are allowed to do it, so we can't set it via the connection string.
-   ;; Set it to to -1 (no automatic closing)
-   "SET DB_CLOSE_DELAY -1;"))
-
-(defmethod sql.tx/create-table-sql :h2
-  [driver dbdef {:keys [table-name], :as tabledef}]
-  (str
-   ((get-method sql.tx/create-table-sql :sql-jdbc/test-extensions) driver dbdef tabledef)
-   ";\n"
-   ;; Grant the GUEST account r/w permissions for this table
-   (format "GRANT ALL ON %s TO GUEST;" (sql.u/quote-name driver :table (ddl.i/format-name driver table-name)))))
-
-(defmethod ddl.i/format-name :h2
-  [_ s]
-  (str/upper-case s))
-
-(defmethod ddl/drop-db-ddl-statements :h2
-  [_driver _dbdef & _options]
-  ["SHUTDOWN;"])
-
 (defmethod tx/id-field-type :h2 [_] :type/BigInteger)
 
 (defmethod tx/aggregate-column-info :h2
@@ -103,25 +67,8 @@
       {:base_type :type/BigInteger}))))
 
 (defmethod execute/execute-sql! :h2
-  [driver _ dbdef sql]
+  [driver _context dbdef sql]
   ;; we always want to use 'server' context when execute-sql! is called (never
   ;; try connect as GUEST, since we're not giving them priviledges to create
   ;; tables / etc)
   ((get-method execute/execute-sql! :sql-jdbc/test-extensions) driver :server dbdef sql))
-
-;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
-(defmethod spec/dbdef->spec :h2
-  [driver context dbdef]
-  (mdb.spec/spec :h2 (tx/dbdef->connection-details driver context dbdef)))
-
-(defmethod load-data/load-data! :h2
-  [& args]
-  (apply load-data/load-data-all-at-once! args))
-
-(defmethod sql.tx/inline-column-comment-sql :h2
-  [& args]
-  (apply sql.tx/standard-inline-column-comment-sql args))
-
-(defmethod sql.tx/standalone-table-comment-sql :h2
-  [& args]
-  (apply sql.tx/standard-standalone-table-comment-sql args))

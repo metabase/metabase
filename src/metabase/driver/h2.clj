@@ -158,7 +158,7 @@
 
     :else
     (let [args [:dateadd (hx/literal unit) (hx/cast :long amount) (hx/cast :datetime hsql-form)]]
-      (case hx/*honey-sql-version*
+      (case (int hx/*honey-sql-version*)
         1 (apply hsql/call args)
         2 args))))
 

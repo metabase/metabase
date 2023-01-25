@@ -1,0 +1,10 @@
+steps:
+- type: sql
+  file: avian-singles.sql
+  context: server
+- type: csv
+  file: avian-singles.0.users.csv
+  table: users
+- type: csv
+  file: avian-singles.1.messages.csv
+  table: messages

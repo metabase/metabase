@@ -1,9 +1,7 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require
-   [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [clojure.tools.reader.edn :as edn]
    [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
@@ -11,10 +9,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Field FieldValues Secret Table]]
    [metabase.models.secret :as secret]
-   [metabase.plugins.classloader :as classloader]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
-   [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.impl.verify :as verify]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
@@ -52,33 +48,33 @@
               (@locks driver)))))))))
 
 (defmulti get-or-create-database!
-  "Create DBMS database associated with `database-definition`, create corresponding Metabase Databases/Tables/Fields,
+  "Create DBMS database associated with `dataset-name`, create corresponding Metabase Databases/Tables/Fields,
   and sync the Database. `driver` is a keyword name of a driver that implements test extension methods (as defined in
   the `metabase.test.data.interface` namespace); `driver` defaults to `driver/*driver*` if bound, or `:h2` if not.
   `database-definition` is anything that implements the `tx/get-database-definition` method."
-  {:arglists '([driver database-definition])}
+  {:arglists '([driver dataset-name])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as _database-definition} db]
-  {:pre [(seq table-definitions)]}
-  (doseq [{:keys [table-name], :as table-definition} table-definitions]
-    (let [table (delay (or (tx/metabase-instance table-definition db)
-                           (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
-                                                      table-name
-                                                      (u/pprint-to-str (dissoc table-definition :rows))
-                                                      (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
-      (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
-        (let [field (delay (or (tx/metabase-instance field-definition @table)
-                               (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
-                                                          field-name
-                                                          (u/pprint-to-str field-definition))))))]
-          (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
-            (when-let [v (get field-definition property)]
-              (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
-              (db/update! Field (:id @field) (keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)))))))))
+  [driver dataset-name db]
+  (println "FIXME:" metabase.test.data.impl/add-extra-metadata!)
+  #_(doseq [{:keys [table-name], :as table-definition} table-definitions]
+      (let [table (delay (or (tx/metabase-instance table-definition db)
+                             (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
+                                                        table-name
+                                                        (u/pprint-to-str (dissoc table-definition :rows))
+                                                        (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
+        (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
+          (let [field (delay (or (tx/metabase-instance field-definition @table)
+                                 (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
+                                                            field-name
+                                                            (u/pprint-to-str field-definition))))))]
+            (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
+              (when-let [v (get field-definition property)]
+                (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
+                (db/update! Field (:id @field) (keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -88,67 +84,64 @@
   "Max amount of time to wait for sync to complete."
   (u/minutes->ms 15))
 
-(defonce ^:private reference-sync-durations
-  (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
+(defn- load-dataset!
+  "Create the database and load its data."
+  [driver dataset-name]
+  ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
+  ;;
+  ;; I'm not 100% sure this is needed anymore. We can try removing it and seeing if it still works.
+  (u/with-timeout create-database-timeout-ms
+    (test.tz/with-system-timezone-id "UTC"
+      (tx/load-dataset! driver dataset-name))))
 
-(defn- create-database! [driver {:keys [database-name], :as database-definition}]
-  {:pre [(seq database-name)]}
-  (try
-    ;; Create the database and load its data
-    ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
-    (u/with-timeout create-database-timeout-ms
-      (test.tz/with-system-timezone-id "UTC"
-        (tx/create-db! driver database-definition)))
-    ;; Add DB object to Metabase DB
-    (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
-          db                 (db/insert! Database
-                               :name    database-name
-                               :engine  (u/qualified-name driver)
-                               :details connection-details)]
-      (try
-        ;; sync newly added DB
-        (u/with-timeout sync-timeout-ms
-          (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
-                                       "NONE")
-                quick-sync? (not= database-name "test-data")]
-            (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
-                               (if quick-sync? "QUICK sync" "Sync") driver database-name reference-duration)
-              ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-              (binding [sync-util/*log-exceptions-and-continue?* false]
-                (sync/sync-database! db (when quick-sync? {:scan :schema})))
-              ;; add extra metadata for fields
-              (try
-                (add-extra-metadata! database-definition db)
-                (catch Throwable e
-                  (log/error e "Error adding extra metadata"))))))
-        ;; make sure we're returing an up-to-date copy of the DB
-        (db/select-one Database :id (u/the-id db))
-        (catch Throwable e
-          (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
-                           {:driver             driver
-                            :database-name      database-name
-                            :connection-details connection-details}
-                           e)]
-            (log/error e "Failed to create test database")
-            (db/delete! Database :id (u/the-id db))
-            (throw e)))))
-    (catch Throwable e
-      (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
-      (tx/destroy-db! driver database-definition)
-      (throw (ex-info (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))
-                      {:driver        driver
-                       :database-name database-name}
-                      e)))))
+(defn- create-metabase-Database!
+  "Add DB object to Metabase DB."
+  [driver dataset-name]
+  (let [connection-details (tx/dbdef->connection-details driver :db {:database-name dataset-name})]
+    (db/insert! Database
+      :name    (name dataset-name)
+      :engine  (u/qualified-name driver)
+      :details connection-details)))
+
+(defn- sync-new-database! [driver dataset-name db]
+  (u/with-timeout sync-timeout-ms
+    (let [quick-sync? (not= dataset-name "test-data")]
+      (u/profile (format "%s %s Database %s"
+                         (if quick-sync? "QUICK sync" "Sync") driver dataset-name)
+        ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
+        (binding [sync-util/*log-exceptions-and-continue?* false]
+          (sync/sync-database! db (when quick-sync? {:scan :schema})))
+        ;; add extra metadata for fields
+        (try
+          (add-extra-metadata! driver dataset-name db)
+          (catch Throwable e
+            (log/error e "Error adding extra metadata")))))))
+
+(defn- create-database! [driver dataset-name]
+  (load-dataset! driver dataset-name)
+  (let [db (create-metabase-Database! driver dataset-name)]
+    (try
+      (sync-new-database! driver dataset-name db)
+      ;; make sure we're returing an up-to-date copy of the DB
+      (db/select-one Database :id (u/the-id db))
+      (catch Throwable e
+        (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
+                         {:driver  driver
+                          :dataset dataset-name}
+                         e)]
+          (log/error e "Failed to create test database")
+          (db/delete! Database :id (u/the-id db))
+          (throw e))))))
 
 (defmethod get-or-create-database! :default
-  [driver dbdef]
+  [driver dataset-name]
   (initialize/initialize-if-needed! :plugins :db)
-  (let [dbdef (tx/get-dataset-definition dbdef)]
+  (let [dataset-name (name dataset-name)]
     (or
-     (tx/metabase-instance dbdef driver)
+     (tx/existing-database driver dataset-name)
      (locking (driver->create-database-lock driver)
        (or
-        (tx/metabase-instance dbdef driver)
+        (tx/existing-database driver dataset-name)
         ;; make sure report timezone isn't bound, possibly causing weird things to happen when data is loaded -- this
         ;; code may run inside of some other block that sets report timezone
         ;;
@@ -156,7 +149,7 @@
         (letfn [(thunk []
                   (binding [api/*current-user-id*              nil
                             api/*current-user-permissions-set* nil]
-                    (create-database! driver dbdef)))]
+                    (create-database! driver dataset-name)))]
           (if (driver/report-timezone)
             ((requiring-resolve 'metabase.test.util/do-with-temporary-setting-value)
              :report-timezone nil
@@ -164,14 +157,15 @@
             (thunk))))))))
 
 (defn- get-or-create-test-data-db!
-  "Get or create the Test Data database for `driver`, which defaults to `driver/*driver*`, or `:h2` if that is unbound."
-  ([]       (get-or-create-test-data-db! (tx/driver)))
-  ([driver] (get-or-create-database! driver defs/test-data)))
+  "Get or create the `:test-data` database for `driver`, which defaults to [[metabase.driver/*driver*]], or `:h2` if it
+  is unbound."
+  []
+  (get-or-create-database! (tx/driver) :test-data))
 
 (def ^:dynamic *get-db*
   "Implementation of `db` function that should return the current working test database when called, always with no
-  arguments. By default, this is `get-or-create-test-data-db!` for the current driver/`*driver*`, which does exactly
-  what it suggests."
+  arguments. By default, this is [[get-or-create-test-data-db!]] for the current [[metabase.driver/*driver*]], which
+  does exactly what it suggests."
   get-or-create-test-data-db!)
 
 (defn do-with-db
@@ -326,7 +320,7 @@
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*get-db*)
-        original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
+        original-db                 (-> old-db copy-secrets (select-keys [:details :engine :name]))
         {new-db-id :id, :as new-db} (db/insert! Database original-db)]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
@@ -340,25 +334,13 @@
 ;;; |                                                    dataset                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn resolve-dataset-definition
-  "Impl for [[metabase.test/dataset]] macro. Resolve a dataset definition (e.g. `test-data` or `sad-toucan-incidents` in
-  a namespace."
-  [namespace-symb symb]
-  @(or (ns-resolve namespace-symb symb)
-       (do
-         (classloader/require 'metabase.test.data.dataset-definitions)
-         (ns-resolve 'metabase.test.data.dataset-definitions symb))
-       (throw (Exception. (format "Dataset definition not found: '%s/%s' or 'metabase.test.data.dataset-definitions/%s'"
-                                  namespace-symb symb symb)))))
-
 (defn do-with-dataset
   "Impl for [[metabase.test/dataset]] macro."
-  [dataset-definition f]
-  (let [dbdef             (tx/get-dataset-definition dataset-definition)
-        get-db-for-driver (mdb.connection/memoize-for-application-db
+  [dataset-name f]
+  (let [get-db-for-driver (mdb.connection/memoize-for-application-db
                            (fn [driver]
                              (binding [db/*disable-db-logging* true]
-                               (let [db (get-or-create-database! driver dbdef)]
+                               (let [db (get-or-create-database! driver dataset-name)]
                                  (assert db)
                                  (assert (db/exists? Database :id (u/the-id db)))
                                  db))))]

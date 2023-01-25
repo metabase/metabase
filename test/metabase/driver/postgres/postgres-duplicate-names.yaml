@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: postgres-duplicate-names.server.sql
+  context: server
+- type: sql
+  file: postgres-duplicate-names.db.sql
+  context: db

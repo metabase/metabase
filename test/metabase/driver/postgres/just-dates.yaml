@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  context: server
+  file: just-dates.server.sql
+- type: sql
+  context: db
+  file: just-dates.db.sql

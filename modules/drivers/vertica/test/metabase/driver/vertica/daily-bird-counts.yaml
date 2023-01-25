@@ -1,0 +1,7 @@
+steps:
+- type: sql
+  file: daily-bird-counts.sql
+  context: server
+- type: csv
+  file: daily-bird-counts.0.bird-count.csv
+  table: bird-count
