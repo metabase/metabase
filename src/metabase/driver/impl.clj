@@ -88,19 +88,19 @@
   `register!` below (for parent drivers) and by `driver.u/database->driver` for drivers that have not yet been
   loaded."
   [driver]
-  (when-not *compile-files*
-    (when-not (registered? driver)
-      (with-load-driver-write-lock
-        ;; driver may have become registered while we were waiting for the lock, check again to be sure
-        (when-not (registered? driver)
-          (u/profile (trs "Load driver {0}" driver)
-            (require-driver-ns driver)
-            ;; ok, hopefully it was registered now. If not, try again, but reload the entire driver namespace
+  (when (and (not (registered? driver))
+             (not *compile-files*))
+    (with-load-driver-write-lock
+      ;; driver may have become registered while we were waiting for the lock, check again to be sure
+      (when-not (registered? driver)
+        (u/profile (trs "Load driver {0}" driver)
+          (require-driver-ns driver)
+          ;; ok, hopefully it was registered now. If not, try again, but reload the entire driver namespace
+          (when-not (registered? driver)
+            (require-driver-ns driver :reload)
+            ;; if *still* not registered, throw an Exception
             (when-not (registered? driver)
-              (require-driver-ns driver :reload)
-              ;; if *still* not registered, throw an Exception
-              (when-not (registered? driver)
-                (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))))
+              (throw (Exception. (tru "Driver not registered after loading: {0}" driver))))))))))
 
 
 ;;; -------------------------------------------------- Registration --------------------------------------------------
@@ -186,7 +186,7 @@
 (defn initialized?
   "Has `driver` been initialized? (See [[metabase.driver/initialize!]] for a discussion of what exactly this means.)"
   [driver]
-  (@initialized-drivers driver))
+  (contains? @initialized-drivers driver))
 
 (defonce ^:private initialization-lock (Object.))
 
@@ -195,21 +195,21 @@
   for [[metabase.driver/initialize!]] for a full explanation of what this means."
   [driver init-fn]
   ;; no-op during compilation
-  (when-not *compile-files*
+  (when (and (not (initialized? driver))
+             (not *compile-files*))
     ;; first, initialize parents as needed
     (doseq [parent (parents hierarchy driver)]
       (initialize-if-needed! parent init-fn))
-    (when-not (initialized? driver)
-      ;; if the driver is not yet initialized, acquire an exclusive lock for THIS THREAD to perform initialization to
-      ;; make sure no other thread tries to initialize it at the same time
-      (locking initialization-lock
-        ;; and once we acquire the lock, check one more time to make sure the driver didn't get initialized by
-        ;; whatever thread(s) we were waiting on.
-        (when-not (initialized? driver)
-          (log/info (u/format-color 'yellow (trs "Initializing driver {0}..." driver)))
-          (log/debug (trs "Reason:") (u/pprint-to-str 'blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
-          (init-fn driver)
-          (swap! initialized-drivers conj driver))))))
+    ;; if the driver is not yet initialized, acquire an exclusive lock for THIS THREAD to perform initialization to
+    ;; make sure no other thread tries to initialize it at the same time
+    (locking initialization-lock
+      ;; and once we acquire the lock, check one more time to make sure the driver didn't get initialized by
+      ;; whatever thread(s) we were waiting on.
+      (when-not (initialized? driver)
+        (log/info (u/format-color 'yellow (trs "Initializing driver {0}..." driver)))
+        (log/debug (trs "Reason:") (u/pprint-to-str 'blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
+        (init-fn driver)
+        (swap! initialized-drivers conj driver)))))
 
 
 ;;; ----------------------------------------------- [[truncate-alias]] -----------------------------------------------

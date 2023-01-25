@@ -3,7 +3,11 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.test-data :as driver.test-data]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data.interface :as tx]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util :as u]))
+
+(set! *warn-on-reflection* true)
 
 ;;;; interface
 
@@ -51,7 +55,57 @@
 
 (defmulti create-table-field-definition
   "Field definition as it should appear in a `CREATE TABLE` statement."
-  {:arglists '([driver dbdef tabledef fielddef]), :added "0.46.0"}
+  {:arglists '(^String [driver dbdef tabledef fielddef]), :added "0.46.0"}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti table-comment-sql
+  "Return SQL to add a comment to a table, e.g.
+
+    COMMENT ON TABLE my_table IS 'my comment';
+
+  If the database does not support table comments, this method should return `nil`."
+  {:arglists '(^String [driver dbdef tabledef]), :added "0.46.0"}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti field-comment-sql
+  "Return SQL to add a comment to a field, e.g.
+
+    COMMENT ON COLUMN my_table.my_field IS 'my comment';
+
+  If the database does not support field comments, this method should return `nil`."
+  {:arglists '(^String [driver dbdef tabledef fielddef]), :added "0.46.0"}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(def to-sql-literal nil) ; NOCOMMIT
+
+(defmulti to-sql-literal
+  "Convert some sort of value to a SQL literal."
+  {:arglists '(^String [driver base-type value]), :added "0.46.0"}
+  (fn [driver _base-type value]
+    [;; this uses `keyword` because [[tx/dispatch-on-driver-with-test-extensions]] is significantly slower and this gets
+     ;; called like millions of times and it adds up
+     (keyword driver)
+     (type value)])
+  :hierarchy #'driver/hierarchy)
+
+(defmulti server-steps
+  "Do stuff like `DROP DATABASE IF EXISTS` and `CREATE DATABASE` if needed."
+  {:arglists '([driver dbdef]), :added "0.46.0"}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti create-table-steps!
+  "Do stuff like `DROP DATABASE IF EXISTS` and `CREATE DATABASE` if needed."
+  {:arglists '([driver dbdef tabledef ^java.io.Writer w]), :added "0.46.0"}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti load-data-steps!
+  "Do stuff like `DROP DATABASE IF EXISTS` and `CREATE DATABASE` if needed."
+  {:arglists '([driver dbdef tabledef ^java.io.Writer w]), :added "0.46.0"}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -154,45 +208,174 @@
                                  "PRIMARY KEY")
                                (fk-reference* driver dbdef tabledef fielddef)])))
 
-(defn server-sql-step
-  ([sql]
-   {:type    :sql
-    :context :server
-    :sql     sql})
+(defn add-primary-key-if-needed [driver field-definitions]
+  (if (:pk? (first field-definitions))
+    field-definitions
+    (cons (primary-key-field-definition driver)
+          field-definitions)))
 
-  ([format-string & args]
-   (server-sql-step (apply format format-string args))))
+(defn insert-into-table-values-field-list
+  [driver {:keys [database-name], :as _dbdef} {:keys [table-name field-definitions], :as _tabledef}]
+  (str/join ", " (for [{:keys [field-name], :as _fielddef} field-definitions]
+                   (quoted-field-identifier-for-current-table driver database-name table-name field-name))))
 
-(defn db-sql-step
-  ([sql]
-   {:type    :sql
-    :context :db
-    :sql     sql})
+(defmethod to-sql-literal [:sql nil]
+  [_driver _base-type _nil]
+  "NULL")
 
-  ([format-string & args]
-   (db-sql-step (apply format format-string args))))
+(defmethod to-sql-literal [:sql String]
+  [_driver _base-type s]
+  (str "'" (str/replace s #"'" "''") "'"))
 
-(defmethod driver.test-data/init-steps :sql
-  [driver {:keys [database-name], :as _dbdef}]
-  [(server-sql-step "DROP DATABASE IF EXISTS %s;" (quoted-database-identifier driver database-name))
-   (server-sql-step "CREATE DATABASE %s;" (quoted-database-identifier driver database-name))])
+(defmethod to-sql-literal [:sql java.time.LocalDate]
+  [_driver _base-type t]
+  (format "date '%s'" (u.date/format-sql t)))
 
-(defmethod driver.test-data/create-table-steps :sql
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions table-comment], :as tabledef}]
-  [(db-sql-step "CREATE TABLE %s (\n  %s\n);"
-                (quoted-table-identifier driver database-name table-name)
-                (str/join ",\n  " (for [fielddef (cons (primary-key-field-definition driver)
-                                                       field-definitions)]
-                                    (create-table-field-definition driver dbdef tabledef fielddef))))]
-  ;; TODO -- `table-comment`
-  ;; TODO -- field comments
-  )
+(defmethod to-sql-literal [:sql java.time.OffsetDateTime]
+  [_driver _base-type t]
+  (format "timestamp with time zone '%s'" (u.date/format-sql t)))
 
-(defmethod driver.test-data/load-data-steps :sql
-  [driver {:keys [database-name], :as _dbdef} {:keys [table-name], :as _tabledef}]
-  [(db-sql-step "INSERT INTO %s ()\nVALUES\n();" (quoted-table-identifier driver database-name table-name))])
+(defmethod to-sql-literal [:sql java.time.ZonedDateTime]
+  [_driver _base-type t]
+  (format "timestamp with time zone '%s'" (u.date/format-sql t)))
+
+(defmethod to-sql-literal [:sql java.time.LocalTime]
+  [_driver _base-type t]
+  (format "time '%s'" (u.date/format-sql t)))
+
+(defmethod to-sql-literal [:sql java.time.OffsetTime]
+  [_driver _base-type t]
+  (format "time with time zone '%s'" (u.date/format-sql t)))
+
+(defmethod to-sql-literal [:sql Number]
+  [_driver _base-type n]
+  (str n))
+
+(defmethod to-sql-literal [:sql java.time.LocalDateTime]
+  [_driver _base-type s]
+  (str "'" (str/replace s #"'" "''") "'"))
+
+;;;; [[metabase.driver.test-data]] methods
+
+(defn server-file-name ^String [driver database-name]
+  (format "target/%s.%s.server.sql"
+          (str/replace (u/qualified-name driver) #"/" "__")
+          (str/replace (name database-name) #"/" "__")))
+
+(defn write-server-steps-file! [driver {:keys [database-name], :as _dbdef} statements]
+  (let [file-name (server-file-name driver database-name)]
+    (with-open [w (java.io.FileWriter. file-name)]
+      (doseq [^String sql statements]
+        (.write w sql)
+        (.write w "\n\n")))
+    [{:type :sql, :context :server, :file file-name}]))
+
+(defmethod server-steps :sql
+  [driver {:keys [database-name], :as dbdef}]
+  (let [db-identifier (quoted-database-identifier driver database-name)]
+    (write-server-steps-file! driver dbdef [(format "DROP DATABASE IF EXISTS %s;" db-identifier)
+                                            (format "CREATE DATABASE %s;" db-identifier)])))
+
+(defn create-table-statement-steps!
+  [driver
+   {:keys [database-name], :as dbdef}
+   {:keys [table-name field-definitions], :as tabledef}
+   ^java.io.Writer w]
+  (.write w (format "CREATE TABLE %s (\n" (quoted-table-identifier driver database-name table-name)))
+  (loop [[fielddef & more] (add-primary-key-if-needed driver field-definitions)]
+    (let [sql (create-table-field-definition driver dbdef tabledef fielddef)]
+      (.write w "  ")
+      (.write w sql)
+      (if (seq more)
+        (do
+          (.write w ",\n")
+          (recur more))
+        (.write w "\n);\n\n")))))
+
+(defn table-comment-steps!
+  [driver dbdef {:keys [table-comment], :as tabledef} ^java.io.Writer w]
+  (when table-comment
+    (when-let [sql (table-comment-sql driver dbdef tabledef)]
+      (.write w sql)
+      (.write w "\n\n"))))
+
+(defn field-comment-steps!
+  [driver dbdef {:keys [field-definitions], :as tabledef} ^java.io.Writer w]
+  (doseq [{:keys [field-comment], :as fielddef} field-definitions
+          :when                                 field-comment
+          :let                                  [sql (field-comment-sql driver dbdef tabledef fielddef)]
+          :when                                 sql]
+    (.write w sql)
+    (.write w "\n\n")))
+
+(defmethod create-table-steps! :sql
+  [driver dbdef tabledef ^java.io.Writer w]
+  (concat
+   (create-table-statement-steps! driver dbdef tabledef w)
+   (table-comment-steps! driver dbdef tabledef w)
+   (field-comment-steps! driver dbdef tabledef w)))
+
+(defn write-insert-into!
+  [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef} ^java.io.Writer w]
+  (.write w (format "INSERT INTO %s (%s)\nVALUES\n"
+                    (quoted-table-identifier driver database-name table-name)
+                    (insert-into-table-values-field-list driver dbdef tabledef))))
+
+(defn write-row! [driver {:keys [field-definitions], :as _tabledef} row ^java.io.Writer w]
+  (.write w "(")
+  (loop [[i & more] (range (count field-definitions))]
+    (let [{:keys [base-type], :as _fielddef} (nth field-definitions i)
+          value                              (nth row i)]
+      (.write w (to-sql-literal driver base-type value))
+      (when (seq more)
+        (.write w ", ")
+        (recur more))))
+  (.write w ")"))
+
+(defn write-rows! [driver dbdef {:keys [rows], :as tabledef} ^java.io.Writer w]
+  (loop [[row & more] rows]
+    (write-row! driver tabledef row w)
+    (if (seq more)
+      (do
+        (.write w ",\n")
+        (recur more))
+      (.write w ";\n\n"))))
+
+(defmethod load-data-steps! :sql
+  [driver dbdef tabledef ^java.io.Writer w]
+  (write-insert-into! driver dbdef tabledef w)
+  (time (write-rows! driver dbdef tabledef w))
+  nil)
+
+(defn db-file-name ^String [driver database-name]
+  (format "target/%s.%s.db.sql"
+          (str/replace (u/qualified-name driver) #"/" "__")
+          (str/replace (name database-name) #"/" "__")))
+
+(defn table-steps [driver {:keys [database-name table-definitions], :as dbdef}]
+  (let [file-name (db-file-name driver database-name)]
+    (with-open [w (java.io.FileWriter. file-name)]
+      (into
+       [{:type :sql, :context :db, :file file-name}]
+       cat
+       [(mapcat (fn [tabledef]
+                  (create-table-steps! driver dbdef tabledef w))
+                table-definitions)
+        (mapcat (fn [tabledef]
+                  (load-data-steps! driver dbdef tabledef w))
+                table-definitions)]))))
+
+(defmethod driver.test-data/dataset-steps :sql
+  [driver dataset]
+  (let [dbdef (driver.test-data/get-dataset dataset)]
+    (into
+     []
+     (comp cat (distinct))
+     [(server-steps driver dbdef)
+      (table-steps driver dbdef)])))
 
 
+;; NOCOMMIT
 (defn x []
-  (doseq [{:keys [sql]} (metabase.driver.test-data/dataset-steps :postgres 'test-data)]
-    (println sql \newline)))
+  (binding [driver.test-data/*preview* false #_true]
+    (driver.test-data/dataset-steps :postgres 'sample-dataset)))

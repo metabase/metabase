@@ -143,7 +143,6 @@
     (the-driver :baby)     ; -> Exception"
   [driver]
   {:pre [((some-fn keyword? string?) driver)]}
-  (classloader/the-classloader)
   (let [driver (keyword driver)]
     (driver.impl/load-driver-namespace-if-needed! driver)
     driver))
