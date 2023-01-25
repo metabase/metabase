@@ -49,7 +49,11 @@ import {
   getParameterValuesBySlug,
   normalizeParameters,
 } from "metabase-lib/parameters/utils/parameter-values";
-import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
+import {
+  getTemplateTagParameters,
+  getTemplateTagsForParameters,
+  remapParameterValuesToTemplateTags,
+} from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
@@ -147,6 +151,15 @@ class QuestionInner {
   setCard(card: CardObject): Question {
     const q = this.clone();
     q._card = card;
+
+    if (card.dataset_query.type === "native") {
+      const tags = getTemplateTagsForParameters(card);
+      const parameters = getTemplateTagParameters(tags);
+      q._card = { ...card, parameters };
+    } else {
+      q._card = card;
+    }
+
     return q;
   }
 
