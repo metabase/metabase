@@ -257,8 +257,6 @@ class Visualization extends React.PureComponent {
   handleVisualizationClick = clicked => {
     const { handleVisualizationClick } = this.props;
 
-    console.log("🚀", "In handleVisualizationClick", { clicked });
-
     if (clicked) {
       MetabaseAnalytics.trackStructEvent(
         "Actions",
@@ -270,7 +268,6 @@ class Visualization extends React.PureComponent {
     }
 
     if (typeof handleVisualizationClick === "function") {
-      console.log("🚀", 'In typeof handleVisualizationClick === "function"');
       handleVisualizationClick(clicked);
       return;
     }
@@ -284,13 +281,11 @@ class Visualization extends React.PureComponent {
     );
 
     if (didPerformDefaultAction) {
-      console.log("🚀", "In didPerformDefaultAction,", didPerformDefaultAction);
       return;
     }
 
     // needs to be delayed so we don't clear it when switching from one drill through to another
     setTimeout(() => {
-      console.log("🚀", "Inside setTimeout", { clicked });
       this.setState({ clicked });
     }, 100);
   };

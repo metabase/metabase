@@ -4,6 +4,7 @@ import { open } from "metabase/lib/dom";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions";
 
 export function performAction(action, { dispatch, onChangeCardAndRun }) {
+  console.log("🚀", { action });
   let didPerform = false;
   if (action.action) {
     const reduxAction = action.action();

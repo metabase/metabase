@@ -332,7 +332,7 @@ export const zoomedRowObjectId = handleActions(
       next: (state, { payload }) => payload?.objectId ?? null,
     },
     [ZOOM_IN_ROW]: {
-      next: (state, { payload }) => payload.objectId,
+      next: (state, { payload }) => payload.rowIndex,
     },
     [RESET_ROW_ZOOM]: { next: () => null },
     [RESET_QB]: { next: () => null },

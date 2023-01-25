@@ -107,7 +107,7 @@ describe("ObjectDetailDrill", () => {
         expect(mockDispatch).toHaveBeenCalledWith({
           type: ZOOM_IN_ROW,
           payload: {
-            objectId: cellValue,
+            rowIndex: cellValue,
           },
         });
       });
