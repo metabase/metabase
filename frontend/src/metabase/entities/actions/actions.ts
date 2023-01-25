@@ -208,7 +208,6 @@ const Actions = createEntity({
     enableImplicitActionsForModel,
   },
   objectActions: {
-    // XXX: Test error handling
     createPublicLink: createAction(
       CREATE_PUBLIC_LINK,
       ({ id }: { id: WritebackActionId }) => {
