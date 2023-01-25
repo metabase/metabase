@@ -35,6 +35,10 @@
   [_driver _feature _database]
   true)
 
+(defmethod driver/database-supports? [:vertica :test/jvm-timezone-setting]
+  [_driver _feature _database]
+  false)
+
 (defmethod driver/db-start-of-week :vertica
   [_]
   :monday)
