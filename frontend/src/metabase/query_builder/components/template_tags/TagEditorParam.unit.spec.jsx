@@ -95,6 +95,9 @@ describe("TagEditorParam", () => {
       expect(mockSetTemplateTag).toHaveBeenCalledWith({
         ...textTag,
         type: "number",
+        default: undefined,
+        dimension: undefined,
+        "widget-type": undefined,
       });
     });
 
@@ -111,9 +114,10 @@ describe("TagEditorParam", () => {
 
       expect(mockSetTemplateTag).toHaveBeenCalledWith({
         ...mappedDimensionTag,
-        "widget-type": undefined,
-        dimension: undefined,
         type: "text",
+        default: undefined,
+        dimension: undefined,
+        "widget-type": undefined,
       });
     });
   });

@@ -400,7 +400,7 @@ export default class NativeQuery extends AtomicQuery {
     return newQuery
       .question()
       .setParameter(getTemplateTagParameter(tag, parameter))
-      .query();
+      .query() as NativeQuery;
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {

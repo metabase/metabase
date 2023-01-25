@@ -271,6 +271,18 @@ describe("NativeQuery", () => {
     });
   });
   describe("values source settings", () => {
+    it("should preserve the order of templates tags when updating", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
+      );
+      const newQuery = oldQuery.setTemplateTag(
+        "t1",
+        oldQuery.templateTagsMap()["t1"],
+      );
+
+      expect(oldQuery.templateTags()).toEqual(newQuery.templateTags());
+    });
+
     it("should allow setting source settings for tags", () => {
       const oldQuery = makeQuery().setQueryText(
         "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
