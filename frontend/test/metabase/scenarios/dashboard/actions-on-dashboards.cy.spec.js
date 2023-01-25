@@ -1,7 +1,5 @@
 import {
-  snapshot,
   restore,
-  addWritablePostgresDatabase,
   restoreActionsDB,
   queryActionsDB,
 } from "__support__/e2e/helpers";
@@ -9,10 +7,8 @@ import {
 describe("Write Actions on Dashboards", () => {
   before(() => {
     restoreActionsDB();
-    restore();
+    restore("postgresActions");
     cy.signInAsAdmin();
-    addWritablePostgresDatabase();
-    snapshot("withActions");
   });
 
   beforeEach(() => {

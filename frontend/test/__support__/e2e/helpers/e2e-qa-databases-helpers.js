@@ -19,7 +19,7 @@ export function addPostgresDatabase(name = "QA Postgres12") {
 }
 
 export function addWritablePostgresDatabase(name = "Writable Postgres12") {
-  addQADatabase("postgres", name, 5433, true);
+  addQADatabase("postgres", name, 5432, true);
 }
 
 export function addMySQLDatabase(name = "QA MySQL8") {
@@ -32,12 +32,14 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
   const AUTH_DB = engine === "mongo" ? "admin" : null;
   const OPTIONS = engine === "mysql" ? "allowPublicKeyRetrieval=true" : null;
 
+  const db_name = enable_actions ? "actions_db" : "sample";
+
   cy.log(`**-- Adding ${engine.toUpperCase()} DB --**`);
   cy.request("POST", "/api/database", {
     engine: engine,
     name: db_display_name,
     details: {
-      dbname: "actions_db", // FIXME
+      dbname: db_name,
       host: "localhost",
       port: port,
       user: "metabase",
@@ -133,7 +135,7 @@ export function restoreActionsDB() {
       cy.log("**-- Adding Postgres DB for actions --**");
       cy.task("connectAndQueryDB", {
         connectionConfig: sampleConfig,
-        query: `CREATE DATABASE IF NOT EXISTS actions_db;`,
+        query: `CREATE DATABASE actions_db;`,
       });
     }
   });
@@ -157,6 +159,6 @@ export function restoreActionsDB() {
 export function queryActionsDB(query) {
   return cy.task("connectAndQueryDB", {
     connectionConfig: actionsConfig,
-    query: query,
+    query,
   });
 }

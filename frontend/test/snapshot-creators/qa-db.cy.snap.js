@@ -2,6 +2,7 @@ import {
   restore,
   snapshot,
   addPostgresDatabase,
+  addWritablePostgresDatabase,
   addMongoDatabase,
   addMySQLDatabase,
 } from "__support__/e2e/helpers";
@@ -27,6 +28,12 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
     addMongoDatabase();
     snapshot("mongo-4");
     deleteDatabase("mongoID");
+
+    restoreAndAuthenticate();
+
+    addWritablePostgresDatabase();
+    snapshot("postgresActions");
+    deleteDatabase("postgresID");
 
     restore("blank");
   });
