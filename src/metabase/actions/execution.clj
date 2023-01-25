@@ -6,7 +6,7 @@
    [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
-   [metabase.models :refer [Card DashboardCard Table]]
+   [metabase.models :refer [Card DashboardCard Database Table]]
    [metabase.models.action :as action]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
@@ -60,20 +60,29 @@
     {:body {:message (or (ex-message ex) (tru "Error executing action."))}
      :status 500}))
 
+(defn- implicit-action-table
+  [card_id]
+  (let [card (db/select-one Card :id card_id)
+        {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
+    (hydrate (db/select-one Table :id table-id) :fields)))
+
 (defn- execute-custom-action [action request-parameters]
-  (let [action-type (:type action)
-        destination-parameters-by-id (m/index-by :id (:parameters action))]
+  (let [{action-type :type}          action
+        destination-parameters-by-id (m/index-by :id (:parameters action))
+        db-id                        (db/select-one-field :database_id Card :id (:model_id action))
+        database                     (db/select-one Database :id db-id)]
     (doseq [[parameter-id _value] request-parameters]
       (when-not (contains? destination-parameters-by-id parameter-id)
         (throw (ex-info (tru "No destination parameter found for id {0}. Found: {1}"
                              (pr-str parameter-id)
                              (pr-str (set (keys destination-parameters-by-id))))
-                        {:status-code 400
-                         :type qp.error-type/invalid-parameter
-                         :parameters request-parameters
+                        {:status-code            400
+                         :type                   qp.error-type/invalid-parameter
+                         :parameters             request-parameters
                          :destination-parameters (:parameters action)}))))
     (when-not (contains? #{:query :http} action-type)
       (throw (ex-info (tru "Unknown action type {0}." (name action-type)) action)))
+    (actions/check-actions-enabled! database)
     (try
       (case action-type
         :query
@@ -84,35 +93,30 @@
       (catch Exception e
         (handle-action-execution-error e)))))
 
-(defn- implicit-action-table
-  [card_id]
-  (let [card (db/select-one Card :id card_id)
-        {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
-    (hydrate (db/select-one Table :id table-id) :fields)))
-
 (defn- build-implicit-query
   [{:keys [model_id parameters] :as _action} implicit-action request-parameters]
-  (let [{database-id :db_id table-id :id :as table} (implicit-action-table model_id)
-        table-fields (:fields table)
-        pk-fields (filterv #(isa? (:semantic_type %) :type/PK) table-fields)
-        slug->field-name (->> table-fields
-                              (map (juxt (comp u/slugify :name) :name))
-                              (into {})
-                              (m/filter-keys (set (map :id parameters))))
-        _ (api/check (action/unique-field-slugs? table-fields)
-                     400
-                     (tru "Cannot execute implicit action on a table with ambiguous column names."))
-        _ (api/check (= (count pk-fields) 1)
-                     400
-                     (tru "Must execute implicit action on a table with a single primary key."))
-        extra-parameters (set/difference (set (keys request-parameters))
-                                         (set (keys slug->field-name)))
-        pk-field (first pk-fields)
-        simple-parameters (update-keys request-parameters (comp keyword slug->field-name))
-        pk-field-name (keyword (:name pk-field))
-        row-parameters (cond-> simple-parameters
-                         (not= implicit-action :row/create) (dissoc pk-field-name))
-        requires_pk (contains? #{:row/delete :row/update} implicit-action)]
+  (let [{database-id :db_id
+         table-id :id :as table} (implicit-action-table model_id)
+        table-fields             (:fields table)
+        pk-fields                (filterv #(isa? (:semantic_type %) :type/PK) table-fields)
+        slug->field-name         (->> table-fields
+                                      (map (juxt (comp u/slugify :name) :name))
+                                      (into {})
+                                      (m/filter-keys (set (map :id parameters))))
+        _                        (api/check (action/unique-field-slugs? table-fields)
+                                   400
+                                   (tru "Cannot execute implicit action on a table with ambiguous column names."))
+        _                        (api/check (= (count pk-fields) 1)
+                                   400
+                                   (tru "Must execute implicit action on a table with a single primary key."))
+        extra-parameters         (set/difference (set (keys request-parameters))
+                                                 (set (keys slug->field-name)))
+        pk-field                 (first pk-fields)
+        simple-parameters        (update-keys request-parameters (comp keyword slug->field-name))
+        pk-field-name            (keyword (:name pk-field))
+        row-parameters           (cond-> simple-parameters
+                                   (not= implicit-action :row/create) (dissoc pk-field-name))
+        requires_pk              (contains? #{:row/delete :row/update} implicit-action)]
     (api/check (or (not requires_pk)
                    (some? (get simple-parameters pk-field-name)))
                400
@@ -163,11 +167,10 @@
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
   [dashboard-id dashcard-id request-parameters]
-  (actions/check-actions-enabled)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
-                                               :id dashcard-id
-                                               :dashboard_id dashboard-id))
-        action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
+                                  :id dashcard-id
+                                  :dashboard_id dashboard-id))
+        action   (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
     (if (= :implicit (:type action))
       (execute-implicit-action action request-parameters)
       (execute-custom-action action request-parameters))))
@@ -199,7 +202,6 @@
   "Fetch values to pre-fill implicit action execution - custom actions will return no values.
    Must pass in parameters of shape `{<parameter-id> <value>}` for primary keys."
   [dashboard-id dashcard-id request-parameters]
-  (actions/check-actions-enabled)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))

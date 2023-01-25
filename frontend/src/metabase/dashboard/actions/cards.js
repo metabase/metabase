@@ -1,5 +1,4 @@
 import _ from "underscore";
-import { t } from "ttag";
 
 import { createAction } from "metabase/lib/redux";
 import { measureText } from "metabase/lib/measure-text";
@@ -153,33 +152,6 @@ export const addActionToDashboard =
       },
     };
 
-    dispatch(
-      addDashCardToDashboard({
-        dashId: dashId,
-        dashcardOverrides: dashcardOverrides,
-      }),
-    );
-  };
-
-export const addLinkToDashboard =
-  async ({ dashId, clickBehavior }) =>
-  dispatch => {
-    const virtualActionsCard = {
-      ...createCard(),
-      display: "action",
-      archived: false,
-    };
-    const dashcardOverrides = {
-      card: virtualActionsCard,
-      size_x: 2,
-      size_y: 1,
-      visualization_settings: {
-        virtual_card: virtualActionsCard,
-        "button.label": t`Link`,
-        click_behavior: clickBehavior,
-        actionDisplayType: "button",
-      },
-    };
     dispatch(
       addDashCardToDashboard({
         dashId: dashId,
