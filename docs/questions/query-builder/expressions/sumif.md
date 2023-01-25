@@ -143,7 +143,7 @@ The `case` version lets you sum a different column when the condition isn't met.
 sum(case([Plan] = "Basic", [Payment], [Contract]))
 ```
 
-## CumulativeSum
+### CumulativeSum
 
 `SumIf` doesn't do running totals. You'll need to combine the [CumulativeSum](../expressions-list.md#cumulativesum) aggregation with the [`case`](./case.md) formula.
 
