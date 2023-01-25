@@ -22,7 +22,11 @@ import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 import Database from "metabase-lib/metadata/Database";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
-import { getTemplateTagParameter } from "metabase-lib/parameters/utils/template-tags";
+import {
+  getTemplateTagParameter,
+  getTemplateTagParameters,
+  getTemplateTagsForParameters,
+} from "metabase-lib/parameters/utils/template-tags";
 import Variable from "metabase-lib/variables/Variable";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { createTemplateTag } from "metabase-lib/queries/TemplateTag";
@@ -266,16 +270,7 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   setQueryText(newQueryText: string): NativeQuery {
-    return new NativeQuery(
-      this._originalQuestion,
-      chain(this._datasetQuery)
-        .assocIn(["native", "query"], newQueryText)
-        .assocIn(
-          ["native", "template-tags"],
-          this._getUpdatedTemplateTags(newQueryText),
-        )
-        .value(),
-    );
+    return this._setQueryText(newQueryText)._syncParametersWithTemplateTags();
   }
 
   collection(): string | null | undefined {
@@ -390,20 +385,7 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   setTemplateTag(name: string, tag: TemplateTag) {
-    return this.setDatasetQuery(
-      assocIn(this.datasetQuery(), ["native", "template-tags", name], tag),
-    );
-  }
-
-  setTemplateTagParameter(tag: TemplateTag, newParameter: Parameter) {
-    const oldParameters = this.question().parameters();
-    const newParameters = oldParameters.map(oldParameter =>
-      oldParameter.id === tag.id
-        ? getTemplateTagParameter(tag, newParameter)
-        : oldParameter,
-    );
-
-    return this.question().setParameters(newParameters).query();
+    return this._setTemplateTag(name, tag)._syncParametersWithTemplateTags();
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
@@ -562,6 +544,32 @@ export default class NativeQuery extends AtomicQuery {
     }
 
     return {};
+  }
+
+  _setQueryText(newQueryText: string) {
+    return this.this.setDatasetQuery(
+      chain(this.datasetQuery())
+        .assocIn(["native", "query"], newQueryText)
+        .assocIn(
+          ["native", "template-tags"],
+          this._getUpdatedTemplateTags(newQueryText),
+        )
+        .value(),
+    );
+  }
+
+  _setTemplateTag(name: string, tag: TemplateTag) {
+    return this.setDatasetQuery(
+      assocIn(this.datasetQuery(), ["native", "template-tags", name], tag),
+    );
+  }
+
+  _syncParametersWithTemplateTags() {
+    const question = this.question();
+    const tags = getTemplateTagsForParameters(question.card());
+    const parameters = getTemplateTagParameters(tags, question.parameters());
+
+    return question.setParameters(parameters).query() as NativeQuery;
   }
 
   dependentMetadata(): DependentMetadataItem[] {

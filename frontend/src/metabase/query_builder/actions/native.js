@@ -1,17 +1,10 @@
-import { assoc, updateIn } from "icepick";
-
 import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
-import Utils from "metabase/lib/utils";
 
 import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  getTemplateTagParameters,
-  getTemplateTagsForParameters,
-} from "metabase-lib/parameters/utils/template-tags";
 import {
   getDataReferenceStack,
   getNativeEditorCursorOffset,
@@ -156,55 +149,9 @@ export const setTemplateTag = createThunkAction(
   SET_TEMPLATE_TAG,
   templateTag => {
     return (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
-
-      const updatedCard = Utils.copy(card);
-
-      // when the query changes on saved card we change this into a new query w/ a known starting point
-      if (uiControls.queryBuilderMode !== "dataset" && updatedCard.id) {
-        delete updatedCard.id;
-        delete updatedCard.name;
-        delete updatedCard.description;
-      }
-
-      // we need to preserve the order of the keys to avoid UI jumps
-      const updatedTagsCard = updateIn(
-        updatedCard,
-        ["dataset_query", "native", "template-tags"],
-        tags => {
-          const { name } = templateTag;
-          const newTag =
-            tags[name] && tags[name].type !== templateTag.type
-              ? // when we switch type, null out any default
-                { ...templateTag, default: null }
-              : templateTag;
-          return { ...tags, [name]: newTag };
-        },
-      );
-
-      return assoc(
-        updatedTagsCard,
-        "parameters",
-        getTemplateTagParameters(
-          getTemplateTagsForParameters(updatedTagsCard),
-          updatedTagsCard.parameters,
-        ),
-      );
-    };
-  },
-);
-
-export const SET_TEMPLATE_TAG_PARAMETER =
-  "metabase/qb/SET_TEMPLATE_TAG_PARAMETER";
-export const setTemplateTagParameter = createThunkAction(
-  SET_TEMPLATE_TAG_PARAMETER,
-  (tag, parameter) => {
-    return (dispatch, getState) => {
       const newQuestion = getQuestion(getState())
         .query()
-        .setTemplateTagParameter(tag, parameter)
+        .setTemplateTag(templateTag.name, templateTag)
         .question();
 
       dispatch(updateQuestion(newQuestion));
