@@ -417,10 +417,14 @@ export const originalCard = handleActions(
 );
 
 // references to FK tables specifically used on the ObjectDetail page.
+// HERE'S SOMETHING IMPORTANT
 export const tableForeignKeyReferences = handleActions(
   {
     [LOAD_OBJECT_DETAIL_FK_REFERENCES]: {
-      next: (state, { payload }) => payload,
+      next: (state, { payload }) => {
+        console.log("🚀", "In tableForeignKeyReferences");
+        return payload;
+      },
     },
     [CLEAR_OBJECT_DETAIL_FK_REFERENCES]: () => null,
   },
