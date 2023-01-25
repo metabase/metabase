@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: mysql-json-unwrap-bigint-and-boolean.server.sql
-  context: server
-- type: sql
-  file: mysql-json-unwrap-bigint-and-boolean.db.sql
-  context: db

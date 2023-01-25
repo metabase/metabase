@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  context: server
-  file: shutdown.sql
-- type: sql
-  file: sad-toucan-incidents.db.sql
-  context: db

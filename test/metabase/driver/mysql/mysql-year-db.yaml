@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: year-db.server.sql
-  context: server
-- type: sql
-  file: year-db.db.sql
-  context: db

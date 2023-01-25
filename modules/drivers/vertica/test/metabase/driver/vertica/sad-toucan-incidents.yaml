@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: sad-toucan-incidents.sql
-  context: server
-- type: csv
-  file: sad-toucan-incidents.0.incidents.csv
-  table: incidents

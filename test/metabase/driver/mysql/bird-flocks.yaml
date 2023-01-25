@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: bird-flocks.server.sql
-  context: server
-- type: sql
-  file: bird-flocks.db.sql
-  context: db

@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: attempted-murders.server.sql
-  context: server
-- type: sql
-  file: attempted-murders.db.sql
-  context: db

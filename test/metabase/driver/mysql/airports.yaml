@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: airports.server.sql
-  context: server
-- type: sql
-  file: airports.db.sql
-  context: db

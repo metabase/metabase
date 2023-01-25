@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  context: server
-  file: toucan-microsecond-incidents.server.sql
-- type: sql
-  context: db
-  file: toucan-microsecond-incidents.db.sql

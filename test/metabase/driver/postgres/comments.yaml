@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: comments.server.sql
-  context: server
-- type: sql
-  file: comments.db.sql
-  context: db

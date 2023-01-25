@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: test-data-with-time.sql
-  context: server
-- type: csv
-  file: test-data-with-time.0.users.csv
-  table: users

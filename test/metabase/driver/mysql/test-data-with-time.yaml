@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: test-data-with-time.server.sql
-  context: server
-- type: sql
-  file: test-data-with-time.db.sql
-  context: db

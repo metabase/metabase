@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: avian-singles.server.sql
-  context: server
-- type: sql
-  file: avian-singles.db.sql
-  context: db

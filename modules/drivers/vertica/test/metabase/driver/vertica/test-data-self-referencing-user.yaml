@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: test-data-self-referencing-user.sql
-  context: server
-- type: csv
-  file: test-data-self-referencing-user.0.users.csv
-  table: users

@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: mysql-tiny-int-ones.server.sql
-  context: server
-- type: sql
-  file: mysql-tiny-int-ones.db.sql
-  context: db

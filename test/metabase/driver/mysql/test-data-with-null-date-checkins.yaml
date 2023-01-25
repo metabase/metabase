@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: test-data-with-null-date-checkins.server.sql
-  context: server
-- type: sql
-  file: test-data-with-null-date-checkins.db.sql
-  context: db

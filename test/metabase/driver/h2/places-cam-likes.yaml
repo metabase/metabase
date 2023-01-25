@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  context: server
-  file: shutdown.sql
-- type: sql
-  file: places-cam-likes.db.sql
-  context: db

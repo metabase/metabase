@@ -1,3 +1,0 @@
-DROP DATABASE IF EXISTS `airports`;
-
-CREATE DATABASE `airports`;

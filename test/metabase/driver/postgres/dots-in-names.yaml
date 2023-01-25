@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: dots-in-names.server.sql
-  context: server
-- type: sql
-  file: dots-in-names.db.sql
-  context: db

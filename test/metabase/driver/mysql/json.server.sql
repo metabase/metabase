@@ -1,3 +1,0 @@
-DROP DATABASE IF EXISTS `json`;
-
-CREATE DATABASE `json`;

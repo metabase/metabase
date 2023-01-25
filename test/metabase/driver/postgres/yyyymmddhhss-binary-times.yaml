@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  context: server
-  file: yyyymmddhhss-binary-times.server.sql
-- type: sql
-  context: db
-  file: yyyymmddhhss-binary-times.db.sql

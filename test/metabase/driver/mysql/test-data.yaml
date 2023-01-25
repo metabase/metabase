@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: test-data.server.sql
-  context: server
-- type: sql
-  file: test-data.db.sql
-  context: db

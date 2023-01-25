@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  context: server
-  file: diff-time-zones-cases.server.sql
-- type: sql
-  context: db
-  file: diff-time-zones-cases.db.sql

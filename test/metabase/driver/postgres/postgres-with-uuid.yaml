@@ -1,7 +1,0 @@
-steps:
-- type: sql
-  file: postgres-with-uuid.server.sql
-  context: server
-- type: sql
-  file: postgres-with-uuid.db.sql
-  context: db
