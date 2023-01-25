@@ -132,16 +132,16 @@
   [sandboxes]
   (for [sandbox sandboxes]
     (if-let [id (:id sandbox)]
+      ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
+      ;; This allows existing values to be "cleared" by being set to nil
+      (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
+        (db/update! GroupTableAccessPolicy
+                    id
+                    (u/select-keys-when sandbox :present #{:card_id :attribute_remappings}))
+        (db/select-one GroupTableAccessPolicy :id id))
       (let [expected-permission-path (perms/table-segmented-query-path (:table_id sandbox))]
         (when-let [permission-path-id (db/select-one-field :id Permissions :object expected-permission-path)]
-          ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
-          ;; This allows existing values to be "cleared" by being set to nil
-          (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
-            (db/update! GroupTableAccessPolicy
-                        id
-                        (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-          (db/select-one GroupTableAccessPolicy :id id)))
-      (db/insert! GroupTableAccessPolicy sandbox))))
+          (db/insert! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id)))))))
 
 (defn- pre-insert [gtap]
   (u/prog1 gtap

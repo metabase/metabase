@@ -13,7 +13,7 @@
   (when (seq condition)
     (let [conditions (into
                       [:and
-                       [:= :gtap.group_id (u/the-id group-or-id)]]
+                       [:= :sandboxes.group_id (u/the-id group-or-id)]]
                       [condition])]
       (log/debugf "Deleting GTAPs for Group %d with conditions %s" (u/the-id group-or-id) (pr-str conditions))
       (try
