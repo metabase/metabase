@@ -26,8 +26,8 @@ import { memoizeClass, sortObject } from "metabase-lib/utils";
 import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
-  DashboardApi,
   CardApi,
+  DashboardApi,
   maybeUsePivotEndpoint,
   MetabaseApi,
 } from "metabase/services";
@@ -50,8 +50,7 @@ import {
   normalizeParameters,
 } from "metabase-lib/parameters/utils/parameter-values";
 import {
-  getTemplateTagParameters,
-  getTemplateTagsForParameters,
+  getTemplateTagParametersFromCard,
   remapParameterValuesToTemplateTags,
 } from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
@@ -153,8 +152,7 @@ class QuestionInner {
     q._card = card;
 
     if (card.dataset_query.type === "native") {
-      const tags = getTemplateTagsForParameters(card);
-      const parameters = getTemplateTagParameters(tags);
+      const parameters = getTemplateTagParametersFromCard(card);
       q._card = { ...card, parameters };
     } else {
       q._card = card;
@@ -1142,6 +1140,14 @@ class QuestionInner {
     }
   }
 
+  setParameter(newParameter) {
+    const newParameters = this.parameters().map(oldParameter =>
+      oldParameter.id === tag.id ? newParameter : oldParameter,
+    );
+
+    return this.setParameters(newParameters);
+  }
+
   setParameters(parameters) {
     return this.setCard(assoc(this.card(), "parameters", parameters));
   }
@@ -1186,12 +1192,10 @@ class QuestionInner {
     const [a, b] = [this, originalQuestion].map(q => {
       return (
         q &&
-        new Question(q.card(), this.metadata())
-          .setParameters([])
-          .setDashboardProps({
-            dashboardId: undefined,
-            dashcardId: undefined,
-          })
+        new Question(q.card(), this.metadata()).setDashboardProps({
+          dashboardId: undefined,
+          dashcardId: undefined,
+        })
       );
     });
     return a.isDirtyComparedTo(b);
