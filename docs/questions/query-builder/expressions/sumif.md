@@ -145,7 +145,7 @@ sum(case([Plan] = "Basic", [Payment], [Contract]))
 
 ## CumulativeSum
 
-`SumIf` doesn't do running totals. You'll need to combine the [CumulativeSum](../expressions-list#cumulativesum) aggregation with the [`case`](./case) formula.
+`SumIf` doesn't do running totals. You'll need to combine the [CumulativeSum](../expressions-list.md#cumulativesum) aggregation with the [`case`](./case.md) formula.
 
 For example, to get the running total of payments for the Business and Premium plans by month (using our [payment sample data](#conditional-subtotals-by-group)):
 
