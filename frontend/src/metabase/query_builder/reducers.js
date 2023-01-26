@@ -329,7 +329,8 @@ export const queryStatus = handleActions(
 export const zoomedRowObjectId = handleActions(
   {
     [INITIALIZE_QB]: {
-      next: (state, { payload }) => payload?.rowIndex ?? null,
+      next: (state, { payload }) =>
+        payload?.rowIndex ?? payload?.objectId ?? null,
     },
     [ZOOM_IN_ROW]: {
       next: (state, { payload }) => payload.rowIndex,

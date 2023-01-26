@@ -260,15 +260,17 @@ describe("scenarios > models metadata", () => {
               fk_target_field_id: PEOPLE.ID,
             };
           }
-          if (field.display_name !== "QUANTITY") {
-            return field;
+
+          if (field.display_name === "QUANTITY") {
+            return {
+              ...field,
+              display_name: "Review ID",
+              semantic_type: "type/FK",
+              fk_target_field_id: REVIEWS.ID,
+            };
           }
-          return {
-            ...field,
-            display_name: "Review ID",
-            semantic_type: "type/FK",
-            fk_target_field_id: REVIEWS.ID,
-          };
+
+          return field;
         });
       });
 
