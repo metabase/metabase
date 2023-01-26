@@ -1,20 +1,26 @@
+import {
+  QA_POSTGRES_PORT,
+  QA_MONGO_PORT,
+  QA_MYSQL_PORT,
+} from "__support__/e2e/cypress_data";
+
 /*****************************************
  **            QA DATABASES             **
  ******************************************/
 
 export function addMongoDatabase(name = "QA Mongo4") {
   // https://hub.docker.com/layers/metabase/qa-databases/mongo-sample-4.0/images/sha256-3f568127248b6c6dba0b114b65dc3b3bf69bf4c804310eb57b4e3de6eda989cf
-  addQADatabase("mongo", name, 27017);
+  addQADatabase("mongo", name, QA_MONGO_PORT);
 }
 
 export function addPostgresDatabase(name = "QA Postgres12") {
   // https://hub.docker.com/layers/metabase/qa-databases/postgres-sample-12/images/sha256-80bbef27dc52552d6dc64b52796ba356d7541e7bba172740336d7b8a64859cf8
-  addQADatabase("postgres", name, 5432);
+  addQADatabase("postgres", name, QA_POSTGRES_PORT);
 }
 
 export function addMySQLDatabase(name = "QA MySQL8") {
   // https://hub.docker.com/layers/metabase/qa-databases/mysql-sample-8/images/sha256-df67db50379ec59ac3a437b5205871f85ab519ce8d2cdc526e9313354d00f9d4
-  addQADatabase("mysql", name, 3306);
+  addQADatabase("mysql", name, QA_MYSQL_PORT);
 }
 
 function addQADatabase(engine, db_display_name, port) {
