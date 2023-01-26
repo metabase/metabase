@@ -203,7 +203,6 @@
       (premium-features-test/with-premium-features #{:sandboxes}
         (with-gtap-cleanup
           (testing "Test that we can create a new sandbox using the permission graph API"
-            ;; TODO: add sandbox to graph itself
             (let [graph  (assoc (assoc-in (perms/data-perms-graph)
                                           [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-1 :query]
                                           :segmented)
@@ -231,7 +230,6 @@
                                     :sandboxes [{:id                   sandbox-id
                                                  :card_id              card-id-2
                                                  :attribute_remappings {"foo" 2}}])
-
                   result     (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
               (is (partial= [{:table_id table-id-1 :group_id group-id}]
                             (:sandboxes result)))
