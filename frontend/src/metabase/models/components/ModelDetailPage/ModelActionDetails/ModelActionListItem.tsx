@@ -6,6 +6,7 @@ import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 import StackedInsightIcon from "./StackedInsightIcon";
 import {
   ActionTitle,
+  ActionSubtitle,
   Card,
   CodeBlock,
   EditButton,
@@ -44,6 +45,9 @@ function ModelActionListItem({ action, onEdit }: Props) {
   return (
     <>
       <ActionTitle>{action.name}</ActionTitle>
+      {action?.creator?.common_name && (
+        <ActionSubtitle>{t`Created by ${action.creator.common_name}`}</ActionSubtitle>
+      )}
       <Card>
         {renderCardContent()}
         {canEdit && <EditButton onClick={onEdit} />}
