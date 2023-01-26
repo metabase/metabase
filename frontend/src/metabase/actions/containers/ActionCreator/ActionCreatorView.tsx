@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
-import type { ReactNode } from "react";
 import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
 import { ActionFormSettings, WritebackActionId } from "metabase-types/api";
