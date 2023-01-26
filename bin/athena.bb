@@ -25,16 +25,9 @@
 ;; You must have bb (babashka), aws (awscli), and shasum commands available. You must have aws credentials available, e.g. through aws configure
 
 (defn find-pred [z p?]
-  (loop [z z]
-    (cond
-      (or (nil? z) (z/end? z))
-      nil
-
-      (-> z z/node p?)
-      z
-
-      :else
-      (recur (z/next z)))))
+  (->> (iterate z/next z)
+       (take-while (every-pred some? (complement z/end?)))
+       (some #(when (-> % z/node p?) z))))
 
 (defn topmost [z]
   (loop [z z]
