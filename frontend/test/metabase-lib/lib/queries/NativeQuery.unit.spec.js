@@ -6,8 +6,6 @@ import {
   MONGO_DATABASE,
 } from "__support__/sample_database_fixture";
 
-import { createMockParameter } from "metabase-types/api/mocks";
-
 import NativeQuery, {
   recognizeTemplateTags,
   cardIdFromTagName,
@@ -290,11 +288,11 @@ describe("NativeQuery", () => {
       const newQuery = oldQuery.setTemplateTag(
         "t1",
         oldQuery.templateTagsMap()["t1"],
-        createMockParameter({
+        {
           values_query_type: "search",
           values_source_type: "static-list",
           values_source_config: { values: ["A"] },
-        }),
+        },
       );
 
       const newParameters = newQuery.question().parameters();

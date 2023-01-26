@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { Parameter } from "metabase-types/api";
+import { Parameter, ParameterConfig } from "metabase-types/api";
 import type { ParameterTarget } from "metabase-types/types/Parameter";
 import type { Card } from "metabase-types/types/Card";
 import type { TemplateTag } from "metabase-types/types/Query";
@@ -32,7 +32,7 @@ export function getTemplateTagParameterTarget(
 
 export function getTemplateTagParameter(
   tag: TemplateTag,
-  parameter?: Parameter,
+  config?: ParameterConfig,
 ): ParameterWithTarget {
   return {
     id: tag.id,
@@ -41,9 +41,9 @@ export function getTemplateTagParameter(
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
-    values_query_type: parameter?.values_query_type,
-    values_source_type: parameter?.values_source_type,
-    values_source_config: parameter?.values_source_config,
+    values_query_type: config?.values_query_type,
+    values_source_type: config?.values_source_type,
+    values_source_config: config?.values_source_config,
   };
 }
 

@@ -6,7 +6,7 @@ import _ from "underscore";
 import slugg from "slugg";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
-import { Parameter } from "metabase-types/api";
+import { ParameterConfig } from "metabase-types/api";
 import {
   Card,
   DatasetQuery,
@@ -389,7 +389,7 @@ export default class NativeQuery extends AtomicQuery {
     return tagErrors.length === 0;
   }
 
-  setTemplateTag(name: string, tag: TemplateTag, parameter?: Parameter) {
+  setTemplateTag(name: string, tag: TemplateTag, config?: ParameterConfig) {
     const newQuery = this.setDatasetQuery(
       updateIn(this.datasetQuery(), ["native", "template-tags"], tags => ({
         ...tags,
@@ -399,7 +399,7 @@ export default class NativeQuery extends AtomicQuery {
 
     return newQuery
       .question()
-      .setParameter(getTemplateTagParameter(tag, parameter))
+      .setParameter(getTemplateTagParameter(tag, config))
       .query() as NativeQuery;
   }
 
