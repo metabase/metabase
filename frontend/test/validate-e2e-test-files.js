@@ -11,8 +11,8 @@ const invalidFileNames = glob.sync(PATTERN).filter(fullPath => {
 
 if (invalidFileNames.length > 0) {
   console.error(
-    "Found Cypress files not ending with .cy.spec.js:\n\n",
-    invalidFileNames.join("\n"),
+    "Found Cypress files not ending with .cy.spec.js:\n\n" +
+      invalidFileNames.join("\n"),
   );
   return 1;
 }
