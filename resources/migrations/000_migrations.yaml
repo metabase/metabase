@@ -14304,7 +14304,7 @@ databaseChangeLog:
             sql: >-
               INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
               SELECT table_id, database_id, topic, details, model_id, user_id, timestamp, model
-              FROM activity WHERE timestamp > (now() - INTERVAL '30' DAYS)
+              FROM activity WHERE timestamp > now() - INTERVAL '30' day
               ORDER BY timestamp ASC;
         - sql:
             dbms: postgresql
@@ -14332,7 +14332,7 @@ databaseChangeLog:
                      CONCAT(model, '-view') AS topic,
                      metadata AS details,
                      model_id, user_id, timestamp, model
-              FROM view_log WHERE timestamp > (now() - INTERVAL '30' DAYS)
+              FROM view_log WHERE timestamp > now() - INTERVAL '30' day
               ORDER BY timestamp ASC;
         - sql:
             dbms: postgresql
