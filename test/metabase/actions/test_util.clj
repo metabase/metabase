@@ -11,6 +11,7 @@
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.datasets :as datasets]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [toucan.db :as db]
@@ -138,6 +139,7 @@
                                            :target [:variable [:template-tag "name"]]}]
                              :visualization_settings {:inline true}
                              :database_id (data/id)
+                             :creator_id (test.users/user->id :crowberto)
                              :dataset_query {:database (data/id)
                                              :type :native
                                              :native {:query (str "UPDATE categories\n"
@@ -158,6 +160,7 @@
                                      {:type :implicit
                                       :name "Update Example"
                                       :kind "row/update"
+                                      :creator_id (test.users/user->id :crowberto)
                                       :model_id model-id}
                                      options-map))]
       {:action-id action-id :model-id model-id})
@@ -177,6 +180,7 @@
                                                     :type "text"
                                                     :target [:template-tag "fail"]}]
                                       :response_handle ".body"
+                                      :creator_id (test.users/user->id :crowberto)
                                       :model_id model-id}
                                      options-map))]
       {:action-id action-id :model-id model-id})))
