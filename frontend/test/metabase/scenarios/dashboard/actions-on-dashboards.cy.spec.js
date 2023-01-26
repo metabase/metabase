@@ -12,8 +12,6 @@ describe("Write Actions on Dashboards", () => {
   });
 
   beforeEach(() => {
-    // restoreActionsDB();
-    // restore('withActions');
     cy.signInAsAdmin();
   });
 

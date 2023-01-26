@@ -20,7 +20,7 @@ export function addPostgresDatabase(name = "QA Postgres12") {
 }
 
 export function addWritablePostgresDatabase(name = "Writable Postgres12") {
-  addQADatabase("postgres", name, 5432, true);
+  addQADatabase("postgres", name, QA_POSTGRES_PORT, true);
 }
 
 export function addMySQLDatabase(name = "QA MySQL8") {
@@ -33,7 +33,7 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
   const AUTH_DB = engine === "mongo" ? "admin" : null;
   const OPTIONS = engine === "mysql" ? "allowPublicKeyRetrieval=true" : null;
 
-  const db_name = enable_actions ? "actions_db" : "sample";
+  const db_name = enable_actions ? "actions_db" : QA_DB_CREDENTIALS.database;
 
   cy.log(`**-- Adding ${engine.toUpperCase()} DB --**`);
   cy.request("POST", "/api/database", {
@@ -112,30 +112,21 @@ function recursiveCheck(id, i = 0) {
   });
 }
 
-const sampleConfig = {
-  user: "metabase",
-  password: "metasample123",
-  host: "localhost",
-  database: "sample",
-  ssl: false,
-  port: 5432,
-};
-
 const actionsConfig = {
-  ...sampleConfig,
+  ...QA_DB_CREDENTIALS,
   database: "actions_db",
 };
 
 export function restoreActionsDB() {
   // we need to initially connect to the db we know exists to create the actions_db
   cy.task("connectAndQueryDB", {
-    connectionConfig: sampleConfig,
+    connectionConfig: QA_DB_CREDENTIALS,
     query: `SELECT FROM pg_database WHERE datname = 'actions_db';`,
   }).then(results => {
     if (!results.rows.length) {
       cy.log("**-- Adding Postgres DB for actions --**");
       cy.task("connectAndQueryDB", {
-        connectionConfig: sampleConfig,
+        connectionConfig: QA_DB_CREDENTIALS,
         query: `CREATE DATABASE actions_db;`,
       });
     }

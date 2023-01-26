@@ -1,4 +1,5 @@
 import fs from "fs";
+import { QA_DB_CREDENTIALS } from "./cypress_data";
 /**
  * This env var provides the token to the backend.
  * If it is not present, we skip some tests that depend on a valid token.
@@ -81,38 +82,29 @@ const defaultConfig = {
     /********************************************************************
      **                           TASKS                                **
      ********************************************************************/
-    const sampleConfig = {
-      user: "metabase",
-      password: "metasample123",
-      host: "localhost",
-      database: "sample",
-      ssl: false,
-      port: 5432,
-    };
-
-    const actionsConfig = {
-      ...sampleConfig,
-      database: "actions_db",
-    };
-
     on("task", {
       connectAndQueryDB,
 
       async resetActionsDb() {
+        const connectionConfig = {
+          ...QA_DB_CREDENTIALS,
+          database: "actions_db",
+        };
+
         const sampleSQL = fs.readFileSync(
           "./helpers/sample_schema.sql",
           "utf8",
         );
 
         const sampleInsert = await connectAndQueryDB({
-          connectionConfig: actionsConfig,
+          connectionConfig,
           query: sampleSQL,
         });
 
         const testSql = fs.readFileSync("./helpers/test_schema.sql", "utf8");
 
         const testInsert = await connectAndQueryDB({
-          connectionConfig: actionsConfig,
+          connectionConfig,
           query: testSql,
         });
 
