@@ -294,7 +294,7 @@
                                      :h2    "CHARACTER LARGE OBJECT"
                                      "text")
                   name-fn          (case driver/*driver*
-                                     :h2 str/upper-case
+                                     :h2 u/upper-case-en
                                      identity)
                   tbl-cols         (app-db-column-types conn (name-fn tbl-nm))]
               (doseq [col-nm (map last col-nms)]
@@ -322,7 +322,7 @@
                                  :h2       "BINARY LARGE OBJECT"
                                  :postgres "bytea")
               name-fn          (case driver/*driver*
-                                 :h2 str/upper-case
+                                 :h2 u/upper-case-en
                                  identity)
               tbl-nm           "query_cache"
               col-nm           "results"
@@ -490,7 +490,7 @@
                     (mdb.query/query {:select [:name :slug], :from [:collection]}))
                   (collection-slug []
                     (-> collection-name
-                        str/lower-case
+                        u/lower-case-en
                         (str/replace #"\s+" "_")))]
             (impl/test-migrations ["v43.00-014" "v43.00-019"] [migrate!]
               (create-instance!)

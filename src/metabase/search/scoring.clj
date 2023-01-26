@@ -126,8 +126,8 @@
 (defn prefix-scorer
   "How much does the search query match the beginning of the result? "
   [query-tokens match-tokens]
-  (let [query (str/lower-case (str/join " " query-tokens))
-        match (str/lower-case (str/join " " match-tokens))]
+  (let [query (u/lower-case-en (str/join " " query-tokens))
+        match (u/lower-case-en (str/join " " match-tokens))]
     (/ (prefix-counter query match)
        (count-token-chars query-tokens))))
 

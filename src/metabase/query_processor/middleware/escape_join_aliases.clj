@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.escape-join-aliases
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
@@ -51,7 +50,7 @@
             uniquify          (mbql.u/unique-name-generator
                                ;; some databases treat aliases as case-insensitive so make sure the generated aliases
                                ;; are unique regardless of case
-                               :name-key-fn     str/lower-case
+                               :name-key-fn     u/lower-case-en
                                ;; uniqified aliases needs to be escaped again just in case
                                :unique-alias-fn (fn [original suffix]
                                                   (escape (str original \_ suffix))))

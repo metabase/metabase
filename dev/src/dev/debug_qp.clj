@@ -541,8 +541,8 @@
     (mbql.u/replace form
       ([:field (id :guard integer?) nil] :guard can-symbolize?)
       (let [[table-name field-name] (field-and-table-name id)
-            field-name              (some-> field-name str/lower-case)
-            table-name              (some-> table-name str/lower-case)]
+            field-name              (some-> field-name u/lower-case-en)
+            table-name              (some-> table-name u/lower-case-en)]
         (if (= table-name table)
           [::$ field-name]
           [::$ table-name field-name]))
@@ -576,14 +576,14 @@
 
       (m :guard (every-pred map? (comp integer? :source-table)))
       (-> (update m :source-table (fn [table-id]
-                                    [::$$ (some-> (db/select-one-field :name Table :id table-id) str/lower-case)]))
+                                    [::$$ (some-> (db/select-one-field :name Table :id table-id) u/lower-case-en)]))
           (expand table))
 
       (m :guard (every-pred map? (comp integer? :fk-field-id)))
       (-> (update m :fk-field-id (fn [fk-field-id]
                                    (let [[table-name field-name] (field-and-table-name fk-field-id)
-                                         field-name              (some-> field-name str/lower-case)
-                                         table-name              (some-> table-name str/lower-case)]
+                                         field-name              (some-> field-name u/lower-case-en)
+                                         table-name              (some-> table-name u/lower-case-en)]
                                      (if (= table-name table)
                                        [::% field-name]
                                        [::% table-name field-name]))))
@@ -618,7 +618,7 @@
     source-table
     (do
       (assert (integer? source-table))
-      (str/lower-case (db/select-one-field :name Table :id source-table)))
+      (u/lower-case-en (db/select-one-field :name Table :id source-table)))
 
     source-query
     (recur source-query)))
