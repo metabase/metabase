@@ -173,6 +173,12 @@ export const PublicApi = {
   dashboardCardQueryPivot: GET(
     PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
   ),
+  prefetchValues: GET(
+    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+  ),
+  executeAction: POST(
+    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+  ),
 };
 
 export const EmbedApi = {

@@ -18,11 +18,12 @@ import type {
   ActionFormSettings,
 } from "metabase-types/api";
 
-import { ActionsApi } from "metabase/services";
+import { ActionsApi, PublicApi } from "metabase/services";
 import {
   shouldPrefetchValues,
   generateFieldSettingsFromParameters,
 } from "metabase/actions/utils";
+import { getDashboardType } from "metabase/dashboard/utils";
 
 import type Field from "metabase-lib/metadata/Field";
 
@@ -56,8 +57,13 @@ function ActionParametersInputForm({
 
   const shouldPrefetch = useMemo(() => shouldPrefetchValues(action), [action]);
 
+  const prefetchEndpoint =
+    getDashboardType(dashboard?.id) === "public"
+      ? PublicApi.prefetchValues
+      : ActionsApi.prefetchValues;
+
   const fetchInitialValues = useCallback(async () => {
-    const fetchedValues = await ActionsApi.prefetchValues({
+    const fetchedValues = await prefetchEndpoint({
       dashboardId: dashboard?.id,
       dashcardId: dashcard?.id,
       parameters: JSON.stringify(dashcardParamValues),
@@ -66,7 +72,7 @@ function ActionParametersInputForm({
     if (fetchedValues) {
       setPrefetchValues(fetchedValues);
     }
-  }, [dashboard?.id, dashcard?.id, dashcardParamValues]);
+  }, [dashboard?.id, dashcard?.id, dashcardParamValues, prefetchEndpoint]);
 
   useEffect(() => {
     const hasValueFromDashboard = Object.keys(dashcardParamValues).length > 0;
