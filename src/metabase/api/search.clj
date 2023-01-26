@@ -299,16 +299,6 @@
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 
-(s/defmethod search-query-for-model "pulse"
-  [model search-ctx :- SearchContext]
-  ;; Pulses don't currently support being archived, omit if archived is true
-  (-> (base-query-for-model model search-ctx)
-      (add-collection-join-and-where-clauses :pulse.collection_id search-ctx)
-      ;; We don't want alerts included in pulse results
-      (sql.helpers/where [:and
-                          [:= :alert_condition nil]
-                          [:not= :pulse.dashboard_id nil]])))
-
 (s/defmethod search-query-for-model "metric"
   [model search-ctx :- SearchContext]
   (-> (base-query-for-model model search-ctx)
