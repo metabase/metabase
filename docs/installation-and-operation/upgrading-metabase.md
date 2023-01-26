@@ -118,3 +118,23 @@ If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, your Met
 
 - [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.md#deploying-new-versions-of-metabase-on-elastic-beanstalk)
 - [Upgrading Azure Web Apps deployments](running-metabase-on-azure.md#additional-configurations)
+
+## Rolling back an upgrade
+
+In general, regular backups (especially backups before upgrading), are the best policy, so we recommend reverting to a backup of your application database to roll back an upgrade. 
+
+But if you've made changes to your application database since upgrading that you want to keep, you may be able to use the `migrate down` command to roll back your Metabase application database to support the previous Metabase version you were running.
+
+To roll back your Metabase application database: 
+
+1. Change into the directory where you're running the upgraded Metabase JAR. 
+2. If you haven't already, stop the current, upgraded instance.
+3. Use the current, upgraded Metabase JAR (not the Metabase JAR you want to roll back to) to complete the rollback with the following command:
+   ```
+   java -jar metabase.jar migrate down
+   ```
+4. [Download the JAR](https://github.com/metabase/metabase/releases) for the previous version that you were running, and move the older Metabase JAR into the directory, replacing the newer JAR, and start the instance:
+   ```
+   java -jar metabase.jar
+   ```
+   You should be back up and running on the old version.
