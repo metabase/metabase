@@ -10,7 +10,8 @@
    [malli.instrument :as minst]
    [malli.util :as mut]
    [metabase.util :as u]
-   [ring.util.codec :as codec]))
+   [ring.util.codec :as codec]
+   [clojure.set :as set]))
 
 (core/defn- ->malli-io-link
   ([schema]
@@ -50,53 +51,75 @@
 ;; so just harmlessly "use" the var here.
 explain-fn-fail!
 
+(core/defn- merge-metadata [on-var md-pos]
+  (let [collision (set/intersection (set (keys on-var))
+                                    (set (keys md-pos)))]
+    (if (and (set? on-var) (set? md-pos) (not= #{} collision))
+      (throw (ex-info (str "Keys in metadata on the var, and in the metadata position must be unique. these arent: " collision)
+                      {:colliison collision
+                       :on-var-keys (keys on-var)
+                       :positional-keys (keys md-pos)}))
+      (merge on-var md-pos))))
+
 (core/defn- -defn [schema args]
-  (let [{:keys [name return doc meta arities] :as parsed} (mc/parse schema args)
-        _ (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
-        parse (fn [{:keys [args] :as parsed}] (merge (malli.destructure/parse args) parsed))
-        ->schema (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
-        single (= :single (key arities))
-        parglists (if single
-                    (->> arities val parse vector)
-                    (->> arities val :arities (map parse)))
-        raw-arglists (map :raw-arglist parglists)
-        schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
-        id (str (gensym "id"))]
+  (let [{parsed-name :name
+         parsed-meta :meta
+         :keys       [return doc arities]
+         :as         parsed}  (mc/parse schema args)
+        {gen :mu/gen
+         seed :mu/seed
+         size :mu/size
+         no-throw :mu/no-throw
+         :or {gen false
+              seed false
+              no-throw false
+              size false}
+         :as all-md}  (merge-metadata (meta parsed-name) parsed-meta)
+        _             (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
+        parse         (fn [{:keys [args] :as parsed}] (merge (malli.destructure/parse args) parsed))
+        ->schema      (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
+        single        (= :single (key arities))
+        parglists     (if single
+                        (->> arities val parse vector)
+                        (->> arities val :arities (map parse)))
+        raw-arglists  (map :raw-arglist parglists)
+        schema        (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
+        return-schema (:schema return :any)
+        seed+size  (merge (when seed {:seed seed})
+                          (when size {:size size}))
+        ->body        (fn [{:keys [arglist prepost body]}]
+                        (if gen
+                          `(~arglist ~prepost (#(mg/generate ~return-schema ~seed+size)))
+                          `(~arglist ~prepost ~@body)))
+        id            (str (gensym "id"))
+        inst-clause (if no-throw
+                      `nil
+                      `(minst/instrument! {;; instrument the defn we just registered, via ~id
+                                           :filters [(minst/-filter-var #(-> % meta ::validate! (= ~id)))]
+                                           :report  #'explain-fn-fail!}))]
     `(let [defn# (core/defn
-                   ~name
+                   ~parsed-name
                    ~@(some-> doc vector)
-                   ~(assoc meta
+                   ~(assoc all-md
                            :raw-arglists (list 'quote raw-arglists)
                            :schema schema
-                           :validate! id)
-                   ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
+                           ::validate! id)
+                   ~@(map ->body parglists)
                    ~@(when-not single (some->> arities val :meta vector)))]
-       (mc/=> ~name ~schema)
-       (minst/instrument! {;; instrument the defn we just registered, via ~id
-                           :filters [(minst/-filter-var #(-> % meta :validate! (= ~id)))]
-                           :report #'explain-fn-fail!})
+       (mc/=> ~parsed-name ~schema)
+       ~inst-clause
        defn#)))
 
 (defmacro defn
   "Like s/defn, but for malli. Will always validate input and output without the need for calls to instrumentation (they are emitted automatically).
-   Calls to minst/unstrument! can remove this, so use a filter that avoids :validate! if you use that."
+   Calls to minst/unstrument! can remove this, so use a filter that avoids ::validate! if you use that.
+
+
+  Options are passed in as metadata on either the var, or in the defn's metadata position. Those are merged, and thus may not reuse keys.
+
+
+  :mu/gen
+  :mu/no-throw
+  "
   [& args]
   (-defn mx/SchematizedParams args))
-
-(def ^:private Schema
-  [:and any?
-   [:fn {:description "a malli schema"} mc/schema]])
-
-(defn with-api-error-message :- Schema
-  "Update a malli schema to have a :description (picked up by api docs),
-  and a :error/message (used by defendpoint). They don't have to be the same, but usually are."
-  ([mschema :- Schema message :- string?]
-   (with-api-error-message mschema message message))
-  ([mschema :- Schema
-    docs-message :- string?
-    error-message :- string?]
-   (mut/update-properties mschema assoc
-                          ;; override generic description in api docs
-                          :description docs-message
-                          ;; override generic description in defendpoint api errors
-                          :error/message error-message)))

@@ -202,12 +202,12 @@
 ;;; -------------------------------------------------- Dynamic Vars --------------------------------------------------
 
 (def ^:dynamic ^Boolean *allow-root-entries*
-  "Show we allow permissions entries like `/`? By default, this is disallowed, but you can temporarily disable it here
+  "Should we allow permissions entries like `/`? By default, this is disallowed, but you can temporarily disable it here
    when creating the default entry for `Admin`."
   false)
 
 (def ^:dynamic ^Boolean *allow-admin-permissions-changes*
-  "Show we allow changes to be made to permissions belonging to the Admin group? By default this is disabled to
+  "Should we allow changes to be made to permissions belonging to the Admin group? By default this is disabled to
    prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
   false)
 
@@ -221,93 +221,157 @@
   1. Any character other than a slash
   2. A forward slash, escaped by a backslash: `\\/`
   3. A backslash escaped by a backslash: `\\\\`"
-  (u.regex/rx (or #"[^\\/]" #"\\/" #"\\\\")))
+  (u.regex/rx [:or #"[^\\/]" #"\\/" #"\\\\"]))
+
+(def ^:private ^:depricated old-data-permissions
+  "Any path containing /db/ is a DATA permissions path. (e.g. can be /block/db/... or /download/db/...)
+   - those do not involve granting data access.
+   Any path starting with /db/ is a DATA ACCESS permissions path"
+  [:and #"db/\d+/"
+   [:? [:or "native/"
+        [:and "schema/"
+         [:? [:and path-char #_<-the-schema-name "*/"
+              [:? [:and #"table/\d+/"
+                   [:? [:or "read/"
+                        [:and "query/" [:? "segmented/"]]]]]]]]]]]])
+
+(def data-rx->data-kind
+  {[:and #"db/\d+/"]                                                                 :dk/db
+   [:and #"db/\d+/" "native" "/"]                                                    :dk/db-native
+   [:and #"db/\d+/" "schema" "/"]                                                    :dk/db-schema
+   [:and #"db/\d+/" "schema" "/" path-char "*" "/"]                                  :dk/db-schema-name
+   [:and #"db/\d+/" "schema" "/" path-char "*" "/table/\\d+/"]                       :dk/db-schema-name-and-table
+   [:and #"db/\d+/" "schema" "/" path-char "*" "/table/\\d+/" "read/"]               :dk/db-schema-name-table-and-read
+   [:and #"db/\d+/" "schema" "/" path-char "*" "/table/\\d+/" "query/"]              :dk/db-schema-name-table-and-query
+   [:and #"db/\d+/" "schema" "/" path-char "*" "/table/\\d+/" "query/" "segmented/"] :dk/db-schema-name-table-and-segmented})
+
+
+(def ^:private DataKind (into [:enum] (vals data-rx->data-kind)))
+
+(mu/defn data-kind :- DataKind [data-path :- :string]
+  (let [result (keep (fn [[data-rx kind]]
+                       (when (re-matches (u.regex/rx [:and "^/" data-rx]) data-path) kind))
+                     data-rx->data-kind)]
+    (when-not (= 1 (count result))
+      (throw (ex-info "Unclassified data path!!" {:data-path data-path :result result})))
+    (first result)))
+
+;; tests
+[(= :dk/db                                 (data-kind "/db/3/"))
+ (= :dk/db-native                          (data-kind "/db/3/native/"))
+ (= :dk/db-schema                          (data-kind "/db/3/schema/"))
+ (= :dk/db-schema-name                     (data-kind "/db/3/schema//"))
+ (= :dk/db-schema-name                     (data-kind "/db/3/schema/secret_base/"))
+ (= :dk/db-schema-name-and-table           (data-kind "/db/3/schema/secret_base/table/3/"))
+ (= :dk/db-schema-name-table-and-read      (data-kind "/db/3/schema/secret_base/table/3/read/"))
+ (= :dk/db-schema-name-table-and-query     (data-kind "/db/3/schema/secret_base/table/3/query/"))
+ (= :dk/db-schema-name-table-and-segmented (data-kind "/db/3/schema/secret_base/table/3/query/segmented/"))]
+
+(def ^:private data-permissions
+  "Any path containing /db/ is a DATA permissions path. (e.g. can be /block/db/... or /download/db/...)
+   - those do not involve granting data access.
+   Any path starting with /db/ is a DATA ACCESS permissions path"
+  (into [:or] (keys data-rx->data-kind)))
+
+(def ^:private download-permissions
+  ;; any path starting with /download/ is a DOWNLOAD permissions path
+  ;; /download/db/:id/ -> permissions to download 1M rows in query results
+  ;; /download/limited/db/:id/ -> permissions to download 1k rows in query results
+  [:and "download/" [:? "limited/"]
+   [:and #"db/\d+/"
+    [:? [:or "native/"
+         [:and "schema/"
+          [:? [:and path-char "*/"
+               [:? #"table/\d+/"]]]]]]]])
+
+(def ^:private
+  ;; any path starting with /data-model/ is a DATA MODEL permissions path
+  ;; /download/db/:id/ -> permissions to access the data model for the DB
+  data-model-permissions [:and "data-model/"
+                          [:and #"db/\d+/"
+                           [:? [:and "schema/"
+                                [:? [:and path-char "*/"
+                                     [:? #"table/\d+/"]]]]]]])
+
+(def ^:private
+  db-conn-details-permissions
+  ;; any path starting with /details/ is a DATABASE CONNECTION DETAILS permissions path
+  ;; /details/db/:id/ -> permissions to edit the connection details and settings for the DB
+  [:and "details/" #"db/\d+/"])
+
+(def ^:private ;; .../execute/ -> permissions to run query actions in the DB
+  execute-permissions [:and "execute/" [:or "" #"db/\d+/"]])
+
+(def ^:private collection-permissions
+  [:and "collection/"
+   [:or ;; /collection/:id/ -> readwrite perms for a specific Collection
+    [:and #"\d+/"
+     ;; /collection/:id/read/ -> read perms for a specific Collection
+     [:? "read/"]]
+    ;; /collection/root/ -> readwrite perms for the Root Collection
+    [:and "root/"
+     ;; /collection/root/read/ -> read perms for the Root Collection
+     [:? "read/"]]
+    ;; /collection/namespace/:namespace/root/ -> readwrite perms for 'Root' Collection in non-default
+    ;; namespace (only really used for EE)
+    [:and "namespace/" path-char "+/root/"
+     ;; /collection/namespace/:namespace/root/read/ -> read perms for 'Root' Collection in
+     ;; non-default namespace
+     [:? "read/"]]]])
+
+(def ;; any path starting with /application is a permissions that is not scoped by database or collection
+        ;; /application/setting/      -> permissions to access /admin/settings page
+        ;; /application/monitoring/   -> permissions to access tools, audit and troubleshooting
+        ;; /application/subscription/ -> permisisons to create/edit subscriptions and alerts
+        non-scoped-permissions [:and "application/"
+                                [:or "setting/" "monitoring/" "subscription/"]])
+
+(def
+  ;; any path starting with /block/ is for BLOCK anti-permissions.
+  ;; currently only supported at the DB level, e.g. /block/db/1/ => block collection-based access to
+  ;; Database 1
+  block-permissions #"block/db/\d+/")
+
+(def ;; root permissions, i.e. for admin
+  admin-permissions "")
+
+(def rx->kind
+  {(u.regex/rx "^/" data-permissions "$")            :data
+   (u.regex/rx "^/" download-permissions "$")        :download
+   (u.regex/rx "^/" data-model-permissions "$")      :data-model
+   (u.regex/rx "^/" db-conn-details-permissions "$") :db-conn-details
+   (u.regex/rx "^/" execute-permissions "$")         :execute
+   (u.regex/rx "^/" collection-permissions "$")      :collection
+   (u.regex/rx "^/" non-scoped-permissions "$")      :non-scoped
+   (u.regex/rx "^/" block-permissions "$")           :block
+   (u.regex/rx "^/" admin-permissions "$")           :admin})
+
+(def ^:private Kind
+  (into [:enum] (vals rx->kind)))
+
+(mu/defn path-kind :- Kind [path :- :string]
+  (let [result (keep (fn [[permission-rx kind]]
+                       (when (re-matches (u.regex/rx permission-rx) path) kind))
+                     rx->kind)]
+    (when-not (= 1 (count result))
+      (throw (ex-info "Unclassified path!!" {:path path :result result})))
+    (first result)))
 
 (def ^:private path-regex
   "Regex for a valid permissions path. The [[metabase.util.regex/rx]] macro is used to make the big-and-hairy regex
   somewhat readable."
-  (u.regex/rx "^/"
-              ;; any path containing /db/ is a DATA permissions path
-              ;; any path starting with /db/ is a DATA ACCESS permissions path
-              (or
-               ;; /db/:id/ -> permissions for the entire DB -- native and all schemas
-               (and #"db/\d+/"
-                    (opt (or
-                          ;; .../native/ -> permissions to create new native queries for the DB
-                          "native/"
-                          ;; .../schema/ -> permissions for all schemas in the DB
-                          (and "schema/"
-                               ;; .../schema/:name/ -> permissions for a specific schema
-                               (opt (and path-char "*/"
-                                         ;; .../schema/:name/table/:id/ -> FULL permissions for a specific table
-                                         (opt (and #"table/\d+/"
-                                                   (opt (or
-                                                         ;; .../read/ -> Perms to fetch the Metadata for Table
-                                                         "read/"
-                                                         ;; .../query/ -> Perms to run any sort of query against Table
-                                                         (and "query/"
-                                                              ;; .../segmented/ -> Permissions to run a query against
-                                                              ;; a Table using GTAP
-                                                              (opt "segmented/"))))))))))))
-               ;; any path starting with /download/ is a DOWNLOAD permissions path
-               ;; /download/db/:id/ -> permissions to download 1M rows in query results
-               ;; /download/limited/db/:id/ -> permissions to download 1k rows in query results
-               (and "download/"
-                    (opt "limited/")
-                    (and #"db/\d+/"
-                         (opt (or
-                               "native/"
-                               (and "schema/"
-                                    (opt (and path-char "*/"
-                                              (opt #"table/\d+/"))))))))
-               ;; any path starting with /data-model/ is a DATA MODEL permissions path
-               ;; /download/db/:id/ -> permissions to access the data model for the DB
-               (and "data-model/"
-                    (and #"db/\d+/"
-                         (opt (and
-                               "schema/"
-                               (opt (and path-char "*/"
-                                         (opt #"table/\d+/")))))))
-               ;; any path starting with /details/ is a DATABASE CONNECTION DETAILS permissions path
-               ;; /details/db/:id/ -> permissions to edit the connection details and settings for the DB
-               (and "details/" #"db/\d+/")
-               ;; .../execute/ -> permissions to run query actions in the DB
-               (and "execute/"
-                    (or ""
-                        #"db/\d+/"))
-               ;; any path starting with /collection/ is a COLLECTION permissions path
-               (and "collection/"
-                    (or
-                     ;; /collection/:id/ -> readwrite perms for a specific Collection
-                     (and #"\d+/"
-                          ;; /collection/:id/read/ -> read perms for a specific Collection
-                          (opt "read/"))
-                     ;; /collection/root/ -> readwrite perms for the Root Collection
-                     (and "root/"
-                          ;; /collection/root/read/ -> read perms for the Root Collection
-                          (opt "read/"))
-                     ;; /collection/namespace/:namespace/root/ -> readwrite perms for 'Root' Collection in non-default
-                     ;; namespace (only really used for EE)
-                     (and "namespace/" path-char "+/root/"
-                          ;; /collection/namespace/:namespace/root/read/ -> read perms for 'Root' Collection in
-                          ;; non-default namespace
-                          (opt "read/"))))
-               ;; any path starting with /application is a permissions that is not scoped by database or collection
-               ;; /application/setting/      -> permissions to access /admin/settings page
-               ;; /application/monitoring/   -> permissions to access tools, audit and troubleshooting
-               ;; /application/subscription/ -> permisisons to create/edit subscriptions and alerts
-               (and "application/"
-                    (or
-                     "setting/"
-                     "monitoring/"
-                     "subscription/"))
-               ;; any path starting with /block/ is for BLOCK anti-permissions.
-               ;; currently only supported at the DB level, e.g. /block/db/1/ => block collection-based access to
-               ;; Database 1
-               #"block/db/\d+/"
-               ;; root permissions, i.e. for admin
-               "")
-              "$"))
+  (u.regex/rx
+   "^/" [:or
+         data-permissions
+         download-permissions
+         data-model-permissions
+         db-conn-details-permissions
+         execute-permissions
+         collection-permissions
+         non-scoped-permissions
+         block-permissions
+         admin-permissions]
+   "$"))
 
 (def segmented-perm-regex
   "Regex that matches a segmented permission. Used internally for some EE stuff
@@ -741,15 +805,13 @@
 (defn- all-permissions
   "Handle '/' permission"
   [db-ids]
-  (reduce (fn [g db-id]
-            (assoc g db-id {:data       {:native  :write
-                                         :schemas :all}
-                            :download   {:native  :full
-                                         :schemas :full}
-                            :data-model {:schemas :all}
-                            :details    :yes}))
-          {}
-          db-ids))
+  (apply merge
+   (map (fn [db-id]
+          {db-id {:data       {:native :write :schemas :all}
+                  :download   {:native :full  :schemas :full}
+                  :data-model {               :schemas :all}
+                  :details :yes}})
+        db-ids)))
 
 (defn- permissions-by-group-ids [where-clause]
   (let [permissions (db/select [Permissions [:group_id :group-id] [:object :path]]
@@ -1266,3 +1328,67 @@
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any] new-value]
    (update-execution-perms-graph! (assoc-in (execution-perms-graph) (cons :groups ks) new-value))))
+
+
+
+(defmacro chk [& body] `(print (if (do ~@body) "✅" "❌"))) ;;nomerge 😹
+
+;;only make changes for :admin, and :data types
+
+
+(let [delete (fn delete [s to-delete] (str/replace s to-delete ""))
+      data-query-split (fn data-query-split [path]
+                         [(str "/data" path) (str "/query" path)])]
+  (def data-kind->rewrite-fn
+    {:dk/db                                 data-query-split
+     :dk/db-native                          (fn [path] (data-query-split (delete path "native/")))
+     :dk/db-schema                          (fn [path] [(str "/data" (delete path "schema/"))
+                                                        (str "/query" path)])
+     :dk/db-schema-name                     data-query-split
+     :dk/db-schema-name-and-table           data-query-split
+     :dk/db-schema-name-table-and-read      (constantly [])
+     :dk/db-schema-name-table-and-query     (fn [path] (data-query-split (delete path "query/")))
+     :dk/db-schema-name-table-and-segmented (fn [path] (data-query-split (delete path "query/segmented/")))}))
+
+(defn move-data
+  "See [[data-permissions]]"
+  [path]
+  (let [data-permission-kind (data-kind path)
+        rewrite-fn (data-kind->rewrite-fn data-permission-kind)]
+    (rewrite-fn path)))
+
+(defn move [path]
+  (let [kind (path-kind path)]
+    (cond
+      (= kind :admin) ["/"]
+      (= kind :data) (move-data path)
+      (= kind :block) []
+      :else [])))
+
+;; (require '[malli.generator :as mg])
+
+;; (defonce data-path-sample (vec (sort-by count (mg/sample ((set/map-invert rx->kind) :data) {:size 1000}))))
+
+(for [[in out] [;; admin
+                ["/" ["/"]]
+
+                ;; block
+                ["/block/db/1/" []]
+
+                ;; data
+                ["/db/1/"                                       ["/data/db/1/"                        "/query/db/1/"]]
+                ["/db/1/native/"                                ["/data/db/1/"                        "/query/db/1/"]]
+                ["/db/1/schema/"                                ["/data/db/1/"                       "/query/db/1/schema/"]]
+                ["/db/1/schema//"                               ["/data/db/1/schema//"               "/query/db/1/schema//"]]
+                ["/db/1/schema/PUBLIC/"                         ["/data/db/1/schema/PUBLIC/"         "/query/db/1/schema/PUBLIC/"]]
+                ["/db/1/schema/PUBLIC/table/1/"                 ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]]
+                ["/db/1/schema/PUBLIC/table/1/read/"            []]
+                ["/db/1/schema/PUBLIC/table/1/query/"           ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]]
+                ["/db/1/schema/PUBLIC/table/1/query/segmented/" ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]]]]
+  (do
+    [#_(boolean (re-matches path-regex in))
+     (try (data-kind in) (catch Exception e nil))
+     (path-kind in)
+     in
+     (move in)
+     (chk (= (move in) out))]))
