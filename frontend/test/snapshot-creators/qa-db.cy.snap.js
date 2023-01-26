@@ -5,6 +5,7 @@ import {
   addWritablePostgresDatabase,
   addMongoDatabase,
   addMySQLDatabase,
+  restoreActionsDB,
 } from "__support__/e2e/helpers";
 
 describe("qa databases snapshots", { tags: "@external" }, () => {
@@ -31,6 +32,7 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
 
     restoreAndAuthenticate();
 
+    restoreActionsDB();
     addWritablePostgresDatabase();
     snapshot("postgresActions");
     deleteDatabase("postgresID");
