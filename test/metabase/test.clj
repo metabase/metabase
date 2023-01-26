@@ -88,6 +88,7 @@
 (p/import-vars
  [actions.test-util
   with-actions
+  with-actions-disabled
   with-actions-enabled
   with-actions-test-data
   with-actions-test-data-tables
