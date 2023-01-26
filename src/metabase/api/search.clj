@@ -307,7 +307,7 @@
       ;; We don't want alerts included in pulse results
       (sql.helpers/where [:and
                           [:= :alert_condition nil]
-                          [:= :pulse.dashboard_id nil]])))
+                          [:not= :pulse.dashboard_id nil]])))
 
 (s/defmethod search-query-for-model "metric"
   [model search-ctx :- SearchContext]
@@ -411,7 +411,7 @@
        :order-by order-clause})))
 
 (s/defn ^:private search
-  "Builds a search query that includes all of the searchable entities and runs it"
+  "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
   (let [search-query      (full-search-query search-ctx)
         _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
