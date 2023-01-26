@@ -78,12 +78,12 @@
   "Inserts an Action and related type table. Returns the action id."
   [action-data]
   (db/transaction
-    (let [action-columns [:type :name :description :model_id :parameters :parameter_mappings :visualization_settings]
-          action (db/insert! Action (select-keys action-data action-columns))
-          model (case (keyword (:type action))
-                  :http HTTPAction
-                  :query QueryAction
-                  :implicit ImplicitAction)]
+    (let [action-columns [:type :name :description :model_id :parameters :parameter_mappings :visualization_settings :creator_id]
+          action         (db/insert! Action (select-keys action-data action-columns))
+          model          (case (keyword (:type action))
+                           :http HTTPAction
+                           :query QueryAction
+                           :implicit ImplicitAction)]
       (db/execute! {:insert-into model
                     :values [(-> (apply dissoc action-data action-columns)
                                  (u/update-if-exists :template json/encode)
@@ -169,21 +169,21 @@
 
    Pass in known-models to save a second Card lookup."
   [known-models & options]
-  (let [actions (apply select-actions options)
-        implicit-action-model-ids (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
-        models-with-implicit-actions (if known-models
-                                       (->> known-models
-                                            (filter #(contains? implicit-action-model-ids (:id %)))
-                                            distinct)
-                                       (when (seq implicit-action-model-ids)
-                                         (db/select 'Card :id [:in implicit-action-model-ids])))
+  (let [actions                         (apply select-actions options)
+        implicit-action-model-ids       (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
+        models-with-implicit-actions    (if known-models
+                                          (->> known-models
+                                               (filter #(contains? implicit-action-model-ids (:id %)))
+                                               distinct)
+                                          (when (seq implicit-action-model-ids)
+                                            (db/select 'Card :id [:in implicit-action-model-ids])))
         implicit-parameters-by-model-id (when (seq models-with-implicit-actions)
                                           (implicit-action-parameters models-with-implicit-actions))]
-
     (for [{:keys [parameters] :as action} actions
-          :let [implicit-params (when (= (:type action) :implicit)
-                                  (let [implicit-params (get implicit-parameters-by-model-id (:model_id action))
-                                        saved-params (m/index-by :id parameters)]
+          :let [model-id        (:model_id action)
+                implicit-params (when (= (:type action) :implicit)
+                                  (let [implicit-params (get implicit-parameters-by-model-id model-id)
+                                        saved-params    (m/index-by :id parameters)]
                                     (for [param implicit-params
                                           :let [saved-param (get saved-params (:id param))]]
                                       (merge param saved-param))))]]
