@@ -48,7 +48,7 @@
       (-> z
           (find-pred (comp #(= :versions %) :tag))
           (z/insert-child (x/element :version {} version))
-          (topmost)
+          topmost
           (find-pred (comp #(= :release %) :tag))
           (z/down)
           (z/replace version)
