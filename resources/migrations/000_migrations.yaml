@@ -14274,6 +14274,42 @@ databaseChangeLog:
       rollback: # not required, orphaned sandboxes should not be re-added to the DB
 
   - changeSet:
+      id: v46.00-068
+      author: adam-james
+      comment: Added 0.46.0 - Copy activity -> activity_log (most recent 30 days)
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
+              SELECT table_id, database_id, topic, details, model_id, user_id, timestamp, model
+              FROM activity WHERE timestamp > (now() - CAST('30 days' AS interval))
+              ORDER BY timestamp ASC;
+      rollback: # we do not care to preserve the activity_log from 46->45
+        - sql:
+            sql: >-
+              DELETE FROM activity_log;
+
+  - changeSet:
+      id: v46.00-069
+      author: adam-james
+      comment: Added 0.46.0 - Copy view_log -> activity_log (most recent 30 days)
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
+              SELECT CAST(NULL AS integer) AS table_id,
+                     CAST(NULL AS integer) AS database_id,
+                     CONCAT(model, '-view') AS topic,
+                     metadata AS details,
+                     model_id, user_id, timestamp, model
+              FROM view_log WHERE timestamp > (NOW() - CAST('30 days' AS INTERVAL))
+              ORDER BY timestamp ASC;
+      rollback: # we do not care to preserve the activity_log from 46->45
+        - sql:
+            sql: >-
+              DELETE FROM activity_log;
+
+  - changeSet:
       id: v46.00-070
       author: calherries
       comment: Added 0.46.0 - add entity_id column to action
