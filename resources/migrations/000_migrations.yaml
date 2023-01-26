@@ -14300,6 +14300,13 @@ databaseChangeLog:
       comment: Added 0.46.0 - Copy activity -> activity_log (most recent 30 days)
       changes:
         - sql:
+            dbms: mysql,mariadb,h2
+            sql: >-
+              INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
+              SELECT table_id, database_id, topic, details, model_id, user_id, timestamp, model
+              FROM activity WHERE timestamp > (now() - INTERVAL '30' DAYS)
+              ORDER BY timestamp ASC;
+            dbms: postgresql
             sql: >-
               INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
               SELECT table_id, database_id, topic, details, model_id, user_id, timestamp, model
@@ -14316,6 +14323,17 @@ databaseChangeLog:
       comment: Added 0.46.0 - Copy view_log -> activity_log (most recent 30 days)
       changes:
         - sql:
+            dbms: mysql,mariadb,h2
+            sql: >-
+              INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
+              SELECT CAST(NULL AS integer) AS table_id,
+                     CAST(NULL AS integer) AS database_id,
+                     CONCAT(model, '-view') AS topic,
+                     metadata AS details,
+                     model_id, user_id, timestamp, model
+              FROM view_log WHERE timestamp > (now() - INTERVAL '30' DAYS)
+              ORDER BY timestamp ASC;
+            dbms: postgresql
             sql: >-
               INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
               SELECT CAST(NULL AS integer) AS table_id,
