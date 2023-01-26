@@ -57,7 +57,8 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :sensitive? true)
 
 (defsetting saml-keystore-alias
-  (deferred-tru "Alias for the key that {0} should use for signing SAML requests" (public-settings/application-name))
+  (deferred-tru "Alias for the key that {0} should use for signing SAML requests"
+                (public-settings/application-name-for-setting-descriptions))
   :default "metabase")
 
 (defsetting saml-attribute-email
@@ -83,7 +84,8 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
 
 (defsetting saml-group-mappings
   ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are SAML groups and values are lists of MB groups IDs
-  (deferred-tru "JSON containing SAML to {0} group mappings." (public-settings/application-name))
+  (deferred-tru "JSON containing SAML to {0} group mappings."
+                (public-settings/application-name-for-setting-descriptions))
   :type    :json
   :default {}
   :setter (comp (partial setting/set-value-of-type! :json :saml-group-mappings) validate-group-mappings))
@@ -137,7 +139,8 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
 
 (defsetting jwt-group-mappings
   ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are JWT groups and values are lists of MB groups IDs
-  (deferred-tru "JSON containing JWT to {0} group mappings." (public-settings/application-name))
+  (deferred-tru "JSON containing JWT to {0} group mappings."
+                (public-settings/application-name-for-setting-descriptions))
   :type    :json
   :default {}
   :setter  (comp (partial setting/set-value-of-type! :json :jwt-group-mappings) validate-group-mappings))
