@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import title from "metabase/hoc/Title";
+import { useOnMount } from "metabase/hooks/use-on-mount";
 import { PublicApi } from "metabase/services";
 
 import { ActionForm } from "metabase/actions/components/ActionForm";
@@ -27,6 +28,8 @@ interface Props {
 function PublicAction({ action, publicId, onError }: Props) {
   const [isSubmitted, setSubmitted] = useState(false);
 
+  const hasParameters = action.parameters.length > 0;
+
   const handleSubmit = useCallback(
     async (values: ParametersForActionExecution) => {
       try {
@@ -39,10 +42,20 @@ function PublicAction({ action, publicId, onError }: Props) {
     [publicId, onError],
   );
 
+  useOnMount(() => {
+    if (!hasParameters) {
+      handleSubmit({});
+    }
+  });
+
   if (isSubmitted) {
     return (
       <FormResultMessage>{t`Thanks for your submission.`}</FormResultMessage>
     );
+  }
+
+  if (!hasParameters) {
+    return null;
   }
 
   return (
