@@ -29,7 +29,7 @@ export const zoomInRow =
     // don't show object id in url if it is a row index
     const hasPK = getPKColumnIndex(getState()) !== -1;
     hasPK &&
-      dispatch(updateUrl(null, { rowIndex: indexToUse, replaceState: false }));
+      dispatch(updateUrl(null, { objectId: indexToUse, replaceState: false }));
   };
 
 export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
