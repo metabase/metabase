@@ -13990,6 +13990,71 @@ databaseChangeLog:
             constraintName: fk_action_creator_id
             nullable: false
 
+  - changeSet:
+      id: v44.00-070
+      author: calherries
+      comment: Added 0.46.0 - add entity_id column to action
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: action
+
+  - changeSet:
+      id: v44.00-071
+      author: calherries
+      comment: Added 0.46.0 - add entity_id column to implicit_action
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: implicit_action
+
+  - changeSet:
+      id: v44.00-072
+      author: calherries
+      comment: Added 0.46.0 - add entity_id column to http_action
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: http_action
+
+  - changeSet:
+      id: v44.00-073
+      author: calherries
+      comment: Added 0.46.0 - add entity_id column to query_action
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: query_action
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
