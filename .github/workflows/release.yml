@@ -7,6 +7,23 @@ on:
 
 jobs:
 
+  trigger-docs-update:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.DOCS_UPDATE_TOKEN }}
+          script: |
+            github.rest.repos.createDispatchEvent({
+              owner: '${{ github.repository_owner }}',
+              repo: '${{ secrets.DOCS_REPO }}',
+              event_type: 'trigger-docs-update',
+              client_payload: {
+                version: '${{ github.ref_name }}'
+              }
+            });
+
   download-uberjar:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
