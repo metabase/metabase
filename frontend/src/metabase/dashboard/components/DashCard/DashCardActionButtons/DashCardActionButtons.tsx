@@ -5,7 +5,11 @@ import Icon from "metabase/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
-import { Dashboard, VisualizationSettings } from "metabase-types/api";
+import {
+  Dashboard,
+  DashboardOrderedCard,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 
 import DashCardActionButton from "./DashCardActionButton";
@@ -18,6 +22,7 @@ import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
 interface Props {
   series: Series;
   dashboard: Dashboard;
+  dashcard?: DashboardOrderedCard;
   isLoading: boolean;
   isVirtualDashCard: boolean;
   isPreviewing: boolean;
@@ -32,6 +37,7 @@ interface Props {
 function DashCardActionButtons({
   series,
   dashboard,
+  dashcard,
   isLoading,
   isVirtualDashCard,
   isPreviewing,
@@ -70,6 +76,7 @@ function DashCardActionButtons({
           key="chart-settings-button"
           series={series}
           dashboard={dashboard}
+          dashcard={dashcard}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
         />,
       );

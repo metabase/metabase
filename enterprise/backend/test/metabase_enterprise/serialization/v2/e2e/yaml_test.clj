@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.v2.e2e.yaml-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.e2e.yaml-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]

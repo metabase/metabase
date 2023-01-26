@@ -83,7 +83,8 @@
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.core/println      {:message "Use clojure.tools.logging instead of clojure.core/println "}
+  {clojure.string/lower-case {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
+   clojure.string/upper-case {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
    toucan.db/query           {:message "Use mdb.query/query instead of toucan.db/query"}
    toucan.db/reducible-query {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
 
@@ -383,8 +384,6 @@
   honeysql.util/defalias                                                               clojure.core/def
   metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
   metabase.actions.test-util/with-actions                                              clojure.core/let
-  metabase.actions.test-util/with-card-emitter                                         clojure.core/let
-  metabase.actions.test-util/with-dashboard-emitter                                    clojure.core/let
   metabase.api.common/let-404                                                          clojure.core/let
   metabase.api.dashboard-test/let-url                                                  clojure.core/let
   metabase.api.search-test/do-test-users                                               clojure.core/let
@@ -416,6 +415,7 @@
   metabase.test.data.interface/defdataset                                              clojure.core/def
   metabase.test.data.interface/defdataset-edn                                          clojure.core/def
   metabase.test/defdataset                                                             clojure.core/def
+  metabase.test/with-actions                                                           clojure.core/let
   metabase.test/with-open-channels                                                     clojure.core/let
   metabase.test/with-single-admin-user                                                 clojure.core/fn
   metabase.test/with-temp-dir                                                          clojure.core/let
@@ -644,9 +644,6 @@
    metabase.test/with-persistence-enabled                                       macros.metabase.test.persistence/with-persistence-enabled
    metabase.test/with-temp-env-var-value                                        macros.metabase.test.util/with-temp-env-var-value
    metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values}}
-
- :config-in-call
- {metabase.util.honey-sql-2-extensions/with-database-type-info {:linters {:type-mismatch {:level :off}}}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}

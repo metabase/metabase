@@ -71,6 +71,7 @@ export interface ConcreteField {
 
   parent_id?: FieldId;
   fk_target_field_id?: FieldId;
+  target?: Field;
   values?: FieldValue[];
   dimensions?: FieldDimension;
 

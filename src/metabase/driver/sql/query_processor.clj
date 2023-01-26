@@ -818,7 +818,7 @@
   ;; custom implementation?
   (if (get options :case-sensitive true)
     [:like field                    (->honeysql driver value)]
-    [:like (hsql/call :lower field) (->honeysql driver (update value 1 str/lower-case))]))
+    [:like (hsql/call :lower field) (->honeysql driver (update value 1 u/lower-case-en))]))
 
 (s/defn ^:private update-string-value :- mbql.s/value
   [value :- (s/constrained mbql.s/value #(string? (second %)) "string value"), f]

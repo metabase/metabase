@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions :as actions]
-   [metabase.actions.test-util :as actions.test-util]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Table]]
@@ -13,10 +12,10 @@
    [schema.core :as s]))
 
 (defmacro with-actions-test-data-and-actions-permissively-enabled
-  "Combines [[actions.test-util/with-actions-test-data-and-actions-enabled]] with full permissions."
+  "Combines [[mt/with-actions-test-data-and-actions-enabled]] with full permissions."
   {:style/indent 0}
   [& body]
-  `(actions.test-util/with-actions-test-data-and-actions-enabled
+  `(mt/with-actions-test-data-and-actions-enabled
      (binding [*current-user-permissions-set* (delay #{"/"})]
        ~@body)))
 
@@ -126,27 +125,16 @@
     :expected     {:rows-updated [1]}}])
 
 (deftest feature-flags-test
-  (testing "Disable endpoints unless both global and Database feature flags are enabled"
-    (doseq [{:keys [action request-body]} (mock-requests)
-            enable-global-feature-flag?   [true false]
-            enable-database-feature-flag? [true false]]
-      (testing action
-        (mt/with-temporary-setting-values [experimental-enable-actions enable-global-feature-flag?]
-          (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions enable-database-feature-flag?}}
-            (binding [*current-user-permissions-set* (delay #{"/"})]
-              (cond
-                (not enable-global-feature-flag?)
-                (testing "Should return a 400 if global feature flag is disabled"
-                  (is (thrown-with-msg? Exception #"Actions are not enabled."
-                                        (actions/perform-action! action request-body))))
-
-                (not enable-database-feature-flag?)
-                (testing "Should return a 400 if Database feature flag is disabled."
-                  (is (partial= ["Actions are not enabled." {:database-id (mt/id)}]
-                                (try
-                                  (actions/perform-action! action request-body)
-                                  (catch Exception e
-                                    [(ex-message e) (ex-data e)])))))))))))))
+  (doseq [{:keys [action request-body]} (mock-requests)]
+    (testing action
+      (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
+        (binding [*current-user-permissions-set* (delay #{"/"})]
+          (testing "Should return a 400 if Database feature flag is disabled."
+            (is (partial= ["Actions are not enabled." {:database-id (mt/id)}]
+                          (try
+                            (actions/perform-action! action request-body)
+                            (catch Exception e
+                              [(ex-message e) (ex-data e)]))))))))))
 
 (driver/register! ::feature-flag-test-driver, :parent :h2)
 
@@ -156,27 +144,26 @@
 
 (deftest actions-feature-test
   (testing "Only allow actions for drivers that support the `:actions` driver feature. (#22557)"
-    (mt/with-temporary-setting-values [experimental-enable-actions true]
-      (mt/with-temp* [Database [{db-id :id} {:name     "Birds"
-                                             :engine   ::feature-flag-test-driver
-                                             :settings {:database-enable-actions true}}]
-                      Table    [{table-id :id} {:db_id db-id}]]
-        (is (thrown-with-msg? Exception (re-pattern
-                                          (format "%s Database %d \"Birds\" does not support actions."
-                                                  (u/qualified-name ::feature-flag-test-driver)
-                                                  db-id))
-                              ;; TODO -- not sure what the actual shape of this API is supposed to look like. We'll have to
-                              ;; update this test when the PR to support row insertion is in.
-                              (actions/perform-action! :table/insert
-                                                       {:database db-id
-                                                        :table-id table-id
-                                                        :values   {:name "Toucannery"}})))))))
+    (mt/with-temp* [Database [{db-id :id} {:name     "Birds"
+                                           :engine   ::feature-flag-test-driver
+                                           :settings {:database-enable-actions true}}]
+                    Table    [{table-id :id} {:db_id db-id}]]
+      (is (thrown-with-msg? Exception (re-pattern
+                                       (format "%s Database %d \"Birds\" does not support actions."
+                                               (u/qualified-name ::feature-flag-test-driver)
+                                               db-id))
+                            ;; TODO -- not sure what the actual shape of this API is supposed to look like. We'll have to
+                            ;; update this test when the PR to support row insertion is in.
+                            (actions/perform-action! :table/insert
+                                                     {:database db-id
+                                                      :table-id table-id
+                                                      :values   {:name "Toucannery"}}))))))
 
 (defn- row-action? [action]
   (= (namespace action) "row"))
 
 (deftest validation-test
-  (actions.test-util/with-actions-enabled
+  (mt/with-actions-enabled
     (doseq [{:keys [action request-body]} (mock-requests)
             :when (row-action? action)]
       (testing (str action " without :query")
@@ -185,7 +172,7 @@
 
 (deftest row-update-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (actions.test-util/with-actions-enabled
+    (mt/with-actions-enabled
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
@@ -198,7 +185,7 @@
 
 (deftest row-delete-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (actions.test-util/with-actions-enabled
+    (mt/with-actions-enabled
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
@@ -229,7 +216,7 @@
   (testing "row/delete"
     (testing "FK constraint violations errors should have nice error messages (at least for Postgres) (#24021)"
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-        (actions.test-util/with-actions-test-data-tables #{"venues" "categories"}
+        (mt/with-actions-test-data-tables #{"venues" "categories"}
           (with-actions-test-data-and-actions-permissively-enabled
 
             ;; attempting to delete the `Pizza` category should fail because there are several rows in `venues` that have

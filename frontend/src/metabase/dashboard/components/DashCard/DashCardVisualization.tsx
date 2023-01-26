@@ -55,6 +55,7 @@ interface DashCardVisualizationProps {
 
   expectedDuration: number;
   isSlow: CardSlownessStatus;
+  isAction: boolean;
 
   isPreviewing: boolean;
   isEmbed: boolean;
@@ -99,6 +100,7 @@ function DashCardVisualization({
   totalNumGridCols,
   expectedDuration,
   error,
+  isAction,
   headerIcon,
   isSlow,
   isPreviewing,
@@ -201,6 +203,7 @@ function DashCardVisualization({
       errorIcon={error?.icon}
       showTitle
       isDashboard
+      isAction={isAction}
       isSlow={isSlow}
       isFullscreen={isFullscreen}
       isNightMode={isNightMode}

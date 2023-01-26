@@ -12,7 +12,8 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]))
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.util :as u]))
 
 (sql.tx/add-test-extensions! :presto)
 
@@ -132,7 +133,7 @@
 
 (defmethod ddl.i/format-name :presto
   [_ s]
-  (str/lower-case s))
+  (u/lower-case-en s))
 
 ;; FIXME Presto actually has very good timezone support
 (defmethod tx/has-questionable-timezone-support? :presto [_] true)

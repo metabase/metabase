@@ -147,20 +147,24 @@ function ModelDetailPage({
   );
 }
 
+function getModelId(state: State, props: OwnProps) {
+  return Urls.extractEntityId(props.params.slug);
+}
+
+function getModelDatabaseId(
+  state: State,
+  props: OwnProps & ModelEntityLoaderProps,
+) {
+  return props.modelCard.dataset_query.database;
+}
+
 function getPageTitle({ modelCard }: Props) {
   return modelCard?.name;
 }
 
 export default _.compose(
-  Questions.load({
-    id: (state: State, { params }: OwnProps) =>
-      Urls.extractEntityId(params.slug),
-    entityAlias: "modelCard",
-  }),
-  Databases.load({
-    id: (state: State, { modelCard }: OwnProps & ModelEntityLoaderProps) =>
-      modelCard.dataset_query.database,
-  }),
+  Questions.load({ id: getModelId, entityAlias: "modelCard" }),
+  Databases.load({ id: getModelDatabaseId }),
   connect<StateProps, DispatchProps, OwnProps & ModelEntityLoaderProps, State>(
     mapStateToProps,
     mapDispatchToProps,
