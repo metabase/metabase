@@ -20,15 +20,15 @@
   (:import
    (java.util UUID)))
 
+;; These modules register settings but are otherwise unused. They still must be imported.
+(comment metabase.public-settings.premium-features/keep-me)
+
 (defsetting application-name
   (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
   :visibility :public
   :type       :string
   :enabled?   premium-features/enable-whitelabeling?
   :default    "Metabase")
-
-;; These modules register settings but are otherwise unused. They still must be imported.
-(comment metabase.public-settings.premium-features/keep-me)
 
 (defn application-name-for-setting-descriptions
   "Returns the value of the [[application-name]] setting so setting docstrings can be generated during the compilation stage.
@@ -39,13 +39,6 @@
   (if *compile-files*
     "Metabase"
     (application-name)))
-
-(defsetting application-name
-  (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
-  :visibility :public
-  :type       :string
-  :enabled?   premium-features/enable-whitelabeling?
-  :default    "Metabase")
 
 (defn- google-auth-enabled? []
   (boolean (setting/get :google-auth-enabled)))
@@ -196,7 +189,7 @@
 
 (defsetting anon-tracking-enabled
   (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
-                (application-name-for-setting-decsriptions))
+                (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :public)
@@ -240,7 +233,7 @@
 
 (defsetting embedding-app-origin
   (deferred-tru "Allow this origin to embed the full {0} application"
-                (application-name-for-setting-decsriptions))
+                (application-name-for-setting-descriptions))
   :visibility :public)
 
 (defsetting enable-nested-queries
