@@ -10,7 +10,8 @@
    [metabase.db.data-migrations :refer [DataMigrations]]
    [metabase.db.setup :as mdb.setup]
    [metabase.models
-    :refer [Activity
+    :refer [Action
+            Activity
             ApplicationPermissionsRevision
             BookmarkOrdering
             Card
@@ -121,6 +122,7 @@
    TimelineEvent
    Secret
    ParameterCard
+   Action
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])

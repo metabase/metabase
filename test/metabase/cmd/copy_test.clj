@@ -11,15 +11,15 @@
   (let [migrated-model-names (set (map :name copy/entities))
         ;; Models that should *not* be migrated in `load-from-h2`.
         models-to-exclude    #{"TaskHistory" "Query" "QueryCache" "QueryExecution" "CardFavorite" "DashboardFavorite"
-                               "Action" "HTTPAction" "ImplicitAction" "QueryAction"}
+                               "HTTPAction" "ImplicitAction" "QueryAction"}
         all-model-names      (set (for [ns       u/metabase-namespace-symbols
                                         :when    (or (re-find #"^metabase\.models\." (name ns))
                                                      (= (name ns) "metabase.db.data-migrations"))
                                         :when    (not (re-find #"test" (name ns)))
                                         [_ varr] (do (classloader/require ns)
                                                      (ns-interns ns))
-                                        :let     [{model-name :name, :as model} (var-get varr)]
+                                        :let     [model (var-get varr)]
                                         :when    (and (models/model? model)
-                                                      (not (contains? models-to-exclude model-name)))]
-                                    model-name))]
+                                                      (not (contains? models-to-exclude (:name model))))]
+                                     (:name model)))]
     (is (= all-model-names migrated-model-names))))
