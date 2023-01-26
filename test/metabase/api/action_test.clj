@@ -27,7 +27,7 @@
    :parameter_mappings     s/Any
    :visualization_settings su/Map
    :creator_id             su/IntGreaterThanZero
-   :creator                user/HydratedUser
+   :creator                user/DefaultUser
    s/Keyword               s/Any})
 
 (deftest list-actions-test

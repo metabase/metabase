@@ -287,7 +287,7 @@
    (schema/optional-key :google_auth)      schema/Bool
    (schema/optional-key :ldap_auth)        schema/Bool})
 
-(def HydratedUser
+(def DefaultUser
   "Standard form of a user (for consumption by the frontend and such)"
   {:id           su/IntGreaterThanOrEqualToZero
    :email        su/NonBlankString
