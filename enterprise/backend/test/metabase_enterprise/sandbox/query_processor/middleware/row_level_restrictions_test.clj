@@ -488,7 +488,7 @@
           ;; up with the current copy
           expected-cols (fn []
                           (for [col  original-cols
-                                :let [id (mt/id :venues (keyword (str/lower-case (:name col))))]]
+                                :let [id (mt/id :venues (keyword (u/lower-case-en (:name col))))]]
                             (assoc col
                                    :id id
                                    :table_id (mt/id :venues)

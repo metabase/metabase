@@ -2,12 +2,13 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
+   [metabase.util :as u]
    [schema.core :as s]))
 
 (s/defn normalize :- s/Str
   "Normalize a `query` to lower-case."
   [query :- s/Str]
-  (str/lower-case (str/trim query)))
+  (u/lower-case-en (str/trim query)))
 
 (s/defn tokenize :- [s/Str]
   "Break a search `query` into its constituent tokens"

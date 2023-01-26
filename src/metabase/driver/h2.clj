@@ -373,7 +373,7 @@
                                            (->> options
                                                 ;; Remove INIT=... from options for security reasons (Metaboat #165)
                                                 ;; http://h2database.com/html/features.html#execute_sql_on_connection
-                                                (remove (fn [[k _]] (= (str/lower-case k) "init")))
+                                                (remove (fn [[k _]] (= (u/lower-case-en k) "init")))
                                                 (into {}))
                                            {"IFEXISTS"         "TRUE"
                                             "ACCESS_MODE_DATA" "r"}))))

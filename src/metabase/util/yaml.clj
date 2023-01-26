@@ -37,5 +37,5 @@
    (u.files/with-open-path-to-resource [dir dir]
      (with-open [ds (Files/newDirectoryStream dir)]
        (->> ds
-            (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
+            (filter (comp #(str/ends-with? % ".yaml") u/lower-case-en (memfn ^Path getFileName)))
             (mapv (partial load constructor)))))))
