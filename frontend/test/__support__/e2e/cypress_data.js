@@ -140,3 +140,9 @@ export const USERS = {
 // Embedding
 export const METABASE_SECRET_KEY =
   "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+// QA DATABASES
+// https://github.com/metabase/metabase-qa
+export const QA_MYSQL_PORT = 3304;
+export const QA_MONGO_PORT = 27004;
+export const QA_POSTGRES_PORT = 5404;
