@@ -492,7 +492,7 @@
     ;; implement [[execute-write-query!]]
     :actions/custom
 
-    ;; Does changing the JVM timezone allow producing correct results?
+    ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
     :test/jvm-timezone-setting})
 
 (defmulti supports?
