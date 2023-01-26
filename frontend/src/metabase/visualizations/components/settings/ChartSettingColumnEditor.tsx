@@ -34,6 +34,74 @@ interface ChartSettingColumnEditorProps {
   metadata?: Metadata;
 }
 
+const structuredQueryFieldOptions = (
+  query: StructuredQuery,
+  columns: DatasetColumn[],
+) => {
+  const options = query.fieldsOptions();
+  const allFields = options.dimensions.concat(
+    options.fks.reduce(
+      (memo, fk) => memo.concat(fk.dimensions),
+      [] as Dimension[],
+    ),
+  );
+  const missingDimensions = columns
+    .filter(
+      column =>
+        !allFields.some(dimension =>
+          dimension.isSameBaseDimension(column.field_ref as ConcreteField),
+        ),
+    )
+    .map(column =>
+      Dimension.parseMBQL(
+        column.field_ref as ConcreteField,
+        query.metadata(),
+        query,
+      ),
+    )
+    .filter(isNotNull);
+  return {
+    name: query.table()?.display_name || t`Columns`,
+    dimensions: options.dimensions.concat(missingDimensions).filter(isNotNull),
+    fks: options.fks.map(fk => ({
+      name:
+        fk.name ||
+        (fk.field.target
+          ? fk.field.target.table?.display_name
+          : fk.field.displayName()),
+      dimensions: fk.dimensions.filter(isNotNull),
+    })),
+  };
+};
+
+const nativeQueryFieldOptions = (
+  columns: DatasetColumn[],
+  metadata?: Metadata,
+) => {
+  const allDimensions = columns
+    .map(column =>
+      Dimension.parseMBQL(column.field_ref as ConcreteField, metadata),
+    )
+    .filter(isNotNull);
+
+  const groupedDimensions = _.groupBy(
+    allDimensions,
+    dimension => dimension.field().table?.displayName() || t`Columns`,
+  );
+  const tables = Object.keys(groupedDimensions);
+  const firstTable = tables[0];
+  return {
+    name: firstTable,
+    dimensions: groupedDimensions[firstTable],
+    fks: tables
+      .filter(table => table !== firstTable)
+      .map(table => ({
+        name: table,
+        dimensions: groupedDimensions[table],
+      })),
+  };
+};
+
 const ChartSettingColumnEditor = ({
   onChange,
   value: columnSettings,
@@ -45,65 +113,9 @@ const ChartSettingColumnEditor = ({
   const fieldOptions = useMemo(() => {
     const query = question && question.query();
     if (query instanceof StructuredQuery && !isDashboard) {
-      const options = query.fieldsOptions();
-      const allFields = options.dimensions.concat(
-        options.fks.reduce(
-          (memo, fk) => memo.concat(fk.dimensions),
-          [] as Dimension[],
-        ),
-      );
-      const missingDimensions = columns
-        .filter(
-          column =>
-            !allFields.some(dimension =>
-              dimension.isSameBaseDimension(column.field_ref as ConcreteField),
-            ),
-        )
-        .map(column =>
-          Dimension.parseMBQL(
-            column.field_ref as ConcreteField,
-            query.metadata(),
-            query,
-          ),
-        )
-        .filter(isNotNull);
-      return {
-        name: query.table()?.display_name || t`Columns`,
-        dimensions: options.dimensions
-          .concat(missingDimensions)
-          .filter(isNotNull),
-        fks: options.fks.map(fk => ({
-          name:
-            fk.name ||
-            (fk.field.target
-              ? fk.field.target.table?.display_name
-              : fk.field.displayName()),
-          dimensions: fk.dimensions.filter(isNotNull),
-        })),
-      };
+      return structuredQueryFieldOptions(query, columns);
     } else if ((query instanceof NativeQuery || isDashboard) && columns) {
-      const allDimensions = columns
-        .map(column =>
-          Dimension.parseMBQL(column.field_ref as ConcreteField, metadata),
-        )
-        .filter(isNotNull);
-
-      const groupedDimensions = _.groupBy(
-        allDimensions,
-        dimension => dimension.field().table?.displayName() || t`Columns`,
-      );
-      const tables = Object.keys(groupedDimensions);
-      const firstTable = tables[0];
-      return {
-        name: firstTable,
-        dimensions: groupedDimensions[firstTable],
-        fks: tables
-          .filter(table => table !== firstTable)
-          .map(table => ({
-            name: table,
-            dimensions: groupedDimensions[table],
-          })),
-      };
+      return nativeQueryFieldOptions(columns, metadata);
     } else {
       return {
         name: "",
