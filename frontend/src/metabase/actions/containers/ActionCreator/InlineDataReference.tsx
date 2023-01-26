@@ -10,13 +10,7 @@ import {
   TriggerButton,
 } from "./InlineDataReference.styled";
 
-export const DataReferenceInline = ({
-  onClose,
-  isOpen,
-}: {
-  onClose: () => void;
-  isOpen: boolean;
-}) => {
+export const DataReferenceInline = ({ onClose }: { onClose: () => void }) => {
   const [dataRefStack, setDataRefStack] = useState<any[]>([]);
 
   const pushRefStack = (ref: any) => {
@@ -28,7 +22,7 @@ export const DataReferenceInline = ({
   };
 
   return (
-    <DataReferenceContainer isOpen={isOpen}>
+    <DataReferenceContainer>
       <DataReference
         dataReferenceStack={dataRefStack}
         popDataReferenceStack={popRefStack}

@@ -4,8 +4,7 @@ import { color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
-export const DataReferenceContainer = styled.div<{ isOpen: boolean }>`
-  display: ${props => (props.isOpen ? "block" : "none")};
+export const DataReferenceContainer = styled.div`
   overflow: hidden;
   position: relative;
   height: 100%;
