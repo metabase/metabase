@@ -191,7 +191,7 @@ const getQuestionResource = questionId => ({
   params: {},
 });
 
-const getTargetQuestion = tag => ({
+const getTargetQuestion = ({ tag, parameter }) => ({
   name: "Embedded",
   native: {
     query: "SELECT * FROM PRODUCTS WHERE {{tag}}",
@@ -206,6 +206,16 @@ const getTargetQuestion = tag => ({
       },
     },
   },
+  parameters: [
+    {
+      id: "93961154-c3d5-7c93-7b59-f4e494fda499",
+      name: "Tag",
+      slug: "tag",
+      type: "string/=",
+      target: ["dimension", ["template-tag", "tag"]],
+      ...parameter,
+    },
+  ],
   enable_embedding: true,
   embedding_params: {
     tag: "enabled",
@@ -214,32 +224,44 @@ const getTargetQuestion = tag => ({
 
 const getStructuredTargetQuestion = questionId => {
   return getTargetQuestion({
-    dimension: ["field", PRODUCTS.CATEGORY, null],
-    values_source_type: "card",
-    values_source_config: {
-      card_id: questionId,
-      value_field: ["field", PRODUCTS.CATEGORY, null],
+    tag: {
+      dimension: ["field", PRODUCTS.CATEGORY, null],
+    },
+    parameter: {
+      values_source_type: "card",
+      values_source_config: {
+        card_id: questionId,
+        value_field: ["field", PRODUCTS.CATEGORY, null],
+      },
     },
   });
 };
 
 const getNativeTargetQuestion = questionId => {
   return getTargetQuestion({
-    dimension: ["field", PRODUCTS.EAN, null],
-    values_source_type: "card",
-    values_source_config: {
-      card_id: questionId,
-      value_field: ["field", "EAN", { "base-type": "type/Text" }],
+    tag: {
+      dimension: ["field", PRODUCTS.EAN, null],
+    },
+    parameter: {
+      values_source_type: "card",
+      values_source_config: {
+        card_id: questionId,
+        value_field: ["field", "EAN", { "base-type": "type/Text" }],
+      },
     },
   });
 };
 
 const getListTargetQuestion = () => {
   return getTargetQuestion({
-    dimension: ["field", PRODUCTS.EAN, null],
-    values_source_type: "static-list",
-    values_source_config: {
-      values: ["1018947080336", "7663515285824"],
+    tag: {
+      dimension: ["field", PRODUCTS.EAN, null],
+    },
+    parameter: {
+      values_source_type: "static-list",
+      values_source_config: {
+        values: ["1018947080336", "7663515285824"],
+      },
     },
   });
 };
