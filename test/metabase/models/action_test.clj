@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.action :as action]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan.hydrate :refer [hydrate]]))
 
 (deftest hydrate-query-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -37,4 +38,4 @@
               :creator_id (mt/user->id :crowberto)
               :creator {:common_name "Crowberto Corv"}
               :parameters [{:id "id" :type :number}]}
-             (first (action/select-actions :id action-id))))))))
+             (hydrate (first (action/select-actions :id action-id)) :creator)))))))

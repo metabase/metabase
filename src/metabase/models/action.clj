@@ -129,7 +129,7 @@
         query-actions (normalize-query-actions query)
         http-actions (normalize-http-actions http)
         implicit-actions (normalize-implicit-actions implicit)]
-    (sort-by :updated_at (hydrate (concat query-actions http-actions implicit-actions) :creator))))
+    (sort-by :updated_at (concat query-actions http-actions implicit-actions))))
 
 (defn unique-field-slugs?
   "Makes sure that if `coll` is indexed by `index-by`, no keys will be in conflict."
