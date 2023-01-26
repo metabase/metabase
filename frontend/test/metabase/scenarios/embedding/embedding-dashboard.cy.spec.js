@@ -12,7 +12,7 @@ import {
   questionDetails,
   dashboardDetails,
   mapParameters,
-} from "./embedding-dashboard";
+} from "./helpers/embedding-dashboard";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
 
