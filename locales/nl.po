@@ -23623,3 +23623,12 @@ msgstr "Kan model met kaart-id {0} niet vernieuwen"
 msgid "Unknown payload type {0}"
 msgstr "Onbekende payload type {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Grafieken in abonnementen kunnen er iets anders uitzien dan grafieken in dashboards."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Ontvangers zien deze gegevens zoals u ze ziet, ongeacht hun rechten."

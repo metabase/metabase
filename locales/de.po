@@ -23665,3 +23665,12 @@ msgstr "Model mit der Karten-ID {0} konnte nicht aktualisiert werden"
 msgid "Unknown payload type {0}"
 msgstr "Unbekannter Payload-Typ {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Diagramme in Abonnements können etwas anders aussehen als Diagramme in Dashboards."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Die Empfänger sehen diese Daten genauso wie Sie, unabhängig von deren Berechtigungen."

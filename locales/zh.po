@@ -23557,3 +23557,12 @@ msgstr "无法刷新卡号为{0}的模型"
 msgid "Unknown payload type {0}"
 msgstr "未知的有效载荷类型{0}。"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "订阅中的图表可能看起来与仪表盘中的图表略有不同。"
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "收件人将看到这些数据，就像你看到的一样，不管他们的权限如何。"

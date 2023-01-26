@@ -23684,3 +23684,12 @@ msgstr "Nelze obnovit model s card-id {0}"
 msgid "Unknown payload type {0}"
 msgstr "Neznámý typ payloadu {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Grafy v odběrech mohou vypadat trochu jinak než grafy v přístrojových panelech."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Příjemci uvidí tato data stejně jako vy, bez ohledu na jejich oprávnění."

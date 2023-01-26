@@ -23537,3 +23537,12 @@ msgstr "card-id {0}のモデルを更新できません。"
 msgid "Unknown payload type {0}"
 msgstr "不明なペイロードタイプ{0}。"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "サブスクリプションのチャートは、ダッシュボードのチャートと少し違って見えるかもしれません。"
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "受信者は、権限に関係なく、あなたが見るのと同じようにこのデータを見ることができます。"

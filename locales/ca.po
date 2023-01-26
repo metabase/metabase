@@ -23613,3 +23613,12 @@ msgstr "No es pot refrescar el model amb l'id de tarja {0}"
 msgid "Unknown payload type {0}"
 msgstr "Tipus de Payload desconegut {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Els gràfics de les subscripcions poden semblar lleugerament diferents dels gràfics dels taulers."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Els destinataris veuran aquestes dades tal com les veus tu, independentment dels seus permisos."

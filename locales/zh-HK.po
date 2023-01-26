@@ -23533,3 +23533,12 @@ msgstr "無法刷新具有卡 ID {0} 的模型"
 msgid "Unknown payload type {0}"
 msgstr "未知負載類型 {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "訂閱中的圖表可能看起來與儀表板中的圖表略有不同。"
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "收件人將像您看到的那樣看到此數據，無論他們的權限如何。"

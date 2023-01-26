@@ -23571,3 +23571,12 @@ msgstr "بازخوانی مدل با شناسه کارت {0} ممکن نیست"
 msgid "Unknown payload type {0}"
 msgstr "نوع محموله ناشناخته {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "نمودارهای موجود در اشتراک‌ها ممکن است کمی متفاوت از نمودارهای موجود در داشبورد به نظر برسند."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "گیرندگان این داده ها را همانطور که شما می بینید، صرف نظر از مجوزهایشان، می بینند."

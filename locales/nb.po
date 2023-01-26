@@ -23650,3 +23650,12 @@ msgstr "Kunne ikke oppfriske modell med kort-id {0}"
 msgid "Unknown payload type {0}"
 msgstr "Ukjent nyttelasttype {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Diagrammer i abonnementer kan se litt annerledes ut enn diagrammer i dashbord."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Mottakere vil se disse dataene akkurat slik du ser dem, uavhengig av deres tillatelser."

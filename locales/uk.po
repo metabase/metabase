@@ -23741,3 +23741,12 @@ msgstr "Не вдається оновити модель з ідентифік�
 msgid "Unknown payload type {0}"
 msgstr "Невідомий тип корисного навантаження {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Графіки в підписках можуть дещо відрізнятися від графіків на дашбордах."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Одержувачі побачать ці дані так само, як бачите їх ви, незалежно від їхніх дозволів."

@@ -23755,3 +23755,12 @@ msgstr "Nie je možné obnoviť model s card-id {0}"
 msgid "Unknown payload type {0}"
 msgstr "Neznámy typ užitočného zaťaženia {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Grafy v odberoch môžu vyzerať trochu inak ako grafy v ovládacích paneloch."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Príjemcovia uvidia tieto údaje rovnako ako vy, bez ohľadu na ich oprávnenia."

@@ -24113,3 +24113,12 @@ msgstr "Невозможно обновить модель с card-id {0}"
 msgid "Unknown payload type {0}"
 msgstr "Неизвестный тип полезной нагрузки {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Диаграммы в подписках могут выглядеть несколько иначе, чем диаграммы в приборных панелях."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Получатели будут видеть эти данные так же, как и вы, независимо от их прав доступа."

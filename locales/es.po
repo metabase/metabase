@@ -23623,3 +23623,12 @@ msgstr "No se puede actualizar el modelo con ID de tarjeta {0}"
 msgid "Unknown payload type {0}"
 msgstr "Tipo de información adicional desconocido {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Los gráficos de las suscripciones pueden tener un aspecto ligeramente distinto al de los gráficos de los cuadros de mando."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Los destinatarios verán estos datos tal y como tú los ves, independientemente de sus permisos."

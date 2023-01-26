@@ -23608,3 +23608,12 @@ msgstr "Невъзможно е да се обнови моделът с card-id
 msgid "Unknown payload type {0}"
 msgstr "Неизвестен тип полезен товар {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Графиките в абонаментите може да изглеждат малко по-различно от графиките в таблата за управление."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Получателите ще виждат тези данни така, както ги виждате вие, независимо от техните разрешения."

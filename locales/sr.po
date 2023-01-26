@@ -23698,3 +23698,12 @@ msgstr "Nije moguće osvežiti model sa ID-om kartice {0}"
 msgid "Unknown payload type {0}"
 msgstr "Nepoznati tip payloada {0}"
 
+#:
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Grafikoni u pretplatama mogu izgledati malo drugačije od grafikona na infotablama."
+
+#:
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Primaoci će videti ove podatke baš onako kako ih vi vidite, bez obzira na njihove dozvole."
