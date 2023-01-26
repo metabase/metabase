@@ -129,7 +129,7 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
 export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
-  ({ nextCard, previousCard, objectId, rowIndex = 1 }) => {
+  ({ nextCard, previousCard, objectId }) => {
     return async (dispatch, getState) => {
       console.log("🚀", "In navigateToNewCardInsideQB");
       if (previousCard === nextCard) {
@@ -159,8 +159,8 @@ export const navigateToNewCardInsideQB = createThunkAction(
           // to start building a new ad-hoc question based on a dataset
           dispatch(setCardAndRun({ ...card, dataset: false }));
         }
-        if (rowIndex !== undefined) {
-          dispatch(zoomInRow({ rowIndex }));
+        if (objectId !== undefined) {
+          dispatch(zoomInRow({ objectId }));
         }
       }
     };

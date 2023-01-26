@@ -38,8 +38,8 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
       onChangeCardAndRun({
         nextCard: question.card(),
         ...extra,
-        // objectId: extra.objectId,
-        rowIndex: 0,
+        objectId: extra.objectId,
+        // rowIndex: 0,
       });
       didPerform = true;
     }

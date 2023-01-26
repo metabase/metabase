@@ -20,14 +20,16 @@ import { updateUrl } from "./navigation";
 
 export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
 export const zoomInRow =
-  ({ rowIndex }) =>
+  ({ rowIndex, objectId }) =>
   (dispatch, getState) => {
-    console.log("🚀", "Back in zoomInRow", { rowIndex });
-    dispatch({ type: ZOOM_IN_ROW, payload: { rowIndex } });
+    const indexToUse = rowIndex ?? objectId;
+    console.log("🚀", "Back in zoomInRow", { rowIndex, objectId });
+    dispatch({ type: ZOOM_IN_ROW, payload: { rowIndex: indexToUse } });
 
     // don't show object id in url if it is a row index
     const hasPK = getPKColumnIndex(getState()) !== -1;
-    hasPK && dispatch(updateUrl(null, { rowIndex, replaceState: false }));
+    hasPK &&
+      dispatch(updateUrl(null, { rowIndex: indexToUse, replaceState: false }));
   };
 
 export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
