@@ -27,7 +27,7 @@
 (defn find-pred [z p?]
   (->> (iterate z/next z)
        (take-while (every-pred some? (complement z/end?)))
-       (some #(when (-> % z/node p?) z))))
+       (some #(when (-> % z/node p?) %))))
 
 (defn topmost [z]
   (loop [z z]
