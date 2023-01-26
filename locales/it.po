@@ -13780,7 +13780,7 @@ msgstr "Scheduling dei task per il Database {0} non riuscita"
 msgid "All elements must be distinct."
 msgstr "Tutti gli elementi devono essere distinti"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Scegli le colonne che desideri includere"
@@ -18355,12 +18355,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Gli impulsi vengono eliminati gradualmente"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Ora è possibile impostare {0} invece. Rimuoveremo gli Impulsi in un futuro rilascio e ti aiuteremo a migrare quelli che hai ancora."
@@ -18369,7 +18369,7 @@ msgstr "Ora è possibile impostare {0} invece. Rimuoveremo gli Impulsi in un fut
 msgid "dashboard subscriptions"
 msgstr "abbonamenti cruscotto"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "I grafici nel tuo abbonamento non avranno lo stesso aspetto del tuo cruscotto. {1}"
 
@@ -18518,7 +18518,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Impostare il database sorgente {0} ed eseguire le migrazioni..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: src/metabase/cmd/copy.clj target/classes/metabase/cmd/copy.clj
 msgid "Set up {0} target database and run migrations..."
@@ -23618,12 +23618,13 @@ msgstr "Impossibile aggiornare il modello con il card-id {0}"
 msgid "Unknown payload type {0}"
 msgstr "Tipo di carico sconosciuto {0}"
 
-#:
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditEmailSidebar.jsx:147
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditSlackSidebar.jsx:121
 msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
 msgid "Charts in subscriptions may look slightly different from charts in dashboards."
 msgstr "I grafici nelle sottoscrizioni possono avere un aspetto leggermente diverso da quello dei grafici nei dashboard."
 
-#:
+#: frontend/src/metabase/sharing/components/AddEditSidebar/CaveatMessage.jsx:11
 msgctxt "Seen when creating a new dashboard subscription."
 msgid "Recipients will see this data just as you see it, regardless of their permissions."
 msgstr "I destinatari vedranno questi dati proprio come li vedete voi, indipendentemente dalle loro autorizzazioni."

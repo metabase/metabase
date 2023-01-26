@@ -13764,7 +13764,7 @@ msgstr "为数据库{0}安排任务失败"
 msgid "All elements must be distinct."
 msgstr "所有元素必须是独特的。"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "选择需要包含的列"
@@ -18330,12 +18330,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "豆类正在被逐步淘汰"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "你现在可以设置{0}来代替。我们将在未来的版本中删除Pulses，并帮助你迁移你仍然拥有的任何Pulses。"
@@ -18344,7 +18344,7 @@ msgstr "你现在可以设置{0}来代替。我们将在未来的版本中删除
 msgid "dashboard subscriptions"
 msgstr "仪表板订阅"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0}订阅中的图表与仪表盘中的图表看起来不一样。{1}"
 
@@ -18493,7 +18493,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "设置{0}源数据库并运行迁移..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: src/metabase/cmd/copy.clj target/classes/metabase/cmd/copy.clj
 msgid "Set up {0} target database and run migrations..."
@@ -23557,12 +23557,13 @@ msgstr "无法刷新卡号为{0}的模型"
 msgid "Unknown payload type {0}"
 msgstr "未知的有效载荷类型{0}。"
 
-#:
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditEmailSidebar.jsx:147
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditSlackSidebar.jsx:121
 msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
 msgid "Charts in subscriptions may look slightly different from charts in dashboards."
 msgstr "订阅中的图表可能看起来与仪表盘中的图表略有不同。"
 
-#:
+#: frontend/src/metabase/sharing/components/AddEditSidebar/CaveatMessage.jsx:11
 msgctxt "Seen when creating a new dashboard subscription."
 msgid "Recipients will see this data just as you see it, regardless of their permissions."
 msgstr "收件人将看到这些数据，就像你看到的一样，不管他们的权限如何。"
