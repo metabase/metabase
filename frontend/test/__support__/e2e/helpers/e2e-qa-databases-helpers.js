@@ -2,6 +2,7 @@ import {
   QA_POSTGRES_PORT,
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
+  QA_DB_CREDENTIALS,
 } from "__support__/e2e/cypress_data";
 
 /*****************************************
@@ -40,10 +41,10 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
     name: db_display_name,
     details: {
       dbname: db_name,
-      host: "localhost",
+      host: QA_DB_CREDENTIALS.host,
       port: port,
-      user: "metabase",
-      [PASS_KEY]: "metasample123", // NOTE: we're inconsistent in where we use `pass` vs `password` as a key
+      user: QA_DB_CREDENTIALS.user,
+      [PASS_KEY]: QA_DB_CREDENTIALS.password, // NOTE: we're inconsistent in where we use `pass` vs `password` as a key
       authdb: AUTH_DB,
       "additional-options": OPTIONS,
       "use-srv": false,
