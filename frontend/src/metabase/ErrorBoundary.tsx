@@ -4,7 +4,7 @@ import { SmallGenericError } from "metabase/containers/ErrorPages";
 
 export default class ErrorBoundary extends React.Component<
   {
-    onError: (errorInfo: ErrorInfo) => void;
+    onError?: (errorInfo: ErrorInfo) => void;
   },
   {
     hasError: boolean;
