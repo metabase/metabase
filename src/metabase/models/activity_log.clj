@@ -2,14 +2,12 @@
   (:require
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
-   [metabase.models.view-log :refer [ViewLog]]
    [toucan.db :as db]
    [toucan.models :as models]))
 
@@ -110,27 +108,3 @@
       :details     (if (fn? details-fn)
                      (details-fn object)
                      object))))
-
-
-
-;; During development of the audit system, it might be necessarsy to double-write some things into the activity table. Here, I have a temporary impl to use on the post-insert of the events that we want in the activity-log
-;; todo: remove this once old logs/audit tables are no longer needed.
-
-(defmulti write-to-activity-log
-  "Temporary multimethod to use in post-inserts for any models that we will transition to the activity-log.
-  This is meant for the development time between moving things successfully to activity-log and then removing old models.
-  It's effectively a simple 'double write' mechanism to be manually removed when old models are no longer needed."
-  mi/model)
-
-(defmethod write-to-activity-log Activity
-  [activity]
-  (let [log-entry (dissoc activity :id :custom_id)]
-    (db/insert! ActivityLog log-entry)))
-
-(defmethod write-to-activity-log ViewLog
-  [{:keys [metadata model] :as activity}]
-  (let [log-entry (merge
-                   (dissoc activity :id :custom_id :metadata)
-                   {:details metadata
-                    :topic (str (name model) "-view")})]
-    (db/insert! ActivityLog log-entry)))
