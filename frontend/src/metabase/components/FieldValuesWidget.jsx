@@ -502,6 +502,9 @@ function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
     } else if (isNumberParameter(parameter)) {
       return t`Enter a number`;
     }
+
+    // fallback
+    return t`Enter some text`;
   } else if (firstField) {
     if (firstField.isID()) {
       return t`Enter an ID`;
@@ -510,6 +513,9 @@ function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
     } else if (firstField.isNumeric()) {
       return t`Enter a number`;
     }
+
+    // fallback
+    return t`Enter some text`;
   }
 
   // fallback
