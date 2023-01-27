@@ -57,7 +57,8 @@
   "Temporary fn for writing an activity entry to activity_log. Will be removed when activity_log impl. is complete."
   [activity]
   (let [log-entry (dissoc activity :id :custom_id)]
-    (db/insert! ActivityLog log-entry)))
+    (db/insert! ActivityLog log-entry)
+    activity))
 
 (mi/define-methods
  Activity

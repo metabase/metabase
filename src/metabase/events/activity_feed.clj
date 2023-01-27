@@ -3,7 +3,7 @@
    [clojure.core.async :as a]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.activity-log :as activity :refer [ActivityLog]]
+   [metabase.models.activity :as activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.table :as table]
@@ -148,8 +148,8 @@
 
 (defmethod process-activity! :install
   [& _]
-  (when-not (db/exists? ActivityLog :topic "install")
-    (db/insert! ActivityLog, :topic "install", :model "install")))
+  (when-not (db/exists? Activity :topic "install")
+    (db/insert! Activity :topic "install" :model "install")))
 
 (defn process-activity-event!
   "Handle processing for a single event notification received on the activity-feed-channel"

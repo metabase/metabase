@@ -23,7 +23,8 @@
                    (dissoc activity :id :custom_id :metadata)
                    {:details metadata
                     :topic (str (name model) "-view")})]
-    (db/insert! ActivityLog log-entry)))
+    (db/insert! ActivityLog log-entry)
+    activity))
 
 (mi/define-methods
  ViewLog
