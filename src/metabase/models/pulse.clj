@@ -1,7 +1,7 @@
 (ns metabase.models.pulse
   "Notifications are ways to deliver the results of Questions to users without going through the normal Metabase UI. At
   the time of this writing, there are two delivery mechanisms for Notifications -- email and Slack notifications;
-  these destinations are known as 'Channels'. Notifications themselves are futher divied into two categories --
+  these destinations are known as 'Channels'. Notifications themselves are further divided into two categories --
   'Pulses', which are sent at specified intervals, and 'Alerts', which are sent when certain conditions are met (such
   as a query returning results).
 

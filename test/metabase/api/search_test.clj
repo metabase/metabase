@@ -586,23 +586,18 @@
                                  (= (:id %) pulse-id)))
                    first))]
       (mt/with-temp Pulse [pulse {:name "Electro-Magnetic Pulse"}]
-        (testing "sanity check: should be able to fetch a Pulse normally"
-          (is (schema= {:name (s/eq "Electro-Magnetic Pulse")
-                        s/Keyword s/Any}
-                       (search-for-pulses pulse))))
+        (testing "Pulses are not searchable"
+          (is (= nil (search-for-pulses pulse))))
         (mt/with-temp* [Card      [card-1]
                         PulseCard [_ {:pulse_id (:id pulse), :card_id (:id card-1)}]
                         Card      [card-2]
                         PulseCard [_ {:pulse_id (:id pulse), :card_id (:id card-2)}]]
-          (testing "Create some Pulse Cards: should still be able to search for it it"
-            (is (schema= {:name     (s/eq "Electro-Magnetic Pulse")
-                          s/Keyword s/Any}
-                         (search-for-pulses pulse))))
-          (testing "Now make this Pulse a dashboard subscription; Pulse should no longer come back from search-results"
+          (testing "Create some Pulse Cards: we should not find them."
+            (is (= nil (search-for-pulses pulse))))
+          (testing "Even as a dashboard subscription, the pulse is not found."
             (mt/with-temp* [Dashboard [dashboard]]
               (db/update! Pulse (:id pulse) :dashboard_id (:id dashboard))
-              (is (= nil
-                     (search-for-pulses pulse))))))))))
+              (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest card-dataset-query-test
   (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one."
