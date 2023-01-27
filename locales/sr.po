@@ -13815,7 +13815,7 @@ msgstr "Nije uspelo zakazivanje zadataka za bazu podataka {0}"
 msgid "All elements must be distinct."
 msgstr "Svi elementi moraju biti različiti."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Izaberite kolone koje želite da uključite"
@@ -18396,12 +18396,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulsevi se postupno ukidaju"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Umesto toga, sada možete da podesite {0}. Uklonićemo Pulseve u budućem izdanju i pomoći ćemo vam da migrirate sve što još uvek imate."
@@ -18410,7 +18410,7 @@ msgstr "Umesto toga, sada možete da podesite {0}. Uklonićemo Pulseve u buduc�
 msgid "dashboard subscriptions"
 msgstr "pretplate na infopanelu"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "Grafikoni {0} u Vašoj pretplati neće izgledati isto kao na Vašem infopanelu. {1}"
 
@@ -18559,7 +18559,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Podesite izvornu bazu podataka {0} i pokrenite migracije ..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: src/metabase/cmd/copy.clj target/classes/metabase/cmd/copy.clj
 msgid "Set up {0} target database and run migrations..."
@@ -23698,3 +23698,13 @@ msgstr "Nije moguće osvežiti model sa ID-om kartice {0}"
 msgid "Unknown payload type {0}"
 msgstr "Nepoznati tip payloada {0}"
 
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditEmailSidebar.jsx:147
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditSlackSidebar.jsx:121
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Grafikoni u pretplatama mogu izgledati malo drugačije od grafikona na infotablama."
+
+#: frontend/src/metabase/sharing/components/AddEditSidebar/CaveatMessage.jsx:11
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Primaoci će videti ove podatke baš onako kako ih vi vidite, bez obzira na njihove dozvole."

@@ -2,15 +2,13 @@ import React from "react";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-
-import Text from "metabase/components/type/Text";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { CaveatText } from "./CaveatMessage.styled";
 
 function CaveatMessage() {
   return (
-    <Text className="mx4 my2 p2 bg-light text-dark rounded">
-      <span className="text-bold">{t`Note`}:&nbsp;</span>
-      {t`charts in your subscription won't look the same as in your dashboard.`}
+    <CaveatText>
+      {t`Recipients will see this data just as you see it, regardless of their permissions.`}
       &nbsp;
       <ExternalLink
         className="link"
@@ -20,7 +18,7 @@ function CaveatMessage() {
         {t`Learn more`}
       </ExternalLink>
       .
-    </Text>
+    </CaveatText>
   );
 }
 

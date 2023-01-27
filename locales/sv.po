@@ -13764,7 +13764,7 @@ msgstr "Kunde inte schemalägga jobb för databas {0}"
 msgid "All elements must be distinct."
 msgstr "Alla element måste vara distinkta."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Välj kolumnerna du vill ha med"
@@ -18328,12 +18328,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulser fasas ut"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Du kan nu ställa in {0} istället. Vi tar bort Pulses i en framtida version och hjälper dig att migrera allt du fortfarande har."
@@ -18342,7 +18342,7 @@ msgstr "Du kan nu ställa in {0} istället. Vi tar bort Pulses i en framtida ver
 msgid "dashboard subscriptions"
 msgstr "instrumentpanelprenumerationer"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} diagram i din prenumeration ser inte ut som i instrumentpanelen. {1}"
 
@@ -18491,7 +18491,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Konfigurera {0} källdatabas och kör migreringar ..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: src/metabase/cmd/copy.clj target/classes/metabase/cmd/copy.clj
 msgid "Set up {0} target database and run migrations..."
@@ -23586,3 +23586,13 @@ msgstr "Det går inte att uppdatera modellen med kort-id {0}"
 msgid "Unknown payload type {0}"
 msgstr "Okänd informationstyp {0}"
 
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditEmailSidebar.jsx:147
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditSlackSidebar.jsx:121
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Diagrammen i prenumerationer kan se lite annorlunda ut än diagrammen i instrumentpaneler."
+
+#: frontend/src/metabase/sharing/components/AddEditSidebar/CaveatMessage.jsx:11
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Mottagarna ser uppgifterna precis som du ser dem, oavsett vilka behörigheter de har."
