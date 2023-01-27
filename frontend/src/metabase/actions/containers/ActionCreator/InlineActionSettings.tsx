@@ -57,7 +57,13 @@ export const ActionSettingsTriggerButton = ({
   onClick: () => void;
 }) => (
   <Tooltip tooltip={t`Action settings`}>
-    <Button onlyIcon onClick={onClick} icon="gear" iconSize={16} />
+    <Button
+      onlyIcon
+      onClick={onClick}
+      icon="gear"
+      iconSize={16}
+      aria-label={t`Action settings`}
+    />
   </Tooltip>
 );
 
