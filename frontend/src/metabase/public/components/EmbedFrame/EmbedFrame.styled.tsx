@@ -69,6 +69,8 @@ export const ActionButtonsContainer = styled.div`
   margin-left: auto;
 `;
 
+export type FooterVariant = "default" | "large";
+
 const footerVariantStyles = {
   default: css`
     border-top: 1px solid ${color("border")};
@@ -84,7 +86,7 @@ const footerVariantStyles = {
   `,
 };
 
-export const Footer = styled.footer<{ variant: "default" | "large" }>`
+export const Footer = styled.footer<{ variant: FooterVariant }>`
   display: flex;
   flex-shrink: 0;
   align-items: center;

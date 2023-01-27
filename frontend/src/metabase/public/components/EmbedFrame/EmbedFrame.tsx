@@ -22,6 +22,7 @@ import Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import LogoBadge from "./LogoBadge";
+import type { FooterVariant } from "./EmbedFrame.styled";
 import {
   Root,
   ContentContainer,
@@ -39,7 +40,7 @@ interface OwnProps {
   question?: Question;
   dashboard?: Dashboard;
   actionButtons?: JSX.Element[];
-  footerVariant?: "default" | "large";
+  footerVariant?: FooterVariant;
   parameters?: Parameter[];
   parameterValues?: Record<ParameterId, ParameterValueOrArray>;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
