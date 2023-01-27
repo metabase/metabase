@@ -193,4 +193,8 @@
 (when-not (get (methods driver/supports?) [:sparksql :foreign-keys])
   (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true))
 
+(defmethod driver/database-supports? [:sparksql :test/jvm-timezone-setting]
+  [_driver _feature _database]
+  false)
+
 (defmethod sql.qp/quote-style :sparksql [_] :mysql)
