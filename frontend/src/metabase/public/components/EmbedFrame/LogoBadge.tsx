@@ -15,7 +15,7 @@ function LogoBadge({
   dark: boolean;
   variant?: Variant;
 }) {
-  const logoSize = variant === "big" ? 42 : 28;
+  const logoSize = variant === "large" ? 42 : 28;
   const Metabase = (
     <MetabaseName key="metabase" isDark={dark} variant={variant}>
       {t`Metabase`}

@@ -37,7 +37,7 @@ interface OwnProps {
   description?: string;
   dashboard?: Dashboard;
   actionButtons?: JSX.Element[];
-  footerVariant?: "default" | "big";
+  footerVariant?: "default" | "large";
   parameters?: Parameter[];
   parameterValues?: Record<ParameterId, ParameterValueOrArray>;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
