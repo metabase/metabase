@@ -226,6 +226,12 @@
       (update :creator_id serdes.util/export-user)
       (update :model_id serdes.util/export-fk 'Card)))
 
+(defmethod serdes.base/load-xform "Action" [action]
+  (-> action
+      serdes.base/load-xform-basics
+      (update :model_id serdes.util/import-fk 'Card)
+      (update :creator_id serdes.util/import-fk-keyed 'User :email)))
+
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   [[{:model "Card" :id (:model_id action)}]])
 
