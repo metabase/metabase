@@ -14084,7 +14084,7 @@ databaseChangeLog:
               SELECT id
               FROM permissions p
               WHERE
-                p.object LIKE '%/table/' || s.table_id || '/query/segmented/'
+                p.object LIKE CONCAT('%/table/', s.table_id, '/query/segmented/')
                 AND p.group_id = s.group_id
             );
       rollback:
