@@ -2,7 +2,7 @@
   (:require
    [cheshire.core :as json]
    [metabase.models
-    :refer [Card Collection Dashboard Database Metric Pulse Segment Table]]
+    :refer [Card Collection Dashboard Database Metric Segment Table]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 

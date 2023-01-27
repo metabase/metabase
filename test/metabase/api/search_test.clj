@@ -25,7 +25,6 @@
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan.db :as db]))
 
 (def ^:private default-search-row
