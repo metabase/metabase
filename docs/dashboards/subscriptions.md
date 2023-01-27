@@ -27,13 +27,6 @@ Let's say we want to email a dashboard. We'll click on the **Email it** option i
 
 ![Dashboard subscription email options](./images/email-options.png)
 
-## How permissions work with dashboard subscriptions
-
-- **Recipients of dashboard subscriptions will be able to see whatever the creator of the dashboard subscription can see.** That is, people will get to see charts in their email or Slack _as if_ they had the subscription creator's permissions to view those charts, _regardless of whether their groups have permission to view those charts_.
-- **Admins can see and edit all subscriptions.** Admins can modify recipients, filters, or delete the subscription without affecting the subscription's permissions; the subscription will continue to send data based on the subscription's creator's permissions. 
-- **Non-admins only see their subscriptions, not subscriptions created by others.** People who are 1) not in the Admin group, and 2) not sandboxed, can only see the subscriptions they've created. They can add anyone in their Metabase to their subscriptions using the dropdown menu.
-- **People in data sandboxes can only send dashboard results to themselves.** People who are sandboxed will only see themselves in the list of recipients for dashboard subscriptions.
-
 ## Email subscription options
 
 For emails, we can:
@@ -84,7 +77,14 @@ Here's the sidebar where you can set the filter values:
 
 The section to call out here is the **Set filter values for when this gets sent**. Here we've set "VT" as the value for the dashboard's State filter to scope results to records from Vermont. We didn't set a value for the Created_At filter, so the subscription will send the results without a filter applied. If you've set a default value for the filter, the subscription will list the value here.
 
-## Related reading
+## How permissions work with dashboard subscriptions
 
+See [Notification permissions](../permissions/notifications.md).
+
+## Further reading
+
+- [Alerts](../questions/sharing/alerts.md)
+- [Notification permissions](../permissions/notifications.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
+- [Auditing Metabase](../usage-and-performance-tools/audit.md)
