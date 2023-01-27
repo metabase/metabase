@@ -92,7 +92,7 @@ See [Notification permissions](../../permissions/notifications.md).
 
 ## Further reading
 
-- [Dashboard subscriptions](../..dashboards/subscriptions.md)
+- [Dashboard subscriptions](../../dashboards/subscriptions.md)
 - [Notification permissions](../../permissions/notifications.md)
 - [Setting up email](../../configuring-metabase/email.md)
 - [Setting up Slack](../../configuring-metabase/slack.md)
