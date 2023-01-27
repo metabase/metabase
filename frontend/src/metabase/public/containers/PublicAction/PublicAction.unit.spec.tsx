@@ -142,11 +142,9 @@ describe("PublicAction", () => {
     userEvent.type(screen.getByLabelText("Color"), "metablue");
     userEvent.click(screen.getByRole("button", { name: "Submit" }));
 
-    await waitFor(() => {
-      expect(
-        screen.getByText("Thanks for your submission."),
-      ).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText("Thanks for your submission."),
+    ).toBeInTheDocument();
     expect(screen.queryByText(TEST_ACTION.name)).not.toBeInTheDocument();
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
   });
@@ -158,9 +156,7 @@ describe("PublicAction", () => {
     userEvent.type(screen.getByLabelText("Color"), "metablue");
     userEvent.click(screen.getByRole("button", { name: "Submit" }));
 
-    await waitFor(() => {
-      expect(screen.getByText("Something's off")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Something's off")).toBeInTheDocument();
   });
 
   it("shows error if action fails", async () => {
