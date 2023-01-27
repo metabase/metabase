@@ -22,7 +22,7 @@
    [toucan.db :as db]))
 
 (deftest get-or-create-advanced-field-values!
-  (doseq [fv-type [:sandbox #_:linked-filter]]
+  (doseq [fv-type [:sandbox :linked-filter]]
     (testing "create a new field values and fix up the human readable values"
       (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and
                                                                                        [:> $id 3]
@@ -45,7 +45,7 @@
 
           (testing "call second time shouldn't create a new FieldValues"
             (params.field-values/get-or-create-advanced-field-values!
-             :sandbox
+             fv-type
              (db/select-one Field :id (mt/id :categories :id)))
             (is (= 1 (db/count FieldValues :field_id categories-id :type fv-type))))
 
@@ -56,7 +56,7 @@
               (Thread/sleep 1)
               (db/update! Card card-id :dataset_query new-query))
             (params.field-values/get-or-create-advanced-field-values!
-             :sandbox
+             fv-type
              (db/select-one Field :id (mt/id :categories :id)))
             (is (= [(range 4 6)
                     (range 2 4)]
