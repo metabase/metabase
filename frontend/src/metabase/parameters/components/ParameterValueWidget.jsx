@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import _ from "underscore";
 
 import {
   getParameterIconName,
@@ -26,6 +25,7 @@ import {
   getNumberParameterArity,
   getStringParameterArity,
 } from "metabase-lib/parameters/utils/operators";
+import { hasParameterValues } from "metabase-lib/parameters/utils/parameter-source";
 import {
   isDateParameter,
   isNumberParameter,
@@ -220,7 +220,7 @@ function Widget({
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
     );
-  } else if (parameter.hasVariableTemplateTagTarget) {
+  } else if (isTextWidget(parameter)) {
     return (
       <TextWidget
         value={value}
@@ -248,7 +248,7 @@ function Widget({
         label={getParameterWidgetTitle(parameter)}
       />
     );
-  } else if (!_.isEmpty(parameter.fields)) {
+  } else if (hasParameterValues(parameter)) {
     return (
       <ParameterFieldWidget
         target={target}
@@ -294,13 +294,20 @@ Widget.propTypes = {
 function getWidgetDefinition(parameter) {
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
-  } else if (parameter.hasVariableTemplateTagTarget) {
+  } else if (isTextWidget(parameter)) {
     return TextWidget;
   } else if (isNumberParameter(parameter)) {
     return NumberInputWidget;
-  } else if (!_.isEmpty(parameter.fields)) {
+  } else if (hasParameterValues(parameter)) {
     return ParameterFieldWidget;
   } else {
     return StringInputWidget;
   }
+}
+
+function isTextWidget(parameter) {
+  const hasValues = hasParameterValues(parameter);
+  const hasVariableTarget = parameter.hasVariableTemplateTagTarget;
+
+  return !hasValues && hasVariableTarget;
 }
