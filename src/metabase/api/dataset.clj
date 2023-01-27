@@ -215,14 +215,16 @@
                      :parameter parameter}))))
 
 (api/defendpoint-schema POST "/parameter/values"
-  [:as {{:keys [parameter field_ids] :as body} :body}]
+  "Return parameter values for cards or dashboards that are being edited."
+  [:as {{:keys [parameter field_ids]} :body}]
   {parameter Parameter
    field_ids  FieldIds}
   (let [nil-query nil]
     (parameter-values parameter field_ids nil-query)))
 
 (api/defendpoint-schema POST "/parameter/search"
-  [:as {{:keys [parameter field_ids] :as body} :body} query]
+  "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
+  [:as {{:keys [parameter field_ids]} :body} query]
   {parameter Parameter
    field_ids FieldIds
    query     s/Str}
