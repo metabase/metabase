@@ -229,6 +229,7 @@
                  :nested-fields
                  :nested-queries
                  :native-parameters
+                 :set-timezone
                  :standard-deviation-aggregations]]
   (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 

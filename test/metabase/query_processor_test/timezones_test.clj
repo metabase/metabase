@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.timezones-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [honeysql.core :as hsql]
    [java-time :as t]
@@ -10,6 +11,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
    [toucan.db :as db]))
 
@@ -39,7 +41,7 @@
 (defn timezone-aware-column-drivers
   "Drivers that support the equivalent of `TIMESTAMP WITH TIME ZONE` columns."
   []
-  (conj (set-timezone-drivers) :h2 :bigquery-cloud-sdk :sqlserver :mongo))
+  (conj (set-timezone-drivers) :h2 :bigquery-cloud-sdk :sqlserver))
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test
@@ -168,23 +170,21 @@
 (deftest native-params-filter-test
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
   ;; to match anything with a `2014-08-02` date
-  (mt/test-drivers (set-timezone-drivers)
-    (when (driver/supports? driver/*driver* :native-parameters)
-      (mt/dataset test-data-with-timezones
-        (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-          (testing "Native dates should be parsed with the report timezone"
-            (doseq [[params-description query] (native-params-queries)]
-              (testing (format "Query with %s" params-description)
-                (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00-07:00"]
-                        [7 "Conchúr Tihomir" "2014-08-02T02:30:00-07:00"]]
-                       (mt/formatted-rows [int identity identity]
-                         (qp/process-query
-                          (merge
-                           {:database (mt/id)
-                            :type     :native}
-                           query)))))))))))))
-
-
+  (mt/test-drivers (set/intersection (set-timezone-drivers)
+                                     (mt/normal-drivers-with-feature :native-parameters))
+    (mt/dataset test-data-with-timezones
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+        (testing "Native dates should be parsed with the report timezone"
+          (doseq [[params-description query] (native-params-queries)]
+            (testing (format "Query with %s" params-description)
+              (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00-07:00"]
+                      [7 "Conchúr Tihomir" "2014-08-02T02:30:00-07:00"]]
+                     (mt/formatted-rows [int identity identity]
+                                        (qp/process-query
+                                          (merge
+                                            {:database (mt/id)
+                                             :type     :native}
+                                            query))))))))))))
 
 ;; Make sure TIME values are handled consistently (#10366)
 (defn- attempts []
@@ -234,3 +234,53 @@
           (let [expected (expected-attempts)
                 actual   (select-keys (attempts) (keys expected))]
             (is (= expected actual))))))))
+
+(deftest general-timezone-support-test
+  (mt/dataset test-data-with-timezones
+    (mt/test-drivers (set-timezone-drivers)
+      (let [expected-datetime #t "2014-04-01T08:30:00Z"
+            extract-units (disj u.date/extract-units :day-of-year :week-of-year :year)
+            trunc-units (disj u.date/truncate-units :millisecond :second)]
+        (doseq [timezone ["Pacific/Honolulu" "America/Los_Angeles" "UTC"]
+                :let [in-tz (u.date/with-time-zone-same-instant expected-datetime timezone)
+                      expected (concat
+                                 (for [extract-unit extract-units]
+                                   [extract-unit (u.date/extract in-tz extract-unit)])
+                                 (for [trunc-unit trunc-units]
+                                   [trunc-unit
+                                    (-> in-tz
+                                        (u.date/truncate trunc-unit)
+                                        u.date/format-sql
+                                        (str/replace #" " "T"))])
+                                 [[:last_login
+                                   (-> in-tz
+                                       u.date/format-sql
+                                       (str/replace #" " "T"))]])]]
+          (mt/with-temporary-setting-values [report-timezone timezone]
+            (let [row (-> (mt/run-mbql-query users
+                            {:expressions (into {}
+                                                (map
+                                                  (fn [extract-unit]
+                                                    [extract-unit [:temporal-extract
+                                                                   [:field (mt/id :users :last_login) nil]
+                                                                   extract-unit]])
+                                                  extract-units))
+                             :fields (concat
+                                       (for [extract-unit extract-units]
+                                         [:expression extract-unit])
+                                       (for [trunc-unit trunc-units]
+                                         [:field (mt/id :users :last_login)
+                                          {:temporal-unit trunc-unit}])
+                                       [[:field (mt/id :users :last_login)]])
+                             :filter [:= (mt/id :users :id) 1]})
+                          (mt/rows)
+                          first)
+                  result-row (map vector
+                                  (concat
+                                    (for [extract-unit extract-units]
+                                      extract-unit)
+                                    (for [trunc-unit trunc-units]
+                                      trunc-unit)
+                                    [:last_login])
+                                  row)]
+            (is (= expected result-row)))))))))
