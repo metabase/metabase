@@ -5,6 +5,9 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
@@ -226,8 +229,65 @@
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   [[{:model "Card" :id (:model_id action)}]])
 
+(defmethod serdes.base/serdes-generate-path "Action"
+  [_ action]
+  [(assoc (serdes.base/infer-self-path "Action" action)
+          :label (:name action))])
+
+(defmethod serdes.base/load-xform "Action" [action]
+  (-> action
+      serdes.base/load-xform-basics
+      #_(update :creator_id serdes.util/import-fk-keyed 'User :email)))
+
+(comment
+  (def action (db/select-one 'Action :id 1))
+  (def action (serdes.base/extract-one "Action" {} (db/select-one 'Action :id 1)))
+  ;; Delete the test-dump directory if it exists
+  (metabase-enterprise.serialization.cmd/dump "test-dump" {:v2 true})
+  ;; Example path:
+  ("collections" "actions" "xHsWRtzi_eptAaM6jEySb_hello")
+  (require '[metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml])
+  (tap> (set (keys (#'ingest.yaml/ingest-all (clojure.java.io/file "test-dump")))))
+  (def extraction (into [] (metabase-enterprise.serialization.v2.extract/extract-metabase {})))
+  (def extraction 1)
+  (#'ingest.yaml/strip-labels (serdes.base/serdes-path (first extraction)))
+  ;; => [{:id "0hZO_Oc28Z7aYDrlhYy_k", :model "Action"}]
+  (def ingested (#'ingest.yaml/ingest-all (clojure.java.io/file "test-dump")))
+  (first ingested)
+  )
 
 (defmethod serdes.base/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]
     ["actions" (serdes.base/storage-leaf-file-name id label)]))
 
+;; This is coupled to storage-path
+;; storage-path converts a serdes path to a storage path.
+;; ingestion-path converts a storage path to a serdes path.
+(serdes.base/register-ingestion-path!
+ "Action"
+  ;; ["actions" "my-action"]
+ (fn [path]
+   (when-let [[id slug] (and (= (first path) "actions")
+                             ;; TODO: make action a directory with itself
+                             ;; (apply = (take-last 2 path))
+                             (serdes.base/split-leaf-file-name (last path)))]
+     (cond-> {:model "Action" :id id}
+       slug (assoc :label slug)
+       true vector))))
+
+;; (serdes.base/register-ingestion-path!
+;;   "Field"
+;;   ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id"]
+;;   ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id"]
+;;   (fn [path]
+;;     (when-let [{db     "databases"
+;;                 schema "schemas"
+;;                 table  "tables"
+;;                 field  "fields"}   (and (#{6 8} (count path))
+;;                                         (serdes.base/ingestion-matcher-pairs
+;;                                           path [["databases" "schemas" "tables" "fields"]
+;;                                                 ["databases" "tables" "fields"]]))]
+;;       (filterv identity [{:model "Database" :id db}
+;;                          (when schema {:model "Schema" :id schema})
+;;                          {:model "Table" :id table}
+;;                          {:model "Field" :id field}]))))
