@@ -856,3 +856,41 @@
         (testing (format "Able to revoke `%s` permission" (name perm-type))
           (perms/revoke-application-permissions! group-id perm-type)
           (is (not (= (perms) #{perm-path}))))))))
+
+(deftest data-permissions-v2-migration-data-perm-classification-test
+  (is (= :dk/db                                 (perms/data-kind "/db/3/")))
+  (is (= :dk/db-native                          (perms/data-kind "/db/3/native/")))
+  (is (= :dk/db-schema                          (perms/data-kind "/db/3/schema/")))
+  (is (= :dk/db-schema-name                     (perms/data-kind "/db/3/schema//")))
+  (is (= :dk/db-schema-name                     (perms/data-kind "/db/3/schema/secret_base/")))
+  (is (= :dk/db-schema-name-and-table           (perms/data-kind "/db/3/schema/secret_base/table/3/")))
+  (is (= :dk/db-schema-name-table-and-read      (perms/data-kind "/db/3/schema/secret_base/table/3/read/")))
+  (is (= :dk/db-schema-name-table-and-query     (perms/data-kind "/db/3/schema/secret_base/table/3/query/")))
+  (is (= :dk/db-schema-name-table-and-segmented (perms/data-kind "/db/3/schema/secret_base/table/3/query/segmented/"))))
+
+(deftest data-permissions-v2-migration-move-test
+  (testing "move admin"
+    (is (= ["/"]
+           (perms/move "/"))))
+  (testing "move block"
+    (is (= []
+           (perms/move "/block/db/1/"))))
+  (testing "move data"
+    (is (= ["/data/db/1/" "/query/db/1/"]
+           (perms/move "/db/1/")))
+    (is (= ["/data/db/1/" "/query/db/1/"]
+           (perms/move "/db/1/native/")))
+    (is (= ["/data/db/1/" "/query/db/1/schema/"]
+           (perms/move "/db/1/schema/")))
+    (is (= ["/data/db/1/schema//" "/query/db/1/schema//"]
+           (perms/move "/db/1/schema//")))
+    (is (= ["/data/db/1/schema/PUBLIC/" "/query/db/1/schema/PUBLIC/"]
+           (perms/move "/db/1/schema/PUBLIC/")))
+    (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
+           (perms/move "/db/1/schema/PUBLIC/table/1/")))
+    (is (= []
+           (perms/move "/db/1/schema/PUBLIC/table/1/read/")))
+    (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
+           (perms/move "/db/1/schema/PUBLIC/table/1/query/")))
+    (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
+           (perms/move "/db/1/schema/PUBLIC/table/1/query/segmented/")))))

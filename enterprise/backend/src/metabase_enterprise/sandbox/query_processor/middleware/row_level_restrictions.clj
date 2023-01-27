@@ -249,7 +249,7 @@
       preprocess-source-query
       (source-query-form-ensure-metadata table-id card-id)))
 
-(s/defn ^:private gtap->perms-set :- #{perms/Path}
+(s/defn ^:private gtap->perms-set :- #{perms/PathSchema}
   "Calculate the set of permissions needed to run the query associated with a GTAP; this set of permissions is excluded
   during the normal QP perms check.
 

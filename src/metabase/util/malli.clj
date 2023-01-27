@@ -117,9 +117,9 @@ explain-fn-fail!
 
   Options are passed in as metadata on either the var, or in the defn's metadata position. Those are merged, and thus may not reuse keys.
 
-
-  :mu/gen
-  :mu/no-throw
-  "
+  ^:mu/no-throw - prints an error message instead of throwing when an input/output does't fit the schema
+  ^:mu/gen      - turns on autogeneration, ignores function body(s)
+  ^{:mu/seed N} - a number passed to generate, does nothing without mu/gen
+  ^{:mu/size N} - a number passed to generate, does nothing without mu/gen"
   [& args]
   (-defn mx/SchematizedParams args))

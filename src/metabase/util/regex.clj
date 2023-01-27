@@ -46,7 +46,7 @@
 
 (defmethod rx-dispatch :not
   [[_ arg]]
-  (re-negate arg))
+  (re-negate (rx* arg)))
 
 (defn rx*
   [x]
@@ -67,3 +67,10 @@
      ([x] (re-pattern (rx* x)))
 
      ([x & more] (rx (into [:and x] more))))))
+
+(def check
+  ;; (check [:and "a" "b"] "ab");; => "ab"
+  ;; (check [:and "a" "b"] "abc");; => nil
+  (memoize
+   (fn check [rx-pattern s] (re-matches (rx rx-pattern) s))))
+
