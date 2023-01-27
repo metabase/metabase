@@ -41,7 +41,7 @@
   "Formats a create table statement within our own cache schema"
   [{driver :engine :as database} definition query]
   (let [q (quote-fn driver)]
-    (format "create table if not exists %s.%s as %s"
+    (format "create table %s.%s as %s"
             (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
             (q :table (:table-name definition))
             query)))
