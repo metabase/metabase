@@ -53,7 +53,7 @@
             (let [new-query (mt/mbql-query categories
                                            {:filter [:and [:> $id 1] [:< $id 4]]})]
               ;; sleeping should ensure that updated_at changes
-              (Thread/sleep 1000)
+              (Thread/sleep 1)
               (db/update! Card card-id :dataset_query new-query))
             (params.field-values/get-or-create-advanced-field-values!
              :sandbox

@@ -13990,6 +13990,21 @@ databaseChangeLog:
             constraintName: fk_action_creator_id
             nullable: false
 
+  - changeSet:
+      id: v46.00-074
+      author: metamben
+      comment: Added 0.46.0 -- increase precision of updated_at of report_card
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: updated_at
+            newDataType: DATETIME
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
