@@ -95,22 +95,17 @@ export function ActionComponent({
   const showParameterMapper = isEditing && !isSettings;
 
   return (
-    <>
-      {showParameterMapper && (
-        <ActionParameterOptions dashcard={dashcard} dashboard={dashboard} />
-      )}
-      <ActionVizForm
-        onSubmit={onSubmit}
-        dashcard={dashcard}
-        dashboard={dashboard}
-        settings={settings}
-        isSettings={isSettings}
-        missingParameters={missingParameters}
-        dashcardParamValues={dashcardParamValues}
-        action={dashcard.action as WritebackQueryAction}
-        shouldDisplayButton={shouldDisplayButton}
-      />
-    </>
+    <ActionVizForm
+      onSubmit={onSubmit}
+      dashcard={dashcard}
+      dashboard={dashboard}
+      settings={settings}
+      isSettings={isSettings}
+      missingParameters={missingParameters}
+      dashcardParamValues={dashcardParamValues}
+      action={dashcard.action as WritebackQueryAction}
+      shouldDisplayButton={shouldDisplayButton}
+    />
   );
 }
 

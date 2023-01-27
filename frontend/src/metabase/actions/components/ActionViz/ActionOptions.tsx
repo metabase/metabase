@@ -29,6 +29,7 @@ import type {
   ParameterTarget,
   ParameterId,
 } from "metabase-types/types/Parameter";
+import EmptyState from "metabase/components/EmptyState";
 import type Question from "metabase-lib/Question";
 
 import {
@@ -188,18 +189,6 @@ export const ActionParameterMappingForm = ({
 
   return (
     <ParameterMapperContainer>
-      <ParameterMapperTitleContainer>
-        <h4>{t`Connect ${actionName}`}</h4>
-        {showEditModal && (
-          <Button
-            onlyIcon
-            icon="pencil"
-            iconSize={14}
-            iconColor="text-medium"
-            onClick={showEditModal}
-          />
-        )}
-      </ParameterMapperTitleContainer>
       {actionParameters.map((actionParam: WritebackParameter) => (
         <ParameterFormSection key={actionParam.id}>
           <ParameterFormLabel>
@@ -221,11 +210,14 @@ export const ActionParameterMappingForm = ({
           />
         </ParameterFormSection>
       ))}
+      {actionParameters.length === 0 && (
+        <EmptyState message={t`This action has no parameters to map`} />
+      )}
     </ParameterMapperContainer>
   );
 };
 
-const ConnectedActionParameterMappingForm = _.compose(
+export const ConnectedActionParameterMappingForm = _.compose(
   Actions.load({
     id: (state: State, props: ActionParameterMapperProps) =>
       props.dashcard.action?.id,

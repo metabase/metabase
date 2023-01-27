@@ -133,6 +133,24 @@ export const setParameterMapping = createThunkAction(
   },
 );
 
+export const SET_ACTION_FOR_DASHCARD =
+  "metabase/dashboard/SET_ACTION_FOR_DASHCARD";
+export const setActionForDashcard = createThunkAction(
+  SET_PARAMETER_MAPPING,
+  (dashcard, newAction) => dispatch => {
+    console.log("setActionForDashcard", dashcard, newAction);
+    dispatch(
+      setDashCardAttributes({
+        id: dashcard.id,
+        attributes: {
+          action_id: newAction.id,
+          action: newAction,
+        },
+      }),
+    );
+  },
+);
+
 export const SET_PARAMETER_NAME = "metabase/dashboard/SET_PARAMETER_NAME";
 export const setParameterName = createThunkAction(
   SET_PARAMETER_NAME,

@@ -36,8 +36,8 @@ export const ParameterMapperTitleContainer = styled.div`
 `;
 
 export const ParameterMapperContainer = styled.div`
-  padding: 1.5rem;
   min-width: 15rem;
+  max-width: 25rem;
 `;
 
 export const ParameterFormSection = styled.div`

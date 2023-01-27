@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import { t } from "ttag";
+import { connect } from "react-redux";
 import _ from "underscore";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import Actions from "metabase/entities/actions";
 import Questions from "metabase/entities/questions";
+import Search from "metabase/entities/search";
 
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -23,13 +25,25 @@ import {
   EmptyModelStateContainer,
 } from "./ActionPicker.styled";
 
+function mapProps(props: { models: Card[] }) {
+  console.log("mapStateToProps", props);
+  return {
+    ...props,
+    modeIds: props.models.map((model: Card) => model.id),
+  };
+}
+
 export default function ActionPicker({
-  modelIds,
+  models,
   onClick,
+  currentAction,
 }: {
-  modelIds: number[];
+  models: Card[];
   onClick: (action: WritebackAction) => void;
+  currentAction?: WritebackAction;
 }) {
+  const modelIds = models?.map(model => model.id) ?? [];
+
   return (
     <div className="scroll-y">
       {modelIds.map(modelId => (
@@ -37,6 +51,7 @@ export default function ActionPicker({
           key={modelId}
           modelId={modelId}
           onClick={onClick}
+          currentAction={currentAction}
         />
       ))}
       {!modelIds.length && (
@@ -54,10 +69,12 @@ function ModelActionPicker({
   onClick,
   model,
   actions,
+  currentAction,
 }: {
   onClick: (newValue: WritebackAction) => void;
   model: Card;
   actions: WritebackAction[];
+  currentAction?: WritebackAction;
 }) {
   const [editingActionId, setEditingActionId] = useState<number | undefined>(
     undefined,
@@ -73,9 +90,14 @@ function ModelActionPicker({
     setEditingActionId(undefined);
   };
 
+  const hasCurrentAction = currentAction?.model_id === model.id;
+
   return (
     <>
-      <ModelCollapseSection header={<h4>{model.name}</h4>}>
+      <ModelCollapseSection
+        header={<h4>{model.name}</h4>}
+        initialState={hasCurrentAction ? "expanded" : "collapsed"}
+      >
         {actions?.length ? (
           <ul>
             {actions?.map(action => (
@@ -126,10 +148,20 @@ const ConnectedModelActionPicker = _.compose(
   Questions.load({
     id: (state: State, props: { modelId?: number | null }) => props?.modelId,
     entityAlias: "model",
+    loadingAndErrorWrapper: false,
   }),
   Actions.loadList({
     query: (state: State, props: { modelId?: number | null }) => ({
       "model-id": props?.modelId,
     }),
+    loadingAndErrorWrapper: false,
   }),
 )(ModelActionPicker);
+
+export const ConnectedActionPicker = Search.loadList({
+  query: () => ({
+    models: ["dataset"],
+  }),
+  loadingAndErrorWrapper: false,
+  listName: "models",
+})(ActionPicker);

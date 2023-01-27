@@ -16,6 +16,8 @@ import ActionPicker from "metabase/actions/containers/ActionPicker";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import { addActionToDashboard, closeSidebar } from "metabase/dashboard/actions";
 
+import Button from "metabase/core/components/Button";
+
 import {
   Heading,
   SidebarContent,
@@ -49,9 +51,8 @@ function AddActionSidebarFn({
   displayType,
 }: ActionSidebarProps) {
   const handleActionSelected = async (action: WritebackAction) => {
-    await addAction({ dashId: dashboard.id, action, displayType });
+    await addAction({ dashId: dashboard.id, action: {}, displayType });
   };
-  const modelIds = models?.map(model => model.id) ?? [];
 
   return (
     <Sidebar>
@@ -64,7 +65,9 @@ function AddActionSidebarFn({
       </BorderedSidebarContent>
 
       <SidebarContent>
-        <ActionPicker modelIds={modelIds} onClick={handleActionSelected} />
+        <Button primary onClick={handleActionSelected}>
+          {t`Add New Action Button`}
+        </Button>
       </SidebarContent>
     </Sidebar>
   );
