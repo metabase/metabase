@@ -25,7 +25,7 @@ import {
   getNumberParameterArity,
   getStringParameterArity,
 } from "metabase-lib/parameters/utils/operators";
-import { hasParameterValues } from "metabase-lib/parameters/utils/parameter-source";
+import { canHaveParameterValues } from "metabase-lib/parameters/utils/parameter-source";
 import {
   isDateParameter,
   isNumberParameter,
@@ -248,7 +248,7 @@ function Widget({
         label={getParameterWidgetTitle(parameter)}
       />
     );
-  } else if (hasParameterValues(parameter)) {
+  } else if (canHaveParameterValues(parameter)) {
     return (
       <ParameterFieldWidget
         target={target}
@@ -298,7 +298,7 @@ function getWidgetDefinition(parameter) {
     return TextWidget;
   } else if (isNumberParameter(parameter)) {
     return NumberInputWidget;
-  } else if (hasParameterValues(parameter)) {
+  } else if (canHaveParameterValues(parameter)) {
     return ParameterFieldWidget;
   } else {
     return StringInputWidget;
@@ -306,7 +306,7 @@ function getWidgetDefinition(parameter) {
 }
 
 function isTextWidget(parameter) {
-  const hasValues = hasParameterValues(parameter);
+  const hasValues = canHaveParameterValues(parameter);
   const hasVariableTarget = parameter.hasVariableTemplateTagTarget;
 
   return !hasValues && hasVariableTarget;

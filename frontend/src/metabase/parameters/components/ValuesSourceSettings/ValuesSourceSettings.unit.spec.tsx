@@ -26,7 +26,7 @@ const setup = ({ parameter }: SetupOpts) => {
 
 describe("ValuesSourceSettings", () => {
   it.each<ValuesQueryType>(["list", "search"])(
-    "should allow changing values settings for %i",
+    "should allow changing values settings for %s",
     (type: ValuesQueryType) => {
       const { onChangeSourceSettings } = setup({
         parameter: createMockParameter({
