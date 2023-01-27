@@ -6,11 +6,15 @@
    [clojure.tools.logging :as log]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
+   [metabase.api.field :as api.field]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.params.card-values :as params.card-values]
+   [metabase.models.params.static-values :as params.static-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
    [metabase.models.table :refer [Table]]
@@ -171,5 +175,57 @@
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [context :api]
       (qp.pivot/run-pivot-query (assoc query :async? true) info context))))
+
+
+(def Parameter
+  (su/open-schema
+   {:values_source_type (s/enum nil "static-list" "card")}))
+
+(def FieldIds (s/maybe [s/Int]))
+
+(defn parameter-field-values
+  [field-ids query]
+  (let [fetch (if (str/blank? query)
+                api.field/check-perms-and-return-field-values
+                (fn fetch-query [id]
+                  (let [field (api/check-404 (db/select-one Field :id id))]
+                    {:values (map (comp vector first) (api.field/search-values field field query))
+                     ;; assume more field values due to query
+                     :has_more_values true})))]
+    (reduce (fn [resp id]
+              (let [{values :values more? :has_more_values} (fetch id)]
+                (-> resp
+                    (update :values concat values)
+                    (update :has_more_values #(or % more?)))))
+            {:has_more_values false
+             :values []}
+            field-ids)))
+
+(defn parameter-values [parameter field-ids query]
+  (case (:values_source_type parameter)
+    "static-list" (params.static-values/param->values parameter query)
+    "card"        (params.card-values/param->values parameter query)
+    nil           (if (seq field-ids)
+                    (parameter-field-values field-ids query)
+                    (throw (ex-info (tru "Missing field-ids for parameter")
+                                    {:status-code 400
+                                     :parameter parameter})))
+    (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
+                    {:status-code 400
+                     :parameter parameter}))))
+
+(api/defendpoint-schema POST "/parameter/values"
+  [:as {{:keys [parameter field_ids] :as body} :body}]
+  {parameter Parameter
+   field_ids  FieldIds}
+  (let [nil-query nil]
+    (parameter-values parameter field_ids nil-query)))
+
+(api/defendpoint-schema POST "/parameter/search"
+  [:as {{:keys [parameter field_ids] :as body} :body} query]
+  {parameter Parameter
+   field_ids FieldIds
+   query     s/Str}
+  (parameter-values parameter field_ids query))
 
 (api/define-routes)
