@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.events :as events]
+   [metabase.models.activity-log :as activity-log :refer [ActivityLog]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
@@ -55,7 +56,8 @@
 (mi/define-methods
  Activity
  {:types      (constantly {:details :json, :topic :keyword})
-  :pre-insert pre-insert})
+  :pre-insert pre-insert
+  :post-insert activity-log/write-to-activity-log})
 
 (defmethod mi/can-read? Activity
   [& args]
