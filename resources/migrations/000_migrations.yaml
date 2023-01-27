@@ -14327,8 +14327,8 @@ databaseChangeLog:
             dbms: mysql,mariadb,h2
             sql: >-
               INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
-              SELECT CAST(NULL AS integer) AS table_id,
-                     CAST(NULL AS integer) AS database_id,
+              SELECT NULL AS table_id,
+                     NULL AS database_id,
                      CONCAT(model, '-view') AS topic,
                      metadata AS details,
                      model_id, user_id, timestamp, model
