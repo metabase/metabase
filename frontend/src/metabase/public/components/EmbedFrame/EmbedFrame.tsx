@@ -21,6 +21,7 @@ import type { State } from "metabase-types/store";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import LogoBadge from "./LogoBadge";
+import type { FooterVariant } from "./EmbedFrame.styled";
 import {
   Root,
   ContentContainer,
@@ -37,7 +38,7 @@ interface OwnProps {
   description?: string;
   dashboard?: Dashboard;
   actionButtons?: JSX.Element[];
-  footerVariant?: "default" | "large";
+  footerVariant?: FooterVariant;
   parameters?: Parameter[];
   parameterValues?: Record<ParameterId, ParameterValueOrArray>;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
