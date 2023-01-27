@@ -497,10 +497,17 @@ export const getIsResultDirty = createSelector(
 
 export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
 export const getZoomedColumnIndex = state => state.qb.zoomedRowColumnIndex;
+export const getZoomedRowUseRowIndex = state => state.qb.zoomedRowUseRowIndex;
 
 const getZoomedObjectRowIndex = createSelector(
-  [getPKRowIndexMap, getPKColumnIndex, getZoomedObjectId, getZoomedColumnIndex],
-  (PKRowIndexMap, PKColumnIndex, objectId, columnIndex) => {
+  [
+    getPKRowIndexMap,
+    getPKColumnIndex,
+    getZoomedObjectId,
+    getZoomedColumnIndex,
+    getZoomedRowUseRowIndex,
+  ],
+  (PKRowIndexMap, PKColumnIndex, objectId, columnIndex, useRowIndex) => {
     console.log("🚀", "In getZoomedObjectRowIndex", {
       PKRowIndexMap,
       objectId,
@@ -509,6 +516,9 @@ const getZoomedObjectRowIndex = createSelector(
       return;
     }
     if (PKColumnIndex < 0) {
+      if (useRowIndex) {
+        return objectId;
+      }
       console.log("🚀", "In PKColumnIndex < 0", { objectId });
       /* eslint-disable */
       // debugger;
@@ -544,6 +554,7 @@ export const getNextRowPKValue = createSelector(
       return;
     }
     if (PKColumnIndex === -1) {
+      console.log("🚀", "We are here", { rowIndex });
       return rowIndex + 1;
     }
     const { rows } = result.data;

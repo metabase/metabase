@@ -11,6 +11,7 @@ import {
   getCard,
   getFirstQueryResult,
   getPKColumnIndex,
+  getZoomedColumnIndex,
   getNextRowPKValue,
   getPreviousRowPKValue,
   getTableForeignKeys,
@@ -20,10 +21,13 @@ import { updateUrl } from "./navigation";
 
 export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
 export const zoomInRow =
-  ({ objectId, columnIndex }) =>
+  ({ objectId, columnIndex, useRowIndex = false }) =>
   (dispatch, getState) => {
-    console.log("🚀", "In zoomInRow", columnIndex);
-    dispatch({ type: ZOOM_IN_ROW, payload: { objectId, columnIndex } });
+    console.log("🚀", "In zoomInRow", objectId, columnIndex);
+    dispatch({
+      type: ZOOM_IN_ROW,
+      payload: { objectId, columnIndex, useRowIndex },
+    });
 
     // don't show object id in url if it is a row index
     const hasPK = getPKColumnIndex(getState()) !== -1;
@@ -141,8 +145,10 @@ export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
 export const viewNextObjectDetail = () => {
   return (dispatch, getState) => {
     const objectId = getNextRowPKValue(getState());
+    const columnIndex = getZoomedColumnIndex(getState());
+    console.log("🚀", "In viewNextObjectDetail", { objectId, columnIndex });
     if (objectId != null) {
-      dispatch(zoomInRow({ objectId }));
+      dispatch(zoomInRow({ objectId, columnIndex, useRowIndex: true }));
     }
   };
 };
@@ -150,8 +156,10 @@ export const viewNextObjectDetail = () => {
 export const viewPreviousObjectDetail = () => {
   return (dispatch, getState) => {
     const objectId = getPreviousRowPKValue(getState());
+    const columnIndex = getZoomedColumnIndex(getState());
+    console.log("🚀", "In viewPreviousObjectDetail", { objectId, columnIndex });
     if (objectId != null) {
-      dispatch(zoomInRow({ objectId }));
+      dispatch(zoomInRow({ objectId, columnIndex, useRowIndex: true }));
     }
   };
 };
