@@ -5,14 +5,13 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [compojure.core :refer [POST]]
+   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
-   [metabase.api.field :as api.field]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database :refer [Database]]
-   [metabase.models.field :refer [Field]]
    [metabase.models.params.card-values :as params.card-values]
    [metabase.models.params.static-values :as params.static-values]
    [metabase.models.persisted-info :as persisted-info]
@@ -183,25 +182,21 @@
 
 (def FieldIds (s/maybe [s/Int]))
 
-(defn parameter-field-values
+(defn- parameter-field-values
   [field-ids query]
-  (let [fetch (if (str/blank? query)
-                api.field/check-perms-and-return-field-values
-                (fn fetch-query [id]
-                  (let [field (api/check-404 (db/select-one Field :id id))]
-                    {:values (map (comp vector first) (api.field/search-values field field query))
-                     ;; assume more field values due to query
-                     :has_more_values true})))]
-    (reduce (fn [resp id]
-              (let [{values :values more? :has_more_values} (fetch id)]
-                (-> resp
-                    (update :values concat values)
-                    (update :has_more_values #(or % more?)))))
-            {:has_more_values false
-             :values []}
-            field-ids)))
+  (reduce (fn [resp id]
+            (let [{values :values more? :has_more_values} (api.card/field-id->values id query)]
+              (-> resp
+                  (update :values concat values)
+                  (update :has_more_values #(or % more?)))))
+          {:has_more_values false
+           :values []}
+          field-ids))
 
-(defn parameter-values [parameter field-ids query]
+(defn parameter-values
+  "Fetch parameter values. Parameter should be a full parameter, field-ids is an optional vector of field ids, only
+  consulted if `:values_source_type` is nil. Query is an optional string return matching field values not all."
+  [parameter field-ids query]
   (case (:values_source_type parameter)
     "static-list" (params.static-values/param->values parameter query)
     "card"        (params.card-values/param->values parameter query)
