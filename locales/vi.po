@@ -13466,7 +13466,7 @@ msgstr "Không thể lên lịch tác vụ cho Cơ sở dữ liệu {0}"
 msgid "All elements must be distinct."
 msgstr "Tất cả các yếu tố phải khác biệt."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Chọn các cột bạn muốn bao gồm"
@@ -17891,12 +17891,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Xung đang được loại bỏ dần"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Bây giờ bạn có thể thiết lập {0} để thay thế. Chúng tôi sẽ xóa Pulses trong một bản phát hành trong tương lai và giúp bạn di chuyển bất kỳ phần nào mà bạn vẫn có."
@@ -17905,7 +17905,7 @@ msgstr "Bây giờ bạn có thể thiết lập {0} để thay thế. Chúng t�
 msgid "dashboard subscriptions"
 msgstr "đăng ký bảng điều khiển"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} biểu đồ trong đăng ký của bạn sẽ không giống như trong trang tổng quan của bạn. {1}"
 
@@ -18054,7 +18054,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Thiết lập cơ sở dữ liệu nguồn {0} và chạy di chuyển ..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."
@@ -24407,3 +24407,13 @@ msgstr "Thời gian trước khi người dùng không hoạt động được �
 msgid "Reached recursion limit of {0} in \"apply-sandboxing\" middleware"
 msgstr "Đã đạt đến giới hạn đệ quy là {0} trong phần mềm trung gian \"apply-sandboxing\""
 
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditEmailSidebar.jsx:147
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditSlackSidebar.jsx:121
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Biểu đồ trong đăng ký có thể trông hơi khác so với biểu đồ trong trang tổng quan."
+
+#: frontend/src/metabase/sharing/components/AddEditSidebar/CaveatMessage.jsx:11
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Người nhận sẽ nhìn thấy dữ liệu này giống như bạn nhìn thấy, bất kể quyền của họ là gì."

@@ -11795,13 +11795,13 @@ msgstr "Dupliceer"
 msgid "Tomorrow"
 msgstr "Morgen"
 
-#. This is used for the date filter. For example This year. In Dutch the translation, and probably in other languages, depends on the subject behind. So for example 'This year' translates to 'Dit jaar', but this month is 'Deze maand'. I have updated te transaltion to Deze/dit, but it is probably better if we could specify the translation for each period of time. 
-#. 
+#. This is used for the date filter. For example This year. In Dutch the translation, and probably in other languages, depends on the subject behind. So for example 'This year' translates to 'Dit jaar', but this month is 'Deze maand'. I have updated te transaltion to Deze/dit, but it is probably better if we could specify the translation for each period of time.
+#.
 #. In Dutch:
 #. This year = Dit jaar
 #. This month = Deze maand
 #. This week = Deze week
-#. 
+#.
 #. https://s3.eu-west-1.amazonaws.com/po-pub/i/nBpotfK3JNRsUmdMsKe74YJG.png
 #: frontend/src/metabase/lib/query_time.js:167
 #: frontend/src/metabase/lib/query_time.js:181
@@ -13505,7 +13505,7 @@ msgstr "Kan taken voor database {0} niet plannen"
 msgid "All elements must be distinct."
 msgstr "Alle elementen moeten uniek zijn."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Kies de kolommen die je mee wilt nemen"
@@ -17943,12 +17943,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulsen worden uitgefaseerd"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Je kunt nu {0} in plaats daarvan instellen. We zullen Pulsen verwijderen in een toekomstige release, en je helpen met het migreren van alles wat je nog hebt."
@@ -17957,7 +17957,7 @@ msgstr "Je kunt nu {0} in plaats daarvan instellen. We zullen Pulsen verwijderen
 msgid "dashboard subscriptions"
 msgstr "dashboard abonnementen"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} de grafieken in uw abonnement zullen er niet hetzelfde uitzien als in uw dashboard. {1}"
 
@@ -18106,7 +18106,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Zet de brondatabase op en voer de migraties uit..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."
@@ -24493,3 +24493,13 @@ msgstr "Tijd voordat inactieve gebruikers worden uitgelogd. Standaard duren sess
 msgid "Reached recursion limit of {0} in \"apply-sandboxing\" middleware"
 msgstr "Bereikte recursielimiet van {0} in \"apply-sandboxing\" middleware"
 
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditEmailSidebar.jsx:147
+#: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditSlackSidebar.jsx:121
+msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
+msgid "Charts in subscriptions may look slightly different from charts in dashboards."
+msgstr "Grafieken in abonnementen kunnen er iets anders uitzien dan grafieken in dashboards."
+
+#: frontend/src/metabase/sharing/components/AddEditSidebar/CaveatMessage.jsx:11
+msgctxt "Seen when creating a new dashboard subscription."
+msgid "Recipients will see this data just as you see it, regardless of their permissions."
+msgstr "Ontvangers zien deze gegevens zoals u ze ziet, ongeacht hun rechten."
