@@ -4,7 +4,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { breakpointMinMedium } from "metabase/styled-components/theme";
 
-export type Variant = "default" | "big";
+export type Variant = "default" | "large";
 
 export const MetabaseLink = styled(ExternalLink)<{ variant: Variant }>`
   display: flex;
@@ -15,7 +15,7 @@ export const MetabaseLink = styled(ExternalLink)<{ variant: Variant }>`
   text-decoration: none;
 
   ${props =>
-    props.variant === "big" &&
+    props.variant === "large" &&
     css`
       flex-direction: column;
     `}
@@ -30,7 +30,7 @@ const messageVariantStyles = {
       margin-left: 1rem;
     }
   `,
-  big: css`
+  large: css`
     color: ${color("text-dark")};
     margin-top: 1rem;
   `,
@@ -45,6 +45,6 @@ export const MetabaseName = styled.span<{ isDark: boolean; variant: Variant }>`
     if (props.isDark) {
       return color("white");
     }
-    return color(props.variant === "big" ? "text-dark" : "brand");
+    return color(props.variant === "large" ? "text-dark" : "brand");
   }};
 `;

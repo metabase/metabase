@@ -73,7 +73,7 @@ const footerVariantStyles = {
   default: css`
     border-top: 1px solid ${color("border")};
   `,
-  big: css`
+  large: css`
     justify-content: center;
     align-items: center;
     margin-bottom: 2rem;
@@ -84,7 +84,7 @@ const footerVariantStyles = {
   `,
 };
 
-export const Footer = styled.footer<{ variant: "default" | "big" }>`
+export const Footer = styled.footer<{ variant: "default" | "large" }>`
   display: flex;
   flex-shrink: 0;
   align-items: center;
