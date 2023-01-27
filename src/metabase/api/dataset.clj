@@ -209,6 +209,7 @@
                     {:status-code 400
                      :parameter parameter}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
   [:as {{:keys [parameter field_ids]} :body}]
@@ -217,6 +218,7 @@
   (let [nil-query nil]
     (parameter-values parameter field_ids nil-query)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/parameter/search"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
   [:as {{:keys [parameter field_ids]} :body} query]
