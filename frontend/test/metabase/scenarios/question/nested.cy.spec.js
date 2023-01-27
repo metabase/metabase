@@ -443,7 +443,7 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  it("should properly work with native questions (metabsae#15808, metabase#16938, metabase#18364)", () => {
+  it("should properly work with native questions (metabase#15808, metabase#16938, metabase#18364)", () => {
     const questionDetails = {
       name: "15808",
       native: { query: "select * from products limit 5" },
