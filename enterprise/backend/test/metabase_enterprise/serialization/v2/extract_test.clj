@@ -5,8 +5,25 @@
    [java-time :as t]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field FieldValues Metric
-                            NativeQuerySnippet Pulse PulseCard Segment Table Timeline TimelineEvent User]]
+   [metabase.models
+    :refer [Action
+            Card
+            Collection
+            Dashboard
+            DashboardCard
+            Database
+            Dimension
+            Field
+            FieldValues
+            Metric
+            NativeQuerySnippet
+            Pulse
+            PulseCard
+            Segment
+            Table
+            Timeline
+            TimelineEvent
+            User]]
    [metabase.models.serialization.base :as serdes.base]
    [schema.core :as s]
    [toucan.db :as db])
@@ -727,6 +744,40 @@
                      [{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
+                   (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest action-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{ann-id       :id}        {:first_name "Ann"
+                                                              :last_name  "Wilson"
+                                                              :email      "ann@heart.band"}]
+                       Database   [{db-id        :id}        {:name "My Database"}]
+                       Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
+                       Collection [{coll-id-1  :id}          {:name "My Collection"}]
+                       Card       [{card-id-1  :id
+                                    card-eid-1 :entity_id}   {:name          "Source question"
+                                                              :database_id   db-id
+                                                              :table_id      no-schema-id
+                                                              :collection_id coll-id-1
+                                                              :creator_id    ann-id}]
+                       Action     [{action-id-1  :id
+                                    action-eid-1 :entity_id}  {:name          "My Action"
+                                                               :type          :query
+                                                               :creator_id    ann-id
+                                                               :model_id      card-id-1}]]
+      (testing "action"
+        (let [ser (serdes.base/extract-one "Action" {} (db/select-one 'Action :id action-id-1))]
+          (is (schema= {:serdes/meta (s/eq [{:model "Action" :id action-eid-1 :label "my_action"}])
+                        :creator_id  (s/eq "ann@heart.band")
+                        :created_at  OffsetDateTime
+                        :model_id    (s/eq card-eid-1)
+                        s/Keyword    s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "depend on the Model"
+            (is (= #{[#_{:model "Database"  :id "My Database"}
+                      {:model "Card" :id card-eid-1}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest field-values-test

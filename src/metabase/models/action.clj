@@ -210,3 +210,19 @@
                         (m/index-by :id (actions-with-implicit-params (map :card dashcards) :id [:in action-ids])))]
     (for [dashcard dashcards]
       (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
+
+;;; ------------------------------------------------ Serialization ---------------------------------------------------
+
+(defmethod serdes.hash/identity-hash-fields Action
+  [_action]
+  [:name (serdes.hash/hydrated-hash :model "<none>") :created_at])
+
+(defmethod serdes.base/extract-one "Action"
+  [_model-name _opts action]
+  (-> (serdes.base/extract-one-basics "Action" action)
+      (update :creator_id serdes.util/export-user)
+      (update :model_id serdes.util/export-fk 'Card)))
+
+(defmethod serdes.base/serdes-dependencies "Action" [action]
+  [[{:model "Card" :id (:model_id action)}]])
+
