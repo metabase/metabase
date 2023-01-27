@@ -1,6 +1,7 @@
 (ns metabase.models.view-log
   "The ViewLog is used to log an event where a given User views a given object such as a Table or Card (Question)."
   (:require
+   [metabase.models.activity-log :as activity-log]
    [metabase.models.interface :as mi]
    [toucan.models :as models]))
 
@@ -17,4 +18,5 @@
 (mi/define-methods
  ViewLog
  {:pre-insert pre-insert
+  :post-insert activity-log/write-to-activity-log
   :types      (constantly {:metadata :json})})
