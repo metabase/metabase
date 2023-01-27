@@ -99,7 +99,13 @@ const getRadioOptions = (
       value: "list",
     },
     {
-      name: <RadioLabel title={t`Search box`} />,
+      name: (
+        <RadioLabel
+          title={t`Search box`}
+          isSelected={queryType === "search"}
+          onEditClick={onEditClick}
+        />
+      ),
       value: "search",
     },
     {
