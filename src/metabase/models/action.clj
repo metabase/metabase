@@ -226,3 +226,8 @@
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   [[{:model "Card" :id (:model_id action)}]])
 
+
+(defmethod serdes.base/storage-path "Action" [action _ctx]
+  (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]
+    ["actions" (serdes.base/storage-leaf-file-name id label)]))
+

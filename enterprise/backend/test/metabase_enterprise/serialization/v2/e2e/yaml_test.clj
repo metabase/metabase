@@ -90,7 +90,9 @@
         (ts/with-source-db
           (testing "insert"
             (test-gen/insert!
-              {:collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
+              {:action                  (many-random-fks 10 {} {:model_id   [:c 100]
+                                                                :creator_id [:u 10]})
+               :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                          [10  {:refs     {:personal_owner_id ::rs/omit}
                                                :spec-gen {:namespace :snippets}}]]
                :database                [[10]]
@@ -172,6 +174,9 @@
 
           (testing "storage"
             (storage.yaml/store! (seq @extraction) dump-dir)
+
+            (testing "for Actions"
+              (is (= 10 (count (dir->file-set (io/file dump-dir "actions"))))))
 
             (testing "for Collections"
               (is (= 110 (count (for [f (file-set (io/file dump-dir))
