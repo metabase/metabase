@@ -37,10 +37,6 @@
   "Show this many words of context before/after matches in long search results"
   2)
 
-(def searchable-db-models
-  "Models that can be searched."
-  #{Dashboard Metric Segment Card Collection Table Database})
-
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
   {"dashboard"  Dashboard
@@ -154,11 +150,6 @@
 (defmethod columns-for-model "database"
   [_]
   [:id :name :description :updated_at :initial_sync_status])
-
-(defmethod columns-for-model "pulse"
-  [_]
-  [:id :name :collection_id
-   [:collection.name :collection_name]])
 
 (defmethod columns-for-model "collection"
   [_]
