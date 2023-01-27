@@ -4,7 +4,7 @@
    [clojure.test.check.generators :as gen]
    [java-time :as t]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
+   [metabase.models :refer [Action Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
                             Dimension Field Metric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
                             Segment Table Timeline TimelineEvent User]]
@@ -124,6 +124,8 @@
 (s/def ::parameter  (s/keys :req-un [:parameter/id :parameter/type]))
 (s/def ::parameters (s/coll-of ::parameter))
 
+(s/def :action/type #{:implicit :query :http})
+
 ;; * pulse
 (s/def ::row pos-int?)
 (s/def ::col pos-int?)
@@ -132,6 +134,7 @@
 (s/def ::size_y pos-int?)
 (s/def ::parameter_mappings #{[{}]})
 
+(s/def ::action (s/keys :req-un [::id :action/type ::name]))
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
 (s/def ::collection (s/keys :req-un [::id ::name ::color]))
 (s/def ::activity (s/keys :req-un [::id ::topic ::details ::timestamp]))
@@ -180,6 +183,11 @@
    :core-user                    {:prefix  :u
                                   :spec    ::core-user
                                   :insert! {:model User}}
+   :action                       {:prefix    :action
+                                  :spec      ::action
+                                  :insert!   {:model Action}
+                                  :relations {:creator_id [:core-user :id]
+                                              :model_id   [:card :id]}}
    :activity                     {:prefix    :ac
                                   :spec      ::activity
                                   :relations {:user_id [:core-user :id]}
