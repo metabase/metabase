@@ -30,7 +30,6 @@ import {
   isDateParameter,
   isNumberParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
-import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterWidget.css";
@@ -221,6 +220,18 @@ function Widget({
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
     );
+  } else if (parameter.hasVariableTemplateTagTarget) {
+    return (
+      <TextWidget
+        value={value}
+        setValue={setValue}
+        className={className}
+        isEditing={isEditing}
+        commitImmediately={commitImmediately}
+        placeholder={placeholder}
+        focusChanged={onFocusChanged}
+      />
+    );
   } else if (isNumberParameter(parameter)) {
     const arity = getNumberParameterArity(parameter);
     return (
@@ -237,10 +248,7 @@ function Widget({
         label={getParameterWidgetTitle(parameter)}
       />
     );
-  } else if (
-    !_.isEmpty(parameter.fields) ||
-    getQueryType(parameter) !== "none"
-  ) {
+  } else if (!_.isEmpty(parameter.fields)) {
     return (
       <ParameterFieldWidget
         target={target}
@@ -256,18 +264,6 @@ function Widget({
           onPopoverClose();
         }}
         isEditing={isEditing}
-        focusChanged={onFocusChanged}
-      />
-    );
-  } else if (parameter.hasVariableTemplateTagTarget) {
-    return (
-      <TextWidget
-        value={value}
-        setValue={setValue}
-        className={className}
-        isEditing={isEditing}
-        commitImmediately={commitImmediately}
-        placeholder={placeholder}
         focusChanged={onFocusChanged}
       />
     );
@@ -298,15 +294,12 @@ Widget.propTypes = {
 function getWidgetDefinition(parameter) {
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
-  } else if (isNumberParameter(parameter)) {
-    return NumberInputWidget;
-  } else if (
-    !_.isEmpty(parameter.fields) ||
-    getQueryType(parameter) !== "none"
-  ) {
-    return ParameterFieldWidget;
   } else if (parameter.hasVariableTemplateTagTarget) {
     return TextWidget;
+  } else if (isNumberParameter(parameter)) {
+    return NumberInputWidget;
+  } else if (!_.isEmpty(parameter.fields)) {
+    return ParameterFieldWidget;
   } else {
     return StringInputWidget;
   }
