@@ -34,11 +34,12 @@
 
 (mi/define-methods
  Action
- {:types      (constantly {:type :keyword
-                           :parameter_mappings :parameters-list
-                           :parameters :parameters-list
+ {:types      (constantly {:type                   :keyword
+                           :parameter_mappings     :parameters-list
+                           :parameters             :parameters-list
                            :visualization_settings :visualization-settings})
-  :properties (constantly {::mi/timestamped? true})})
+  :properties (constantly {::mi/timestamped? true
+                           ::mi/entity-id    true})})
 
 (defn- pre-update
   [action]
