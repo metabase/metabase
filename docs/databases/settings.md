@@ -28,6 +28,18 @@ AWS workgroup. For example: `primary`. See [documentation on workgroups](https:/
 
 This S3 staging directory must be in the same region you specify above.
 
+## Access key
+
+Part of IAM credentials for AWS.
+
+## Secret Key
+
+Part of IAM credentials for AWS.
+
+## Additional Athena connection string options
+
+You can specify additional options via a string, e.g. `UseResultsetStreaming=0;LogLevel=6`.
+
 ## Catalog
 
 You can use a different [catalog](https://docs.aws.amazon.com/athena/latest/ug/understanding-tables-databases-and-the-data-catalog.html) (for example if you're using federated queries).

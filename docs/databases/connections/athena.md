@@ -10,14 +10,13 @@ Fill out the fields for that database, and click **Save changes** at the bottom.
 
 ## Connection settings
 
-Connecting Metabase to Athena depends on where Metabase is running.
-
-- [Display name](../settings.md#display-name)
+- [Display name](../settings.md#display-name) *
 - [Region](../settings.md#region)
 - [Workgroup](../settings.md#workgroup)
 - [Username](../settings.md#username)
-- [Password](../settings.md#password)
-- [Schemas](../settings.md#schemas)
+- [S3 staging directory](../settings.md#s3-staging-directory)
+- [Catalog](../settings.md#catalog)
+- [Additional Athena connection string options](../settings.md#additional-athena-connection-string-options)
 - [Rerun queries for simple explorations](../settings.md#rerun-queries-for-simple-explorations)
 - [Choose when syncs and scans happen](../settings.md#choose-when-syncs-and-scans-happen)
 - [Periodically refingerprint tables](../settings.md#periodically-refingerprint-tables)
