@@ -53,11 +53,17 @@
                   :details   {}}]
     (merge defaults activity)))
 
+(defn- write-to-activity-log
+  "Temporary fn for writing an activity entry to activity_log. Will be removed when activity_log impl. is complete."
+  [activity]
+  (let [log-entry (dissoc activity :id :custom_id)]
+    (db/insert! ActivityLog log-entry)))
+
 (mi/define-methods
  Activity
  {:types      (constantly {:details :json, :topic :keyword})
   :pre-insert pre-insert
-  :post-insert activity-log/write-to-activity-log})
+  :post-insert write-to-activity-log})
 
 (defmethod mi/can-read? Activity
   [& args]
