@@ -110,12 +110,12 @@
         (u/with-timeout sync-timeout-ms
           (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
                                        "NONE")
-                quick-sync? (not= database-name "test-data")]
+                full-sync? (#{"test-data" "sample-dataset"} database-name)]
             (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
-                               (if quick-sync? "QUICK sync" "Sync") driver database-name reference-duration)
+                               (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
               ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
               (binding [sync-util/*log-exceptions-and-continue?* false]
-                (sync/sync-database! db (when quick-sync? {:scan :schema})))
+                (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
               ;; add extra metadata for fields
               (try
                 (add-extra-metadata! database-definition db)

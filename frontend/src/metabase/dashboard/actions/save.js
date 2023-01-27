@@ -72,6 +72,7 @@ export const saveDashboardAndCards = createThunkAction(
             }) &&
             // filter out mappings for deleted series
             (!dc.card_id ||
+              dc.action ||
               dc.card_id === mapping.card_id ||
               _.findWhere(dc.series, { id: mapping.card_id })),
         ),
@@ -93,6 +94,7 @@ export const saveDashboardAndCards = createThunkAction(
                 series: dc.series,
                 parameter_mappings: dc.parameter_mappings,
                 visualization_settings: dc.visualization_settings,
+                action_id: dc.action_id,
               });
               dispatch(updateDashcardId(dc.id, result.id));
               return result;
@@ -122,6 +124,7 @@ export const saveDashboardAndCards = createThunkAction(
         const cards = updatedDashcards.map(dc => ({
           id: dc.id,
           card_id: dc.card_id,
+          action_id: dc.action_id,
           row: dc.row,
           col: dc.col,
           size_x: dc.size_x,

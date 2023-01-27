@@ -1,4 +1,4 @@
-(ns metabase.sync.sync-metadata.comments-test
+(ns ^:mb/once metabase.sync.sync-metadata.comments-test
   "Test for the logic that syncs Table column descriptions with the comments fetched from a DB."
   (:require
    [clojure.test :refer :all]

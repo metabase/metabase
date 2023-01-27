@@ -32,11 +32,11 @@ export const TooltipRow = ({
     )}
     <Cell data-testid="row-name">{name}</Cell>
     <ValueCell data-testid="row-value">{formatter(value)}</ValueCell>
-    {percent && (
+    {percent != null ? (
       <PercentCell data-testid="row-percent">
         {formatPercent(percent)}
       </PercentCell>
-    )}
+    ) : null}
   </TooltipRowRoot>
 );
 

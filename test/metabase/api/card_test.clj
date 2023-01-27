@@ -579,7 +579,7 @@
 (deftest updating-card-updates-metadata
   (let [query          (mt/mbql-query venues {:fields [$id $name]})
         modified-query (mt/mbql-query venues {:fields [$id $name $price]})
-        norm           (comp str/upper-case :name)
+        norm           (comp u/upper-case-en :name)
         to-native      (fn [q]
                          {:database (:database q)
                           :type     :native
@@ -2174,7 +2174,7 @@
   (testing "Cards preserve edits to metadata when query changes"
     (let [query          (mt/mbql-query venues {:fields [$id $name]})
           modified-query (mt/mbql-query venues {:fields [$id $name $price]})
-          norm           (comp str/upper-case :name)
+          norm           (comp u/upper-case-en :name)
           to-native      (fn [q]
                            {:database (:database q)
                             :type     :native
@@ -2206,9 +2206,9 @@
                                                :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
                                                                      metadata)))
                           :result_metadata
-                          (map (comp str/upper-case :display_name)))))
+                          (map (comp u/upper-case-en :display_name)))))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
-                     (map (comp str/upper-case :display_name)
+                     (map (comp u/upper-case-en :display_name)
                           (db/select-one-field :result_metadata Card :id card-id))))
               (testing "Even if you only send the new query and not existing metadata"
                 (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
