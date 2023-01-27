@@ -60,7 +60,7 @@ export function getTableCellClickedObject(
       dimensions: cols
         .map((column, index) => ({ value: row[index], column }))
         .filter(dimension => dimension.column.source === "breakout"),
-      origin: { rowIndex, row, cols },
+      origin: { rowIndex, columnIndex, row, cols },
       data: clickedRowData,
     };
   } else {
@@ -68,7 +68,7 @@ export function getTableCellClickedObject(
       value,
       column,
       settings,
-      origin: { rowIndex, row, cols },
+      origin: { rowIndex, columnIndex, row, cols },
       data: clickedRowData,
     };
   }

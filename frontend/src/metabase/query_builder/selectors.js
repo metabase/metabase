@@ -496,10 +496,11 @@ export const getIsResultDirty = createSelector(
 );
 
 export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
+export const getZoomedColumnIndex = state => state.qb.zoomedRowColumnIndex;
 
 const getZoomedObjectRowIndex = createSelector(
-  [getPKRowIndexMap, getPKColumnIndex, getZoomedObjectId],
-  (PKRowIndexMap, PKColumnIndex, objectId) => {
+  [getPKRowIndexMap, getPKColumnIndex, getZoomedObjectId, getZoomedColumnIndex],
+  (PKRowIndexMap, PKColumnIndex, objectId, columnIndex) => {
     console.log("🚀", "In getZoomedObjectRowIndex", {
       PKRowIndexMap,
       objectId,
@@ -511,7 +512,9 @@ const getZoomedObjectRowIndex = createSelector(
       console.log("🚀", "In PKColumnIndex < 0", { objectId });
       /* eslint-disable */
       // debugger;
-      const test = PKRowIndexMap.findIndex(row => row[0] === objectId);
+      const test = PKRowIndexMap.findIndex(
+        row => row[columnIndex] === objectId,
+      );
       console.log("🚀", { test });
       return test;
       // return 0;
