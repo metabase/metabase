@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import { DatabaseUsageInfo } from "metabase-types/api";
-import CheckBox from "metabase/core/components/CheckBox";
 import { color } from "metabase/lib/colors";
 import { ConfirmationCheckbox } from "./ContentRemovalConfirmation.styled";
 
@@ -38,7 +37,11 @@ const ContentRemovalConfirmation = ({
       {question > 0 && (
         <ConfirmationCheckbox
           checkedColor={color("error")}
-          label={t`Delete ${question} saved questions`}
+          label={ngettext(
+            msgid`Delete ${question} saved question`,
+            `Delete ${question} saved questions`,
+            question,
+          )}
           name="question"
           checked={confirmations["question"]}
           onChange={handleChange}
@@ -47,7 +50,11 @@ const ContentRemovalConfirmation = ({
       {dataset > 0 && (
         <ConfirmationCheckbox
           checkedColor={color("error")}
-          label={t`Delete ${dataset} models`}
+          label={ngettext(
+            msgid`Delete ${question} model`,
+            `Delete ${question} models`,
+            question,
+          )}
           name="dataset"
           checked={confirmations["dataset"]}
           onChange={handleChange}
@@ -56,7 +63,11 @@ const ContentRemovalConfirmation = ({
       {metric > 0 && (
         <ConfirmationCheckbox
           checkedColor={color("error")}
-          label={t`Delete ${metric} metric`}
+          label={ngettext(
+            msgid`Delete ${question} metric`,
+            `Delete ${question} metrics`,
+            question,
+          )}
           name="metric"
           checked={confirmations["metric"]}
           onChange={handleChange}
@@ -65,7 +76,11 @@ const ContentRemovalConfirmation = ({
       {segment > 0 && (
         <ConfirmationCheckbox
           checkedColor={color("error")}
-          label={t`Delete ${segment} segments`}
+          label={ngettext(
+            msgid`Delete ${question} segment`,
+            `Delete ${question} segments`,
+            question,
+          )}
           name="segment"
           checked={confirmations["segment"]}
           onChange={handleChange}

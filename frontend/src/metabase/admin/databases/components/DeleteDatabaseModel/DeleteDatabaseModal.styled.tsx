@@ -27,3 +27,7 @@ export const ErrorMessage = styled.div`
   color: ${color("error")};
   padding: 0 1rem;
 `;
+
+export const DatabaseNameInputContainer = styled.div`
+  width: 300px;
+`;
