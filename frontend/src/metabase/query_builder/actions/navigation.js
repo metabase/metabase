@@ -123,6 +123,7 @@ export const updateUrl = createThunkAction(
         queryBuilderMode,
         datasetEditorTab,
         objectId,
+        columnIndex,
       } = {},
     ) =>
     (dispatch, getState) => {
@@ -159,11 +160,18 @@ export const updateUrl = createThunkAction(
         card,
         cardId: card.id,
         objectId,
+        columnIndex,
       };
 
       const { currentState } = getState().qb;
       const queryParams = preserveParameters ? getCurrentQueryParams() : {};
-      const url = getURLForCardState(newState, dirty, queryParams, objectId);
+      const url = getURLForCardState(
+        newState,
+        dirty,
+        queryParams,
+        objectId,
+        columnIndex,
+      );
 
       const urlParsed = parseUrl(url);
       const locationDescriptor = {

@@ -23,7 +23,6 @@ export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
 export const zoomInRow =
   ({ objectId, columnIndex, useRowIndex = false }) =>
   (dispatch, getState) => {
-    console.log("🚀", "In zoomInRow", objectId, columnIndex);
     dispatch({
       type: ZOOM_IN_ROW,
       payload: { objectId, columnIndex, useRowIndex },

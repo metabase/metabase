@@ -508,29 +508,25 @@ const getZoomedObjectRowIndex = createSelector(
     getZoomedRowUseRowIndex,
   ],
   (PKRowIndexMap, PKColumnIndex, objectId, columnIndex, useRowIndex) => {
-    console.log("🚀", "In getZoomedObjectRowIndex", {
-      PKRowIndexMap,
-      objectId,
-      columnIndex,
-    });
     if (!PKRowIndexMap) {
       return;
     }
+
     if (PKColumnIndex < 0) {
       // useRowIndex is set to true
-      // when navigation through
+      // when navigating through
       // up and down arrows of object detail cards
       if (useRowIndex) {
         return objectId;
       }
-      console.log("🚀", "In PKColumnIndex < 0", { objectId, columnIndex });
+
+      // A columnIndex is the position of a column used as a primary key,
+      // which we retrieved on clicking a cell in a viz table.
+      // Fallback to a columnIndex of 0 as is typical..
       const dataRowIndex = columnIndex ? parseInt(columnIndex) : 0;
-      const test = PKRowIndexMap.findIndex(
-        row => row[dataRowIndex] === objectId,
-      );
-      console.log("🚀", { dataRowIndex, test });
-      return test;
+      return PKRowIndexMap.findIndex(row => row[dataRowIndex] === objectId);
     }
+
     return PKRowIndexMap[objectId] ?? PKRowIndexMap[parseInt(objectId)];
   },
 );

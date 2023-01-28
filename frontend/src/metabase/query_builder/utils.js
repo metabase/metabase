@@ -24,7 +24,13 @@ export function getCurrentQueryParams() {
   return querystring.parse(search);
 }
 
-export function getURLForCardState({ card }, dirty, query = {}, objectId) {
+export function getURLForCardState(
+  { card },
+  dirty,
+  query = {},
+  objectId,
+  columnIndex,
+) {
   const options = {
     hash: card && dirty ? serializeCardForUrl(card) : "",
     query,
@@ -35,6 +41,7 @@ export function getURLForCardState({ card }, dirty, query = {}, objectId) {
       options.query.objectId = objectId;
     } else {
       options.objectId = objectId;
+      options.columnIndex = columnIndex;
     }
   }
   return Urls.question(card, options);

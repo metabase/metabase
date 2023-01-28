@@ -26,7 +26,12 @@ export type QuestionUrlBuilderParams = {
 
 export function question(
   card: Card | null,
-  { hash = "", query = "", objectId }: QuestionUrlBuilderParams = {},
+  {
+    hash = "",
+    query = "",
+    objectId,
+    columnIndex,
+  }: QuestionUrlBuilderParams = {},
 ) {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
@@ -75,6 +80,15 @@ export function question(
 
   if (objectId) {
     path = `${path}/${objectId}`;
+  }
+
+  // We use columnIndex to find results in certain object-detail drills.
+  // If columnIndex is "0", that is, an object-detail drill uses
+  // a table with a primary key column that is its leftmost column,
+  // let's not pollute the URL with an appended "/0"
+  // Selector getZoomedObjectRowIndex will fallback to a columnIndex of 0.
+  if (columnIndex && columnIndex !== "0") {
+    path += `/` + columnIndex;
   }
 
   return `${path}${query}${hash}`;

@@ -331,7 +331,6 @@ async function handleQBInit(
 
   const objectId = params?.objectId || queryParams?.objectId;
   const columnIndex = params?.columnIndex || queryParams?.columnIndex;
-  console.log("🚀", "Column Index", columnIndex);
 
   dispatch({
     type: INITIALIZE_QB,
@@ -358,6 +357,7 @@ async function handleQBInit(
         replaceState: true,
         preserveParameters: hasCard,
         objectId,
+        columnIndex,
       }),
     );
   }
