@@ -14300,23 +14300,12 @@ databaseChangeLog:
       comment: Added 0.46.0 - Copy activity -> activity_log (most recent 30 days)
       changes:
         - sql:
-            dbms: mysql,mariadb,h2
             sql: >-
               INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
               SELECT table_id, database_id, topic, details, model_id, user_id, timestamp, model
               FROM activity WHERE timestamp > now() - INTERVAL '30' day
               ORDER BY timestamp ASC;
-        - sql:
-            dbms: postgresql
-            sql: >-
-              INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
-              SELECT table_id, database_id, topic, details, model_id, user_id, timestamp, model
-              FROM activity WHERE timestamp > (now() - CAST('30 days' AS interval))
-              ORDER BY timestamp ASC;
-      rollback: # we do not care to preserve the activity_log from 46->45
-        - sql:
-            sql: >-
-              DELETE FROM activity_log;
+      rollback: # we don't care to preserve activity_log from 46 -> 45
 
   - changeSet:
       id: v46.00-069
@@ -14324,7 +14313,6 @@ databaseChangeLog:
       comment: Added 0.46.0 - Copy view_log -> activity_log (most recent 30 days)
       changes:
         - sql:
-            dbms: mysql,mariadb,h2
             sql: >-
               INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
               SELECT NULL AS table_id,
@@ -14334,21 +14322,7 @@ databaseChangeLog:
                      model_id, user_id, timestamp, model
               FROM view_log WHERE timestamp > now() - INTERVAL '30' day
               ORDER BY timestamp ASC;
-        - sql:
-            dbms: postgresql
-            sql: >-
-              INSERT INTO activity_log (table_id, database_id, topic, details, model_id, user_id, timestamp, model)
-              SELECT CAST(NULL AS integer) AS table_id,
-                     CAST(NULL AS integer) AS database_id,
-                     CONCAT(model, '-view') AS topic,
-                     metadata AS details,
-                     model_id, user_id, timestamp, model
-              FROM view_log WHERE timestamp > (NOW() - CAST('30 days' AS INTERVAL))
-              ORDER BY timestamp ASC;
-      rollback: # we do not care to preserve the activity_log from 46->45
-        - sql:
-            sql: >-
-              DELETE FROM activity_log;
+      rollback: # we don't care to preserve activity_log from 46 -> 45
 
   - changeSet:
       id: v46.00-070
