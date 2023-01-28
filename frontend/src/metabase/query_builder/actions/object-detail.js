@@ -146,7 +146,6 @@ export const viewNextObjectDetail = () => {
   return (dispatch, getState) => {
     const objectId = getNextRowPKValue(getState());
     const columnIndex = getZoomedColumnIndex(getState());
-    console.log("🚀", "In viewNextObjectDetail", { objectId, columnIndex });
     if (objectId != null) {
       dispatch(zoomInRow({ objectId, columnIndex, useRowIndex: true }));
     }
@@ -157,7 +156,6 @@ export const viewPreviousObjectDetail = () => {
   return (dispatch, getState) => {
     const objectId = getPreviousRowPKValue(getState());
     const columnIndex = getZoomedColumnIndex(getState());
-    console.log("🚀", "In viewPreviousObjectDetail", { objectId, columnIndex });
     if (objectId != null) {
       dispatch(zoomInRow({ objectId, columnIndex, useRowIndex: true }));
     }

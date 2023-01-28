@@ -24,6 +24,7 @@ export const openUrl = (url, options) => dispatch => {
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
   } else {
+    console.log("🚀", "In else of openUrl");
     dispatch(push(url));
   }
 };

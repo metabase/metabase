@@ -511,6 +511,7 @@ const getZoomedObjectRowIndex = createSelector(
     console.log("🚀", "In getZoomedObjectRowIndex", {
       PKRowIndexMap,
       objectId,
+      columnIndex,
     });
     if (!PKRowIndexMap) {
       return;
@@ -520,14 +521,11 @@ const getZoomedObjectRowIndex = createSelector(
         return objectId;
       }
       console.log("🚀", "In PKColumnIndex < 0", { objectId });
-      /* eslint-disable */
-      // debugger;
       const test = PKRowIndexMap.findIndex(
-        row => row[columnIndex] === objectId,
+        row => row[columnIndex ?? 0] === objectId,
       );
       console.log("🚀", { test });
       return test;
-      // return 0;
     }
     return PKRowIndexMap[objectId] ?? PKRowIndexMap[parseInt(objectId)];
   },
@@ -554,7 +552,6 @@ export const getNextRowPKValue = createSelector(
       return;
     }
     if (PKColumnIndex === -1) {
-      console.log("🚀", "We are here", { rowIndex });
       return rowIndex + 1;
     }
     const { rows } = result.data;

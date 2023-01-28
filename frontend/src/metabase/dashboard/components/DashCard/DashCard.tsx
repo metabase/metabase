@@ -255,12 +255,14 @@ function DashCard({
       nextCard,
       previousCard,
       objectId,
+      columnIndex,
     }) => {
       navigateToNewCardFromDashboard({
         nextCard,
         previousCard,
         dashcard,
         objectId,
+        columnIndex: 0,
       });
     };
 

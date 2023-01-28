@@ -27,6 +27,7 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
     }
   }
   if (action.question) {
+    console.log("🚀", "In action.qustion");
     const question = action.question();
     const extra = action?.extra?.() ?? {};
     if (question) {
@@ -34,6 +35,7 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
         nextCard: question.card(),
         ...extra,
         objectId: extra.objectId,
+        columnIndex: 1,
       });
       didPerform = true;
     }

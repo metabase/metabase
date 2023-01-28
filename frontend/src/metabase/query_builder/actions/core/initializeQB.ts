@@ -49,7 +49,6 @@ type BlankQueryOptions = {
 
 type QueryParams = BlankQueryOptions & {
   slug?: string;
-  objectId?: string;
 };
 
 type UIControls = Partial<QueryBuilderUIControls>;
@@ -254,6 +253,8 @@ async function handleQBInit(
     ? deserializeCard(serializedCard)
     : null;
 
+  console.log("🚀", "We are in initQB");
+
   let { card, originalCard } = await resolveCards({
     cardId,
     deserializedCard,
@@ -329,6 +330,8 @@ async function handleQBInit(
   });
 
   const objectId = params?.objectId || queryParams?.objectId;
+  const columnIndex = params?.columnIndex || queryParams?.columnIndex;
+  console.log("🚀", "Column Index", columnIndex);
 
   dispatch({
     type: INITIALIZE_QB,
@@ -338,6 +341,7 @@ async function handleQBInit(
       uiControls,
       parameterValues,
       objectId,
+      columnIndex,
     },
   });
 
