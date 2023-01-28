@@ -19,7 +19,11 @@ function getAction({
   clicked,
   type,
   objectId,
-}: DrillOptions & { question: Question; type: DrillType; objectId: RowValue }) {
+}: DrillOptions & {
+  question: Question;
+  type: DrillType;
+  objectId: RowValue;
+}) {
   switch (type) {
     case "pk":
       return {
@@ -32,7 +36,7 @@ function getAction({
     case "zoom":
       return {
         action: () =>
-          zoomInRow({ objectId, columnIndex: clicked.origin.columnIndex }),
+          zoomInRow({ objectId, columnIndex: clicked?.origin?.columnIndex }),
       };
     case "dashboard":
       return { question: () => question };
@@ -45,6 +49,7 @@ function getActionExtraData({
   hasManyPKColumns,
 }: {
   objectId: RowValue;
+  columnIndex: number;
   hasManyPKColumns: boolean;
 }) {
   if (!hasManyPKColumns) {
@@ -63,8 +68,6 @@ const ObjectDetailDrill: Drill = ({ question, clicked }) => {
   const { type, objectId, hasManyPKColumns } = drill;
 
   const columnIndex = clicked?.origin?.columnIndex;
-
-  console.log("🚀", "In ObjectDetailDrill", { clicked, columnIndex });
 
   return [
     {

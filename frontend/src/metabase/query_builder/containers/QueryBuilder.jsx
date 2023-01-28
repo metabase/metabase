@@ -306,7 +306,6 @@ function QueryBuilder(props) {
   );
 
   useOnMount(() => {
-    console.log("🚀", "We are in useOnMount");
     initializeQB(location, params);
   }, []);
 
