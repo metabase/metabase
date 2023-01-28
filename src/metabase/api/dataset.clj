@@ -5,8 +5,8 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [compojure.core :refer [POST]]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
+   [metabase.api.field :as api.field]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -185,7 +185,7 @@
 (defn- parameter-field-values
   [field-ids query]
   (reduce (fn [resp id]
-            (let [{values :values more? :has_more_values} (api.card/field-id->values id query)]
+            (let [{values :values more? :has_more_values} (api.field/field-id->values id query)]
               (-> resp
                   (update :values concat values)
                   (update :has_more_values #(or % more?)))))
