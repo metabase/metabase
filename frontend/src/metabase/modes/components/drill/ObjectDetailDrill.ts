@@ -41,6 +41,7 @@ function getAction({
 
 function getActionExtraData({
   objectId,
+  columnIndex,
   hasManyPKColumns,
 }: {
   objectId: RowValue;
@@ -48,7 +49,7 @@ function getActionExtraData({
 }) {
   if (!hasManyPKColumns) {
     return {
-      extra: () => ({ objectId }),
+      extra: () => ({ objectId, columnIndex }),
     };
   }
 }
@@ -61,6 +62,10 @@ const ObjectDetailDrill: Drill = ({ question, clicked }) => {
 
   const { type, objectId, hasManyPKColumns } = drill;
 
+  const columnIndex = clicked?.origin?.columnIndex;
+
+  console.log("🚀", "In ObjectDetailDrill", { clicked, columnIndex });
+
   return [
     {
       name: "object-detail",
@@ -70,7 +75,7 @@ const ObjectDetailDrill: Drill = ({ question, clicked }) => {
       icon: "document",
       default: true,
       ...getAction({ question, clicked, type: type as DrillType, objectId }),
-      ...getActionExtraData({ objectId, hasManyPKColumns }),
+      ...getActionExtraData({ objectId, hasManyPKColumns, columnIndex }),
     },
   ];
 };

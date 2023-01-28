@@ -131,7 +131,6 @@ export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
   ({ nextCard, previousCard, objectId, columnIndex }) => {
     return async (dispatch, getState) => {
-      console.log("🚀", "IN navigateToNewCardInsideQB", { columnIndex });
       if (previousCard === nextCard) {
         // Do not reload questions with breakouts when clicked on a legend item
       } else if (cardIsEquivalent(previousCard, nextCard)) {
@@ -154,7 +153,6 @@ export const navigateToNewCardInsideQB = createThunkAction(
           // to start building a new ad-hoc question based on a dataset
           dispatch(setCardAndRun({ ...card, dataset: false }));
         }
-        console.log("🚀", "Hey hey hey", { objectId, columnIndex });
         if (objectId !== undefined) {
           dispatch(zoomInRow({ objectId, columnIndex }));
         }

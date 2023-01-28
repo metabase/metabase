@@ -4,6 +4,8 @@ import { open } from "metabase/lib/dom";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions";
 
 export function performAction(action, { dispatch, onChangeCardAndRun }) {
+  console.log("🚀", "In performAction", { action });
+
   let didPerform = false;
   if (action.action) {
     const reduxAction = action.action();
@@ -27,15 +29,15 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
     }
   }
   if (action.question) {
-    console.log("🚀", "In action.qustion");
     const question = action.question();
     const extra = action?.extra?.() ?? {};
+    console.log("🚀", "In action.question", { extra });
     if (question) {
       onChangeCardAndRun({
         nextCard: question.card(),
         ...extra,
         objectId: extra.objectId,
-        columnIndex: 1,
+        columnIndex: extra.columnIndex,
       });
       didPerform = true;
     }
@@ -44,6 +46,7 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
 }
 
 export function performDefaultAction(actions, props) {
+  console.log("🚀", "In performDefaultAction");
   if (!actions) {
     return false;
   }

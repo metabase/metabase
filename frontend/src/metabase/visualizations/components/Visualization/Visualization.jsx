@@ -292,13 +292,25 @@ class Visualization extends React.PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({ nextCard, seriesIndex, objectId }) => {
+  handleOnChangeCardAndRun = ({
+    nextCard,
+    seriesIndex,
+    objectId,
+    columnIndex,
+  }) => {
     const { series, clicked } = this.state;
 
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
     const previousCard = series && series[index] && series[index].card;
 
-    this.props.onChangeCardAndRun({ nextCard, previousCard, objectId });
+    console.log("🚀", "In handleOnChangeCardAndRun", { clicked, columnIndex });
+
+    this.props.onChangeCardAndRun({
+      nextCard,
+      previousCard,
+      objectId,
+      columnIndex,
+    });
   };
 
   onRender = ({ yAxisSplit, warnings = [] } = {}) => {

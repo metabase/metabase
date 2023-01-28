@@ -517,14 +517,18 @@ const getZoomedObjectRowIndex = createSelector(
       return;
     }
     if (PKColumnIndex < 0) {
+      // useRowIndex is set to true
+      // when navigation through
+      // up and down arrows of object detail cards
       if (useRowIndex) {
         return objectId;
       }
-      console.log("🚀", "In PKColumnIndex < 0", { objectId });
+      console.log("🚀", "In PKColumnIndex < 0", { objectId, columnIndex });
+      const dataRowIndex = columnIndex ? parseInt(columnIndex) : 0;
       const test = PKRowIndexMap.findIndex(
-        row => row[columnIndex ?? 0] === objectId,
+        row => row[dataRowIndex] === objectId,
       );
-      console.log("🚀", { test });
+      console.log("🚀", { dataRowIndex, test });
       return test;
     }
     return PKRowIndexMap[objectId] ?? PKRowIndexMap[parseInt(objectId)];

@@ -257,12 +257,13 @@ function DashCard({
       objectId,
       columnIndex,
     }) => {
+      console.log("🚀", "In changeCardAndRunHandler", { columnIndex });
       navigateToNewCardFromDashboard({
         nextCard,
         previousCard,
         dashcard,
         objectId,
-        columnIndex: 0,
+        columnIndex,
       });
     };
 

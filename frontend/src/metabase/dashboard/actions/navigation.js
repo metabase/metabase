@@ -56,7 +56,6 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       // querying a table for which we don't have any metadata for
       // When building a question URL, it'll usually clean the query and
       // strip clauses referencing fields from tables without metadata
-      console.log("🚀", "In  NAVIGATE_TO_NEW_CARD", { columnIndex });
       const previousQuestion = new Question(previousCard, metadata);
       const isDrillingFromNativeModel =
         previousQuestion.isDataset() && previousQuestion.isNative();
@@ -71,6 +70,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         },
       );
 
+      console.log("🚀", "In  NAVIGATE_TO_NEW_CARD", { columnIndex, url });
       dispatch(openUrl(url));
     },
 );
