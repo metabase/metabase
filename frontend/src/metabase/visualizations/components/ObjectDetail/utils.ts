@@ -43,11 +43,13 @@ export const getObjectName = ({
 export interface GetDisplayIdArgs {
   cols: Column[];
   zoomedRow: unknown[] | undefined;
+  columnIndex?: number;
 }
 
 export const getDisplayId = ({
   cols,
   zoomedRow,
+  columnIndex,
 }: GetDisplayIdArgs): ObjectId | null => {
   const hasSinglePk =
     cols.reduce(
@@ -57,6 +59,10 @@ export const getDisplayId = ({
 
   if (!zoomedRow) {
     return null;
+  }
+
+  if (columnIndex) {
+    return zoomedRow[columnIndex] as ObjectId;
   }
 
   if (hasSinglePk) {
