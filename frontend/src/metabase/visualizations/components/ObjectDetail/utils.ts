@@ -61,13 +61,13 @@ export const getDisplayId = ({
     return null;
   }
 
-  if (columnIndex) {
-    return zoomedRow[columnIndex] as ObjectId;
-  }
-
   if (hasSinglePk) {
     const pkColumn = cols.findIndex(isPK);
     return zoomedRow[pkColumn] as ObjectId;
+  }
+
+  if (columnIndex) {
+    return zoomedRow[columnIndex] as ObjectId;
   }
 
   const hasEntityName = cols && !!cols?.find(isEntityName);
