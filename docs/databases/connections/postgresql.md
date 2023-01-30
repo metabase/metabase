@@ -107,7 +107,6 @@ If you instead have a PEM SSL client key, you can convert that key to the PKCS-8
 openssl pkcs8 -topk8 -inform PEM -outform DER -in client-key.pem -out client-key.pk8 -nocrypt
 ```
 
-
 ## Unfold JSON Columns
 
 In some databases, Metabase can unfold JSON columns into component fields to yield a table where each JSON key becomes a column. JSON unfolding is on by default, but you can turn off JSON folding if performance is slow.
@@ -163,8 +162,3 @@ Options are:
 - **Custom**.
 
 If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../configuring-metabase/caching.md#advanced-caching-controls).
-
-## Further reading
-
-- [Adding and managing databases](../connecting.md)
-- [Connection settings](../settings.md)

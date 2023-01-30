@@ -145,8 +145,3 @@ mysql:
       - $PWD/mysql:/var/lib/mysql
     command: ['--default-authentication-plugin=mysql_native_password']
 ```
-
-## Further reading
-
-- [Adding and managing databases](../connecting.md)
-- [Connection settings](../settings.md)
