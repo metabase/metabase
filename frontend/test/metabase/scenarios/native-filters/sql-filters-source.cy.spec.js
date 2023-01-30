@@ -76,6 +76,23 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.runQuery("cardQuery");
     });
 
+    it("should be able to use a structured question source without saving the question", () => {
+      cy.createQuestion(structuredSourceQuestion);
+
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery(
+        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
+      );
+      setFilterQuestionSource({ question: "MBQL source", field: "Category" });
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("Gizmo");
+      FieldFilter.setWidgetStringFilter("Gadget");
+      checkFilterValueNotInList("Widget");
+      FieldFilter.selectFilterValueFromList("Gadget");
+      SQLFilter.runQuery("dataset");
+    });
+
     it("should be able to use a structured question source when embedded", () => {
       cy.createQuestion(structuredSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {

@@ -24,8 +24,12 @@ export function setWidgetType(type) {
  * @param {string} value
  */
 export function addWidgetStringFilter(value) {
-  popover().find("input").first().type(`${value}{enter}`);
+  setWidgetStringFilter(value);
   cy.button("Add filter").click();
+}
+
+export function setWidgetStringFilter(value) {
+  popover().find("input").first().type(`${value}{enter}`);
 }
 
 /**
