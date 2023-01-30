@@ -350,7 +350,7 @@
   set to true when settings are being written directly via /api/setting endpoints."
   false)
 
-(defn- has-advanced-setting-access?
+(defn has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
   Return `false` when `advanced-permissions` is disabled."
   []
