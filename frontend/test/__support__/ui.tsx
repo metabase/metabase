@@ -65,9 +65,7 @@ export function renderWithProviders(
   const reducers = mode === "default" ? mainReducers : publicReducers;
 
   if (withRouter) {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    reducers.routing = routerReducer;
+    Object.assign(reducers, { routing: routerReducer });
   }
 
   const store = getStore(
