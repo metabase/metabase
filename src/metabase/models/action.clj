@@ -244,8 +244,7 @@
 
 (defmethod serdes.base/serdes-generate-path "Action"
   [_ action]
-  [(assoc (serdes.base/infer-self-path "Action" action)
-          :label (:name action))])
+  (serdes.base/maybe-labeled "Action" action :name))
 
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   [[{:model "Card" :id (:model_id action)}]])
