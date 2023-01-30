@@ -94,9 +94,7 @@ describe("scenarios > models > actions", () => {
 
     cy.findByRole("button", { name: "New action" }).click();
     fillQuery("DELETE FROM orders WHERE id = {{ id }}");
-    fieldSettings()
-      .findByText(/Number/i)
-      .click();
+    fieldSettings().findByText("number").click();
     cy.findByRole("button", { name: "Save" }).click();
     modal().within(() => {
       cy.findByLabelText("Name").type("Delete Order");
@@ -109,8 +107,8 @@ describe("scenarios > models > actions", () => {
     openActionEditorFor("Delete Order");
     fillQuery(" AND status = 'pending'");
     fieldSettings()
-      .findByRole("radiogroup", { name: /Field type/i })
-      .findByLabelText(/Number/i)
+      .findByRole("radiogroup", { name: "Field type" })
+      .findByLabelText("number")
       .should("be.checked");
     cy.findByRole("button", { name: "Update" }).click();
 
