@@ -29,3 +29,7 @@ Granting group access to different Metabase features.
 ## [Data sandboxing](./data-sandboxes.md)
 
 Creating data sandboxes to restrict access to rows and columns in tables.
+
+## [Notification permissions](./notifications.md)
+
+Notes on how permissions interact with dashboard subscriptions and alerts.

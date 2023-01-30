@@ -2366,7 +2366,7 @@
                   new-row (-> (mt/user-http-request :crowberto :post 200 execute-path
                                                     {:parameters {"name" "Birds"}})
                               :created-row
-                              (update-keys (comp keyword str/lower-case name)))]
+                              (update-keys (comp keyword u/lower-case-en name)))]
               (testing "Should be able to insert"
                 (is (pos? (:id new-row)))
                 (is (partial= {:name "Birds"}
@@ -2429,7 +2429,7 @@
    :parameters [{:id field-name :slug field-name :target ["variable" ["template-tag" field-name]] :type :text}]
    :dataset_query (mt/native-query
                     {:query (format "insert into types (%s) values ({{%s}})"
-                                    (str/upper-case field-name)
+                                    (u/upper-case-en field-name)
                                     field-name)
                      :template-tags {field-name {:id field-name :name field-name :type :text :display_name field-name}}})})
 
@@ -2468,7 +2468,7 @@
                                                        (assoc-in (mt/mbql-query types)
                                                                  [:query :order_by] [["asc", ["field", (mt/id :types :id) nil]]]))]
                       (is (partial= {field-name value}
-                                    (zipmap (map (comp str/lower-case :name) cols)
+                                    (zipmap (map (comp u/lower-case-en :name) cols)
                                             (last rows))))))
                   (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
                                     {:keys [action-id]} (custom-action-for-field field-name)]
@@ -2483,7 +2483,7 @@
                                                            (assoc-in (mt/mbql-query types)
                                                                      [:query :order_by] [["asc", ["field", (mt/id :types :id) nil]]]))]
                           (is (partial= {field-name value}
-                                        (zipmap (map (comp str/lower-case :name) cols)
+                                        (zipmap (map (comp u/lower-case-en :name) cols)
                                                 (last rows))))))))))
               (testing "Bad data"
                 (doseq [{:keys [field-name] value ::bad} (filter ::bad types)]

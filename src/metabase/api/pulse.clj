@@ -37,20 +37,49 @@
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
                                           'metabase-enterprise.advanced-permissions.common))
 
+(defn- filter-pulses-recipients
+  "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
+  themselves. Recipients that are plain email addresses are preserved."
+  [pulses]
+  (if-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+    (if (segmented-user?)
+      (for [pulse pulses]
+        (assoc pulse :channels
+               (for [channel (:channels pulse)]
+                 (assoc channel :recipients
+                        (filter (fn [recipient] (or (not (:id recipient))
+                                                    (= (:id recipient) api/*current-user-id*)))
+                                (:recipients channel))))))
+      pulses)
+    pulses))
+
+(defn- filter-pulse-recipients
+  [pulse]
+  (first (filter-pulses-recipients [pulse])))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
-  "Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
-  associated with that dashboard. If `user_id` is specified, restricts results to pulses or subscriptions
-  created by the user, or for which the user is a known recipient."
-  [archived dashboard_id user_id]
-  {archived     (s/maybe su/BooleanString)
-   dashboard_id (s/maybe su/IntGreaterThanZero)
-   user_id      (s/maybe su/IntGreaterThanZero)}
-  (as-> (pulse/retrieve-pulses {:archived?    (Boolean/parseBoolean archived)
-                                :dashboard-id dashboard_id
-                                :user-id      user_id}) <>
-    (filter mi/can-read? <>)
-    (hydrate <> :can_write)))
+  "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
+  permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
+
+  If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.
+
+  If `can_read` is `true`, it specifically returns all subscriptions for which the current user
+  created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,
+  and a subset of the default items returned for admins. This is used to power the /account/notifications page."
+  [archived dashboard_id can_read]
+  {archived            (s/maybe su/BooleanString)
+   dashboard_id        (s/maybe su/IntGreaterThanZero)
+   can_read            (s/maybe su/BooleanString)}
+  (let [can-read? (Boolean/parseBoolean can_read)
+        archived? (Boolean/parseBoolean archived)
+        pulses    (->> (pulse/retrieve-pulses {:archived?     archived?
+                                               :dashboard-id  dashboard_id
+                                               :user-id       api/*current-user-id*
+                                               :can-read?     can-read?})
+                       (filter (if can-read? mi/can-read? mi/can-write?))
+                       filter-pulses-recipients)]
+    (hydrate pulses :can_write)))
 
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
@@ -102,7 +131,27 @@
   "Fetch `Pulse` with ID."
   [id]
   (-> (api/read-check (pulse/retrieve-pulse id))
+      filter-pulse-recipients
       (hydrate :can_write)))
+
+(defn- maybe-add-recipients-for-sandboxed-users
+  "Sandboxed users can't read the full recipient list for a pulse, so we need to merge in existing recipients
+  before writing the pulse updates to avoid them being deleted unintentionally. We only merge in recipients that are
+  Metabase users, not raw email addresses, which sandboxed users can still view and modify."
+  [pulse-updates pulse-before-update]
+  (if-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+    (if (segmented-user?)
+      (let [recipients-to-add (filter
+                               (fn [{id :id}] (and id (not= id api/*current-user-id*)))
+                               (:recipients (api.alert/email-channel pulse-before-update)))]
+        (assoc pulse-updates :channels
+               (for [channel (:channels pulse-updates)]
+                 (if (= "email" (:channel_type channel))
+                   (assoc channel :recipients
+                          (concat (:recipients channel) recipients-to-add))
+                   channel))))
+      pulse-updates)
+    pulse-updates))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
@@ -141,15 +190,16 @@
                        (empty? to-add-recipients))
                    [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
 
-    (db/transaction
-     ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
-     ;; depending on what changed.
-     (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
-     ;; ok, now update the Pulse
-     (pulse/update-pulse!
-      (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                         :archived :parameters])
-             :id id))))
+    (let [pulse-updates (maybe-add-recipients-for-sandboxed-users pulse-updates pulse-before-update)]
+      (db/transaction
+       ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
+       ;; depending on what changed.
+       (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
+       ;; ok, now update the Pulse
+       (pulse/update-pulse!
+        (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
+                                           :archived :parameters])
+               :id id)))))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 

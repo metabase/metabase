@@ -490,7 +490,10 @@
 
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
-    :actions/custom})
+    :actions/custom
+
+    ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
+    :test/jvm-timezone-setting})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -514,6 +517,7 @@
 (defmethod supports? [::driver :date-arithmetics] [_ _] true)
 (defmethod supports? [::driver :temporal-extract] [_ _] true)
 (defmethod supports? [::driver :convert-timezone] [_ _] false)
+(defmethod supports? [::driver :test/jvm-timezone-setting] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
