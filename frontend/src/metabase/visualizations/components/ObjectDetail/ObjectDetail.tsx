@@ -358,7 +358,9 @@ export function ObjectDetailHeader({
       <div className="Grid-cell">
         <h2 className="p3">
           {objectName}
-          {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
+          {objectId !== null && (
+            <ObjectIdLabel>Wrong header on purpose</ObjectIdLabel>
+          )}
         </h2>
       </div>
       {showActions && (

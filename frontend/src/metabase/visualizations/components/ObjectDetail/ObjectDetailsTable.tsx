@@ -94,7 +94,7 @@ export function DetailsTableCell({
             : undefined
         }
       >
-        {cellValue}
+        {cellValue} with breaking text
       </span>
     </div>
   );
