@@ -77,7 +77,6 @@
     test-collection
     (make-result "card test card", :model "card", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
-    (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
      (table-search-results))
@@ -100,7 +99,7 @@
       search-item)))
 
 (defn- default-results-with-collection []
-  (on-search-types #{"dashboard" "pulse" "card" "dataset"}
+  (on-search-types #{"dashboard" "card" "dataset"}
                    #(assoc % :collection {:id true, :name true :authority_level nil})
                    (default-search-results)))
 
@@ -116,14 +115,12 @@
                     Card       [dataset   (assoc (coll-data-map "dataset %s dataset" coll)
                                                  :dataset true)]
                     Dashboard  [dashboard (coll-data-map "dashboard %s dashboard" coll)]
-                    Pulse      [pulse     (coll-data-map "pulse %s pulse" coll)]
                     Metric     [metric    (data-map "metric %s metric")]
                     Segment    [segment   (data-map "segment %s segment")]]
       (f {:collection coll
           :card       card
           :dataset    dataset
           :dashboard  dashboard
-          :pulse      pulse
           :metric     metric
           :segment    segment}))))
 
@@ -252,7 +249,7 @@
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"
       ;; sometimes there is a "table" in these responses. might be do to garbage in CI
-      (is (set/subset? #{"dashboard" "dataset" "segment" "collection" "pulse" "database" "metric" "card"}
+      (is (set/subset? #{"dashboard" "dataset" "segment" "collection" "database" "metric" "card"}
                        (-> (mt/user-http-request :crowberto :get 200 "search?q=test")
                            :available_models
                            set)))))
