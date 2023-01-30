@@ -240,27 +240,6 @@
   [(assoc (serdes.base/infer-self-path "Action" action)
           :label (:name action))])
 
-(defmethod serdes.base/load-xform "Action" [action]
-  (-> action
-      serdes.base/load-xform-basics
-      #_(update :creator_id serdes.util/import-fk-keyed 'User :email)))
-
-(comment
-  (def action (db/select-one 'Action :id 1))
-  (def action (serdes.base/extract-one "Action" {} (db/select-one 'Action :id 1)))
-  ;; Delete the test-dump directory if it exists
-  (metabase-enterprise.serialization.cmd/dump "test-dump" {:v2 true})
-  ;; Example path:
-  ("collections" "actions" "xHsWRtzi_eptAaM6jEySb_hello")
-  (require '[metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml])
-  (tap> (set (keys (#'ingest.yaml/ingest-all (clojure.java.io/file "test-dump")))))
-  (def extraction (into [] (metabase-enterprise.serialization.v2.extract/extract-metabase {})))
-  (def extraction 1)
-  (#'ingest.yaml/strip-labels (serdes.base/serdes-path (first extraction)))
-  ;; => [{:id "0hZO_Oc28Z7aYDrlhYy_k", :model "Action"}]
-  (def ingested (#'ingest.yaml/ingest-all (clojure.java.io/file "test-dump")))
-  (first ingested)
-  )
 
 (defmethod serdes.base/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]
