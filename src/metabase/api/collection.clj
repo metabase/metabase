@@ -44,6 +44,26 @@
 
 (declare root-collection)
 
+(defn- collection-ids-for-user-id
+  "Given a user id, get all collections for which the user is the direct or indirect owner.
+  The zero-arg arity returns the collection ids for the current user."
+  ([owner-id]
+   (let [q {:with       [[:parent-ids {:select [:c.id
+                                                [[:concat "/" :c.id "/%"] :location]]
+                                       :from   [[:collection :c]]
+                                       :where  [:= :c.personal_owner_id owner-id]}]]
+            :select     [[:parent-ids.id :parent]
+                         [:c.id :child]]
+            :from       [[:collection :c]]
+            :inner-join [:parent-ids [:like
+                                      :c.location
+                                      :parent-ids.location]]}]
+     (reduce (fn [acc {:keys [parent child]}]
+               (-> acc (conj parent) (conj child)))
+             #{}
+             (mdb.query/query q))))
+  ([] (collection-ids-for-user-id api/*current-user-id*)))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -54,15 +74,15 @@
   [archived namespace]
   {archived  (s/maybe su/BooleanString)
    namespace (s/maybe su/NonBlankString)}
-  (let [archived? (Boolean/parseBoolean archived)]
-    (as-> (db/select Collection
-            {:where    [:and
-                        [:= :archived archived?]
-                        [:= :namespace namespace]
-                        (collection/visible-collection-ids->honeysql-filter-clause
-                         :id
-                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-             :order-by [[:%lower.name :asc]]}) collections
+  (let [archived? (Boolean/parseBoolean archived)
+        coll-ids (collection-ids-for-user-id)]
+    (as-> (when (seq coll-ids)
+            (db/select Collection
+              {:where    [:and
+                          [:= :archived archived?]
+                          [:= :namespace namespace]
+                          [:in :id coll-ids]]
+               :order-by [[:%lower.name :asc]]})) collections
       ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
         collections
@@ -110,14 +130,14 @@
                               (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
-        colls         (db/select Collection
-                        {:where [:and
-                                 (when exclude-archived
-                                   [:= :archived false])
-                                 [:= :namespace namespace]
-                                 (collection/visible-collection-ids->honeysql-filter-clause
-                                  :id
-                                  (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+        coll-ids (collection-ids-for-user-id)
+        colls         (when (seq coll-ids)
+                        (db/select Collection
+                                   {:where [:and
+                                            (when exclude-archived
+                                              [:= :archived false])
+                                            [:= :namespace namespace]
+                                            [:in :id coll-ids]]}))
         colls         (map collection/personal-collection-with-ui-details colls)]
     (collection/collections->tree coll-type-ids colls)))
 
