@@ -20,7 +20,7 @@ import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
-import { fetchQuestionParameterValues } from "metabase/query_builder/actions";
+import { fetchQuestionParameterValues } from "metabase/parameters/actions";
 import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
 
 import Fields from "metabase/entities/fields";
@@ -48,12 +48,10 @@ const optionsMessagePropTypes = {
 };
 
 const mapDispatchToProps = dispatch => ({
-  addRemappings: (...args) => dispatch(addRemappings(...args)),
-  fetchFieldValues: (...args) => dispatch(fetchFieldValues(...args)),
-  fetchQuestionParameterValues: (...args) =>
-    dispatch(fetchQuestionParameterValues(...args)),
-  fetchDashboardParameterValues: (...args) =>
-    dispatch(fetchDashboardParameterValues(...args)),
+  addRemappings,
+  fetchFieldValues,
+  fetchQuestionParameterValues,
+  fetchDashboardParameterValues,
 });
 
 function mapStateToProps(state, { fields = [] }) {
