@@ -1,6 +1,8 @@
 import React, { useEffect, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
+import { replace } from "react-router-redux";
+import type { LocationDescriptor } from "history";
 
 import * as Urls from "metabase/lib/urls";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -55,6 +57,7 @@ type DispatchProps = {
     collection: Collection,
     opts: ToastOpts,
   ) => void;
+  onChangeLocation: (location: LocationDescriptor) => void;
 };
 
 type Props = OwnProps & ModelEntityLoaderProps & StateProps & DispatchProps;
@@ -73,7 +76,11 @@ const mapDispatchToProps = {
   fetchTableForeignKeys: Tables.actions.fetchForeignKeys,
   onChangeModel: (card: Card) => Questions.actions.update(card),
   onChangeCollection: Questions.objectActions.setCollection,
+  onChangeLocation: replace,
 };
+
+const TAB_LIST = ["usage", "schema", "actions"];
+const FALLBACK_TAB = "usage";
 
 function ModelDetailPage({
   model,
@@ -82,6 +89,7 @@ function ModelDetailPage({
   fetchTableForeignKeys,
   onChangeModel,
   onChangeCollection,
+  onChangeLocation,
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
@@ -94,6 +102,8 @@ function ModelDetailPage({
     [model],
   );
 
+  const tab = params.tab ?? FALLBACK_TAB;
+
   useOnMount(() => {
     loadMetadataForCard(model.card());
   });
@@ -104,6 +114,14 @@ function ModelDetailPage({
       fetchTableForeignKeys({ id: mainTable.id });
     }
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
+
+  useEffect(() => {
+    const isKnownTab = TAB_LIST.includes(tab);
+    if (!isKnownTab || (tab === "actions" && !hasActionsEnabled)) {
+      const nextUrl = Urls.modelDetail(model.card(), FALLBACK_TAB);
+      onChangeLocation(nextUrl);
+    }
+  }, [model, tab, hasActionsEnabled, onChangeLocation]);
 
   const handleNameChange = useCallback(
     name => {
@@ -141,7 +159,7 @@ function ModelDetailPage({
     <ModelDetailPageView
       model={model}
       mainTable={mainTable}
-      tab={params.tab}
+      tab={tab}
       hasActionsTab={hasActionsEnabled}
       onChangeName={handleNameChange}
       onChangeDescription={handleDescriptionChange}

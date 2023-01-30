@@ -26,7 +26,7 @@ import {
 interface Props {
   model: Question;
   mainTable?: Table | null;
-  tab?: string;
+  tab: string;
   hasActionsTab: boolean;
   onChangeName: (name?: string) => void;
   onChangeDescription: (description?: string | null) => void;
@@ -35,7 +35,7 @@ interface Props {
 
 function ModelDetailPage({
   model,
-  tab = "usage",
+  tab,
   mainTable,
   hasActionsTab,
   onChangeName,

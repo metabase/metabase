@@ -171,7 +171,7 @@ const COLLECTION_2 = createMockCollection({
 
 type SetupOpts = {
   model: Question;
-  tab?: "usage" | "schema" | "actions" | "";
+  tab?: string;
   actions?: WritebackAction[];
   hasActionsEnabled?: boolean;
   collections?: Collection[];
@@ -209,7 +209,9 @@ async function setup({
   setupCollectionsEndpoints(scope, collections);
 
   const name = model.displayName()?.toLowerCase();
-  const initialRoute = `/model/${model.id()}-${name}/detail/${tab}`;
+  const slug = `${model.id()}-${name}`;
+  const baseUrl = `/model/${slug}/detail`;
+  const initialRoute = `${baseUrl}/${tab}`;
 
   const { store, history } = renderWithProviders(
     <Route path="/model/:slug/detail">
@@ -225,7 +227,7 @@ async function setup({
 
   const metadata = getMetadata(store.getState());
 
-  return { history, metadata, scope, modelUpdateSpy };
+  return { history, baseUrl, metadata, scope, modelUpdateSpy };
 }
 
 type SetupActionsOpts = Omit<SetupOpts, "tab" | "hasActionsEnabled">;
@@ -263,49 +265,6 @@ describe("ModelDetailPage", () => {
 
         expect(screen.getByLabelText("Contact")).toHaveTextContent(
           creator.common_name,
-        );
-      });
-
-      it("navigates between tabs", async () => {
-        const model = getModel();
-        const name = model.displayName()?.toLowerCase();
-        const slug = `${model.id()}-${name}`;
-        const baseUrl = `/model/${slug}/detail`;
-
-        const { history } = await setup({
-          model: getModel(),
-          hasActionsEnabled: true,
-        });
-
-        expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/`);
-        expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-          "aria-selected",
-          "true",
-        );
-
-        userEvent.click(screen.getByText("Schema"));
-        expect(history?.getCurrentLocation().pathname).toBe(
-          `${baseUrl}/schema`,
-        );
-        expect(screen.getByRole("tab", { name: "Schema" })).toHaveAttribute(
-          "aria-selected",
-          "true",
-        );
-
-        userEvent.click(screen.getByText("Actions"));
-        expect(history?.getCurrentLocation().pathname).toBe(
-          `${baseUrl}/actions`,
-        );
-        expect(screen.getByRole("tab", { name: "Actions" })).toHaveAttribute(
-          "aria-selected",
-          "true",
-        );
-
-        userEvent.click(screen.getByText("Used by"));
-        expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
-        expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-          "aria-selected",
-          "true",
         );
       });
 
@@ -459,6 +418,22 @@ describe("ModelDetailPage", () => {
         it("isn't shown if actions are disabled for model's database", async () => {
           await setup({ model: getModel(), hasActionsEnabled: false });
           expect(screen.queryByText("Actions")).not.toBeInTheDocument();
+        });
+
+        it("redirects to 'Used by' when trying to access actions tab without them enabled", async () => {
+          const { baseUrl, history } = await setup({
+            model: getModel(),
+            hasActionsEnabled: false,
+            tab: "actions",
+          });
+
+          expect(history?.getCurrentLocation().pathname).toBe(
+            `${baseUrl}/usage`,
+          );
+          expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
+            "aria-selected",
+            "true",
+          );
         });
 
         it("shows empty state if there are no actions", async () => {
@@ -695,6 +670,57 @@ describe("ModelDetailPage", () => {
       expect(
         screen.queryByTestId("model-relationships"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("navigation", () => {
+    const model = getStructuredModel();
+
+    it("navigates between tabs", async () => {
+      const { baseUrl, history } = await setup({
+        model,
+        hasActionsEnabled: true,
+      });
+
+      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/`);
+      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      userEvent.click(screen.getByText("Schema"));
+      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/schema`);
+      expect(screen.getByRole("tab", { name: "Schema" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      userEvent.click(screen.getByText("Actions"));
+      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/actions`);
+      expect(screen.getByRole("tab", { name: "Actions" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      userEvent.click(screen.getByText("Used by"));
+      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
+      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+    });
+
+    it("redirects to 'Used by' when opening an unknown tab", async () => {
+      const { baseUrl, history } = await setup({
+        model,
+        tab: "foo-bar",
+      });
+
+      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
+      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
     });
   });
 });
