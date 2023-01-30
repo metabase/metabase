@@ -25,23 +25,26 @@ const setup = ({ parameter }: SetupOpts) => {
 };
 
 describe("ValuesSourceSettings", () => {
-  it.each<ValuesQueryType>(["list", "search"])(
-    "should allow changing values settings for %s",
-    (type: ValuesQueryType) => {
-      const { onChangeSourceSettings } = setup({
-        parameter: createMockParameter({
-          values_query_type: type,
-        }),
-      });
+  it.each<[string, ValuesQueryType]>([
+    ["string/=", "list"],
+    ["string/=", "search"],
+    ["category", "list"],
+    ["category", "search"],
+  ])("should allow changing values settings for %s, %s", (type, queryType) => {
+    const { onChangeSourceSettings } = setup({
+      parameter: createMockParameter({
+        type,
+        values_query_type: queryType,
+      }),
+    });
 
-      userEvent.click(screen.getByRole("button", { name: "Edit" }));
-      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
-      userEvent.type(screen.getByRole("textbox"), "A");
-      userEvent.click(screen.getByRole("button", { name: "Done" }));
+    userEvent.click(screen.getByRole("button", { name: "Edit" }));
+    userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+    userEvent.type(screen.getByRole("textbox"), "A");
+    userEvent.click(screen.getByRole("button", { name: "Done" }));
 
-      expect(onChangeSourceSettings).toHaveBeenCalledWith("static-list", {
-        values: ["A"],
-      });
-    },
-  );
+    expect(onChangeSourceSettings).toHaveBeenCalledWith("static-list", {
+      values: ["A"],
+    });
+  });
 });
