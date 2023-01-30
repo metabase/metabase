@@ -15,7 +15,7 @@
     :refer [DashboardCard]]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
+   [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -501,8 +501,7 @@
 (defmethod serdes.base/serdes-descendants "Dashboard" [_model-name id]
   (let [dashcards       (db/select ['DashboardCard :card_id :parameter_mappings]
                                    :dashboard_id id)
-        dashboard       (db/select-one Dashboard :id id)
-        parameter-cards (db/select-ids ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id id)]
+        dashboard       (db/select-one Dashboard :id id)]
     (set/union
       ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
       ;; here. So their cards, both direct and mentioned in their parameters.
@@ -513,9 +512,6 @@
              ["Card" card-id]))
       ;; parameter with values_source_type = "card" will depend on a card
       (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
-             ["Card" card-id]))
-      ;; any ParameterCard that have this dashboard as Parameterized Object
-      (set (for [id parameter-cards]
-             ["ParameterCard" id])))))
+             ["Card" card-id])))))
 
 (serdes.base/register-ingestion-path! "Dashboard" (serdes.base/ingestion-matcher-collected "collections" "Dashboard"))

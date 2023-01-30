@@ -447,8 +447,7 @@
                                                :type                 "id"
                                                :values_source_type   "card"
                                                :values_source_config {:card_id (:id card1)}}]}]]
-      (is (= #{["Card" (:id card1)]
-               ["ParameterCard" (db/select-one-id 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2))]}
+      (is (= #{["Card" (:id card1)]}
              (serdes.base/serdes-descendants "Card" (:id card2)))))))
 
 

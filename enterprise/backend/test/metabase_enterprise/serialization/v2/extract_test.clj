@@ -998,12 +998,6 @@
                    {:model "Field"      :id "A Field"}]}
                 (set (serdes.base/serdes-dependencies ser)))))))))
 
-(defn- parameter-card-entity-id-for-po
-  [parameterized-object-type parameterized-object-id]
-  (db/select-one-field :entity_id 'ParameterCard
-                       :parameterized_object_type parameterized-object-type
-                       :parameterized_object_id parameterized-object-id))
-
 (deftest selective-serialization-basic-test
   (ts/with-empty-h2-app-db
     (ts/with-temp-dpc [User       [{mark-id :id}              {:first_name "Mark"
@@ -1173,10 +1167,8 @@
                     [{:model "Card"          :id c4-eid  :label "question_4_1"}]
                     ;; card that parameter on dashboard linked to
                     [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
-                    [{:model "ParameterCard" :id (parameter-card-entity-id-for-po "dashboard" dash4-id)}]
                     ;; card that the card on dashboard linked to
-                    [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]
-                    [{:model "ParameterCard" :id (parameter-card-entity-id-for-po "card" c4-id)}]}
+                    [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
                (->> (extract/extract-subtrees {:targets [["Dashboard" dash4-id]]})
                     (map serdes.base/serdes-path)
                     set)))))
@@ -1219,10 +1211,8 @@
                       [{:model "Card"          :id c4-eid  :label "question_4_1"}]
                       ;; card that parameter on dashboard linked to
                       [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
-                      [{:model "ParameterCard" :id (parameter-card-entity-id-for-po "dashboard" dash4-id)}]
                       ;; card that the card on dashboard linked to
-                      [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]
-                      [{:model "ParameterCard" :id (parameter-card-entity-id-for-po "card" c4-id)}]}
+                      [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Collection" coll4-id]]})
                       (map serdes.base/serdes-path)
                       set)))))))))

@@ -414,8 +414,7 @@
                                                         :values_source_type "card"
                                                         :values_source_config {:card_id     (:id card)
                                                                                :value_field [:field (:id field) nil]}}]}]]
-      (is (= #{["Card" (:id card)]
-               ["ParameterCard" (db/select-one-id 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dashboard))]}
+      (is (= #{["Card" (:id card)]}
              (serdes.base/serdes-descendants "Dashboard" (:id dashboard))))))
 
   (testing "dashboard in which its dashcards has parameter_mappings to a card"

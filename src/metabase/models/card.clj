@@ -426,8 +426,7 @@
         source-table       (some->  card :dataset_query :query :source-table)
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
-        snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))
-        parameter-cards    (db/select-ids ParameterCard :parameterized_object_type "card" :parameterized_object_id id)]
+        snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
     (set/union
       (when (and (string? source-table)
                  (str/starts-with? source-table "card__"))
@@ -440,10 +439,6 @@
                ["Card" card-id])))
       (when (seq snippets)
         (set (for [snippet-id snippets]
-               ["NativeQuerySnippet" snippet-id])))
-      ;; any ParameterCard that have this card as Parameterized Object
-      (when parameter-cards
-        (set (for [id parameter-cards]
-               ["ParameterCard" id]))))))
+               ["NativeQuerySnippet" snippet-id]))))))
 
 (serdes.base/register-ingestion-path! "Card" (serdes.base/ingestion-matcher-collected "collections" "Card"))

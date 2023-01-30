@@ -940,99 +940,100 @@
                        (get "snippet: things")
                        :snippet-id)))))))))
 
-(deftest card-has-parameter-with-source-card-test
-  (let [db        (atom nil)
-        table     (atom nil)
-        field     (atom nil)
-        card      (atom nil)
-        card2     (atom nil)
-        extracted (atom nil)]
-    (testing "Card that has parameter with source card must be deserialization"
-      (ts/with-empty-h2-app-db
-        (reset! db    (ts/create! Database :name "my-db"))
-        (reset! table (ts/create! Table :name "CUSTOMERS" :db_id (:id @db)))
-        (reset! field (ts/create! Field :name "NAME" :table_id (:id @table)))
-        (reset! card  (ts/create! Card :name "source card"))
-        (reset! card2 (ts/create! Card
-                                   :name "the card"
-                                   :parameters [{:id                   "abc"
-                                                 :type                 "category"
-                                                 :name                 "CATEGORY"
-                                                 :values_source_type   "card"
-                                                 ;; card_id is in a different collection with dashboard's collection
-                                                 :values_source_config {:card_id     (:id @card)
-                                                                        :value_field [:field (:id @field) nil]}}]))
+(deftest card-and-dashboard-has-parameter-with-source-is-card-test
+  (ts/with-source-and-dest-dbs
+    (let [db1s       (atom nil)
+          table1s    (atom nil)
+          field1s    (atom nil)
+          field1d    (atom nil)
+          card1s     (atom nil)
+          card1d     (atom nil)
+          card2s     (atom nil)
+          card2d     (atom nil)
+          dash1s     (atom nil)
+          dash1d     (atom nil)
+          coll1s     (atom nil)
+          serialized (atom nil)]
+      (testing "Dashboard and Card that has parameter with source is a card must be deserialized correctly"
+        (ts/with-source-db
+          (reset! db1s    (ts/create! Database :name "my-db"))
+          (reset! coll1s  (ts/create! Collection :name "My collection"))
+          (reset! table1s (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
+          (reset! field1s (ts/create! Field :name "NAME" :table_id (:id @table1s)))
+          (reset! card1s  (ts/create! Card :name "Source card"))
 
-        (testing "on extraction"
-          (reset! extracted (serdes.base/extract-one "Card" {} @card2))
-          (is (= [{:id                   "abc",
-                   :name                 "CATEGORY",
-                   :type                 :category,
-                   :values_source_config {:card_id     (:entity_id @card),
-                                          :value_field [:field
-                                                        ["my-db" nil "CUSTOMERS" "NAME"]
-                                                        nil]},
-                   :values_source_type "card"}]
-                 (:parameters @extracted))))
+          ;; A Card with parameter contains source is another card
+          (reset! card2s  (ts/create! Card
+                                      :name "Card with parameter"
+                                      :database_id (:id @db1s)
+                                      :table_id (:id @table1s)
+                                      :collection_id (:id @coll1s)
+                                      :parameters [{:id                   "abc"
+                                                    :type                 "category"
+                                                    :name                 "CATEGORY"
+                                                    :values_source_type   "card"
+                                                    ;; card_id is in a different collection with dashboard's collection
+                                                    :values_source_config {:card_id     (:id @card1s)
+                                                                           :value_field [:field (:id @field1s) nil]}}]))
 
-        (testing "when loading"
-          (let [new-eid   (u/generate-nano-id)
-                ingestion (ingestion-in-memory [(assoc @extracted :entity_id new-eid)])]
-            (is (some? (serdes.load/load-metabase ingestion)))
-            (is (= {:card_id     (:id @card),
-                    :value_field [:field (:id @field) nil]}
-                   (-> (db/select-one-field :parameters Card :entity_id new-eid)
-                       first
-                       :values_source_config)))
-            (is (some? (db/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id @card2))))))))))
+          ;; A dashboard with parameter contains source is another card
+          (reset! dash1s  (ts/create! Dashboard
+                                      :name "A dashboard"
+                                      :collection_id (:id @coll1s)
+                                      :parameters [{:id                   "abc"
+                                                    :type                 "category"
+                                                    :name                 "CATEGORY"
+                                                    :values_source_type   "card"
+                                                    ;; card_id is in a different collection with dashboard's collection
+                                                    :values_source_config {:card_id     (:id @card1s)
+                                                                           :value_field [:field (:id @field1s) nil]}}]))
 
-(deftest dashboard-has-parameter-with-source-card-test
-  (let [db        (atom nil)
-        table     (atom nil)
-        field     (atom nil)
-        card      (atom nil)
-        dash      (atom nil)
-        coll      (atom nil)
-        extracted (atom nil)]
-    (testing "Card that has parameter with source card must be deserialization"
-      (ts/with-empty-h2-app-db
-        (reset! db    (ts/create! Database :name "my-db"))
-        (reset! coll  (ts/create! Collection :name "pop! minis"))
-        (reset! table (ts/create! Table :name "CUSTOMERS" :db_id (:id @db)))
-        (reset! field (ts/create! Field :name "NAME" :table_id (:id @table)))
-        (reset! card  (ts/create! Card :name "source card"))
-        (reset! dash  (ts/create! Dashboard
-                                  :name "A dashboard"
-                                  :collection_id (:id @coll)
-                                  :parameters [{:id                   "abc"
-                                                 :type                 "category"
-                                                 :name                 "CATEGORY"
-                                                 :values_source_type   "card"
-                                                 ;; card_id is in a different collection with dashboard's collection
-                                                 :values_source_config {:card_id     (:id @card)
-                                                                        :value_field [:field (:id @field) nil]}}]))
+          (reset! serialized (into [] (serdes.extract/extract-metabase {})))
 
-
-        (testing "on extraction"
-          (reset! extracted (serdes.base/extract-one "Dashboard" {} @dash))
           (is (= [{:id                   "abc",
                    :name                 "CATEGORY",
                    :type                 :category,
                    :values_query_type    "list"
-                   :values_source_config {:card_id     (:entity_id @card),
+                   :values_source_config {:card_id     (:entity_id @card1s),
                                           :value_field [:field
                                                         ["my-db" nil "CUSTOMERS" "NAME"]
                                                         nil]},
                    :values_source_type "card"}]
-                 (:parameters @extracted))))
+                 (:parameters (first (by-model @serialized "Dashboard")))))
 
-        (testing "when loading"
-          (let [new-eid   (u/generate-nano-id)
-                ingestion (ingestion-in-memory [(assoc @extracted :entity_id new-eid)])]
-            (is (some? (serdes.load/load-metabase ingestion)))
-            (is (= {:card_id     (:id @card),
-                    :value_field [:field (:id @field) nil]}
-                   (-> (db/select-one-field :parameters Dashboard :entity_id new-eid)
-                       first
-                       :values_source_config)))
-            (is (some? (db/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id @dash))))))))))
+          (is (= [{:id                   "abc",
+                   :name                 "CATEGORY",
+                   :type                 :category,
+                   :values_source_config {:card_id     (:entity_id @card1s),
+                                          :value_field [:field
+                                                        ["my-db" nil "CUSTOMERS" "NAME"]
+                                                        nil]},
+                   :values_source_type "card"}]
+                 (:parameters (first (by-model @serialized "Card")))))))
+
+      (testing "and load correctly"
+        (ts/with-dest-db
+         (let [ingestion (ingestion-in-memory @serialized)]
+           (serdes.load/load-metabase ingestion)
+           (reset! dash1d (db/select-one Dashboard :name "A dashboard"))
+           (reset! card1d (db/select-one Card :name "Source card"))
+           (reset! card2d (db/select-one Card :name "Card with parameter"))
+           (reset! field1d (db/select-one Field :name "NAME"))
+
+           (testing "parameter on dashboard is loaded correctly"
+             (is (= {:card_id     (:id @card1d),
+                     :value_field [:field (:id @field1d) nil]}
+                    (-> @dash1d
+                        :parameters
+                        first
+                        :values_source_config)))
+             (is (some? (db/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id @dash1d)))))
+
+           (testing "parameter on card is loaded correctly"
+             (is (= {:card_id     (:id @card1d),
+                     :value_field [:field (:id @field1d) nil]}
+                    (-> @card2d
+                        :parameters
+                        first
+                        :values_source_config)))
+             (is (some? (db/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id @card2d)))))))))))
