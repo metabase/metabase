@@ -18,7 +18,7 @@ const propTypes = {
   isEditing: PropTypes.bool,
   commitImmediately: PropTypes.bool,
 
-  setParameterValue: PropTypes.func.isRequired,
+  setParameterValue: PropTypes.func,
   setParameterIndex: PropTypes.func,
   setEditingParameter: PropTypes.func,
 };

@@ -19,11 +19,6 @@ import type Table from "metabase-lib/metadata/Table";
 
 import ActionCreator from "./ActionCreator";
 
-// eslint-disable-next-line react/display-name
-jest.mock("metabase/query_builder/components/NativeQueryEditor", () => () => (
-  <span data-testid="native-query-editor">Mock Native Query Editor</span>
-));
-
 function getDatabaseObject(database: Database) {
   return {
     ...database.getPlainObject(),
@@ -79,7 +74,9 @@ describe("ActionCreator", () => {
 
       expect(screen.getByText(/New action/i)).toBeInTheDocument();
       expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
-      expect(screen.getByTestId("native-query-editor")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("mock-native-query-editor"),
+      ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Update" }),
@@ -103,7 +100,9 @@ describe("ActionCreator", () => {
       expect(screen.getByText(action.name)).toBeInTheDocument();
       expect(screen.queryByText(/New action/i)).not.toBeInTheDocument();
       expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
-      expect(screen.getByTestId("native-query-editor")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("mock-native-query-editor"),
+      ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Update" }),
       ).toBeInTheDocument();

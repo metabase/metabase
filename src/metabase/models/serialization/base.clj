@@ -45,7 +45,8 @@
   By default this is a column, `:entity_id`.
 
   Models that have a different portable ID should override this."
-  (fn [model-name _] model-name))
+  {:arglists '([model-name instance])}
+  (fn [model-name _instance] model-name))
 
 (defmethod serdes-entity-id :default [_ {:keys [entity_id]}]
   entity_id)
@@ -81,7 +82,8 @@
   - The primary key might still be attached, during extraction.
   - `:label` is optional
   - The logic to guess the leaf part of the path is in [[infer-self-path]], for use in overriding."
-  (fn [model _] model))
+  {:arglists '([model-name instance])}
+  (fn [model-name _instance] model-name))
 
 (defn infer-self-path
   "Implements the default logic from [[serdes-generate-path]] that guesses the `:id` of this entity. Factored out
@@ -185,7 +187,8 @@
 
   You probably don't want to implement this directly. The default implementation delegates to [[extract-query]] and
   [[extract-one]], which are usually more convenient to override."
-  (fn [model _] model))
+  {:arglists '([model-name opts])}
+  (fn [model-name _opts] model-name))
 
 (defmulti extract-query
   "Performs the select query, possibly filtered, for all the entities of this model that should be serialized. Called
@@ -200,7 +203,8 @@
   Defaults to using `(toucan.db/select model)` for the entire table.
 
   You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized."
-  (fn [model _] model))
+  {:arglists '([model-name opts])}
+  (fn [model-name _opts] model-name))
 
 (defmulti extract-one
   "Extracts a single entity retrieved from the database into a portable map with `:serdes/meta` attached.
@@ -219,7 +223,8 @@
   When overriding this, [[extract-one-basics]] is probably a useful starting point.
 
   Keyed by the model name of the entity, the first argument."
-  (fn [model _opts _entity] model))
+  {:arglists '([model-name opts instance])}
+  (fn [model-name _opts _instance] model-name))
 
 (defmethod extract-all :default [model opts]
   (eduction (map (partial extract-one model opts))
@@ -360,6 +365,7 @@
   the incoming key. For the identity hash, this scans the entire table and builds a cache of
   [[serdes.hash/identity-hash]] to primary keys, since the identity hash cannot be queried directly.
   This cache is cleared at the beginning and end of the deserialization process."
+  {:arglists '([path])}
   (fn [path]
     (-> path last :model)))
 

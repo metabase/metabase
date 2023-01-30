@@ -221,8 +221,10 @@
 (def ^:private ^{:arglists '([card-or-question])} native-query?
   (comp #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
 
-(def ^:private ^{:arglists '([card-or-question])} source-question
-  (comp Card qp.util/query->source-card-id :dataset_query))
+(defn- source-question
+  [card-or-question]
+  (when-let [source-card-id (qp.util/query->source-card-id (:dataset_query card-or-question))]
+    (db/select-one Card :id source-card-id)))
 
 (defn- table-like?
   [card-or-question]
@@ -371,7 +373,7 @@
   [{:keys [base_type semantic_type name]}]
   (and (isa? base_type :type/Number)
        (or (#{:type/PK :type/FK} semantic_type)
-           (let [name (str/lower-case name)]
+           (let [name (u/lower-case-en name)]
              (or (= name "id")
                  (str/starts-with? name "id_")
                  (str/ends-with? name "_id"))))))
@@ -395,10 +397,10 @@
                                  (field-isa? field fieldspec))))))
    :named           (fn [name-pattern]
                       (comp (->> name-pattern
-                                 str/lower-case
+                                 u/lower-case-en
                                  re-pattern
                                  (partial re-find))
-                            str/lower-case
+                            u/lower-case-en
                             :name))
    :max-cardinality (fn [cardinality]
                       (fn [field]
@@ -581,7 +583,7 @@
   "Capitalize only the first letter in a given string."
   [s]
   (let [s (str s)]
-    (str (str/upper-case (subs s 0 1)) (subs s 1))))
+    (str (u/upper-case-en (subs s 0 1)) (subs s 1))))
 
 (defn- instantiate-metadata
   [x context bindings]
@@ -701,7 +703,7 @@
     (-> target field/table (assoc :link id))))
 
 (def ^:private ^{:arglists '([source])} source->engine
-  (comp :engine Database (some-fn :db_id :database_id)))
+  (comp :engine (partial db/select-one Database :id) (some-fn :db_id :database_id)))
 
 (defmulti
   ^{:private  true

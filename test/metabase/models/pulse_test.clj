@@ -391,21 +391,6 @@
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or pulse-binding '_) ~(or card-binding '_)]
       ~@body)))
 
-;; Check that if a Pulse is in a Collection, someone who would not be able to see it under the old
-;; artifact-permissions regime will be able to see it if they have permissions for that Collection
-(deftest has-permissions-test
-  (is (with-pulse-in-collection [_ collection pulse]
-        (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
-          (mi/can-read? pulse)))))
-
-;; Check that if a Pulse is in a Collection, someone who would otherwise be able to see it under the old
-;; artifact-permissions regime will *NOT* be able to see it if they don't have permissions for that Collection
-(deftest no-permissions-test
-  (is (= false
-         (with-pulse-in-collection [db _ pulse]
-           (binding [api/*current-user-permissions-set* (atom #{(perms/data-perms-path (u/the-id db))})]
-             (mi/can-read? pulse))))))
-
 (deftest validate-collection-namespace-test
   (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Pulse in a non-normal Collection"
@@ -441,7 +426,7 @@
       (f db collection dashboard pulse))))
 
 (defmacro with-dashboard-subscription-in-collection
-  "Execute `body` with a temporary Dashboard Subscription for a Dashboard in a Collection"
+  "Execute `body` with a temporary Dashboard Subscription created by :rasta (a non-admin) for a Dashboard in a Collection"
   {:style/indent 1}
   [[db-binding collection-binding dashboard-binding subscription-binding] & body]
   `(do-with-dashboard-subscription-in-collection
@@ -449,26 +434,42 @@
       ~@body)))
 
 (deftest dashboard-subscription-permissions-test
-  (with-dashboard-subscription-in-collection [_ collection _ subscription]
-    (testing "If we have read and write access to a collection, we have read and write access to
-             a dashboard subscription"
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
+  (with-dashboard-subscription-in-collection [_ collection dashboard subscription]
+    (testing "An admin has read and write access to any dashboard subscription"
+      (binding [api/*is-superuser?* true]
         (is (mi/can-read? subscription))
         (is (mi/can-write? subscription))))
 
-    (testing "If we have read-only access to a collection, we can create dashboard subscriptions, or
-             modify subscriptions that we have created"
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})
-                api/*current-user-id*              (:creator_id subscription)]
-        (is (mi/can-read? subscription))
-        (is (mi/can-write? subscription))
-        (is (not (mi/can-write? (assoc subscription :creator_id (mt/user->id :lucky)))))))
+    (mt/with-current-user (mt/user->id :rasta)
+      (testing "A non-admin has no access to a subscription if they don't have read access to the parent collection,
+               even if they created the subscription"
+          (is (not (mi/can-read? subscription)))
+          (is (not (mi/can-write? subscription))))
 
-    (testing "If we have no access to a collection, we cannot read or write dashboard subscriptions,
-             even if we created them"
-      (binding [api/*current-user-id* (:creator_id subscription)]
-        (is (not (mi/can-read? subscription)))
-        (is (not (mi/can-write? subscription)))))))
+      (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
+        (testing "A non-admin has read and write access to a subscription they created, if they have read access to the
+               parent collection"
+            (is (mi/can-read? subscription))
+            (is (mi/can-write? subscription)))
+
+        (testing "A non-admin has read-only access to a subscription they are a recipient of, if they have read access
+                 to the parent collection"
+          ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
+          (mt/with-temp* [Pulse                [subscription            {:collection_id (u/the-id collection)
+                                                                         :dashboard_id  (u/the-id dashboard)
+                                                                         :creator_id    (mt/user->id :crowberto)}]
+                          PulseChannel          [{pulse-channel-id :id} {:pulse_id (u/the-id subscription)}]
+                          PulseChannelRecipient [_                      {:pulse_channel_id pulse-channel-id
+                                                                         :user_id (mt/user->id :rasta)}]]
+            (is (mi/can-read? subscription))
+            (is (not (mi/can-write? subscription)))))
+
+       (testing "A non-admin doesn't have read or write access to a subscription they aren't a creator or recipient of"
+         (mt/with-temp* [Pulse [subscription {:collection_id (u/the-id collection)
+                                              :dashboard_id  (u/the-id dashboard)
+                                              :creator_id    (mt/user->id :crowberto)}]]
+            (is (not (mi/can-read? subscription)))
+            (is (not (mi/can-write? subscription)))))))))
 
 (deftest identity-hash-test
   (testing "Pulse hashes are composed of the name and the collection hash"

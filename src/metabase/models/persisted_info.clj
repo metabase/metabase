@@ -51,7 +51,7 @@
   at schemas. Persisted table names will follow the pattern `model_<card-id>_slug` and the model-id will ensure
   uniqueness."
   [nom]
-  (->> (str/replace (str/lower-case nom) #"\s+" "_")
+  (->> (str/replace (u/lower-case-en nom) #"\s+" "_")
        (take 10)
        (apply str)))
 

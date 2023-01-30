@@ -2,13 +2,13 @@
   "`/api/action/` endpoints."
   (:require
    [compojure.core :as compojure :refer [POST]]
-   [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.models :refer [Action Card HTTPAction ImplicitAction QueryAction]]
    [metabase.models.action :as action]
    [metabase.util.malli :as mu]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private json-query-schema
   [:and
@@ -46,17 +46,22 @@
   (let [model (api/read-check Card model-id)]
     ;; We don't check the permissions on the actions, we assume they are
     ;; readable if the model is readable.
-    (action/actions-with-implicit-params [model] :model_id model-id)))
+    (hydrate
+     (action/actions-with-implicit-params [model] :model_id model-id)
+     :creator)))
 
 (api/defendpoint GET "/:action-id"
   [action-id]
-  (api/read-check (first (action/actions-with-implicit-params nil :id action-id))))
+  (-> (action/actions-with-implicit-params nil :id action-id)
+      first
+      (hydrate :creator)
+      api/read-check))
 
 (defn- type->model [existing-action-type]
   (case existing-action-type
-                          :http HTTPAction
-                          :implicit ImplicitAction
-                          :query QueryAction))
+    :http     HTTPAction
+    :implicit ImplicitAction
+    :query    QueryAction))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:action-id"
@@ -85,7 +90,7 @@
    response_handle        [:maybe json-query-schema]
    error_handle           [:maybe json-query-schema]}
   (api/write-check Card model_id)
-  (let [action-id (action/insert! action)]
+  (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id
       (first (action/actions-with-implicit-params nil :id action-id))
       ;; db/insert! does not return a value when used with h2
@@ -124,4 +129,4 @@
         (db/update! existing-model id type-row))))
   (first (action/actions-with-implicit-params nil :id id)))
 
-(api/define-routes actions/+check-actions-enabled)
+(api/define-routes)

@@ -1,7 +1,6 @@
 (ns metabase.cmd.rotate-encryption-key-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.cmd :as cmd]
    [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
@@ -56,7 +55,7 @@
 (deftest rotate-encryption-key!-test
   (encryption-test/with-secret-key nil
     (let [h2-fixture-db-file @cmd.test-util/fixture-db-file-path
-          db-name            (str "test_" (str/lower-case (mt/random-name)))
+          db-name            (str "test_" (u/lower-case-en (mt/random-name)))
           original-timestamp "2021-02-11 18:38:56.042236+00"
           [k1 k2 k3]         ["89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
                               "yHa/6VEQuIItMyd5CNcgV9nXvzZcX6bWmiY0oOh6pLU="
@@ -145,10 +144,17 @@
 
               (testing "full rollback when a database details looks encrypted with a different key than the current one"
                 (encryption-test/with-secret-key k3
-                  (db/insert! Database {:name "k3", :engine :mysql, :details "{\"db\":\"/tmp/k3.db\"}"}))
+                  (let [db (db/insert! Database {:name "k3", :engine :mysql, :details "{\"db\":\"/tmp/k3.db\"}"})]
+                    (is (=? {:name "k3"}
+                            db))))
                 (encryption-test/with-secret-key k2
-                  (db/insert! Database {:name "k2", :engine :mysql, :details "{\"db\":\"/tmp/k2.db\"}"})
-                  (is (thrown? clojure.lang.ExceptionInfo (rotate-encryption-key! k3))))
+                  (let [db (db/insert! Database {:name "k2", :engine :mysql, :details "{\"db\":\"/tmp/k2.db\"}"})]
+                    (is (=? {:name "k2"}
+                            db)))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
+                       (rotate-encryption-key! k3))))
                 (encryption-test/with-secret-key k3
                   (is (not= {:db "/tmp/k2.db"} (db/select-one-field :details Database :name "k2")))
                   (is (= {:db "/tmp/k3.db"} (db/select-one-field :details Database :name "k3")))))

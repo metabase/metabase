@@ -2,6 +2,7 @@
   "Tests for special behavior of `/api/metabase/dashboard` endpoints in the Metabase Enterprise Edition."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.models :refer [Card Dashboard DashboardCard FieldValues]]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
@@ -14,7 +15,7 @@
 
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain filter endpoints would normally return cached FieldValues (#13832), make sure sandboxing is respected"
-    (mt/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
+    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
       (mt/with-temp-vals-in-db FieldValues (u/the-id (db/select-one-id FieldValues :field_id (mt/id :categories :name))) {:values ["Good" "Bad"]}
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
           (testing "GET /api/dashboard/:id/params/:param-key/values"
@@ -31,7 +32,7 @@
 (deftest add-card-parameter-mapping-permissions-test
   (testing "POST /api/dashboard/:id/cards"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
-      (mt/with-gtaps {:gtaps {:venues {}}}
+      (met/with-gtaps {:gtaps {:venues {}}}
         (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures
          (fn [{:keys [card-id mappings add-card! dashcards]}]
            (testing "Should be able to add a card with `parameter_mapping` with only sandboxed perms"
@@ -53,7 +54,7 @@
 (deftest update-cards-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id/cards"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
-      (mt/with-gtaps {:gtaps {:venues {}}}
+      (met/with-gtaps {:gtaps {:venues {}}}
         (api.dashboard-test/do-with-update-cards-parameter-mapping-permissions-fixtures
          (fn [{:keys [dashboard-id card-id update-mappings! new-mappings]}]
            (testing "Should be able to update `:parameter_mappings` *with* only sandboxed perms"
@@ -65,7 +66,7 @@
 
 (deftest parameters-with-source-is-card-test
   (testing "dashboard with a parameter that has source is a card, it should respects sandboxing"
-    (mt/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
+    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp*
         [Card      [{card-id         :id}
                     (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories))

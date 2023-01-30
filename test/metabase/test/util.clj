@@ -316,7 +316,7 @@
 (defn- ->lisp-case-keyword [s]
   (-> (name s)
       (str/replace #"_" "-")
-      str/lower-case
+      u/lower-case-en
       keyword))
 
 (defn do-with-temp-env-var-value

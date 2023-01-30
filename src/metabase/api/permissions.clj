@@ -4,6 +4,9 @@
    [clojure.spec.alpha :as s]
    [compojure.core :refer [DELETE GET POST PUT]]
    [honeysql.helpers :as hh]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.permission-graph :as api.permission-graph]
@@ -63,19 +66,24 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
-  (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/data-permissions-graph body)]
-    (when (= graph :clojure.spec.alpha/invalid)
-      (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
-                           (s/explain-str ::api.permission-graph/data-permissions-graph body))
-                      {:status-code 400
-                       :error       (s/explain-data ::api.permission-graph/data-permissions-graph body)})))
+  (let [graph (mc/decode api.permission-graph/data-permissions-graph
+                         body
+                         (mtx/transformer
+                          mtx/string-transformer
+                          (mtx/transformer {:name :perm-graph})))]
+    (when-not (mc/validate api.permission-graph/data-permissions-graph graph)
+      (let [explained (mc/explain api.permission-graph/data-permissions-graph body)]
+        (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
+                             (pr-str explained))
+                        {:status-code 400
+                         :error explained
+                         :humanized (me/humanize explained)}))))
     (db/transaction
       (perms/update-data-perms-graph! (dissoc graph :sandboxes))
       (if-let [sandboxes (:sandboxes body)]
        (let [new-sandboxes (upsert-sandboxes! sandboxes)]
          (assoc (perms/data-perms-graph) :sandboxes new-sandboxes))
        (perms/data-perms-graph)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
@@ -184,8 +192,7 @@
                  :is_group_manager boolean}]}"
   []
   (validation/check-group-manager)
-  (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id :is_group_manager]
-                                 :group_id :user_id :is_group_manager]
+  (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
                                 (cond-> {}
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
@@ -240,10 +247,11 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/membership/:group-id/clear"
-  "Remove all members from a `PermissionsGroup`."
+  "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [group-id]
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
+  (api/check-400 (not= group-id (u/the-id (perms-group/admin))))
   (db/delete! PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 

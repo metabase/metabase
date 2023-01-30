@@ -60,11 +60,14 @@
                       body)
 
                ;; for ones that came from the dataset defs namespace or ones whose origin is unknown, just ignore them
-               ;; and generate a `do` form:
+               ;; and generate a `print` form:
                ;;
-               ;;    (do ...)
+               ;;    (print ...)
+               ;;
+               ;; (this used to be a `do` form (which makes a lot more semantic sense), but that resulted in warnings
+               ;; about unused values
                (:unqualified/from-dataset-defs-namespace :unqualified/unknown)
-               (list* (hooks/token-node 'do)
+               (list* (hooks/token-node 'print)
                       body))]
     {:node (with-meta (hooks/list-node (with-meta body
                                                   (meta dataset)))

@@ -1,4 +1,4 @@
-(ns metabase.util.embed-test
+(ns ^:mb/once metabase.util.embed-test
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]

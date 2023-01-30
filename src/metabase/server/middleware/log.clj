@@ -39,7 +39,7 @@
     {:keys [request-method uri] :or {request-method :XXX}} :request
     {:keys [status]} :response}]
   (str
-   (format "%s %s %d" (str/upper-case (name request-method)) uri status)
+   (format "%s %s %d" (u/upper-case-en (name request-method)) uri status)
    (when async-status
      (format " [%s: %s]" (trs "ASYNC") async-status))))
 

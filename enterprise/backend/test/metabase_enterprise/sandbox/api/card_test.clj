@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.api.card-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.test :as met]
    [metabase.api.card-test :as api.card-test]
    [metabase.models :refer [Card Collection Database PermissionsGroup PermissionsGroupMembership Table]]
    [metabase.models.permissions :as perms]
@@ -47,7 +48,7 @@
 
 (deftest parameters-with-source-is-card-test
   (testing "a card with a parameter whose source is a card should respect sandboxing"
-    (mt/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
+    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp*
         [Card [{source-card-id :id}
                {:database_id   (mt/id)

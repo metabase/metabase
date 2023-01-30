@@ -3,8 +3,6 @@
   (:require
    [clojure.core.async :as a]
    [clojure.core.memoize :as memoize]
-   [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [honeysql.core :as hsql]
    [honeysql.format :as hformat]
@@ -13,6 +11,7 @@
    [medley.core :as m]
    [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as qp.middleware.audit]
    [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -93,7 +92,7 @@
   ;; another
   (let [timezone (memoize/ttl sql-jdbc.sync/db-default-timezone :ttl/threshold (u/hours->ms 1))]
     (fn []
-      (timezone (mdb/db-type) (db/connection)))))
+      (timezone (mdb/db-type) {:datasource mdb.connection/*application-db*}))))
 
 (defn- compile-honeysql [driver honeysql-query]
   (try
@@ -114,7 +113,7 @@
     ;; instead of mocking up a chunk of regular QP pipeline.
     (binding [qp.timezone/*results-timezone-id-override* (application-db-default-timezone)]
       (try
-        (with-open [conn (jdbc/get-connection (db/connection))
+        (with-open [conn (.getConnection mdb.connection/*application-db*)
                     stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
                     rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (let [rsmeta   (.getMetaData rs)
@@ -245,7 +244,7 @@
   (add-search-clause {} \"birds\" :t.name :db.name)"
   [query query-string & fields-to-search]
   (hh/merge-where query (when (seq query-string)
-                          (let [query-string (str \% (str/lower-case query-string) \%)]
+                          (let [query-string (str \% (u/lower-case-en query-string) \%)]
                             (cons
                               :or
                               (for [field fields-to-search]

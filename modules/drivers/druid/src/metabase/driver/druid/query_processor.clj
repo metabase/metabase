@@ -198,7 +198,7 @@
    ;; if this is a case-insensitive search we'll lower-case the search pattern and add an extraction function to
    ;; lower-case the dimension values we're matching against
    :pattern      (cond-> pattern
-                   (not case-sensitive?) str/lower-case)
+                   (not case-sensitive?) u/lower-case-en)
    :extractionFn (when-not case-sensitive?
                    {:type :lower})})
 

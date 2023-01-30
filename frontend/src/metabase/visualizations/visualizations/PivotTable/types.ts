@@ -33,7 +33,10 @@ export type BodyItem = HeaderItem & {
   backgroundColor?: string;
 };
 
+export type CustomColumnWidth = Record<number, number>;
+
 export type HeaderWidthType = {
   leftHeaderWidths: number[] | null;
-  totalHeaderWidths: number | null;
+  totalLeftHeaderWidths: number | null;
+  valueHeaderWidths: CustomColumnWidth;
 };

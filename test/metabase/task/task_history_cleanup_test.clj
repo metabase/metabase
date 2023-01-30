@@ -1,4 +1,4 @@
-(ns metabase.task.task-history-cleanup-test
+(ns ^:mb/once metabase.task.task-history-cleanup-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
