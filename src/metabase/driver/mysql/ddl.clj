@@ -130,9 +130,8 @@
                         (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))]
                      [:persist.check/read-table
                       (fn read-table [conn]
-                        (->> [(format "select * from %s.%s" schema-name table-name)]
-                             (sql.ddl/jdbc-query conn)
-                             some?))
+                        (let [read-query (format "select * from %s.%s" schema-name table-name)]
+                          (sql.ddl/jdbc-query conn [read-query])))
                       (constantly nil)]
                      [:persist.check/delete-table
                       (fn delete-table [conn]
