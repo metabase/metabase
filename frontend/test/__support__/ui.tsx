@@ -4,6 +4,7 @@ import { merge } from "icepick";
 import _ from "underscore";
 import { createMemoryHistory, History } from "history";
 import { Router } from "react-router";
+import { routerReducer, routerMiddleware } from "react-router-redux";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
@@ -57,11 +58,23 @@ export function renderWithProviders(
     initialState = _.pick(initialState, ...publicReducerNames) as State;
   }
 
-  const reducers = mode === "default" ? mainReducers : publicReducers;
-  const store = getStore(reducers, initialState);
   const history = withRouter
     ? createMemoryHistory({ entries: [initialRoute] })
     : undefined;
+
+  const reducers = mode === "default" ? mainReducers : publicReducers;
+
+  if (withRouter) {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    reducers.routing = routerReducer;
+  }
+
+  const store = getStore(
+    reducers,
+    initialState,
+    history ? [routerMiddleware(history)] : [],
+  );
 
   const wrapper = (props: any) => (
     <Wrapper
