@@ -26,8 +26,7 @@
          nil)
        (catch Exception e
          (log/warn e)
-         (throw e))))
-   true))
+         e)))))
 
 (defn- kill [conn pid]
   (let [results (sql.ddl/jdbc-query conn ["show processlist"])
@@ -53,7 +52,9 @@
     (cond
       (= port timeout-chan) (kill conn pid)
 
-      (= port exec-chan) v)))
+      (= port exec-chan) (if (instance? Exception v)
+                           (throw v)
+                           v))))
 
 (defmethod ddl.i/refresh! :mysql [_driver database definition dataset-query]
   (let [{:keys [query params]} (qp/compile dataset-query)
@@ -64,7 +65,7 @@
       ;; That is ok, the persisted-info will be marked inactive and the next refresh will try again.
       (execute-with-timeout! conn
                              db-spec
-                             (.toMillis (t/minutes 10))
+                             (.toMillis (t/seconds 30))
                              (into [(sql.ddl/create-table-sql database definition query)] params))
       {:state :success})))
 
@@ -77,65 +78,70 @@
         (log/warn e)
         (throw e)))))
 
-(defn- run-persistence-steps
-  "Unlike postgres, mysql ddl clauses will not rollback in a transaction.
-  So we keep track of undo-steps to manually rollback previous, completed steps."
-  [database steps]
-  (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (jdbc/with-db-connection [conn db-spec]
-      (loop [[[step stepfn undofn] & remaining] steps
-             undo-steps []]
-        (let [result (try
-                       (stepfn conn)
-                       (log/info (trs "Step {0} was successful for db {1}" step (:name database)))
-                       ::valid
-                       (catch Exception e
-                         (log/warn (trs "Error in `{0}` while checking for model persistence permissions." step))
-                         (log/warn e)
-                         (try
-                           (doseq [[undo-step undofn] (rseq undo-steps)]
-                             (log/warn (trs "Undoing step `{0}` for db {1}" undo-step (:name database)))
-                             (undofn conn))
-                           (catch Exception _e
-                             (log/warn (trs "Unable to rollback database check for model persistence"))))
-                         step))]
-          (cond (and (= result ::valid) remaining) (recur remaining (conj undo-steps [step undofn]))
-                (= result ::valid) [true :persist.check/valid]
-                :else [false step]))))))
-
 (defmethod ddl.i/check-can-persist :mysql
   [database]
   (let [schema-name (ddl.i/schema-name database (public-settings/site-uuid))
-        table-name  (format "persistence_check_%s" (rand-int 10000))
-        steps       [[:persist.check/create-schema
-                      (fn check-schema [conn]
-                        (let [existing-schemas (->> ["select schema_name from information_schema.schemata"]
-                                                    (sql.ddl/jdbc-query conn)
-                                                    (map :schema_name)
-                                                    (into #{}))]
-                          (or (contains? existing-schemas schema-name)
-                              (sql.ddl/execute! conn [(sql.ddl/create-schema-sql database)]))))
-                      (fn undo-check-schema [conn]
-                        (sql.ddl/execute! conn [(sql.ddl/drop-schema-sql database)]))]
-                     [:persist.check/create-table
-                      (fn create-table [conn]
-                        (let [q [(sql.ddl/create-table-sql
-                                  database
-                                  {:table-name        table-name
-                                   :field-definitions [{:field-name "field"
-                                                        :base-type  :type/Text}]}
-                                  "select 1")]]
-                          (sql.ddl/execute! conn q)))
-                      (fn undo-create-table [conn]
-                        (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))]
-                     [:persist.check/read-table
-                      (fn read-table [conn]
-                        (let [read-query (format "select * from %s.%s" schema-name table-name)]
-                          (sql.ddl/jdbc-query conn [read-query])))
-                      (constantly nil)]
-                     [:persist.check/delete-table
-                      (fn delete-table [conn]
-                        (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))
-                      ;; This will never be called, if the last step fails it does not need to be undone
-                      (constantly nil)]]]
-    (run-persistence-steps database steps)))
+        table-name (format "persistence_check_%s" (rand-int 10000))
+        db-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+        steps [[:persist.check/create-schema
+                (fn check-schema [conn]
+                  (let [existing-schemas (->> ["select schema_name from information_schema.schemata"]
+                                              (sql.ddl/jdbc-query conn)
+                                              (map :schema_name)
+                                              (into #{}))]
+                    (or (contains? existing-schemas schema-name)
+                        (sql.ddl/execute! conn [(sql.ddl/create-schema-sql database)]))))
+                (fn undo-check-schema [conn]
+                  (sql.ddl/execute! conn [(sql.ddl/drop-schema-sql database)]))]
+               [:persist.check/create-table
+                (fn create-table [conn]
+                  (execute-with-timeout! conn
+                                         db-spec
+                                         (.toMillis (t/minutes 10))
+                                         [(sql.ddl/create-table-sql
+                                           database
+                                           {:table-name table-name
+                                            :field-definitions [{:field-name "field"
+                                                                 :base-type :type/Text}]}
+                                           "value (1)"
+                                           ;"select 1"
+                                           )]))
+                (fn undo-create-table [conn]
+                  (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))]
+               [:persist.check/read-table
+                (fn read-table [conn]
+                  (sql.ddl/jdbc-query conn [(format "select * from %s.%s"
+                                                    schema-name table-name)]))
+                (constantly nil)]
+               [:persist.check/delete-table
+                (fn delete-table [conn]
+                  (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))
+                ;; This will never be called, if the last step fails it does not need to be undone
+                (constantly nil)]]]
+    ;; Unlike postgres, mysql ddl clauses will not rollback in a transaction.
+    ;; So we keep track of undo-steps to manually rollback previous, completed steps.
+    (jdbc/with-db-connection [conn db-spec]
+      (loop [[[step stepfn undofn] & remaining] steps
+             undo-steps []]
+        (let [result (try (stepfn conn)
+                          (log/info (trs "Step {0} was successful for db {1}"
+                                         step (:name database)))
+                          ::valid
+                          (catch Exception e
+                            (log/warn (trs "Error in `{0}` while checking for model persistence permissions." step))
+                            (log/warn e)
+                            (try
+                              (doseq [[undo-step undofn] (reverse undo-steps)]
+                                (log/warn (trs "Undoing step `{0}` for db {1}" undo-step (:name database)))
+                                (undofn conn))
+                              (catch Exception _e
+                                (log/warn (trs "Unable to rollback database check for model persistence"))))
+                            step))]
+          (cond (and (= result ::valid) remaining)
+                (recur remaining (conj undo-steps [step undofn]))
+
+                (= result ::valid)
+                [true :persist.check/valid]
+
+                :else
+                [false step]))))))
