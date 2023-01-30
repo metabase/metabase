@@ -1,5 +1,5 @@
 ---
-title: 
+title:
 redirect_from:
   - /docs/latest/administration-guide/databases/oracle
 ---
@@ -43,11 +43,11 @@ The password for the username that you use to connect to the database.
 ### Use a secure connection (SSL)
 
 You can use both client and server authentication (known as mutual authentication).
- 
+
 #### Client authentication with a keystore
 
 To configure the server (the Oracle server) to authenticate the identity of the client (Metabase), you need to
-configure a keystore file that includes the client's private key. 
+configure a keystore file that includes the client's private key.
 
 You'll import the client's private key into the keystore (rather than a root CA into a truststore file). Add the following JVM options for Metabase:
 
@@ -83,7 +83,7 @@ We recommend using the `ojdbc8.jar` JAR.
 
 In your Metabase directory (the directory where you keep and run your metabase.jar), create a directory called `plugins` (if it doesn't already exist.
 
-Move the JAR you just downloaded (`ojdbc8.jar`) into the plugins directory, and restart Metabase. Metabase will automatically make the Oracle driver available when it starts back up. 
+Move the JAR you just downloaded (`ojdbc8.jar`) into the plugins directory, and restart Metabase. Metabase will automatically make the Oracle driver available when it starts back up.
 
 ### When running from a JAR
 
@@ -100,3 +100,10 @@ For example, if you're running Metabase from a directory called `/app/`, you sho
 ### When running from Docker
 
 The process for adding plugins when running via Docker is similar, but you'll need to mount the `plugins` directory. Refer to instructions [here](../../installation-and-operation/running-metabase-on-docker.md#adding-external-dependencies-or-plugins) for more details.
+
+## Further reading
+
+- [Managing databases](../../databases/connecting.md)
+- [Metadata editing](../../data-modeling/metadata-editing.md)
+- [Models](../../data-modeling/models.md)
+- [Setting data access permissions](../../permissions/data.md)

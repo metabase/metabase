@@ -83,11 +83,6 @@ We suggest you leave this off unless you're doing manual timezone casting in man
 
 This can be useful for auditing and debugging, but prevents BigQuery from caching results and may increase your costs.
 
-- [Rerun queries for simple explorations](../settings.md#rerun-queries-for-simple-explorations)
-- [Choose when syncs and scans happen](../settings.md#choose-when-syncs-and-scans-happen)
-- [Periodically refingerprint tables](../settings.md#periodically-refingerprint-tables)
-- [Default result cache duration](../settings.md#default-result-cache-duration)
-
 ### Re-run queries for simple explorations
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.

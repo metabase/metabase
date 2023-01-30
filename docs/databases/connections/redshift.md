@@ -115,5 +115,9 @@ Options are:
 
 If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../configuring-metabase/caching.md#advanced-caching-controls).
 
+## Further reading
 
-
+- [Managing databases](../../databases/connecting.md)
+- [Metadata editing](../../data-modeling/metadata-editing.md)
+- [Models](../../data-modeling/models.md)
+- [Setting data access permissions](../../permissions/data.md)

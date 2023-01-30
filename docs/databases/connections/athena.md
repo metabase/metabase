@@ -112,5 +112,7 @@ If you are on a paid plan, you can also set cache duration per questions. See [A
 
 ## Further reading
 
-- [Adding and managing databases](../connecting.md)
-- [Connection settings](../settings.md)
+- [Managing databases](../../databases/connecting.md)
+- [Metadata editing](../../data-modeling/metadata-editing.md)
+- [Models](../../data-modeling/models.md)
+- [Setting data access permissions](../../permissions/data.md)
