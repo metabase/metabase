@@ -158,8 +158,10 @@
 ;;; [[*application-db*]]; register this as the default quoting style for Toucan. Then
 (defn quote-for-application-db
   "Quote SQL identifier string `s` appropriately for the currently bound application database."
-  [s]
-  ((get @#'hformat/quote-fns (mdb.connection/quoting-style (mdb.connection/db-type))) s))
+  ([s]
+   (quote-for-application-db (mdb.connection/quoting-style (mdb.connection/db-type)) s))
+  ([db-type s]
+   ((get @#'hformat/quote-fns db-type) s)))
 
 ;;; register with Honey SQL 1
 (alter-var-root #'hformat/quote-fns assoc ::application-db quote-for-application-db)

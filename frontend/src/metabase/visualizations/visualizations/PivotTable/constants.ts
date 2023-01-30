@@ -1,5 +1,5 @@
 // cell width and height for normal body cells
-export const CELL_WIDTH = 100;
+export const DEFAULT_CELL_WIDTH = 100;
 export const CELL_HEIGHT = 30;
 
 // styling and cell text measurement depend on this font size
@@ -16,3 +16,7 @@ export const MAX_HEADER_CELL_WIDTH =
 
 // the left header has some additional padding on the left to align with the title
 export const LEFT_HEADER_LEFT_SPACING = 24;
+
+export const MAX_ROWS_TO_MEASURE = 100;
+
+export const RESIZE_HANDLE_WIDTH = 5;

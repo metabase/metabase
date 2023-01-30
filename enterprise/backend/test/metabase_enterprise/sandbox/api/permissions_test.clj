@@ -3,9 +3,11 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-   [metabase.models :refer [Card Database PermissionsGroup
-                            PersistedInfo Table]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.test :as met]
+   [metabase.models
+    :refer [Card Database PermissionsGroup PersistedInfo Table]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.query-processor :as qp]
@@ -61,7 +63,7 @@
                                     {:native :none, :schemas {:PUBLIC {(mt/id :venues) {:query :all}}}})
                 :expected-perms   (fn []
                                     {:schemas {:PUBLIC {(mt/id :venues) {:query "all"}}}})}}]
-        (mt/with-gtaps {:gtaps {:venues {}}}
+        (met/with-gtaps {:gtaps {:venues {}}}
           (testing message
             (testing "sanity check"
               (testing "perms graph endpoint should return segmented perms for Venues table"
@@ -98,8 +100,8 @@
                 (testing "GTAP should be deleted from application DB"
                   (is (= []
                          (db/select GroupTableAccessPolicy
-                           :group_id (u/the-id &group)
-                           :table_id (mt/id :venues)))))
+                                    :group_id (u/the-id &group)
+                                    :table_id (mt/id :venues)))))
                 (testing "GTAP for same group, other database should not be affected"
                   (is (schema= [(s/one {:id                   su/IntGreaterThanZero
                                         :group_id             (s/eq (u/the-id &group))
@@ -108,8 +110,8 @@
                                         :attribute_remappings (s/eq nil)}
                                        "GTAP")]
                                (db/select GroupTableAccessPolicy
-                                 :group_id (u/the-id &group)
-                                 :table_id (u/the-id db-2-table)))))
+                                          :group_id (u/the-id &group)
+                                          :table_id (u/the-id db-2-table)))))
                 (testing "GTAP for same table, other group should not be affected"
                   (is (schema= [(s/one {:id                   su/IntGreaterThanZero
                                         :group_id             (s/eq (u/the-id other-group))
@@ -157,14 +159,14 @@
                        :database_id (mt/id)}]]
           (fake-persist-card! card)
           (is (str/includes?
-                (:query (qp/compile
+               (:query (qp/compile
 
-                          {:database (mt/id)
-                           :query {:source-table (str "card__" (u/the-id card))}
-                           :type :query}))
-                "metabase_cache")))))
+                        {:database (mt/id)
+                         :query {:source-table (str "card__" (u/the-id card))}
+                         :type :query}))
+               "metabase_cache")))))
     (testing "Queries from source if sandboxed"
-      (mt/with-gtaps
+      (met/with-gtaps
         {:gtaps {:venues {:query (mt/mbql-query venues)
                           :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
          :attributes {"cat" 50}}
@@ -174,8 +176,8 @@
                        :database_id (mt/id)}]]
           (fake-persist-card! card)
           (is (not (str/includes?
-                     (:query (qp/compile
-                               {:database (mt/id)
-                                :query {:source-table (str "card__" (u/the-id card))}
-                                :type :query}))
-                     "metabase_cache"))))))))
+                    (:query (qp/compile
+                             {:database (mt/id)
+                              :query {:source-table (str "card__" (u/the-id card))}
+                              :type :query}))
+                    "metabase_cache"))))))))

@@ -1,19 +1,19 @@
 (ns metabase.models.params.card-values
   "Code related to getting values for a parameter where its source values is a card."
   (:require
-   [clojure.string :as str]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan.db :as db]))
 
 (def ^:dynamic *max-rows*
   "Maximum number of rows returned when running a card.
-  It's 2000 because this is the limit we use when viewing a question.
-  Maybe we should lower it for the sake of display a parameter dropdown."
-  2000)
+  It's 1000 because it matches with the limit for chain-filter.
+  Maybe we should lower it for the sake of displaying a parameter dropdown."
+  1000)
 
 (def field-options-for-identification
    "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
@@ -46,22 +46,22 @@
 (defn- values-from-card-query
   [card value-field query]
   (let [value-base-type (:base_type (field->field-info value-field (:result_metadata card)))]
-    {:database (:database_id card)
-     :type     :query
-     :query    (merge
-                 {:source-table (format "card__%d" (:id card))
-                  :breakout     [value-field]
-                  :limit        *max-rows*}
-                 {:filter [:and
-                           [(if-not (isa? value-base-type :type/Text)
-                              :not-null
-                              :not-empty)
-                            value-field]
-                           (when query
-                             (if-not (isa? value-base-type :type/Text)
-                               [:= value-field query]
-                               [:contains [:lower value-field] (str/lower-case query)]))]})
-     :middleware {:disable-remaps? true}}))
+     {:database (:database_id card)
+      :type     :query
+      :query    (merge
+                   {:source-table (format "card__%d" (:id card))
+                    :breakout     [value-field]
+                    :limit        *max-rows*}
+                   {:filter [:and
+                             [(if-not (isa? value-base-type :type/Text)
+                                 :not-null
+                                 :not-empty)
+                              value-field]
+                             (when query
+                                (if-not (isa? value-base-type :type/Text)
+                                   [:= value-field query]
+                                   [:contains [:lower value-field] (u/lower-case-en query)]))]})
+      :middleware {:disable-remaps? true}}))
 
 (mu/defn values-from-card
   "Get distinct values of a field from a card.
@@ -91,3 +91,8 @@
       ;; if the row_count returned = the limit we specified, then it's probably has more than that
       :has_more_values (= (:row_count result)
                           (get-in mbql-query [:query :limit]))})))
+
+(defn param->values
+  "Given a param and query returns the values."
+  [{config :values_source_config :as _param} query]
+  (values-from-card (:card_id config) (:value_field config) query))

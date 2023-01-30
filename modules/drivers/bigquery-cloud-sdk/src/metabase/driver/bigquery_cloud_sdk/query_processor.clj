@@ -95,6 +95,10 @@
   (log/warn (trs "Warning: missing type mapping for parsing BigQuery results of type {0}." column-type))
   (parse-value column-mode v identity))
 
+(defmethod parse-result-of-type "STRING"
+  [_a column-mode _b v]
+  (parse-value column-mode v identity))
+
 (defmethod parse-result-of-type "BOOLEAN"
   [_ column-mode _ v]
   (parse-value column-mode v #(Boolean/parseBoolean %)))

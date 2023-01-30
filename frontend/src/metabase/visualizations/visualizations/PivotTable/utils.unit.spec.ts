@@ -1,6 +1,7 @@
 import type { Column } from "metabase-types/types/Dataset";
 import type { Card } from "metabase-types/types/Card";
-import type { PivotSetting } from "./types";
+
+import type { PivotSetting, HeaderItem } from "./types";
 
 import {
   isColumnValid,
@@ -8,9 +9,15 @@ import {
   updateValueWithCurrentColumns,
   addMissingCardBreakouts,
   getLeftHeaderWidths,
+  getColumnValues,
 } from "./utils";
 
-import { MAX_HEADER_CELL_WIDTH, MIN_HEADER_CELL_WIDTH } from "./constants";
+import {
+  MAX_HEADER_CELL_WIDTH,
+  MIN_HEADER_CELL_WIDTH,
+  CELL_PADDING,
+  ROW_TOGGLE_ICON_WIDTH,
+} from "./constants";
 
 describe("Visualizations > Visualizations > PivotTable > utils", () => {
   const cols = [
@@ -246,11 +253,11 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("should return the total of all widths", () => {
-      const { totalHeaderWidths } = getLeftHeaderWidths({
+      const { totalLeftHeaderWidths } = getLeftHeaderWidths({
         rowIndexes: [0, 1, 2],
         getColumnTitle: () => "test-123",
       });
-      expect(totalHeaderWidths).toEqual(MIN_HEADER_CELL_WIDTH * 3);
+      expect(totalLeftHeaderWidths).toEqual(MIN_HEADER_CELL_WIDTH * 3);
     });
 
     it("should not exceed the max width", () => {
@@ -264,6 +271,115 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         MAX_HEADER_CELL_WIDTH,
         MAX_HEADER_CELL_WIDTH,
         MAX_HEADER_CELL_WIDTH,
+      ]);
+    });
+
+    it("should return the wider of the column header or data width", () => {
+      const data = [
+        { depth: 0, value: "x".repeat(150) },
+        { depth: 0, value: "foo2" },
+        { depth: 1, value: "bar1" },
+        { depth: 1, value: "bar2" },
+        { depth: 2, value: "baz1" },
+        { depth: 4, value: "boo1" },
+      ] as HeaderItem[];
+
+      const { leftHeaderWidths } = getLeftHeaderWidths({
+        rowIndexes: [0, 1, 2, 3, 4],
+        leftHeaderItems: data,
+        getColumnTitle: () => "x".repeat(70),
+      });
+
+      expect(leftHeaderWidths).toEqual([
+        150 + CELL_PADDING,
+        70 + CELL_PADDING + ROW_TOGGLE_ICON_WIDTH,
+        70 + CELL_PADDING + ROW_TOGGLE_ICON_WIDTH,
+        70 + CELL_PADDING + ROW_TOGGLE_ICON_WIDTH,
+        70 + CELL_PADDING + ROW_TOGGLE_ICON_WIDTH,
+      ]);
+    });
+
+    it("should factor in the toggle icon width for columns with subtotals", () => {
+      const data = [
+        { depth: 0, value: "x".repeat(100), hasSubtotal: true },
+        { depth: 0, value: "foo2" },
+        { depth: 1, value: "bar1" },
+        { depth: 1, value: "bar2" },
+        { depth: 2, value: "baz1" },
+        { depth: 4, value: "boo1" },
+      ] as HeaderItem[];
+
+      const { leftHeaderWidths } = getLeftHeaderWidths({
+        rowIndexes: [0, 1, 2, 3, 4],
+        leftHeaderItems: data,
+        getColumnTitle: () => "test-123",
+      });
+
+      expect(leftHeaderWidths).toEqual([
+        100 + CELL_PADDING + ROW_TOGGLE_ICON_WIDTH,
+        MIN_HEADER_CELL_WIDTH,
+        MIN_HEADER_CELL_WIDTH,
+        MIN_HEADER_CELL_WIDTH,
+        MIN_HEADER_CELL_WIDTH,
+      ]);
+    });
+  });
+
+  describe("getColumnValues", () => {
+    it("can collect column values from left header data", () => {
+      const data = [
+        { depth: 0, value: "foo1" },
+        { depth: 0, value: "foo2" },
+        { depth: 1, value: "bar1" },
+        { depth: 1, value: "bar2" },
+        { depth: 2, value: "baz1" },
+        { depth: 4, value: "boo1" },
+      ] as HeaderItem[];
+
+      const result = getColumnValues(data);
+
+      expect(result).toEqual([
+        { values: ["foo1", "foo2"], hasSubtotal: false },
+        { values: ["bar1", "bar2"], hasSubtotal: false },
+        { values: ["baz1"], hasSubtotal: false },
+        undefined, // no depth of 3
+        { values: ["boo1"], hasSubtotal: false },
+      ]);
+    });
+
+    it("detects columns with subtotals", () => {
+      const data = [
+        { depth: 0, value: "foo1", hasSubtotal: false },
+        { depth: 0, value: "foo2", hasSubtotal: true },
+        { depth: 1, value: "bar1", hasSubtotal: false },
+        { depth: 1, value: "bar2", hasSubtotal: false },
+        { depth: 2, value: "baz1", hasSubtotal: true },
+      ] as HeaderItem[];
+
+      const result = getColumnValues(data);
+
+      expect(result).toEqual([
+        { values: ["foo1", "foo2"], hasSubtotal: true },
+        { values: ["bar1", "bar2"], hasSubtotal: false },
+        { values: ["baz1"], hasSubtotal: true },
+      ]);
+    });
+
+    it("handles null values", () => {
+      const data = [
+        { depth: 0, value: "foo1", hasSubtotal: false },
+        { depth: 0, value: null, hasSubtotal: true },
+        { depth: 1, value: "bar1", hasSubtotal: false },
+        { depth: 1, value: "bar2", hasSubtotal: false },
+        { depth: 2, value: "baz1", hasSubtotal: true },
+      ] as HeaderItem[];
+
+      const result = getColumnValues(data);
+
+      expect(result).toEqual([
+        { values: ["foo1", null], hasSubtotal: true },
+        { values: ["bar1", "bar2"], hasSubtotal: false },
+        { values: ["baz1"], hasSubtotal: true },
       ]);
     });
   });

@@ -61,4 +61,4 @@ function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {
   );
 }
 
-export default SidebarHeader;
+export default Object.assign(SidebarHeader, { Root: HeaderRoot });

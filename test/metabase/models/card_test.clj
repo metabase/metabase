@@ -3,7 +3,7 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard]]
+    :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet]]
    [metabase.models.card :as card]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
@@ -13,9 +13,7 @@
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.hydrate :as hydrate]
-   [toucan.util.test :as tt])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan.util.test :as tt]))
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
@@ -353,12 +351,69 @@
 
 (deftest identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/" :created_at now}]
-                      Card        [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
+    (let [now #t "2022-09-01T12:34:56"]
+      (mt/with-temp* [Collection [coll  {:name "field-db" :location "/" :created_at now}]
+                      Card       [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
         (is (= "5199edf0"
                (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll) now])
                (serdes.hash/identity-hash card)))))))
+
+(deftest parameter-card-test
+  (let [default-params {:name       "Category Name"
+                        :slug       "category_name"
+                        :id         "_CATEGORY_NAME_"
+                        :type       "category"}]
+    (testing "parameter with source is card create ParameterCard"
+      (tt/with-temp* [Card  [{source-card-id-1 :id}]
+                      Card  [{source-card-id-2 :id}]
+                      Card  [{card-id :id}
+                             {:parameters [(merge default-params
+                                                  {:values_source_type    "card"
+                                                   :values_source_config {:card_id source-card-id-1}})]}]]
+        (is (=? [{:card_id                   source-card-id-1
+                  :parameterized_object_type :card
+                  :parameterized_object_id   card-id
+                  :parameter_id              "_CATEGORY_NAME_"}]
+                (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
+
+        (testing "update values_source_config.card_id will update ParameterCard"
+          (db/update! Card card-id {:parameters [(merge default-params
+                                                        {:values_source_type    "card"
+                                                         :values_source_config {:card_id source-card-id-2}})]})
+          (is (=? [{:card_id                   source-card-id-2
+                    :parameterized_object_type :card
+                    :parameterized_object_id   card-id
+                    :parameter_id              "_CATEGORY_NAME_"}]
+                  (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
+
+        (testing "delete the card will delete ParameterCard"
+          (db/delete! Card :id card-id)
+          (is (= []
+                 (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))
+
+    (testing "Delete a card will delete any ParameterCard that linked to it"
+      (tt/with-temp* [Card  [{source-card-id :id}]
+                      Card  [{card-id-1 :id}
+                             {:parameters [(merge default-params
+                                                  {:values_source_type    "card"
+                                                   :values_source_config {:card_id source-card-id}})]}]
+                      Card  [{card-id-2 :id}
+                             {:parameters [(merge default-params
+                                                  {:values_source_type    "card"
+                                                   :values_source_config {:card_id source-card-id}})]}]]
+        ;; makes sure we have ParameterCard to start with
+        (is (=? [{:card_id                   source-card-id
+                  :parameterized_object_type :card
+                  :parameterized_object_id   card-id-1
+                  :parameter_id              "_CATEGORY_NAME_"}
+                 {:card_id                   source-card-id
+                  :parameterized_object_type :card
+                  :parameterized_object_id   card-id-2
+                  :parameter_id              "_CATEGORY_NAME_"}]
+                (db/select 'ParameterCard :card_id source-card-id)))
+        (db/delete! Card :id source-card-id)
+        (is (= []
+               (db/select 'ParameterCard :card_id source-card-id)))))))
 
 (deftest serdes-descendants-test
   (testing "regular cards don't depend on anything"
@@ -370,6 +425,28 @@
                     Card [card2 {:name "derived card"
                                  :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
       (is (empty? (serdes.base/serdes-descendants "Card" (:id card1))))
+      (is (= #{["Card" (:id card1)]}
+             (serdes.base/serdes-descendants "Card" (:id card2))))))
+
+  (testing "cards that has a native template tag"
+    (mt/with-temp* [NativeQuerySnippet [snippet {:name "category" :content "category = 'Gizmo'"}]
+                    Card               [card {:name          "Business Card"
+                                              :dataset_query {:native
+                                                              {:template-tags {:snippet {:name         "snippet"
+                                                                                         :type         :snippet
+                                                                                         :snippet-name "snippet"
+                                                                                         :snippet-id   (:id snippet)}}
+                                                               :query "select * from products where {{snippet}}"}}}]]
+      (is (= #{["NativeQuerySnippet" (:id snippet)]}
+             (serdes.base/serdes-descendants "Card" (:id card))))))
+
+  (testing "cards which have parameter's source is another card"
+    (mt/with-temp* [Card [card1 {:name "base card"}]
+                    Card [card2 {:name       "derived card"
+                                 :parameters [{:id                   "valid-id"
+                                               :type                 "id"
+                                               :values_source_type   "card"
+                                               :values_source_config {:card_id (:id card1)}}]}]]
       (is (= #{["Card" (:id card1)]}
              (serdes.base/serdes-descendants "Card" (:id card2)))))))
 

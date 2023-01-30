@@ -3,7 +3,7 @@ import { t } from "ttag";
 export const DEFAULT_COLLECTION_COLOR_ALIAS = "brand";
 
 export const ROOT_COLLECTION = {
-  id: "root",
+  id: "root" as const,
   name: t`Our analytics`,
   location: "",
   path: [],

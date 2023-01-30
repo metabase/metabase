@@ -32,11 +32,6 @@
  [shared.u
   qualified-name])
 
-(defn screaming-snake-case
-  "Turns `strings-that-look-like-deafening-vipers` into `STRINGS_THAT_LOOK_LIKE_DEAFENING_VIPERS`."
-  [s]
-  (str/upper-case (str/replace s "-" "_")))
-
 (defn add-period
   "Fixes strings that don't terminate in a period; also accounts for strings
   that end in `:`. Used for formatting docs."
@@ -48,15 +43,6 @@
       (if (str/ends-with? text ":")
         (str (subs text 0 (- (count text) 1)) ".")
         (str text ".")))))
-
-(defn capitalize-first-char
-  "Like string/capitalize, only it ignores the rest of the string
-  to retain case-sensitive capitalization, e.g., PostgreSQL."
-  [s]
-  (if (< (count s) 2)
-    (str/upper-case s)
-    (str (str/upper-case (subs s 0 1))
-         (subs s 1))))
 
 (defn lower-case-en
   "Locale-agnostic version of `clojure.string/lower-case`.
@@ -73,6 +59,20 @@
   `Locale/US` locale."
   [^CharSequence s]
   (.. s toString (toUpperCase (Locale/US))))
+
+(defn screaming-snake-case
+  "Turns `strings-that-look-like-deafening-vipers` into `STRINGS_THAT_LOOK_LIKE_DEAFENING_VIPERS`."
+  [s]
+  (upper-case-en (str/replace s "-" "_")))
+
+(defn capitalize-first-char
+  "Like string/capitalize, only it ignores the rest of the string
+  to retain case-sensitive capitalization, e.g., PostgreSQL."
+  [s]
+  (if (< (count s) 2)
+    (upper-case-en s)
+    (str (upper-case-en (subs s 0 1))
+         (subs s 1))))
 
 (defn format-bytes
   "Nicely format `num-bytes` as kilobytes/megabytes/etc.
@@ -260,10 +260,9 @@
 
      (pprint-to-str 'green some-obj)"
   (^String [x]
-   (when x
-     (with-open [w (java.io.StringWriter.)]
-       (pprint x w)
-       (str w))))
+   (with-open [w (java.io.StringWriter.)]
+     (pprint x w)
+     (str w)))
 
   (^String [color-symb x]
    (colorize color-symb (pprint-to-str x))))
@@ -395,7 +394,7 @@
    (slugify s {}))
   (^String [s {:keys [max-length unicode?]}]
    (when (seq s)
-     (let [slug (str/join (for [c (remove-diacritical-marks (str/lower-case s))]
+     (let [slug (str/join (for [c (remove-diacritical-marks (lower-case-en s))]
                             (slugify-char c (not unicode?))))]
        (if max-length
          (str/join (take max-length slug))

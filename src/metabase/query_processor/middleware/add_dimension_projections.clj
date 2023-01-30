@@ -31,7 +31,6 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.dimension :refer [Dimension]]
-   [metabase.models.field :refer [Field]]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.schema :as su]
@@ -85,7 +84,11 @@
     ;;
     ;; Not sure this isn't broken. Probably better to have [[metabase.query-processor.util.add-alias-info]] do the name
     ;; deduplication instead.
-    (let [unique-name (comp (mbql.u/unique-name-generator) :name Field)]
+    (let [name-generator (mbql.u/unique-name-generator)
+          unique-name    (fn [field-id]
+                           (qp.store/fetch-and-store-fields! #{field-id})
+                           (let [field (qp.store/field field-id)]
+                             (name-generator (:name field))))]
       (vec
        (mbql.u/match fields
          ;; don't match Fields that have been joined from another Table

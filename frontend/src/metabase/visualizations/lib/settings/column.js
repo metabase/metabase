@@ -26,6 +26,7 @@ const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
+  hidden,
   ...def
 } = {}) {
   return nestedSettings("column_settings", {
@@ -37,6 +38,7 @@ export function columnSettings({
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
     useRawSeries: true,
+    hidden,
     ...def,
   });
 }

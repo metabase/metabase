@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { merge } from "icepick";
+import _ from "underscore";
 import { createMemoryHistory } from "history";
 import { Router, Route } from "react-router";
 import { Provider } from "react-redux";
@@ -19,8 +20,11 @@ import publicReducers from "metabase/reducers-public";
 
 import { getStore } from "./entities-store";
 
+type RouterStateOpts = { route: string; location: string };
+
 export interface RenderWithProvidersOptions {
   mode?: "default" | "public";
+  initialRouterState?: RouterStateOpts;
   storeInitialState?: Partial<State>;
   withSampleDatabase?: boolean;
   withRouter?: boolean;
@@ -37,27 +41,32 @@ export function renderWithProviders(
   {
     mode = "default",
     storeInitialState = {},
+    initialRouterState,
     withSampleDatabase,
     withRouter = false,
     withDND = false,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  const initialReduxState = createMockState(
+  let initialState = createMockState(
     withSampleDatabase
       ? merge(sampleDatabaseReduxState, storeInitialState)
       : storeInitialState,
   );
 
-  const store = getStore(
-    mode === "default" ? mainReducers : publicReducers,
-    initialReduxState,
-  );
+  if (mode === "public") {
+    const publicReducerNames = Object.keys(publicReducers);
+    initialState = _.pick(initialState, ...publicReducerNames) as State;
+  }
+
+  const reducers = mode === "default" ? mainReducers : publicReducers;
+  const store = getStore(reducers, initialState);
 
   const wrapper = (props: any) => (
     <Wrapper
       {...props}
       store={store}
+      initialRouterState={initialRouterState}
       withRouter={withRouter}
       withDND={withDND}
     />
@@ -77,11 +86,13 @@ export function renderWithProviders(
 function Wrapper({
   children,
   store,
+  initialRouterState,
   withRouter,
   withDND,
 }: {
   children: React.ReactElement;
   store: any;
+  initialRouterState?: RouterStateOpts;
   withRouter: boolean;
   withDND: boolean;
 }): JSX.Element {
@@ -89,7 +100,9 @@ function Wrapper({
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <ThemeProvider theme={{}}>
-          <MaybeRouter hasRouter={withRouter}>{children}</MaybeRouter>
+          <MaybeRouter hasRouter={withRouter} initialState={initialRouterState}>
+            {children}
+          </MaybeRouter>
         </ThemeProvider>
       </MaybeDNDProvider>
     </Provider>
@@ -99,22 +112,27 @@ function Wrapper({
 function MaybeRouter({
   children,
   hasRouter,
+  initialState,
 }: {
   children: React.ReactElement;
   hasRouter: boolean;
+  initialState?: RouterStateOpts;
 }): JSX.Element {
   if (!hasRouter) {
     return children;
   }
-  const history = createMemoryHistory({ entries: ["/"] });
+  const location = initialState?.location || "/";
+  const route = initialState?.route || "/";
+
+  const history = createMemoryHistory({ entries: [location] });
 
   function Page(props: any) {
-    return React.cloneElement(children, props);
+    return React.cloneElement(children, _.omit(props, "children"));
   }
 
   return (
     <Router history={history}>
-      <Route path="/" component={Page} />
+      <Route path={route} component={Page} />
     </Router>
   );
 }

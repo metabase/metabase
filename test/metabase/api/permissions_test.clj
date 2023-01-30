@@ -259,7 +259,6 @@
                      result))
         (is (= (db/select-field :id 'User) (set (keys result))))))))
 
-
 (deftest add-group-membership-test
   (testing "POST /api/permissions/membership"
     (mt/with-temp* [User             [user]
@@ -298,7 +297,10 @@
         (is (= 1 (db/count PermissionsGroupMembership :group_id group-id)))
         (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
         (is (true? (db/exists? PermissionsGroup :id group-id)))
-        (is (= 0 (db/count PermissionsGroupMembership :group_id group-id)))))))
+        (is (= 0 (db/count PermissionsGroupMembership :group_id group-id))))
+
+      (testing "The admin group cannot be cleared using this endpoint"
+        (mt/user-http-request :crowberto :put 400 (format "permissions/membership/%d/clear" (u/the-id (perms-group/admin))))))))
 
 (deftest delete-group-membership-test
   (testing "DELETE /api/permissions/membership/:id"
