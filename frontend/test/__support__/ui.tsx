@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { merge } from "icepick";
 import _ from "underscore";
 import { createMemoryHistory } from "history";
-import { Router, Route } from "react-router";
+import { Router } from "react-router";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
@@ -20,11 +20,9 @@ import publicReducers from "metabase/reducers-public";
 
 import { getStore } from "./entities-store";
 
-type RouterStateOpts = { route: string; location: string };
-
 export interface RenderWithProvidersOptions {
   mode?: "default" | "public";
-  initialRouterState?: RouterStateOpts;
+  initialRoute?: string;
   storeInitialState?: Partial<State>;
   withSampleDatabase?: boolean;
   withRouter?: boolean;
@@ -40,8 +38,8 @@ export function renderWithProviders(
   ui: React.ReactElement,
   {
     mode = "default",
+    initialRoute,
     storeInitialState = {},
-    initialRouterState,
     withSampleDatabase,
     withRouter = false,
     withDND = false,
@@ -66,7 +64,7 @@ export function renderWithProviders(
     <Wrapper
       {...props}
       store={store}
-      initialRouterState={initialRouterState}
+      initialRoute={initialRoute}
       withRouter={withRouter}
       withDND={withDND}
     />
@@ -86,13 +84,13 @@ export function renderWithProviders(
 function Wrapper({
   children,
   store,
-  initialRouterState,
+  initialRoute,
   withRouter,
   withDND,
 }: {
   children: React.ReactElement;
   store: any;
-  initialRouterState?: RouterStateOpts;
+  initialRoute?: string;
   withRouter: boolean;
   withDND: boolean;
 }): JSX.Element {
@@ -100,7 +98,7 @@ function Wrapper({
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <ThemeProvider theme={{}}>
-          <MaybeRouter hasRouter={withRouter} initialState={initialRouterState}>
+          <MaybeRouter hasRouter={withRouter} initialRoute={initialRoute}>
             {children}
           </MaybeRouter>
         </ThemeProvider>
@@ -112,29 +110,17 @@ function Wrapper({
 function MaybeRouter({
   children,
   hasRouter,
-  initialState,
+  initialRoute = "/",
 }: {
   children: React.ReactElement;
   hasRouter: boolean;
-  initialState?: RouterStateOpts;
+  initialRoute?: string;
 }): JSX.Element {
   if (!hasRouter) {
     return children;
   }
-  const location = initialState?.location || "/";
-  const route = initialState?.route || "/";
-
-  const history = createMemoryHistory({ entries: [location] });
-
-  function Page(props: any) {
-    return React.cloneElement(children, _.omit(props, "children"));
-  }
-
-  return (
-    <Router history={history}>
-      <Route path={route} component={Page} />
-    </Router>
-  );
+  const history = createMemoryHistory({ entries: [initialRoute] });
+  return <Router history={history}>{children}</Router>;
 }
 
 function MaybeDNDProvider({
