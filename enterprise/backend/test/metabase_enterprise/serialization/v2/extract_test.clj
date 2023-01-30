@@ -19,12 +19,14 @@
             NativeQuerySnippet
             Pulse
             PulseCard
+            QueryAction
             Segment
             Table
             Timeline
             TimelineEvent
             User]]
    [metabase.models.serialization.base :as serdes.base]
+   [metabase.test :as mt]
    [schema.core :as s]
    [toucan.db :as db])
   (:import [java.time LocalDateTime OffsetDateTime]))
@@ -748,37 +750,51 @@
 
 (deftest action-test
   (ts/with-empty-h2-app-db
-    (ts/with-temp-dpc [User       [{ann-id       :id}        {:first_name "Ann"
-                                                              :last_name  "Wilson"
-                                                              :email      "ann@heart.band"}]
-                       Database   [{db-id        :id}        {:name "My Database"}]
-                       Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
-                       Collection [{coll-id-1  :id}          {:name "My Collection"}]
-                       Card       [{card-id-1  :id
-                                    card-eid-1 :entity_id}   {:name          "Source question"
-                                                              :database_id   db-id
-                                                              :table_id      no-schema-id
-                                                              :collection_id coll-id-1
-                                                              :creator_id    ann-id}]
-                       Action     [{action-id-1  :id
-                                    action-eid-1 :entity_id}  {:name          "My Action"
-                                                               :type          :query
-                                                               :creator_id    ann-id
-                                                               :model_id      card-id-1}]]
-      (testing "action"
-        (let [ser (serdes.base/extract-one "Action" {} (db/select-one 'Action :id action-id-1))]
-          (is (schema= {:serdes/meta (s/eq [{:model "Action" :id action-eid-1 :label "my_action"}])
-                        :creator_id  (s/eq "ann@heart.band")
-                        :created_at  OffsetDateTime
-                        :model_id    (s/eq card-eid-1)
-                        s/Keyword    s/Any}
-                       ser))
-          (is (not (contains? ser :id)))
+    (ts/with-temp-dpc [User       [{ann-id       :id} {:first_name "Ann"
+                                                       :last_name  "Wilson"
+                                                       :email      "ann@heart.band"}]
+                       Database   [{db-id :id :as db} {:name "My Database"}]]
+      (mt/with-db db
+        (mt/with-actions [{card-id-1  :id
+                           card-eid-1 :entity_id} {:name          "Source question"
+                                                   :database_id   db-id
+                                                   :dataset       true
+                                                   :query_type    :native
+                                                   :dataset_query (mt/native-query {:native "select 1"})
+                                                   :creator_id    ann-id}
+                          {:keys [action-id]} {:name          "My Action"
+                                               :type          :query
+                                               :creator_id    ann-id
+                                               :model_id      card-id-1}]
+          (let [action       (db/select-one 'Action :id 1 #_action-id)
+                query-action (db/select-one 'QueryAction :action_id action-id)]
+            (testing "action"
+              (let [ser (serdes.base/extract-one "Action" {} (db/select-one 'Action :id action-id))]
+                (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
+                              :creator_id  (s/eq "ann@heart.band")
+                              :created_at  OffsetDateTime
+                              :model_id    (s/eq card-eid-1)
+                              s/Keyword    s/Any}
+                             ser))
+                (is (not (contains? ser :id)))
 
-          (testing "depend on the Model"
-            (is (= #{[#_{:model "Database"  :id "My Database"}
-                      {:model "Card" :id card-eid-1}]}
-                   (set (serdes.base/serdes-dependencies ser))))))))))
+                (testing "depends on the Model"
+                  (is (= #{[{:model "Card" :id card-eid-1}]}
+                         (set (serdes.base/serdes-dependencies ser)))))))
+
+            (testing "query action"
+              (let [ser (serdes.base/extract-one "QueryAction" {} (db/select-one 'QueryAction :action_id action-id))]
+                (is (schema= {:serdes/meta   (s/eq [{:id    (:entity_id query-action)
+                                                     :model "QueryAction"}])
+                              :action_id     (s/eq (:entity_id action))
+                              :database_id   (s/eq "My Database")
+                              s/Keyword      s/Any}
+                             ser))
+                (is (not (contains? ser :id)))
+
+                (testing "depends on the Action"
+                  (is (= #{[{:model "Action" :id (:entity_id action)}]}
+                         (set (serdes.base/serdes-dependencies ser)))))))))))))
 
 (deftest field-values-test
   (ts/with-empty-h2-app-db

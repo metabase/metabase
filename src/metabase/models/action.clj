@@ -231,16 +231,23 @@
       (update :creator_id serdes.util/export-user)
       (update :model_id serdes.util/export-fk 'Card)))
 
-(defmethod serdes.base/extract-one "QueryAction"
-  [_model-name _opts action]
-  (-> (serdes.base/extract-one-basics "QueryAction" action)
-      (update :action_id serdes.util/export-fk 'Action)))
-
 (defmethod serdes.base/load-xform "Action" [action]
   (-> action
       serdes.base/load-xform-basics
       (update :model_id serdes.util/import-fk 'Card)
       (update :creator_id serdes.util/import-fk-keyed 'User :email)))
+
+(defmethod serdes.base/extract-one "QueryAction"
+  [_model-name _opts action]
+  (-> (serdes.base/extract-one-basics "QueryAction" action)
+      (update :database_id serdes.util/export-fk-keyed 'Database :name)
+      (assoc :action_id (serdes.util/export-fk (:action_id action) 'Action))))
+
+(defmethod serdes.base/load-xform "QueryAction" [action]
+  (-> (serdes.base/extract-one-basics "QueryAction" action)
+      (update :database_id serdes.util/import-fk-keyed 'Database :name)
+      ;; TODO: load action_id
+      #_(assoc :action_id (serdes.util/import-fk (:action_id action) 'Action))))
 
 (defmethod serdes.base/serdes-generate-path "Action"
   [_ action]
@@ -248,6 +255,9 @@
 
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   [[{:model "Card" :id (:model_id action)}]])
+
+(defmethod serdes.base/serdes-dependencies "QueryAction" [query-action]
+  [[{:model "Action" :id (:action_id query-action)}]])
 
 (defmethod serdes.base/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]
