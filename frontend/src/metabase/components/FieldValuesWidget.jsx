@@ -505,7 +505,7 @@ function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
 
     // fallback
     return t`Enter some text`;
-  } else {
+  } else if (firstField) {
     if (firstField.isID()) {
       return t`Enter an ID`;
     } else if (firstField.isString()) {
@@ -517,6 +517,9 @@ function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
     // fallback
     return t`Enter some text`;
   }
+
+  // fallback
+  return t`Enter some text`;
 }
 
 export function searchField(field, disablePKRemappingForSearch) {
@@ -543,6 +546,7 @@ function getSearchableTokenFieldPlaceholder(
 
     placeholder = t`Search by ${name}`;
     if (
+      firstField &&
       firstField.isID() &&
       firstField !== firstField.searchField(disablePKRemappingForSearch)
     ) {

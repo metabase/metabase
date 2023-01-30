@@ -7,12 +7,18 @@ import {
   ValuesSourceType,
 } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
-import { CUSTOM_SOURCE_PARAMETER_TYPES } from "../constants";
+import { ParameterWithTemplateTagTarget } from "../types";
 import { getFields } from "./parameter-fields";
 import { getParameterSubType, getParameterType } from "./parameter-type";
 
-export const getQueryType = (parameter: Parameter): ValuesQueryType => {
-  return parameter.values_query_type ?? "list";
+export const getQueryType = (
+  parameter: ParameterWithTemplateTagTarget,
+): ValuesQueryType => {
+  if (parameter.hasVariableTemplateTagTarget) {
+    return parameter.values_query_type ?? "none";
+  } else {
+    return parameter.values_query_type ?? "list";
+  }
 };
 
 export const getSourceType = (parameter: Parameter): ValuesSourceType => {
@@ -27,10 +33,15 @@ export const canUseCustomSource = (parameter: Parameter) => {
   const type = getParameterType(parameter);
   const subType = getParameterSubType(parameter);
 
-  return (
-    CUSTOM_SOURCE_PARAMETER_TYPES[type] != null &&
-    CUSTOM_SOURCE_PARAMETER_TYPES[type].includes(subType)
-  );
+  switch (type) {
+    case "string":
+    case "location":
+      return subType === "=";
+    case "category":
+      return true;
+    default:
+      return false;
+  }
 };
 
 export const isValidSourceConfig = (
@@ -62,15 +73,12 @@ export const getSourceConfigForType = (
 };
 
 export const canListParameterValues = (parameter: Parameter) => {
+  const queryType = getQueryType(parameter);
+  const sourceType = getSourceType(parameter);
   const fields = getFields(parameter);
+  const canListFields = canListFieldValues(fields);
 
-  if (getQueryType(parameter) !== "list") {
-    return false;
-  } else if (getSourceType(parameter) != null) {
-    return true;
-  } else {
-    return canListFieldValues(fields);
-  }
+  return queryType === "list" && (sourceType != null || canListFields);
 };
 
 export const canListFieldValues = (fields: Field[]) => {
@@ -86,15 +94,12 @@ export const canSearchParameterValues = (
   parameter: Parameter,
   disablePKRemapping = false,
 ) => {
+  const queryType = getQueryType(parameter);
+  const sourceType = getSourceType(parameter);
   const fields = getFields(parameter);
+  const canSearchFields = canSearchFieldValues(fields, disablePKRemapping);
 
-  if (getQueryType(parameter) === "none") {
-    return false;
-  } else if (getSourceType(parameter) != null) {
-    return true;
-  } else {
-    return canSearchFieldValues(fields, disablePKRemapping);
-  }
+  return queryType !== "none" && (sourceType != null || canSearchFields);
 };
 
 export const canSearchFieldValues = (

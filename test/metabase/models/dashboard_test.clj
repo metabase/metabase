@@ -377,10 +377,7 @@
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
-                :type                 :category
-                :values_query_type    "list",
-                :values_source_type   nil,
-                :values_source_config {}}]
+                :type                 :category}]
               (db/select-one-field :parameters Dashboard :id dashboard-id)))))
 
   (testing "shoudld not override if existsed "
