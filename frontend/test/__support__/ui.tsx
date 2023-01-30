@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { merge } from "icepick";
 import _ from "underscore";
-import { createMemoryHistory } from "history";
+import { createMemoryHistory, History } from "history";
 import { Router } from "react-router";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "@emotion/react";
@@ -38,7 +38,7 @@ export function renderWithProviders(
   ui: React.ReactElement,
   {
     mode = "default",
-    initialRoute,
+    initialRoute = "/",
     storeInitialState = {},
     withSampleDatabase,
     withRouter = false,
@@ -59,11 +59,15 @@ export function renderWithProviders(
 
   const reducers = mode === "default" ? mainReducers : publicReducers;
   const store = getStore(reducers, initialState);
+  const history = withRouter
+    ? createMemoryHistory({ entries: [initialRoute] })
+    : undefined;
 
   const wrapper = (props: any) => (
     <Wrapper
       {...props}
       store={store}
+      history={history}
       initialRoute={initialRoute}
       withRouter={withRouter}
       withDND={withDND}
@@ -78,19 +82,20 @@ export function renderWithProviders(
   return {
     ...utils,
     store,
+    history,
   };
 }
 
 function Wrapper({
   children,
   store,
-  initialRoute,
+  history,
   withRouter,
   withDND,
 }: {
   children: React.ReactElement;
   store: any;
-  initialRoute?: string;
+  history?: History;
   withRouter: boolean;
   withDND: boolean;
 }): JSX.Element {
@@ -98,7 +103,7 @@ function Wrapper({
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <ThemeProvider theme={{}}>
-          <MaybeRouter hasRouter={withRouter} initialRoute={initialRoute}>
+          <MaybeRouter hasRouter={withRouter} history={history}>
             {children}
           </MaybeRouter>
         </ThemeProvider>
@@ -110,16 +115,15 @@ function Wrapper({
 function MaybeRouter({
   children,
   hasRouter,
-  initialRoute = "/",
+  history,
 }: {
   children: React.ReactElement;
   hasRouter: boolean;
-  initialRoute?: string;
+  history?: History;
 }): JSX.Element {
   if (!hasRouter) {
     return children;
   }
-  const history = createMemoryHistory({ entries: [initialRoute] });
   return <Router history={history}>{children}</Router>;
 }
 
