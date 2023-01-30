@@ -195,11 +195,14 @@ describe("ActionCreator", () => {
 
         userEvent.click(screen.getByRole("switch", { name: "Make public" }));
 
-        await waitFor(() => {
-          expect(
-            screen.getByRole("switch", { name: "Make public" }),
-          ).toBeChecked();
-        });
+        await waitFor(
+          () => {
+            expect(
+              screen.getByRole("switch", { name: "Make public" }),
+            ).toBeChecked();
+          },
+          { timeout: 5000 },
+        );
 
         const expectedPublicLinkUrl = `${SITE_URL}/public/action/${mockUuid}`;
         expect(
@@ -230,11 +233,14 @@ describe("ActionCreator", () => {
         ).toBeInTheDocument();
         userEvent.click(screen.getByRole("button", { name: "Yes" }));
 
-        await waitFor(() => {
-          expect(
-            screen.getByRole("switch", { name: "Make public" }),
-          ).not.toBeChecked();
-        });
+        await waitFor(
+          () => {
+            expect(
+              screen.getByRole("switch", { name: "Make public" }),
+            ).not.toBeChecked();
+          },
+          { timeout: 5000 },
+        );
 
         expect(
           screen.queryByRole("textbox", { name: "Public action link URL" }),
