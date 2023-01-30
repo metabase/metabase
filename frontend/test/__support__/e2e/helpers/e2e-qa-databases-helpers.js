@@ -3,6 +3,7 @@ import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
   QA_DB_CREDENTIALS,
+  ACTIONS_DB_CONFIG,
 } from "__support__/e2e/cypress_data";
 
 /*****************************************
@@ -14,18 +15,14 @@ export function addMongoDatabase(name = "QA Mongo4") {
   addQADatabase("mongo", name, QA_MONGO_PORT);
 }
 
-export function addPostgresDatabase(name = "QA Postgres12") {
+export function addPostgresDatabase(name = "QA Postgres12", writable = false) {
   // https://hub.docker.com/layers/metabase/qa-databases/postgres-sample-12/images/sha256-80bbef27dc52552d6dc64b52796ba356d7541e7bba172740336d7b8a64859cf8
-  addQADatabase("postgres", name, QA_POSTGRES_PORT);
+  addQADatabase("postgres", name, QA_POSTGRES_PORT, writable);
 }
 
-export function addWritablePostgresDatabase(name = "Writable Postgres12") {
-  addQADatabase("postgres", name, QA_POSTGRES_PORT, true);
-}
-
-export function addMySQLDatabase(name = "QA MySQL8") {
+export function addMySQLDatabase(name = "QA MySQL8", writable = false) {
   // https://hub.docker.com/layers/metabase/qa-databases/mysql-sample-8/images/sha256-df67db50379ec59ac3a437b5205871f85ab519ce8d2cdc526e9313354d00f9d4
-  addQADatabase("mysql", name, QA_MYSQL_PORT);
+  addQADatabase("mysql", name, QA_MYSQL_PORT, writable);
 }
 
 function addQADatabase(engine, db_display_name, port, enable_actions = false) {
@@ -43,7 +40,7 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
       dbname: db_name,
       host: QA_DB_CREDENTIALS.host,
       port: port,
-      user: QA_DB_CREDENTIALS.user,
+      user: engine === "mysql" ? "root" : QA_DB_CREDENTIALS.user,
       [PASS_KEY]: QA_DB_CREDENTIALS.password, // NOTE: we're inconsistent in where we use `pass` vs `password` as a key
       authdb: AUTH_DB,
       "additional-options": OPTIONS,
@@ -112,21 +109,24 @@ function recursiveCheck(id, i = 0) {
   });
 }
 
-const actionsConfig = {
-  ...QA_DB_CREDENTIALS,
-  database: "actions_db",
-};
+const restorePostgresDB = () => {
+  const connectionConfig = {
+    client: "pg",
+    connection: {
+      ...QA_DB_CREDENTIALS,
+      port: QA_POSTGRES_PORT,
+    },
+  };
 
-export function restoreActionsDB() {
   // we need to initially connect to the db we know exists to create the actions_db
   cy.task("connectAndQueryDB", {
-    connectionConfig: QA_DB_CREDENTIALS,
+    connectionConfig,
     query: `SELECT FROM pg_database WHERE datname = 'actions_db';`,
   }).then(results => {
     if (!results.rows.length) {
       cy.log("**-- Adding Postgres DB for actions --**");
       cy.task("connectAndQueryDB", {
-        connectionConfig: QA_DB_CREDENTIALS,
+        connectionConfig: ACTIONS_DB_CONFIG.postgres,
         query: `CREATE DATABASE actions_db;`,
       });
     }
@@ -134,24 +134,57 @@ export function restoreActionsDB() {
 
   // https://www.postgresql.org/docs/current/sql-copy.html ??
   cy.log("-- Restoring Actions DB Data --");
-  cy.task("connectAndQueryDB", {
-    connectionConfig: actionsConfig,
-    query: /*sql*/ `
-      DROP TABLE IF EXISTS test_table;
-      CREATE TABLE test_table (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255),
-        rating INTEGER DEFAULT 0
-      );
-      INSERT INTO test_table (name) VALUES ('John'), ('Jane'), ('Jack'), ('Jill'), ('Jenny');
-    `,
+  cy.task("resetSimpleTestTable", {
+    type: "postgres",
   });
-  cy.task("resetActionsDb");
+  // cy.task("resetActionsDb", { type });
+};
+
+const restoreMySQLDB = () => {
+  const connectionConfig = {
+    client: "mysql2",
+    connection: {
+      ...QA_DB_CREDENTIALS,
+      user: "root",
+      port: QA_MYSQL_PORT,
+    },
+  };
+
+  console.log("CONNECTION CONFIG", connectionConfig);
+
+  // we need to initially connect to the db we know exists to create the actions_db
+  cy.task("connectAndQueryDB", {
+    connectionConfig,
+    query: `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='actions_db'`,
+  }).then(results => {
+    if (!results.rows.length) {
+      cy.log("**-- Adding MySQL DB for actions --**");
+      cy.task("connectAndQueryDB", {
+        connectionConfig: ACTIONS_DB_CONFIG.mysql,
+        query: `CREATE DATABASE actions_db;`,
+      });
+    }
+  });
+
+  cy.log("-- Restoring Actions DB Data --");
+  cy.task("resetSimpleTestTable", {
+    type: "mysql",
+  });
+
+  // cy.task("resetActionsDb", { type });
+};
+
+export function restoreActionsDB(type = "postgres") {
+  if (type === "postgres") {
+    restorePostgresDB();
+  } else if (type === "mysql") {
+    restoreMySQLDB();
+  }
 }
 
-export function queryActionsDB(query) {
+export function queryActionsDB(query, type = "postgres") {
   return cy.task("connectAndQueryDB", {
-    connectionConfig: actionsConfig,
+    connectionConfig: ACTIONS_DB_CONFIG[type],
     query,
   });
 }

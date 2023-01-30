@@ -1,5 +1,5 @@
-import fs from "fs";
-import { QA_DB_CREDENTIALS } from "./cypress_data";
+import * as dbTasks from "./db_tasks";
+
 /**
  * This env var provides the token to the backend.
  * If it is not present, we skip some tests that depend on a valid token.
@@ -23,21 +23,6 @@ const targetVersion = process.env["CROSS_VERSION_TARGET"];
 // the project's config changing)
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
-const { Client } = require("pg");
-
-async function connectAndQueryDB({
-  connectionString,
-  connectionConfig,
-  query,
-}) {
-  const client = new Client(connectionString || connectionConfig);
-
-  await client.connect();
-  const res = await client.query(query);
-  await client.end();
-
-  return res;
-}
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
@@ -83,33 +68,7 @@ const defaultConfig = {
      **                           TASKS                                **
      ********************************************************************/
     on("task", {
-      connectAndQueryDB,
-
-      async resetActionsDb() {
-        const connectionConfig = {
-          ...QA_DB_CREDENTIALS,
-          database: "actions_db",
-        };
-
-        const sampleSQL = fs.readFileSync(
-          "./helpers/sample_schema.sql",
-          "utf8",
-        );
-
-        const sampleInsert = await connectAndQueryDB({
-          connectionConfig,
-          query: sampleSQL,
-        });
-
-        const testSql = fs.readFileSync("./helpers/test_schema.sql", "utf8");
-
-        const testInsert = await connectAndQueryDB({
-          connectionConfig,
-          query: testSql,
-        });
-
-        return [...sampleInsert, ...testInsert];
-      },
+      ...dbTasks,
     });
 
     /********************************************************************

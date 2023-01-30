@@ -2,7 +2,6 @@ import {
   restore,
   snapshot,
   addPostgresDatabase,
-  addWritablePostgresDatabase,
   addMongoDatabase,
   addMySQLDatabase,
   restoreActionsDB,
@@ -26,14 +25,21 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
 
     restoreAndAuthenticate();
 
+    restoreActionsDB("mysql");
+    addMySQLDatabase("Writable MySQL8", true);
+    snapshot("mysqlActions");
+    deleteDatabase("mysqlID");
+
+    restoreAndAuthenticate();
+
     addMongoDatabase();
     snapshot("mongo-4");
     deleteDatabase("mongoID");
 
     restoreAndAuthenticate();
 
-    restoreActionsDB();
-    addWritablePostgresDatabase();
+    restoreActionsDB("postgres");
+    addPostgresDatabase("Writable Postgres12", true);
     snapshot("postgresActions");
     deleteDatabase("postgresID");
 
