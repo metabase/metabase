@@ -103,9 +103,7 @@
                                            {:table-name table-name
                                             :field-definitions [{:field-name "field"
                                                                  :base-type :type/Text}]}
-                                           "value (1)"
-                                           ;"select 1"
-                                           )]))
+                                           "select 1")]))
                 (fn undo-create-table [conn]
                   (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))]
                [:persist.check/read-table
