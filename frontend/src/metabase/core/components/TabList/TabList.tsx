@@ -44,4 +44,7 @@ const TabList = forwardRef(function TabGroup<T>(
   );
 });
 
-export default TabList;
+export default Object.assign(TabList, {
+  Root: TabListRoot,
+  Content: TabListContent,
+});
