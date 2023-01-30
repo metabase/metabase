@@ -2057,20 +2057,101 @@
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
-(deftest parameter-values-from-card-test
-  ;; TODO add permissions tests
-  (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-    (testing "It uses the results of the card's query execution"
-      (let-url [url (chain-filter-values-url dashboard (:card param-keys))]
-        (is (= {:values          ["African" "American" "Artisan" "Asian" "BBQ"]
-                :has_more_values false}
-               (mt/user-http-request :rasta :get 200 url)))))
+(defn- card-fields-from-table-metadata
+  [card-id]
+  (:fields (mt/user-http-request :rasta :get 200 (format "/table/card__%d/query_metadata" card-id))))
 
-    (testing "it only returns search matches"
-      (let-url [url (chain-filter-search-url dashboard (:card param-keys) "af")]
-        (is (= {:values          ["African"]
-                :has_more_values false}
-               (mt/user-http-request :rasta :get 200 url)))))))
+(deftest parameter-values-from-card-test
+  (testing "getting values"
+    (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+      (testing "It uses the results of the card's query execution"
+        (let-url [url (chain-filter-values-url dashboard (:card param-keys))]
+          (is (= {:values          ["African" "American" "Artisan" "Asian" "BBQ"]
+                  :has_more_values false}
+                 (mt/user-http-request :rasta :get 200 url)))))
+
+      (testing "it only returns search matches"
+        (let-url [url (chain-filter-search-url dashboard (:card param-keys) "af")]
+          (is (= {:values          ["African"]
+                  :has_more_values false}
+                 (mt/user-http-request :rasta :get 200 url)))))))
+
+  (testing "users must have permissions to read the collection that source card is in"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp*
+        [Collection [coll1 {:name "Source card collection"}]
+         Card       [{source-card-id :id}
+                     {:collection_id (:id coll1)
+                      :database_id   (mt/id)
+                      :table_id      (mt/id :venues)
+                      :dataset_query (mt/mbql-query venues {:limit 5})}]
+         Collection [coll2 {:name "Dashboard collections"}]
+         Dashboard [{dashboard-id :id}
+                    {:collection_id (:id coll2)
+                     :parameters    [{:id                   "abc"
+                                      :type                 "category"
+                                      :name                 "CATEGORY"
+                                      :values_source_type   "card"
+                                      :values_source_config {:card_id     source-card-id
+                                                             :value_field (mt/$ids $venues.name)}}]}]]
+        (testing "Fail because user doesn't have read permissions to coll1"
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (chain-filter-values-url dashboard-id "abc"))))
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (chain-filter-search-url dashboard-id "abc" "red")))))
+        ;; grant permission to read the collection contains the card
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll2)
+        (testing "having read permissions to the card collection is not enough"
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (chain-filter-values-url dashboard-id "abc"))))
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (chain-filter-search-url dashboard-id "abc" "red")))))
+        ;; grant permission to read the collection contains the source card
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll1)
+        (testing "success if has read permission to the source card's collection"
+          (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-values-url dashboard-id "abc"))))
+          (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red"))))))))
+
+  (testing "field selection should compatible with field-id from /api/table/:card__id/query_metadata"
+    ;; FE use the id returned by /api/table/:card__id/query_metadata
+    ;; for the `values_source_config.value_field`, so we need to test to make sure
+    ;; the id is a valid field that we could use to retrieve values.
+    (mt/with-temp*
+      ;; card with agggregation and binning columns
+      [Card [{mbql-card-id :id}
+             (merge (mt/card-with-source-metadata-for-query
+                      (mt/mbql-query venues {:limit 5
+                                             :aggregation [:count]
+                                             :breakout [[:field %latitude {:binning {:strategy :num-bins :num-bins 10}}]]}))
+                    {:name        "MBQL question"
+                     :database_id (mt/id)
+                     :table_id    (mt/id :venues)})]
+       Card [{native-card-id :id}
+             (merge (mt/card-with-source-metadata-for-query
+                      (mt/native-query {:query "select name from venues;"}))
+                    {:name        "Native question"
+                     :database_id (mt/id)
+                     :table_id    (mt/id :venues)})]]
+
+      (let [mbql-card-fields   (card-fields-from-table-metadata mbql-card-id)
+            native-card-fields (card-fields-from-table-metadata native-card-id)
+            fields->parameter  (fn [fields card-id]
+                                 (for [{:keys [id field_ref name]} fields]
+                                   {:id                   (format "id_%s" name)
+                                    :type                 "category"
+                                    :name                 name
+                                    :values_source_type   "card"
+                                    :values_source_config {:card_id     card-id
+                                                           :value_field (if (number? id)
+                                                                          field_ref
+                                                                          id)}}))
+            parameters         (concat
+                                 (fields->parameter mbql-card-fields mbql-card-id)
+                                 (fields->parameter native-card-fields native-card-id))]
+        (mt/with-temp Dashboard [{dash-id :id} {:parameters parameters}]
+          (doseq [param parameters]
+            (let-url [url (chain-filter-values-url dash-id (:id param))]
+              (is (some? (mt/user-http-request :rasta :get 200 url))))))))))
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
