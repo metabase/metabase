@@ -389,7 +389,7 @@ export default class NativeQuery extends AtomicQuery {
     return tagErrors.length === 0;
   }
 
-  setTemplateTag(name: string, tag: TemplateTag) {
+  setTemplateTag(name: string, tag: TemplateTag): NativeQuery {
     return this.setDatasetQuery(
       updateIn(this.datasetQuery(), ["native", "template-tags"], tags => ({
         ...tags,
@@ -398,10 +398,12 @@ export default class NativeQuery extends AtomicQuery {
     );
   }
 
-  setTemplateTagConfig(tag: TemplateTag, config: ParameterValuesConfig) {
-    return this.question()
-      .setParameter(tag.id, getTemplateTagParameter(tag, config))
-      .query() as NativeQuery;
+  setTemplateTagConfig(
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ): NativeQuery {
+    const newParameter = getTemplateTagParameter(tag, config);
+    return this.question().setParameter(tag.id, newParameter).query();
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
