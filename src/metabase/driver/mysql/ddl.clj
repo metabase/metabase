@@ -93,7 +93,7 @@
                          (log/warn (trs "Error in `{0}` while checking for model persistence permissions." step))
                          (log/warn e)
                          (try
-                           (doseq [[undo-step undofn] (reverse undo-steps)]
+                           (doseq [[undo-step undofn] (rseq undo-steps)]
                              (log/warn (trs "Undoing step `{0}` for db {1}" undo-step (:name database)))
                              (undofn conn))
                            (catch Exception _e
