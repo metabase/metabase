@@ -122,6 +122,7 @@ describe("metabase/visualization/lib/table", () => {
             cols: [RAW_COLUMN],
             row: [0],
             rowIndex: 0,
+            columnIndex: 0,
           },
           data: rowData,
         });
@@ -143,6 +144,7 @@ describe("metabase/visualization/lib/table", () => {
             cols: [DIMENSION_COLUMN, METRIC_COLUMN],
             row: [1, 2],
             rowIndex: 0,
+            columnIndex: 0,
           },
           settings: {},
           data: rowData,
@@ -171,6 +173,7 @@ describe("metabase/visualization/lib/table", () => {
             cols: [DIMENSION_COLUMN, METRIC_COLUMN],
             row: [1, 2],
             rowIndex: 0,
+            columnIndex: 1,
           },
           settings: {},
           data: rowData,
