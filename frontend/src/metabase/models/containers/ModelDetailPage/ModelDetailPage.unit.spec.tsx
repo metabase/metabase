@@ -442,6 +442,9 @@ describe("ModelDetailPage", () => {
 
           expect(screen.getByText(action.name)).toBeInTheDocument();
           expect(screen.getByText(TEST_QUERY)).toBeInTheDocument();
+          expect(
+            screen.getByText(`Created by ${action.creator.common_name}`),
+          ).toBeInTheDocument();
         });
 
         it("lists existing implicit actions", async () => {

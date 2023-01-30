@@ -1,7 +1,6 @@
 (ns metabase.sync.sync-metadata.fks
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
-   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :as table :refer [Table]]
@@ -23,20 +22,20 @@
   [database :- i/DatabaseInstance, table :- i/TableInstance, fk :- i/FKMetadataEntry]
   (when-let [source-field (db/select-one Field
                             :table_id           (u/the-id table)
-                            :%lower.name        (str/lower-case (:fk-column-name fk))
+                            :%lower.name        (u/lower-case-en (:fk-column-name fk))
                             :fk_target_field_id nil
                             :active             true
                             :visibility_type    [:not= "retired"])]
     (when-let [dest-table (db/select-one Table
                             :db_id           (u/the-id database)
-                            :%lower.name     (str/lower-case (-> fk :dest-table :name))
+                            :%lower.name     (u/lower-case-en (-> fk :dest-table :name))
                             :%lower.schema   (when-let [schema (-> fk :dest-table :schema)]
-                                               (str/lower-case schema))
+                                               (u/lower-case-en schema))
                             :active          true
                             :visibility_type nil)]
       (when-let [dest-field (db/select-one Field
                               :table_id           (u/the-id dest-table)
-                              :%lower.name        (str/lower-case (:dest-column-name fk))
+                              :%lower.name        (u/lower-case-en (:dest-column-name fk))
                               :active             true
                               :visibility_type    [:not= "retired"])]
         {:source-field source-field

@@ -377,8 +377,12 @@
                     Database [{other-database-id :id}]
                     ;; database doesn't quite match
                     Card [card-6 {:name "Card 6", :database_id other-database-id
-                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]]
-      (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6]
+                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                    ;; same as matching question, but archived
+                    Card [card-7 {:name "Card 7"
+                                  :archived true
+                                  :dataset_query {:query {:source-table (str "card__" model-id)}}}]]
+      (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))))))
@@ -579,7 +583,7 @@
 (deftest updating-card-updates-metadata
   (let [query          (mt/mbql-query venues {:fields [$id $name]})
         modified-query (mt/mbql-query venues {:fields [$id $name $price]})
-        norm           (comp str/upper-case :name)
+        norm           (comp u/upper-case-en :name)
         to-native      (fn [q]
                          {:database (:database q)
                           :type     :native
@@ -2174,7 +2178,7 @@
   (testing "Cards preserve edits to metadata when query changes"
     (let [query          (mt/mbql-query venues {:fields [$id $name]})
           modified-query (mt/mbql-query venues {:fields [$id $name $price]})
-          norm           (comp str/upper-case :name)
+          norm           (comp u/upper-case-en :name)
           to-native      (fn [q]
                            {:database (:database q)
                             :type     :native
@@ -2206,9 +2210,9 @@
                                                :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
                                                                      metadata)))
                           :result_metadata
-                          (map (comp str/upper-case :display_name)))))
+                          (map (comp u/upper-case-en :display_name)))))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
-                     (map (comp str/upper-case :display_name)
+                     (map (comp u/upper-case-en :display_name)
                           (db/select-one-field :result_metadata Card :id card-id))))
               (testing "Even if you only send the new query and not existing metadata"
                 (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]

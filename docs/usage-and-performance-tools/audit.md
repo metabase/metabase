@@ -91,7 +91,7 @@ Use the __Downloads__ section to understand which people are downloading (or exp
 
 ### Subscriptions & Alerts
 
-Here Admins can get an overview of all of the [Dashboard subscriptions][dashboard-subscriptions] and [Alerts][alerts] that are currently active for that Metabase.
+Here admins can get an overview of all of the [dashboard subscriptions][dashboard-subscriptions] and [alerts][alerts] that are currently active for that Metabase.
 
 - Dashboard name (or Question name for Alerts)
 - Recipients
@@ -102,7 +102,11 @@ Here Admins can get an overview of all of the [Dashboard subscriptions][dashboar
 - Created At
 - Filters
 
-Admins can add and remove people from a subscription or alert by clicking on the item's __Recipients__. Admins can also delete the subscription or alert entirely by clicking on the **X** on the relevant line.
+Admins can add and remove people from a subscription or alert by clicking on the item's __Recipients__ number. Admins can also delete the subscription or alert entirely by clicking on the **X** on the relevant line.
+
+Everyone can view all of their subscriptions and alerts by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
+
+For more, see [how permissions work with dashboard subscriptions and alerts](../dashboards/subscriptions.md#how-permissions-work-with-dashboard-subscriptions.md).
 
 [alerts]: ../questions/sharing/alerts.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md

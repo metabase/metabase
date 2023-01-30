@@ -34,6 +34,7 @@
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (-> (qualified-name token)
       str/lower-case
       (str/replace #"_" "-")

@@ -141,7 +141,7 @@
                                                    [:or
                                                     [:like :c.dataset_query (format "%%card__%s%%" model-id)]
                                                     [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                         :where [:= :m.id model-id]})
+                         :where [:and [:= :m.id model-id] [:not :c.archived]]})
        (db/do-post-select Card)
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
