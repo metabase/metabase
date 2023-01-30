@@ -8,27 +8,80 @@ redirect_from:
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
-Fill out the fields for that database, and click **Save changes** at the bottom.
+## Settings
 
-## Connection settings
+You can edit these settings at any time. Just remember to save your changes.
 
-See [Adding a database connection](../connecting.md#adding-a-database-connection).
+### Display name
 
-- [Display name](../settings.md#display-name)
-- [Host](../settings.md#host)
-- [Port](../settings.md#port)
-- [Database name](../settings.md#database-name)
-- [Username](../settings.md#username)
-- [Password](../settings.md#password)
-- [Use a secure connection (SSL)](../settings.md#use-a-secure-connection-ssl)
-- [Use an SSH-tunnel](../settings.md#use-an-ssh-tunnel)
-- [Authenticate client certificate](../settings.md#authenticate-client-certificate)
-- [Unfold JSON columns](../settings.md#unfold-json-columns)
-- [Additional JDBC connection string options](../settings.md#additional-jdbc-connection-string-options)
-- [Rerun queries for simple explorations](../settings.md#rerun-queries-for-simple-explorations)
-- [Choose when syncs and scans happen](../settings.md#choose-when-syncs-and-scans-happen)
-- [Periodically refingerprint tables](../settings.md#periodically-refingerprint-tables)
-- [Default result cache duration](../settings.md#default-result-cache-duration)
+What you want Metabase to call the database in its user interface.
+
+### Host
+
+Your database's IP address, or its domain name (e.g., esc.mydatabase.com).
+
+### Port
+
+The database port. E.g., 3306.
+
+### Username
+
+The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of privileges.
+
+### Password
+
+The password for the username that you use to connect to the database.
+
+### Use a secure connection (SSL)
+
+You can paste your server's SSL certification chain.
+
+### Use an SSH tunnel
+
+See our [guide to SSH tunneling](./ssh-tunnel.md).
+
+### Unfold JSON Columns
+
+In some databases, Metabase can unfold JSON columns into component fields to yield a table where each JSON key becomes a column. JSON unfolding is on by default, but you can turn off JSON folding if performance is slow.
+
+### Additional JDBC connection string options
+
+You can append options to the connection string that Metabase uses to connect to your database.
+
+### Re-run queries for simple explorations
+
+Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
+
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [action menu](https://www.metabase.com/glossary/action_menu). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+
+### Choose when Metabase syncs and scans
+
+Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](#syncing-and-scanning-databases).
+
+#### Database syncing
+
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Database syncing**:
+
+- **Scan** sets the frequency of the [sync query](#how-database-syncs-work) to hourly (default) or daily.
+- **at** sets the time when your sync query will run against your database (in the timezone of the server where your Metabase app is running).
+
+#### Scanning for filter values
+
+Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.
+
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
+
+![Scanning options](./images/scanning-options.png)
+
+- **Regularly, on a schedule** allows you to run [scan queries](#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
+- **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+
+### Periodically refingerprint tables
+
+Turn this option **ON** to scan a _sample_ of values every time Metabase runs a [sync](#how-database-syncs-work).
+
+A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you turn this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
 ## Connecting to MySQL 8+ servers
 
@@ -55,7 +108,7 @@ FLUSH PRIVILEGES;
 
 Remember to drop the old user: `DROP USER 'metabase'@'localhost';`.
 
-# Syncing records that include JSON
+## Syncing records that include JSON
 
 **Metabase will infer the JSON "schema" based on the keys in the first five hundred rows of a table.** MySQL JSON fields lack schema, so Metabase can't rely on table metadata to define which keys a JSON field has. To work around the lack of schema, Metabase will get the first five hundred records and parse the JSON in those records to infer the JSON's "schema". The reason Metabase limits itself to five hundred records is so that syncing metadata doesn't put unnecessary strain on your database.
 
