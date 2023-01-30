@@ -42,6 +42,9 @@
             PulseCard
             PulseChannel
             PulseChannelRecipient
+            QueryAction
+            ImplicitAction
+            HTTPAction
             Revision
             Secret
             Segment
@@ -123,6 +126,9 @@
    Secret
    ParameterCard
    Action
+   ImplicitAction
+   HTTPAction
+   QueryAction
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])
