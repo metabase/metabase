@@ -36,7 +36,7 @@ You have the option of using a **Local file path** or an **Uploaded file path**.
 
 ### Warehouse
 
-Snowflake warehouse. If the user doesn't have a default warehouse, you'll need to enter the warehouse to connect to.
+Snowflake warehouse. If the user lacks a default warehouse, you'll need to enter the warehouse to connect to.
 
 ### Database name (case sensitive)
 
