@@ -27,6 +27,7 @@ import Table from "metabase-lib/metadata/Table";
 type OwnProps = {
   params: {
     slug: string;
+    tab?: string;
   };
 };
 
@@ -76,6 +77,7 @@ const mapDispatchToProps = {
 
 function ModelDetailPage({
   model,
+  params,
   loadMetadataForCard,
   fetchTableForeignKeys,
   onChangeModel,
@@ -139,6 +141,7 @@ function ModelDetailPage({
     <ModelDetailPageView
       model={model}
       mainTable={mainTable}
+      tab={params.tab}
       hasActionsTab={hasActionsEnabled}
       onChangeName={handleNameChange}
       onChangeDescription={handleDescriptionChange}
