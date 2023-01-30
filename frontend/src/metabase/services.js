@@ -291,6 +291,11 @@ export const MetabaseApi = {
   }),
 };
 
+export const ParameterApi = {
+  parameterValues: GET("/api/dataset/parameter/values"),
+  parameterSearch: GET("/api/dataset/parameter/search/:query"),
+};
+
 export const ModerationReviewApi = {
   create: POST("/api/moderation-review"),
   update: PUT("/api/moderation-review/:id"),

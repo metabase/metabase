@@ -1,6 +1,32 @@
-import { CardApi } from "metabase/services";
+import _ from "underscore";
+import { CardApi, ParameterApi } from "metabase/services";
 import { Parameter } from "metabase-types/api";
 import Question from "metabase-lib/Question";
+import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
+
+interface FetchParameterValuesOpts {
+  parameter: Parameter;
+  query?: string;
+}
+
+export const fetchParameterValues =
+  ({ parameter, query }: FetchParameterValuesOpts) =>
+  async () => {
+    const apiArgs = {
+      parameter: _.omit(parameter, "fields"),
+      field_ids: getNonVirtualFields(parameter).map(field => field.id),
+      query,
+    };
+
+    const { values, has_more_values } = query
+      ? await ParameterApi.parameterSearch(apiArgs)
+      : await ParameterApi.parameterValues(apiArgs);
+
+    return {
+      results: values.map((value: any) => [].concat(value)),
+      has_more_values: query ? true : has_more_values,
+    };
+  };
 
 interface FetchQuestionParameterValuesOpts {
   question: Question;

@@ -20,7 +20,10 @@ import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
-import { fetchQuestionParameterValues } from "metabase/parameters/actions";
+import {
+  fetchParameterValues,
+  fetchQuestionParameterValues,
+} from "metabase/parameters/actions";
 import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
 
 import Fields from "metabase/entities/fields";
@@ -47,12 +50,13 @@ const optionsMessagePropTypes = {
   message: PropTypes.string.isRequired,
 };
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues,
+  fetchParameterValues,
   fetchQuestionParameterValues,
   fetchDashboardParameterValues,
-});
+};
 
 function mapStateToProps(state, { fields = [] }) {
   return {
@@ -144,6 +148,12 @@ class FieldValuesWidgetInner extends Component {
           await this.fetchQuestionParameterValues(query);
         options = results;
         valuesMode = has_more_values ? "search" : valuesMode;
+      } else if (canUseParameterEndpoints(this.props.parameter)) {
+        const { results, has_more_values } = await this.fetchParameterValues(
+          query,
+        );
+        options = results;
+        valuesMode = has_more_values ? "search" : valuesMode;
       } else {
         options = await this.fetchFieldValues(query);
         const {
@@ -196,6 +206,15 @@ class FieldValuesWidgetInner extends Component {
       this._cancel = null;
       return options;
     }
+  };
+
+  fetchParameterValues = async query => {
+    const { parameter } = this.props;
+
+    return this.props.fetchParameterValues({
+      parameter,
+      query,
+    });
   };
 
   fetchQuestionParameterValues = async query => {
@@ -468,6 +487,10 @@ const OptionsMessage = ({ message }) => (
 OptionsMessage.propTypes = optionsMessagePropTypes;
 
 export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
+
+function canUseParameterEndpoints(parameter) {
+  return parameter != null;
+}
 
 function canUseQuestionEndpoints(question) {
   return question?.isSaved();
