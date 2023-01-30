@@ -281,7 +281,7 @@
   :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
 
-(defn- add-entity-id [obj & _]
+(defn add-entity-id [obj & _]
   (if (or (contains? obj :entity_id)
           *deserializing?*)
     ;; Don't generate a new entity_id if either: (a) there's already one set; or (b) we're deserializing.

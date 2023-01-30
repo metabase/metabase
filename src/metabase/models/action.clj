@@ -90,6 +90,7 @@
                            :implicit ImplicitAction)]
       (db/execute! {:insert-into model
                     :values [(-> (apply dissoc action-data action-columns)
+                                 (mi/add-entity-id)
                                  (u/update-if-exists :template json/encode)
                                  (u/update-if-exists :dataset_query json/encode)
                                  (assoc :action_id (:id action)))]})
@@ -220,11 +221,20 @@
   [_action]
   [:name (serdes.hash/hydrated-hash :model "<none>") :created_at])
 
+(defmethod serdes.hash/identity-hash-fields QueryAction
+  [_action]
+  [(serdes.hash/hydrated-hash :action "<none>")])
+
 (defmethod serdes.base/extract-one "Action"
   [_model-name _opts action]
   (-> (serdes.base/extract-one-basics "Action" action)
       (update :creator_id serdes.util/export-user)
       (update :model_id serdes.util/export-fk 'Card)))
+
+(defmethod serdes.base/extract-one "QueryAction"
+  [_model-name _opts action]
+  (-> (serdes.base/extract-one-basics "QueryAction" action)
+      (update :action_id serdes.util/export-fk 'Action)))
 
 (defmethod serdes.base/load-xform "Action" [action]
   (-> action
@@ -232,14 +242,13 @@
       (update :model_id serdes.util/import-fk 'Card)
       (update :creator_id serdes.util/import-fk-keyed 'User :email)))
 
-(defmethod serdes.base/serdes-dependencies "Action" [action]
-  [[{:model "Card" :id (:model_id action)}]])
-
 (defmethod serdes.base/serdes-generate-path "Action"
   [_ action]
   [(assoc (serdes.base/infer-self-path "Action" action)
           :label (:name action))])
 
+(defmethod serdes.base/serdes-dependencies "Action" [action]
+  [[{:model "Card" :id (:model_id action)}]])
 
 (defmethod serdes.base/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]
@@ -260,19 +269,36 @@
        slug (assoc :label slug)
        true vector))))
 
-;; (serdes.base/register-ingestion-path!
-;;   "Field"
-;;   ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id"]
-;;   ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id"]
-;;   (fn [path]
-;;     (when-let [{db     "databases"
-;;                 schema "schemas"
-;;                 table  "tables"
-;;                 field  "fields"}   (and (#{6 8} (count path))
-;;                                         (serdes.base/ingestion-matcher-pairs
-;;                                           path [["databases" "schemas" "tables" "fields"]
-;;                                                 ["databases" "tables" "fields"]]))]
-;;       (filterv identity [{:model "Database" :id db}
-;;                          (when schema {:model "Schema" :id schema})
-;;                          {:model "Table" :id table}
-;;                          {:model "Field" :id field}]))))
+(comment
+  (db/select-field :entity_id 'QueryAction)
+  (require '[metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml])
+  (require '[metabase-enterprise.serialization.v2.load :as serdes.load])
+
+  (def action (db/select-one 'Action :id 1))
+  (def action (serdes.base/extract-one "Action" {} (db/select-one 'Action :id 1)))
+  (serdes.base/extract-one "QueryAction" {} (db/select-one 'QueryAction))
+  ;; Delete the test-dump directory if it exists
+  (metabase-enterprise.serialization.cmd/dump "test-dump" {:v2 true})
+  ;; Example path:
+  ("collections" "actions" "xHsWRtzi_eptAaM6jEySb_hello")
+  (tap> (set (keys (#'ingest.yaml/ingest-all (clojure.java.io/file "test-dump")))))
+  (def extraction (into [] (metabase-enterprise.serialization.v2.extract/extract-metabase {})))
+  (def extraction 1)
+  (#'ingest.yaml/strip-labels (serdes.base/serdes-path (nth extraction 3)))
+  ;; => [{:id "0hZO_Oc28Z7aYDrlhYy_k", :model "Action"}]
+  (def ingested (#'ingest.yaml/ingest-yaml "test-dump"))
+  (first ingested)
+  (serdes.load/load-metabase ingested)
+
+
+  ;; I could just do the same thing as before, and have top-level query actions etc.
+  )
+
+;; TODO:
+;; - [ ] Check tests are sufficient for Action
+;; - [ ] Change Action to use a directory, like databases
+;; - [ ] Serdes for QueryAction?
+
+
+
+;; QueryAction
