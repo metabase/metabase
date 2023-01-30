@@ -5,6 +5,7 @@ import { SmallGenericError } from "metabase/containers/ErrorPages";
 export default class ErrorBoundary extends React.Component<
   {
     onError?: (errorInfo: ErrorInfo) => void;
+    errorComponent?: Element;
   },
   {
     hasError: boolean;
@@ -17,6 +18,11 @@ export default class ErrorBoundary extends React.Component<
       hasError: false,
       errorDetails: "",
     };
+  }
+
+  static getDerivedStateFromError() {
+    // Update state so the next render will show the fallback UI.
+    return { hasError: true };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -32,8 +38,14 @@ export default class ErrorBoundary extends React.Component<
   }
 
   render() {
-    if (this.state.hasError) {
-      return <SmallGenericError details={this.state.errorDetails} />;
+    if (this.state.hasError && !this.props.onError) {
+      const ErrorComponent = this.props.errorComponent;
+
+      if (!ErrorComponent) {
+        return <SmallGenericError />;
+      }
+
+      return ErrorComponent;
     }
     return this.props.children;
   }
