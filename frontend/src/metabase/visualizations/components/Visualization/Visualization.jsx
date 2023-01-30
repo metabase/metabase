@@ -303,8 +303,6 @@ class Visualization extends React.PureComponent {
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
     const previousCard = series && series[index] && series[index].card;
 
-    console.log("🚀", "In handleOnChangeCardAndRun", { clicked, columnIndex });
-
     this.props.onChangeCardAndRun({
       nextCard,
       previousCard,

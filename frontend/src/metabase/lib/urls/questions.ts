@@ -22,6 +22,7 @@ export type QuestionUrlBuilderParams = {
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
+  columnIndex?: string;
 };
 
 export function question(
@@ -87,7 +88,7 @@ export function question(
   // a table with a primary key column that is its leftmost column,
   // let's not pollute the URL with an appended "/0"
   // Selector getZoomedObjectRowIndex will fallback to a columnIndex of 0.
-  if (columnIndex && columnIndex !== "0") {
+  if (columnIndex && parseInt(columnIndex) > 0) {
     path += `/` + columnIndex;
   }
 

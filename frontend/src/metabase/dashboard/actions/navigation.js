@@ -70,7 +70,6 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         },
       );
 
-      console.log("🚀", "In  NAVIGATE_TO_NEW_CARD", { columnIndex, url });
       dispatch(openUrl(url));
     },
 );

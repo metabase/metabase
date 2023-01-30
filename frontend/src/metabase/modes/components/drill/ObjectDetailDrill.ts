@@ -49,7 +49,7 @@ function getActionExtraData({
   hasManyPKColumns,
 }: {
   objectId: RowValue;
-  columnIndex: number;
+  columnIndex?: number;
   hasManyPKColumns: boolean;
 }) {
   if (!hasManyPKColumns) {

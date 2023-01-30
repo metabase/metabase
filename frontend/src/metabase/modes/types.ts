@@ -24,6 +24,7 @@ export type ClickObject = {
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];
+    columnIndex?: number;
   };
   event?: MouseEvent;
   element?: HTMLElement;

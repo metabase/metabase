@@ -49,6 +49,8 @@ type BlankQueryOptions = {
 
 type QueryParams = BlankQueryOptions & {
   slug?: string;
+  objectId?: number | string;
+  columnIndex?: number;
 };
 
 type UIControls = Partial<QueryBuilderUIControls>;
@@ -252,8 +254,6 @@ async function handleQBInit(
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
     : null;
-
-  console.log("🚀", "We are in initQB");
 
   let { card, originalCard } = await resolveCards({
     cardId,
