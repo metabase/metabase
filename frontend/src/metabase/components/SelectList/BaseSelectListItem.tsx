@@ -1,20 +1,21 @@
 import React from "react";
-import PropTypes from "prop-types";
 
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 
 import { BaseItemRoot } from "./SelectListItem.styled";
 
-const propTypes = {
-  id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-  name: PropTypes.string.isRequired,
-  onSelect: PropTypes.func.isRequired,
-  isSelected: PropTypes.bool,
-  size: PropTypes.oneOf(["small", "medium"]),
-  className: PropTypes.string,
-  children: PropTypes.node.isRequired,
-  as: PropTypes.any,
-};
+export interface BaseSelectListItemProps {
+  id: string | number;
+  name: string;
+  onSelect: (id: string | number) => void;
+  children: React.ReactNode;
+  isSelected?: boolean;
+  size?: "small" | "medium";
+  className?: string;
+  hasLeftIcon?: boolean;
+  hasRightIcon?: boolean;
+  as?: any;
+}
 
 export function BaseSelectListItem({
   id,
@@ -25,7 +26,7 @@ export function BaseSelectListItem({
   as = BaseItemRoot,
   children,
   ...rest
-}) {
+}: BaseSelectListItemProps) {
   const ref = useScrollOnMount();
   const Root = as;
   return (
@@ -37,7 +38,7 @@ export function BaseSelectListItem({
       tabIndex={0}
       size={size}
       onClick={() => onSelect(id)}
-      onKeyDown={e => e.key === "Enter" && onSelect(id)}
+      onKeyDown={(e: KeyboardEvent) => e.key === "Enter" && onSelect(id)}
       className={className}
       {...rest}
     >
@@ -46,5 +47,4 @@ export function BaseSelectListItem({
   );
 }
 
-BaseSelectListItem.propTypes = propTypes;
 BaseSelectListItem.Root = BaseItemRoot;
