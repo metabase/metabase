@@ -408,7 +408,7 @@
     (testing "should work as an argument to datetime-add and datetime-subtract"
       (is (= true
              (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :month] 1 :month]}
+                   {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :day] 1 :day]}
                     :fields [[:expression "1"]]
                     :limit  1})
                  mt/rows
@@ -437,9 +437,9 @@
     (testing "should work in combination with datetime-diff and date-arithmetics"
       (is (= [1 1]
              (->> (mt/run-mbql-query venues
-                    {:expressions {"1" [:datetime-diff [:now] [:datetime-add [:now] 1 :month] :month]
+                    {:expressions {"1" [:datetime-diff [:now] [:datetime-add [:now] 1 :day] :day]
                                    "2" [:now]
-                                   "3" [:datetime-diff [:expression "2"] [:datetime-add [:expression "2"] 1 :month] :month]}
+                                   "3" [:datetime-diff [:expression "2"] [:datetime-add [:expression "2"] 1 :day] :day]}
                      :fields [[:expression "1"]
                               [:expression "3"]]
                      :limit  1})
