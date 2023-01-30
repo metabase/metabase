@@ -1694,9 +1694,9 @@
 
   ([dashboard-values f]
    (mt/with-temp* [Card          [{source-card-id         :id}
-                                  (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues {:limit 5}))
+                                  (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories {:limit 5}))
                                          {:database_id     (mt/id)
-                                          :table_id        (mt/id :venues)})]
+                                          :table_id        (mt/id :categories)})]
                    Dashboard     [dashboard (merge {:parameters [{:name "Category Name"
                                                                   :slug "category_name"
                                                                   :id   "_CATEGORY_NAME_"
@@ -1730,7 +1730,7 @@
                                                                   :name                 "CATEGORY"
                                                                   :values_source_type   "card"
                                                                   :values_source_config {:card_id     source-card-id
-                                                                                         :value_field (mt/$ids $venues.name)}}]}
+                                                                                         :value_field (mt/$ids $categories.name)}}]}
                                                    dashboard-values)]
                    Card          [card {:database_id   (mt/id)
                                         :table_id      (mt/id :venues)
@@ -2062,17 +2062,13 @@
   (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
     (testing "It uses the results of the card's query execution"
       (let-url [url (chain-filter-values-url dashboard (:card param-keys))]
-        (is (= {:values          ["Brite Spot Family Restaurant"
-                                  "Red Medicine"
-                                  "Stout Burgers & Beers"
-                                  "The Apple Pan"
-                                  "Wurstküche"]
+        (is (= {:values          ["African" "American" "Artisan" "Asian" "BBQ"]
                 :has_more_values false}
                (mt/user-http-request :rasta :get 200 url)))))
 
     (testing "it only returns search matches"
-      (let-url [url (chain-filter-search-url dashboard (:card param-keys) "apple")]
-        (is (= {:values          ["The Apple Pan"]
+      (let-url [url (chain-filter-search-url dashboard (:card param-keys) "af")]
+        (is (= {:values          ["African"]
                 :has_more_values false}
                (mt/user-http-request :rasta :get 200 url)))))))
 

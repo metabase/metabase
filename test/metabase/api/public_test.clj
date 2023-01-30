@@ -1035,7 +1035,7 @@
                      (client/client :get 200 (param-values-url :dashboard uuid (:static-category param-keys))))))
 
             (testing "parameter with source is card"
-              (is (= {:values          ["Brite Spot Family Restaurant" "Red Medicine" "Stout Burgers & Beers" "The Apple Pan" "Wurstküche"]
+              (is (= {:values          ["African" "American" "Artisan" "Asian" "BBQ"]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys))))))
 
@@ -1052,9 +1052,9 @@
                      (client/client :get 200 (param-values-url :dashboard uuid (:static-category param-keys) "af")))))
 
             (testing "parameter with source is card"
-              (is (= {:values          ["The Apple Pan"]
+              (is (= {:values          ["African"]
                       :has_more_values false}
-                     (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys) "app")))))
+                     (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys) "af")))))
 
             (testing "parameter with source is a chain filter"
               (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
