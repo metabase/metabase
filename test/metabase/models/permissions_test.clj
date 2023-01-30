@@ -1,6 +1,7 @@
 (ns metabase.models.permissions-test
   (:require
    [clojure.test :refer :all]
+   [malli.instrument :as minst]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -858,15 +859,15 @@
           (is (not (= (perms) #{perm-path}))))))))
 
 (deftest data-permissions-v2-migration-data-perm-classification-test
-  (is (= :dk/db                                 (perms/data-kind "/db/3/")))
-  (is (= :dk/db-native                          (perms/data-kind "/db/3/native/")))
-  (is (= :dk/db-schema                          (perms/data-kind "/db/3/schema/")))
-  (is (= :dk/db-schema-name                     (perms/data-kind "/db/3/schema//")))
-  (is (= :dk/db-schema-name                     (perms/data-kind "/db/3/schema/secret_base/")))
-  (is (= :dk/db-schema-name-and-table           (perms/data-kind "/db/3/schema/secret_base/table/3/")))
-  (is (= :dk/db-schema-name-table-and-read      (perms/data-kind "/db/3/schema/secret_base/table/3/read/")))
-  (is (= :dk/db-schema-name-table-and-query     (perms/data-kind "/db/3/schema/secret_base/table/3/query/")))
-  (is (= :dk/db-schema-name-table-and-segmented (perms/data-kind "/db/3/schema/secret_base/table/3/query/segmented/"))))
+  (is (= :dk/db                                 (perms/data-path-kind "/db/3/")))
+  (is (= :dk/db-native                          (perms/data-path-kind "/db/3/native/")))
+  (is (= :dk/db-schema                          (perms/data-path-kind "/db/3/schema/")))
+  (is (= :dk/db-schema-name                     (perms/data-path-kind "/db/3/schema//")))
+  (is (= :dk/db-schema-name                     (perms/data-path-kind "/db/3/schema/secret_base/")))
+  (is (= :dk/db-schema-name-and-table           (perms/data-path-kind "/db/3/schema/secret_base/table/3/")))
+  (is (= :dk/db-schema-name-table-and-read      (perms/data-path-kind "/db/3/schema/secret_base/table/3/read/")))
+  (is (= :dk/db-schema-name-table-and-query     (perms/data-path-kind "/db/3/schema/secret_base/table/3/query/")))
+  (is (= :dk/db-schema-name-table-and-segmented (perms/data-path-kind "/db/3/schema/secret_base/table/3/query/segmented/"))))
 
 (deftest data-permissions-v2-migration-move-test
   (testing "move admin"
@@ -894,3 +895,13 @@
            (perms/move "/db/1/schema/PUBLIC/table/1/query/")))
     (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
            (perms/move "/db/1/schema/PUBLIC/table/1/query/segmented/")))))
+
+(deftest quickcheck-perm-path-classification
+  (is (nil? (get (minst/check {:filters [(minst/-filter-var #{#'perms/path-kind})]})
+                 (symbol #'perms/path-kind)))
+      "Schema for path-kind is wrong."))
+
+(deftest quickcheck-data-path-classification
+  (is (nil? (get (minst/check {:filters [(minst/-filter-var #{#'perms/data-path-kind})]})
+                 (symbol #'perms/data-path-kind)))
+      "Schema for data-path-kind is wrong."))

@@ -2,16 +2,15 @@
   (:refer-clojure :exclude [defn])
   (:require
    [clojure.core :as core]
+   [clojure.set :as set]
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
    [malli.experimental :as mx]
    [malli.generator :as mg]
    [malli.instrument :as minst]
-   [malli.util :as mut]
    [metabase.util :as u]
-   [ring.util.codec :as codec]
-   [clojure.set :as set]))
+   [ring.util.codec :as codec]))
 
 (core/defn- ->malli-io-link
   ([schema]
@@ -36,16 +35,18 @@
 (core/defn- explain-fn-fail!
   "Used as reporting function to minst/instrument!"
   [type data]
-  (let [{:keys [input args output value]} data
-        humanized (cond input (me/humanize (mc/explain input args))
-                        output (me/humanize (mc/explain output value)))]
+  (let [wrap-fn (fn wrap-fn [{:keys [value message]}] (str message " got: " (pr-str value)))
+        {:keys [input args output value]} data
+        humanized (cond input (me/humanize (mc/explain input args) {:wrap wrap-fn})
+                        output (me/humanize (mc/explain output value) {:wrap wrap-fn}))]
     (throw (ex-info
             (pr-str humanized)
             (merge {:type type :data data}
                    (when data
-                     {:link (cond input (->malli-io-link input args)
-                                  output (->malli-io-link output value))
-                      :humanized humanized}))))))
+                     (when-let [link (cond input (->malli-io-link input args)
+                                           output (->malli-io-link output value))]
+                       {:link link})
+                     :humanized humanized))))))
 
 ;; since a reference to the private var is used in the macro, this will trip the eastwood :unused-private-vars linter,
 ;; so just harmlessly "use" the var here.
