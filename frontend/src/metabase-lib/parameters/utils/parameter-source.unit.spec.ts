@@ -1,76 +1,7 @@
 import { createMockField } from "metabase-types/api/mocks";
 import Field from "metabase-lib/metadata/Field";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
-import {
-  canHaveParameterValues,
-  canListParameterValues,
-} from "./parameter-source";
-
-describe("canHaveParameterValues", () => {
-  it("should be false with none query type", () => {
-    const parameter = createMockUiParameter({
-      values_query_type: "none",
-      fields: [
-        new Field(
-          createMockField({
-            id: 1,
-            has_field_values: "list",
-          }),
-        ),
-      ],
-    });
-
-    expect(canHaveParameterValues(parameter)).toBeFalsy();
-  });
-
-  it("should be true when a card is used for values", () => {
-    const parameter = createMockUiParameter({
-      values_query_type: "list",
-      values_source_type: "card",
-      values_source_config: {
-        card_id: 1,
-      },
-    });
-
-    expect(canHaveParameterValues(parameter)).toBeTruthy();
-  });
-
-  it("should be true when a static list is used for values", () => {
-    const parameter = createMockUiParameter({
-      values_query_type: "search",
-      values_source_type: "static-list",
-      values_source_config: {
-        values: ["A", "B"],
-      },
-    });
-
-    expect(canHaveParameterValues(parameter)).toBeTruthy();
-  });
-
-  it("should be true when there are connected fields", () => {
-    const parameter = createMockUiParameter({
-      values_query_type: "list",
-      fields: [
-        new Field(
-          createMockField({
-            id: 1,
-            has_field_values: "list",
-          }),
-        ),
-      ],
-    });
-
-    expect(canHaveParameterValues(parameter)).toBeTruthy();
-  });
-
-  it("should be false when there is no custom source or a connected field", () => {
-    const parameter = createMockUiParameter({
-      values_query_type: "list",
-    });
-
-    expect(canHaveParameterValues(parameter)).toBeFalsy();
-  });
-});
+import { canListParameterValues } from "./parameter-source";
 
 describe("canListParameterValues", () => {
   it("should not list the query type other than list", () => {

@@ -72,14 +72,6 @@ export const getSourceConfigForType = (
   }
 };
 
-export const canHaveParameterValues = (parameter: Parameter) => {
-  const queryType = getQueryType(parameter);
-  const sourceType = getSourceType(parameter);
-  const fields = getFields(parameter);
-
-  return queryType !== "none" && (sourceType != null || fields.length > 0);
-};
-
 export const canListParameterValues = (parameter: Parameter) => {
   const queryType = getQueryType(parameter);
   const sourceType = getSourceType(parameter);

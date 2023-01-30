@@ -25,7 +25,8 @@ import {
   getNumberParameterArity,
   getStringParameterArity,
 } from "metabase-lib/parameters/utils/operators";
-import { canHaveParameterValues } from "metabase-lib/parameters/utils/parameter-source";
+import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
+import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 import {
   isDateParameter,
   isNumberParameter,
@@ -248,7 +249,7 @@ function Widget({
         label={getParameterWidgetTitle(parameter)}
       />
     );
-  } else if (canHaveParameterValues(parameter)) {
+  } else if (isFieldWidget(parameter)) {
     return (
       <ParameterFieldWidget
         target={target}
@@ -298,7 +299,7 @@ function getWidgetDefinition(parameter) {
     return TextWidget;
   } else if (isNumberParameter(parameter)) {
     return NumberInputWidget;
-  } else if (canHaveParameterValues(parameter)) {
+  } else if (isFieldWidget(parameter)) {
     return ParameterFieldWidget;
   } else {
     return StringInputWidget;
@@ -306,8 +307,17 @@ function getWidgetDefinition(parameter) {
 }
 
 function isTextWidget(parameter) {
-  const hasValues = canHaveParameterValues(parameter);
-  const hasVariableTarget = parameter.hasVariableTemplateTagTarget;
+  if (parameter.hasVariableTemplateTagTarget) {
+    return getQueryType(parameter) === "none";
+  } else {
+    return false;
+  }
+}
 
-  return !hasValues && hasVariableTarget;
+function isFieldWidget(parameter) {
+  if (parameter.hasVariableTemplateTagTarget) {
+    return getQueryType(parameter) !== "none";
+  } else {
+    return getFields(parameter).length > 0;
+  }
 }
