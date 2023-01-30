@@ -417,7 +417,7 @@
         (testing "search"
           (is (partial= {:values ["foo1" "foo2"]}
                         (mt/user-http-request :rasta :post 200
-                                              "dataset/parameter/search?query=fo"
+                                              "dataset/parameter/search/fo"
                                               {:parameter parameter}))))))
     (mt/with-temp* [Card [{card-id :id} {:database_id (mt/id)
                                          :dataset_query (mt/mbql-query products)}]]
@@ -440,7 +440,7 @@
               (is (= #{"Gizmo" "Widget" "Gadget" "Doohickey"} values))))
           (testing "search"
             (let [values (-> (mt/user-http-request :rasta :post 200
-                                                   "dataset/parameter/search?query=g"
+                                                   "dataset/parameter/search/g"
                                                    {:parameter parameter})
                              :values set)]
               (is (= #{"Gizmo" "Widget" "Gadget"} values)))))))
@@ -463,7 +463,7 @@
             (is (set/subset? #{["Doohickey"] ["Facebook"]} values))))
         (testing "search"
           (let [values (-> (mt/user-http-request :rasta :post 200
-                                                 "dataset/parameter/search?query=g"
+                                                 "dataset/parameter/search/g"
                                                  {:parameter parameter
                                                   :field_ids [(mt/id :products :category)
                                                               (mt/id :people :source)]})

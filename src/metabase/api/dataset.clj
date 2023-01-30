@@ -219,9 +219,9 @@
     (parameter-values parameter field_ids nil-query)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/parameter/search"
+(api/defendpoint-schema POST "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
-  [:as {{:keys [parameter field_ids]} :body} query]
+  [query :as {{:keys [parameter field_ids]} :body}]
   {parameter Parameter
    field_ids FieldIds
    query     s/Str}
