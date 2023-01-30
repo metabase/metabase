@@ -389,21 +389,18 @@ export default class NativeQuery extends AtomicQuery {
     return tagErrors.length === 0;
   }
 
-  setTemplateTag(
-    name: string,
-    tag: TemplateTag,
-    config?: ParameterValuesConfig,
-  ) {
-    const newQuery = this.setDatasetQuery(
+  setTemplateTag(name: string, tag: TemplateTag) {
+    return this.setDatasetQuery(
       updateIn(this.datasetQuery(), ["native", "template-tags"], tags => ({
         ...tags,
         [name]: tag,
       })),
     );
+  }
 
-    return newQuery
-      .question()
-      .setParameter(getTemplateTagParameter(tag, config))
+  setTemplateTagConfig(tag: TemplateTag, config: ParameterValuesConfig) {
+    return this.question()
+      .setParameter(tag.id, getTemplateTagParameter(tag, config))
       .query() as NativeQuery;
   }
 
