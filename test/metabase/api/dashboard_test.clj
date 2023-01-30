@@ -170,8 +170,7 @@
                     dashboard-defaults
                     {:name           test-dashboard-name
                      :creator_id     (mt/user->id :rasta)
-                     :parameters     [{:id "abc123", :name "test", :type "date"
-                                       :values_query_type "list", :values_source_type nil, :values_source_config {}}]
+                     :parameters     [{:id "abc123", :name "test", :type "date"}]
                      :updated_at     true
                      :created_at     true
                      :collection_id  true
