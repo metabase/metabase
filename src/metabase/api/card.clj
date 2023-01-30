@@ -4,7 +4,6 @@
    [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.data :as data]
-   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [compojure.core :refer [DELETE GET POST PUT]]
@@ -25,7 +24,6 @@
             CardBookmark
             Collection
             Database
-            Field
             PersistedInfo
             Pulse
             Table
@@ -922,15 +920,7 @@ saved later when it is ready."
   [card param query]
   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
     (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
-      (if (str/blank? query)
-        (api.field/check-perms-and-return-field-values field-id)
-        (let [field (api/check-404 (db/select-one Field :id field-id))]
-          ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
-          ;; is what the return-field-values returns above
-          {:values (map (comp vector first) (api.field/search-values field field query))
-           ;; assume there are more
-           :has_more_values true
-           :field_id field-id})))))
+      (api.field/field-id->values field-id query))))
 
 (s/defn param-values
   "Fetch values for a parameter.
