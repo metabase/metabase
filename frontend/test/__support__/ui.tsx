@@ -81,7 +81,6 @@ export function renderWithProviders(
       {...props}
       store={store}
       history={history}
-      initialRoute={initialRoute}
       withRouter={withRouter}
       withDND={withDND}
     />
