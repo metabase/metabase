@@ -56,13 +56,13 @@ export const Archived = ({ entityName, linkTo }) => (
   </ErrorPageRoot>
 );
 
-export const SmallGenericError = ({
-  title = t`Something's gone wrong`,
-  message = t`We've run into an error. You can try refreshing the page, or just go back.`,
-  details,
-}) => (
+export const SmallGenericError = ({ message = t`Something's gone wrong` }) => (
   <ErrorPageRoot>
-    <Icon name="warning" color={color("text-medium")} tooltip={title} />
-    <ErrorDetails className="pt2" details={details} centered />
+    <Icon
+      name="warning"
+      size={32}
+      color={color("text-light")}
+      tooltip={message}
+    />
   </ErrorPageRoot>
 );
