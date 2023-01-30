@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { Parameter } from "metabase-types/api";
+import { Parameter, ParameterConfig } from "metabase-types/api";
 import type { ParameterTarget } from "metabase-types/types/Parameter";
 import type { Card } from "metabase-types/types/Card";
 import type { TemplateTag } from "metabase-types/types/Query";
@@ -30,7 +30,10 @@ export function getTemplateTagParameterTarget(
     : ["variable", ["template-tag", tag.name]];
 }
 
-export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
+export function getTemplateTagParameter(
+  tag: TemplateTag,
+  config?: ParameterConfig,
+): ParameterWithTarget {
   return {
     id: tag.id,
     type: tag["widget-type"] || getTemplateTagType(tag),
@@ -38,19 +41,25 @@ export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
+    values_query_type: config?.values_query_type,
+    values_source_type: config?.values_source_type,
+    values_source_config: config?.values_source_config,
   };
 }
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
 export function getTemplateTagParameters(
   tags: TemplateTag[],
+  parameters: Parameter[] = [],
 ): ParameterWithTarget[] {
+  const parametersById = _.indexBy(parameters, "id");
+
   return tags
     .filter(
       tag =>
         tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
     )
-    .map(getTemplateTagParameter);
+    .map(tag => getTemplateTagParameter(tag, parametersById[tag.id]));
 }
 
 export function getTemplateTagsForParameters(card: Card) {
@@ -77,10 +86,14 @@ export function getParametersFromCard(
 
   if (card.parameters && !_.isEmpty(card.parameters)) {
     return card.parameters;
+  } else {
+    return getTemplateTagParametersFromCard(card);
   }
+}
 
+export function getTemplateTagParametersFromCard(card: Card) {
   const tags = getTemplateTagsForParameters(card);
-  return getTemplateTagParameters(tags);
+  return getTemplateTagParameters(tags, card.parameters);
 }
 
 // when navigating from dashboard --> saved native question,

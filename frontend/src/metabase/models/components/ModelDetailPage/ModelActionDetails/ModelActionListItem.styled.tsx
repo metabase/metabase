@@ -8,12 +8,21 @@ export const ActionTitle = styled.h4`
   color: ${color("text-dark")};
 `;
 
+export const ActionSubtitle = styled.span`
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 0.875rem;
+  color: ${color("text-medium")};
+  margin-top: 4px;
+`;
+
 export const Card = styled.div`
   display: block;
   position: relative;
 
   padding: 1rem;
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
   border-radius: 6px;
 
   color: ${color("text-white")};

@@ -250,8 +250,8 @@
   (mt/test-driver :redshift
     (testing "Should filter out schemas for which the user has no perms"
       ;; create a random username and random schema name, and grant the user USAGE permission for it
-      (let [temp-username (str/lower-case (tu/random-name))
-            random-schema (str/lower-case (tu/random-name))
+      (let [temp-username (u/lower-case-en (tu/random-name))
+            random-schema (u/lower-case-en (tu/random-name))
             user-pw       "Password1234"
             db-det        (:details (mt/db))]
         (redshift.test/execute! (str "CREATE SCHEMA %s;"
