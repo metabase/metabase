@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { color } from "metabase/lib/colors";
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
 import type { StackedTooltipModel } from "../types";
 import {
@@ -9,7 +10,9 @@ import {
   DataPointTable,
   DataPointTableFooter,
 } from "./StackedDataTooltip.styled";
-import { getPercent, getTotalValue } from "./utils";
+import { getPercent, getTotalValue, groupExcessiveTooltipRows } from "./utils";
+
+const MAX_BODY_ROWS = 8;
 
 type StackedDataTooltipProps = StackedTooltipModel;
 
@@ -36,6 +39,12 @@ const StackedDataTooltip = ({
   // In order to calculate percentages correctly we provide the grand total value
   const percentCalculationTotal = grandTotal ?? rowsTotal;
 
+  const trimmedBodyRows = groupExcessiveTooltipRows(
+    bodyRows,
+    MAX_BODY_ROWS,
+    hasColorIndicators ? color("text-light") : undefined,
+  );
+
   return (
     <DataPointRoot>
       {headerTitle && (
@@ -57,9 +66,9 @@ const StackedDataTooltip = ({
           ))}
         </DataPointTableHeader>
 
-        {bodyRows.length > 0 && (
+        {trimmedBodyRows.length > 0 && (
           <DataPointTableBody>
-            {bodyRows.map((row, index) => (
+            {trimmedBodyRows.map((row, index) => (
               <TooltipRow
                 key={index}
                 percent={

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.v2.extract-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -1003,7 +1003,6 @@
   (db/select-one-field :entity_id 'ParameterCard
                        :parameterized_object_type parameterized-object-type
                        :parameterized_object_id parameterized-object-id))
-
 
 (deftest selective-serialization-basic-test
   (ts/with-empty-h2-app-db

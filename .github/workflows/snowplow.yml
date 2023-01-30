@@ -11,9 +11,8 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-20.04
-    container: snowplow/igluctl:0.6.0
     steps:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Lint
-        run: igluctl lint snowplow
+        run: docker run -v $(pwd):/snowplow snowplow/igluctl:0.6.0 lint snowplow

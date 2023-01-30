@@ -1,7 +1,6 @@
 (ns metabase.driver.vertica
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
@@ -16,6 +15,7 @@
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
             [metabase.driver.sql.util :as sql.u]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
@@ -34,6 +34,10 @@
 (defmethod driver/database-supports? [:vertica :convert-timezone]
   [_driver _feature _database]
   true)
+
+(defmethod driver/database-supports? [:vertica :test/jvm-timezone-setting]
+  [_driver _feature _database]
+  false)
 
 (defmethod driver/db-start-of-week :vertica
   [_]
@@ -260,7 +264,7 @@
 (defmethod sql-jdbc.execute/read-column [:vertica Types/TIMESTAMP]
   [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (when-let [s (.getString rs i)]
-    (let [has-timezone? (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+    (let [has-timezone? (= (u/lower-case-en (.getColumnTypeName rsmeta i)) "timestamptz")
           t             (u.date/parse s (when has-timezone? "UTC"))]
       (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
       t)))

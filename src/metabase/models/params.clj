@@ -61,20 +61,20 @@
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
 
     (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
-  [[_ tag] dashcard]
-  (get-in dashcard [:card :dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
+  [[_ tag] card]
+  (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
 (s/defn param-target->field-clause :- (s/maybe mbql.s/field)
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
-  [target dashcard]
+  [target card]
   (let [target (mbql.normalize/normalize-tokens target :ignore-path)]
     (when (mbql.u/is-clause? :dimension target)
       (let [[_ dimension] target]
         (try
           (unwrap-field-clause
            (if (mbql.u/is-clause? :template-tag dimension)
-             (template-tag->field-form dimension dashcard)
+             (template-tag->field-form dimension card)
              dimension))
           (catch Throwable e
             (log/error e (tru "Could not find matching Field ID for target:") target)))))))
@@ -182,7 +182,7 @@
   [dashboard]
   (when-let [fields (seq (for [dashcard (:ordered_cards dashboard)
                                param    (:parameter_mappings dashcard)
-                               :let     [field-clause (param-target->field-clause (:target param) dashcard)]
+                               :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
                                :when    field-clause]
                            field-clause))]
     (set fields)))

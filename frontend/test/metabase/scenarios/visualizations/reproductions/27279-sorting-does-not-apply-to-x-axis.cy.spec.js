@@ -42,7 +42,6 @@ describe("issue 27279", () => {
         },
         display: "bar",
         visualization_settings: {
-          "stackable.stack_type": "stacked",
           "graph.dimensions": ["K", "O"],
           "graph.metrics": ["sum"],
         },

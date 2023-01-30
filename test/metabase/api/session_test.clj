@@ -1,4 +1,4 @@
-(ns metabase.api.session-test
+(ns ^:mb/once metabase.api.session-test
   "Tests for /api/session"
   (:require
    [cheshire.core :as json]
@@ -440,9 +440,9 @@
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
         (mt/with-temp User [_ {:email    "ngoc@metabase.com"
                                :password "securedpassword"}]
-            (is (schema= SessionResponse
-                         (mt/client :post 200 "session" {:username "ngoc@metabase.com"
-                                                         :password "securedpassword"}))))))
+          (is (schema= SessionResponse
+                       (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                       :password "securedpassword"}))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try
@@ -469,8 +469,9 @@
           [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (schema= SessionResponse
                        (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
-          (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
-            (is (= true (db/exists? PermissionsGroupMembership :group_id (:id group) (:user_id user-id))))))))))
+          (testing "PermissionsGroupMembership should exist"
+            (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
+              (is (db/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"

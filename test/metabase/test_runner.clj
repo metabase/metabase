@@ -5,6 +5,8 @@
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
+   [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :as t]
    [clojure.tools.namespace.find :as ns.find]
    [eftest.report.pretty]
@@ -24,18 +26,21 @@
    [metabase.util.i18n.impl :as i18n.impl]
    [pjstadig.humane-test-output :as humane-test-output]))
 
-;; initialize Humane Test Output if it's not already initialized.
-(humane-test-output/activate!)
+;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
+;; from the CLI, it breaks diffs.
+(when-not config/is-test?
+  (humane-test-output/activate!))
+
 ;;; Same for https://github.com/camsaul/humane-are
 (humane-are/install!)
 
 ;; Load redefinitions of stuff like `tt/with-temp` and `with-redefs` that throw an Exception when they are used inside
 ;; parallel tests.
 (comment metabase.test.redefs/keep-me
-         test-runner.assert-exprs/keep-me
-         ;; these are necessary so data_readers.clj functions can function
-         u.date/keep-me
-         i18n.impl/keep-me)
+  test-runner.assert-exprs/keep-me
+  ;; these are necessary so data_readers.clj functions can function
+  u.date/keep-me
+  i18n.impl/keep-me)
 
 ;; Disable parallel tests with `PARALLEL=false`
 (def ^:private enable-parallel-tests?
@@ -81,8 +86,10 @@
                true))
     (println "Looking for test namespaces in directory" (str file))
     (->> (ns.find/find-namespaces-in-dir file)
-         (filter #(re-matches  #"^metabase.*test$" (name %)))
+         (filter #(re-matches #"^metabase.*test$" (name %)))
          (mapcat find-tests))))
+
+(def ^:dynamic *exclude-tags* #{})
 
 ;; a test namespace or individual test
 (defmethod find-tests clojure.lang.Symbol
@@ -99,21 +106,43 @@
       ;; a namespace e.g. `metabase.whatever-test`
       (do
         (load-test-namespace symb)
-        (eftest.runner/find-tests symb)))))
+        (let [ns-tags (-> symb find-ns meta keys set)
+              ex-tags (set/intersection *exclude-tags* ns-tags)]
+          (if (seq ex-tags)
+            (println (format
+                      "Skipping tests in `%s` due to exclusion-tag(s): %s"
+                      symb
+                      (->> ex-tags sort (str/join ","))))
+            (eftest.runner/find-tests symb)))))))
 
 ;; default -- look in all dirs on the classpath
 (defmethod find-tests nil
   [_]
   (find-tests (classpath/system-classpath)))
 
-(defn tests [{:keys [only]}]
+(defn tests [{:keys [only exclude-tags]}]
   (when only
     (println "Running tests in" (pr-str only)))
   (let [start-time-ms (System/currentTimeMillis)
-        tests         (find-tests only)]
+        tests         (binding [*exclude-tags* (-> exclude-tags u/one-or-many set)]
+                        (into [] (find-tests only)))]
     (printf "Finding tests took %s.\n" (u/format-milliseconds (- (System/currentTimeMillis) start-time-ms)))
     (println "Running" (count tests) "tests")
     tests))
+
+(comment
+  ;; Example of using :exclude-tags
+  ;; Has no effect as there are no :exclude-tags on 'metabase.api.notify-test
+  (tests {:only ['metabase.api.notify-test] :exclude-tags [:mb/once]})
+  ;; Just run these tests
+  (tests {:only ['metabase.sync-test]})
+  ;; Excluded since metabase.sync-test has the ^:mb/once tag
+  (tests {:only ['metabase.sync-test] :exclude-tags [:mb/once]})
+  ;; Or maybe you want to exclude deprecated nses.
+  ;; The notify-tests will show, but sync-test will not.
+  (tests {:only ['metabase.api.notify-test
+                 'metabase.sync-test] :exclude-tags [:deprecated]})
+  )
 
 ;;;; Running tests & reporting the output
 

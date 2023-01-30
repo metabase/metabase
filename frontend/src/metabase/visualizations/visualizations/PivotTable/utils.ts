@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
+import { sumArray } from "metabase/core/utils/arrays";
 
 import type { Column, DatasetData } from "metabase-types/types/Dataset";
 import type { Card } from "metabase-types/types/Card";
@@ -14,6 +15,7 @@ import type {
   PivotSetting,
   FieldOrAggregationReference,
   HeaderItem,
+  CustomColumnWidth,
 } from "./types";
 
 import { partitions } from "./partitions";
@@ -27,7 +29,7 @@ import {
   MAX_ROWS_TO_MEASURE,
   LEFT_HEADER_LEFT_SPACING,
   CELL_HEIGHT,
-  CELL_WIDTH,
+  DEFAULT_CELL_WIDTH,
 } from "./constants";
 
 // adds or removes columns from the pivot settings based on the current query
@@ -151,9 +153,9 @@ export function getLeftHeaderWidths({
     return computedWidth;
   });
 
-  const total = widths.reduce((acc, width) => acc + width, 0);
+  const total = sumArray(widths);
 
-  return { leftHeaderWidths: widths, totalHeaderWidths: total };
+  return { leftHeaderWidths: widths, totalLeftHeaderWidths: total };
 }
 
 type ColumnValueInfo = {
@@ -233,9 +235,9 @@ export const leftHeaderCellSizeAndPositionGetter = (
   const columnsToSpan = rowIndexes.length - depth - maxDepthBelow;
 
   // add up all the widths of the columns, other than itself, that this cell spans
-  const spanWidth = leftHeaderWidths
-    .slice(depth + 1, depth + columnsToSpan)
-    .reduce((acc, cellWidth) => acc + cellWidth, 0);
+  const spanWidth = sumArray(
+    leftHeaderWidths.slice(depth + 1, depth + columnsToSpan),
+  );
   const columnPadding = depth === 0 ? LEFT_HEADER_LEFT_SPACING : 0;
   const columnWidth = leftHeaderWidths[depth];
 
@@ -243,9 +245,7 @@ export const leftHeaderCellSizeAndPositionGetter = (
     height: span * CELL_HEIGHT,
     width: columnWidth + spanWidth + columnPadding,
     x:
-      leftHeaderWidths
-        .slice(0, depth)
-        .reduce((acc, cellWidth) => acc + cellWidth, 0) +
+      sumArray(leftHeaderWidths.slice(0, depth)) +
       (depth > 0 ? LEFT_HEADER_LEFT_SPACING : 0),
     y: offset * CELL_HEIGHT,
   };
@@ -254,12 +254,43 @@ export const leftHeaderCellSizeAndPositionGetter = (
 export const topHeaderCellSizeAndPositionGetter = (
   item: HeaderItem,
   topHeaderRows: number,
+  valueHeaderWidths: CustomColumnWidth,
 ) => {
   const { offset, span, maxDepthBelow } = item;
+
+  const leftOffset = getWidthForRange(valueHeaderWidths, 0, offset);
+  const width = getWidthForRange(valueHeaderWidths, offset, offset + span);
+
   return {
     height: CELL_HEIGHT,
-    width: span * CELL_WIDTH,
-    x: offset * CELL_WIDTH,
+    width,
+    x: leftOffset,
     y: (topHeaderRows - maxDepthBelow - 1) * CELL_HEIGHT,
   };
+};
+
+export const getWidthForRange = (
+  widths: CustomColumnWidth,
+  start: number,
+  end: number,
+) => {
+  let total = 0;
+  for (let i = start ?? 0; i < (end ?? Object.keys(widths).length); i++) {
+    total += widths[i] ?? DEFAULT_CELL_WIDTH;
+  }
+  return total;
+};
+
+export const getCellWidthsForSection = (
+  valueHeaderWidths: CustomColumnWidth,
+  valueIndexes: number[],
+  startIndex: number,
+) => {
+  const widths = [];
+  const startCol = startIndex * valueIndexes.length;
+  const endCol = startIndex * valueIndexes.length + valueIndexes.length;
+  for (let i = startCol; i < endCol; i++) {
+    widths.push(valueHeaderWidths[i] ?? DEFAULT_CELL_WIDTH);
+  }
+  return widths;
 };

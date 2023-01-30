@@ -7,6 +7,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -122,7 +123,7 @@
 (s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldSemanticOrRelationType)
   "If `name` and `base-type` matches a known pattern, return the `semantic_type` we should assign to it."
   [field-name :- su/NonBlankString, base-type :- su/FieldType]
-  (let [field-name (str/lower-case field-name)]
+  (let [field-name (u/lower-case-en field-name)]
     (some (fn [[name-pattern valid-base-types semantic-type]]
             (when (and (some (partial isa? base-type) valid-base-types)
                        (re-find name-pattern field-name))
@@ -178,9 +179,9 @@
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
 (s/defn infer-entity-type :- i/TableInstance
-  "Classifer that infers the semantic type of a TABLE based on its name."
+  "Classifer that infers the semantic type of a `table` based on its name."
   [table :- i/TableInstance]
-  (let [table-name (-> table :name str/lower-case)]
+  (let [table-name (-> table :name u/lower-case-en)]
     (assoc table :entity_type (or (some (fn [[pattern type]]
                                           (when (re-find pattern table-name)
                                             type))

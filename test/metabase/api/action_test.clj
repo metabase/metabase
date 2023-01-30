@@ -1,11 +1,12 @@
 (ns metabase.api.action-test
   (:require
    [clojure.test :refer :all]
-   [metabase.actions.test-util :as actions.test-util]
    [metabase.api.action :as api.action]
    [metabase.models :refer [Card]]
    [metabase.models.action :refer [Action]]
+   [metabase.models.user :as user]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
@@ -25,10 +26,12 @@
    :parameters             s/Any
    :parameter_mappings     s/Any
    :visualization_settings su/Map
+   :creator_id             su/IntGreaterThanZero
+   :creator                user/DefaultUser
    s/Keyword               s/Any})
 
 (deftest list-actions-test
-  (actions.test-util/with-actions-enabled
+  (mt/with-actions-enabled
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Card [{card-id :id} {:dataset true}]
         (mt/with-model-cleanup [Action]
@@ -74,9 +77,9 @@
 
 (deftest get-action-test
   (testing "GET /api/action/:id"
-    (actions.test-util/with-actions-enabled
+    (mt/with-actions-enabled
       (mt/with-non-admin-groups-no-root-collection-perms
-        (actions.test-util/with-actions [{:keys [action-id]} {}]
+        (mt/with-actions [{:keys [action-id]} {}]
           (let [action (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id))]
             (testing "Should return a query action deserialized (#23201)"
               (is (schema= ExpectedGetQueryActionAPIResponse
@@ -86,11 +89,11 @@
                    (mt/user-http-request :rasta :get 403 (format "action/%d" action-id))))))))))
 
 (deftest unified-action-create-test
-  (actions.test-util/with-actions-enabled
+  (mt/with-actions-enabled
     (mt/with-non-admin-groups-no-root-collection-perms
-      (actions.test-util/with-actions-test-data-tables #{"users" "categories"}
-        (actions.test-util/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
-                                         {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
+      (mt/with-actions-test-data-tables #{"users" "categories"}
+        (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
+                          {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
           (doseq [initial-action [{:name "Get example"
                                    :description "A dummy HTTP action"
                                    :type "http"
@@ -163,7 +166,7 @@
                 (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path)))))))))))
 
 (deftest action-parameters-test
-  (actions.test-util/with-actions-enabled
+  (mt/with-actions-enabled
     (mt/with-temp* [Card [{card-id :id} {:dataset true}]]
       (mt/with-model-cleanup [Action]
         (let [initial-action {:name "Get example"
@@ -175,7 +178,7 @@
                               :response_handle ".body"
                               :error_handle ".status >= 400"}
               created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
-              action-path (str "action/" (:id created-action))]
+              action-path (str "action/" (u/the-id created-action))]
           (testing "Validate POST"
             (testing "Required fields"
               (is (partial= {:errors {:name "string"},

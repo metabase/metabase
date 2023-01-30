@@ -17,7 +17,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as schema]
@@ -52,7 +52,7 @@
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
   (when locale
-    (assert (i18n/available-locale? locale)))
+    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   (merge
    insert-default-values
    user
@@ -108,7 +108,7 @@
   (when email
     (assert (u/email? email)))
   (when locale
-    (assert (i18n/available-locale? locale)))
+    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
   (when (false? active?)
     (db/delete! 'PulseChannelRecipient :user_id id))
@@ -286,6 +286,18 @@
    (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
    (schema/optional-key :google_auth)      schema/Bool
    (schema/optional-key :ldap_auth)        schema/Bool})
+
+(def DefaultUser
+  "Standard form of a user (for consumption by the frontend and such)"
+  {:id           su/IntGreaterThanOrEqualToZero
+   :email        su/NonBlankString
+   :first_name   su/NonBlankString
+   :last_name    su/NonBlankString
+   :common_name  su/NonBlankString
+   :last_login   schema/Any
+   :date_joined  schema/Any
+   :is_qbnewb    schema/Bool
+   :is_superuser schema/Bool})
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"

@@ -13,9 +13,7 @@
    [metabase.util :as u]
    [toucan.db :as db]
    [toucan.hydrate :as hydrate]
-   [toucan.util.test :as tt])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan.util.test :as tt]))
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
@@ -46,7 +44,7 @@
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}
         card-params    (fn [card-id] (merge default-params {:values_source_type "card"
-                                                            :values_source_config {:card_id card-id}}) )]
+                                                            :values_source_config {:card_id card-id}}))]
     (testing "With no associated cards"
       (tt/with-temp Card [card]
         (is (zero? (hydrated-count card)))))
@@ -353,9 +351,9 @@
 
 (deftest identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/" :created_at now}]
-                      Card        [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
+    (let [now #t "2022-09-01T12:34:56"]
+      (mt/with-temp* [Collection [coll  {:name "field-db" :location "/" :created_at now}]
+                      Card       [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
         (is (= "5199edf0"
                (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll) now])
                (serdes.hash/identity-hash card)))))))
@@ -430,7 +428,7 @@
       (is (= #{["Card" (:id card1)]}
              (serdes.base/serdes-descendants "Card" (:id card2))))))
 
-  (testing "cards that has a native tempatlate tag"
+  (testing "cards that has a native template tag"
     (mt/with-temp* [NativeQuerySnippet [snippet {:name "category" :content "category = 'Gizmo'"}]
                     Card               [card {:name          "Business Card"
                                               :dataset_query {:native

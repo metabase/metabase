@@ -253,11 +253,11 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("should return the total of all widths", () => {
-      const { totalHeaderWidths } = getLeftHeaderWidths({
+      const { totalLeftHeaderWidths } = getLeftHeaderWidths({
         rowIndexes: [0, 1, 2],
         getColumnTitle: () => "test-123",
       });
-      expect(totalHeaderWidths).toEqual(MIN_HEADER_CELL_WIDTH * 3);
+      expect(totalLeftHeaderWidths).toEqual(MIN_HEADER_CELL_WIDTH * 3);
     });
 
     it("should not exceed the max width", () => {

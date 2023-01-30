@@ -1,4 +1,4 @@
-(ns metabase.api.user-test
+(ns ^:mb/once metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require
    [clojure.test :refer :all]
