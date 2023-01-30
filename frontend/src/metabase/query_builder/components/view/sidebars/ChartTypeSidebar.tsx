@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
@@ -17,7 +17,7 @@ import {
   OptionRoot,
   OptionText,
   OptionLabel,
-} from "./ChartTypeOption.styled";
+} from "./ChartTypeSidebar.styled";
 
 const DEFAULT_ORDER = [
   "table",
@@ -81,13 +81,27 @@ const ChartTypeSidebar = ({
     );
   }, [result, query]);
 
+  const handleClick = useCallback(
+    display => {
+      const newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
+
+      updateQuestion(newQuestion, {
+        reload: false,
+        shouldUpdateUrl: question.query().isEditable(),
+      });
+      onOpenChartSettings({ section: t`Data` });
+      setUIControls({ isShowingRawTable: false });
+    },
+    [question, updateQuestion, onOpenChartSettings, setUIControls],
+  );
+
   return (
     <SidebarContent
       className="full-height px1"
       title={t`Choose a visualization`}
       onDone={onCloseChartType}
     >
-      <OptionList>
+      <OptionList data-testid="display-options-sensible">
         {makesSense.map(type => {
           const visualization = visualizations.get(type);
           return (
@@ -97,23 +111,14 @@ const ChartTypeSidebar = ({
                 visualization={visualization}
                 isSelected={type === question.display()}
                 isSensible
-                onClick={() => {
-                  const newQuestion = question.setDisplay(type).lockDisplay(); // prevent viz auto-selection
-
-                  updateQuestion(newQuestion, {
-                    reload: false,
-                    shouldUpdateUrl: question.query().isEditable(),
-                  });
-                  onOpenChartSettings({ section: t`Data` });
-                  setUIControls({ isShowingRawTable: false });
-                }}
+                onClick={() => handleClick(type)}
               />
             )
           );
         })}
       </OptionList>
       <OptionLabel>{t`Other charts`}</OptionLabel>
-      <OptionList>
+      <OptionList data-testid="display-options-not-sensible">
         {nonSense.map(type => {
           const visualization = visualizations.get(type);
           return (
@@ -123,16 +128,7 @@ const ChartTypeSidebar = ({
                 visualization={visualization}
                 isSelected={type === question.display()}
                 isSensible={false}
-                onClick={() => {
-                  const newQuestion = question.setDisplay(type).lockDisplay(); // prevent viz auto-selection
-
-                  updateQuestion(newQuestion, {
-                    reload: false,
-                    shouldUpdateUrl: question.query().isEditable(),
-                  });
-                  onOpenChartSettings({ section: t`Data` });
-                  setUIControls({ isShowingRawTable: false });
-                }}
+                onClick={() => handleClick(type)}
               />
             )
           );
@@ -155,11 +151,14 @@ const ChartTypeOption = ({
   isSensible,
   onClick,
 }: ChartTypeOptionProps) => (
-  <OptionRoot isSelected={isSelected}>
+  <OptionRoot
+    isSelected={isSelected}
+    data-testid={`${visualization.uiName}-container`}
+  >
     <OptionIconContainer
       onClick={onClick}
-      data-testid={`${visualization.uiName}-button`}
       data-is-sensible={isSensible}
+      data-testid={`${visualization.uiName}-button`}
     >
       <Icon name={visualization.iconName} size={20} />
     </OptionIconContainer>
