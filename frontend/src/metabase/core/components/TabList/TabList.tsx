@@ -5,16 +5,11 @@ import React, {
   Ref,
   useContext,
   useMemo,
-  useState,
-  useEffect,
   useRef,
 } from "react";
-import Icon from "metabase/components/Icon";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { TabContext, TabContextType } from "../Tab";
 import { TabListContent, TabListRoot } from "./TabList.styled";
-
-const UNDERSCROLL_PIXELS = 32;
 
 export interface TabListProps<T>
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
