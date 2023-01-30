@@ -292,8 +292,8 @@ export const MetabaseApi = {
 };
 
 export const ParameterApi = {
-  parameterValues: GET("/api/dataset/parameter/values"),
-  parameterSearch: GET("/api/dataset/parameter/search/:query"),
+  parameterValues: POST("/api/dataset/parameter/values"),
+  parameterSearch: POST("/api/dataset/parameter/search/:query"),
 };
 
 export const ModerationReviewApi = {
