@@ -67,10 +67,3 @@
      ([x] (re-pattern (rx* x)))
 
      ([x & more] (rx (into [:and x] more))))))
-
-(def check
-  ;; (check [:and "a" "b"] "ab");; => "ab"
-  ;; (check [:and "a" "b"] "abc");; => nil
-  (memoize
-   (fn check [rx-pattern s] (re-matches (rx rx-pattern) s))))
-
