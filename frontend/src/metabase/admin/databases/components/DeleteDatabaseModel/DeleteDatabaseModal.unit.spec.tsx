@@ -85,7 +85,7 @@ describe("DeleteDatabaseModal", () => {
 
     userEvent.click(screen.getByText("Delete 10 saved questions"));
     userEvent.click(screen.getByText("Delete 20 models"));
-    userEvent.click(screen.getByText("Delete 30 metric"));
+    userEvent.click(screen.getByText("Delete 30 metrics"));
     userEvent.click(screen.getByText("Delete 40 segments"));
 
     expect(deleteButton).toBeDisabled();

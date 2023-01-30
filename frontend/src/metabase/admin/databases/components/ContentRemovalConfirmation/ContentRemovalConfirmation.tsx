@@ -51,9 +51,9 @@ const ContentRemovalConfirmation = ({
         <ConfirmationCheckbox
           checkedColor={color("error")}
           label={ngettext(
-            msgid`Delete ${question} model`,
-            `Delete ${question} models`,
-            question,
+            msgid`Delete ${dataset} model`,
+            `Delete ${dataset} models`,
+            dataset,
           )}
           name="dataset"
           checked={confirmations["dataset"]}
@@ -64,9 +64,9 @@ const ContentRemovalConfirmation = ({
         <ConfirmationCheckbox
           checkedColor={color("error")}
           label={ngettext(
-            msgid`Delete ${question} metric`,
-            `Delete ${question} metrics`,
-            question,
+            msgid`Delete ${metric} metric`,
+            `Delete ${metric} metrics`,
+            metric,
           )}
           name="metric"
           checked={confirmations["metric"]}
@@ -77,9 +77,9 @@ const ContentRemovalConfirmation = ({
         <ConfirmationCheckbox
           checkedColor={color("error")}
           label={ngettext(
-            msgid`Delete ${question} segment`,
-            `Delete ${question} segments`,
-            question,
+            msgid`Delete ${segment} segment`,
+            `Delete ${segment} segments`,
+            segment,
           )}
           name="segment"
           checked={confirmations["segment"]}
