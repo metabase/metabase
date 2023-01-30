@@ -174,7 +174,10 @@ describe("scenarios > models > actions", () => {
       cy.findByRole("button", { name: "Action settings" }).click();
       cy.findByLabelText("Make public").should("be.checked").click();
     });
-    modal().findByRole("button", { name: "Yes" }).click();
+    modal().within(() => {
+      cy.findByText("Disable this public link?").should("be.visible");
+      cy.findByRole("button", { name: "Yes" }).click();
+    });
 
     cy.get("@publicUrl").then(url => {
       cy.visit(url);
