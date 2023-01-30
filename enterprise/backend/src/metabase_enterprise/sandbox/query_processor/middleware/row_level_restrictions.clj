@@ -4,6 +4,7 @@
   for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
    [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
@@ -49,16 +50,6 @@
       (qp.store/fetch-and-store-tables! ids)
       (set ids))))
 
-(defn- table-should-have-segmented-permissions?
-  "Determine whether we should apply segmented permissions for `table-or-table-id`."
-  [table-id]
-  (let [table (assoc (qp.store/table table-id) :db_id (u/the-id (qp.store/database)))]
-    (and
-     ;; User does not have full data access
-     (not (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/table-query-path table)))
-     ;; User does have segmented access
-     (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/table-segmented-query-path table)))))
-
 (defn assert-one-gtap-per-table
   "Make sure all referenced Tables have at most one GTAP."
   [gtaps]
@@ -72,25 +63,42 @@
                      :user      *current-user-id*
                      :group-ids (map :group_id gtaps)}))))
 
-(defn- tables->gtaps [table-ids]
+(defn- enforce-sandbox?
+  "Takes the permission set for each group a user is in, and a sandbox, and determines whether the sandbox should be
+  enforced for the current user. This is done by checking whether the set of permissions in all *other* groups provides
+  full data access to the sandboxed table. If so, we don't enforce the sandbox."
+  [group-id->perms-set {group-id :group_id, table-id :table_id}]
+  (let [perms-set (->> (dissoc group-id->perms-set group-id)
+                       (vals)
+                       (apply set/union))]
+    (not (perms/set-has-full-permissions? perms-set (perms/table-query-path table-id)))))
+
+(defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
-    (let [group-ids (qp.store/cached *current-user-id*
-                      (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*))
-          gtaps     (when (seq group-ids)
-                      (db/select GroupTableAccessPolicy
-                        :group_id [:in group-ids]
-                        :table_id [:in table-ids]))]
-      (when (seq gtaps)
-        (assert-one-gtap-per-table gtaps)
-        gtaps))))
+    (let [group-ids           (qp.store/cached *current-user-id*
+                                  (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*))
+          sandboxes           (when (seq group-ids)
+                               (db/select GroupTableAccessPolicy
+                                 :group_id [:in group-ids]
+                                 :table_id [:in table-ids]))
+          perms               (db/select 'Permissions {:where [:in :group_id group-ids]})
+          group-id->perms-set (-> (group-by :group_id perms)
+                                  (update-vals (fn [perms] (into #{} (map :object perms)))))
+          enforced-sandboxes (filter (partial enforce-sandbox? group-id->perms-set) sandboxes)]
+       (when (seq enforced-sandboxes)
+         (assert-one-gtap-per-table enforced-sandboxes)
+         enforced-sandboxes))))
 
 (defn- query->table-id->gtap [query]
   {:pre [(some? *current-user-id*)]}
-  (when-let [gtaps (some->> (query->all-table-ids query)
-                            ((comp seq filter) table-should-have-segmented-permissions?)
-                            tables->gtaps)]
-    (m/index-by :table_id gtaps)))
-
+  ;; TODO: better way to do this recursion base case?
+  (if (contains? @*current-user-permissions-set* "/")
+    []
+    (let [table-ids (query->all-table-ids query)
+          ;sandboxed-table-ids (some->> table-ids ((comp seq filter) table-should-have-segmented-permissions?))
+          gtaps               (some-> table-ids tables->sandboxes)]
+      (when (seq gtaps)
+        (m/index-by :table_id gtaps)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Applying a GTAP                                                 |
@@ -330,7 +338,7 @@
 
 (defn apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
-  restrict the rows returned, based on presence of segmented permission GTAPs."
+  restrict the rows returned, based on presence of sandboxes."
   [query]
   (or (when-let [table-id->gtap (when *current-user-id*
                                   (query->table-id->gtap query))]
@@ -351,8 +359,8 @@
 ;;;; Post-processing
 
 (defn- merge-metadata
-  "Merge column metadata from the non-GTAPped version of the query into the GTAPped results `metadata`. This way the
-  final results metadata coming back matches what we'd get if the query was not running with a GTAP."
+  "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
+  final results metadata coming back matches what we'd get if the query was not running in a sandbox."
   [original-metadata metadata]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]
