@@ -2450,7 +2450,26 @@
                                                                "bar"))]
           (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                            (-> response :values set)))
-          (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil"))))))))
+          (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))
+  (testing "Old style, inferred parameters from native template-tags"
+    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+      ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
+      (db/update! Card (:id field-filter-card) :parameters [])
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
+        (testing "without search query"
+          (let [response (mt/user-http-request :rasta :get 200
+                                               (param-values-url field-filter-card (:field-values param-keys)))]
+            (is (false? (:has_more_values response)))
+            (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                             (-> response :values set)))))
+        (testing "with search query"
+          (let [response (mt/user-http-request :rasta :get 200
+                                               (param-values-url field-filter-card
+                                                                 (:field-values param-keys)
+                                                                 "bar"))]
+            (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                             (-> response :values set)))
+            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
 (deftest parameters-with-source-is-static-list-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]

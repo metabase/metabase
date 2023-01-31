@@ -204,7 +204,10 @@
              (db/select-one-field :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
       (tt/with-temp Card [{new-card-id :id}]
-        (dashboard/add-dashcard! dashboard-id new-card-id)
+        (dashboard/add-dashcard! dashboard-id new-card-id {:row    0
+                                                           :col    0
+                                                           :size_x 4
+                                                           :size_y 4})
         (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
         (is (not (nil? (db/select-one PulseCard :card_id new-card-id))))))))
 
@@ -370,10 +373,7 @@
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
-                :type                 :category
-                :values_query_type    "list",
-                :values_source_type   nil,
-                :values_source_config {}}]
+                :type                 :category}]
               (db/select-one-field :parameters Dashboard :id dashboard-id)))))
 
   (testing "shoudld not override if existsed "

@@ -184,6 +184,10 @@ describe("scenarios > dashboard > subscriptions", () => {
             // Add question to the dashboard
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: QUESTION_ID,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 10,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               // Connect filter to that question
               cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {

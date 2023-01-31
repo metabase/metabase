@@ -68,6 +68,8 @@ function addModelToDashboardAndVisit() {
     cy.get("@modelId").then(cardId => {
       cy.request("POST", `/api/dashboard/${id}/cards`, {
         cardId,
+        row: 0,
+        col: 0,
         size_x: 16,
         size_y: 10,
       });
