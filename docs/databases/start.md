@@ -18,7 +18,7 @@ Learn how to encrypt your database connection credentials at rest.
 
 ## [SSH tunneling](./ssh-tunnel.md)
 
-Metabase can connect to some databases by first establishing a connection to a server in between Metabase and a data warehouse, then connecting to the data warehouse using that connection as a bridge. 
+Metabase can connect to some databases by first establishing a connection to a server in between Metabase and a data warehouse, then connecting to the data warehouse using that connection as a bridge.
 
 ## [SSL certificate](./ssl-certificates.md)
 

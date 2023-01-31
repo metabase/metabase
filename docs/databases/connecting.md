@@ -26,7 +26,7 @@ The databases listed below have official drivers maintained by the Metabase team
 - Druid
 - [Google Analytics](./connections/google-analytics.md)
 - H2
-- [MongoDB (version 4.2 or higher)](./connections/mongodb.md) 
+- [MongoDB (version 4.2 or higher)](./connections/mongodb.md)
 - [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](./connections/mysql.md)
 - [Oracle](./connections/oracle.md)
 - [PostgreSQL](connections/postgresql.md)
@@ -48,9 +48,9 @@ For provider-specific connection details, like connecting to a PostgreSQL data w
 
 ## Syncing and scanning databases
 
-Metabase runs syncs and scans to stay up to date with your database. 
+Metabase runs syncs and scans to stay up to date with your database.
 
-- **Syncs** get updated schemas to display in the [Data Browser](https://www.metabase.com/learn/getting-started/data-browser). 
+- **Syncs** get updated schemas to display in the [Data Browser](https://www.metabase.com/learn/getting-started/data-browser).
 - **Scans** take samples of column values to populate filter dropdown menus and suggest helpful visualizations. Metabase does not store _complete_ tables from your database.
 
 When Metabase first connects to your database, it performs a **scan** to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md).
@@ -69,7 +69,7 @@ Cached column values are displayed in filter dropdown menus. If people type in t
 
 A scan is more intensive than a sync query, so it only runs once during setup, and again once a day by default. If you [disable scans](#scheduling-database-scans) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
 
-To reduce the number of tables and fields Metabase needs to scan in order to stay current with your connected database, Metabase will only scan values for fields that someone has queried in the last fourteen days. 
+To reduce the number of tables and fields Metabase needs to scan in order to stay current with your connected database, Metabase will only scan values for fields that someone has queried in the last fourteen days.
 
 ### Manually syncing tables and columns
 
@@ -108,7 +108,7 @@ To forget the data that Metabase has stored from previous [database scans](#sync
 
 Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API](https://www.metabase.com/learn/administration/metabase-api) to force a sync or scan. [Our API](../api-documentation.md) provides two ways to initiate a sync or scan of a database:
 
-1. Using a session token:  the `/api/database/:id/sync_schema` or `api/database/:id/rescan_values` endpoints. These endpoints do the same things as going to the database in the Admin Panel and choosing **Sync database schema now** or **Re-scan field values now** respectively. To use these endpoints, you have to authenticate with a user ID and pass a session token in the header of your request.
+1. Using a session token: the `/api/database/:id/sync_schema` or `api/database/:id/rescan_values` endpoints. These endpoints do the same things as going to the database in the Admin Panel and choosing **Sync database schema now** or **Re-scan field values now** respectively. To use these endpoints, you have to authenticate with a user ID and pass a session token in the header of your request.
 
 2. Using an API key: `/api/notify/db/:id`. We created this endpoint so that people could notify their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/analytics/etl-landscape) finishes. To use this endpoint, you must pass an API key by defining the `MB_API_KEY` environment variable.
 
