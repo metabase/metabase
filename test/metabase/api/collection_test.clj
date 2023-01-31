@@ -94,8 +94,11 @@
                   (filter :personal_owner_id)
                   (map :name))))
 
-      (testing "...even if we are *admins*"
-        (is (= ["Crowberto Corv's Personal Collection"]
+      (testing "...unless we are *admins*"
+        (is (= ["Crowberto Corv's Personal Collection"
+                "Lucky Pigeon's Personal Collection"
+                "Rasta Toucan's Personal Collection"
+                "Trash Bird's Personal Collection"]
                (->> (mt/user-http-request :crowberto :get 200 "collection")
                     (filter #((set (map mt/user->id [:crowberto :lucky :rasta :trashbird])) (:personal_owner_id %)))
                     (map :name)
