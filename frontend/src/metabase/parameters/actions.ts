@@ -1,5 +1,6 @@
 import { CardApi, ParameterApi } from "metabase/services";
 import {
+  CardId,
   Parameter,
   ParameterValuesRequest,
   ParameterValuesResponse,
@@ -41,17 +42,17 @@ export const fetchParameterValues =
     );
   };
 
-export interface FetchQuestionParameterValuesOpts {
-  question: Question;
+export interface FetchCardParameterValuesOpts {
+  cardId: CardId;
   parameter: Parameter;
   query?: string;
 }
 
-export const fetchQuestionParameterValues =
-  ({ question, parameter, query }: FetchQuestionParameterValuesOpts) =>
+export const fetchCardParameterValues =
+  ({ cardId, parameter, query }: FetchCardParameterValuesOpts) =>
   (dispatch: Dispatch, getState: GetState) => {
     const request = {
-      cardId: question.id(),
+      cardId,
       paramId: parameter.id,
       query,
     };

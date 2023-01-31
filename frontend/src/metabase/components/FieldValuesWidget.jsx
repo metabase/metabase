@@ -22,7 +22,7 @@ import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
 import {
   fetchParameterValues,
-  fetchQuestionParameterValues,
+  fetchCardParameterValues,
 } from "metabase/parameters/actions";
 import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
 
@@ -54,7 +54,7 @@ const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues,
   fetchParameterValues,
-  fetchQuestionParameterValues,
+  fetchQuestionParameterValues: fetchCardParameterValues,
   fetchDashboardParameterValues,
 };
 
