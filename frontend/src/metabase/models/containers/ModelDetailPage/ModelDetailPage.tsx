@@ -102,7 +102,10 @@ function ModelDetailPage({
     [model],
   );
 
-  const tab = location.pathname.split("/").at(-1) ?? FALLBACK_TAB;
+  const tab = useMemo(() => {
+    const [tab] = location.pathname.split("/").reverse();
+    return tab ?? FALLBACK_TAB;
+  }, [location.pathname]);
 
   useOnMount(() => {
     loadMetadataForCard(model.card());
