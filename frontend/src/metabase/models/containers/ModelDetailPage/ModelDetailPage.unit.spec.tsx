@@ -1,5 +1,5 @@
 import React from "react";
-import { IndexRoute, Route } from "react-router";
+import { IndexRoute, Redirect, Route } from "react-router";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
@@ -180,7 +180,7 @@ type SetupOpts = {
 
 async function setup({
   model,
-  tab = "",
+  tab = "usage",
   actions = [],
   collections = [],
   usedBy = [],
@@ -216,14 +216,15 @@ async function setup({
   const { store, history } = renderWithProviders(
     <Route path="/model/:slug/detail">
       <IndexRoute component={ModelDetailPage} />
-      <Route path=":tab" component={ModelDetailPage} />
+      <Route path="usage" component={ModelDetailPage} />
+      <Route path="schema" component={ModelDetailPage} />
+      <Route path="actions" component={ModelDetailPage} />
+      <Redirect from="*" to="usage" />
     </Route>,
     { withRouter: true, initialRoute },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
+  await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/i));
 
   const metadata = getMetadata(store.getState());
 
@@ -682,7 +683,7 @@ describe("ModelDetailPage", () => {
         hasActionsEnabled: true,
       });
 
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/`);
+      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
       expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
         "aria-selected",
         "true",

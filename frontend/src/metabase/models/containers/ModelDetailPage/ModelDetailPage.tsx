@@ -2,7 +2,7 @@ import React, { useEffect, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
-import type { LocationDescriptor } from "history";
+import type { Location, LocationDescriptor } from "history";
 
 import * as Urls from "metabase/lib/urls";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -27,6 +27,7 @@ import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 
 type OwnProps = {
+  location: Location;
   params: {
     slug: string;
     tab?: string;
@@ -79,12 +80,11 @@ const mapDispatchToProps = {
   onChangeLocation: replace,
 };
 
-const TAB_LIST = ["usage", "schema", "actions"];
 const FALLBACK_TAB = "usage";
 
 function ModelDetailPage({
   model,
-  params,
+  location,
   loadMetadataForCard,
   fetchTableForeignKeys,
   onChangeModel,
@@ -102,7 +102,7 @@ function ModelDetailPage({
     [model],
   );
 
-  const tab = params.tab ?? FALLBACK_TAB;
+  const tab = location.pathname.split("/").at(-1) ?? FALLBACK_TAB;
 
   useOnMount(() => {
     loadMetadataForCard(model.card());
@@ -116,8 +116,7 @@ function ModelDetailPage({
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
 
   useEffect(() => {
-    const isKnownTab = TAB_LIST.includes(tab);
-    if (!isKnownTab || (tab === "actions" && !hasActionsEnabled)) {
+    if (tab === "actions" && !hasActionsEnabled) {
       const nextUrl = Urls.modelDetail(model.card(), FALLBACK_TAB);
       onChangeLocation(nextUrl);
     }
