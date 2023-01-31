@@ -859,20 +859,46 @@
           (is (not (= (perms) #{perm-path}))))))))
 
 (deftest data-permissions-v2-migration-data-perm-classification-test
-  (is (= :dk/db                                 (perms/data-path-kind "/db/3/")))
-  (is (= :dk/db-native                          (perms/data-path-kind "/db/3/native/")))
-  (is (= :dk/db-schema                          (perms/data-path-kind "/db/3/schema/")))
-  (is (= :dk/db-schema-name                     (perms/data-path-kind "/db/3/schema//")))
-  (is (= :dk/db-schema-name                     (perms/data-path-kind "/db/3/schema/secret_base/")))
-  (is (= :dk/db-schema-name-and-table           (perms/data-path-kind "/db/3/schema/secret_base/table/3/")))
-  (is (= :dk/db-schema-name-table-and-read      (perms/data-path-kind "/db/3/schema/secret_base/table/3/read/")))
-  (is (= :dk/db-schema-name-table-and-query     (perms/data-path-kind "/db/3/schema/secret_base/table/3/query/")))
-  (is (= :dk/db-schema-name-table-and-segmented (perms/data-path-kind "/db/3/schema/secret_base/table/3/query/segmented/"))))
+  (is (= :dk/db                                 (perms/classify-data-path "/db/3/")))
+  (is (= :dk/db-native                          (perms/classify-data-path "/db/3/native/")))
+  (is (= :dk/db-schema                          (perms/classify-data-path "/db/3/schema/")))
+  (is (= :dk/db-schema-name                     (perms/classify-data-path "/db/3/schema//")))
+  (is (= :dk/db-schema-name                     (perms/classify-data-path "/db/3/schema/secret_base/")))
+  (is (= :dk/db-schema-name-and-table           (perms/classify-data-path "/db/3/schema/secret_base/table/3/")))
+  (is (= :dk/db-schema-name-table-and-read      (perms/classify-data-path "/db/3/schema/secret_base/table/3/read/")))
+  (is (= :dk/db-schema-name-table-and-query     (perms/classify-data-path "/db/3/schema/secret_base/table/3/query/")))
+  (is (= :dk/db-schema-name-table-and-segmented (perms/classify-data-path "/db/3/schema/secret_base/table/3/query/segmented/"))))
+
+(deftest idempotent-move-test
+  (let [;; all v1 paths:
+        v1-paths ["/db/3/" "/db/3/native/" "/db/3/schema/" "/db/3/schema//" "/db/3/schema/secret_base/"
+                  "/db/3/schema/secret_base/table/3/" "/db/3/schema/secret_base/table/3/read/"
+                  "/db/3/schema/secret_base/table/3/query/" "/db/3/schema/secret_base/table/3/query/segmented/"]
+        ;; cooresponding v2 paths:
+        v2-paths ["/data/db/3/" "/query/db/3/" "/data/db/3/" "/query/db/3/" "/data/db/3/" "/query/db/3/schema/"
+                  "/data/db/3/schema//" "/query/db/3/schema//" "/data/db/3/schema/secret_base/"
+                  "/query/db/3/schema/secret_base/" "/data/db/3/schema/secret_base/table/3/"
+                  "/query/db/3/schema/secret_base/table/3/" "/data/db/3/schema/secret_base/table/3/"
+                  "/query/db/3/schema/secret_base/table/3/" "/data/db/3/schema/secret_base/table/3/"
+                  "/query/db/3/schema/secret_base/table/3/"]]
+    (is (= v2-paths (mapcat perms/move v1-paths)))
+    (is (= v2-paths (mapcat perms/move v2-paths)))
+    (let [f (partial mapcat perms/move)]
+      (is (= v2-paths (-> v1-paths
+                          f
+                          f
+                          f f
+                          f f f
+                          f f f f f
+                          f f f f f f f f
+                          f f f f f f f f f f f f f
+                          f f f f f f f f f f f f f f f f f f f f f
+                          f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f
+                          f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f))))))
 
 (deftest data-permissions-v2-migration-move-test
   (testing "move admin"
-    (is (= ["/"]
-           (perms/move "/"))))
+    (is (= ["/"] (perms/move "/"))))
   (testing "move block"
     (is (= []
            (perms/move "/block/db/1/"))))

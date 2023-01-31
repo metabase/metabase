@@ -1369,13 +1369,15 @@
     (rewrite-fn path)))
 
 (mu/defn move :- [:vector [:re path-regex-v2]]
-  [path :- [:re path-regex-v1]]
+  [path :- [:or [:re path-regex-v1] [:re path-regex-v2]]]
+  ;; See: https://www.notion.so/metabase/Permissions-Refactor-Design-Doc-18ff5e6be32f4a52b9422bd7f4237ca7#5603afe084a7435ca7dc928fc94d4bda
   (let [kind (classify-path path)]
     (cond
       (= kind :data) (move-data path)
       (= kind :admin) ["/"]
+      (= kind :block) []
 
-      ;; explicitly, this should be idempotent -- v2 paths should be passed through untouched
+      ;; explicitly, move is idempotent mapcatting move over a sequence of v1 paths multiple times will result in the same value.
       ;; so these are no-ops:
       (= kind :data-v2) [path]
       (= kind :query-v2) [path]
