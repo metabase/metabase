@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import type { LocationDescriptor } from "history";
 
 import Modal from "metabase/components/Modal";
 
@@ -47,9 +47,8 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps = {
-  push,
-  create: Actions.actions.create,
-  update: Actions.actions.update,
+  handleCreateAction: Actions.actions.create,
+  handleUpdateAction: Actions.actions.update,
 };
 
 const EXAMPLE_QUERY =
@@ -70,9 +69,9 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  push: (url: string) => void;
-  create: (action: CreateQueryActionParams) => void;
-  update: (action: UpdateQueryActionParams) => void;
+  handleCreateAction: (params: CreateQueryActionParams) => void;
+  handleUpdateAction: (params: UpdateQueryActionParams) => void;
+  onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
 
 type ActionCreatorProps = OwnProps & StateProps & DispatchProps;
@@ -83,8 +82,8 @@ function ActionCreatorComponent({
   actionId,
   modelId,
   databaseId,
-  create,
-  update,
+  handleCreateAction,
+  handleUpdateAction,
   onClose,
   isAdmin,
   isPublicSharingEnabled,
@@ -135,13 +134,13 @@ function ActionCreatorComponent({
       setShowSaveModal(true);
     } else {
       const action = convertQuestionToAction(question, formSettings);
-      update({ ...action, model_id: defaultModelId as number });
+      handleUpdateAction({ ...action, model_id: defaultModelId as number });
       onClose?.();
     }
   };
 
   const handleCreate = async (values: any) => {
-    await create({
+    await handleCreateAction({
       ...convertQuestionToAction(question, formSettings),
       ...values,
       type: "query",
