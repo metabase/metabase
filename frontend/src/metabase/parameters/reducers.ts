@@ -18,10 +18,10 @@ export const valuesCache = handleActions<
 >(
   {
     [FETCH_PARAMETER_VALUES]: {
-      next: (state, { payload }) => ({
-        ...state,
-        [payload.requestKey]: payload.response,
-      }),
+      next: (state, { payload: { requestKey, response } }) =>
+        state[requestKey] !== response
+          ? { ...state, [requestKey]: response }
+          : state,
     },
     // dashboards
     [INITIALIZE]: { next: () => ({}) },
