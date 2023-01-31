@@ -1,6 +1,5 @@
 import React from "react";
 import nock from "nock";
-import userEvent from "@testing-library/user-event";
 
 import {
   renderWithProviders,
@@ -124,9 +123,9 @@ describe("ActionCreator", () => {
 
     it("should show clickable data reference icon", async () => {
       await setup();
-      userEvent.click(getIcon("reference", "button"));
+      getIcon("reference", "button").click();
 
-      expect(screen.getAllByText("Data Reference")).toHaveLength(2);
+      expect(screen.getByText("Data Reference")).toBeInTheDocument();
       expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
     });
 
@@ -183,9 +182,9 @@ describe("ActionCreator", () => {
           isPublicSharingEnabled: true,
         });
 
-        userEvent.click(getIcon("gear", "button"));
+        getIcon("gear", "button").click();
 
-        expect(screen.getAllByText("Action settings")).toHaveLength(2);
+        expect(screen.getByText("Action settings")).toBeInTheDocument();
         expect(
           screen.getByRole("switch", { name: "Make public" }),
         ).not.toBeChecked();
@@ -193,7 +192,7 @@ describe("ActionCreator", () => {
           screen.queryByRole("textbox", { name: "Public action link URL" }),
         ).not.toBeInTheDocument();
 
-        userEvent.click(screen.getByRole("switch", { name: "Make public" }));
+        screen.getByRole("switch", { name: "Make public" }).click();
 
         await waitFor(
           () => {
@@ -216,9 +215,9 @@ describe("ActionCreator", () => {
           isAdmin: true,
           isPublicSharingEnabled: true,
         });
-        userEvent.click(getIcon("gear", "button"));
+        getIcon("gear", "button").click();
 
-        expect(screen.getAllByText("Action settings")).toHaveLength(2);
+        expect(screen.getByText("Action settings")).toBeInTheDocument();
         expect(
           screen.getByRole("switch", { name: "Make public" }),
         ).toBeChecked();
@@ -227,11 +226,11 @@ describe("ActionCreator", () => {
           screen.getByRole("textbox", { name: "Public action link URL" }),
         ).toHaveValue(expectedPublicLinkUrl);
 
-        userEvent.click(screen.getByRole("switch", { name: "Make public" }));
+        screen.getByRole("switch", { name: "Make public" }).click();
         expect(
           screen.getByRole("heading", { name: "Disable this public link?" }),
         ).toBeInTheDocument();
-        userEvent.click(screen.getByRole("button", { name: "Yes" }));
+        screen.getByRole("button", { name: "Yes" }).click();
 
         await waitFor(
           () => {
