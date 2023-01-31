@@ -45,7 +45,7 @@
 (declare root-collection)
 
 (defn- collection-ids-for-user-id
-  "Given a user id, get all collections for which the user is the direct or indirect owner.
+  "Given a user id, return all collection ids that the user owns or are shared.
   The zero-arg arity returns the collection ids for the current user."
   ([owner-id]
    (let [q {:with   [[:owner-match {:select [:c.personal_owner_id
@@ -64,8 +64,7 @@
             :from   [[:collection-with-owner :cwo]]
             :where  [:or
                      [:= :cwo.owner owner-id]
-                     [:= :cwo.owner nil]]
-            }]
+                     [:= :cwo.owner nil]]}]
      (map :id (mdb.query/query q))))
   ([] (collection-ids-for-user-id api/*current-user-id*)))
 
@@ -86,7 +85,10 @@
               {:where    [:and
                           [:= :archived archived?]
                           [:= :namespace namespace]
-                          [:in :id coll-ids]]
+                          [:in :id coll-ids]
+                          (collection/visible-collection-ids->honeysql-filter-clause
+                           :id
+                           (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
                :order-by [[:%lower.name :asc]]})) collections
           ;; include Root Collection at beginning or results if archived isn't `true`
           (if archived?
@@ -142,7 +144,10 @@
                                    (when exclude-archived
                                      [:= :archived false])
                                    [:= :namespace namespace]
-                                   [:in :id coll-ids]]}))
+                                   [:in :id coll-ids]
+                                   (collection/visible-collection-ids->honeysql-filter-clause
+                                    :id
+                                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]}))
         colls         (map collection/personal-collection-with-ui-details colls)]
     (collection/collections->tree coll-type-ids colls)))
 
