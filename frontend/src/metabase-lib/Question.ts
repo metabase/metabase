@@ -43,7 +43,11 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId, Parameter as ParameterObject } from "metabase-types/api";
+import {
+  CollectionId,
+  Parameter as ParameterObject,
+  ParameterId,
+} from "metabase-types/api";
 
 import {
   getParameterValuesBySlug,
@@ -1132,9 +1136,9 @@ class QuestionInner {
     }
   }
 
-  setParameter(newParameter) {
+  setParameter(id: ParameterId, parameter: ParameterObject) {
     const newParameters = this.parameters().map(oldParameter =>
-      oldParameter.id === newParameter.id ? newParameter : oldParameter,
+      oldParameter.id === id ? parameter : oldParameter,
     );
 
     return this.setParameters(newParameters);

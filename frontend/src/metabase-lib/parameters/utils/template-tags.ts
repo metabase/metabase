@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { Parameter, ParameterConfig } from "metabase-types/api";
+import { Parameter, ParameterValuesConfig } from "metabase-types/api";
 import type { ParameterTarget } from "metabase-types/types/Parameter";
 import type { Card } from "metabase-types/types/Card";
 import type { TemplateTag } from "metabase-types/types/Query";
@@ -32,7 +32,7 @@ export function getTemplateTagParameterTarget(
 
 export function getTemplateTagParameter(
   tag: TemplateTag,
-  config?: ParameterConfig,
+  config?: ParameterValuesConfig,
 ): ParameterWithTarget {
   return {
     id: tag.id,

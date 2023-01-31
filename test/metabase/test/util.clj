@@ -16,6 +16,7 @@
     :refer [Card
             Collection
             Dashboard
+            DashboardCard
             DashboardCardSeries
             Database
             Dimension
@@ -142,6 +143,12 @@
    (fn [_] {:creator_id (rasta-id)
             :name       (random-name)})
 
+   DashboardCard
+   (fn [_] {:row    0
+            :col    0
+            :size_x 4
+            :size_y 4})
+
    DashboardCardSeries
    (constantly {:position 0})
 
@@ -184,8 +191,8 @@
             :query_hash    (random-hash)
             :definition    {:table-name (random-name)
                             :field-definitions (repeatedly
-                                                 4
-                                                 #(do {:field-name (random-name) :base-type "type/Text"}))}
+                                                4
+                                                #(do {:field-name (random-name) :base-type "type/Text"}))}
             :table_name    (random-name)
             :active        true
             :state         "persisted"
@@ -275,6 +282,7 @@
 (doseq [model-var [#'Card
                    #'Collection
                    #'Dashboard
+                   #'DashboardCard
                    #'DashboardCardSeries
                    #'Database
                    #'Dimension
