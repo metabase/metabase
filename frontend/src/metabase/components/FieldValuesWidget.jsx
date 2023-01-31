@@ -139,9 +139,9 @@ class FieldValuesWidgetInner extends Component {
     let valuesMode = this.state.valuesMode;
     try {
       if (canUseDashboardEndpoints(this.props.dashboard)) {
-        const { results, has_more_values } =
+        const { values, has_more_values } =
           await this.fetchDashboardParameterValues(query);
-        options = results;
+        options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else if (canUseCardEndpoints(this.props.question)) {
         const { values, has_more_values } = await this.fetchCardParameterValues(
