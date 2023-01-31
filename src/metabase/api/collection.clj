@@ -74,11 +74,6 @@
                 [:= :a.selected true])
    :order-by  [[:%lower.name :asc]]})
 
-(comment
-  (->> (mdb.query/query (coll-query 1))
-       (map (partial toucan.models/do-post-select Collection))
-       (map :id)))
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
