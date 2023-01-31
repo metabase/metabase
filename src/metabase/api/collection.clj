@@ -45,7 +45,9 @@
 (declare root-collection)
 
 (defn- coll-query
-  "Generate a query to return collections viewable by the current user."
+  "Generate a query to return collections viewable by the current user.
+  If provided, additional and clauses will be added to the final where clause.
+  Note that and clauses should be aliased as c (for collection)."
   [owner-id & and-clauses]
   {:with      [[:owner-match {:select [:c.personal_owner_id
                                        [[:concat "/" :c.id "/%"] :pc_prefix]]
