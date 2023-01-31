@@ -418,7 +418,7 @@
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
-  metabase.util.malli/defn                                                             clj-kondo.lint-as/def-catch-all
+  metabase.util.malli/defn                                                             schema.core/defn
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   monger.operators/defoperator                                                         clojure.core/def
   potemkin.types/defprotocol+                                                          clojure.core/defprotocol
