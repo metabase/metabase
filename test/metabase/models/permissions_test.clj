@@ -908,27 +908,25 @@
     (is (= v2-paths (mapcat #'perms/->v2-path v1-paths)))
     (is (= v2-paths (mapcat #'perms/->v2-path v2-paths)))
     (let [w (partial mapcat #'perms/->v2-path)]
-      (is (= v2-paths (-> v1-paths
-
-                          w w                       w w
-                          w w                       w w
-                          w w w w w w w w w w w w w w w
-                          w w w w w w w w w w w w w w w
-                          w w                       w w
+      (is (= v2-paths (->
+                                    v1-paths
+                          w w                       w w;
+                          w w                       w w;
+                          w w w w w w w w w w w w w w w;
+                          w w w w w w w w w w w w w w w;
+                          w w                       w w;
                           w w      w         w      w w
                           w w     w w       w w     w w
                           w w           w           w w
                           w w           w           w w
-                          w w w w w w w w w w w w w w w
-                              w w w w w w w w w w w
-                              w w w w w w w w w w w
-                                  w w w w w w w
+                          w w w w w w w w w w w w w w w;
+                              w w w w w w w w w w w;;;;
+                              w w w w w w w w w w w;;
+                                  w w w w w w w;
+                                      w   w;
                                       w   w
-                                      w   w
-                                    w w   w w
-
-                              ))))))
-
+                                    w w   w w;
+                                    ) ) ) ) ) )
 
 
 (deftest data-permissions-v2-migration-move-test

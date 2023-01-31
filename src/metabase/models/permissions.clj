@@ -403,9 +403,9 @@
 (defn valid-path?
   "Is `path` a valid, known permissions path?"
   ^Boolean [^String path]
-  (boolean (when (and (string? path)
-                      (seq path))
-             (re-matches path-regex-v1 path))))
+  (boolean (when (and (string? path) (seq path))
+             (or (re-matches path-regex-v1 path)
+                 (re-matches path-regex-v2 path)))))
 
 (defn valid-path-format?
   "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
@@ -971,8 +971,9 @@
   ([group-or-id path]
    (try
      (db/insert-many! Permissions
-       (map (fn [p] {:group_id (u/the-id group-or-id) :object p})
-            (->v2-path path)))
+       (map (fn [path-object]
+              {:group_id (u/the-id group-or-id) :object path-object})
+            (conj (->v2-path path) path)))
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
        (log/error e (u/format-color 'red (tru "Failed to grant permissions")))
