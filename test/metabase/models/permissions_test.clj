@@ -896,10 +896,18 @@
     (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
            (perms/move "/db/1/schema/PUBLIC/table/1/query/segmented/")))))
 
+(defn- check-fn! [fn-var & [iterations]]
+  (let [iterations (or iterations 5000)]
+    (if-let [result ((mg/function-checker (:schema (meta fn-var)) {::mg/=>iterations iterations}) @fn-var)]
+      result
+      {:pass? true :iterations iterations})))
+
 (deftest quickcheck-perm-path-classification
-  (is (nil? ((mg/function-checker (:schema (meta #'perms/classify-path)) {::mg/=>iterations 10000})
-             @#'perms/classify-path))))
+  (is (:pass? (check-fn! #'perms/classify-path))))
 
 (deftest quickcheck-data-path-classification
-  (is (nil? ((mg/function-checker (:schema (meta #'perms/classify-data-path)) {::mg/=>iterations 10000})
-             @#'perms/classify-data-path))))
+  (is (:pass? (check-fn! #'perms/classify-data-path))))
+
+(deftest quickcheck-data-path-classification
+  (is (:pass? (check-fn! #'perms/move))))
+

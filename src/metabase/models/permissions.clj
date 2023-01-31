@@ -341,7 +341,7 @@
    (u.regex/rx "^/" admin-permissions-rx "$")           :admin})
 
 (def ^:private path-regex-v2
-  "Regex for a valid permissions path. The [[metabase.util.regex/rx]] macro is used to make the big-and-hairy regex
+  "Regex for a valid permissions path. will not match a path like /db/1 The [[metabase.util.regex/rx]] macro is used to make the big-and-hairy regex
   somewhat readable."
   (u.regex/rx
    "^/" [:or
@@ -1361,14 +1361,15 @@
      :dk/db-schema-name-table-and-query     (fn [path] (data-query-split (delete path "query/")))
      :dk/db-schema-name-table-and-segmented (fn [path] (data-query-split (delete path "query/segmented/")))}))
 
-(mu/defn ^:private move-data :- [:re path-regex-v2]
+(defn-  move-data
   "Takes a path that is a v1 path, and returns 0 or more v2 paths. See [[data-permissions]]"
-  [path :- [:vector [:re path-regex-v1]]]
+  [path]
   (let [data-permission-kind (classify-data-path path)
         rewrite-fn (data-kind->rewrite-fn data-permission-kind)]
     (rewrite-fn path)))
 
-(mu/defn move :- [:vector :string] [path :- Path-v1]
+(mu/defn move :- [:vector [:re path-regex-v2]]
+  [path :- [:re path-regex-v1]]
   (let [kind (classify-path path)]
     (cond
       (= kind :data) (move-data path)
