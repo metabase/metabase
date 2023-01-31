@@ -356,10 +356,10 @@ export const zoomedRowUseRowIndex = handleActions(
 export const zoomedRowColumnIndex = handleActions(
   {
     [INITIALIZE_QB]: {
-      next: (state, { payload }) => payload?.columnIndex ?? null,
+      next: (state, { payload }) => payload?.zoomedRowColumnIndex ?? null,
     },
     [ZOOM_IN_ROW]: {
-      next: (state, { payload }) => payload.columnIndex,
+      next: (state, { payload }) => payload.zoomedRowColumnIndex,
     },
     [RESET_ROW_ZOOM]: { next: () => null },
     [RESET_QB]: { next: () => null },

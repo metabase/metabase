@@ -7,7 +7,7 @@ export type NavigateToNewCardFromDashboardOpts = {
   previousCard: Card;
   dashcard: DashboardOrderedCard;
   objectId?: unknown;
-  columnIndex?: number;
+  zoomedRowColumnIndex?: number;
 };
 
 export type DashCardOnChangeCardAndRunHandler = (

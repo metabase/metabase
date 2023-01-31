@@ -80,7 +80,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     canZoom: isZooming && !!zoomedRow,
     canZoomPreviousRow,
     canZoomNextRow,
-    columnIndex: getZoomedColumnIndex(state),
+    zoomedRowColumnIndex: getZoomedColumnIndex(state),
   };
 };
 
@@ -107,7 +107,7 @@ export interface ObjectDetailProps {
   question: Question;
   table: Table | null;
   zoomedRow: unknown[] | undefined;
-  columnIndex?: number;
+  zoomedRowColumnIndex?: number;
   zoomedRowID: ObjectId;
   tableForeignKeys: ForeignKey[];
   tableForeignKeyReferences: {
@@ -134,7 +134,7 @@ export function ObjectDetailFn({
   question,
   table,
   zoomedRow,
-  columnIndex,
+  zoomedRowColumnIndex,
   zoomedRowID,
   tableForeignKeys,
   tableForeignKeyReferences,
@@ -247,7 +247,11 @@ export function ObjectDetailFn({
     zoomedRow,
   });
 
-  const displayId = getDisplayId({ cols: data.cols, zoomedRow, columnIndex });
+  const displayId = getDisplayId({
+    cols: data.cols,
+    zoomedRow,
+    zoomedRowColumnIndex,
+  });
   const hasPk = !!data.cols.find(isPK);
   const hasRelationships =
     showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);

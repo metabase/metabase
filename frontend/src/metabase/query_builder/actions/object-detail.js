@@ -21,11 +21,11 @@ import { updateUrl } from "./navigation";
 
 export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
 export const zoomInRow =
-  ({ objectId, columnIndex, useRowIndex = false }) =>
+  ({ objectId, zoomedRowColumnIndex, useRowIndex = false }) =>
   (dispatch, getState) => {
     dispatch({
       type: ZOOM_IN_ROW,
-      payload: { objectId, columnIndex, useRowIndex },
+      payload: { objectId, zoomedRowColumnIndex, useRowIndex },
     });
 
     // don't show object id in url if it is a row index
@@ -144,9 +144,11 @@ export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
 export const viewNextObjectDetail = () => {
   return (dispatch, getState) => {
     const objectId = getNextRowPKValue(getState());
-    const columnIndex = getZoomedColumnIndex(getState());
+    const zoomedRowColumnIndex = getZoomedColumnIndex(getState());
     if (objectId != null) {
-      dispatch(zoomInRow({ objectId, columnIndex, useRowIndex: true }));
+      dispatch(
+        zoomInRow({ objectId, zoomedRowColumnIndex, useRowIndex: true }),
+      );
     }
   };
 };
@@ -154,9 +156,11 @@ export const viewNextObjectDetail = () => {
 export const viewPreviousObjectDetail = () => {
   return (dispatch, getState) => {
     const objectId = getPreviousRowPKValue(getState());
-    const columnIndex = getZoomedColumnIndex(getState());
+    const zoomedRowColumnIndex = getZoomedColumnIndex(getState());
     if (objectId != null) {
-      dispatch(zoomInRow({ objectId, columnIndex, useRowIndex: true }));
+      dispatch(
+        zoomInRow({ objectId, zoomedRowColumnIndex, useRowIndex: true }),
+      );
     }
   };
 };

@@ -29,7 +29,7 @@ export function getURLForCardState(
   dirty,
   query = {},
   objectId,
-  columnIndex,
+  zoomedRowColumnIndex,
 ) {
   const options = {
     hash: card && dirty ? serializeCardForUrl(card) : "",
@@ -41,7 +41,7 @@ export function getURLForCardState(
       options.query.objectId = objectId;
     } else {
       options.objectId = objectId;
-      options.columnIndex = columnIndex;
+      options.zoomedRowColumnIndex = zoomedRowColumnIndex;
     }
   }
   return Urls.question(card, options);

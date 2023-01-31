@@ -36,7 +36,10 @@ function getAction({
     case "zoom":
       return {
         action: () =>
-          zoomInRow({ objectId, columnIndex: clicked?.origin?.columnIndex }),
+          zoomInRow({
+            objectId,
+            zoomedRowColumnIndex: clicked?.origin?.columnIndex,
+          }),
       };
     case "dashboard":
       return { question: () => question };
@@ -54,7 +57,7 @@ function getActionExtraData({
 }) {
   if (!hasManyPKColumns) {
     return {
-      extra: () => ({ objectId, columnIndex }),
+      extra: () => ({ objectId, zoomedRowColumnIndex: columnIndex }),
     };
   }
 }

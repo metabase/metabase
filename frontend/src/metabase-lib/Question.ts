@@ -1268,7 +1268,7 @@ class QuestionInner {
   getUrlWithParameters(
     parameters,
     parameterValues,
-    { objectId, clean, columnIndex } = {},
+    { objectId, clean, zoomedRowColumnIndex } = {},
   ) {
     const includeDisplayIsLocked = true;
 
@@ -1283,7 +1283,7 @@ class QuestionInner {
             clean,
             originalQuestion: this,
             includeDisplayIsLocked,
-            query: { objectId, columnIndex },
+            query: { objectId, zoomedRowColumnIndex },
           });
       } else {
         const query = getParameterValuesBySlug(parameters, parameterValues);

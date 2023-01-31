@@ -238,7 +238,10 @@ export const getRoutes = store => (
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
-          <Route path=":slug/:objectId/:columnIndex" component={QueryBuilder} />
+          <Route
+            path=":slug/:objectId/:zoomedRowColumnIndex"
+            component={QueryBuilder}
+          />
           <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
 

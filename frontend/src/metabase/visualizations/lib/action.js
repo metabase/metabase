@@ -37,7 +37,7 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
         nextCard: question.card(),
         ...extra,
         objectId: extra.objectId,
-        columnIndex: extra.columnIndex,
+        zoomedRowColumnIndex: extra.zoomedRowColumnIndex,
       });
       didPerform = true;
     }

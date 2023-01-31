@@ -50,7 +50,7 @@ type BlankQueryOptions = {
 type QueryParams = BlankQueryOptions & {
   slug?: string;
   objectId?: number | string;
-  columnIndex?: number;
+  zoomedRowColumnIndex?: number;
 };
 
 type UIControls = Partial<QueryBuilderUIControls>;
@@ -330,7 +330,8 @@ async function handleQBInit(
   });
 
   const objectId = params?.objectId || queryParams?.objectId;
-  const columnIndex = params?.columnIndex || queryParams?.columnIndex;
+  const zoomedRowColumnIndex =
+    params?.zoomedRowColumnIndex || queryParams?.zoomedRowColumnIndex;
 
   dispatch({
     type: INITIALIZE_QB,
@@ -340,7 +341,7 @@ async function handleQBInit(
       uiControls,
       parameterValues,
       objectId,
-      columnIndex,
+      zoomedRowColumnIndex,
     },
   });
 
@@ -357,7 +358,7 @@ async function handleQBInit(
         replaceState: true,
         preserveParameters: hasCard,
         objectId,
-        columnIndex,
+        zoomedRowColumnIndex,
       }),
     );
   }

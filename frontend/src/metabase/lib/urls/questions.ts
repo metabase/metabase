@@ -22,7 +22,7 @@ export type QuestionUrlBuilderParams = {
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
-  columnIndex?: string;
+  zoomedRowColumnIndex?: string;
 };
 
 export function question(
@@ -31,7 +31,7 @@ export function question(
     hash = "",
     query = "",
     objectId,
-    columnIndex,
+    zoomedRowColumnIndex,
   }: QuestionUrlBuilderParams = {},
 ) {
   if (hash && typeof hash === "object") {
@@ -83,13 +83,13 @@ export function question(
     path = `${path}/${objectId}`;
   }
 
-  // We use columnIndex to find results in certain object-detail drills.
+  // We use zoomedRowColumnIndex to find results in certain object-detail drills.
   // If columnIndex is "0", that is, an object-detail drill uses
   // a table with a primary key column that is its leftmost column,
   // let's not pollute the URL with an appended "/0"
-  // Selector getZoomedObjectRowIndex will fallback to a columnIndex of 0.
-  if (columnIndex && parseInt(columnIndex) > 0) {
-    path += `/` + columnIndex;
+  // Selector getZoomedObjectRowIndex will fallback to a zoomedRowColumnIndex of 0.
+  if (zoomedRowColumnIndex && parseInt(zoomedRowColumnIndex) > 0) {
+    path += `/` + zoomedRowColumnIndex;
   }
 
   return `${path}${query}${hash}`;

@@ -108,7 +108,7 @@ describe("ObjectDetailDrill", () => {
           type: ZOOM_IN_ROW,
           payload: {
             objectId: cellValue,
-            columnIndex: undefined,
+            zoomedRowColumnIndex: undefined,
             useRowIndex: false,
           },
         });

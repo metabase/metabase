@@ -255,14 +255,14 @@ function DashCard({
       nextCard,
       previousCard,
       objectId,
-      columnIndex,
+      zoomedRowColumnIndex,
     }) => {
       navigateToNewCardFromDashboard({
         nextCard,
         previousCard,
         dashcard,
         objectId,
-        columnIndex,
+        zoomedRowColumnIndex,
       });
     };
 

@@ -296,7 +296,7 @@ class Visualization extends React.PureComponent {
     nextCard,
     seriesIndex,
     objectId,
-    columnIndex,
+    zoomedRowColumnIndex,
   }) => {
     const { series, clicked } = this.state;
 
@@ -307,7 +307,7 @@ class Visualization extends React.PureComponent {
       nextCard,
       previousCard,
       objectId,
-      columnIndex,
+      zoomedRowColumnIndex,
     });
   };
 

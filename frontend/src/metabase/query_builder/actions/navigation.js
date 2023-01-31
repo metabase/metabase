@@ -123,7 +123,7 @@ export const updateUrl = createThunkAction(
         queryBuilderMode,
         datasetEditorTab,
         objectId,
-        columnIndex,
+        zoomedRowColumnIndex,
       } = {},
     ) =>
     (dispatch, getState) => {
@@ -160,7 +160,7 @@ export const updateUrl = createThunkAction(
         card,
         cardId: card.id,
         objectId,
-        columnIndex,
+        zoomedRowColumnIndex,
       };
 
       const { currentState } = getState().qb;
@@ -170,7 +170,7 @@ export const updateUrl = createThunkAction(
         dirty,
         queryParams,
         objectId,
-        columnIndex,
+        zoomedRowColumnIndex,
       );
 
       const urlParsed = parseUrl(url);
