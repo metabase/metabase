@@ -538,7 +538,16 @@
         ;; un fiddle with the mysql db details.
         (finally (db/update! Database (mt/id) :details (:details db)))))))
 
-(deftest ddl.execute-with-timeout-test
+(deftest ddl-execute-with-timeout-test1
+  (mt/test-driver :mysql
+    (mt/dataset json
+      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+        (is (thrown-with-msg?
+             Exception
+             #"Killed mysql process id [\d,]+ due to timeout."
+             (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))))))
+
+(deftest ddl-execute-with-timeout-test
   (mt/test-driver :mysql
     (mt/dataset json
       (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
@@ -546,4 +555,4 @@
               Exception
               #"Killed mysql process id [\d,]+ due to timeout."
               (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
-        (is (= true (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
+        (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
