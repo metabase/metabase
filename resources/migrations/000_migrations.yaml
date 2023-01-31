@@ -13990,6 +13990,15 @@ databaseChangeLog:
             constraintName: fk_action_creator_id
             nullable: false
 
+  - changeSet:
+      id: v46.00-047
+      author: qnkhuat
+      changes:
+        - customChange: {
+              "class": "liquibase.change.custom.MetabaseExecuteClojureMigration",
+              "migrationName": "append-name-to-all-questions"
+        }
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

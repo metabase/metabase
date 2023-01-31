@@ -154,7 +154,8 @@
                                                            org.clojure/tools.logging
                                                            org.clojure/tools.namespace]}
   user-agent/user-agent                     {:mvn/version "0.1.0"}              ; User-Agent string parser, for Login History page & elsewhere
-  weavejester/dependency                    {:mvn/version "0.2.1"}}             ; Dependency graphs and topological sorting
+  weavejester/dependency                    {:mvn/version "0.2.1"}              ; Dependency graphs and topological sorting
+  metabase/java-deps                        {:local/root "java"}}
 
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  ;; !!         PLEASE KEEP NEW DEPENDENCIES ABOVE ALPHABETICALLY ORGANIZED AND ADD COMMENTS EXPLAINING THEM.         !!
@@ -163,7 +164,7 @@
 
 
  :paths
- ["src" "shared/src" "resources"]
+ ["src" "shared/src" "resources" "java/target/classes"]
 
  ;; These are needed for the Athena and Redshift drivers if you are developing against them locally. If those drivers'
  ;; dependencies are not included (i.e., if we don't have the `:drivers` profile), these repos are effectively
