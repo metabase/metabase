@@ -7,7 +7,7 @@
    [metabase.models :refer [Action Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
                             Dimension Field Metric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
-                            Segment Table Timeline TimelineEvent User]]
+                            QueryAction Segment Table Timeline TimelineEvent User]]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
    [talltale.core :as tt]
@@ -93,6 +93,7 @@
         (gen/return nil)))))
 
 (s/def ::name ::weird-str)
+(s/def ::entity_id ::not-empty-string)
 (s/def ::description ::weird-str)
 
 ;; * card
@@ -135,6 +136,7 @@
 (s/def ::parameter_mappings #{[{}]})
 
 (s/def ::action (s/keys :req-un [::id :action/type ::name]))
+(s/def ::query-action (s/keys :req-un [::dataset_query ::entity_id]))
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
 (s/def ::collection (s/keys :req-un [::id ::name ::color]))
 (s/def ::activity (s/keys :req-un [::id ::topic ::details ::timestamp]))
@@ -188,6 +190,11 @@
                                   :insert!   {:model Action}
                                   :relations {:creator_id [:core-user :id]
                                               :model_id   [:card :id]}}
+   :query-action                 {:prefix    :query-action
+                                  :spec      ::query-action
+                                  :insert!   {:model QueryAction}
+                                  :relations {:database_id [:database :id]
+                                              :action_id   [:action :id]}}
    :activity                     {:prefix    :ac
                                   :spec      ::activity
                                   :relations {:user_id [:core-user :id]}
@@ -345,6 +352,7 @@
   - Adjust entites, in case some fields need extra tunning like incremental position, or collections.location
   - Insert entity into the db using `toucan.core/insert!` "
   [query]
+  (prn query)
   (-> (spec-gen query)
       (rs/visit-ents :spec-gen remove-ids)
       (rs/visit-ents :spec-gen adjust)

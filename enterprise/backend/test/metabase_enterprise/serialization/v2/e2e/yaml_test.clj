@@ -92,6 +92,14 @@
             (test-gen/insert!
               {:action                  (many-random-fks 10 {} {:model_id   [:c 100]
                                                                 :creator_id [:u 10]})
+               :query-action            (map-indexed
+                                         (fn [idx x]
+                                           (update-in x [1 :refs]
+                                                      (fn [refs]
+                                                        (-> refs
+                                                            (assoc :action_id (keyword (str "action" idx)))
+                                                            (assoc :entity_id (keyword (str "eid" idx)))))))
+                                         (many-random-fks 10 {} {:database_id [:db 100]}))
                :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                          [10  {:refs     {:personal_owner_id ::rs/omit}
                                                :spec-gen {:namespace :snippets}}]]
@@ -178,7 +186,9 @@
             (testing "for Actions"
               (is (= 10 (count (dir->file-set (io/file dump-dir "actions"))))))
 
-            (testing "for Collections"
+            (testing "for QueryActions"
+              (is (= 10 (count (dir->file-set (io/file dump-dir "query_actions"))))))
+
               (is (= 110 (count (for [f (file-set (io/file dump-dir))
                                       :when (and (= (first f) "collections")
                                                  (let [[a b] (take-last 2 f)]

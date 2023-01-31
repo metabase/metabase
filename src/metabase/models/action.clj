@@ -244,14 +244,19 @@
       (assoc :action_id (serdes.util/export-fk (:action_id action) 'Action))))
 
 (defmethod serdes.base/load-xform "QueryAction" [action]
-  (-> (serdes.base/extract-one-basics "QueryAction" action)
+  (-> action
+      serdes.base/load-xform-basics
       (update :database_id serdes.util/import-fk-keyed 'Database :name)
-      ;; TODO: load action_id
-      #_(assoc :action_id (serdes.util/import-fk (:action_id action) 'Action))))
+      (update :action_id serdes.util/import-fk 'Action)))
 
 (defmethod serdes.base/serdes-generate-path "Action"
   [_ action]
   (serdes.base/maybe-labeled "Action" action :name))
+
+(defmethod serdes.base/serdes-generate-path "QueryAction"
+  [_ action]
+  [(serdes.base/infer-self-path "Action" (db/select-one 'Action :id (:action_id action)))
+   (assoc (serdes.base/infer-self-path "QueryAction" action) :label "query_action")])
 
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   [[{:model "Card" :id (:model_id action)}]])
@@ -262,6 +267,10 @@
 (defmethod serdes.base/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]
     ["actions" (serdes.base/storage-leaf-file-name id label)]))
+
+(defmethod serdes.base/storage-path "QueryAction" [query-action _ctx]
+  (let [{:keys [id label]} (-> query-action serdes.base/serdes-path last)]
+    ["query_actions" (serdes.base/storage-leaf-file-name id label)]))
 
 ;; This is coupled to storage-path
 ;; storage-path converts a serdes path to a storage path.
