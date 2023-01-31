@@ -37,7 +37,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 ;;; when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
 (comment collection.root/keep-me)
@@ -93,7 +94,7 @@
                     :c.id
                     (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*)))]
     (as-> (->> (mdb.query/query q)
-               (map (partial toucan.models/do-post-select Collection))) collections
+               (map (partial models/do-post-select Collection))) collections
           ;; include Root Collection at beginning or results if archived isn't `true`
           (if archived?
             collections
@@ -150,7 +151,7 @@
                         :c.id
                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*)))
         colls         (->> (mdb.query/query q)
-                           (map (partial toucan.models/do-post-select Collection)))
+                           (map (partial models/do-post-select Collection)))
         colls         (map collection/personal-collection-with-ui-details colls)]
     (collection/collections->tree coll-type-ids colls)))
 
