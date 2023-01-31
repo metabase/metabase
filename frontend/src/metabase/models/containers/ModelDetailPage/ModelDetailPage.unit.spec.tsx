@@ -1,5 +1,5 @@
 import React from "react";
-import { IndexRoute, Redirect, Route } from "react-router";
+import { IndexRedirect, Redirect, Route } from "react-router";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
@@ -215,7 +215,7 @@ async function setup({
 
   const { store, history } = renderWithProviders(
     <Route path="/model/:slug/detail">
-      <IndexRoute component={ModelDetailPage} />
+      <IndexRedirect to="usage" />
       <Route path="usage" component={ModelDetailPage} />
       <Route path="schema" component={ModelDetailPage} />
       <Route path="actions" component={ModelDetailPage} />

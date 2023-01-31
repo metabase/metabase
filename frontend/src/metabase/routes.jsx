@@ -242,7 +242,7 @@ export const getRoutes = store => (
         </Route>
 
         <Route path="/model/:slug/detail">
-          <IndexRoute component={ModelDetailPage} />
+          <IndexRedirect to="usage" />
           <Route path="usage" component={ModelDetailPage} />
           <Route path="schema" component={ModelDetailPage} />
           <Route path="actions" component={ModelDetailPage} />
