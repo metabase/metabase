@@ -96,11 +96,7 @@ const ChartTypeSidebar = ({
   );
 
   return (
-    <SidebarContent
-      className="full-height px1"
-      title={t`Choose a visualization`}
-      onDone={onCloseChartType}
-    >
+    <SidebarContent className="full-height px1" onDone={onCloseChartType}>
       <OptionList data-testid="display-options-sensible">
         {makesSense.map(type => {
           const visualization = visualizations.get(type);
