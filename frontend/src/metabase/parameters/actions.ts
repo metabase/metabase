@@ -50,7 +50,7 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
     : await ParameterApi.parameterValues(request);
 
   return {
-    results: values.map((value: any) => [].concat(value)),
+    values: values.map((value: any) => [].concat(value)),
     has_more_values: request.query ? true : has_more_values,
   };
 };
