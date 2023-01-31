@@ -78,7 +78,7 @@ Metabase's reference documentation.
 #### Sharing
 
 - [Sharing answers](./questions/sharing/answers.md)
-- [Setting and getting alerts](./questions/sharing/alerts.md)
+- [Alerts](./questions/sharing/alerts.md)
 - [Public sharing](./questions/sharing/public-links.md)
 
 ### Dashboards

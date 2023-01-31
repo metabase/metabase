@@ -739,28 +739,66 @@
 ;;; |                                                 GET /api/pulse                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- filter-pulse-results
+  "Filters a list of pulse results based on a set of expected values for a given field."
+  [results field expected]
+  (filter
+   (fn [pulse] ((set expected) (field pulse)))
+   results))
+
 (deftest list-test
   (testing "GET /api/pulse"
-    (mt/with-temp* [Pulse [pulse-1 {:name "ABCDEF"}]
-                    Pulse [pulse-2 {:name "GHIJKL"}]]
-      (testing "should come back in alphabetical order"
-        (with-pulses-in-readable-collection [pulse-1 pulse-2]
-          ;; delete anything else in DB just to be sure; this step may not be necessary any more
-          (db/delete! Pulse :id [:not-in #{(u/the-id pulse-1)
-                                           (u/the-id pulse-2)}])
-          (is (= [(assoc (pulse-details pulse-1) :can_write false, :collection_id true)
-                  (assoc (pulse-details pulse-2) :can_write false, :collection_id true)]
-                 (for [pulse (mt/user-http-request :rasta :get 200 "pulse")]
-                   (-> pulse
-                       (update :collection_id boolean)))))))
+    ;; pulse-1 => created by non-admin
+    ;; pulse-2 => created by admin
+    ;; pulse-3 => created by admin; non-admin recipient
+    (mt/with-temp* [Dashboard             [{dashboard-id :id} {}]
+                    Pulse                 [{pulse-1-id :id :as pulse-1} {:name         "ABCDEF"
+                                                                         :dashboard_id dashboard-id
+                                                                         :creator_id   (mt/user->id :rasta)}]
+                    Pulse                 [{pulse-2-id :id :as pulse-2} {:name         "GHIJKL"
+                                                                         :dashboard_id dashboard-id
+                                                                         :creator_id   (mt/user->id :crowberto)}]
+                    Pulse                 [{pulse-3-id :id :as pulse-3} {:name         "MNOPQR"
+                                                                         :dashboard_id dashboard-id
+                                                                         :creator_id   (mt/user->id :crowberto)}]
+                    PulseChannel          [pc {:pulse_id pulse-3-id}]
+                    PulseChannelRecipient [_ {:pulse_channel_id (u/the-id pc)
+                                              :user_id          (mt/user->id :rasta)}]]
+      (with-pulses-in-writeable-collection [pulse-1 pulse-2 pulse-3]
+        (testing "admins can see all pulses"
+          (let [results (-> (mt/user-http-request :crowberto :get 200 "pulse")
+                            (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
+            (is (= 3 (count results)))
+            (is (partial=
+                 [(assoc (pulse-details pulse-1) :can_write true, :collection_id true)
+                  (assoc (pulse-details pulse-2) :can_write true, :collection_id true)
+                  (assoc (pulse-details pulse-3) :can_write true, :collection_id true)]
+                 (map #(update % :collection_id boolean) results)))))
 
-      (testing "`can_write` property should get updated correctly based on whether current user can write"
-        ;; delete anything else in DB just to be sure; this step may not be necessary any more
-        (db/delete! Pulse :id [:not-in #{(u/the-id pulse-1)
-                                         (u/the-id pulse-2)}])
-        (is (= [(assoc (pulse-details pulse-1) :can_write true)
-                (assoc (pulse-details pulse-2) :can_write true)]
-               (mt/user-http-request :crowberto :get 200 "pulse")))))
+        (testing "non-admins only see pulses they created by default"
+          (let [results (-> (mt/user-http-request :rasta :get 200 "pulse")
+                            (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
+            (is (= 1 (count results)))
+            (is (partial=
+                 [(assoc (pulse-details pulse-1) :can_write true, :collection_id true)]
+                 (map #(update % :collection_id boolean) results)))))
+
+        (testing "when `can_read=true`, all users only see pulses they created or are a recipient of"
+          (let [results (-> (mt/user-http-request :crowberto :get 200 "pulse?can_read=true")
+                            (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
+            (is (= 2 (count results)))
+            (is (partial=
+                 [(assoc (pulse-details pulse-2) :can_write true, :collection_id true)
+                  (assoc (pulse-details pulse-3) :can_write true, :collection_id true)]
+                 (map #(update % :collection_id boolean) results))))
+
+          (let [results (-> (mt/user-http-request :rasta :get 200 "pulse?can_read=true")
+                            (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
+            (is (= 2 (count results)))
+            (is (partial=
+                 [(assoc (pulse-details pulse-1) :can_write true, :collection_id true)
+                  (assoc (pulse-details pulse-3) :can_write false, :collection_id true)]
+                 (map #(update % :collection_id boolean) results)))))))
 
     (testing "should not return alerts"
       (mt/with-temp* [Pulse [pulse-1 {:name "ABCDEF"}]
@@ -768,58 +806,40 @@
                       Pulse [pulse-3 {:name            "AAAAAA"
                                       :alert_condition "rows"}]]
         (with-pulses-in-readable-collection [pulse-1 pulse-2 pulse-3]
-          (is (= [(assoc (pulse-details pulse-1) :can_write false, :collection_id true)
-                  (assoc (pulse-details pulse-2) :can_write false, :collection_id true)]
-                 (for [pulse (mt/user-http-request :rasta :get 200 "pulse")]
-                   (-> pulse
-                       (update :collection_id boolean))))))))
+          (is (= [(assoc (pulse-details pulse-1) :can_write true, :collection_id true)
+                  (assoc (pulse-details pulse-2) :can_write true, :collection_id true)]
+                 (for [pulse (-> (mt/user-http-request :rasta :get 200 "pulse")
+                                 (filter-pulse-results :name #{"ABCDEF" "GHIJKL" "AAAAAA"}))]
+                   (update pulse :collection_id boolean)))))))
 
     (testing "by default, archived Pulses should be excluded"
       (mt/with-temp* [Pulse [not-archived-pulse {:name "Not Archived"}]
                       Pulse [archived-pulse     {:name "Archived", :archived true}]]
         (with-pulses-in-readable-collection [not-archived-pulse archived-pulse]
           (is (= #{"Not Archived"}
-                 (set (map :name (mt/user-http-request :rasta :get 200 "pulse"))))))))
+                 (set (map :name (-> (mt/user-http-request :rasta :get 200 "pulse")
+                                     (filter-pulse-results :name #{"Not Archived" "Archived"})))))))))
 
     (testing "can we fetch archived Pulses?"
       (mt/with-temp* [Pulse [not-archived-pulse {:name "Not Archived"}]
                       Pulse [archived-pulse     {:name "Archived", :archived true}]]
         (with-pulses-in-readable-collection [not-archived-pulse archived-pulse]
           (is (= #{"Archived"}
-                 (set (map :name (mt/user-http-request :rasta :get 200 "pulse?archived=true"))))))))
-
-    (testing "can fetch dashboard subscriptions by user ID -- should return subscriptions created by the user,
-           or subscriptions for which the user is a known recipient. Should exclude pulses."
-      (mt/with-temp* [Dashboard             [{dashboard-id :id}]
-                      Pulse                 [_creator-pulse  {:name         "LuckyCreator"
-                                                              :creator_id   (mt/user->id :lucky)
-                                                              :dashboard_id dashboard-id}]
-                      Pulse                 [recipient-pulse {:name         "LuckyRecipient"
-                                                              :dashboard_id dashboard-id}]
-                      Pulse                 [_other-pulse    {:name         "Other"
-                                                              :dashboard_id dashboard-id}]
-                      Pulse                 [_excluded-pulse {:name "Excluded"}]
-                      PulseChannel          [pulse-channel   {:pulse_id (u/the-id recipient-pulse)}]
-                      PulseChannelRecipient [_               {:pulse_channel_id (u/the-id pulse-channel)
-                                                              :user_id          (mt/user->id :lucky)}]]
-        (is (= #{"LuckyCreator" "LuckyRecipient"}
-               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :lucky)))))))
-        (is (= #{"LuckyRecipient" "Other"}
-               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :rasta)))))))
-        (is (= #{}
-               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :trashbird)))))))))
+                 (set (map :name (-> (mt/user-http-request :rasta :get 200 "pulse?archived=true")
+                                     (filter-pulse-results :name #{"Not Archived" "Archived"})))))))))
 
     (testing "excludes dashboard subscriptions associated with archived dashboards"
       (mt/with-temp* [Dashboard [{dashboard-id :id} {:archived true}]
-                      Pulse     [_ {:dashboard_id dashboard-id}]]
-        (is (= [] (mt/user-http-request :rasta :get 200 "pulse")))))))
+                      Pulse     [{pulse-id :id} {:dashboard_id dashboard-id}]]
+        (is (= [] (-> (mt/user-http-request :rasta :get 200 "pulse")
+                      (filter-pulse-results :id #{pulse-id}))))))))
 
 (deftest get-pulse-test
   (testing "GET /api/pulse/:id"
     (mt/with-temp Pulse [pulse]
       (with-pulses-in-readable-collection [pulse]
         (is (= (assoc (pulse-details pulse)
-                      :can_write     false
+                      :can_write     true
                       :collection_id true)
                (-> (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse)))
                    (update :collection_id boolean))))))

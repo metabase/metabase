@@ -42,6 +42,10 @@ describe("issue 12720", () => {
       ({ body: { id: SQL_ID } }) => {
         cy.request("POST", "/api/dashboard/1/cards", {
           cardId: SQL_ID,
+          row: 0,
+          col: 6, // making sure it doesn't overlap the existing card
+          size_x: 5,
+          size_y: 5,
         }).then(({ body: { id: SQL_DASH_CARD_ID } }) => {
           cy.log(
             "Edit both cards (adjust their size and connect them to the filter)",
@@ -69,7 +73,7 @@ describe("issue 12720", () => {
                 id: SQL_DASH_CARD_ID,
                 card_id: SQL_ID,
                 row: 0,
-                col: 6, // previous card's size_x + 1 (making sure they don't overlap)
+                col: 6,
                 size_x: 5,
                 size_y: 5,
                 parameter_mappings: [

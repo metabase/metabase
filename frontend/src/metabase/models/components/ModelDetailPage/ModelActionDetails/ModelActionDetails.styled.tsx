@@ -22,7 +22,7 @@ export const ActionList = styled.ul`
   margin-top: 1rem;
 
   li:not(:first-of-type) {
-    margin-top: 1rem;
+    margin-top: 2.25rem;
   }
 
   ${breakpointMaxMedium} {

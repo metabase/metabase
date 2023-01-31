@@ -1,4 +1,5 @@
 import React from "react";
+import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import moment from "moment-timezone";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -9,11 +10,6 @@ import {
 } from "cljs/metabase.shared.formatting.constants";
 
 import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
-
-// eslint-disable-next-line react/display-name, react/prop-types
-jest.mock("metabase/core/components/Link", () => ({ to, ...props }) => (
-  <a {...props} href={to} />
-));
 
 const timestamp = "2021-06-03T19:46:52.128";
 
@@ -46,13 +42,18 @@ describe("Collections BaseItemsTable", () => {
 
   function setup({ items = [ITEM], ...props } = {}) {
     return renderWithProviders(
-      <BaseItemsTable
-        items={items}
-        sortingOptions={{ sort_column: "name", sort_direction: "asc" }}
-        onSortingOptionsChange={jest.fn()}
-        {...props}
+      <Route
+        path="/"
+        component={() => (
+          <BaseItemsTable
+            items={items}
+            sortingOptions={{ sort_column: "name", sort_direction: "asc" }}
+            onSortingOptionsChange={jest.fn()}
+            {...props}
+          />
+        )}
       />,
-      { withDND: true },
+      { withDND: true, withRouter: true },
     );
   }
 

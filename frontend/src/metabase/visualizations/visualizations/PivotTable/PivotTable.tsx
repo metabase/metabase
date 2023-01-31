@@ -91,6 +91,9 @@ function PivotTable({
   onVisualizationClick,
 }: PivotTableProps) {
   const [gridElement, setGridElement] = useState<HTMLElement | null>(null);
+  const columnWidthSettings = settings["pivot_table.column_widths"];
+  const previousColumnWidthSettings = usePrevious(columnWidthSettings);
+
   const [
     { leftHeaderWidths, totalLeftHeaderWidths, valueHeaderWidths },
     setHeaderWidths,
@@ -98,7 +101,32 @@ function PivotTable({
     leftHeaderWidths: null,
     totalLeftHeaderWidths: null,
     valueHeaderWidths: {},
+    ...(columnWidthSettings ?? {}),
   });
+
+  const updateHeaderWidths = useCallback(
+    (newHeaderWidths: Partial<HeaderWidthType>) => {
+      setHeaderWidths(prevHeaderWidths => ({
+        ...prevHeaderWidths,
+        ...newHeaderWidths,
+      }));
+
+      onUpdateVisualizationSettings({
+        "pivot_table.column_widths": {
+          leftHeaderWidths,
+          totalLeftHeaderWidths,
+          valueHeaderWidths,
+          ...newHeaderWidths,
+        },
+      });
+    },
+    [
+      onUpdateVisualizationSettings,
+      leftHeaderWidths,
+      totalLeftHeaderWidths,
+      valueHeaderWidths,
+    ],
+  );
 
   const bodyRef = useRef(null);
   const leftHeaderRef = useRef(null);
@@ -122,7 +150,6 @@ function PivotTable({
     );
     return showTotals;
   }
-
   useEffect(() => {
     // This is needed in case the cell counts didn't change, but the data or cell sizes did
     (
@@ -152,7 +179,14 @@ function PivotTable({
   }, [data, settings]);
 
   const previousRowIndexes = usePrevious(pivoted?.rowIndexes);
-  const columnsChanged = !_.isEqual(pivoted?.rowIndexes, previousRowIndexes);
+  const hasColumnWidths = [
+    leftHeaderWidths,
+    totalLeftHeaderWidths,
+    valueHeaderWidths,
+  ].every(Boolean);
+  const columnsChanged =
+    !hasColumnWidths ||
+    (previousRowIndexes && !_.isEqual(pivoted?.rowIndexes, previousRowIndexes));
 
   // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
   // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights
@@ -174,17 +208,16 @@ function PivotTable({
 
   useEffect(() => {
     if (!pivoted?.rowIndexes) {
-      setHeaderWidths(prevHeaderWidths => ({
-        ...prevHeaderWidths,
+      setHeaderWidths({
         leftHeaderWidths: null,
         totalLeftHeaderWidths: null,
-      }));
+        valueHeaderWidths: {},
+      });
       return;
     }
 
     if (columnsChanged) {
-      setHeaderWidths(previousHeaderWidths => ({
-        ...previousHeaderWidths,
+      setHeaderWidths({
         ...getLeftHeaderWidths({
           rowIndexes: pivoted?.rowIndexes,
           getColumnTitle: idx => getColumnTitle(idx),
@@ -192,9 +225,9 @@ function PivotTable({
           fontFamily: fontFamily,
         }),
         valueHeaderWidths: {},
-      }));
+      });
     }
-  }, [pivoted, fontFamily, getColumnTitle, columnsChanged]);
+  }, [pivoted, fontFamily, getColumnTitle, columnsChanged, setHeaderWidths]);
 
   const handleColumnResize = (
     columnType: "value" | "leftHeader",
@@ -228,10 +261,7 @@ function PivotTable({
       };
     }
 
-    setHeaderWidths(prevColumnWidths => ({
-      ...prevColumnWidths,
-      ...newColumnWidths,
-    }));
+    updateHeaderWidths(newColumnWidths);
   };
 
   if (pivoted === null || !leftHeaderWidths || columnsChanged) {
