@@ -1,8 +1,7 @@
 (ns metabase.util.regex
   "Regex-related utility functions"
   (:require
-   [clojure.string :as str]
-   [clojure.core.memoize :as memoize]))
+   [clojure.string :as str]))
 
 (defn non-capturing-group
   "Wrap regex `pattern` in a non-capturing group."
@@ -48,22 +47,22 @@
   [[_ arg]]
   (re-negate (rx* arg)))
 
-(defn rx*
+(defn- rx*
   [x]
   (if (seqable? x) (rx-dispatch x) x))
 
-(def rx
-  (memoize
-   (fn ^{:doc
-         "A quick-and-dirty port of the Emacs Lisp `rx` macro (`C-h f rx`) implemented as a function but not currently as fully-featured.
-          Convenient for building mega-huge regular expressions from a hiccup-like representation.
-          Feel free to add support for more stuff as needed."}
-     rx
+(def ^{:doc
+       "A quick-and-dirty port of the Emacs Lisp `rx` macro (`C-h f rx`) implemented as a function but not currently as fully-featured.
+       Convenient for building mega-huge regular expressions from a hiccup-like representation.
+       Feel free to add support for more stuff as needed.
 
+       This is memoized because arguments to rx are less optimal than they should be, in favor of better clarity -- hence skipping recompilation makes sense."
+       :arglists '([x] [x & more])
+       } rx
+  (memoize (fn  rx
+             ;; (rx [:and [:or "Cam" "can"] [:? #"\s+"] #"\d+"])
+             ;; -> #\"(?:(?:Cam)|(?:can))(?:\s+)?\d+\"
 
-     ;; (rx [:and [:or "Cam" "can"] [:? #"\s+"] #"\d+"])
-     ;; -> #\"(?:(?:Cam)|(?:can))(?:\s+)?\d+\"
+             ([x] (re-pattern (rx* x)))
 
-     ([x] (re-pattern (rx* x)))
-
-     ([x & more] (rx (into [:and x] more))))))
+             ([x & more] (rx (into [:and x] more))))))

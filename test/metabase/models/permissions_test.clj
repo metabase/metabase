@@ -961,11 +961,11 @@
       result
       {:pass? true :iterations iterations})))
 
-(deftest quickcheck-perm-path-classification
+(deftest quickcheck-perm-path-classification-test
   (is (:pass? (check-fn! #'perms/classify-path))))
 
-(deftest quickcheck-data-path-classification
+(deftest quickcheck-data-path-classification-test
   (is (:pass? (check-fn! #'perms/classify-data-path))))
 
-(deftest quickcheck-data-path-classification
+(deftest quickcheck-->v2-path-test
   (is (:pass? (check-fn! #'perms/->v2-path))))
