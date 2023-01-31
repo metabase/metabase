@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.models :refer [DashboardCard FieldValues]]
+   [metabase.models :refer [Card Dashboard DashboardCard FieldValues]]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -63,3 +63,31 @@
                     (update-mappings! 200)))
              (is (= new-mappings
                     (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))))))))
+
+(deftest parameters-with-source-is-card-test
+  (testing "dashboard with a parameter that has source is a card, it should respects sandboxing"
+    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
+      (mt/with-temp*
+        [Card      [{card-id         :id}
+                    (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories))
+                           {:database_id     (mt/id)
+                            :table_id        (mt/id :categories)})]
+         Dashboard [{dashboard-id :id}
+                    {:parameters [{:id                   "abc"
+                                   :type                 "category"
+                                   :name                 "CATEGORY"
+                                   :values_source_type   "card"
+                                   :values_source_config {:card_id     card-id
+                                                          :value_field (mt/$ids $categories.name)}}]}]]
+
+        (testing "when getting values"
+          (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-values-url dashboard-id "abc")]
+            (is (= {:values          ["African" "American" "Artisan"]
+                    :has_more_values false}
+                   (mt/user-http-request :rasta :get 200 url)))))
+
+        (testing "when search values"
+          (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-search-url dashboard-id "abc" "red")]
+            (is (= {:values          []
+                    :has_more_values false}
+                   (mt/user-http-request :rasta :get 200 url)))))))))

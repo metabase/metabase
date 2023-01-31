@@ -165,7 +165,13 @@ function enterDefaultValue(value) {
 export function pickDefaultValue(searchTerm, result) {
   cy.findByText("Enter a default value…").click();
   cy.findByPlaceholderText("Enter a default value…").type(searchTerm);
-  popover().findByText(result).click();
+
+  // We could search for only one result inside popover()
+  // instead of `all` then `last`,
+  // but it flakes out as sometimes the popover
+  // is detached from the DOM.
+  //
+  cy.findAllByText(result).last().click();
 
   cy.button("Add filter").click();
 }

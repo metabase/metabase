@@ -51,6 +51,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -922,7 +924,7 @@ saved later when it is ready."
     (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
       (api.field/field-id->values field-id query))))
 
-(s/defn param-values
+(mu/defn param-values
   "Fetch values for a parameter.
 
   The source of values could be:
@@ -931,9 +933,9 @@ saved later when it is ready."
   ([card param-key]
    (param-values card param-key nil))
 
-  ([card      :- su/Map
-    param-key :- su/NonBlankString
-    query     :- (s/maybe su/NonBlankString)]
+  ([card      :- ms/Map
+    param-key :- ms/NonBlankString
+    query     :- [:maybe ms/NonBlankString]]
    (let [param       (get (m/index-by :id (or (seq (:parameters card))
                                               ;; some older cards or cards in e2e just use the template tags on native
                                               ;; queries
@@ -945,7 +947,9 @@ saved later when it is ready."
                        {:status-code 400})))
      (case source-type
        "static-list" (params.static-values/param->values param query)
-       "card"        (params.card-values/param->values param query)
+       "card"        (do
+                       (api/read-check Card (get-in param [:values_source_config :card_id]))
+                       (params.card-values/param->values param query))
        nil           (mapping->field-values card param query)
        (throw (ex-info (tru "Invalid values-source-type: {0}" (pr-str source-type))
                        {:values-source-type source-type
@@ -957,6 +961,8 @@ saved later when it is ready."
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/card/1/params/abc/values"
   [card-id param-key]
+  {card-id   ms/IntGreaterThanZero
+   param-key ms/NonBlankString}
   (let [card (api/read-check Card card-id)]
     (param-values card param-key)))
 
@@ -968,6 +974,9 @@ saved later when it is ready."
 
   Currently limited to first 1000 results."
   [card-id param-key query]
+  {card-id   ms/IntGreaterThanZero
+   param-key ms/NonBlankString
+   query     ms/NonBlankString}
   (let [card (api/read-check Card card-id)]
     (param-values card param-key query)))
 
