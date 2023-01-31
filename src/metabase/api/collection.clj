@@ -44,29 +44,36 @@
 
 (declare root-collection)
 
-(defn- collection-ids-for-user-id
-  "Given a user id, return all collection ids that the user owns or are shared.
-  The zero-arg arity returns the collection ids for the current user."
-  ([owner-id]
-   (let [q {:with   [[:owner-match {:select [:c.personal_owner_id
-                                             [[:concat "/" :c.id "/%"] :pc_prefix]]
-                                    :from   [[:collection :c]]
-                                    :where  [:not= :c.personal_owner_id nil]}]
-                     [:collection-with-owner {:select    [[:c.id :id]
-                                                          [[:coalesce
-                                                            :c.personal_owner_id
-                                                            :om.personal_owner_id] :owner]]
-                                              :from      [[:collection :c]]
-                                              :left-join [[:owner-match :om]
-                                                          [:like :c.location :om.pc_prefix]]}]
-                     ]
-            :select [[:cwo.id :id]]
-            :from   [[:collection-with-owner :cwo]]
-            :where  [:or
-                     [:= :cwo.owner owner-id]
-                     [:= :cwo.owner nil]]}]
-     (map :id (mdb.query/query q))))
-  ([] (collection-ids-for-user-id api/*current-user-id*)))
+(defn coll-query [owner-id & and-clauses]
+  {:with      [[:owner-match {:select [:c.personal_owner_id
+                                       [[:concat "/" :c.id "/%"] :pc_prefix]]
+                              :from   [[:collection :c]]
+                              :where  [:not= :c.personal_owner_id nil]}]
+               [:collection-with-owner {:select    [[:c.id :id]
+                                                    [[:coalesce
+                                                      :c.personal_owner_id
+                                                      :om.personal_owner_id] :owner]]
+                                        :from      [[:collection :c]]
+                                        :left-join [[:owner-match :om]
+                                                    [:like :c.location :om.pc_prefix]]}]
+               [:active-ids {:select [[:cwo.id :id]
+                                      [true :selected]]
+                             :from   [[:collection-with-owner :cwo]]
+                             :where  [:or
+                                      [:= :cwo.owner owner-id]
+                                      [:= :cwo.owner nil]]}]]
+   :select    [:c.*]
+   :from      [[:collection :c]]
+   :left-join [[:active-ids :a] [:= :a.id :c.id]]
+   :where     (if and-clauses
+                (into [:and [:= :a.selected true]] and-clauses)
+                [:= :a.selected true])
+   :order-by  [[:%lower.name :asc]]})
+
+(comment
+  (->> (mdb.query/query (coll-query 1))
+       (map (partial toucan.models/do-post-select Collection))
+       (map :id)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -79,17 +86,15 @@
   {archived  (s/maybe su/BooleanString)
    namespace (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)
-        coll-ids  (collection-ids-for-user-id)]
-    (as-> (when (seq coll-ids)
-            (db/select Collection
-              {:where    [:and
-                          [:= :archived archived?]
-                          [:= :namespace namespace]
-                          [:in :id coll-ids]
-                          (collection/visible-collection-ids->honeysql-filter-clause
-                           :id
-                           (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-               :order-by [[:%lower.name :asc]]})) collections
+        q         (coll-query
+                   api/*current-user-id*
+                   [:= :c.archived archived?]
+                   [:= :c.namespace namespace]
+                   (collection/visible-collection-ids->honeysql-filter-clause
+                    :c.id
+                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*)))]
+    (as-> (->> (mdb.query/query q)
+               (map (partial toucan.models/do-post-select Collection))) collections
           ;; include Root Collection at beginning or results if archived isn't `true`
           (if archived?
             collections
@@ -137,17 +142,16 @@
                               (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
-        coll-ids      (collection-ids-for-user-id)
-        colls         (when (seq coll-ids)
-                        (db/select Collection
-                          {:where [:and
-                                   (when exclude-archived
-                                     [:= :archived false])
-                                   [:= :namespace namespace]
-                                   [:in :id coll-ids]
-                                   (collection/visible-collection-ids->honeysql-filter-clause
-                                    :id
-                                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]}))
+        q             (coll-query
+                       api/*current-user-id*
+                       (when exclude-archived
+                         [:= :c.archived false])
+                       [:= :c.namespace namespace]
+                       (collection/visible-collection-ids->honeysql-filter-clause
+                        :c.id
+                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*)))
+        colls         (->> (mdb.query/query q)
+                           (map (partial toucan.models/do-post-select Collection)))
         colls         (map collection/personal-collection-with-ui-details colls)]
     (collection/collections->tree coll-type-ids colls)))
 
