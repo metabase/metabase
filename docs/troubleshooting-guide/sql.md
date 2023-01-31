@@ -4,13 +4,11 @@ title: Troubleshooting SQL questions
 
 # Troubleshooting SQL questions
 
-## SQL syntax error
+## SQL syntax errors
 
-![Sample SQL error message](./images/sample-error-sql.png)
+For some common error messages, see [SQL error messages](./error-message.md#sql).
 
-For some common error messages, see [SQL error message](./error-message.md#sql).
-
-## My SQL query results are incorrect
+## Incorrect results
 
 - [Aggregations (counts, sums, etc.) are wrong](https://www.metabase.com/learn/debugging-sql/sql-logic#aggregated-results-counts-sums-etc-are-wrong).
 - [Results have duplicated rows](https://www.metabase.com/learn/debugging-sql/sql-logic-duplicated-data).
@@ -23,7 +21,6 @@ For some common error messages, see [SQL error message](./error-message.md#sql).
 - [Filter widget doesn't display a dropdown menu of values](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter).
 - [SQL query contains a subquery (nested query) or CTE](../questions/native-editor/sql-parameters.md#field-filters-dont-work-with-table-aliases).
 - [SQL syntax error: missing `FROM` clause](../questions/native-editor/sql-parameters.md#include-dependencies-in-your-query).
-- [400 error from BigQuery](../questions/native-editor/sql-parameters.md#some-databases-require-the-schema-in-the-from-clause).
 - [No option to display a filter widget](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
 - [I don't know the SQL variable type](https://www.metabase.com/learn/sql-questions/sql-variables#the-different-types-of-variables-available-for-native-sql-queries).
 
