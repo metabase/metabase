@@ -1,5 +1,6 @@
 (ns metabase.api.field
   (:require
+   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
@@ -226,6 +227,21 @@
   (let [field (api/check-404 (db/select-one Field :id field-id))]
     (api/check-403 (params.field-values/current-user-can-fetch-field-values? field))
     (field->values field)))
+
+;; todo: we need to unify and untangle this stuff
+(defn field-id->values
+  "Fetch values for field id. If query is present, uses `api.field/search-values`, otherwise delegates to
+  `api.field/check-parms-and-return-field-values`."
+  [field-id query]
+  (if (str/blank? query)
+    (check-perms-and-return-field-values field-id)
+    (let [field (api/check-404 (db/select-one Field :id field-id))]
+      ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
+      ;; is what the return-field-values returns above
+      {:values (map (comp vector first) (search-values field field query))
+       ;; assume there are more
+       :has_more_values true
+       :field_id field-id})))
 
 ;; TODO -- not sure `has_field_values` actually has to be `:list` -- see code above.
 #_{:clj-kondo/ignore [:deprecated-var]}

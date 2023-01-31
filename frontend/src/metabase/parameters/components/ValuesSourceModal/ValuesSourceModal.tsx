@@ -1,19 +1,22 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
+import {
+  Parameter,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
 import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
 import {
   getSourceConfig,
   getSourceConfigForType,
   getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
-import { UiParameter } from "metabase-lib/parameters/types";
 import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 import ValuesSourceCardModal from "./ValuesSourceCardModal";
 
 type ModalStep = "main" | "card";
 
 interface ModalProps {
-  parameter: UiParameter;
+  parameter: Parameter;
   onSubmit: (
     sourceType: ValuesSourceType,
     sourceConfig: ValuesSourceConfig,
