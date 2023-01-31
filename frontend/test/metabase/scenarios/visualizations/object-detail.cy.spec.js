@@ -189,6 +189,25 @@ describe("scenarios > question > object details", () => {
       .trigger("mouseup", 0, 100, { force: true });
 
     cy.button("Done").click();
+
+    cy.findByTestId("qb-header-action-panel").within(() => {
+      cy.icon("play").click();
+    });
+
+    cy.get(".Table-ID:not(.Table-FK):contains(4)").first().click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.get("h2").should("contain", "Order").should("contain", 4);
+    });
+
+    cy.realPress("{esc}");
+
+    cy.findByText("Save").click();
+    cy.button("Save").click();
+
+    visitDashboard(1);
+
+    cy.get(".Table-ID:not(.Table-FK):contains(4)").first().click();
   });
 });
 
