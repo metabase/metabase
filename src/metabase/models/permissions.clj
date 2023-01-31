@@ -326,7 +326,7 @@
 (def ^:private query-permissions-rx
   [:and "query"])
 
-(def rx->kind
+(def ^:private rx->kind
   {(u.regex/rx "^/" v1-data-permissions-rx "$")         :data
    (u.regex/rx "^/" v2-data-permissions-rx "$")         :data-v2
    (u.regex/rx "^/" query-permissions-rx "$")           :query
