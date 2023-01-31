@@ -4,11 +4,27 @@
    [malli.core :as mc]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
+   [metabase.models.dispatch :as models.dispatch]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.password :as u.password]
    [schema.core :as s]))
+
+;;; -------------------------------------------------- Utils --------------------------------------------------
+
+(defn InstanceOf
+  "Helper for creating a schema to check whether something is an instance of `model`.
+
+    (ms/defn my-fn
+      [user :- (ms/InstanceOf User)]
+      ...)"
+  [model]
+  (mc/schema
+    [:fn {:error/fn (constantly (deferred-tru "value must be an instance of {0 " (name model)))}
+     #(models.dispatch/instance-of? model %)]))
+
+;;; -------------------------------------------------- Schemas --------------------------------------------------
 
 (def NonBlankString
   "Schema for a string that cannot be blank."

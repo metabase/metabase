@@ -5,6 +5,7 @@
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan.db :as db]))
@@ -77,14 +78,13 @@
   {:values          [\"Red Medicine\"]
    :has_more_values false}
   "
-  ([card-id value-field]
-   (values-from-card card-id value-field nil))
+  ([card value-field]
+   (values-from-card card value-field nil))
 
-  ([card-id         :- ms/IntGreaterThanZero
+  ([card            :- (ms/InstanceOf Card)
     value-field     :- ms/Field
     query           :- [:any]]
-   (let [card         (db/select-one Card :id card-id)
-         mbql-query   (values-from-card-query card value-field query)
+   (let [mbql-query   (values-from-card-query card value-field query)
          result       (qp/process-query mbql-query)
          values       (map first (get-in result [:data :rows]))]
      {:values          values
@@ -95,4 +95,14 @@
 (defn param->values
   "Given a param and query returns the values."
   [{config :values_source_config :as _param} query]
-  (values-from-card (:card_id config) (:value_field config) query))
+  (let [card-id (:card_id config)
+        card    (db/select-one Card :id card-id)]
+    (when-not card
+      (throw (ex-info (tru "Source card not found")
+                      {:card-id     card-id
+                       :status-code 400})))
+    (when (:archived card)
+      (throw (ex-info (tru "Source card is archived")
+                      {:card-id     card-id
+                       :status-code 400})))
+    (values-from-card card (:value_field config) query)))
