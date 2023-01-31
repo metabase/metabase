@@ -235,16 +235,20 @@
 
 (def ^:private DataKind (into [:enum] (vals data-rx->data-kind)))
 
-(def ^:private data-permissions-rx
-  "Any path containing /db/ is a DATA permissions path. (e.g. can be /block/db/... or /download/db/...)
-   - those do not involve granting data access.
-   Any path starting with /db/ is a DATA ACCESS permissions path"
+(def ^:private v1-data-permissions-rx
+  "Paths starting with /db/ is a DATA ACCESS permissions path
+
+  Paths that do not start with /db/ (e.g. /download/db/...) do not involve granting data access, and are not data-permissions.
+  They are other kinds of paths, for example: see [[download-permissions-rx]]."
   (into [:or] (keys data-rx->data-kind)))
 
+(def ^:private v2-data-permissions-rx [:and "data/" v1-data-permissions-rx])
+(def ^:private v2-query-permissions-rx [:and "query/" v1-data-permissions-rx])
+
 (def ^:private download-permissions-rx
-  ;; any path starting with /download/ is a DOWNLOAD permissions path
-  ;; /download/db/:id/ -> permissions to download 1M rows in query results
-  ;; /download/limited/db/:id/ -> permissions to download 1k rows in query results
+  "Any path starting with /download/ is a DOWNLOAD permissions path
+  /download/db/:id/         -> permissions to download 1M rows in query results
+  /download/limited/db/:id/ -> permissions to download 1k rows in query results"
   [:and "download/" [:? "limited/"]
    [:and #"db/\d+/"
     [:? [:or "native/"
@@ -253,8 +257,8 @@
                [:? #"table/\d+/"]]]]]]]])
 
 (def ^:private data-model-permissions-rx
-  ;; any path starting with /data-model/ is a DATA MODEL permissions path
-  ;; /download/db/:id/ -> permissions to access the data model for the DB
+  "Any path starting with /data-model/ is a DATA MODEL permissions path
+  /download/db/:id/ -> permissions to access the data model for the DB"
   [:and "data-model/"
    [:and #"db/\d+/"
     [:? [:and "schema/"
@@ -262,12 +266,12 @@
               [:? #"table/\d+/"]]]]]]])
 
 (def ^:private db-conn-details-permissions-rx
-  ;; any path starting with /details/ is a DATABASE CONNECTION DETAILS permissions path
-  ;; /details/db/:id/ -> permissions to edit the connection details and settings for the DB
+  "any path starting with /details/ is a DATABASE CONNECTION DETAILS permissions path
+  /details/db/:id/ -> permissions to edit the connection details and settings for the DB"
   [:and "details/" #"db/\d+/"])
 
 (def ^:private execute-permissions-rx
-  ;; .../execute/ -> permissions to run query actions in the DB
+  ".../execute/ -> permissions to run query actions in the DB"
   [:and "execute/" [:or "" #"db/\d+/"]])
 
 (def ^:private collection-permissions-rx
@@ -288,25 +292,45 @@
      [:? "read/"]]]])
 
 (def ^:private non-scoped-permissions-rx
-  ;; any path starting with /application is a permissions that is not scoped by database or collection
-  ;; /application/setting/      -> permissions to access /admin/settings page
-  ;; /application/monitoring/   -> permissions to access tools, audit and troubleshooting
-  ;; /application/subscription/ -> permisisons to create/edit subscriptions and alerts
+  "Any path starting with /application is a permissions that is not scoped by database or collection
+  /application/setting/      -> permissions to access /admin/settings page
+  /application/monitoring/   -> permissions to access tools, audit and troubleshooting
+  /application/subscription/ -> permisisons to create/edit subscriptions and alerts"
   [:and "application/"
    [:or "setting/" "monitoring/" "subscription/"]])
 
 (def ^:private block-permissions-rx
-  ;; any path starting with /block/ is for BLOCK aka anti-permissions.
-  ;; currently only supported at the DB level.
-  ;; e.g. /block/db/1/ => block collection-based access to Database 1
+  "Any path starting with /block/ is for BLOCK aka anti-permissions.
+  currently only supported at the DB level.
+  e.g. /block/db/1/ => block collection-based access to Database 1"
   #"block/db/\d+/")
 
-(def ^:private admin-permissions-rx
-  ;; root permissions, i.e. for admin
-  "")
+(def ^:private admin-permissions-rx "Root Permissions, i.e. for admin" "")
+
+(def ^:private path-regex-v1
+  "Regex for a valid permissions path. The [[metabase.util.regex/rx]] macro is used to make the big-and-hairy regex
+  somewhat readable."
+  (u.regex/rx
+   "^/" [:or
+         v1-data-permissions-rx
+         download-permissions-rx
+         data-model-permissions-rx
+         db-conn-details-permissions-rx
+         execute-permissions-rx
+         collection-permissions-rx
+         non-scoped-permissions-rx
+         block-permissions-rx
+         admin-permissions-rx]
+   "$"))
+
+(def ^:private query-permissions-rx
+  [:and "query"])
 
 (def rx->kind
-  {(u.regex/rx "^/" data-permissions-rx "$")            :data
+  {(u.regex/rx "^/" v1-data-permissions-rx "$")         :data
+   (u.regex/rx "^/" v2-data-permissions-rx "$")         :data-v2
+   (u.regex/rx "^/" query-permissions-rx "$")           :query
+   (u.regex/rx "^/" v2-query-permissions-rx "$")        :query-v2
    (u.regex/rx "^/" download-permissions-rx "$")        :download
    (u.regex/rx "^/" data-model-permissions-rx "$")      :data-model
    (u.regex/rx "^/" db-conn-details-permissions-rx "$") :db-conn-details
@@ -316,12 +340,13 @@
    (u.regex/rx "^/" block-permissions-rx "$")           :block
    (u.regex/rx "^/" admin-permissions-rx "$")           :admin})
 
-(def ^:private path-regex
+(def ^:private path-regex-v2
   "Regex for a valid permissions path. The [[metabase.util.regex/rx]] macro is used to make the big-and-hairy regex
   somewhat readable."
   (u.regex/rx
    "^/" [:or
-         data-permissions-rx
+         v2-data-permissions-rx
+         v2-query-permissions-rx
          download-permissions-rx
          data-model-permissions-rx
          db-conn-details-permissions-rx
@@ -336,9 +361,11 @@
 
 (def Path
   "A permission path. "
-  [:re path-regex])
+  [:or
+   [:re path-regex-v1]
+   [:re path-regex-v2]])
 
-(mu/defn path-kind :- Kind [path :- Path]
+(mu/defn classify-path :- Kind [path :- Path]
   (let [result (keep (fn [[permission-rx kind]]
                        (when (re-matches (u.regex/rx permission-rx) path) kind))
                      rx->kind)]
@@ -347,10 +374,10 @@
                       {:path path :result result})))
     (first result)))
 
-(def DataPath "A permissions path that's garanteed to be a data-permissions path"
-  [:re (u.regex/rx "^/" data-permissions-rx "$")])
+(def DataPath "A permissions path that's garanteed to be a v1 data-permissions path"
+  [:re (u.regex/rx "^/" v1-data-permissions-rx "$")])
 
-(mu/defn data-path-kind :- DataKind [data-path :- DataPath]
+(mu/defn classify-data-path :- DataKind [data-path :- DataPath]
   (let [result (keep (fn [[data-rx kind]]
                        (when (re-matches (u.regex/rx [:and "^/" data-rx]) data-path) kind))
                      data-rx->data-kind)]
@@ -378,7 +405,7 @@
   ^Boolean [^String path]
   (boolean (when (and (string? path)
                       (seq path))
-             (re-matches path-regex path))))
+             (re-matches path-regex-v1 path))))
 
 (defn valid-path-format?
   "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
@@ -1322,7 +1349,7 @@
 (let [delete (fn delete [s to-delete] (str/replace s to-delete ""))
       data-query-split (fn data-query-split [path]
                          [(str "/data" path) (str "/query" path)])]
-  (def data-kind->rewrite-fn
+  (def ^:private data-kind->rewrite-fn
     "lookup table to generate v2 query + data permission from a v1 data permission."
     {:dk/db                                 data-query-split
      :dk/db-native                          (fn [path] (data-query-split (delete path "native/")))
@@ -1334,15 +1361,17 @@
      :dk/db-schema-name-table-and-query     (fn [path] (data-query-split (delete path "query/")))
      :dk/db-schema-name-table-and-segmented (fn [path] (data-query-split (delete path "query/segmented/")))}))
 
-(defn- move-data
+(def Path-v2 [:re path-regex-v2])
+
+(mu/defn ^:private move-data  :- Path-v2
   "See [[data-permissions]]"
-  [path]
-  (let [data-permission-kind (data-path-kind path)
+  [path :- Path]
+  (let [data-permission-kind (classify-data-path path)
         rewrite-fn (data-kind->rewrite-fn data-permission-kind)]
     (rewrite-fn path)))
 
-(mu/defn move :- [:vector :string] [path :- Path]
-  (let [kind (path-kind path)]
+(mu/defn move :- [:vector :string] [path :- Path-v1]
+  (let [kind (classify-path path)]
     (cond
       (= kind :data) (move-data path)
       (= kind :admin) ["/"]

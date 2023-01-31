@@ -43,10 +43,11 @@
             (pr-str humanized)
             (merge {:type type :data data}
                    (when data
-                     (when-let [link (cond input (->malli-io-link input args)
-                                           output (->malli-io-link output value))]
-                       {:link link})
-                     :humanized humanized))))))
+                     (merge
+                      {:humanized humanized}
+                      (when-let [link (cond input (->malli-io-link input args)
+                                            output (->malli-io-link output value))]
+                        {:link link}))))))))
 
 ;; since a reference to the private var is used in the macro, this will trip the eastwood :unused-private-vars linter,
 ;; so just harmlessly "use" the var here.

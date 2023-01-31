@@ -1,7 +1,7 @@
 (ns metabase.models.permissions-test
   (:require
    [clojure.test :refer :all]
-   [malli.instrument :as minst]
+   [malli.generator :as mg]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -897,11 +897,9 @@
            (perms/move "/db/1/schema/PUBLIC/table/1/query/segmented/")))))
 
 (deftest quickcheck-perm-path-classification
-  (is (nil? (get (minst/check {:filters [(minst/-filter-var #{#'perms/path-kind})]})
-                 (symbol #'perms/path-kind)))
-      "Schema for path-kind is wrong."))
+  (is (nil? ((mg/function-checker (:schema (meta #'perms/classify-path)) {::mg/=>iterations 10000})
+             @#'perms/classify-path))))
 
 (deftest quickcheck-data-path-classification
-  (is (nil? (get (minst/check {:filters [(minst/-filter-var #{#'perms/data-path-kind})]})
-                 (symbol #'perms/data-path-kind)))
-      "Schema for data-path-kind is wrong."))
+  (is (nil? ((mg/function-checker (:schema (meta #'perms/classify-data-path)) {::mg/=>iterations 10000})
+             @#'perms/classify-data-path))))
