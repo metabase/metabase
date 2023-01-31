@@ -1,10 +1,9 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Parameter,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
 import {
   getSourceConfig,
   getSourceConfigForType,
@@ -33,10 +32,6 @@ const ValuesSourceModal = ({
   const [sourceType, setSourceType] = useState(getSourceType(parameter));
   const [sourceConfig, setSourceConfig] = useState(getSourceConfig(parameter));
 
-  const fields = useMemo(() => {
-    return getNonVirtualFields(parameter);
-  }, [parameter]);
-
   const handlePickerOpen = useCallback(() => {
     setStep("card");
   }, []);
@@ -52,8 +47,7 @@ const ValuesSourceModal = ({
 
   return step === "main" ? (
     <ValuesSourceTypeModal
-      name={parameter.name}
-      fields={fields}
+      parameter={parameter}
       sourceType={sourceType}
       sourceConfig={sourceConfig}
       onChangeSourceType={setSourceType}
@@ -64,7 +58,7 @@ const ValuesSourceModal = ({
     />
   ) : (
     <ValuesSourceCardModal
-      name={parameter.name}
+      parameter={parameter}
       sourceConfig={sourceConfig}
       onChangeSourceConfig={setSourceConfig}
       onSubmit={handlePickerClose}
