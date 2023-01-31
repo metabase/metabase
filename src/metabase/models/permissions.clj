@@ -1361,11 +1361,9 @@
      :dk/db-schema-name-table-and-query     (fn [path] (data-query-split (delete path "query/")))
      :dk/db-schema-name-table-and-segmented (fn [path] (data-query-split (delete path "query/segmented/")))}))
 
-(def Path-v2 [:re path-regex-v2])
-
-(mu/defn ^:private move-data  :- Path-v2
-  "See [[data-permissions]]"
-  [path :- Path]
+(mu/defn ^:private move-data :- [:re path-regex-v2]
+  "Takes a path that is a v1 path, and returns 0 or more v2 paths. See [[data-permissions]]"
+  [path :- [:vector [:re path-regex-v1]]]
   (let [data-permission-kind (classify-data-path path)
         rewrite-fn (data-kind->rewrite-fn data-permission-kind)]
     (rewrite-fn path)))
@@ -1375,4 +1373,10 @@
     (cond
       (= kind :data) (move-data path)
       (= kind :admin) ["/"]
-      :else [])))
+
+      ;; explicitly, this should be idempotent -- v2 paths should be passed through untouched
+      ;; so these are no-ops:
+      (= kind :data-v2) [path]
+      (= kind :query-v2) [path]
+
+      :else [path])))
