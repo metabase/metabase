@@ -15,7 +15,7 @@ To add a database connection, click on the **gear** icon in the top right, and n
 
 Fill out the fields for that database, and click **Save changes** at the bottom.
 
-The [connection settings](./settings.md) differ database to database. For the list of connection settings available for your database, click on the link to your database below.
+The connection settings differ database to database. For the list of connection settings available for your database, click on the link to your database below.
 
 ## Connecting to supported databases
 
@@ -56,6 +56,27 @@ Metabase runs syncs and scans to stay up to date with your database.
 When Metabase first connects to your database, it performs a **scan** to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md).
 
 During the scan, Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. You can map table and column metadata to new values from **Admin settings** > **Data model**. Check out [editing metadata](../data-modeling/metadata-editing.md).
+
+### Choose when Metabase syncs and scans
+
+Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. 
+
+#### Scheduling database syncs
+
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Database syncing**:
+
+- **Scan** sets the frequency of the [sync query](#how-database-syncs-work) to hourly (default) or daily.
+- **at** sets the time when your sync query will run against your database (in the timezone of the server where your Metabase app is running).
+
+#### Scheduling database scans
+
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
+
+![Scanning options](./images/scanning-options.png)
+
+- **Regularly, on a schedule** allows you to run [scan queries](#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
+- **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
 ### How database syncs work
 

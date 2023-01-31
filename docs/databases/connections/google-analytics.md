@@ -111,5 +111,5 @@ If you're having trouble, see the guides under [Troubleshooting data sources][tr
 [google-managing-service-accounts]: https://cloud.google.com/iam/docs/creating-managing-service-accounts
 [google-oauth-scopes]: https://developers.google.com/identity/protocols/oauth2/scopes
 [google-service-accounts]: https://cloud.google.com/iam/docs/service-accounts
-[sync-docs]: ../connecting.md../connecting.md#syncing-and-scanning-databases
+[sync-docs]: ../connecting.md#syncing-and-scanning-databases
 [troubleshooting-data-sources]: ../../troubleshooting-guide#databases

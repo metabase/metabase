@@ -85,7 +85,7 @@ If you set the SSL Mode to either "verify-ca" or "verify-full", you'll need to s
 
 ## Use an SSH tunnel
 
-See our [guide to SSH tunneling](./ssh-tunnel.md).
+See our [guide to SSH tunneling](../ssh-tunnel.md).
 
 ## Authenticate client certificate
 
@@ -117,7 +117,7 @@ You can append options to the connection string that Metabase uses to connect to
 
 ## Re-run queries for simple explorations
 
-Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
+Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
 By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [action menu](https://www.metabase.com/glossary/action_menu). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
@@ -129,7 +129,7 @@ Turn this option **ON** to manage the queries that Metabase uses to stay up to d
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Database syncing**:
 
-- **Scan** sets the frequency of the [sync query](#how-database-syncs-work) to hourly (default) or daily.
+- **Scan** sets the frequency of the [sync query](../connecting.md#how-database-syncs-work) to hourly (default) or daily.
 - **at** sets the time when your sync query will run against your database (in the timezone of the server where your Metabase app is running).
 
 ### Scanning for filter values
@@ -138,15 +138,13 @@ Metabase can scan the values present in each field in this database to enable ch
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
 
-![Scanning options](./images/scanning-options.png)
-
-- **Regularly, on a schedule** allows you to run [scan queries](#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
+- **Regularly, on a schedule** allows you to run [scan queries](../connecting.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](../connecting.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
 ## Periodically refingerprint tables
 
-Turn this option **ON** to scan a _sample_ of values every time Metabase runs a [sync](#how-database-syncs-work).
+Turn this option **ON** to scan a _sample_ of values every time Metabase runs a [sync](../connecting.md#how-database-syncs-work).
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you turn this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
