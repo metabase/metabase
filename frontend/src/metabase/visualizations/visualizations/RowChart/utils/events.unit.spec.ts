@@ -69,7 +69,7 @@ const barData: BarData<GroupedDatum> = {
 
 describe("events utils", () => {
   describe("getHoverData", () => {
-    it("returns key-value pairs based on series_settings for charts without breaekouts", () => {
+    it("returns key-value pairs based on series_settings for charts without a breakout", () => {
       const keyValueData = getHoverData(
         barData,
         {
