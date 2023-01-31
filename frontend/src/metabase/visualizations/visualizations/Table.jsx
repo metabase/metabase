@@ -174,18 +174,19 @@ export default class Table extends Component {
       section: t`Columns`,
       title: t`Columns`,
       widget: ChartSettingOrderedSimple,
-      getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-      isValid: ([{ card, data }], vizSettings) =>
+      getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
+      isValid: ([{ card, data }], _vizSettings, extra = {}) =>
         // If "table.columns" happened to be an empty array,
         // it will be treated as "all columns are hidden",
         // This check ensures it's not empty,
         // otherwise it will be overwritten by `getDefault` below
-        card.visualization_settings["table.columns"].length !== 0 &&
-        _.all(
-          card.visualization_settings["table.columns"],
-          columnSetting =>
-            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-        ),
+        card.visualization_settings["table.columns"] !== 0 &&
+        (extra.isQueryRunning ||
+          _.all(
+            card.visualization_settings["table.columns"],
+            columnSetting =>
+              findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+          )),
       getDefault: ([
         {
           data: { cols },
@@ -241,6 +242,7 @@ export default class Table extends Component {
         columns: cols,
         isDashboard: extra.isDashboard,
         metadata: extra.metadata,
+        isQueryRunning: extra.isQueryRunning,
       }),
     },
     "table.column_widths": {},

@@ -32,6 +32,7 @@ interface ChartSettingColumnEditorProps {
   question: Question;
   isDashboard?: boolean;
   metadata?: Metadata;
+  isQueryRunning: boolean;
 }
 
 const structuredQueryFieldOptions = (
@@ -109,6 +110,7 @@ const ChartSettingColumnEditor = ({
   question,
   isDashboard,
   metadata,
+  isQueryRunning,
 }: ChartSettingColumnEditorProps) => {
   const fieldOptions = useMemo(() => {
     const query = question && question.query();
@@ -208,6 +210,7 @@ const ChartSettingColumnEditor = ({
           onClick={() => toggleColumn(dimension)}
           checked={columnIsEnabled(dimension)}
           key={`${dimension.displayName()}-${index}`}
+          disabled={isQueryRunning}
         />
       ))}
       {fieldOptions.fks.map(fk => (
@@ -227,6 +230,7 @@ const ChartSettingColumnEditor = ({
               onClick={() => toggleColumn(dimension)}
               checked={columnIsEnabled(dimension)}
               key={`${fk.name}-${dimension.displayName()}-${index}`}
+              disabled={isQueryRunning}
             />
           ))}
         </>

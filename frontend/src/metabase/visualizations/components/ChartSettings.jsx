@@ -165,14 +165,14 @@ class ChartSettings extends Component {
     if (this.props.widgets) {
       return this.props.widgets;
     } else {
-      const { isDashboard, metadata } = this.props;
+      const { isDashboard, metadata, isQueryRunning = false } = this.props;
       const transformedSeries = this._getTransformedSeries();
 
       return getSettingsWidgetsForSeries(
         transformedSeries,
         this.handleChangeSettings,
         isDashboard,
-        metadata,
+        { metadata, isQueryRunning },
       );
     }
   }
