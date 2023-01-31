@@ -84,18 +84,18 @@ export class TagEditorParam extends Component {
   }
 
   setQueryType = queryType => {
-    const { tag, parameter, setTemplateTag } = this.props;
+    const { tag, parameter, setTemplateTagConfig } = this.props;
 
-    setTemplateTag(tag, {
+    setTemplateTagConfig(tag, {
       ...parameter,
       values_query_type: queryType,
     });
   };
 
   setSourceSettings = (sourceType, sourceConfig) => {
-    const { tag, parameter, setTemplateTag } = this.props;
+    const { tag, parameter, setTemplateTagConfig } = this.props;
 
-    setTemplateTag(tag, {
+    setTemplateTagConfig(tag, {
       ...parameter,
       values_source_type: sourceType,
       values_source_config: sourceConfig,
