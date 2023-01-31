@@ -662,13 +662,13 @@
  ;; fix those namespaces than it is to make this regex super hairy.
  [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"
    :name    test-namespaces}
-  ;; all `metabase` namespaces except for ones starting with `metabase.driver`,
-  ;; `metabase.util.honey-sql-1-extensions`, or `metabase.util.honeysql-extensions` should be nicely forced to use
-  ;; Honey SQL 2.
+  ;; all `metabase` namespaces except for ones starting with `metabase.driver`, `metabase.query-processor`,
+  ;; `metabase.test.data`, `metabase.util.honey-sql-1-extensions`, or `metabase.util.honeysql-extensions` should be
+  ;; nicely forced to use Honey SQL 2.
   ;;
   ;; We don't really need to skip `metabase.util.honeysql-extensions`, but you can't write rules for it if you do
   ;; because of https://github.com/clj-kondo/clj-kondo/issues/1942
-  {:pattern "^metabase(?:-enterprise)?\\.(?!driver)(?!util\\.(?:(?:honey-sql-1)|(?:honeysql))-extensions).*$"
+  {:pattern "^metabase(?:-enterprise)?\\.(?!driver)(?!util\\.(?:(?:honey-sql-1)|(?:honeysql))-extensions)(?!query-processor)(?!test\\.data\\.).*$"
    :name    namespaces-that-should-use-honey-sql-2}
   ;; Namespaces to match 3rd party libs
   {:pattern "^honeysql\\..*"

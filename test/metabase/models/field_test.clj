@@ -13,10 +13,11 @@
 
 (deftest nfc-field->parent-identifier-test
   (testing "It replaces the last identifier member"
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (let [nfc-identifier (hx/identifier :field "boop" "beep" "boop -> deep")
           new-identifier (#'metabase.models.field/nfc-field->parent-identifier
-                           nfc-identifier
-                           {:nfc_path ["something" "boppity"]})]
+                          nfc-identifier
+                          {:nfc_path ["something" "boppity"]})]
       (is (= (hx/identifier :field "boop" "beep" "something") new-identifier)))))
 
 (deftest unknown-types-test

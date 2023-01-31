@@ -9,6 +9,7 @@
   (:require
    [clojure.tools.logging :as log]
    [honey.sql :as sql]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [honeysql.format :as hformat]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]

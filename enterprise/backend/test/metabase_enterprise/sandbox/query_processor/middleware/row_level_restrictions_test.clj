@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.group-table-access-policy
@@ -71,8 +72,10 @@
                    ;; have one.) HACK
                    (= driver/*driver* :sparksql)
                    (update :from (fn [[table]]
-                                   [[table (sql.qp/->honeysql :sparksql
-                                             (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
+                                   [[table (sql.qp/->honeysql
+                                            :sparksql
+                                            #_{:clj-kondo/ignore [:discouraged-var]}
+                                            (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
     (first (hsql/format honeysql, :quoting (sql.qp/quote-style driver/*driver*), :allow-dashed-names? true))))
 
 (defn- venues-category-native-gtap-def []
