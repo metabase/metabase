@@ -208,6 +208,14 @@ describe("scenarios > question > object details", () => {
     visitDashboard(1);
 
     cy.get(".Table-ID:not(.Table-FK):contains(4)").first().click();
+
+    // URL should include `/:objectId/:columnIndex`,
+    // and on reload once again open the object detail
+    cy.reload();
+    cy.wait("@cardQuery1");
+    cy.findByTestId("object-detail").within(() => {
+      cy.get("h2").should("contain", "Order").should("contain", 4);
+    });
   });
 });
 
