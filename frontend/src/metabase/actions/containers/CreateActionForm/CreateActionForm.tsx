@@ -1,7 +1,6 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";
@@ -14,17 +13,9 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
 import * as Errors from "metabase/core/utils/errors";
 
-import Actions, { CreateQueryActionOptions } from "metabase/entities/actions";
+import type { CreateQueryActionParams } from "metabase/entities/actions";
 
 import FormModelPicker from "metabase/models/containers/FormModelPicker";
-
-import type {
-  ActionFormSettings,
-  CardId,
-  WritebackQueryAction,
-} from "metabase-types/api";
-import type { State } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
 
 const ACTION_SCHEMA = Yup.object({
   name: Yup.string()
@@ -36,66 +27,36 @@ const ACTION_SCHEMA = Yup.object({
 });
 
 type FormValues = Pick<
-  CreateQueryActionOptions,
+  CreateQueryActionParams,
   "name" | "description" | "model_id"
 >;
 
 interface OwnProps {
-  question: Question;
-  formSettings: ActionFormSettings;
-  modelId?: CardId;
-  onCreate?: (values: WritebackQueryAction) => void;
+  initialValues?: Partial<FormValues>;
+  onCreate: (values: FormValues) => void;
   onCancel?: () => void;
 }
 
-interface DispatchProps {
-  handleCreateAction: (
-    action: CreateQueryActionOptions,
-  ) => Promise<WritebackQueryAction>;
-}
-
-type Props = OwnProps & DispatchProps;
-
-const mapDispatchToProps = {
-  handleCreateAction: Actions.actions.create,
-};
+type Props = OwnProps;
 
 function CreateActionForm({
-  question,
-  formSettings,
-  modelId,
-  handleCreateAction,
+  initialValues: initialValuesProp,
   onCreate,
   onCancel,
 }: Props) {
   const initialValues = useMemo(
     () => ({
       ...ACTION_SCHEMA.getDefault(),
-      name: question.displayName(),
-      description: question.description(),
-      model_id: modelId,
+      ...initialValuesProp,
     }),
-    [question, modelId],
-  );
-
-  const handleCreate = useCallback(
-    async (values: FormValues) => {
-      const reduxAction = await handleCreateAction({
-        ...values,
-        question,
-        formSettings,
-      });
-      const action = Actions.HACK_getObjectFromAction(reduxAction);
-      onCreate?.(action);
-    },
-    [question, formSettings, handleCreateAction, onCreate],
+    [initialValuesProp],
   );
 
   return (
     <FormProvider
       initialValues={initialValues as FormValues}
       validationSchema={ACTION_SCHEMA}
-      onSubmit={handleCreate}
+      onSubmit={onCreate}
     >
       {({ dirty }) => (
         <Form disabled={!dirty}>
@@ -125,7 +86,4 @@ function CreateActionForm({
   );
 }
 
-export default connect<unknown, DispatchProps, OwnProps, State>(
-  null,
-  mapDispatchToProps,
-)(CreateActionForm);
+export default CreateActionForm;

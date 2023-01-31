@@ -4,7 +4,12 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import Actions, { ActionParams } from "metabase/entities/actions";
+import Modal from "metabase/components/Modal";
+
+import Actions, {
+  CreateQueryActionParams,
+  UpdateQueryActionParams,
+} from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -18,7 +23,6 @@ import type {
 import type { State } from "metabase-types/store";
 import type { SavedCard } from "metabase-types/types/Card";
 
-import Modal from "metabase/components/Modal";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getSetting } from "metabase/selectors/settings";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -27,7 +31,8 @@ import type Question from "metabase-lib/Question";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 import CreateActionForm from "../CreateActionForm";
-import { newQuestion, convertActionToQuestionCard } from "./utils";
+
+import { newQuestion, convertQuestionToAction } from "./utils";
 import ActionCreatorView from "./ActionCreatorView";
 
 const mapStateToProps = (
@@ -43,6 +48,7 @@ const mapStateToProps = (
 
 const mapDispatchToProps = {
   push,
+  create: Actions.actions.create,
   update: Actions.actions.update,
 };
 
@@ -65,7 +71,8 @@ interface StateProps {
 
 interface DispatchProps {
   push: (url: string) => void;
-  update: (action: ActionParams) => void;
+  create: (action: CreateQueryActionParams) => void;
+  update: (action: UpdateQueryActionParams) => void;
 }
 
 type ActionCreatorProps = OwnProps & StateProps & DispatchProps;
@@ -76,6 +83,7 @@ function ActionCreatorComponent({
   actionId,
   modelId,
   databaseId,
+  create,
   update,
   onClose,
   isAdmin,
@@ -84,9 +92,10 @@ function ActionCreatorComponent({
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata, databaseId),
   );
-  const [formSettings, setFormSettings] = useState<
-    ActionFormSettings | undefined
-  >(undefined);
+  const [formSettings, setFormSettings] = useState<ActionFormSettings>({
+    type: "button",
+    fields: {},
+  });
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   useEffect(() => {
@@ -125,21 +134,22 @@ function ActionCreatorComponent({
     if (isNew) {
       setShowSaveModal(true);
     } else {
-      update({
-        id: question.id(),
-        name: question.displayName() ?? "",
-        description: question.description() ?? null,
-        model_id: defaultModelId as number,
-        formSettings: formSettings as ActionFormSettings,
-        question,
-      });
+      const action = convertQuestionToAction(question, formSettings);
+      update({ ...action, model_id: defaultModelId as number });
       onClose?.();
     }
   };
 
-  const handleSave = (action: WritebackQueryAction) => {
-    const actionCard = convertActionToQuestionCard(action);
-    setQuestion(question.setCard(actionCard));
+  const handleCreate = async (values: any) => {
+    await create({
+      ...convertQuestionToAction(question, formSettings),
+      ...values,
+      type: "query",
+    });
+    const nextQuestion = question
+      .setDisplayName(values.name)
+      .setDescription(values.description);
+    setQuestion(nextQuestion);
     setTimeout(() => setShowSaveModal(false), 1000);
     onClose?.();
   };
@@ -172,10 +182,12 @@ function ActionCreatorComponent({
       {showSaveModal && (
         <Modal title={t`New Action`} onClose={handleCloseNewActionModal}>
           <CreateActionForm
-            question={question}
-            formSettings={formSettings as ActionFormSettings}
-            modelId={defaultModelId}
-            onCreate={handleSave}
+            initialValues={{
+              name: question.displayName() ?? "",
+              description: question.description(),
+              model_id: defaultModelId,
+            }}
+            onCreate={handleCreate}
             onCancel={handleCloseNewActionModal}
           />
         </Modal>
