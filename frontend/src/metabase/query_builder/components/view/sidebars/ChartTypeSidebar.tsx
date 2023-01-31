@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
@@ -150,6 +149,8 @@ const ChartTypeOption = ({
   <OptionRoot
     isSelected={isSelected}
     data-testid={`${visualization.uiName}-container`}
+    role="option"
+    aria-selected={isSelected}
   >
     <OptionIconContainer
       onClick={onClick}

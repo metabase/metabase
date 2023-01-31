@@ -4,7 +4,6 @@ import { render, fireEvent, screen, within } from "@testing-library/react";
 import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
 
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
-import { color } from "metabase/lib/colors";
 
 const DATA = {
   rows: [[1]],
@@ -28,15 +27,9 @@ describe("ChartSettingsSidebar", () => {
     setup();
 
     //active display type
-    expect(screen.getByText("Gauge")).toHaveStyle({ color: color("brand") });
-    expect(screen.getByTestId("Gauge-button")).toHaveStyle({
-      "background-color": color("brand"),
-    });
-
-    //inactive display type
-    expect(screen.getByText("Table")).toHaveStyle({
-      color: color("text-medium"),
-    });
+    expect(screen.getByRole("option", { selected: true })).toHaveTextContent(
+      "Gauge",
+    );
   });
 
   it("should call correct functions when display type is selected", () => {
