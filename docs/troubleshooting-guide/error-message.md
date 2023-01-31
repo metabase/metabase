@@ -8,15 +8,17 @@ An error message can help you find the right troubleshooting guide. The exact wo
 
 ## SQL editor
 
+See if your error details contain any of:
+
 - [Table or column not found](https://www.metabase.com/learn/debugging-sql/sql-syntax.html#column-or-table-name-is-not-found-or-not-recognized).
 - [Function does not exist](https://www.metabase.com/learn/debugging-sql/sql-syntax.html#sql-function-does-not-exist).
 - [Permission denied](./data-permissions.md#getting-a-permission-denied-error-message).
 
-For example, this SQL error tells you that the function `DATEFROMPARTS` does not work on a BigQuery database.
+For example, this SQL error tells you that the function `DATEFROMPARTS` does not work on a BigQuery database:
 
 ![Sample SQL error message](./images/sample-error-sql.png)
 
-## Query builder
+## Questions and dashboards
 
 - [Your question took too long](./timeout.md).
 - [Still waiting...](./my-dashboard-is-slow.md).
