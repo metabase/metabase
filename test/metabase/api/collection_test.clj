@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.collection :as api.collection]
+   [metabase.api.common :as api]
    [metabase.models
     :refer [Card
             Collection
@@ -71,6 +72,30 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                GET /collection                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; MSB TODO REMOVE
+(deftest list-collections-test-sm
+  (testing "GET /api/collection"
+    (testing "check that we can get a basic list of collections"
+      ;; (for test purposes remove the personal collections)
+      #_(mt/with-temp Collection [collection]
+        (is (= [{:parent_id           nil
+                 :effective_location  nil
+                 :effective_ancestors []
+                 :can_write           true
+                 :name                "Our analytics"
+                 :authority_level     nil
+                 :id                  "root"}
+                (assoc (into {} collection) :can_write true)]
+               (filter #(#{(:id collection) "root"} (:id %))
+                       (mt/user-http-request :crowberto :get 200 "collection")))))
+
+      (mt/with-temp Collection [collection]
+        (println api/*current-user-id*)
+        (println (#'metabase.api.collection/collection-ids-for-user-id))
+        (filter #(#{(:id collection) "root"} (:id %))
+                (mt/user-http-request :crowberto :get 200 "collection"))))
+))
 
 (deftest list-collections-test
   (testing "GET /api/collection"
