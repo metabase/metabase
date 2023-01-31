@@ -29,8 +29,8 @@ export const valuesCache = handleActions<
     [RESET]: { next: () => ({}) },
     // query builder
     [INITIALIZE_QB]: { next: () => ({}) },
-    [RESET_QB]: { next: () => ({}) },
     [API_UPDATE_QUESTION]: { next: () => ({}) },
+    [RESET_QB]: { next: () => ({}) },
   },
   {},
 );
