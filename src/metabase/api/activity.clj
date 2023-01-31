@@ -5,7 +5,7 @@
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
-   [metabase.models.activity :refer [Activity]]
+   [metabase.models.activity-log :refer [ActivityLog]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
@@ -87,7 +87,7 @@
 (api/defendpoint-schema GET "/"
   "Get recent activity."
   []
-  (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
+  (filter mi/can-read? (-> (db/select ActivityLog {:order-by [[:timestamp :desc]], :limit 40})
                            (hydrate :user :table :database)
                            add-model-exists-info)))
 

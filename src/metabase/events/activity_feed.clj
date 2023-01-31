@@ -3,7 +3,7 @@
    [clojure.core.async :as a]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.activity :as activity :refer [Activity]]
+   [metabase.models.activity-log :as activity-log :refer [ActivityLog]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.table :as table]
@@ -62,7 +62,7 @@
                              (log/error e (tru "Error preprocessing query:")))))
         database-id (some-> query :database u/the-id)
         table-id    (mbql.u/query->source-table-id query)]
-    (activity/record-activity!
+    (activity-log/record-activity!
       :topic       topic
       :object      object
       :model       (when dataset? "dataset")
@@ -84,7 +84,7 @@
                                   (-> (db/select-one [Card :name :description], :id card_id)
                                       (assoc :id id)
                                       (assoc :card_id card_id))))))]
-    (activity/record-activity!
+    (activity-log/record-activity!
       :topic      topic
       :object     object
       :details-fn (case topic
@@ -98,7 +98,7 @@
   (let [details-fn  #(select-keys % [:name :description :revision_message])
         table-id    (:table_id object)
         database-id (table/table-id->database-id table-id)]
-    (activity/record-activity!
+    (activity-log/record-activity!
       :topic       topic
       :object      object
       :details-fn  details-fn
@@ -108,7 +108,7 @@
 (defmethod process-activity! :pulse
   [_ topic object]
   (let [details-fn #(select-keys % [:name])]
-    (activity/record-activity!
+    (activity-log/record-activity!
       :topic       topic
       :object      object
       :details-fn  details-fn)))
@@ -116,7 +116,7 @@
 (defmethod process-activity! :alert
   [_ topic {:keys [card] :as alert}]
   (let [details-fn #(select-keys (:card %) [:name])]
-    (activity/record-activity!
+    (activity-log/record-activity!
       ;; Alerts are centered around a card/question. Users always interact with the alert via the question
       :model       "card"
       :model-id    (:id card)
@@ -129,7 +129,7 @@
   (let [details-fn  #(select-keys % [:name :description :revision_message])
         table-id    (:table_id object)
         database-id (table/table-id->database-id table-id)]
-    (activity/record-activity!
+    (activity-log/record-activity!
       :topic       topic
       :object      object
       :details-fn  details-fn
@@ -141,15 +141,15 @@
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
   (when (and (= :user-login topic)
              (:first_login object))
-    (activity/record-activity!
+    (activity-log/record-activity!
       :topic    :user-joined
       :user-id  (:user_id object)
       :model-id (:user_id object))))
 
 (defmethod process-activity! :install
   [& _]
-  (when-not (db/exists? Activity :topic "install")
-    (db/insert! Activity :topic "install" :model "install")))
+  (when-not (db/exists? ActivityLog :topic "install")
+    (db/insert! ActivityLog :topic "install" :model "install")))
 
 (defn process-activity-event!
   "Handle processing for a single event notification received on the activity-feed-channel"

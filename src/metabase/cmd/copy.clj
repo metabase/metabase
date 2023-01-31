@@ -109,7 +109,6 @@
    BookmarkOrdering
    DashboardCard
    DashboardCardSeries
-   Activity
    ActivityLog
    Pulse
    PulseCard

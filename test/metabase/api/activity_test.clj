@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.api.activity :as api.activity]
-   [metabase.models.activity :refer [Activity]]
+   [metabase.models.activity-log :refer [ActivityLog]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
@@ -28,12 +28,12 @@
 ;;  2. :user and :model_exists are hydrated
 
 (def ^:private activity-defaults
-  {:model_exists false
-   :database_id  nil
-   :database     nil
-   :table_id     nil
-   :table        nil
-   :custom_id    nil})
+  {:model_exists  false
+   :database_id   nil
+   :database      nil
+   :table_id      nil
+   :table         nil
+   :end_timestamp nil})
 
 (defn- activity-user-info [user-kw]
   (merge
@@ -45,17 +45,17 @@
 ;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
 (deftest activity-list-test
   (testing "GET /api/activity"
-    (mt/with-temp* [Activity [activity1 {:topic     "install"
+    (mt/with-temp* [ActivityLog [activity1 {:topic     "install"
                                          :details   {}
                                          :timestamp #t "2015-09-09T12:13:14.888Z[UTC]"}]
-                    Activity [activity2 {:topic     "dashboard-create"
+                    ActivityLog [activity2 {:topic     "dashboard-create"
                                          :user_id   (mt/user->id :crowberto)
                                          :model     "dashboard"
                                          :model_id  1234
                                          :details   {:description "Because I can!"
                                                      :name        "Bwahahaha"}
                                          :timestamp #t "2015-09-10T18:53:01.632Z[UTC]"}]
-                    Activity [activity3 {:topic     "user-joined"
+                    ActivityLog [activity3 {:topic     "user-joined"
                                          :user_id   (mt/user->id :rasta)
                                          :model     "user"
                                          :details   {}
@@ -63,7 +63,7 @@
       (letfn [(fetch-activity [activity]
                 (merge
                  activity-defaults
-                 (db/select-one [Activity :id :user_id :details :model :model_id] :id (u/the-id activity))))]
+                 (db/select-one [ActivityLog :id :user_id :details :model :model_id] :id (u/the-id activity))))]
         (is (= [(merge
                  (fetch-activity activity2)
                  {:topic "dashboard-create"
@@ -268,7 +268,7 @@
                                                                           {:card_id dataset-id}]}}])))))
 
 (deftest activity-visibility-test
-  (mt/with-temp Activity [activity {:topic     "user-joined"
+  (mt/with-temp ActivityLog [activity {:topic     "user-joined"
                                     :details   {}
                                     :timestamp (java.time.ZonedDateTime/now)}]
     (letfn [(activity-topics [user]
