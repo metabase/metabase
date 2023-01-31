@@ -186,7 +186,7 @@ To hide a question or dashboard's title, [additional info](#additional_info), an
 
 ### logo
 
-Whether to show the logo that opens and closes the sidebar. Default is true. How Metabase displays the logo depends on the [side_nav](#side-nav). Here's a rough breakdown:
+Whether to show the logo that opens and closes the sidebar nav. Default is true. How Metabase displays the logo depends on the `side_nav` setting. Here's a rough breakdown of how these two parameters interact:
 
 If `logo=true` and:
 
