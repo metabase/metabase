@@ -311,6 +311,8 @@ describe("scenarios > models metadata", () => {
           const dashboardId = response.body.id;
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
             cardId: modelId,
+            row: 0,
+            col: 0,
             size_x: 18,
             size_y: 9,
           });

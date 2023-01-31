@@ -43,13 +43,20 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId, Parameter as ParameterObject } from "metabase-types/api";
+import {
+  CollectionId,
+  Parameter as ParameterObject,
+  ParameterId,
+} from "metabase-types/api";
 
 import {
   getParameterValuesBySlug,
   normalizeParameters,
 } from "metabase-lib/parameters/utils/parameter-values";
-import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
+import {
+  getTemplateTagParametersFromCard,
+  remapParameterValuesToTemplateTags,
+} from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
@@ -1129,6 +1136,14 @@ class QuestionInner {
     }
   }
 
+  setParameter(id: ParameterId, parameter: ParameterObject) {
+    const newParameters = this.parameters().map(oldParameter =>
+      oldParameter.id === id ? parameter : oldParameter,
+    );
+
+    return this.setParameters(newParameters);
+  }
+
   setParameters(parameters) {
     return this.setCard(assoc(this.card(), "parameters", parameters));
   }
@@ -1174,7 +1189,7 @@ class QuestionInner {
       return (
         q &&
         new Question(q.card(), this.metadata())
-          .setParameters([])
+          .setParameters(getTemplateTagParametersFromCard(q.card()))
           .setDashboardProps({
             dashboardId: undefined,
             dashcardId: undefined,

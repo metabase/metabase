@@ -27,6 +27,7 @@
   Returns `nil` for invalid strings -- you can use this to check whether a String is valid."
   ^String [s]
   {:pre [((some-fn nil? string?) s)]}
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (when (string? s)
     (when-let [[_ language country] (re-matches #"^(\w{2})(?:[-_](\w{2}))?$" s)]
       (let [language (str/lower-case language)]

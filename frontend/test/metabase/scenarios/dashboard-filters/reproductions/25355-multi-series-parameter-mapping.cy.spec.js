@@ -75,7 +75,17 @@ const createDashboard = () => {
   }).then(({ body: { id, card_id, dashboard_id } }) => {
     cy.createQuestion(question2Details).then(({ body: { id: card_2_id } }) => {
       cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [{ id, card_id, series: [{ id: card_2_id }] }],
+        cards: [
+          {
+            id,
+            card_id,
+            series: [{ id: card_2_id }],
+            row: 0,
+            col: 0,
+            size_x: 12,
+            size_y: 8,
+          },
+        ],
       });
     });
     visitDashboard(dashboard_id);
