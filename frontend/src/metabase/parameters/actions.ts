@@ -26,22 +26,42 @@ export interface FetchParameterValuesPayload {
 
 export const fetchParameterValues =
   ({ parameter, query }: FetchParameterValuesOpts) =>
-  async (dispatch: Dispatch, getState: GetState) => {
+  (dispatch: Dispatch, getState: GetState) => {
     const request = {
       parameter: normalizeParameter(parameter),
       field_ids: getNonVirtualFields(parameter).map(field => Number(field.id)),
       query,
     };
 
-    const requestKey = JSON.stringify(request);
-    const requestCache = getParameterValuesCache(getState());
-    const response = requestCache[requestKey]
-      ? requestCache[requestKey]
-      : await loadParameterValues(request);
+    return fetchParameterValuesWithCache(
+      request,
+      loadParameterValues,
+      dispatch,
+      getState,
+    );
+  };
 
-    const payload = { requestKey, response };
-    dispatch({ type: FETCH_PARAMETER_VALUES, payload });
-    return response;
+export interface FetchQuestionParameterValuesOpts {
+  question: Question;
+  parameter: Parameter;
+  query?: string;
+}
+
+export const fetchQuestionParameterValues =
+  ({ question, parameter, query }: FetchQuestionParameterValuesOpts) =>
+  (dispatch: Dispatch, getState: GetState) => {
+    const request = {
+      cardId: question.id(),
+      paramId: parameter.id,
+      query,
+    };
+
+    return fetchParameterValuesWithCache(
+      request,
+      loadQuestionParameterValues,
+      dispatch,
+      getState,
+    );
   };
 
 const loadParameterValues = async (request: ParameterValuesRequest) => {
@@ -55,27 +75,6 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
   };
 };
 
-export interface FetchQuestionParameterValuesOpts {
-  question: Question;
-  parameter: Parameter;
-  query?: string;
-}
-
-export const fetchQuestionParameterValues =
-  ({ question, parameter, query }: FetchQuestionParameterValuesOpts) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    const request = { cardId: question.id(), paramId: parameter.id, query };
-    const requestKey = JSON.stringify(request);
-    const requestCache = getParameterValuesCache(getState());
-    const response = requestCache[requestKey]
-      ? requestCache[requestKey]
-      : await loadQuestionParameterValues(request);
-
-    const payload = { requestKey, response };
-    dispatch({ type: FETCH_PARAMETER_VALUES, payload });
-    return response;
-  };
-
 const loadQuestionParameterValues = async (
   request: QuestionParameterValuesRequest,
 ) => {
@@ -87,4 +86,21 @@ const loadQuestionParameterValues = async (
     values: values.map((value: any) => [].concat(value)),
     has_more_values: request.query ? true : has_more_values,
   };
+};
+
+const fetchParameterValuesWithCache = async <T>(
+  request: T,
+  loadValues: (request: T) => Promise<ParameterValuesResponse>,
+  dispatch: Dispatch,
+  getState: GetState,
+) => {
+  const requestKey = JSON.stringify(request);
+  const requestCache = getParameterValuesCache(getState());
+  const response = requestCache[requestKey]
+    ? requestCache[requestKey]
+    : await loadValues(request);
+
+  const payload = { requestKey, response };
+  dispatch({ type: FETCH_PARAMETER_VALUES, payload });
+  return response;
 };
