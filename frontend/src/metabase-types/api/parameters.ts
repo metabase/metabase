@@ -32,7 +32,7 @@ export type ParameterId = string;
 
 export type ActionParameterValue = string | number;
 
-export interface Parameter {
+export interface Parameter extends ParameterConfig {
   id: ParameterId;
   name: string;
   "display-name"?: string;
@@ -44,6 +44,9 @@ export interface Parameter {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
+}
+
+export interface ParameterConfig {
   values_query_type?: ValuesQueryType;
   values_source_type?: ValuesSourceType;
   values_source_config?: ValuesSourceConfig;

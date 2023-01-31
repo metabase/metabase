@@ -1,4 +1,4 @@
-(ns metabase.sync.analyze-test
+(ns ^:mb/once metabase.sync.analyze-test
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]

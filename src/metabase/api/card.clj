@@ -52,6 +52,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -140,7 +142,7 @@
                                                    [:or
                                                     [:like :c.dataset_query (format "%%card__%s%%" model-id)]
                                                     [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                         :where [:= :m.id model-id]})
+                         :where [:and [:= :m.id model-id] [:not :c.archived]]})
        (db/do-post-select Card)
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
@@ -931,7 +933,7 @@ saved later when it is ready."
            :has_more_values true
            :field_id field-id})))))
 
-(s/defn param-values
+(mu/defn param-values
   "Fetch values for a parameter.
 
   The source of values could be:
@@ -940,9 +942,9 @@ saved later when it is ready."
   ([card param-key]
    (param-values card param-key nil))
 
-  ([card      :- su/Map
-    param-key :- su/NonBlankString
-    query     :- (s/maybe su/NonBlankString)]
+  ([card      :- ms/Map
+    param-key :- ms/NonBlankString
+    query     :- [:maybe ms/NonBlankString]]
    (let [param       (get (m/index-by :id (:parameters card)) param-key)
          source-type (:values_source_type param)]
      (when-not param
@@ -950,7 +952,9 @@ saved later when it is ready."
                        {:status-code 400})))
      (case source-type
        "static-list" (params.static-values/param->values param query)
-       "card"        (params.card-values/param->values param query)
+       "card"        (do
+                       (api/read-check Card (get-in param [:values_source_config :card_id]))
+                       (params.card-values/param->values param query))
        nil           (mapping->field-values card param query)
        (throw (ex-info (tru "Invalid values-source-type: {0}" (pr-str source-type))
                        {:values-source-type source-type
@@ -962,6 +966,8 @@ saved later when it is ready."
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/card/1/params/abc/values"
   [card-id param-key]
+  {card-id   ms/IntGreaterThanZero
+   param-key ms/NonBlankString}
   (let [card (api/read-check Card card-id)]
     (param-values card param-key)))
 
@@ -973,6 +979,9 @@ saved later when it is ready."
 
   Currently limited to first 1000 results."
   [card-id param-key query]
+  {card-id   ms/IntGreaterThanZero
+   param-key ms/NonBlankString
+   query     ms/NonBlankString}
   (let [card (api/read-check Card card-id)]
     (param-values card param-key query)))
 

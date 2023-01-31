@@ -394,7 +394,7 @@
   (str "MB_" (-> (setting-name setting-definition-or-name)
                  munge-setting-name
                  (str/replace "-" "_")
-                 str/upper-case)))
+                 u/upper-case-en)))
 
 (defn setting-env-map-name
   "Correctly translate a setting to the keyword it will be found at in [[env/env]]."
@@ -509,7 +509,7 @@
   "Interpret a `string-value` of a Setting as a boolean."
   [string-value :- (s/maybe s/Str)]
   (when (seq string-value)
-    (case (str/lower-case string-value)
+    (case (u/lower-case-en string-value)
       "true"  true
       "false" false
       (throw (Exception.

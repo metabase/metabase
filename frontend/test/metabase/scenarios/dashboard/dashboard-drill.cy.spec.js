@@ -30,7 +30,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
     cy.icon("pencil").click();
     showDashboardCardActions();
-    cy.icon("click").click();
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("click").click();
+    });
 
     // configure a URL click through on the  "MY_NUMBER" column
     cy.findByText("On-click behavior for each column")
@@ -150,7 +152,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
     cy.icon("pencil").click();
     showDashboardCardActions();
-    cy.icon("click").click();
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("click").click();
+    });
 
     // configure a dashboard target for the "MY_NUMBER" column
     cy.findByText("On-click behavior for each column")
@@ -202,7 +206,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.icon("pencil").click();
     showDashboardCardActions();
-    cy.icon("click").click();
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("click").click();
+    });
 
     // configure clicks on "MY_NUMBER to update the param
     cy.findByText("On-click behavior for each column")
@@ -242,7 +248,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
     cy.icon("pencil").click();
     showDashboardCardActions();
-    cy.icon("click").click();
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("click").click();
+    });
 
     cy.findByText("On-click behavior for each column")
       .parent()
@@ -270,7 +278,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
     cy.icon("pencil").click();
     showDashboardCardActions();
-    cy.icon("click").click();
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("click").click();
+    });
 
     // configure clicks on "MY_NUMBER to update the param
     cy.findByText("On-click behavior for each column")

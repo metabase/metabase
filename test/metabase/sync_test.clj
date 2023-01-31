@@ -1,4 +1,4 @@
-(ns ^:deprecated metabase.sync-test
+(ns ^:deprecated ^:mb/once metabase.sync-test
   "Tests for sync behavior that use a imaginary `SyncTestDriver`. These are kept around mainly because they've already
   been written. For newer sync tests see `metabase.sync.*` test namespaces.
 

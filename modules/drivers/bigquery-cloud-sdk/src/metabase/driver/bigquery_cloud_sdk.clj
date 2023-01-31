@@ -242,7 +242,7 @@
   (try
     (let [request (doto (QueryJobConfiguration/newBuilder sql)
                     ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-                    (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
+                    (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
                     (bigquery.params/set-parameters! parameters)
                     ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
                     ;; effect for RPC (a.k.a. "fast") calls
@@ -267,6 +267,9 @@
               (when (future-done? res-fut) ; canceled received after it was finished; may as well return it
                 @res-fut)))))
       @res-fut)
+    (catch java.util.concurrent.CancellationException _e
+      ;; trying to deref the value after the future has been cancelled
+      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters})))
     (catch BigQueryException e
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")

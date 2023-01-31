@@ -1,5 +1,4 @@
 import {
-  enableActions,
   enableActionsForDB,
   modal,
   popover,
@@ -21,7 +20,6 @@ describe("scenarios > models > actions", () => {
     restore();
     cy.signInAsAdmin();
 
-    enableActions();
     enableActionsForDB();
 
     cy.createQuestion(SAMPLE_ORDERS_MODEL, {

@@ -14000,6 +14000,52 @@ databaseChangeLog:
             newDataType: varchar(36)
       rollback: #nothing to do, char(32) or char(36) are equivalent
 
+  - changeSet:
+      id: v46.00-059
+      author: tsmacdonald
+      comment: Added 0.46.0 -- add actions.creator_id
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: 'The user who created the action'
+      rollback:
+        - dropColumn:
+            tableName: action
+            columnName: creator_id
+
+  - changeSet:
+      id: v46.00-060
+      author: tsmacdonald
+      comment: Added 0.46.0 -- action.creator_id index
+      changes:
+        - createIndex:
+            tableName: action
+            columns:
+              - column:
+                  name: creator_id
+            indexName: idx_action_creator_id
+      rollback:
+        - dropIndex:
+            tableName: action
+            indexName: idx_action_creator_id
+
+  - changeSet:
+      id: v46.00-061
+      author: tsmacdonald
+      comment: Added 0.46.0 -- action.creator_id index
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_action_creator_id
+            nullable: false
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
