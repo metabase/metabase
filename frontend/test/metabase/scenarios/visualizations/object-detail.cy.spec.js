@@ -4,6 +4,8 @@ import {
   openOrdersTable,
   openPeopleTable,
   openProductsTable,
+  visitDashboard,
+  visitQuestion,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -148,6 +150,45 @@ describe("scenarios > question > object details", () => {
 
     cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
     cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
+  });
+
+  it("should find object detail card if linked from dashboard card when columns have been reordered inside the dashboard", () => {
+    visitDashboard(1);
+    cy.icon("pencil").click();
+    cy.get(".Card").realHover();
+    cy.icon("palette").click();
+
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findByText("ID")
+        .closest("[data-testid^=draggable-item]")
+        .trigger("mousedown", 0, 0, { force: true })
+        .trigger("mousemove", 5, 5, { force: true })
+        .trigger("mousemove", 0, 100, { force: true })
+        .trigger("mouseup", 0, 100, { force: true });
+    });
+
+    cy.get(".Modal").findByText("Done").click();
+
+    cy.button("Save").click();
+
+    cy.findByText("10").click();
+
+    assertOrderDetailView({ id: 10 });
+  });
+
+  it("should find object detail card if linked from dashboard card when columns have been reordered inside the question", () => {
+    visitQuestion(1);
+
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.findAllByTestId("draggable-item-ID")
+      .first()
+      .trigger("mousedown", 0, 0, { force: true })
+      .trigger("mousemove", 5, 5, { force: true })
+      .trigger("mousemove", 0, 100, { force: true })
+      .trigger("mouseup", 0, 100, { force: true });
+
+    cy.button("Done").click();
   });
 });
 
