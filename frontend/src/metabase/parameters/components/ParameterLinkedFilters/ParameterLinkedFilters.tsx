@@ -103,7 +103,7 @@ const ParameterLinkedFilters = ({
               key={otherParameter.id}
               parameter={parameter}
               otherParameter={otherParameter}
-              isFiltered={filteringParameters.includes(parameter.id)}
+              isFiltered={filteringParameters.includes(otherParameter.id)}
               isExpanded={otherParameter.id === expandedParameterId}
               onFilterChange={handleFilterChange}
               onExpandedChange={handleExpandedChange}
