@@ -150,7 +150,7 @@ export const setupTestDB = (type = "postgres") => {
     if (!results.rows.length) {
       cy.log(`**-- Adding ${type} DB for actions --**`);
       cy.task("connectAndQueryDB", {
-        connectionConfig,
+        connectionConfig: connectionConfig[type],
         query: `CREATE DATABASE testing_db;`,
       });
     }
