@@ -30,10 +30,10 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
-import CreateActionForm from "../CreateActionForm";
 
 import { newQuestion, convertQuestionToAction } from "./utils";
 import ActionCreatorView from "./ActionCreatorView";
+import CreateActionForm from "./CreateActionForm";
 
 const mapStateToProps = (
   state: State,
