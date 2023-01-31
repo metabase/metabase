@@ -252,7 +252,7 @@
     (if (instance? java.util.regex.Pattern db-type)
       (and (some? form-type) (some? (re-find db-type form-type)))
       (= form-type
-         (some-> db-type name str/lower-case)))))
+         (some-> db-type name u/lower-case-en)))))
 
 (mu/defn with-database-type-info
   "Convenience for adding only database type information to a `honeysql-form`. Wraps `honeysql-form` and returns a

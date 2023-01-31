@@ -80,7 +80,7 @@
 (s/defn ^:private is-crufty-table? :- s/Bool
   "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
   [table :- i/DatabaseMetadataTable]
-  (boolean (some #(re-find % (str/lower-case (:name table))) crufty-table-patterns)))
+  (boolean (some #(re-find % (u/lower-case-en (:name table))) crufty-table-patterns)))
 
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------

@@ -83,7 +83,9 @@
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {toucan.db/query           {:message "Use mdb.query/query instead of toucan.db/query"}
+  {clojure.string/lower-case {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
+   clojure.string/upper-case {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
+   toucan.db/query           {:message "Use mdb.query/query instead of toucan.db/query"}
    toucan.db/reducible-query {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
 
   :unresolved-var

@@ -145,14 +145,27 @@ export const insertSnippet = snip => (dispatch, getState) => {
 };
 
 export const SET_TEMPLATE_TAG = "metabase/qb/SET_TEMPLATE_TAG";
-export const setTemplateTag = createThunkAction(
-  SET_TEMPLATE_TAG,
+export const setTemplateTag = createThunkAction(SET_TEMPLATE_TAG, tag => {
+  return (dispatch, getState) => {
+    const question = getQuestion(getState());
+    const newQuestion = question
+      .query()
+      .setTemplateTag(tag.name, tag)
+      .question();
+
+    dispatch(updateQuestion(newQuestion));
+  };
+});
+
+export const SET_TEMPLATE_TAG_CONFIG = "metabase/qb/SET_TEMPLATE_TAG_CONFIG";
+export const setTemplateTagConfig = createThunkAction(
+  SET_TEMPLATE_TAG_CONFIG,
   (tag, parameter) => {
     return (dispatch, getState) => {
       const question = getQuestion(getState());
       const newQuestion = question
         .query()
-        .setTemplateTag(tag.name, tag, parameter)
+        .setTemplateTagConfig(tag, parameter)
         .question();
 
       dispatch(updateQuestion(newQuestion));

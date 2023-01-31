@@ -257,6 +257,10 @@
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
+(defmethod driver/database-supports? [:mongo :test/jvm-timezone-setting]
+  [_driver _feature _database]
+  false)
+
 (defmethod driver/mbql->native :mongo
   [_ query]
   (mongo.qp/mbql->native query))
