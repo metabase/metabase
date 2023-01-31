@@ -44,7 +44,9 @@
 
 (declare root-collection)
 
-(defn coll-query [owner-id & and-clauses]
+(defn- coll-query
+  "Generate a query to return collections viewable by the current user."
+  [owner-id & and-clauses]
   {:with      [[:owner-match {:select [:c.personal_owner_id
                                        [[:concat "/" :c.id "/%"] :pc_prefix]]
                               :from   [[:collection :c]]
