@@ -70,9 +70,7 @@
    :select    [:c.*]
    :from      [[:collection :c]]
    :left-join [[:active-ids :a] [:= :a.id :c.id]]
-   :where     (if and-clauses
-                (into [:and [:= :a.selected true]] and-clauses)
-                [:= :a.selected true])
+   :where     (into [:and [:= :a.selected true]] and-clauses)
    :order-by  [[:%lower.name :asc]]})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
