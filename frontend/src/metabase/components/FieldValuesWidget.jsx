@@ -144,15 +144,15 @@ class FieldValuesWidgetInner extends Component {
         options = results;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else if (canUseQuestionEndpoints(this.props.question)) {
-        const { results, has_more_values } =
+        const { values, has_more_values } =
           await this.fetchQuestionParameterValues(query);
-        options = results;
+        options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else if (canUseParameterEndpoints(this.props.parameter)) {
-        const { results, has_more_values } = await this.fetchParameterValues(
+        const { values, has_more_values } = await this.fetchParameterValues(
           query,
         );
-        options = results;
+        options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else {
         options = await this.fetchFieldValues(query);

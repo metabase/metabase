@@ -30,6 +30,8 @@ export function hasParameterValue(value) {
 export function normalizeParameter(parameter) {
   return {
     id: parameter.id,
+    name: parameter.name,
+    slug: parameter.slug,
     type: parameter.type,
     value: normalizeParameterValue(parameter.type, parameter.value),
     target: parameter.target,
