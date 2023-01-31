@@ -4,7 +4,6 @@ export * from "./native";
 export * from "./navigation";
 export * from "./object-detail";
 export * from "./querying";
-export * from "./parameters";
 export * from "./sharing";
 export * from "./timelines";
 export * from "./ui";
