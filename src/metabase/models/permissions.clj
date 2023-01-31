@@ -927,6 +927,41 @@
   (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :full) path-components))
   (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :limited) path-components)))
 
+(let [delete (fn delete [s to-delete] (str/replace s to-delete ""))
+      data-query-split (fn data-query-split [path]
+                         [(str "/data" path) (str "/query" path)])]
+  (def ^:private data-kind->rewrite-fn
+    "lookup table to generate v2 query + data permission from a v1 data permission."
+    {:dk/db                                 data-query-split
+     :dk/db-native                          (fn [path] (data-query-split (delete path "native/")))
+     :dk/db-schema                          (fn [path] [(str "/data" (delete path "schema/"))
+                                                        (str "/query" path)])
+     :dk/db-schema-name                     data-query-split
+     :dk/db-schema-name-and-table           data-query-split
+     :dk/db-schema-name-table-and-read      (constantly [])
+     :dk/db-schema-name-table-and-query     (fn [path] (data-query-split (delete path "query/")))
+     :dk/db-schema-name-table-and-segmented (fn [path] (data-query-split (delete path "query/segmented/")))}))
+
+
+
+(mu/defn ^:private ->v2-path :- [:vector [:re path-regex-v2]]
+  [path :- [:or [:re path-regex-v1] [:re path-regex-v2]]]
+  ;; See: https://www.notion.so/metabase/Permissions-Refactor-Design-Doc-18ff5e6be32f4a52b9422bd7f4237ca7#5603afe084a7435ca7dc928fc94d4bda
+  (let [kind (classify-path path)]
+    (cond
+      (= kind :data) (let [data-permission-kind (classify-data-path path)
+                           rewrite-fn (data-kind->rewrite-fn data-permission-kind)]
+                       (rewrite-fn path))
+      (= kind :admin) ["/"]
+      (= kind :block) []
+
+      ;; explicitly, move is idempotent mapcatting move over a sequence of v1 paths multiple times will result in the same value.
+      ;; so these are no-ops:
+      (= kind :data-v2) [path]
+      (= kind :query-v2) [path]
+
+      :else [path])))
+
 (defn grant-permissions!
   "Grant permissions for `group-or-id`. Two-arity grants any arbitrary Permissions `path`. With > 2 args, grants the
   data permissions from calling [[data-perms-path]]."
@@ -935,9 +970,9 @@
 
   ([group-or-id path]
    (try
-     (db/insert! Permissions
-       :group_id (u/the-id group-or-id)
-       :object   path)
+     (db/insert-many! Permissions
+       (map (fn [p] {:group_id (u/the-id group-or-id) :object p})
+            (->v2-path path)))
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
        (log/error e (u/format-color 'red (tru "Failed to grant permissions")))
@@ -1345,41 +1380,3 @@
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any] new-value]
    (update-execution-perms-graph! (assoc-in (execution-perms-graph) (cons :groups ks) new-value))))
-
-(let [delete (fn delete [s to-delete] (str/replace s to-delete ""))
-      data-query-split (fn data-query-split [path]
-                         [(str "/data" path) (str "/query" path)])]
-  (def ^:private data-kind->rewrite-fn
-    "lookup table to generate v2 query + data permission from a v1 data permission."
-    {:dk/db                                 data-query-split
-     :dk/db-native                          (fn [path] (data-query-split (delete path "native/")))
-     :dk/db-schema                          (fn [path] [(str "/data" (delete path "schema/"))
-                                                        (str "/query" path)])
-     :dk/db-schema-name                     data-query-split
-     :dk/db-schema-name-and-table           data-query-split
-     :dk/db-schema-name-table-and-read      (constantly [])
-     :dk/db-schema-name-table-and-query     (fn [path] (data-query-split (delete path "query/")))
-     :dk/db-schema-name-table-and-segmented (fn [path] (data-query-split (delete path "query/segmented/")))}))
-
-(defn-  move-data
-  "Takes a path that is a v1 path, and returns 0 or more v2 paths. See [[data-permissions]]"
-  [path]
-  (let [data-permission-kind (classify-data-path path)
-        rewrite-fn (data-kind->rewrite-fn data-permission-kind)]
-    (rewrite-fn path)))
-
-(mu/defn move :- [:vector [:re path-regex-v2]]
-  [path :- [:or [:re path-regex-v1] [:re path-regex-v2]]]
-  ;; See: https://www.notion.so/metabase/Permissions-Refactor-Design-Doc-18ff5e6be32f4a52b9422bd7f4237ca7#5603afe084a7435ca7dc928fc94d4bda
-  (let [kind (classify-path path)]
-    (cond
-      (= kind :data) (move-data path)
-      (= kind :admin) ["/"]
-      (= kind :block) []
-
-      ;; explicitly, move is idempotent mapcatting move over a sequence of v1 paths multiple times will result in the same value.
-      ;; so these are no-ops:
-      (= kind :data-v2) [path]
-      (= kind :query-v2) [path]
-
-      :else [path])))
