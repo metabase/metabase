@@ -483,9 +483,13 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/cards"
   "Add a `Card` to a Dashboard."
-  [id :as {{:keys [cardId parameter_mappings], :as dashboard-card} :body}]
+  [id :as {{:keys [cardId parameter_mappings row col size_x size_y], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
-   parameter_mappings (s/maybe [dashboard-card/ParamMapping])}
+   parameter_mappings (s/maybe [dashboard-card/ParamMapping])
+   row                su/IntGreaterThanOrEqualToZero
+   col                su/IntGreaterThanOrEqualToZero
+   size_x             su/IntGreaterThanZero
+   size_y             su/IntGreaterThanZero}
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
     (api/check-not-archived (api/read-check Card cardId)))
@@ -536,10 +540,10 @@
   (su/with-api-error-message
     {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZero
                                             "value must be a DashboardCard ID.")
-     (s/optional-key :size_x)             (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :size_y)             (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :row)                (s/maybe su/IntGreaterThanOrEqualToZero)
-     (s/optional-key :col)                (s/maybe su/IntGreaterThanOrEqualToZero)
+     :size_x                              su/IntGreaterThanZero
+     :size_y                              su/IntGreaterThanZero
+     :row                                 su/IntGreaterThanOrEqualToZero
+     :col                                 su/IntGreaterThanOrEqualToZero
      (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankString
                                                      :target       s/Any
                                                      s/Keyword     s/Any}])

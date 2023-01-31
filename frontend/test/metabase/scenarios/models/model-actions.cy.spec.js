@@ -31,11 +31,9 @@ describe("scenarios > models > actions", () => {
 
   it("should allow to view, create and edit model actions", () => {
     cy.get("@modelId").then(id => {
-      cy.visit(`/model/${id}/detail`);
+      cy.visit(`/model/${id}/detail/actions`);
       cy.wait("@getModel");
     });
-
-    cy.findByText("Actions").click();
 
     cy.findByRole("button", { name: /Create basic actions/i }).click();
     cy.findByLabelText("Action list").within(() => {
