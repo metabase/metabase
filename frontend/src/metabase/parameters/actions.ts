@@ -1,21 +1,23 @@
-import { CardApi, ParameterApi } from "metabase/services";
+import { CardApi, DashboardApi, ParameterApi } from "metabase/services";
 import {
   CardId,
+  DashboardId,
   Parameter,
   ParameterValuesRequest,
   ParameterValuesResponse,
-  QuestionParameterValuesRequest,
+  CardParameterValuesRequest,
+  DashboardParameterValuesRequest,
 } from "metabase-types/api";
 import { Dispatch, GetState } from "metabase-types/store";
-import Question from "metabase-lib/Question";
 import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/parameters/utils/parameter-values";
 import { getParameterValuesCache } from "./selectors";
+import { getFilteringParameterValuesMap } from "./utils/dashboards";
 
 export const FETCH_PARAMETER_VALUES =
   "metabase/parameters/FETCH_PARAMETER_VALUES";
 
-interface FetchParameterValuesOpts {
+export interface FetchParameterValuesOpts {
   parameter: Parameter;
   query?: string;
 }
@@ -59,7 +61,37 @@ export const fetchCardParameterValues =
 
     return fetchParameterValuesWithCache(
       request,
-      loadQuestionParameterValues,
+      loadCardParameterValues,
+      dispatch,
+      getState,
+    );
+  };
+
+export interface FetchDashboardParameterValuesOpts {
+  dashboardId: DashboardId;
+  parameter: Parameter;
+  parameters: Parameter[];
+  query?: string;
+}
+
+export const fetchDashboardParameterValues =
+  ({
+    dashboardId,
+    parameter,
+    parameters,
+    query,
+  }: FetchDashboardParameterValuesOpts) =>
+  (dispatch: Dispatch, getState: GetState) => {
+    const request = {
+      paramId: parameter.id,
+      dashId: dashboardId,
+      query,
+      ...getFilteringParameterValuesMap(parameter, parameters),
+    };
+
+    return fetchParameterValuesWithCache(
+      request,
+      loadDashboardParameterValues,
       dispatch,
       getState,
     );
@@ -76,12 +108,23 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
   };
 };
 
-const loadQuestionParameterValues = async (
-  request: QuestionParameterValuesRequest,
-) => {
+const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
   const { values, has_more_values } = request.query
     ? await CardApi.parameterSearch(request)
     : await CardApi.parameterValues(request);
+
+  return {
+    values: values.map((value: any) => [].concat(value)),
+    has_more_values: request.query ? true : has_more_values,
+  };
+};
+
+const loadDashboardParameterValues = async (
+  request: DashboardParameterValuesRequest,
+) => {
+  const { values, has_more_values } = request.query
+    ? await DashboardApi.parameterSearch(request)
+    : await DashboardApi.parameterValues(request);
 
   return {
     values: values.map((value: any) => [].concat(value)),

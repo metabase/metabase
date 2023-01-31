@@ -1,3 +1,4 @@
+import { DashboardId } from "./dashboard";
 import { RowValue } from "./dataset";
 import { CardId } from "./card";
 import { FieldId } from "./field";
@@ -77,8 +78,14 @@ export interface ParameterValuesResponse {
   has_more_values: boolean;
 }
 
-export interface QuestionParameterValuesRequest {
+export interface CardParameterValuesRequest {
   cardId: CardId;
+  paramId: ParameterId;
+  query?: string;
+}
+
+export interface DashboardParameterValuesRequest {
+  dashId: DashboardId;
   paramId: ParameterId;
   query?: string;
 }

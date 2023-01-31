@@ -23,8 +23,8 @@ import { stripId } from "metabase/lib/formatting";
 import {
   fetchParameterValues,
   fetchCardParameterValues,
+  fetchDashboardParameterValues,
 } from "metabase/parameters/actions";
-import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
 
 import Fields from "metabase/entities/fields";
 import {
@@ -54,7 +54,7 @@ const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues,
   fetchParameterValues,
-  fetchQuestionParameterValues: fetchCardParameterValues,
+  fetchCardParameterValues,
   fetchDashboardParameterValues,
 };
 
@@ -143,9 +143,10 @@ class FieldValuesWidgetInner extends Component {
           await this.fetchDashboardParameterValues(query);
         options = results;
         valuesMode = has_more_values ? "search" : valuesMode;
-      } else if (canUseQuestionEndpoints(this.props.question)) {
-        const { values, has_more_values } =
-          await this.fetchQuestionParameterValues(query);
+      } else if (canUseCardEndpoints(this.props.question)) {
+        const { values, has_more_values } = await this.fetchCardParameterValues(
+          query,
+        );
         options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else if (canUseParameterEndpoints(this.props.parameter)) {
@@ -217,10 +218,10 @@ class FieldValuesWidgetInner extends Component {
     });
   };
 
-  fetchQuestionParameterValues = async query => {
+  fetchCardParameterValues = async query => {
     const { question, parameter } = this.props;
 
-    return this.props.fetchQuestionParameterValues({
+    return this.props.fetchCardParameterValues({
       question,
       parameter,
       query,
@@ -492,7 +493,7 @@ function canUseParameterEndpoints(parameter) {
   return parameter != null;
 }
 
-function canUseQuestionEndpoints(question) {
+function canUseCardEndpoints(question) {
   return question?.isSaved();
 }
 

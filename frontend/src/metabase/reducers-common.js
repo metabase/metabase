@@ -1,4 +1,5 @@
 // Reducers shared between "main" and "public" apps
+import { combineReducers } from "redux";
 
 /* ducks */
 import app from "metabase/redux/app";
@@ -8,9 +9,8 @@ import settings from "metabase/redux/settings";
 import undo from "metabase/redux/undo";
 // eslint-disable-next-line import/no-named-as-default
 import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
-
-/* user */
 import { currentUser } from "metabase/redux/user";
+import * as parameters from "metabase/parameters/reducers";
 
 export default {
   // global reducers
@@ -22,4 +22,5 @@ export default {
   settings,
   undo,
   entities,
+  parameters: combineReducers(parameters),
 };
