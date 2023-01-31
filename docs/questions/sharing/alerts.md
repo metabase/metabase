@@ -1,10 +1,10 @@
 ---
-title: Setting and getting alerts
+title: Alerts
 redirect_from:
   - /docs/latest/users-guide/15-alerts
 ---
 
-# Setting and getting alerts
+# Alerts
 
 Whether you're keeping track of revenue, users, or negative reviews, there are often times when you want to be alerted about something. Metabase has a few different kinds of alerts you can set up, and you can choose to be notified via email or Slack.
 
@@ -74,13 +74,26 @@ Here's more information about [setting up email integration](../../configuring-m
 
 There are a few ways alerts can be stopped:
 
-- Regular users can unsubscribe from any alert that they're a recipient of.
-- Admins can edit any alert and delete it entirely. This can't be undone, so be careful!
-- If a saved question that has an alert on it gets edited in such a way that the alert doesn't make sense anymore, the alert will get deleted. For example, if a saved question with a goal line alert on it gets edited, and the goal line is removed entirely, that alert will get deleted.
+- Non-admins can unsubscribe from any alert that they're a recipient of.
+- Admins can edit and delete any alert. This can't be undone, so be careful!
+- Admins on some paid plans can view, edit, and delete all dashboard subscriptions and alerts in the [Audit tab](../../usage-and-performance-tools/audit.md#subscriptions-and-alerts).
+- If a saved question that has an alert gets edited in such a way that the alert doesn't make sense anymore, the alert will get deleted. For example, if a saved question with a goal line alert on it gets edited, and the goal line is removed entirely, that alert will get deleted.
 - If a question gets archived, any alerts on it will be deleted.
 
 ## Viewing existing alerts
 
 {% include plans-blockquote.html feature="Audit logs" %}
 
-To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit logs](../../usage-and-performance-tools/audit.md).
+To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit](../../usage-and-performance-tools/audit.md#subscriptions-and-alerts).
+
+## How permissions work with alerts
+
+See [Notification permissions](../../permissions/notifications.md).
+
+## Further reading
+
+- [Dashboard subscriptions](../../dashboards/subscriptions.md)
+- [Notification permissions](../../permissions/notifications.md)
+- [Setting up email](../../configuring-metabase/email.md)
+- [Setting up Slack](../../configuring-metabase/slack.md)
+- [Auditing Metabase](../../usage-and-performance-tools/audit.md)

@@ -11,11 +11,13 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
+   [metabase.api.field :as api.field]
    [metabase.api.timeline :as api.timeline]
    [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
    [metabase.models
     :refer [Card
             CardBookmark
@@ -25,9 +27,13 @@
             Pulse
             Table
             ViewLog]]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.params :as params]
+   [metabase.models.params.card-values :as params.card-values]
+   [metabase.models.params.static-values :as params.static-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
@@ -44,6 +50,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -133,7 +141,7 @@
                                                   [:or
                                                    [:like :c.dataset_query (format "%%card__%s%%" model-id)]
                                                    [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                        :where [:= :m.id model-id]})
+                        :where [:and [:= :m.id model-id] [:not :c.archived]]})
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
 
@@ -906,5 +914,69 @@ saved later when it is ready."
       (api/write-check (db/select-one Database :id (:database_id persisted-info)))
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
       api/generic-204-no-content)))
+
+(defn mapping->field-values
+  "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have
+  chain-filter issues or dashcards to worry about."
+  [card param query]
+  (when-let [field-clause (params/param-target->field-clause (:target param) card)]
+    (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+      (api.field/field-id->values field-id query))))
+
+(mu/defn param-values
+  "Fetch values for a parameter.
+
+  The source of values could be:
+  - static-list: user defined values list
+  - card: values is result of running a card"
+  ([card param-key]
+   (param-values card param-key nil))
+
+  ([card      :- ms/Map
+    param-key :- ms/NonBlankString
+    query     :- [:maybe ms/NonBlankString]]
+   (let [param       (get (m/index-by :id (or (seq (:parameters card))
+                                              ;; some older cards or cards in e2e just use the template tags on native
+                                              ;; queries
+                                              (card/template-tag-parameters card)))
+                          param-key)
+         source-type (:values_source_type param)]
+     (when-not param
+       (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
+                       {:status-code 400})))
+     (case source-type
+       "static-list" (params.static-values/param->values param query)
+       "card"        (do
+                       (api/read-check Card (get-in param [:values_source_config :card_id]))
+                       (params.card-values/param->values param query))
+       nil           (mapping->field-values card param query)
+       (throw (ex-info (tru "Invalid values-source-type: {0}" (pr-str source-type))
+                       {:values-source-type source-type
+                        :status-code        400}))))))
+
+(api/defendpoint GET "/:card-id/params/:param-key/values"
+  "Fetch possible values of the parameter whose ID is `:param-key`.
+
+    ;; fetch values for Card 1 parameter 'abc' that are possible
+    GET /api/card/1/params/abc/values"
+  [card-id param-key]
+  {card-id   ms/IntGreaterThanZero
+   param-key ms/NonBlankString}
+  (let [card (api/read-check Card card-id)]
+    (param-values card param-key)))
+
+(api/defendpoint GET "/:card-id/params/:param-key/search/:query"
+  "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
+
+    ;; fetch values for Card 1 parameter 'abc' that contain 'Orange';
+     GET /api/card/1/params/abc/search/Orange
+
+  Currently limited to first 1000 results."
+  [card-id param-key query]
+  {card-id   ms/IntGreaterThanZero
+   param-key ms/NonBlankString
+   query     ms/NonBlankString}
+  (let [card (api/read-check Card card-id)]
+    (param-values card param-key query)))
 
 (api/define-routes)

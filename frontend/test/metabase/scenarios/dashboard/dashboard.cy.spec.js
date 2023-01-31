@@ -261,6 +261,10 @@ describe("scenarios > dashboard", () => {
         // add previously created question to the dashboard
         cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
           cardId: questionId,
+          row: 0,
+          col: 0,
+          size_x: 10,
+          size_y: 8,
         }).then(({ body: { id: dashCardId } }) => {
           // connect filter to that question
           cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
@@ -346,7 +350,9 @@ describe("scenarios > dashboard", () => {
     // Add cross-filter click behavior manually
     cy.icon("pencil").click();
     showDashboardCardActions();
-    cy.icon("click").click();
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("click").click();
+    });
     cy.findByText("COUNT(*)").click();
     cy.findByText("Update a dashboard filter").click();
 

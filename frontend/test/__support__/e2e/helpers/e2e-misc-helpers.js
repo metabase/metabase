@@ -243,3 +243,19 @@ export function saveQuestion(
     cy.button("Not now").click();
   });
 }
+
+export function visitPublicQuestion(id) {
+  cy.request("POST", `/api/card/${id}/public_link`).then(
+    ({ body: { uuid } }) => {
+      cy.visit(`/public/question/${uuid}`);
+    },
+  );
+}
+
+export function visitPublicDashboard(id) {
+  cy.request("POST", `/api/dashboard/${id}/public_link`).then(
+    ({ body: { uuid } }) => {
+      cy.visit(`/public/dashboard/${uuid}`);
+    },
+  );
+}

@@ -1,4 +1,5 @@
 import React from "react";
+import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
@@ -16,23 +17,35 @@ type SetupOpts = {
   actionButtons?: JSX.Element[];
   error?: AppErrorDescriptor;
   hasEmbedBranding?: boolean;
+  hash?: string;
 };
 
 function setup({
   error,
   hasEmbedBranding = true,
+  hash = "",
   ...embedFrameProps
 }: SetupOpts = {}) {
   const app = createMockAppState({ errorPage: error });
   const settings = mockSettings({ "hide-embed-branding?": !hasEmbedBranding });
 
   renderWithProviders(
-    <PublicApp>
-      <EmbedFrame {...embedFrameProps}>
-        <h1 data-testid="test-content">Test</h1>
-      </EmbedFrame>
-    </PublicApp>,
-    { mode: "public", storeInitialState: { app, settings }, withRouter: true },
+    <Route
+      path="/public/dashboard/:id"
+      component={props => (
+        <PublicApp {...props}>
+          <EmbedFrame {...embedFrameProps}>
+            <h1 data-testid="test-content">Test</h1>
+          </EmbedFrame>
+        </PublicApp>
+      )}
+    />,
+    {
+      mode: "public",
+      initialRoute: `/public/dashboard/UUID${hash}`,
+      storeInitialState: { app, settings },
+      withRouter: true,
+    },
   );
 }
 
@@ -100,5 +113,26 @@ describe("PublicApp", () => {
     setup({ error: { status: 404 }, hasEmbedBranding: false });
     expect(screen.queryByText(/Powered by/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Metabase/)).not.toBeInTheDocument();
+  });
+
+  describe("theming", () => {
+    it("renders correctly without a theme parameter", () => {
+      setup();
+
+      const embedFrame = screen.getByTestId("embed-frame");
+
+      // eslint-disable-next-line jest-dom/prefer-to-have-class
+      expect(embedFrame.className).not.toEqual(
+        expect.stringContaining("Theme--"),
+      );
+    });
+
+    test.each([
+      ["night", "Theme--night"],
+      ["transparent", "Theme--transparent"],
+    ])("correctly handles %s theme", (theme, expectedClass) => {
+      setup({ hash: `#theme=${theme}` });
+      expect(screen.getByTestId("embed-frame")).toHaveClass(expectedClass);
+    });
   });
 });

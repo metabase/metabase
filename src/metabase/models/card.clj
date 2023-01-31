@@ -11,6 +11,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
+   [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
@@ -46,7 +47,7 @@
   "Return the number of dashboard/card filters and other widgets that use this card to populate their available
   values (via ParameterCards)"
   [{:keys [id]}]
-  (db/count 'ParameterCard, :card_id id))
+  (db/count ParameterCard, :card_id id))
 
 (mi/define-simple-hydration-method average-query-time
   :average_query_time
@@ -176,6 +177,26 @@
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query mbql.normalize/normalize)))
 
+(defn template-tag-parameters
+  "Transforms native query's `template-tags` into `parameters`.
+  An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
+  [card]
+  ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/parameters/utils/cards.js
+  (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
+        :when                         (and tag-type
+                                           (or widget-type (not= tag-type :dimension)))]
+    {:id      (:id tag)
+     :type    (or widget-type (cond (= tag-type :date)   :date/single
+                                    (= tag-type :string) :string/=
+                                    (= tag-type :number) :number/=
+                                    :else                :category))
+     :target  (if (= tag-type :dimension)
+                [:dimension [:template-tag (:name tag)]]
+                [:variable  [:template-tag (:name tag)]])
+     :name    (:display-name tag)
+     :slug    (:name tag)
+     :default (:default tag)}))
+
 (defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
   against. This is done when saving a Card. The goal here is to prevent people from saving Cards with invalid queries
@@ -223,15 +244,15 @@
   (let [defaults {:parameters         []
                   :parameter_mappings []}
         card     (merge defaults card)]
-   (u/prog1 card
-     ;; make sure this Card doesn't have circular source query references
-     (check-for-circular-source-query-references card)
-     (check-field-filter-fields-are-from-correct-database card)
-     ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
-     (assert-valid-model card)
-     (params/assert-valid-parameters card)
-     (params/assert-valid-parameter-mappings card)
-     (collection/check-collection-namespace Card (:collection_id card)))))
+    (u/prog1 card
+      ;; make sure this Card doesn't have circular source query references
+      (check-for-circular-source-query-references card)
+      (check-field-filter-fields-are-from-correct-database card)
+      ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
+      (assert-valid-model card)
+      (params/assert-valid-parameters card)
+      (params/assert-valid-parameter-mappings card)
+      (collection/check-collection-namespace Card (:collection_id card)))))
 
 (defn- post-insert [card]
   ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
@@ -239,7 +260,8 @@
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))))
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))
+    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
@@ -291,12 +313,17 @@
       (collection/check-collection-namespace Card (:collection_id changes))
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
+      (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)
       (assert-valid-model (merge old-card-info changes)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
+  ;; delete any ParameterCard that the parameters on this card linked to
+  (parameter-card/delete-all-for-parameterized-object! "card" id)
+  ;; delete any ParameterCard linked to this card
+  (db/delete! ParameterCard :card_id id)
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (db/delete! 'Revision :model "Card", :model_id id))
 
@@ -377,6 +404,7 @@
         (update :creator_id             serdes.util/export-user)
         (update :made_public_by_id      serdes.util/export-user)
         (update :dataset_query          serdes.util/export-mbql)
+        (update :parameters             serdes.util/export-parameters)
         (update :parameter_mappings     serdes.util/export-parameter-mappings)
         (update :visualization_settings serdes.util/export-visualization-settings)
         (update :result_metadata        export-result-metadata))
@@ -393,14 +421,17 @@
       (update :made_public_by_id      serdes.util/import-user)
       (update :collection_id          serdes.util/import-fk 'Collection)
       (update :dataset_query          serdes.util/import-mbql)
+      (update :parameters             serdes.util/import-parameters)
       (update :parameter_mappings     serdes.util/import-parameter-mappings)
       (update :visualization_settings serdes.util/import-visualization-settings)
       (update :result_metadata        import-result-metadata)))
 
 (defmethod serdes.base/serdes-dependencies "Card"
-  [{:keys [collection_id database_id dataset_query parameter_mappings result_metadata table_id visualization_settings]}]
+  [{:keys [collection_id database_id dataset_query parameters parameter_mappings
+           result_metadata table_id visualization_settings]}]
   (->> (map serdes.util/mbql-deps parameter_mappings)
        (reduce set/union)
+       (set/union (serdes.util/parameters-deps parameters))
        (set/union #{[{:model "Database" :id database_id}]})
        ; table_id and collection_id are nullable.
        (set/union (when table_id #{(serdes.util/table->path table_id)}))
@@ -411,16 +442,20 @@
        vec))
 
 (defmethod serdes.base/serdes-descendants "Card" [_model-name id]
-  (let [card          (db/select-one Card :id id)
-        source-table  (some->  card :dataset_query :query :source-table)
-        template-tags (some->> card :dataset_query :native :template-tags vals (keep :card-id))
-        snippets      (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
+  (let [card               (db/select-one Card :id id)
+        source-table       (some->  card :dataset_query :query :source-table)
+        template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
+        parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
+        snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
     (set/union
       (when (and (string? source-table)
                  (str/starts-with? source-table "card__"))
         #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})
       (when (seq template-tags)
         (set (for [card-id template-tags]
+               ["Card" card-id])))
+      (when (seq parameters-card-id)
+        (set (for [card-id parameters-card-id]
                ["Card" card-id])))
       (when (seq snippets)
         (set (for [snippet-id snippets]

@@ -47,6 +47,10 @@ const dashboardFilter = {
           // Add previously created question to the dashboard
           cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
             cardId: card_id,
+            row: 0,
+            col: 0,
+            size_x: 10,
+            size_y: 8,
           }).then(({ body: { id } }) => {
             // Connect filter to that question
             cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {

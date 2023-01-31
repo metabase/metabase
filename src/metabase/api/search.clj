@@ -1,6 +1,5 @@
 (ns metabase.api.search
   (:require
-   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [compojure.core :refer [GET]]
    [flatland.ordered.map :as ordered-map]
@@ -153,7 +152,7 @@
                                                    "from clause")]
   [model :- SearchableModel]
   (let [db-model (get search-config/model-to-db-model model)]
-    [[(keyword (t2/table-name db-model)) (-> db-model name str/lower-case keyword)]]))
+    [[(keyword (t2/table-name db-model)) (-> db-model name u/lower-case-en keyword)]]))
 
 (defmulti ^:private archived-where-clause
   {:arglists '([model archived?])}

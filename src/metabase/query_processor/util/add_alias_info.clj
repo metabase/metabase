@@ -45,12 +45,12 @@
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
   (:require
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]))
 
 (defn prefix-field-alias
@@ -70,7 +70,7 @@
   (let [unique-name-fn (mbql.u/unique-name-generator
                         ;; some databases treat aliases as case-insensitive so make sure the generated aliases are
                         ;; unique regardless of case
-                        :name-key-fn     str/lower-case
+                        :name-key-fn u/lower-case-en
                         ;; TODO -- we should probably limit the length somehow like we do in
                         ;; [[metabase.query-processor.middleware.add-implicit-joins/join-alias]], and also update this
                         ;; function and that one to append a short suffix if we are limited by length. See also

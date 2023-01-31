@@ -28,6 +28,22 @@ interface CellProps {
   onResize?: (newWidth: number) => void;
 }
 
+interface CellProps {
+  value: React.ReactNode;
+  style?: React.CSSProperties;
+  icon?: React.ReactNode;
+  backgroundColor?: string;
+  isBody?: boolean;
+  isBold?: boolean;
+  isEmphasized?: boolean;
+  isNightMode?: boolean;
+  isBorderedHeader?: boolean;
+  isTransparent?: boolean;
+  hasTopBorder?: boolean;
+  onClick?: ((e: React.SyntheticEvent) => void) | undefined;
+  onResize?: (newWidth: number) => void;
+}
+
 export function Cell({
   value,
   style,
@@ -82,7 +98,7 @@ export function Cell({
               onResize(x);
             }}
           >
-            <ResizeHandle />
+            <ResizeHandle data-testid="pivot-table-resize-handle" />
           </Draggable>
         )}
       </>
@@ -109,7 +125,7 @@ export const TopHeaderCell = ({
   getCellClickHandler,
   onResize,
 }: TopHeaderCellProps) => {
-  const { value, hasChildren, clicked, isSubtotal, maxDepthBelow } = item;
+  const { value, hasChildren, clicked, isSubtotal, maxDepthBelow, span } = item;
 
   return (
     <Cell
@@ -122,7 +138,7 @@ export const TopHeaderCell = ({
       isEmphasized={hasChildren}
       isBold={isSubtotal}
       onClick={getCellClickHandler(clicked)}
-      onResize={onResize}
+      onResize={span < 2 ? onResize : undefined}
     />
   );
 };
@@ -177,6 +193,7 @@ interface BodyCellProps {
   rowSection: BodyItem[];
   isNightMode: boolean;
   getCellClickHandler: CellClickHandler;
+  cellWidths: number[];
 }
 
 export const BodyCell = ({
@@ -184,6 +201,7 @@ export const BodyCell = ({
   rowSection,
   isNightMode,
   getCellClickHandler,
+  cellWidths,
 }: BodyCellProps) => {
   return (
     <div style={style} className="flex">
@@ -192,6 +210,9 @@ export const BodyCell = ({
           <Cell
             isNightMode={isNightMode}
             key={index}
+            style={{
+              flexBasis: cellWidths[index],
+            }}
             value={value}
             isEmphasized={isSubtotal}
             isBold={isSubtotal}

@@ -268,6 +268,39 @@ describe("NativeQuery", () => {
       });
     });
   });
+  describe("values source settings", () => {
+    it("should preserve the order of templates tags when updating", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
+      );
+      const newQuery = oldQuery.setTemplateTag(
+        "t1",
+        oldQuery.templateTagsMap()["t1"],
+      );
+
+      expect(oldQuery.templateTags()).toEqual(newQuery.templateTags());
+    });
+
+    it("should allow setting source settings for tags", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
+      );
+      const newQuery = oldQuery.setTemplateTagConfig(
+        oldQuery.templateTagsMap()["t1"],
+        {
+          values_query_type: "search",
+          values_source_type: "static-list",
+          values_source_config: { values: ["A"] },
+        },
+      );
+
+      const newParameters = newQuery.question().parameters();
+      expect(newParameters).toHaveLength(2);
+      expect(newParameters[0].values_query_type).toEqual("search");
+      expect(newParameters[0].values_source_type).toEqual("static-list");
+      expect(newParameters[0].values_source_config).toEqual({ values: ["A"] });
+    });
+  });
   describe("variables", () => {
     it("should return empty array if there are no tags", () => {
       const q = makeQuery().setQueryText("SELECT * FROM PRODUCTS");

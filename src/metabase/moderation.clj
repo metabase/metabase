@@ -1,6 +1,5 @@
 (ns metabase.moderation
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -22,7 +21,7 @@
 (defn- object->type
   "Convert a moderated item instance to the keyword stored in the database"
   [instance]
-  (str/lower-case (name (t2/model instance))))
+  (u/lower-case-en (name (t2/model instance))))
 
 (mi/define-batched-hydration-method moderation-reviews-for-items
   :moderation_reviews

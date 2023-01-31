@@ -3,7 +3,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.set :as set]
-   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -19,14 +18,13 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card
-    :as dashboard-card
-    :refer [DashboardCard]]
+   [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.card-values :as params.card-values]
    [metabase.models.params.chain-filter :as chain-filter]
+   [metabase.models.params.static-values :as params.static-values]
    [metabase.models.query :as query :refer [Query]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
@@ -38,7 +36,6 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
-   [metabase.search.util :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
@@ -439,7 +436,7 @@
   api/generic-204-no-content)
 
 (defn- param-target->field-id [target query]
-  (when-let [field-clause (params/param-target->field-clause target {:card {:dataset_query query}})]
+  (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
     (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
@@ -486,9 +483,13 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/cards"
   "Add a `Card` to a Dashboard."
-  [id :as {{:keys [cardId parameter_mappings], :as dashboard-card} :body}]
+  [id :as {{:keys [cardId parameter_mappings row col size_x size_y], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
-   parameter_mappings (s/maybe [dashboard-card/ParamMapping])}
+   parameter_mappings (s/maybe [dashboard-card/ParamMapping])
+   row                su/IntGreaterThanOrEqualToZero
+   col                su/IntGreaterThanOrEqualToZero
+   size_x             su/IntGreaterThanZero
+   size_y             su/IntGreaterThanZero}
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
     (api/check-not-archived (api/read-check Card cardId)))
@@ -539,10 +540,10 @@
   (su/with-api-error-message
     {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZero
                                             "value must be a DashboardCard ID.")
-     (s/optional-key :size_x)             (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :size_y)             (s/maybe su/IntGreaterThanZero)
-     (s/optional-key :row)                (s/maybe su/IntGreaterThanOrEqualToZero)
-     (s/optional-key :col)                (s/maybe su/IntGreaterThanOrEqualToZero)
+     :size_x                              su/IntGreaterThanZero
+     :size_y                              su/IntGreaterThanZero
+     :row                                 su/IntGreaterThanOrEqualToZero
+     :col                                 su/IntGreaterThanOrEqualToZero
      (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankString
                                                      :target       s/Any
                                                      s/Keyword     s/Any}])
@@ -685,7 +686,8 @@
 (s/defn ^:private mappings->field-ids :- (s/maybe #{su/IntGreaterThanZero})
   [parameter-mappings :- (s/maybe (s/cond-pre #{dashboard-card/ParamMapping} [dashboard-card/ParamMapping]))]
   (set (for [param parameter-mappings
-             :let  [field-clause (params/param-target->field-clause (:target param) (:dashcard param))]
+             :let  [field-clause (params/param-target->field-clause (:target param)
+                                                                    (-> param :dashcard :card))]
              :when field-clause
              :let  [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
              :when field-id]
@@ -751,32 +753,6 @@
            (api/throw-403 e)
            (throw e)))))))
 
-(defn- query-matches
-  "Filter the values according to the `search-term`.
-
-  Values could have 2 shapes
-  - [value1, value2]
-  - [[value1, label1], [value2, label2]] - we search using label in this case"
-  [query values]
-  (let [normalized-query (search/normalize query)]
-    (filter #(str/includes? (search/normalize (if (string? %)
-                                                %
-                                                ;; search by label
-                                                (second %)))
-                            normalized-query) values)))
-
-(defn- static-parameter-values
-  [{values-source-options :values_source_config :as _param} query]
-  (when-let [values (:values values-source-options)]
-    {:values          (if query
-                        (query-matches query values)
-                        values)
-     :has_more_values false}))
-
-(defn- card-parameter-values
-  [{config :values_source_config :as _param} query]
-  (params.card-values/values-from-card (:card_id config) (:value_field config) query))
-
 (s/defn param-values
   "Fetch values for a parameter.
 
@@ -798,8 +774,10 @@
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
      (case (:values_source_type param)
-       "static-list" (static-parameter-values param query)
-       "card"        (card-parameter-values param query)
+       "static-list" (params.static-values/param->values param query)
+       "card"        (do
+                       (api/read-check Card (get-in param [:values_source_config :card_id]))
+                       (params.card-values/param->values param query))
        nil           (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

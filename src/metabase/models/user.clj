@@ -287,6 +287,18 @@
    (schema/optional-key :google_auth)      schema/Bool
    (schema/optional-key :ldap_auth)        schema/Bool})
 
+(def DefaultUser
+  "Standard form of a user (for consumption by the frontend and such)"
+  {:id           su/IntGreaterThanOrEqualToZero
+   :email        su/NonBlankString
+   :first_name   su/NonBlankString
+   :last_name    su/NonBlankString
+   :common_name  su/NonBlankString
+   :last_login   schema/Any
+   :date_joined  schema/Any
+   :is_qbnewb    schema/Bool
+   :is_superuser schema/Bool})
+
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
   {:email      su/Email

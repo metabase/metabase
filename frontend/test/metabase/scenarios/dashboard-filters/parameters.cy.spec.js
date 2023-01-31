@@ -23,10 +23,18 @@ describe("scenarios > dashboard > parameters", () => {
       // add the same question twice
       cy.request("POST", `/api/dashboard/${id}/cards`, {
         cardId: 2, // Orders, count
+        row: 0,
+        col: 0,
+        size_x: 4,
+        size_y: 4,
       });
 
       cy.request("POST", `/api/dashboard/${id}/cards`, {
         cardId: 2,
+        row: 0,
+        col: 4,
+        size_x: 4,
+        size_y: 4,
       });
 
       visitDashboard(id);

@@ -20,13 +20,14 @@
    [clojure.tools.logging :as log]
    [compojure.core :refer [GET]]
    [medley.core :as m]
+   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.pulse.parameters :as params]
    [metabase.query-processor :as qp]
@@ -154,29 +155,10 @@
                 card))
             ordered-cards))))
 
-(defn- template-tag-parameters
-  "Transforms native query's `template-tags` into `parameters`."
-  [card]
-  ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/parameters/utils/cards.js
-  (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
-        :when                         (and tag-type
-                                           (or widget-type (not= tag-type :dimension)))]
-    {:id      (:id tag)
-     :type    (or widget-type (cond (= tag-type :date)   :date/single
-                                    (= tag-type :string) :string/=
-                                    (= tag-type :number) :number/=
-                                    :else                :category))
-     :target  (if (= tag-type :dimension)
-                [:dimension [:template-tag (:name tag)]]
-                [:variable  [:template-tag (:name tag)]])
-     :name    (:display-name tag)
-     :slug    (:name tag)
-     :default (:default tag)}))
-
 (defn- add-implicit-card-parameters
   "Add template tag parameter information to `card`'s `:parameters`."
   [card]
-  (update card :parameters concat (template-tag-parameters card)))
+  (update card :parameters concat (card/template-tag-parameters card)))
 
 (s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
                                                   :type   s/Keyword
@@ -552,7 +534,50 @@
     (into {} (for [[slug value] merged-slug->value]
                [(get slug->id (name slug)) value]))))
 
-(defn- param-values [token searched-param-id prefix id-query-params]
+(defn card-param-values
+  "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param
+  values according to [[api.card/param-values]]."
+  [{:keys [unsigned-token card param-key search-prefix]}]
+  (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        parameters          (or (seq (:parameters card))
+                                (card/template-tag-parameters card))
+        id->slug            (into {} (map (juxt :id :slug) parameters))
+        slug->id            (into {} (map (juxt :slug :id) parameters))
+        searched-param-slug (get id->slug param-key)
+        embedding-params    (:embedding_params card)]
+    (try
+      (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
+        (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter."
+                             (pr-str searched-param-slug))
+                        {:status-code 400})))
+      (when (get slug-token-params (keyword searched-param-slug))
+        (throw (ex-info (tru "You can''t specify a value for {0} if it's already set in the JWT." (pr-str searched-param-slug))
+                        {:status-code 400})))
+      (try
+        (binding [api/*current-user-permissions-set* (atom #{"/"})]
+          (api.card/param-values card param-key search-prefix))
+        (catch Throwable e
+          (throw (ex-info (.getMessage e)
+                          {:card-id       (u/the-id card)
+                           :param-key     param-key
+                           :search-prefix search-prefix}
+                          e))))
+      (catch Throwable e
+        (let [e (ex-info (.getMessage e)
+                         {:card-id (u/the-id card)
+                          :card-params (:parametres card)
+                          :allowed-param-slugs embedding-params
+                          :slug->id            slug->id
+                          :id->slug            id->slug
+                          :param-id            param-key
+                          :param-slug          searched-param-slug
+                          :token-params        slug-token-params}
+                         e)]
+          (log/errorf e "embedded card-param-values error\n%s"
+                      (u/pprint-to-str (u/all-ex-data e)))
+          (throw e))))))
+
+(defn- dashboard-param-values [token searched-param-id prefix id-query-params]
   (let [unsigned-token                       (embed/unsign token)
         dashboard-id                         (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         _                                    (check-embedding-enabled-for-dashboard dashboard-id)
@@ -597,13 +622,38 @@
 (api/defendpoint-schema GET "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [token param-key :as {:keys [query-params]}]
-  (param-values token param-key nil query-params))
+  (dashboard-param-values token param-key nil query-params))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [token param-key prefix :as {:keys [query-params]}]
-  (param-values token param-key prefix query-params))
+  (dashboard-param-values token param-key prefix query-params))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:token/params/:param-key/values"
+  "Embedded version of api.card filter values endpoint."
+  [token param-key]
+  (let [unsigned (embed/unsign token)
+        card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card     (db/select-one Card :id card-id)]
+    (check-embedding-enabled-for-card card-id)
+    (card-param-values {:unsigned-token unsigned
+                        :card           card
+                        :param-key      param-key})))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:token/params/:param-key/search/:prefix"
+  "Embedded version of chain filter search endpoint."
+  [token param-key prefix]
+  (let [unsigned (embed/unsign token)
+        card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card     (db/select-one Card :id card-id)]
+    (check-embedding-enabled-for-card card-id)
+    (card-param-values {:unsigned-token unsigned
+                        :card           card
+                        :param-key      param-key
+                        :search-prefix  prefix})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming GET "/pivot/card/:token/query"

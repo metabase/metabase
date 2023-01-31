@@ -4,7 +4,6 @@
   supported application database types."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [metabase.db.data-migrations :refer [DataMigrations]]
    [metabase.db.setup :as mdb.setup]
@@ -161,7 +160,7 @@
   (with-open [source-conn (.getConnection source-data-source)]
     (doseq [entity entities
             :let   [table-name (t2/table-name entity)
-                    fragment   (table-select-fragments (str/lower-case (name table-name)))
+                    fragment   (table-select-fragments (u/lower-case-en (name table-name)))
                     sql        (str "SELECT * FROM "
                                     (name table-name)
                                     (when fragment (str " " fragment)))
