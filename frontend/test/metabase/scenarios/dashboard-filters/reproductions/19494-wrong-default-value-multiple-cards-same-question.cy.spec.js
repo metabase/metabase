@@ -22,21 +22,18 @@ const filter2 = {
   sectionId: "string",
 };
 
-// We set the default card size to 9x9, hence the second card's column position
-const card1 = getCardProperties({ id: 1, col: 0 });
-const card2 = getCardProperties({ id: 2, col: 9 });
-
 describe("issue 19494", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
     // Add another "Orders" question to the existing "Orders in a dashboard" dashboard
-    cy.request("POST", "/api/dashboard/1/cards", { cardId: 1 });
-
-    // Set the sizes and the positions for both cards
-    cy.request("PUT", "/api/dashboard/1/cards", {
-      cards: [card1, card2],
+    cy.request("POST", "/api/dashboard/1/cards", {
+      cardId: 1,
+      row: 0,
+      col: 0,
+      size_x: 9,
+      size_y: 9,
     });
 
     // Add two dashboard filters (not yet connected to any of the cards)
@@ -67,24 +64,6 @@ describe("issue 19494", () => {
     cy.findByText("110.93");
   });
 });
-
-function getCardProperties(cardObject) {
-  return Object.assign(
-    {},
-    {
-      id: 1,
-      card_id: 1,
-      row: 0,
-      col: 0,
-      size_x: 9,
-      size_y: 9,
-      series: [],
-      visualization_settings: {},
-      parameter_mappings: [],
-    },
-    cardObject,
-  );
-}
 
 function connectFilterToCard({ filterName, cardPosition }) {
   cy.findByText(filterName).find(".Icon-gear").click();

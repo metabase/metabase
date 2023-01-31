@@ -64,3 +64,10 @@ export interface DatabaseSchedules {
   metadata_sync?: ScheduleSettings;
   cache_field_values?: ScheduleSettings;
 }
+
+export interface DatabaseUsageInfo {
+  question: number;
+  dataset: number;
+  metric: number;
+  segment: number;
+}
