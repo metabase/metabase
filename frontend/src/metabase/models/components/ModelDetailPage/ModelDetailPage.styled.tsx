@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
-import Tab from "metabase/core/components/Tab";
-import BaseTabPanel from "metabase/core/components/TabPanel";
+import TabLink from "metabase/core/components/TabLink";
 import BaseTabList from "metabase/core/components/TabList";
+import BaseTabPanel from "metabase/core/components/TabPanel";
 import { color } from "metabase/lib/colors";
 
 export const RootLayout = styled.div`
@@ -29,7 +29,7 @@ export const TabList = styled(BaseTabList)`
     display: flex;
   }
 
-  ${Tab.Link.Root}:not(:last-child) {
+  ${TabLink.Root}:not(:last-child) {
     margin-right: 2rem;
   }
 `;

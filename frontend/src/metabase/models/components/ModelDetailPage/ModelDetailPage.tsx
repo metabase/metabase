@@ -1,8 +1,8 @@
 import React from "react";
 import { t } from "ttag";
 
-import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
+import TabLink from "metabase/core/components/TabLink";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -54,19 +54,19 @@ function ModelDetailPage({
         />
         <TabContent value={tab}>
           <TabList>
-            <Tab.Link
+            <TabLink
               value="usage"
               to={Urls.modelDetail(modelCard, "usage")}
-            >{t`Used by`}</Tab.Link>
-            <Tab.Link
+            >{t`Used by`}</TabLink>
+            <TabLink
               value="schema"
               to={Urls.modelDetail(modelCard, "schema")}
-            >{t`Schema`}</Tab.Link>
+            >{t`Schema`}</TabLink>
             {hasActionsTab && (
-              <Tab.Link
+              <TabLink
                 value="actions"
                 to={Urls.modelDetail(modelCard, "actions")}
-              >{t`Actions`}</Tab.Link>
+              >{t`Actions`}</TabLink>
             )}
           </TabList>
           <TabPanel value="usage">

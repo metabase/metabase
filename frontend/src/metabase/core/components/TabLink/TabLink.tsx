@@ -1,8 +1,7 @@
 import React, { MouseEvent, useCallback, useContext } from "react";
 import { LinkProps } from "metabase/core/components/Link";
-import { TabContext } from "./TabContext";
-import { TabLinkRoot, TabLabel } from "./Tab.styled";
-import { getTabId, getTabPanelId } from "./utils";
+import { getTabId, getTabPanelId, TabContext } from "../Tab";
+import { TabLinkRoot, TabLabel } from "./TabLink.styled";
 
 export interface TabLinkProps<T> extends LinkProps {
   value?: T;

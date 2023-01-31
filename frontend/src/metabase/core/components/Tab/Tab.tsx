@@ -8,7 +8,6 @@ import React, {
   useContext,
 } from "react";
 import { TabContext } from "./TabContext";
-import TabLink from "./TabLink";
 import { TabIcon, TabLabel, TabRoot } from "./Tab.styled";
 import { getTabId, getTabPanelId } from "./utils";
 
@@ -53,6 +52,4 @@ const Tab = forwardRef(function Tab<T>(
   );
 });
 
-export default Object.assign(Tab, {
-  Link: TabLink,
-});
+export default Tab;

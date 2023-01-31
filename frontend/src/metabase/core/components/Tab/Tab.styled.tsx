@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 import { color, alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 import { focusOutlineStyle } from "metabase/core/style/input";
 
@@ -44,15 +43,4 @@ export const TabLabel = styled.div`
   font-weight: bold;
   overflow: hidden;
   text-overflow: ellipsis;
-`;
-
-export const TabLinkRoot = styled(Link)<TabProps>`
-  padding: 1rem 0;
-
-  color: ${props => (props.isSelected ? color("brand") : color("text-medium"))};
-  font-size: 0.875rem;
-  font-weight: 700;
-
-  border-bottom: 3px solid
-    ${props => (props.isSelected ? color("brand") : "transparent")};
 `;
