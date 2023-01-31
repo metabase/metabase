@@ -9,6 +9,7 @@
    [malli.experimental :as mx]
    [malli.generator :as mg]
    [malli.instrument :as minst]
+   [malli.util :as mut]
    [metabase.util :as u]
    [ring.util.codec :as codec]))
 
@@ -41,7 +42,8 @@
                         output (me/humanize (mc/explain output value) {:wrap wrap-fn}))]
     (throw (ex-info
             (pr-str humanized)
-            (merge {:type type :data data}
+            (merge {:type type
+                    :data data}
                    (when data
                      (merge
                       {:humanized humanized}
@@ -120,8 +122,26 @@ explain-fn-fail!
   Options are passed in as metadata on either the var, or in the defn's metadata position. Those are merged, and thus may not reuse keys.
 
   ^:mu/no-throw - prints an error message instead of throwing when an input/output does't fit the schema
-  ^:mu/gen      - turns on autogeneration, ignores function body(s)
+  ^:mu/gen      - turns on autogeneration, ignores function bodies
   ^{:mu/seed N} - a number passed to generate, does nothing without mu/gen
   ^{:mu/size N} - a number passed to generate, does nothing without mu/gen"
   [& args]
   (-defn mx/SchematizedParams args))
+
+(def ^:private Schema
+  [:and any?
+   [:fn {:description "a malli schema"} mc/schema]])
+
+(defn with-api-error-message :- Schema
+  "Update a malli schema to have a :description (picked up by api docs),
+  and a :error/message (used by defendpoint). They don't have to be the same, but usually are."
+  ([mschema :- Schema message :- string?]
+   (with-api-error-message mschema message message))
+  ([mschema :- Schema
+    docs-message :- string?
+    error-message :- string?]
+   (mut/update-properties mschema assoc
+                          ;; override generic description in api docs
+                          :description docs-message
+                          ;; override generic description in defendpoint api errors
+                          :error/message error-message)))
