@@ -1,0 +1,81 @@
+name: Accessibility Tests
+
+on:
+  workflow_dispatch:
+
+
+jobs:
+
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        edition: [ee]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+    steps:
+    - uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+
+    - name: Build uberjar with ./bin/build
+      run: >-
+        ./bin/build version translations frontend licenses drivers uberjar
+
+    - name: Prepare uberjar artifact
+      uses: ./.github/actions/prepare-uberjar-artifact
+
+  a11y-e2e-tests:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    needs: build
+    strategy:
+      matrix:
+        edition: [ee]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      DISPLAY: ""
+      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: 11
+        distribution: 'temurin'
+    - name: Prepare cypress environment
+      uses: ./.github/actions/prepare-cypress
+
+    - uses: actions/download-artifact@v3
+      name: Retrieve uberjar artifact for ${{ matrix.edition }}
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+    - name: Get the version info
+      run: |
+        jar xf target/uberjar/metabase.jar version.properties
+        mv version.properties resources/
+
+    - name: Run a11y E2E tests
+      run: |
+        yarn run test-cypress-run \
+        --env grepTags=@a11y \
+        --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
+      env:
+        TERM: xterm
+
+    - name: Upload Cypress Artifacts upon failure
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: cypress-artifacts
+        path: |
+          ./cypress
+          ./logs/test.log
+        if-no-files-found: ignore
