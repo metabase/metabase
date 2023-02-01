@@ -507,7 +507,6 @@ describe("CollectionHeader", () => {
 Key points:
 - `setup` function
 - `renderWithProviders` adds providers used by the app, including `redux`
--
 
 ### Request mocking
 
