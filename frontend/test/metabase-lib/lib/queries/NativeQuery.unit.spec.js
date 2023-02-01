@@ -285,8 +285,7 @@ describe("NativeQuery", () => {
       const oldQuery = makeQuery().setQueryText(
         "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
       );
-      const newQuery = oldQuery.setTemplateTag(
-        "t1",
+      const newQuery = oldQuery.setTemplateTagConfig(
         oldQuery.templateTagsMap()["t1"],
         {
           values_query_type: "search",
