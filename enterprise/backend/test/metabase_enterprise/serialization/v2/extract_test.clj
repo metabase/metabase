@@ -766,7 +766,7 @@
                                                :type          :query
                                                :creator_id    ann-id
                                                :model_id      card-id-1}]
-          (let [action       (db/select-one 'Action :id 1 #_action-id)
+          (let [action       (db/select-one 'Action :id action-id)
                 query-action (db/select-one 'QueryAction :action_id action-id)]
             (testing "action"
               (let [ser (serdes.base/extract-one "Action" {} (db/select-one 'Action :id action-id))]
@@ -784,8 +784,10 @@
 
             (testing "query action"
               (let [ser (serdes.base/extract-one "QueryAction" {} (db/select-one 'QueryAction :action_id action-id))]
-                (is (schema= {:serdes/meta   (s/eq [{:id    (:entity_id query-action)
-                                                     :model "QueryAction"}])
+                (is (schema= {:serdes/meta   (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}
+                                                    {:id    (:entity_id query-action)
+                                                     :model "QueryAction"
+                                                     :label "query_action"}])
                               :action_id     (s/eq (:entity_id action))
                               :database_id   (s/eq "My Database")
                               s/Keyword      s/Any}
