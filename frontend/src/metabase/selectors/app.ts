@@ -19,6 +19,7 @@ export interface RouterProps {
 
 const HOMEPAGE_PATH = /^\/$/;
 const PATHS_WITHOUT_NAVBAR = [
+  /^\/auth/,
   /\/model\/.*\/query/,
   /\/model\/.*\/metadata/,
   /\/model\/query/,

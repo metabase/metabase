@@ -240,11 +240,19 @@ describe("scenarios > admin > databases > edit", () => {
 
     it("lets you remove the Sample Database", () => {
       cy.intercept("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
+      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/usage_info`).as(
+        `usage_info`,
+      );
 
       cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
       cy.findByText("Remove this database").click();
+      cy.wait("@usage_info");
+
       modal().within(() => {
-        cy.get("input").type("Sample Database");
+        cy.findByLabelText(/Delete [0-9]* saved questions/).click();
+        cy.findByPlaceholderText("Are you completely sure?").type(
+          "Sample Database",
+        );
         cy.get(".Button.Button--danger").click();
       });
 
