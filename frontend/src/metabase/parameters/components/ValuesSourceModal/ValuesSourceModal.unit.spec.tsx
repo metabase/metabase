@@ -50,7 +50,7 @@ describe("ValuesSourceModal", () => {
       ).toBeInTheDocument();
     });
 
-    it("should show unique non-null mapped fields values", async () => {
+    it("should show field values", async () => {
       setup({
         parameter: createMockUiParameter({
           fields: [
@@ -136,6 +136,39 @@ describe("ValuesSourceModal", () => {
       });
     });
 
+    it("should show card values", async () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+            value_field: ["field", 2, null],
+          },
+        }),
+        parameterValues: createMockParameterValues({
+          values: [["A"], ["B"], ["C"]],
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockField({
+                id: 2,
+                display_name: "Category",
+                base_type: "type/Text",
+                semantic_type: "type/Category",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      });
+    });
+
     it("should display an error message when the user has no access to the card", async () => {
       setup({
         parameter: createMockUiParameter({
@@ -212,7 +245,7 @@ const setup = ({
   if (hasDataAccess) {
     setupCollectionsEndpoints(scope, [createMockCollection(ROOT_COLLECTION)]);
     setupCardsEndpoints(scope, cards);
-    setupParameterValuesEndpoints(scope, parameter, parameterValues);
+    setupParameterValuesEndpoints(scope, parameterValues);
   } else {
     setupUnauthorizedCardsEndpoints(scope, cards);
   }

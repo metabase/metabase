@@ -1,20 +1,9 @@
 import { Scope } from "nock";
-import { Parameter, ParameterValues } from "metabase-types/api";
-import { normalizeParameter } from "metabase-lib/parameters/utils/parameter-values";
-import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
+import { ParameterValues } from "metabase-types/api";
 
 export function setupParameterValuesEndpoints(
   scope: Scope,
-  parameter: Parameter,
   parameterValues: ParameterValues,
 ) {
-  scope
-    .post(
-      "/api/dataset/parameter/values",
-      JSON.stringify({
-        parameter: normalizeParameter(parameter),
-        field_ids: getNonVirtualFields(parameter).map(field => field.id),
-      }),
-    )
-    .reply(200, parameterValues);
+  scope.post("/api/dataset/parameter/values").reply(200, parameterValues);
 }
