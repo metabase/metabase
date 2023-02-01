@@ -170,8 +170,10 @@
 (deftest native-params-filter-test
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
   ;; to match anything with a `2014-08-02` date
-  (mt/test-drivers (set/intersection (set-timezone-drivers)
-                                     (mt/normal-drivers-with-feature :native-parameters))
+  (mt/test-drivers (disj (set/intersection (set-timezone-drivers)
+                                           (mt/normal-drivers-with-feature :native-parameters))
+                         ;; sql only
+                         :mongo)
     (mt/dataset test-data-with-timezones
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (testing "Native dates should be parsed with the report timezone"

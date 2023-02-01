@@ -13,7 +13,6 @@
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
