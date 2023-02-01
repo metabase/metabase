@@ -113,7 +113,7 @@ The **Manage database** permission grants access to the settings page for a give
 
 On the database settings page, you can:
 
-- Edit any of the [connection options](../databases/connecting.md#database-connection-options) for the data source,
+- Edit any of the [connection options](../databases/connecting.md) for the data source,
 - [sync schemas](../databases/connecting.md#manually-syncing-tables-and-columns), and
 - [scan field values](../databases/connecting.md#manually-scanning-column-values).
 
