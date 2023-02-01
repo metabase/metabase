@@ -6,6 +6,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.tools.logging :as log]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -21,7 +22,7 @@
      acc)
 
     ([row-count row]
-     (printf "ROW %d -> %s\n" (inc row-count) (pr-str row))
+     (log/infof "ROW %d -> %s\n" (inc row-count) (pr-str row))
      (inc row-count))))
 
 (deftest print-rows-test
