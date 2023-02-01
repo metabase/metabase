@@ -4,6 +4,10 @@ import {
   visitDashboard,
   filterWidget,
   editDashboard,
+  sidebar,
+  getDashboardCard,
+  selectDashboardFilter,
+  saveDashboard,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -23,10 +27,18 @@ describe("scenarios > dashboard > parameters", () => {
       // add the same question twice
       cy.request("POST", `/api/dashboard/${id}/cards`, {
         cardId: 2, // Orders, count
+        row: 0,
+        col: 0,
+        size_x: 4,
+        size_y: 4,
       });
 
       cy.request("POST", `/api/dashboard/${id}/cards`, {
         cardId: 2,
+        row: 0,
+        col: 4,
+        size_x: 4,
+        size_y: 4,
       });
 
       visitDashboard(id);
@@ -42,8 +54,8 @@ describe("scenarios > dashboard > parameters", () => {
 
     // connect it to people.name and product.category
     // (this doesn't make sense to do, but it illustrates the feature)
-    selectFilter(cy.get(".DashCard").first(), "Name");
-    selectFilter(cy.get(".DashCard").last(), "Category");
+    selectDashboardFilter(getDashboardCard(0), "Name");
+    selectDashboardFilter(getDashboardCard(1), "Category");
 
     // finish editing filter and save dashboard
     cy.contains("Save").click();
@@ -465,7 +477,7 @@ describe("scenarios > dashboard > parameters", () => {
       cy.icon("filter").click();
       popover().findByText("ID").click();
 
-      selectFilter(cy.get(".DashCard"), "User ID");
+      selectDashboardFilter(getDashboardCard(), "User ID");
 
       cy.findByText("Save").click();
       cy.findByText("You're editing this dashboard.").should("not.exist");
@@ -483,12 +495,68 @@ describe("scenarios > dashboard > parameters", () => {
       cy.icon("key");
     });
   });
-});
 
-function selectFilter(selection, filterName) {
-  selection.contains("Select…").click();
-  popover().contains(filterName).click({ force: true });
-}
+  it("should be able to use linked filters to limit parameter choices", () => {
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+      },
+    };
+
+    const parameter1Details = {
+      id: "1b9cd9f1",
+      name: "Category filter",
+      slug: "category-filter",
+      type: "string/=",
+      sectionId: "string",
+    };
+
+    const parameter2Details = {
+      id: "1b9cd9f2",
+      name: "Vendor filter",
+      slug: "vendor-filter",
+      type: "string/=",
+      sectionId: "string",
+    };
+
+    const dashboardDetails = {
+      parameters: [parameter1Details, parameter2Details],
+    };
+
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
+      },
+    );
+
+    editDashboard();
+    cy.findByText(parameter1Details.name).click();
+    selectDashboardFilter(getDashboardCard(), "Category");
+    cy.findByText(parameter2Details.name).click();
+    selectDashboardFilter(getDashboardCard(), "Vendor");
+    cy.findByText("Linked filters").click();
+    sidebar().findByRole("switch").click();
+    saveDashboard();
+
+    cy.findByText(parameter2Details.name).click();
+    popover().within(() => {
+      cy.findByText("Barrows-Johns").should("exist");
+      cy.findByText("Balistreri-Ankunding").should("exist");
+    });
+
+    cy.findByText(parameter1Details.name).click();
+    popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.findByText(parameter2Details.name).click();
+    popover().within(() => {
+      cy.findByText("Barrows-Johns").should("exist");
+      cy.findByText("Balistreri-Ankunding").should("not.exist");
+    });
+  });
+});
 
 function isFilterSelected(filter, bool) {
   cy.findByTestId(`${filter}-filter-value`).within(() =>

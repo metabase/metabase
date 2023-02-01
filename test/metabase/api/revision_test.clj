@@ -118,7 +118,13 @@
                     Card      [{card-id :id, :as card}]]
       (is (=? {:id id}
               (create-dashboard-revision! dash true :rasta)))
-      (let [dashcard (db/insert! DashboardCard :dashboard_id id :card_id (:id card))]
+      (let [dashcard (db/insert! DashboardCard
+                                 :dashboard_id id
+                                 :card_id (:id card)
+                                 :size_x 4
+                                 :size_y 4
+                                 :row    0
+                                 :col    0)]
         (is (=? {:id id}
                 (create-dashboard-revision! dash false :rasta)))
         (is (true? (db/simple-delete! DashboardCard, :id (:id dashcard)))))

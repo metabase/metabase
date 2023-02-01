@@ -2,19 +2,23 @@ import { Parameter } from "metabase-types/api";
 import type { ParameterTarget } from "metabase-types/types/Parameter";
 import type Field from "metabase-lib/metadata/Field";
 
-export interface ValuePopulatedParameter extends Parameter {
+export interface ValuePopulatedParameter
+  extends ParameterWithTemplateTagTarget {
   value?: any;
 }
 
 export interface FieldFilterUiParameter extends ValuePopulatedParameter {
   fields: Field[];
-  hasVariableTemplateTagTarget?: boolean;
 }
 
 export type UiParameter = (FieldFilterUiParameter | ValuePopulatedParameter) & {
   hidden?: boolean;
 };
 
-export type ParameterWithTarget = Parameter & {
+export interface ParameterWithTarget extends Parameter {
   target: ParameterTarget;
-};
+}
+
+export interface ParameterWithTemplateTagTarget extends Parameter {
+  hasVariableTemplateTagTarget?: boolean;
+}

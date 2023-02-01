@@ -1,8 +1,8 @@
 (ns metabase.test.util.timezone
   (:require
    [clojure.test :as t]
+   [hawk.parallel]
    [metabase.driver :as driver]
-   [metabase.test-runner.parallel :as test-runner.parallel]
    [metabase.test.initialize :as initialize])
   (:import
    (java.util TimeZone)))
@@ -16,7 +16,7 @@
              (= original-system-property timezone-id))
       (thunk)
       (do
-        (test-runner.parallel/assert-test-is-not-parallel "with-system-timezone-id")
+        (hawk.parallel/assert-test-is-not-parallel "with-system-timezone-id")
         ;; only if the app DB is already set up, we need to make sure plugins are loaded and kill any connection pools that
         ;; might exist
         (when (initialize/initialized? :db)

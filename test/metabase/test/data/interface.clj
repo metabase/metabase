@@ -10,6 +10,7 @@
    [clojure.tools.logging :as log]
    [clojure.tools.reader.edn :as edn]
    [environ.core :refer [env]]
+   [hawk.init]
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -19,7 +20,6 @@
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
-   [metabase.test-runner.init :as test-runner.init]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -162,7 +162,7 @@
   "Like `driver/the-driver`, but guaranteed to return a driver with test extensions loaded, throwing an Exception
   otherwise. Loads driver and test extensions automatically if not already done."
   [driver]
-  (test-runner.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
+  (hawk.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
   (initialize/initialize-if-needed! :plugins)
   (let [driver (driver/the-initialized-driver driver)]
     (load-test-extensions-namespace-if-needed driver)
@@ -208,7 +208,7 @@
   ;; take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers
   (-> (or *database-name-override* database-name)
       (str \_ table-name)
-      str/lower-case
+      u/lower-case-en
       (str/replace #"-" "_")
       (->>
         (take-last 30)
@@ -242,7 +242,7 @@
   [this table]
   (db/select-one Field
                  :table_id    (u/the-id table)
-                 :%lower.name (str/lower-case (:field-name this))
+                 :%lower.name (u/lower-case-en (:field-name this))
                  {:order-by [[:id :asc]]}))
 
 (defmethod metabase-instance TableDefinition
@@ -254,7 +254,7 @@
                            :db_id       (:id database)
                            :%lower.name table-name
                            {:order-by [[:id :asc]]}))]
-    (or (table-with-name (str/lower-case (:table-name this)))
+    (or (table-with-name (u/lower-case-en (:table-name this)))
         (table-with-name (db-qualified-table-name (:name database) (:table-name this))))))
 
 (defmethod metabase-instance DatabaseDefinition
@@ -682,7 +682,7 @@
   (-> env-var-kwd
       name
       (str/replace "-" "_")
-      str/upper-case))
+      u/upper-case-en))
 
 (defn db-test-env-var-or-throw
   "Same as `db-test-env-var` but will throw an exception if the variable is `nil`."
@@ -693,5 +693,5 @@
    (or (db-test-env-var driver env-var default)
        (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."
                                   (name driver)
-                                  (str/upper-case (str/replace (name driver) #"-" "_"))
+                                  (u/upper-case-en (str/replace (name driver) #"-" "_"))
                                   (to-system-env-var-str env-var)))))))

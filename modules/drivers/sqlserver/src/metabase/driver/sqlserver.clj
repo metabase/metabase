@@ -40,6 +40,9 @@
 (defmethod driver/database-supports? [:sqlserver :convert-timezone]
   [_driver _feature _database]
   true)
+(defmethod driver/database-supports? [:sqlserver :test/jvm-timezone-setting]
+  [_driver _feature _database]
+  false)
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]

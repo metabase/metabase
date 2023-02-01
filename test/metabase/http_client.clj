@@ -197,7 +197,7 @@
         request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)
-        method-name (str/upper-case (name method))
+        method-name (u/upper-case-en (name method))
         _           (log/debug method-name (pr-str url) (pr-str request-map))
         thunk       (fn []
                       (try
