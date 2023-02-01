@@ -359,10 +359,19 @@
                          (setting/user-readable-values-map :authenticated))))
              (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))
 
+    (testing "Authenticated settings manager"
+      (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+        (is (= (set (keys (merge
+                           (setting/user-readable-values-map :public)
+                           (setting/user-readable-values-map :authenticated)
+                           (setting/user-readable-values-map :settings-manager))))
+               (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
+
     (testing "Authenticated super user"
       (is (= (set (keys (merge
                          (setting/user-readable-values-map :public)
                          (setting/user-readable-values-map :authenticated)
+                         (setting/user-readable-values-map :settings-manager)
                          (setting/user-readable-values-map :admin))))
              (set (keys (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 

@@ -13,15 +13,15 @@
   (when (seq condition)
     (let [conditions (into
                       [:and
-                       [:= :gtap.group_id (u/the-id group-or-id)]]
+                       [:= :sandboxes.group_id (u/the-id group-or-id)]]
                       [condition])]
       (log/debugf "Deleting GTAPs for Group %d with conditions %s" (u/the-id group-or-id) (pr-str conditions))
       (try
         (if-let [gtap-ids (not-empty (set (map :id (mdb.query/query
-                                                    {:select    [[:gtap.id :id]]
-                                                     :from      [[:group_table_access_policy :gtap]]
+                                                    {:select    [[:sandboxes.id :id]]
+                                                     :from      [[:sandboxes]]
                                                      :left-join [[:metabase_table :table]
-                                                                 [:= :gtap.table_id :table.id]]
+                                                                 [:= :sandboxes.table_id :table.id]]
                                                      :where     conditions}))))]
           (do
             (log/debugf "Deleting %d matching GTAPs: %s" (count gtap-ids) (pr-str gtap-ids))
