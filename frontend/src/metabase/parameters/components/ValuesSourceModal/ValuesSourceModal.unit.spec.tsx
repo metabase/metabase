@@ -67,6 +67,21 @@ describe("ValuesSourceModal", () => {
         expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
       });
     });
+
+    it("should not show the fields option for variable template tags", () => {
+      setup({
+        parameter: createMockUiParameter({
+          hasVariableTemplateTagTarget: true,
+        }),
+      });
+
+      expect(
+        screen.queryByRole("radio", { name: "From connected fields" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: "From another model or question" }),
+      ).toBeChecked();
+    });
   });
 
   describe("card source", () => {
