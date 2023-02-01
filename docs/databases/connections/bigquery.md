@@ -131,11 +131,17 @@ If you are on a paid plan, you can also set cache duration per questions. See [A
 
 ## Connecting Metabase to Google Drive data sources
 
-To connect to a data source stored in Google Drive (like a Google Sheet) first make sure you've completed the steps above, including creating a project in Google Cloud Platform, adding a BigQuery dataset, and creating a [service account](#google-cloud-platform-creating-a-service-account-and-json-file). Then:
+You can connect Metabase to Google Drive data sources via BigQuery. There is some setup involved, but basically what you'll be doing is creating a dataset in BigQuery and adding an external table to that dataset that points to a Google Sheet. Useful for uploading CSVs to Google Sheets, and then analyzing and visualizing the data with Metabase.
+
+To connect to a data source stored in Google Drive (like a Google Sheet), first make sure you've completed the steps above, including:
+
+- creating a project in Google Cloud Platform,
+- adding a BigQuery dataset, and 
+- creating a [service account](#google-cloud-platform-creating-a-service-account-and-json-file). 
 
 ### Share your Google Drive source with the service account
 
-While viewing your Drive file, (e.g., a Google Sheet), click the **Share** button in the top right. In the text box labeled **Add people or groups**, paste in the email of your service account, which you can find on the [Service Accounts page](https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project) in the Google Cloud Console.
+While viewing your Drive file, (e.g., a Google Sheet with an uploaded CSV file), click the **Share** button in the top right. In the text box labeled **Add people or groups**, paste in the email of your service account, which you can find on the [Service Accounts page](https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project) in the Google Cloud Console.
 
 That email address will look something like `service-account-name@your-project-name.iam.gserviceaccount.com`, with the your service account and project names filled in accordingly.
 
