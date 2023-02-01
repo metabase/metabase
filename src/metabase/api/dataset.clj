@@ -177,10 +177,6 @@
       (qp.pivot/run-pivot-query (assoc query :async? true) info context))))
 
 
-(def ^:private Parameter
-  (su/open-schema
-   {:values_source_type (s/enum nil "static-list" "card")}))
-
 (defn- parameter-field-values
   [field-ids query]
   (-> (reduce (fn [resp id]
