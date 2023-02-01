@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.tools.logging :as log]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.oracle :as oracle]
