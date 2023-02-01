@@ -256,7 +256,6 @@
     "webpack-dev-server": "4.11.1",
     "webpack-notifier": "1.15.0",
     "xlsx": "0.18.3",
-    "xmlhttprequest": "^1.8.0",
     "yaml-lint": "~1.6.0"
   },
   "resolutions": {
