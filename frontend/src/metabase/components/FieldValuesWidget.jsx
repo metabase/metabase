@@ -222,7 +222,7 @@ class FieldValuesWidgetInner extends Component {
     const { question, parameter } = this.props;
 
     return this.props.fetchCardParameterValues({
-      question,
+      cardId: question.id(),
       parameter,
       query,
     });
