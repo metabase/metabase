@@ -158,7 +158,7 @@
   [{:keys [model collection_position]}]
   ;; We experimented with favoring lower collection positions, but it wasn't good
   ;; So instead, just give a bonus for items that are pinned at all
-  (if (and (#{"card" "dashboard" "pulse"} model)
+  (if (and (#{"card" "dashboard"} model)
            ((fnil pos? 0) collection_position))
     1
     0))

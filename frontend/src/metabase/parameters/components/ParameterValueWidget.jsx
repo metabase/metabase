@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import _ from "underscore";
 
 import {
   getParameterIconName,
@@ -26,6 +25,8 @@ import {
   getNumberParameterArity,
   getStringParameterArity,
 } from "metabase-lib/parameters/utils/operators";
+import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
+import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 import {
   isDateParameter,
   isNumberParameter,
@@ -207,6 +208,7 @@ function Widget({
   placeholder,
   onFocusChanged,
   parameters,
+  question,
   dashboard,
   target,
 }) {
@@ -219,7 +221,7 @@ function Widget({
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
     );
-  } else if (parameter.hasVariableTemplateTagTarget) {
+  } else if (isTextWidget(parameter)) {
     return (
       <TextWidget
         value={value}
@@ -247,12 +249,13 @@ function Widget({
         label={getParameterWidgetTitle(parameter)}
       />
     );
-  } else if (!_.isEmpty(parameter.fields)) {
+  } else if (isFieldWidget(parameter)) {
     return (
       <ParameterFieldWidget
         target={target}
         parameter={parameter}
         parameters={parameters}
+        question={question}
         dashboard={dashboard}
         placeholder={placeholder}
         value={normalizedValue}
@@ -292,13 +295,29 @@ Widget.propTypes = {
 function getWidgetDefinition(parameter) {
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
-  } else if (parameter.hasVariableTemplateTagTarget) {
+  } else if (isTextWidget(parameter)) {
     return TextWidget;
   } else if (isNumberParameter(parameter)) {
     return NumberInputWidget;
-  } else if (!_.isEmpty(parameter.fields)) {
+  } else if (isFieldWidget(parameter)) {
     return ParameterFieldWidget;
   } else {
     return StringInputWidget;
+  }
+}
+
+function isTextWidget(parameter) {
+  if (parameter.hasVariableTemplateTagTarget) {
+    return getQueryType(parameter) === "none";
+  } else {
+    return false;
+  }
+}
+
+function isFieldWidget(parameter) {
+  if (parameter.hasVariableTemplateTagTarget) {
+    return getQueryType(parameter) !== "none";
+  } else {
+    return getFields(parameter).length > 0;
   }
 }

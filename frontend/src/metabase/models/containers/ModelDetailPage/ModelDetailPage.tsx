@@ -1,6 +1,8 @@
 import React, { useEffect, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
+import { replace } from "react-router-redux";
+import type { Location, LocationDescriptor } from "history";
 
 import * as Urls from "metabase/lib/urls";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -25,8 +27,10 @@ import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 
 type OwnProps = {
+  location: Location;
   params: {
     slug: string;
+    tab?: string;
   };
 };
 
@@ -54,6 +58,7 @@ type DispatchProps = {
     collection: Collection,
     opts: ToastOpts,
   ) => void;
+  onChangeLocation: (location: LocationDescriptor) => void;
 };
 
 type Props = OwnProps & ModelEntityLoaderProps & StateProps & DispatchProps;
@@ -72,14 +77,19 @@ const mapDispatchToProps = {
   fetchTableForeignKeys: Tables.actions.fetchForeignKeys,
   onChangeModel: (card: Card) => Questions.actions.update(card),
   onChangeCollection: Questions.objectActions.setCollection,
+  onChangeLocation: replace,
 };
+
+const FALLBACK_TAB = "usage";
 
 function ModelDetailPage({
   model,
+  location,
   loadMetadataForCard,
   fetchTableForeignKeys,
   onChangeModel,
   onChangeCollection,
+  onChangeLocation,
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
@@ -92,6 +102,11 @@ function ModelDetailPage({
     [model],
   );
 
+  const tab = useMemo(() => {
+    const [tab] = location.pathname.split("/").reverse();
+    return tab ?? FALLBACK_TAB;
+  }, [location.pathname]);
+
   useOnMount(() => {
     loadMetadataForCard(model.card());
   });
@@ -102,6 +117,13 @@ function ModelDetailPage({
       fetchTableForeignKeys({ id: mainTable.id });
     }
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
+
+  useEffect(() => {
+    if (tab === "actions" && !hasActionsEnabled) {
+      const nextUrl = Urls.modelDetail(model.card(), FALLBACK_TAB);
+      onChangeLocation(nextUrl);
+    }
+  }, [model, tab, hasActionsEnabled, onChangeLocation]);
 
   const handleNameChange = useCallback(
     name => {
@@ -139,6 +161,7 @@ function ModelDetailPage({
     <ModelDetailPageView
       model={model}
       mainTable={mainTable}
+      tab={tab}
       hasActionsTab={hasActionsEnabled}
       onChangeName={handleNameChange}
       onChangeDescription={handleDescriptionChange}

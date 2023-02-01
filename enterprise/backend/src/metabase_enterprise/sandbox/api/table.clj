@@ -22,11 +22,11 @@
   [table-or-table-id user-or-user-id]
   (some->> (mdb.query/query
             {:select [:c.id :c.dataset_query]
-             :from   [[:group_table_access_policy :gtap]]
-             :join   [[:permissions_group_membership :pgm] [:= :gtap.group_id :pgm.group_id]
-                      [:report_card :c] [:= :c.id :gtap.card_id]]
+             :from   [[:sandboxes]]
+             :join   [[:permissions_group_membership :pgm] [:= :sandboxes.group_id :pgm.group_id]
+                      [:report_card :c] [:= :c.id :sandboxes.card_id]]
              :where  [:and
-                      [:= :gtap.table_id (u/the-id table-or-table-id)]
+                      [:= :sandboxes.table_id (u/the-id table-or-table-id)]
                       [:= :pgm.user_id (u/the-id user-or-user-id)]]})
            first
            (models/do-post-select Card)))

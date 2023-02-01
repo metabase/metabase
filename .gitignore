@@ -35,7 +35,7 @@
 /docs/uberdoc.html
 /frontend/test/snapshots/*
 /lein-plugins/*/target
-/local/src
+/local
 /locales/metabase-*.pot
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target

@@ -35,6 +35,7 @@ function ParametersList({
   className,
 
   parameters,
+  question,
   dashboard,
   editingParameter,
 
@@ -97,6 +98,7 @@ function ParametersList({
           isNightMode={isNightMode}
           parameter={valuePopulatedParameter}
           parameters={parameters}
+          question={question}
           dashboard={dashboard}
           editingParameter={editingParameter}
           setEditingParameter={setEditingParameter}

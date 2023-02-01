@@ -3,9 +3,9 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [hawk.init]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
-   [metabase.test-runner.init :as test-runner.init]
    [metabase.util :as u]))
 
 (defmulti ^:private do-initialization!
@@ -20,7 +20,7 @@
                                      (str/join "\n" [border body border])
                                      "\n")))))
 
-(def ^:private init-timeout-ms (* 30 1000))
+(def ^:private init-timeout-ms (u/seconds->ms 60))
 
 (def ^:private ^:dynamic *initializing*
   "Collection of components that are being currently initialized by the current thread."
@@ -53,7 +53,7 @@
   ;; `:plugins` initialization is ok when loading test namespaces. Nothing else is tho (e.g. starting up the
   ;; application DB, or starting up the web server).
   (when-not (= steps [:plugins])
-    (test-runner.init/assert-tests-are-not-initializing (pr-str (cons 'initialize-if-needed! steps))))
+    (hawk.init/assert-tests-are-not-initializing (pr-str (cons 'initialize-if-needed! steps))))
   (doseq [step steps
           :let [step (keyword step)]]
     (when-not (@initialized step)

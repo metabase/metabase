@@ -135,6 +135,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: Q1_ID,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 12,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log(
                 "Add additional series combining it with the second question",
@@ -217,6 +221,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: Q1_ID,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 12,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log(
                 "Add additional series combining it with the second question",
@@ -558,6 +566,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 16,
+          size_y: 10,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Add click through to the custom destination on a card
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
