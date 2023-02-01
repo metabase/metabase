@@ -22,8 +22,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.urls :as urls]
-   [schema.core :as s]
-   [toucan.db :as db]))
+   [schema.core :as s]))
 
 (def ^:private ^:const default-limit Integer/MAX_VALUE)
 
