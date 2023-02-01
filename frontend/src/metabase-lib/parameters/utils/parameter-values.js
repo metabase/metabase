@@ -44,7 +44,12 @@ export function normalizeParameter(parameter) {
 export function normalizeParameters(parameters) {
   return parameters
     .filter(parameter => _.has(parameter, "value"))
-    .map(normalizeParameter);
+    .map(({ type, value, target, id }) => ({
+      id,
+      type,
+      value: normalizeParameterValue(type, value),
+      target,
+    }));
 }
 
 export function normalizeParameterValue(type, value) {
