@@ -210,12 +210,12 @@
                                                  :card_id              card-id-1
                                                  :attribute_remappings {"foo" 1}}]))
                   result (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
-              (is (=? [{:id                   #schema s/Int
+              (is (=? [{:id                   #hawk/schema s/Int
                         :table_id             table-id-1
                         :group_id             group-id
                         :card_id              card-id-1
                         :attribute_remappings {:foo 1}
-                        :permission_id        #schema s/Int}]
+                        :permission_id        #hawk/schema s/Int}]
                       (:sandboxes result)))
               (is (db/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
 
