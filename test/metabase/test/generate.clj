@@ -4,10 +4,12 @@
    [clojure.test.check.generators :as gen]
    [java-time :as t]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Action Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
-                            Dimension Field Metric NativeQuerySnippet PermissionsGroup
-                            PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
-                            QueryAction ImplicitAction HTTPAction Segment Table Timeline TimelineEvent User]]
+   [metabase.models :refer [Action Activity Card Collection Dashboard
+                            DashboardCard DashboardCardSeries Database Dimension Field
+                            HTTPAction ImplicitAction Metric NativeQuerySnippet PermissionsGroup
+                            PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient QueryAction
+                            Segment Table Timeline TimelineEvent User]]
+   [metabase.util :as u]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
    [talltale.core :as tt]
@@ -92,8 +94,15 @@
               (-> first str))))
         (gen/return nil)))))
 
+(s/def ::nano-id
+  (s/with-gen string?
+    #(gen/fmap
+      (fn [_]
+        (u/generate-nano-id))
+      (gen/return nil))))
+
 (s/def ::name ::weird-str)
-(s/def ::entity_id ::not-empty-string)
+(s/def ::entity_id ::nano-id)
 (s/def ::description ::weird-str)
 
 ;; * card
