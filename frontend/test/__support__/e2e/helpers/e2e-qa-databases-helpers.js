@@ -184,3 +184,19 @@ export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
       return body.tables.find(table => table.name === name).id;
     });
 }
+
+export function waitForSyncToFinish(iteration = 0, databaseId = 2) {
+  // 100 x 100ms should be plenty of time for the sync to finish.
+  if (iteration === 100) {
+    return;
+  }
+
+  cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
+    if (!body.tables.length) {
+      cy.wait(100);
+      waitForSyncToFinish(++iteration, databaseId);
+    }
+
+    return;
+  });
+}

@@ -3,6 +3,7 @@ import {
   modal,
   popover,
   restore,
+  fillActionQuery,
   createAction,
 } from "__support__/e2e/helpers";
 
