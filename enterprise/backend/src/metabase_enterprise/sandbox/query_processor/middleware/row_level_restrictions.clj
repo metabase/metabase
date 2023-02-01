@@ -8,7 +8,7 @@
    [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
-   [metabase.api.common :as api :refer [*current-user* *current-user-id* *current-user-permissions-set*]]
+   [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -73,6 +73,14 @@
                        (apply set/union))]
     (not (perms/set-has-full-permissions? perms-set (perms/table-query-path table-id)))))
 
+(defn- enforced-sandboxes
+  [sandboxes group-ids]
+  (let [perms               (db/select 'Permissions {:where [:in :group_id group-ids]})
+        group-id->perms-set (-> (group-by :group_id perms)
+                                (update-vals (fn [perms] (into #{} (map :object perms)))))]
+    (filter (partial enforce-sandbox? group-id->perms-set)
+            sandboxes)))
+
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
     (let [group-ids           (qp.store/cached *current-user-id*
@@ -81,24 +89,17 @@
                                (db/select GroupTableAccessPolicy
                                  :group_id [:in group-ids]
                                  :table_id [:in table-ids]))
-          perms               (db/select 'Permissions {:where [:in :group_id group-ids]})
-          group-id->perms-set (-> (group-by :group_id perms)
-                                  (update-vals (fn [perms] (into #{} (map :object perms)))))
-          enforced-sandboxes (filter (partial enforce-sandbox? group-id->perms-set) sandboxes)]
+          enforced-sandboxes (enforced-sandboxes sandboxes group-ids)]
        (when (seq enforced-sandboxes)
          (assert-one-gtap-per-table enforced-sandboxes)
          enforced-sandboxes))))
 
 (defn- query->table-id->gtap [query]
   {:pre [(some? *current-user-id*)]}
-  ;; TODO: better way to do this recursion base case?
-  (if (contains? @*current-user-permissions-set* "/")
-    []
-    (let [table-ids (query->all-table-ids query)
-          ;sandboxed-table-ids (some->> table-ids ((comp seq filter) table-should-have-segmented-permissions?))
-          gtaps               (some-> table-ids tables->sandboxes)]
-      (when (seq gtaps)
-        (m/index-by :table_id gtaps)))))
+  (let [table-ids (query->all-table-ids query)
+        gtaps     (some-> table-ids tables->sandboxes)]
+    (when (seq gtaps)
+      (m/index-by :table_id gtaps))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Applying a GTAP                                                 |
@@ -149,7 +150,7 @@
     (let [query        {:database (:id (qp.store/database))
                         :type     :query
                         :query    source-query}
-          preprocessed (binding [api/*current-user-id* nil]
+          preprocessed (binding [*current-user-id* nil]
                          (classloader/require 'metabase.query-processor)
                          ((resolve 'metabase.query-processor/preprocess) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
@@ -170,7 +171,7 @@
 
 (s/defn ^:private mbql-query-metadata :- (su/non-empty [su/Map])
   [inner-query]
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+  (binding [*current-user-id* nil]
     ((requiring-resolve 'metabase.query-processor/query->expected-cols)
      {:database (u/the-id (qp.store/database))
       :type     :query
@@ -199,7 +200,7 @@
 
 (s/defn ^:private native-query-metadata :- (su/non-empty [su/Map])
   [source-query :- {:source-query s/Any, s/Keyword s/Any}]
-  (let [result (binding [api/*current-user-permissions-set* (atom #{"/"})]
+  (let [result (binding [*current-user-id* nil]
                  ((requiring-resolve 'metabase.query-processor/process-query)
                   {:database (u/the-id (qp.store/database))
                    :type     :query
@@ -320,7 +321,7 @@
         (assoc &match ::gtap? true)))))
 
 (defn- expected-cols [query]
-  (binding [*current-user-permissions-set* (atom #{"/"})]
+  (binding [*current-user-id* nil]
     ((requiring-resolve 'metabase.query-processor/query->expected-cols) query)))
 
 (defn- gtapped-query
