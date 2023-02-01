@@ -133,9 +133,18 @@ const crossVersionTargetConfig = {
     "frontend/test/metabase/scenarios/cross-version/target/**/*.cy.spec.js",
 };
 
+const a11yConfig = {
+  ...mainConfig,
+  retries: {
+    runMode: 0,
+    openMode: 0,
+  },
+};
+
 module.exports = {
   mainConfig,
   snapshotsConfig,
   crossVersionSourceConfig,
   crossVersionTargetConfig,
+  a11yConfig,
 };
