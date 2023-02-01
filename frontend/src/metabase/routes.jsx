@@ -164,6 +164,18 @@ export const getRoutes = store => (
       }}
     />
 
+    {/* AUTH */}
+    <Route path="/auth">
+      <IndexRedirect to="/auth/login" />
+      <Route component={IsNotAuthenticated}>
+        <Route path="login" title={t`Login`} component={LoginApp} />
+        <Route path="login/:provider" title={t`Login`} component={LoginApp} />
+      </Route>
+      <Route path="logout" component={LogoutApp} />
+      <Route path="forgot_password" component={ForgotPasswordApp} />
+      <Route path="reset_password/:token" component={ResetPasswordApp} />
+    </Route>
+
     {/* PUBLICLY SHARED LINKS */}
     <Route path="public">
       <Route path="question/:uuid" component={PublicQuestion} />
@@ -181,18 +193,6 @@ export const getRoutes = store => (
         trackPageView(nextState.location.pathname);
       }}
     >
-      {/* AUTH */}
-      <Route path="/auth">
-        <IndexRedirect to="/auth/login" />
-        <Route component={IsNotAuthenticated}>
-          <Route path="login" title={t`Login`} component={LoginApp} />
-          <Route path="login/:provider" title={t`Login`} component={LoginApp} />
-        </Route>
-        <Route path="logout" component={LogoutApp} />
-        <Route path="forgot_password" component={ForgotPasswordApp} />
-        <Route path="reset_password/:token" component={ResetPasswordApp} />
-      </Route>
-
       {/* MAIN */}
       <Route component={IsAuthenticated}>
         {/* The global all hands routes, things in here are for all the folks */}
