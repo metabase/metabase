@@ -13890,6 +13890,22 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
+      id: v46.00-039
+      author: qnkhuat
+      comment: Added 0.46.0 - add entity_id to parameter_card
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: parameter_card
+
+  - changeSet:
       id: v46.00-040
       author: tsmacdonald
       comment: Added 0.46.0 -- Bump default dashcard size to 4x4
