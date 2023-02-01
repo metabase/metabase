@@ -8,7 +8,7 @@
                             Dimension Field Metric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
                             Segment Table Timeline TimelineEvent User]]
-   [metabase.shared.util.log :as log]
+   [clojure.tools.logging :as log]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
    [talltale.core :as tt]
