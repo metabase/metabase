@@ -1,6 +1,5 @@
 import {
   editDashboard,
-  modal,
   popover,
   restore,
   saveDashboard,
@@ -8,21 +7,17 @@ import {
   visitDashboard,
   openQuestionActions,
   visitQuestion,
+  setFilterQuestionSource,
+  setFilterListSource,
+  visitEmbeddedPage,
+  visitPublicDashboard,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-const dashboardQuestionDetails = {
-  display: "scalar",
-  query: {
-    "source-table": PRODUCTS_ID,
-    aggregation: [["count"]],
-  },
-};
-
-const structuredQuestionDetails = {
-  name: "Categories",
+const structuredSourceQuestion = {
+  name: "GUI source",
   query: {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
@@ -31,10 +26,26 @@ const structuredQuestionDetails = {
   },
 };
 
-const nativeQuestionDetails = {
-  name: "Categories",
+const nativeSourceQuestion = {
+  name: "SQL source",
   native: {
     query: "select distinct CATEGORY from PRODUCTS order by CATEGORY limit 2",
+  },
+};
+
+const targetParameter = {
+  id: "f8ec7c71",
+  type: "string/=",
+  name: "Text",
+  slug: "text",
+  sectionId: "string",
+};
+
+const targetQuestion = {
+  display: "scalar",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
   },
 };
 
@@ -43,159 +54,155 @@ describe("scenarios > dashboard > filters", () => {
     restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
-  it("should be able to use a structured question source", () => {
-    cy.createQuestion(structuredQuestionDetails);
-    cy.createQuestionAndDashboard({
-      questionDetails: dashboardQuestionDetails,
-    }).then(({ body: { dashboard_id } }) => {
-      visitDashboard(dashboard_id);
-    });
-
-    editDashboard();
-    setFilter("Text or Category", "Is");
-    mapFilterToQuestion();
-    editDropdown();
-    setupStructuredQuestionSource();
-    saveDashboard();
-    filterDashboard();
-  });
-
-  it("should be able to use a native question source", () => {
-    cy.createNativeQuestion(nativeQuestionDetails);
-    cy.createQuestionAndDashboard({
-      questionDetails: dashboardQuestionDetails,
-    }).then(({ body: { dashboard_id } }) => {
-      visitDashboard(dashboard_id);
-    });
-
-    editDashboard();
-    setFilter("Text or Category", "Is");
-    mapFilterToQuestion();
-    editDropdown();
-    setupNativeQuestionSource();
-    saveDashboard();
-    filterDashboard();
-  });
-
-  it("should be able to use a static list source", () => {
-    cy.createQuestionAndDashboard({
-      questionDetails: dashboardQuestionDetails,
-    }).then(({ body: { dashboard_id } }) => {
-      visitDashboard(dashboard_id);
-    });
-
-    editDashboard();
-    setFilter("Text or Category", "Is");
-    mapFilterToQuestion();
-    editDropdown();
-    setupCustomList();
-    saveDashboard();
-    filterDashboard();
-  });
-
-  it("should result in a warning being shown when archiving a question it uses", () => {
-    cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
-
-    cy.createQuestion(structuredQuestionDetails, {
-      wrapId: true,
-      idAlias: "structuredQuestionId",
-    });
-    cy.createQuestionAndDashboard({
-      questionDetails: dashboardQuestionDetails,
-    }).then(({ body: { dashboard_id } }) => {
-      visitDashboard(dashboard_id);
-    });
-
-    editDashboard();
-    setFilter("Text or Category", "Is");
-    mapFilterToQuestion();
-    editDropdown();
-    setupStructuredQuestionSource();
-    saveDashboard();
-
-    cy.intercept("GET", "/api/collection/root/items**").as("getItems");
-
-    cy.get("@structuredQuestionId").then(question_id => {
-      visitQuestion(question_id);
-      openQuestionActions();
-      cy.findByTestId("archive-button").click();
-      modal().within(() => {
-        cy.findByText(
-          "This question will be removed from any dashboards or pulses using it. It will also be removed from the filter that uses it to populate values.",
-        );
+  describe("structured question source", () => {
+    it("should be able to use a structured question source", () => {
+      cy.createQuestion(structuredSourceQuestion, { wrapId: true });
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+      }).then(({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
       });
+
+      editDashboard();
+      setFilter("Text or Category", "Is");
+      mapFilterToQuestion();
+      setFilterQuestionSource({ question: "GUI source", field: "Category" });
+      saveDashboard();
+      filterDashboard();
+
+      cy.get("@questionId").then(visitQuestion);
+      archiveQuestion();
+    });
+
+    it("should be able to use a structured question source when embedded", () => {
+      cy.createQuestion(structuredSourceQuestion).then(
+        ({ body: { id: questionId } }) => {
+          cy.createQuestionAndDashboard({
+            questionDetails: targetQuestion,
+            dashboardDetails: getStructuredDashboard(questionId),
+          }).then(({ body: card }) => {
+            cy.editDashboardCard(card, getParameterMapping(card));
+            visitEmbeddedPage(getDashboardResource(card));
+          });
+        },
+      );
+
+      filterDashboard();
+    });
+
+    it("should be able to use a structured question source when public", () => {
+      cy.createQuestion(structuredSourceQuestion).then(
+        ({ body: { id: questionId } }) => {
+          cy.createQuestionAndDashboard({
+            questionDetails: targetQuestion,
+            dashboardDetails: getStructuredDashboard(questionId),
+          }).then(({ body: card }) => {
+            cy.editDashboardCard(card, getParameterMapping(card));
+            visitPublicDashboard(card.dashboard_id);
+          });
+        },
+      );
+
+      filterDashboard();
+    });
+  });
+
+  describe("native question source", () => {
+    it("should be able to use a native question source", () => {
+      cy.createNativeQuestion(nativeSourceQuestion, { wrapId: true });
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+      }).then(({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
+      });
+
+      editDashboard();
+      setFilter("Text or Category", "Is");
+      mapFilterToQuestion();
+      setFilterQuestionSource({ question: "SQL source", field: "CATEGORY" });
+      saveDashboard();
+      filterDashboard();
+
+      cy.get("@questionId").then(visitQuestion);
+      archiveQuestion();
+    });
+
+    it("should be able to use a native question source when embedded", () => {
+      cy.createNativeQuestion(nativeSourceQuestion).then(
+        ({ body: { id: questionId } }) => {
+          cy.createQuestionAndDashboard({
+            questionDetails: targetQuestion,
+            dashboardDetails: getNativeDashboard(questionId),
+          }).then(({ body: card }) => {
+            cy.editDashboardCard(card, getParameterMapping(card));
+            visitEmbeddedPage(getDashboardResource(card));
+          });
+        },
+      );
+
+      filterDashboard();
+    });
+
+    it("should be able to use a native question source when public", () => {
+      cy.createNativeQuestion(nativeSourceQuestion).then(
+        ({ body: { id: questionId } }) => {
+          cy.createQuestionAndDashboard({
+            questionDetails: targetQuestion,
+            dashboardDetails: getNativeDashboard(questionId),
+          }).then(({ body: card }) => {
+            cy.editDashboardCard(card, getParameterMapping(card));
+            visitPublicDashboard(card.dashboard_id);
+          });
+        },
+      );
+
+      filterDashboard();
+    });
+  });
+
+  describe("static list source", () => {
+    it("should be able to use a static list source", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+      }).then(({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
+      });
+
+      editDashboard();
+      setFilter("Text or Category", "Is");
+      mapFilterToQuestion();
+      setFilterListSource({ values: ["Doohickey", "Gadget"] });
+      saveDashboard();
+      filterDashboard();
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+        dashboardDetails: getListDashboard(),
+      }).then(({ body: card }) => {
+        cy.editDashboardCard(card, getParameterMapping(card));
+        visitEmbeddedPage(getDashboardResource(card));
+      });
+
+      filterDashboard();
+    });
+
+    it("should be able to use a static list source when public", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+        dashboardDetails: getListDashboard(),
+      }).then(({ body: card }) => {
+        cy.editDashboardCard(card, getParameterMapping(card));
+        visitPublicDashboard(card.dashboard_id);
+      });
+
+      filterDashboard();
     });
   });
 });
-
-const editDropdown = () => {
-  cy.findByText("Dropdown list").click();
-  cy.findByText("Edit").click();
-};
-
-const setupStructuredQuestionSource = () => {
-  modal().within(() => {
-    cy.findByText("From another model or question").click();
-    cy.findByText("Pick a model or question…").click();
-  });
-
-  modal().within(() => {
-    cy.findByPlaceholderText(/Search for a question/).type("Categories");
-    cy.findByText("Categories").click();
-    cy.button("Done").click();
-  });
-
-  modal().within(() => {
-    cy.findByText("Pick a column…").click();
-  });
-
-  popover().within(() => {
-    cy.findByText("Category").click();
-  });
-
-  modal().within(() => {
-    cy.wait("@dataset");
-    cy.findByDisplayValue(/Gadget/).should("be.visible");
-    cy.button("Done").click();
-  });
-};
-
-const setupNativeQuestionSource = () => {
-  modal().within(() => {
-    cy.findByText("From another model or question").click();
-    cy.findByText("Pick a model or question…").click();
-  });
-
-  modal().within(() => {
-    cy.findByText("Categories").click();
-    cy.button("Done").click();
-  });
-
-  modal().within(() => {
-    cy.findByText("Pick a column…").click();
-  });
-
-  popover().within(() => {
-    cy.findByText("CATEGORY").click();
-  });
-
-  modal().within(() => {
-    cy.wait("@dataset");
-    cy.findByDisplayValue(/Gadget/).should("be.visible");
-    cy.button("Done").click();
-  });
-};
-
-const setupCustomList = () => {
-  modal().within(() => {
-    cy.findByText("Custom list").click();
-    cy.findByRole("textbox").clear().type("Doohickey\nGadget");
-    cy.button("Done").click();
-  });
-};
 
 const mapFilterToQuestion = () => {
   cy.findByText("Select…").click();
@@ -214,6 +221,70 @@ const filterDashboard = () => {
     cy.findByText("Doohickey").should("not.exist");
     cy.findByText("Gadget").click();
     cy.button("Add filter").click();
-    cy.wait("@getCardQuery");
   });
 };
+
+const archiveQuestion = () => {
+  openQuestionActions();
+  cy.findByTestId("archive-button").click();
+  cy.findByText(
+    "This question will be removed from any dashboards or pulses using it. It will also be removed from the filter that uses it to populate values.",
+  );
+};
+
+const getDashboardResource = ({ dashboard_id }) => ({
+  resource: { dashboard: dashboard_id },
+  params: {},
+});
+
+const getTargetDashboard = sourceSettings => ({
+  parameters: [
+    {
+      ...targetParameter,
+      ...sourceSettings,
+    },
+  ],
+  enable_embedding: true,
+  embedding_params: {
+    [targetParameter.slug]: "enabled",
+  },
+});
+
+const getStructuredDashboard = questionId => {
+  return getTargetDashboard({
+    values_source_type: "card",
+    values_source_config: {
+      card_id: questionId,
+      value_field: ["field", PRODUCTS.CATEGORY, null],
+    },
+  });
+};
+
+const getNativeDashboard = questionId => {
+  return getTargetDashboard({
+    values_source_type: "card",
+    values_source_config: {
+      card_id: questionId,
+      value_field: ["field", "CATEGORY", { "base-type": "type/Text" }],
+    },
+  });
+};
+
+const getListDashboard = () => {
+  return getTargetDashboard({
+    values_source_type: "static-list",
+    values_source_config: {
+      values: ["Doohickey", "Gadget"],
+    },
+  });
+};
+
+const getParameterMapping = ({ card_id }) => ({
+  parameter_mappings: [
+    {
+      card_id,
+      parameter_id: targetParameter.id,
+      target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+    },
+  ],
+});

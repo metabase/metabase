@@ -1,4 +1,4 @@
-(ns metabase.util.i18n.impl-test
+(ns ^:mb/once metabase.util.i18n.impl-test
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]

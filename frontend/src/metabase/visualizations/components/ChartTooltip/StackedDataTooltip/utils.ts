@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import { TooltipRowModel } from "../types";
 
 export const getTotalValue = (
@@ -16,4 +17,38 @@ export const getPercent = (total: number, value: unknown) => {
   }
 
   return value / total;
+};
+
+export const groupExcessiveTooltipRows = (
+  rows: TooltipRowModel[],
+  maxRows: number,
+  groupedColor?: string,
+) => {
+  if (rows.length <= maxRows) {
+    return rows;
+  }
+
+  const groupStartingFromIndex = maxRows - 1;
+  const rowsToKeep = rows.slice(0, groupStartingFromIndex);
+  const rowsToGroup = rows.slice(groupStartingFromIndex);
+
+  const groupedRow = rowsToGroup.reduce(
+    (grouped, current) => {
+      if (
+        typeof current.value === "number" &&
+        typeof grouped.value === "number"
+      ) {
+        grouped.value += current.value;
+      }
+      return grouped;
+    },
+    {
+      color: groupedColor,
+      name: t`Other`,
+      value: 0,
+      formatter: rowsToGroup[0].formatter,
+    },
+  );
+
+  return [...rowsToKeep, groupedRow];
 };

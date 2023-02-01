@@ -134,12 +134,12 @@
       (cond
         ;; two-word "keywords"
         (sql-keywords-that-should-get-newlines [x y])
-        (let [x-y (keyword (str/lower-case (format "%s-%s" (name x) (name y))))]
+        (let [x-y (keyword (u/lower-case-en (format "%s-%s" (name x) (name y))))]
           (recur m x-y (rest more)))
 
         ;; one-word keywords
         (sql-keywords-that-should-get-newlines x)
-        (let [x (keyword (str/lower-case x))]
+        (let [x (keyword (u/lower-case-en x))]
           (recur m x more))
 
         ;; if we stumble upon a nested sequence that starts with SQL keyword(s) then recursively transform that into a

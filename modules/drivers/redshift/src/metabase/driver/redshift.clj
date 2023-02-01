@@ -25,6 +25,10 @@
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+(defmethod driver/database-supports? [:redshift :test/jvm-timezone-setting]
+  [_driver _feature _database]
+  false)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+

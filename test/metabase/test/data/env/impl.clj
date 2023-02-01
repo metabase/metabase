@@ -9,7 +9,7 @@
     (println
      (u/format-color 'red
          "The env var ENGINES is no longer supported. Please specify drivers to run tests against with DRIVERS instead.")))
-  (when-let [env-drivers (some-> (env :drivers) str/lower-case)]
+  (when-let [env-drivers (some-> (env :drivers) u/lower-case-en)]
     (set (for [engine (str/split env-drivers #",")
                :when engine]
            (keyword engine)))))

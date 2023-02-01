@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.v2.load-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.load-test
   (:require
    [clojure.test :refer :all]
    [java-time :as t]
@@ -1017,7 +1017,6 @@
           (is (= [{:id                   "abc",
                    :name                 "CATEGORY",
                    :type                 :category,
-                   :values_query_type    "list"
                    :values_source_config {:card_id     (:entity_id @card),
                                           :value_field [:field
                                                         ["my-db" nil "CUSTOMERS" "NAME"]

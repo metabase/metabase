@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.v2.extract-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -396,7 +396,6 @@
                         (s/eq [{:id                   "abc"
                                 :name                 "CATEGORY"
                                 :type                 :category
-                                :values_query_type    "list"
                                 :values_source_config {:card_id     c1-eid
                                                        :value_field [:field
                                                                      ["My Database" nil "Schemaless Table" "Some Field"]
@@ -417,7 +416,6 @@
                        (s/eq [{:id                   "abc"
                                :name                 "CATEGORY"
                                :type                 :category
-                                :values_query_type    "list"
                                :values_source_config {:card_id     c1-eid
                                                       :value_field [:field
                                                                     ["My Database" nil "Schemaless Table" "Some Field"]

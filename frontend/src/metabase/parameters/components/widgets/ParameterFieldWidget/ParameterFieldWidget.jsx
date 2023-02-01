@@ -27,6 +27,7 @@ const propTypes = {
   placeholder: PropTypes.string.isRequired,
   setValue: PropTypes.func.isRequired,
   value: PropTypes.string,
+  question: PropTypes.object,
   dashboard: PropTypes.object,
 };
 
@@ -38,6 +39,7 @@ export default function ParameterFieldWidget({
   parameter,
   parameters,
   placeholder = t`Enter a value...`,
+  question,
   dashboard,
 }) {
   const [unsavedValue, setUnsavedValue] = useState(() => normalizeValue(value));
@@ -74,6 +76,7 @@ export default function ParameterFieldWidget({
               value={value}
               parameter={parameter}
               parameters={parameters}
+              question={question}
               dashboard={dashboard}
               onChange={onValueChange}
               placeholder={isEditing ? t`Enter a default value…` : undefined}

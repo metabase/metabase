@@ -1,6 +1,9 @@
 import moment from "moment-timezone";
 
-import { getClickHoverObject } from "metabase/visualizations/lib/apply_tooltips";
+import {
+  getClickHoverObject,
+  getStackedTooltipModel,
+} from "metabase/visualizations/lib/apply_tooltips";
 import { getDatas } from "metabase/visualizations/lib/renderer_utils";
 
 import {
@@ -193,6 +196,108 @@ describe("getClickHoverObject", () => {
 
     const obj = getClickHoverObject(d, otherArgs);
     expect(getFormattedTooltips(obj)).toEqual(["(empty)", "2"]);
+  });
+});
+
+describe("getStackedTooltipModel", () => {
+  const settings = {
+    "series_settings.colors": {
+      "Series 1": "red",
+      "Series 2": "green",
+    },
+    series: () => null,
+  };
+  const dashboard = {
+    ordered_cards: [],
+  };
+  const cols = [StringColumn(), NumberColumn()];
+  const getMockSeries = hasBreakout => [
+    {
+      data: {
+        cols,
+        rows: [["foo", 100]],
+        settings: {},
+        _breakoutColumn: hasBreakout ? StringColumn() : undefined,
+      },
+      card: {
+        name: "Series 1",
+        _breakoutColumn: hasBreakout ? StringColumn() : undefined,
+      },
+    },
+    {
+      data: {
+        cols,
+        rows: [["foo", 200]],
+        settings: {},
+      },
+      card: { name: "Series 2" },
+    },
+  ];
+
+  const hoveredIndex = 0;
+  const xValue = "foo";
+
+  it("sets tooltip model rows", () => {
+    const series = getMockSeries();
+    const datas = getDatas({ series, settings });
+    const { bodyRows, headerRows, headerTitle } = getStackedTooltipModel(
+      series,
+      datas,
+      settings,
+      hoveredIndex,
+      dashboard,
+      xValue,
+    );
+
+    expect(headerTitle).toBe("foo");
+    expect(headerRows).toHaveLength(1);
+    expect(headerRows[0]).toEqual(
+      expect.objectContaining({
+        color: "red",
+        name: "column_display_name",
+        value: 100,
+      }),
+    );
+    expect(bodyRows).toHaveLength(1);
+    expect(bodyRows[0]).toEqual(
+      expect.objectContaining({
+        color: "green",
+        name: "column_display_name",
+        value: 200,
+      }),
+    );
+  });
+
+  it("sets showTotal and showPercentages to true for charts with breakouts", () => {
+    const series = getMockSeries(true);
+    const datas = getDatas({ series, settings });
+    const { showTotal, showPercentages } = getStackedTooltipModel(
+      series,
+      datas,
+      settings,
+      hoveredIndex,
+      dashboard,
+      xValue,
+    );
+
+    expect(showTotal).toBe(true);
+    expect(showPercentages).toBe(true);
+  });
+
+  it("sets showTotal and showPercentages to false for charts without breakouts", () => {
+    const series = getMockSeries();
+    const datas = getDatas({ series, settings });
+    const { showTotal, showPercentages } = getStackedTooltipModel(
+      series,
+      datas,
+      settings,
+      hoveredIndex,
+      dashboard,
+      xValue,
+    );
+
+    expect(showTotal).toBe(false);
+    expect(showPercentages).toBe(false);
   });
 });
 

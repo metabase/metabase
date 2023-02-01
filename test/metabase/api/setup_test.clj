@@ -1,4 +1,4 @@
-(ns metabase.api.setup-test
+(ns ^:mb/once metabase.api.setup-test
   "Tests for /api/setup endpoints."
   (:require
    [clojure.core.async :as a]

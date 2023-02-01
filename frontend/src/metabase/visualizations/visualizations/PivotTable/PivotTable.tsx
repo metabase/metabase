@@ -17,6 +17,8 @@ import { getScrollBarSize } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 
+import { sumArray } from "metabase/core/utils/arrays";
+
 import {
   COLUMN_SHOW_TOTALS,
   isPivotGroupColumn,
@@ -51,10 +53,12 @@ import {
   checkRenderable,
   leftHeaderCellSizeAndPositionGetter,
   topHeaderCellSizeAndPositionGetter,
+  getCellWidthsForSection,
+  getWidthForRange,
 } from "./utils";
 
 import {
-  CELL_WIDTH,
+  DEFAULT_CELL_WIDTH,
   CELL_HEIGHT,
   LEFT_HEADER_LEFT_SPACING,
   MIN_HEADER_CELL_WIDTH,
@@ -87,11 +91,42 @@ function PivotTable({
   onVisualizationClick,
 }: PivotTableProps) {
   const [gridElement, setGridElement] = useState<HTMLElement | null>(null);
-  const [{ leftHeaderWidths, totalHeaderWidths }, setHeaderWidths] =
-    useState<HeaderWidthType>({
-      leftHeaderWidths: null,
-      totalHeaderWidths: null,
-    });
+  const columnWidthSettings = settings["pivot_table.column_widths"];
+  const previousColumnWidthSettings = usePrevious(columnWidthSettings);
+
+  const [
+    { leftHeaderWidths, totalLeftHeaderWidths, valueHeaderWidths },
+    setHeaderWidths,
+  ] = useState<HeaderWidthType>({
+    leftHeaderWidths: null,
+    totalLeftHeaderWidths: null,
+    valueHeaderWidths: {},
+    ...(columnWidthSettings ?? {}),
+  });
+
+  const updateHeaderWidths = useCallback(
+    (newHeaderWidths: Partial<HeaderWidthType>) => {
+      setHeaderWidths(prevHeaderWidths => ({
+        ...prevHeaderWidths,
+        ...newHeaderWidths,
+      }));
+
+      onUpdateVisualizationSettings({
+        "pivot_table.column_widths": {
+          leftHeaderWidths,
+          totalLeftHeaderWidths,
+          valueHeaderWidths,
+          ...newHeaderWidths,
+        },
+      });
+    },
+    [
+      onUpdateVisualizationSettings,
+      leftHeaderWidths,
+      totalLeftHeaderWidths,
+      valueHeaderWidths,
+    ],
+  );
 
   const bodyRef = useRef(null);
   const leftHeaderRef = useRef(null);
@@ -115,7 +150,6 @@ function PivotTable({
     );
     return showTotals;
   }
-
   useEffect(() => {
     // This is needed in case the cell counts didn't change, but the data or cell sizes did
     (
@@ -124,7 +158,8 @@ function PivotTable({
     (
       topHeaderRef.current as Collection | null
     )?.recomputeCellSizesAndPositions?.();
-  }, [data, leftHeaderRef, topHeaderRef, leftHeaderWidths]);
+    (bodyRef.current as Grid | null)?.recomputeGridSize?.();
+  }, [data, leftHeaderRef, topHeaderRef, leftHeaderWidths, valueHeaderWidths]);
 
   useOnMount(() => {
     setGridElement(bodyRef.current && findDOMNode(bodyRef.current));
@@ -144,7 +179,14 @@ function PivotTable({
   }, [data, settings]);
 
   const previousRowIndexes = usePrevious(pivoted?.rowIndexes);
-  const columnsChanged = !_.isEqual(pivoted?.rowIndexes, previousRowIndexes);
+  const hasColumnWidths = [
+    leftHeaderWidths,
+    totalLeftHeaderWidths,
+    valueHeaderWidths,
+  ].every(Boolean);
+  const columnsChanged =
+    !hasColumnWidths ||
+    (previousRowIndexes && !_.isEqual(pivoted?.rowIndexes, previousRowIndexes));
 
   // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
   // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights
@@ -166,41 +208,60 @@ function PivotTable({
 
   useEffect(() => {
     if (!pivoted?.rowIndexes) {
-      setHeaderWidths({ leftHeaderWidths: null, totalHeaderWidths: null });
+      setHeaderWidths({
+        leftHeaderWidths: null,
+        totalLeftHeaderWidths: null,
+        valueHeaderWidths: {},
+      });
       return;
     }
 
     if (columnsChanged) {
-      setHeaderWidths(
-        getLeftHeaderWidths({
+      setHeaderWidths({
+        ...getLeftHeaderWidths({
           rowIndexes: pivoted?.rowIndexes,
           getColumnTitle: idx => getColumnTitle(idx),
           leftHeaderItems: pivoted?.leftHeaderItems,
           fontFamily: fontFamily,
         }),
-      );
+        valueHeaderWidths: {},
+      });
     }
-  }, [
-    pivoted?.rowIndexes,
-    pivoted?.leftHeaderItems,
-    fontFamily,
-    getColumnTitle,
-    columnsChanged,
-  ]);
+  }, [pivoted, fontFamily, getColumnTitle, columnsChanged, setHeaderWidths]);
 
-  const handleColumnResize = (columnIndex: number, newWidth: number) => {
-    const newColumnWidths = [...(leftHeaderWidths as number[])];
-    newColumnWidths[columnIndex] = Math.max(newWidth, MIN_HEADER_CELL_WIDTH);
+  const handleColumnResize = (
+    columnType: "value" | "leftHeader",
+    columnIndex: number,
+    newWidth: number,
+  ) => {
+    let newColumnWidths: Partial<HeaderWidthType> = {};
 
-    const newTotalWidth = newColumnWidths.reduce(
-      (total, current) => total + current,
-      0,
-    );
+    if (columnType === "leftHeader") {
+      const newLeftHeaderColumnWidths = [...(leftHeaderWidths as number[])];
+      newLeftHeaderColumnWidths[columnIndex] = Math.max(
+        newWidth,
+        MIN_HEADER_CELL_WIDTH,
+      );
 
-    setHeaderWidths({
-      leftHeaderWidths: newColumnWidths,
-      totalHeaderWidths: newTotalWidth,
-    });
+      const newTotalWidth = sumArray(newLeftHeaderColumnWidths);
+
+      newColumnWidths = {
+        leftHeaderWidths: newLeftHeaderColumnWidths,
+        totalLeftHeaderWidths: newTotalWidth,
+      };
+    } else if (columnType === "value") {
+      const newValueHeaderWidths = { ...(valueHeaderWidths ?? {}) };
+      newValueHeaderWidths[columnIndex] = Math.max(
+        newWidth,
+        MIN_HEADER_CELL_WIDTH,
+      );
+
+      newColumnWidths = {
+        valueHeaderWidths: newValueHeaderWidths,
+      };
+    }
+
+    updateHeaderWidths(newColumnWidths);
   };
 
   if (pivoted === null || !leftHeaderWidths || columnsChanged) {
@@ -226,7 +287,7 @@ function PivotTable({
 
   const leftHeaderWidth =
     rowIndexes.length > 0
-      ? LEFT_HEADER_LEFT_SPACING + (totalHeaderWidths ?? 0)
+      ? LEFT_HEADER_LEFT_SPACING + (totalLeftHeaderWidths ?? 0)
       : 0;
 
   function getCellClickHandler(clicked: PivotTableClicked) {
@@ -269,7 +330,7 @@ function PivotTable({
                     isNightMode={isNightMode}
                     value={getColumnTitle(rowIndex)}
                     onResize={(newWidth: number) =>
-                      handleColumnResize(index, newWidth)
+                      handleColumnResize("leftHeader", index, newWidth)
                     }
                     style={{
                       flex: "0 0 auto",
@@ -312,12 +373,20 @@ function PivotTable({
                     item={topHeaderItems[index]}
                     getCellClickHandler={getCellClickHandler}
                     isNightMode={isNightMode}
+                    onResize={(newWidth: number) =>
+                      handleColumnResize(
+                        "value",
+                        topHeaderItems[index].offset,
+                        newWidth,
+                      )
+                    }
                   />
                 )}
                 cellSizeAndPositionGetter={({ index }) =>
                   topHeaderCellSizeAndPositionGetter(
                     topHeaderItems[index],
                     topHeaderRows,
+                    valueHeaderWidths,
                   )
                 }
                 onScroll={({ scrollLeft }) =>
@@ -377,7 +446,15 @@ function PivotTable({
                       rowCount={rowCount}
                       columnCount={columnCount}
                       rowHeight={CELL_HEIGHT}
-                      columnWidth={valueIndexes.length * CELL_WIDTH}
+                      columnWidth={({ index }) => {
+                        const subColumnWidths = getCellWidthsForSection(
+                          valueHeaderWidths,
+                          valueIndexes,
+                          index,
+                        );
+                        return sumArray(subColumnWidths);
+                      }}
+                      estimatedColumnSize={DEFAULT_CELL_WIDTH}
                       cellRenderer={({ rowIndex, columnIndex, key, style }) => (
                         <BodyCell
                           key={key}
@@ -385,6 +462,11 @@ function PivotTable({
                           rowSection={getRowSection(columnIndex, rowIndex)}
                           isNightMode={isNightMode}
                           getCellClickHandler={getCellClickHandler}
+                          cellWidths={getCellWidthsForSection(
+                            valueHeaderWidths,
+                            valueIndexes,
+                            columnIndex,
+                          )}
                         />
                       )}
                       onScroll={({ scrollLeft, scrollTop }) =>

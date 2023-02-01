@@ -27,7 +27,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.pulse.parameters :as params]
    [metabase.query-processor :as qp]
@@ -155,29 +155,10 @@
                 card))
             ordered-cards))))
 
-(defn- template-tag-parameters
-  "Transforms native query's `template-tags` into `parameters`."
-  [card]
-  ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/parameters/utils/cards.js
-  (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
-        :when                         (and tag-type
-                                           (or widget-type (not= tag-type :dimension)))]
-    {:id      (:id tag)
-     :type    (or widget-type (cond (= tag-type :date)   :date/single
-                                    (= tag-type :string) :string/=
-                                    (= tag-type :number) :number/=
-                                    :else                :category))
-     :target  (if (= tag-type :dimension)
-                [:dimension [:template-tag (:name tag)]]
-                [:variable  [:template-tag (:name tag)]])
-     :name    (:display-name tag)
-     :slug    (:name tag)
-     :default (:default tag)}))
-
 (defn- add-implicit-card-parameters
   "Add template tag parameter information to `card`'s `:parameters`."
   [card]
-  (update card :parameters concat (template-tag-parameters card)))
+  (update card :parameters concat (card/template-tag-parameters card)))
 
 (s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
                                                   :type   s/Keyword
@@ -558,8 +539,10 @@
   values according to [[api.card/param-values]]."
   [{:keys [unsigned-token card param-key search-prefix]}]
   (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-        id->slug            (into {} (map (juxt :id :slug) (:parameters card)))
-        slug->id            (into {} (map (juxt :slug :id) (:parameters card)))
+        parameters          (or (seq (:parameters card))
+                                (card/template-tag-parameters card))
+        id->slug            (into {} (map (juxt :id :slug) parameters))
+        slug->id            (into {} (map (juxt :slug :id) parameters))
         searched-param-slug (get id->slug param-key)
         embedding-params    (:embedding_params card)]
     (try

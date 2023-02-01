@@ -3,15 +3,15 @@ import { css } from "@emotion/react";
 
 import Label from "metabase/components/type/Label";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import Icon, { IconProps } from "metabase/components/Icon";
 
 export const ItemTitle = styled(Label)`
   margin: 0;
   word-break: break-word;
 `;
 
-export const ItemIcon = styled(Icon)`
-  color: ${props => color(props.color) || color("text-light")};
+export const ItemIcon = styled(Icon)<{ color?: string | null }>`
+  color: ${props => color(props.color ?? "text-light")};
   justify-self: end;
 `;
 
@@ -29,7 +29,10 @@ const VERTICAL_PADDING_BY_SIZE = {
   medium: "0.75rem",
 };
 
-export const BaseItemRoot = styled.li`
+export const BaseItemRoot = styled.li<{
+  size: "small" | "medium";
+  isSelected: boolean;
+}>`
   display: grid;
   align-items: center;
   cursor: pointer;
@@ -48,12 +51,15 @@ export const BaseItemRoot = styled.li`
   }
 `;
 
-const getGridTemplateColumns = (hasLeftIcon, hasRightIcon) =>
+const getGridTemplateColumns = (hasLeftIcon: boolean, hasRightIcon: boolean) =>
   `${hasLeftIcon ? "min-content" : ""} 1fr ${
     hasRightIcon ? "min-content" : ""
   }`;
 
-export const ItemRoot = styled(BaseItemRoot)`
+export const ItemRoot = styled(BaseItemRoot)<{
+  hasLeftIcon: boolean;
+  hasRightIcon: boolean;
+}>`
   display: grid;
   grid-template-columns: ${props =>
     getGridTemplateColumns(props.hasLeftIcon, props.hasRightIcon)};

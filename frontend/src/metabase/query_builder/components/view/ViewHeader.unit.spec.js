@@ -1,4 +1,5 @@
 import React from "react";
+import { Route } from "react-router";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
@@ -118,15 +119,20 @@ function setup({
   };
 
   renderWithProviders(
-    <ViewTitleHeader
-      isRunning={false}
-      {...callbacks}
-      {...props}
-      question={question}
-      isActionListVisible={isActionListVisible}
-      isAdditionalInfoVisible={isAdditionalInfoVisible}
-      isDirty={isDirty}
-      isRunnable={isRunnable}
+    <Route
+      path="/"
+      component={() => (
+        <ViewTitleHeader
+          isRunning={false}
+          {...callbacks}
+          {...props}
+          question={question}
+          isActionListVisible={isActionListVisible}
+          isAdditionalInfoVisible={isAdditionalInfoVisible}
+          isDirty={isDirty}
+          isRunnable={isRunnable}
+        />
+      )}
     />,
     {
       withRouter: true,
