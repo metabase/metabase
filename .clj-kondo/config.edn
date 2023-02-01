@@ -674,4 +674,4 @@
     :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
   printable-namespaces
   {:linters
-   {:discouraged-var {clojure.core/println {:level :off}}}}}}
+   {:discouraged-var {:level :off}}}}}
