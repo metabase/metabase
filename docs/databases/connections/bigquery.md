@@ -77,7 +77,7 @@ Note that only the `*` wildcard is supported; you can't use other special charac
 
 ### Use the Java Virtual Machine (JVM) timezone
 
-We suggest you leave this off unless you're doing manual [timezone](../../configuring-metabase/timezones) casting in many or most of your queries with this data.
+We suggest you leave this off unless you're doing manual [timezone](../../configuring-metabase/timezones.md) casting in many or most of your queries with this data.
 
 ### Include User ID and query hash in queries
 
