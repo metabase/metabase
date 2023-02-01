@@ -522,7 +522,7 @@ const getZoomedObjectRowIndex = createSelector(
 
       // A columnIndex is the position of a column used as a primary key,
       // which we retrieved on clicking a cell in a viz table.
-      // Fallback to a columnIndex of 0 as is typical..
+      // Falls back to a columnIndex of 0.
       const dataRowIndex = columnIndex ? parseInt(columnIndex) : 0;
       return PKRowIndexMap.findIndex(row => row[dataRowIndex] === objectId);
     }
