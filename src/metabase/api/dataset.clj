@@ -26,6 +26,7 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -180,18 +181,18 @@
   (su/open-schema
    {:values_source_type (s/enum nil "static-list" "card")}))
 
-(def ^:private FieldIds (s/maybe [s/Int]))
-
 (defn- parameter-field-values
   [field-ids query]
-  (reduce (fn [resp id]
-            (let [{values :values more? :has_more_values} (api.field/field-id->values id query)]
-              (-> resp
-                  (update :values concat values)
-                  (update :has_more_values #(or % more?)))))
-          {:has_more_values false
-           :values []}
-          field-ids))
+  (-> (reduce (fn [resp id]
+                (let [{values :values more? :has_more_values} (api.field/field-id->values id query)]
+                  (-> resp
+                      (update :values concat values)
+                      (update :has_more_values #(or % more?)))))
+              {:has_more_values false
+               :values          []}
+              field-ids)
+      ;; deduplicate the values returned from multiple fields
+      (update :values set)))
 
 (defn parameter-values
   "Fetch parameter values. Parameter should be a full parameter, field-ids is an optional vector of field ids, only
@@ -209,22 +210,20 @@
                     {:status-code 400
                      :parameter parameter}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/parameter/values"
+(api/defendpoint POST "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
   [:as {{:keys [parameter field_ids]} :body}]
-  {parameter Parameter
-   field_ids  FieldIds}
+  {parameter ms/Parameter
+   field_ids [:maybe [:sequential ms/IntGreaterThanZero]]}
   (let [nil-query nil]
     (parameter-values parameter field_ids nil-query)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/parameter/search/:query"
+(api/defendpoint POST "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
   [query :as {{:keys [parameter field_ids]} :body}]
-  {parameter Parameter
-   field_ids FieldIds
-   query     s/Str}
+  {parameter ms/Parameter
+   field_ids [:maybe [:sequential ms/IntGreaterThanZero]]
+   query     :string}
   (parameter-values parameter field_ids query))
 
 (api/define-routes)
