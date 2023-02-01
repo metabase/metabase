@@ -57,7 +57,7 @@
               (is (= expected-rows
                      (mt/rows @results))))))))))
 
-(deftest add-45-days-clause-test
+(deftest ^:parallel add-45-days-clause-test
   (testing "add 45 days clause"
     (is (= {:where
             [:>
@@ -67,7 +67,7 @@
              nil]}
            (assoc-in (#'common/add-45-days-clause {} :bob.dobbs) [:where 2] nil)))))
 
-(deftest add-search-clause-test
+(deftest ^:parallel add-search-clause-test
   (testing "add search clause"
     (is (= {:where [:or
                     [:like [:lower :t.name] "%birds%"]
@@ -89,12 +89,12 @@
             (is (= [(second expected-rows)]
                    (mt/rows (run-query query-type :args [100], :offset 1))))))))))
 
-(deftest CTES->subselects-test
+(deftest ^:parallel CTES->subselects-test
   (testing "FROM substitution"
     (is (= {:from [[{:from [[:view_log :vl]]} :mp]]}
            (#'common/CTEs->subselects
-            {:with      [[:most_popular {:from [[:view_log :vl]]}]]
-             :from      [[:most_popular :mp]]}))))
+            {:with [[:most_popular {:from [[:view_log :vl]]}]]
+             :from [[:most_popular :mp]]}))))
 
   (testing "JOIN substitution"
     (is (= {:left-join [[{:from [[:query_execution :qe]]} :qe_count] [:= :qe_count.executor_id :u.id]]}
@@ -124,11 +124,11 @@
 
                                       [:report_dashboard :d]
                                       [:= :dc.dashboard_id :d.id]]
-                          :where     [:in :d.id {:select [:dashboard_id]
-                                                 :from   [[{:select    [[:d.id :dashboard_id]]
-                                                            :from      [[:view_log :vl]]
-                                                            :left-join [[:report_dashboard :d]
-                                                                        [:= :vl.model_id :d.id]]} :most_popular]]}]} :rt]
+                          :where [:in :d.id {:select [:dashboard_id]
+                                             :from   [[{:select    [[:d.id :dashboard_id]]
+                                                        :from      [[:view_log :vl]]
+                                                        :left-join [[:report_dashboard :d]
+                                                                    [:= :vl.model_id :d.id]]} :most_popular]]}]} :rt]
                         [:= :mp.dashboard_id :rt.dashboard_id]]}
            (#'common/CTEs->subselects
             {:with      [[:most_popular {:select    [[:d.id :dashboard_id]]
