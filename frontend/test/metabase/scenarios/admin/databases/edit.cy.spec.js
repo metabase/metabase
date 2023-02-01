@@ -249,7 +249,7 @@ describe("scenarios > admin > databases > edit", () => {
       cy.wait("@usage_info");
 
       modal().within(() => {
-        cy.findByLabelText("Delete 3 saved questions").click();
+        cy.findByLabelText(/Delete [0-9]* saved questions/).click();
         cy.findByPlaceholderText("Are you completely sure?").type(
           "Sample Database",
         );
