@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [defn])
   (:require
    [clojure.core :as core]
-   [clojure.set :as set]
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
@@ -36,95 +35,51 @@
 (core/defn- explain-fn-fail!
   "Used as reporting function to minst/instrument!"
   [type data]
-  (let [wrap-fn (fn wrap-fn [{:keys [value message]}] (str message " got: " (pr-str value)))
-        {:keys [input args output value]} data
-        humanized (cond input (me/humanize (mc/explain input args) {:wrap wrap-fn})
-                        output (me/humanize (mc/explain output value) {:wrap wrap-fn}))]
+  (let [{:keys [input args output value]} data
+        humanized (cond input (me/humanize (mc/explain input args))
+                        output (me/humanize (mc/explain output value)))]
     (throw (ex-info
             (pr-str humanized)
-            (merge {:type type
-                    :data data}
+            (merge {:type type :data data}
                    (when data
-                     (merge
-                      {:humanized humanized}
-                      (when-let [link (cond input (->malli-io-link input args)
-                                            output (->malli-io-link output value))]
-                        {:link link}))))))))
+                     {:link (cond input (->malli-io-link input args)
+                                  output (->malli-io-link output value))
+                      :humanized humanized}))))))
 
 ;; since a reference to the private var is used in the macro, this will trip the eastwood :unused-private-vars linter,
 ;; so just harmlessly "use" the var here.
 explain-fn-fail!
 
-(core/defn- merge-metadata [on-var md-pos]
-  (let [collision (set/intersection (set (keys on-var))
-                                    (set (keys md-pos)))]
-    (if (and (set? on-var) (set? md-pos) (not= #{} collision))
-      (throw (ex-info (str "Keys in metadata on the var, and in the metadata position must be unique. these arent: " collision)
-                      {:colliison collision
-                       :on-var-keys (keys on-var)
-                       :positional-keys (keys md-pos)}))
-      (merge on-var md-pos))))
-
 (core/defn- -defn [schema args]
-  (let [{parsed-name :name
-         parsed-meta :meta
-         :keys       [return doc arities]
-         :as         parsed}  (mc/parse schema args)
-        {gen :mu/gen
-         seed :mu/seed
-         size :mu/size
-         no-throw :mu/no-throw
-         :or {gen false
-              seed false
-              no-throw false
-              size false}
-         :as all-md}  (merge-metadata (meta parsed-name) parsed-meta)
-        _             (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
-        parse         (fn [{:keys [args] :as parsed}] (merge (malli.destructure/parse args) parsed))
-        ->schema      (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
-        single        (= :single (key arities))
-        parglists     (if single
-                        (->> arities val parse vector)
-                        (->> arities val :arities (map parse)))
-        raw-arglists  (map :raw-arglist parglists)
-        schema        (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
-        return-schema (:schema return :any)
-        seed+size  (merge (when seed {:seed seed})
-                          (when size {:size size}))
-        ->body        (fn [{:keys [arglist prepost body]}]
-                        (if gen
-                          `(~arglist ~prepost (#(mg/generate ~return-schema ~seed+size)))
-                          `(~arglist ~prepost ~@body)))
-        id            (str (gensym "id"))
-        inst-clause (if no-throw
-                      `nil
-                      `(minst/instrument! {;; instrument the defn we just registered, via ~id
-                                           :filters [(minst/-filter-var #(-> % meta ::validate! (= ~id)))]
-                                           :report  #'explain-fn-fail!}))]
+  (let [{:keys [name return doc meta arities] :as parsed} (mc/parse schema args)
+        _ (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
+        parse (fn [{:keys [args] :as parsed}] (merge (malli.destructure/parse args) parsed))
+        ->schema (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
+        single (= :single (key arities))
+        parglists (if single
+                    (->> arities val parse vector)
+                    (->> arities val :arities (map parse)))
+        raw-arglists (map :raw-arglist parglists)
+        schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
+        id (str (gensym "id"))]
     `(let [defn# (core/defn
-                   ~parsed-name
+                   ~name
                    ~@(some-> doc vector)
-                   ~(assoc all-md
+                   ~(assoc meta
                            :raw-arglists (list 'quote raw-arglists)
                            :schema schema
-                           ::validate! id)
-                   ~@(map ->body parglists)
+                           :validate! id)
+                   ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
                    ~@(when-not single (some->> arities val :meta vector)))]
-       (mc/=> ~parsed-name ~schema)
-       ~inst-clause
+       (mc/=> ~name ~schema)
+       (minst/instrument! {;; instrument the defn we just registered, via ~id
+                           :filters [(minst/-filter-var #(-> % meta :validate! (= ~id)))]
+                           :report #'explain-fn-fail!})
        defn#)))
 
 (defmacro defn
   "Like s/defn, but for malli. Will always validate input and output without the need for calls to instrumentation (they are emitted automatically).
-   Calls to minst/unstrument! can remove this, so use a filter that avoids ::validate! if you use that.
-
-
-  Options are passed in as metadata on either the var, or in the defn's metadata position. Those are merged, and thus may not reuse keys.
-
-  ^:mu/no-throw - prints an error message instead of throwing when an input/output does't fit the schema
-  ^:mu/gen      - turns on autogeneration, ignores function bodies
-  ^{:mu/seed N} - a number passed to generate, does nothing without mu/gen
-  ^{:mu/size N} - a number passed to generate, does nothing without mu/gen"
+   Calls to minst/unstrument! can remove this, so use a filter that avoids :validate! if you use that."
   [& args]
   (-defn mx/SchematizedParams args))
 
