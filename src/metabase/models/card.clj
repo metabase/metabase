@@ -177,6 +177,26 @@
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query mbql.normalize/normalize)))
 
+(defn template-tag-parameters
+  "Transforms native query's `template-tags` into `parameters`.
+  An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
+  [card]
+  ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/parameters/utils/cards.js
+  (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
+        :when                         (and tag-type
+                                           (or widget-type (not= tag-type :dimension)))]
+    {:id      (:id tag)
+     :type    (or widget-type (cond (= tag-type :date)   :date/single
+                                    (= tag-type :string) :string/=
+                                    (= tag-type :number) :number/=
+                                    :else                :category))
+     :target  (if (= tag-type :dimension)
+                [:dimension [:template-tag (:name tag)]]
+                [:variable  [:template-tag (:name tag)]])
+     :name    (:display-name tag)
+     :slug    (:name tag)
+     :default (:default tag)}))
+
 (defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
   against. This is done when saving a Card. The goal here is to prevent people from saving Cards with invalid queries

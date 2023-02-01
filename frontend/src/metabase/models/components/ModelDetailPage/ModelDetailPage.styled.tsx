@@ -1,8 +1,7 @@
 import styled from "@emotion/styled";
-
-import Radio from "metabase/core/components/Radio";
+import TabLink from "metabase/core/components/TabLink";
+import BaseTabList from "metabase/core/components/TabList";
 import BaseTabPanel from "metabase/core/components/TabPanel";
-
 import { color } from "metabase/lib/colors";
 
 export const RootLayout = styled.div`
@@ -22,12 +21,18 @@ export const ModelMain = styled.div`
   padding-right: 3rem;
 `;
 
-export const TabList = styled(Radio)`
+export const TabList = styled(BaseTabList)`
   margin: 1rem 0;
   border-bottom: 1px solid ${color("border")};
-`;
 
-TabList.defaultProps = { variant: "underlined" };
+  ${BaseTabList.Content} {
+    display: flex;
+  }
+
+  ${TabLink.Root}:not(:last-child) {
+    margin-right: 2rem;
+  }
+`;
 
 export const TabPanel = styled(BaseTabPanel)`
   height: 100%;
