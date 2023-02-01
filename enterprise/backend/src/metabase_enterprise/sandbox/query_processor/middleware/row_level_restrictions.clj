@@ -66,7 +66,8 @@
 (defn- enforce-sandbox?
   "Takes the permission set for each group a user is in, and a sandbox, and determines whether the sandbox should be
   enforced for the current user. This is done by checking whether the set of permissions in all *other* groups provides
-  full data access to the sandboxed table. If so, we don't enforce the sandbox."
+  full data access to the sandboxed table. If so, we don't enforce the sandbox, because the other groups' permissions
+  supercede it."
   [group-id->perms-set {group-id :group_id, table-id :table_id}]
   (let [perms-set (->> (dissoc group-id->perms-set group-id)
                        (vals)
