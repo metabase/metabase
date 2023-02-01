@@ -28,7 +28,7 @@ export default function ColumnFilterDrill({ question, clicked }) {
           onClose={onClose}
           onResize={onResize}
           onChangeFilter={filter => {
-            const nextCard = query.filter(filter).question().card();
+            const nextCard = filter.add().rootQuery().question().card();
             onChangeCardAndRun({ nextCard });
             onClose();
           }}
