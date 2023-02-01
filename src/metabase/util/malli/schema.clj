@@ -21,7 +21,7 @@
       ...)"
   [model]
   (mc/schema
-    [:fn {:error/fn (constantly (deferred-tru "value must be an instance of {0}" (name model)))}
+    [:fn {:error/fn (fn [] (deferred-tru "value must be an instance of {0}" (name model)))}
      #(models.dispatch/instance-of? model %)]))
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
