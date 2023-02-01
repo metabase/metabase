@@ -7,7 +7,10 @@
    [clojure.set :as set]
    [clojure.tools.logging :as log]
    [medley.core :as m]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.api.util :as mt.api.u]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :as gtap
+    :refer [GroupTableAccessPolicy]]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.schema :as mbql.s]
@@ -15,12 +18,14 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.field :refer [Field]]
    [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+   [metabase.models.permissions-group-membership
+    :refer [PermissionsGroupMembership]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+   [metabase.query-processor.middleware.fetch-source-query
+    :as fetch-source-query]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -87,10 +92,9 @@
     (let [group-ids           (qp.store/cached *current-user-id*
                                   (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*))
           sandboxes           (when (seq group-ids)
-                               (db/select GroupTableAccessPolicy
-                                 :group_id [:in group-ids]
+                               (db/select GroupTableAccessPolicy :group_id [:in group-ids]
                                  :table_id [:in table-ids]))
-          enforced-sandboxes (enforced-sandboxes sandboxes group-ids)]
+          enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes)]
        (when (seq enforced-sandboxes)
          (assert-one-gtap-per-table enforced-sandboxes)
          enforced-sandboxes))))
