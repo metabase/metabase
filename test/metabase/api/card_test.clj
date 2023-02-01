@@ -2383,11 +2383,11 @@
   (testing "getting values"
     (with-card-param-values-fixtures [{:keys [card param-keys]}]
       (testing "GET /api/card/:card-id/params/:param-key/values"
-        (is (=? {:values          ["Red Medicine"
+        (is (=? {:values          ["Brite Spot Family Restaurant"
+                                   "Red Medicine"
                                    "Stout Burgers & Beers"
                                    "The Apple Pan"
-                                   "Wurstküche"
-                                   "Brite Spot Family Restaurant"]
+                                   "Wurstküche"]
                  :has_more_values false}
                 (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
 
