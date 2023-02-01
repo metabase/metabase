@@ -446,6 +446,7 @@
   (-> (into (sorted-map) dashcard)
       (dissoc :id :collection_authority_level :dashboard_id :updated_at)
       (update :card_id                serdes.util/export-fk 'Card)
+      (update :action_id              serdes.util/export-fk 'Action)
       (update :parameter_mappings     serdes.util/export-parameter-mappings)
       (update :visualization_settings serdes.util/export-visualization-settings)))
 
