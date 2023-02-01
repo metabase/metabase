@@ -408,7 +408,7 @@
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references."
   [parameters]
-  (into [] (map ids->fully-qualified-names parameters)))
+  (map ids->fully-qualified-names parameters))
 
 (defn import-parameters
   "Given the :parameter field as exported by serialization convert its field references
