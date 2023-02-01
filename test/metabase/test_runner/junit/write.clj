@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
+   [clojure.tools.logging :as log]
    [pjstadig.print :as p])
   (:import
    (java.util.concurrent Executors ThreadFactory ThreadPoolExecutor TimeUnit)
@@ -42,11 +43,11 @@
   (-> s decolorize escape-unprintable-characters))
 
 (defn- print-result-description [{:keys [file line message testing-contexts], :as _result}]
-  (println (format "%s:%d" file line))
+  (log/info (format "%s:%d" file line))
   (doseq [s (reverse testing-contexts)]
-    (println (str/trim (decolorize-and-escape (str s)))))
+    (log/info (str/trim (decolorize-and-escape (str s)))))
   (when message
-    (println (decolorize-and-escape message))))
+    (log/info (decolorize-and-escape message))))
 
 (defn- print-expected [expected actual]
   (p/rprint "expected: ")
@@ -59,7 +60,7 @@
   [^XMLStreamWriter w {:keys [expected actual diffs], :as result}]
   (.writeCharacters w "\n")
   (let [s (with-out-str
-            (println)
+            (log/info)
             (print-result-description result)
             ;; this code is adapted from `pjstadig.util`
             (p/with-pretty-writer

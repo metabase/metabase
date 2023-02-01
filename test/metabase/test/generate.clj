@@ -8,6 +8,7 @@
                             Dimension Field Metric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
                             Segment Table Timeline TimelineEvent User]]
+   [metabase.shared.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
    [talltale.core :as tt]
@@ -348,7 +349,7 @@
                                  sm-db
                                  (assoc visit-opts :visit-val (:spec-gen attrs))))
                     (catch Throwable e
-                      (println e)))))
+                      (log/error e)))))
       (rs/attr-map :insert!)))
 
 (defn generate-horror-show! []

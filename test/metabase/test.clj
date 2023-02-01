@@ -26,6 +26,7 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.shared.util.log :as log]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test-runner.init :as test-runner.init]
    [metabase.test-runner.parallel :as test-runner.parallel]
@@ -370,7 +371,7 @@
                                  (when run (run))
                                  (qp.context/reducef rff context (assoc metadata :pre query) rows)
                                  (catch Throwable e
-                                   (println "Error in test-qp-middleware runf:" e)
+                                   (log/errorf "Error in test-qp-middleware runf: %s" e)
                                    (throw e))))}
                    context)]
      (if async?

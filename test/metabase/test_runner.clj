@@ -84,6 +84,7 @@
              (if-let [[_ driver] (re-find #"modules/drivers/([^/]+)/" (str file))]
                (contains? (tx.env/test-drivers) (keyword driver))
                true))
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (println "Looking for test namespaces in directory" (str file))
     (->> (ns.find/find-namespaces-in-dir file)
          (filter #(re-matches #"^metabase.*test$" (name %)))
@@ -109,6 +110,7 @@
         (let [ns-tags (-> symb find-ns meta keys set)
               ex-tags (set/intersection *exclude-tags* ns-tags)]
           (if (seq ex-tags)
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (println (format
                       "Skipping tests in `%s` due to exclusion-tag(s): %s"
                       symb
@@ -120,6 +122,7 @@
   [_]
   (find-tests (classpath/system-classpath)))
 
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn tests [{:keys [only exclude-tags]}]
   (when only
     (println "Running tests in" (pr-str only)))
@@ -204,6 +207,7 @@
 
 ;;;; `clojure -X` entrypoint
 
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn run-tests
   "`clojure -X` entrypoint for the test runner. `options` are passed directly to `eftest`; see
   https://github.com/weavejester/eftest for full list of options.
