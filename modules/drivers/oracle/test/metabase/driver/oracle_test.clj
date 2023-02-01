@@ -363,10 +363,10 @@
                                   te/*test-drivers* (constantly #{:oracle})]
                           (testing " and execute a query correctly"
                             (qp-test.order-by-test/order-by-test))))))))))))
-      (println (u/format-color 'yellow
-                               "Skipping %s because %s env var is not set"
-                               "oracle-connect-with-ssl-test"
-                               "MB_ORACLE_SSL_TEST_SSL")))))
+      (log/warn (u/format-color 'yellow
+                                "Skipping %s because %s env var is not set"
+                                "oracle-connect-with-ssl-test"
+                                "MB_ORACLE_SSL_TEST_SSL")))))
 
 (deftest text-equals-empty-string-test
   (mt/test-driver :oracle
