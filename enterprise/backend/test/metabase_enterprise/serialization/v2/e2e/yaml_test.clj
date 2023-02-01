@@ -405,7 +405,6 @@
                 (is (= [{:id                   "abc",
                          :name                 "CATEGORY",
                          :type                 :category,
-                         :values_query_type    "list"
                          :values_source_config {:card_id     (:entity_id card1s),
                                                 :value_field [:field
                                                               ["my-db" nil "CUSTOMERS" "NAME"]
