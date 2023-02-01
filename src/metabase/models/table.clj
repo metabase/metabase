@@ -1,6 +1,5 @@
 (ns metabase.models.table
   (:require
-   [honeysql.core :as hsql]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -16,6 +15,7 @@
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
    [toucan.db :as db]
    [toucan.models :as models]))
 
@@ -102,11 +102,11 @@
                   :table_id  (u/the-id table)
                   {:order-by (case (:field_order table)
                                :custom       [[:custom_position :asc]]
-                               :smart        [[(hsql/call :case
-                                                 (mdb.u/isa :semantic_type :type/PK)       0
-                                                 (mdb.u/isa :semantic_type :type/Name)     1
-                                                 (mdb.u/isa :semantic_type :type/Temporal) 2
-                                                 :else                                     3)
+                               :smart        [[(hx/call :case
+                                                        (mdb.u/isa :semantic_type :type/PK)       0
+                                                        (mdb.u/isa :semantic_type :type/Name)     1
+                                                        (mdb.u/isa :semantic_type :type/Temporal) 2
+                                                        :else                                     3)
                                                :asc]
                                               [:%lower.name :asc]]
                                :database     [[:database_position :asc]]
