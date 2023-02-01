@@ -100,7 +100,7 @@
     (let [honeysql-query (cond-> honeysql-query
                            ;; MySQL 5.x does not support CTEs, so convert them to subselects instead
                            (= driver :mysql) CTEs->subselects)]
-      (db/honeysql->sql (add-default-params honeysql-query)))
+      (sql/format (add-default-params honeysql-query)))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling audit query: {0}" (ex-message e))
                       {:driver driver, :honeysql-query honeysql-query}

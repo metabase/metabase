@@ -77,9 +77,9 @@
 (deftest query-limit-and-offset-test
   (testing "Make sure params passed in as part of the query map are respected"
     (premium-features-test/with-premium-features #{:audit-app}
-      (doseq [[format-name {:keys [query-type expected-rows]}] {"legacy"    {:query-type          ::legacy-format-query-fn
+      (doseq [[format-name {:keys [query-type expected-rows]}] {"legacy"    {:query-type    ::legacy-format-query-fn
                                                                              :expected-rows [[100 2] [3 4]]}
-                                                                "reducible" {:query-type          ::reducible-format-query-fn
+                                                                "reducible" {:query-type    ::reducible-format-query-fn
                                                                              :expected-rows [[101 2] [4 4]]}}]
         (testing (format "format = %s" format-name)
           (testing :limit
