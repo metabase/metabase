@@ -217,9 +217,9 @@
 (defn first-non-null
   "Build a `CASE` statement that returns the first non-`NULL` of `exprs`."
   [& exprs]
-  (into [:case] (mapcat (fn [expr]
-                          [[:not= expr nil] expr])
-                        exprs)))
+  (into [:case]
+        (mapcat (fn [expr] [[:not= expr nil] expr]))
+        exprs))
 
 (defn zero-if-null
   "Build a `CASE` statement that will replace results of `expr` with `0` when it's `NULL`, perfect for things like
