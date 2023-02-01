@@ -241,7 +241,13 @@ export const getRoutes = store => (
           <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
 
-        <Route path="/model/:slug/detail" component={ModelDetailPage} />
+        <Route path="/model/:slug/detail">
+          <IndexRedirect to="usage" />
+          <Route path="usage" component={ModelDetailPage} />
+          <Route path="schema" component={ModelDetailPage} />
+          <Route path="actions" component={ModelDetailPage} />
+          <Redirect from="*" to="usage" />
+        </Route>
 
         <Route path="/model">
           <IndexRoute component={QueryBuilder} />

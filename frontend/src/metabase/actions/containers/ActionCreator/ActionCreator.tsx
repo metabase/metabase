@@ -22,7 +22,7 @@ import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
 
-import { getTemplateTagParameters } from "metabase-lib/parameters/utils/template-tags";
+import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 import CreateActionForm from "../CreateActionForm";
 import { newQuestion, convertActionToQuestionCard } from "./utils";
 import ActionCreatorView from "./ActionCreatorView";
@@ -88,12 +88,11 @@ function ActionCreatorComponent({
 
   const handleChangeQuestionQuery = useCallback(
     (newQuery: NativeQuery) => {
-      const newParams = getTemplateTagParameters(
-        newQuery.templateTagsWithoutSnippets(),
-      );
-      setQuestion(question.setQuery(newQuery).setParameters(newParams));
+      const newQuestion = newQuery.question();
+      const newParams = getTemplateTagParametersFromCard(newQuestion.card());
+      setQuestion(newQuestion.setQuery(newQuery).setParameters(newParams));
     },
-    [question],
+    [setQuestion],
   );
 
   const defaultModelId: number | undefined = useMemo(() => {

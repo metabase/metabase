@@ -13,6 +13,7 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -39,10 +40,10 @@
   #{"id" "url" "ip" "uid" "uuid" "guid"})
 
 (defn- capitalize-word [word]
-  (if (contains? acronyms (str/lower-case word))
-    (str/upper-case word)
+  (if (contains? acronyms (u/lower-case-en word))
+    (u/upper-case-en word)
     ;; We are assuming that ALL_UPPER_CASE means we should be Title Casing
-    (if (= word (str/upper-case word))
+    (if (= word (u/upper-case-en word))
       (str/capitalize word)
       (str (str/capitalize (subs word 0 1)) (subs word 1)))))
 

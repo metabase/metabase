@@ -42,6 +42,10 @@
 (defmethod driver/supports? [:athena :nested-fields] [_ _] false #_true) ; huh? Not sure why this was `true`. Disabled
                                                                          ; for now.
 
+(defmethod driver/database-supports? [:athena :test/jvm-timezone-setting]
+  [_driver _feature _database]
+  false)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+

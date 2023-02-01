@@ -274,7 +274,7 @@
   ;; timezone
   ;;
   ;; TIMEZONE FIXME
-  (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :athena})
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/jvm-timezone-setting)
     (testing "Change JVM timezone from UTC to Pacific"
       (is (= (cond
                (= :sqlite driver/*driver*)
@@ -526,7 +526,7 @@
     ;; timezone
     ;;
     ;; TIMEZONE FIXME
-    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :vertica :athena})
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/jvm-timezone-setting)
       (is (= (cond
                (= :sqlite driver/*driver*)
                (results-by-day u.date/parse date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])

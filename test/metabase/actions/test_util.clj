@@ -141,6 +141,7 @@
                              :public_uuid (str (java.util.UUID/randomUUID))
                              :made_public_by_id (test.users/user->id :crowberto)
                              :database_id (data/id)
+                             :creator_id (test.users/user->id :crowberto)
                              :dataset_query {:database (data/id)
                                              :type :native
                                              :native {:query (str "UPDATE categories\n"
@@ -163,6 +164,7 @@
                                       :kind "row/update"
                                       :public_uuid (str (java.util.UUID/randomUUID))
                                       :made_public_by_id (test.users/user->id :crowberto)
+                                      :creator_id (test.users/user->id :crowberto)
                                       :model_id model-id}
                                      options-map))]
       {:action-id action-id :model-id model-id})
@@ -184,7 +186,8 @@
                                       :response_handle ".body"
                                       :model_id model-id
                                       :public_uuid (str (java.util.UUID/randomUUID))
-                                      :made_public_by_id (test.users/user->id :crowberto)}
+                                      :made_public_by_id (test.users/user->id :crowberto)
+                                      :creator_id (test.users/user->id :crowberto)}
                                      options-map))]
       {:action-id action-id :model-id model-id})))
 
@@ -239,17 +242,23 @@
     (something model-card-id id action-id model-id))
   nil)
 
-(defn do-with-actions-enabled
+(defn do-with-actions-set
   "Impl for [[with-actions-enabled]]."
-  [thunk]
-  (tu/with-temp-vals-in-db Database (data/id) {:settings {:database-enable-actions true}}
+  [enable? thunk]
+  (tu/with-temp-vals-in-db Database (data/id) {:settings {:database-enable-actions enable?}}
     (thunk)))
 
 (defmacro with-actions-enabled
   "Execute `body` with Actions enabled for the current test Database."
   {:style/indent 0}
   [& body]
-  `(do-with-actions-enabled (fn [] ~@body)))
+  `(do-with-actions-set true (fn [] ~@body)))
+
+(defmacro with-actions-disabled
+  "Execute `body` with Actions disabled for the current test Database."
+  {:style/indent 0}
+  [& body]
+  `(do-with-actions-set false (fn [] ~@body)))
 
 (defmacro with-actions-test-data-and-actions-enabled
   "Combines [[with-actions-test-data]] and [[with-actions-enabled]]."

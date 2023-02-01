@@ -684,11 +684,8 @@
                      response))))
           (testing "card based param"
             (let [response (dropdown card (:card param-keys))]
-              (is (= {:values          ["Red Medicine"
-                                        "Stout Burgers & Beers"
-                                        "The Apple Pan"
-                                        "Wurstküche"
-                                        "Brite Spot Family Restaurant"]
+              (is (= {:values          ["Brite Spot Family Restaurant" "Red Medicine"
+                                        "Stout Burgers & Beers" "The Apple Pan" "Wurstküche"]
                       :has_more_values false}
                      response)))
             (let [response (search card (:card param-keys) "red")]

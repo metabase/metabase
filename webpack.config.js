@@ -329,6 +329,7 @@ if (WEBPACK_BUNDLE !== "production") {
 function getLocalIpAddress(ipFamily) {
   const networkInterfaces = os.networkInterfaces();
   const interfaces = Object.keys(networkInterfaces)
+    .sort()
     .map(iface => networkInterfaces[iface])
     .reduce((interfaces, iface) => interfaces.concat(iface));
 
