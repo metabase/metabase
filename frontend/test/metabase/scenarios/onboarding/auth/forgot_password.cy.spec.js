@@ -29,6 +29,16 @@ describe("scenarios > auth > password", { tags: "@external" }, () => {
       cy.findByText("You've updated your password.");
     });
   });
+
+  it("should not show the app bar when previously logged in", () => {
+    cy.signInAsAdmin();
+    cy.intercept("GET", "/api/user/current").as("getUser");
+
+    cy.visit("/auth/forgot_password");
+
+    cy.get("@getUser.all").should("have.length", 0);
+    cy.icon("gear").should("not.exist");
+  });
 });
 
 const getResetLink = html => {
