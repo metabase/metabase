@@ -456,6 +456,10 @@ describe("scenarios > visualizations > pivot tables", () => {
             cy.log("Add previously created question to that dashboard");
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: QUESTION_ID,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 8,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log("Resize the dashboard card");
               cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -516,6 +520,10 @@ describe("scenarios > visualizations > pivot tables", () => {
             cy.log("Add previously created question to that dashboard");
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: QUESTION_ID,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 8,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log("Resize the dashboard card");
               cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -873,6 +881,56 @@ describe("scenarios > visualizations > pivot tables", () => {
       cy.get("[role=rowgroup] > div").eq(5).invoke("text").should("eq", value);
     }
   });
+
+  describe("column resizing", () => {
+    const getCellWidth = textEl =>
+      textEl.closest("[data-testid=pivot-table-cell]").width();
+
+    it("should persist column sizes in visualization settings", () => {
+      visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+      const leftHeaderColHandle = cy
+        .findAllByTestId("pivot-table-resize-handle")
+        .first();
+      const totalHeaderColHandle = cy
+        .findAllByTestId("pivot-table-resize-handle")
+        .last();
+
+      dragColumnHeader(leftHeaderColHandle, -100);
+      dragColumnHeader(totalHeaderColHandle, 100);
+
+      cy.findByTestId("pivot-table").within(() => {
+        cy.findByText("User → Source").then($headerTextEl => {
+          expect(getCellWidth($headerTextEl)).equal(80); // min width is 80
+        });
+        cy.findByText("Row totals").then($headerTextEl => {
+          expect(getCellWidth($headerTextEl)).equal(200);
+        });
+      });
+
+      cy.findByTestId("qb-header-action-panel").within(() => {
+        cy.findByText("Save").click();
+      });
+
+      cy.get("#SaveQuestionModal").within(() => {
+        cy.findByText("Save").click();
+      });
+
+      cy.get("#QuestionSavedModal").within(() => {
+        cy.findByText("Not now").click();
+      });
+
+      cy.reload(); // reload to make sure the settings are persisted
+
+      cy.findByTestId("pivot-table").within(() => {
+        cy.findByText("User → Source").then($headerTextEl => {
+          expect(getCellWidth($headerTextEl)).equal(80);
+        });
+        cy.findByText("Row totals").then($headerTextEl => {
+          expect(getCellWidth($headerTextEl)).equal(200);
+        });
+      });
+    });
+  });
 });
 
 const testQuery = {
@@ -922,6 +980,18 @@ function assertOnPivotFields() {
   cy.findByText("3,520");
   cy.findByText("4,784");
   cy.findByText("18,760");
+}
+
+function dragColumnHeader(el, xDistance = 50) {
+  const HANDLE_WIDTH = xDistance > 0 ? 2 : -2;
+  el.then($el => {
+    const currentXPos = $el[0].getBoundingClientRect().x;
+    el.trigger("mousedown", { which: 1 })
+      .trigger("mousemove", {
+        clientX: currentXPos + (xDistance + HANDLE_WIDTH),
+      })
+      .trigger("mouseup");
+  });
 }
 
 // Rely on native drag events, rather than on the coordinates

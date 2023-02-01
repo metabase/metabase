@@ -26,6 +26,7 @@
             Database
             Dimension
             Field
+            Permissions
             Pulse
             Setting
             Table
@@ -833,3 +834,35 @@
           (is (= #{"F1 D2"
                    "F2 D1"}
                  (db/select-field :name Dimension {:order-by [[:id :asc]]}))))))))
+
+(deftest clean-up-gtap-table-test
+  (testing "Migrations v46.00-064 to v46.00-067: rename `group_table_access_policy` table, add `permission_id` FK,
+           and clean up orphaned rows"
+    (impl/test-migrations ["v46.00-064" "v46.00-067"] [migrate!]
+      (let [db-id    (db/simple-insert! Database {:name       "DB"
+                                                  :engine     "h2"
+                                                  :created_at :%now
+                                                  :updated_at :%now
+                                                  :details    "{}"})
+            table-id (db/simple-insert! Table {:db_id      db-id
+                                               :name       "Table"
+                                               :created_at :%now
+                                               :updated_at :%now
+                                               :active     true})
+            _        (db/execute! {:insert-into :group_table_access_policy
+                                   :values      [{:group_id             1
+                                                  :table_id             table-id
+                                                  :attribute_remappings "{\"foo\", 1}"}
+                                                 {:group_id             2
+                                                  :table_id             table-id
+                                                  :attribute_remappings "{\"foo\", 1}"}]})
+            perm-id  (db/simple-insert! Permissions {:group_id 1
+                                                     :object   "/db/1/schema/PUBLIC/table/1/query/segmented/"})]
+          ;; Two rows are present in `group_table_access_policy`
+          (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}"}
+                  {:id 2, :group_id 2, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}"}]
+                 (mdb.query/query {:select [:*] :from [:group_table_access_policy]})))
+          (migrate!)
+          ;; Only the sandbox with a corresponding `Permissions` row is present, and the table is renamed to `sandboxes`
+          (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
+                 (mdb.query/query {:select [:*] :from [:sandboxes]})))))))

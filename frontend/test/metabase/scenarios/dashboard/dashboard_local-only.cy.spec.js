@@ -44,6 +44,10 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
         // Add card to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 12,
+          size_y: 9,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Connect filter to the card
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {

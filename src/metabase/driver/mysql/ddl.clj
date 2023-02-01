@@ -16,24 +16,23 @@
 
 (defn- exec-async [conn-chan db-spec sql+params]
   (a/thread
-    (jdbc/with-db-connection [conn db-spec]
-      (try
-        (let [pid (:pid (first (sql.ddl/jdbc-query conn ["select connection_id() pid"])))]
-          (a/put! conn-chan pid)
-          (sql.ddl/jdbc-query conn sql+params))
-        (catch SQLNonTransientConnectionException _e
-          ;; Our connection may be killed due to timeout, `kill` will throw an appropriate exception
-          nil)
-        (catch Exception e
-          (log/warn e)
-          (throw e))))
-    true))
+   (jdbc/with-db-connection [conn db-spec]
+     (try
+       (let [pid (:pid (first (sql.ddl/jdbc-query conn ["select connection_id() pid"])))]
+         (a/put! conn-chan pid)
+         (sql.ddl/jdbc-query conn sql+params))
+       (catch SQLNonTransientConnectionException _e
+         ;; Our connection may be killed due to timeout, `kill` will throw an appropriate exception
+         nil)
+       (catch Exception e
+         (log/warn e)
+         e)))))
 
 (defn- kill [conn pid]
   (let [results (sql.ddl/jdbc-query conn ["show processlist"])
         result? (some (fn [r]
                         (and (= (:id r) pid)
-                          (str/starts-with? (or (:info r) "") "-- Metabase")))
+                             (str/starts-with? (or (:info r) "") "-- Metabase")))
                       results)]
     (when result?
       ;; Can't use a prepared parameter with these statements
@@ -45,15 +44,17 @@
    If `timeout-ms` passes, send a kill statement to stop execution and throw exception
    Otherwise return results returned by channel."
   [conn db-spec timeout-ms sql+params]
-  (let [conn-chan (a/chan)
-        exec-chan (exec-async conn-chan db-spec sql+params)
-        pid (a/<!! conn-chan)
+  (let [conn-chan    (a/chan)
+        exec-chan    (exec-async conn-chan db-spec sql+params)
+        pid          (a/<!! conn-chan)
         timeout-chan (a/timeout timeout-ms)
         [v port] (a/alts!! [timeout-chan exec-chan])]
     (cond
       (= port timeout-chan) (kill conn pid)
 
-      (= port exec-chan) v)))
+      (= port exec-chan) (if (instance? Exception v)
+                           (throw v)
+                           v))))
 
 (defmethod ddl.i/refresh! :mysql [_driver database definition dataset-query]
   (let [{:keys [query params]} (qp/compile dataset-query)
@@ -64,7 +65,7 @@
       ;; That is ok, the persisted-info will be marked inactive and the next refresh will try again.
       (execute-with-timeout! conn
                              db-spec
-                             (.toMillis (t/minutes 10))
+                             (.toMillis (t/seconds 30))
                              (into [(sql.ddl/create-table-sql database definition query)] params))
       {:state :success})))
 

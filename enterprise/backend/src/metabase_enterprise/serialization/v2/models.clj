@@ -25,4 +25,5 @@
   For example, the models should also have their entity_id fields populated (if they have one)."
   ["DashboardCard"
    "Dimension"
+   "ParameterCard"
    "TimelineEvent"])

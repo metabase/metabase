@@ -31,6 +31,10 @@ describe("scenarios > dashboard > OLD parameters", () => {
         cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
           cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
             cardId: card_id,
+            row: 0,
+            col: 0,
+            size_x: 8,
+            size_y: 6,
           }).then(({ body: { id } }) => {
             cy.addFilterToDashboard({ filter, dashboard_id });
             cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
@@ -91,6 +95,10 @@ describe("scenarios > dashboard > OLD parameters", () => {
         cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
           cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
             cardId: card_id,
+            row: 0,
+            col: 0,
+            size_x: 8,
+            size_y: 6,
           }).then(({ body: { id } }) => {
             cy.addFilterToDashboard({ filter, dashboard_id });
             cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
@@ -160,6 +168,10 @@ describe("scenarios > dashboard > OLD parameters", () => {
         cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
           cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
             cardId: card_id,
+            row: 0,
+            col: 0,
+            size_x: 8,
+            size_y: 6,
           }).then(({ body: { id } }) => {
             cy.addFilterToDashboard({ filter, dashboard_id });
             cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {

@@ -141,16 +141,6 @@
               :collection_id (:collection_id dashboard))
             (pulse-card/bulk-create! new-pulse-cards)))))))
 
-(defn- with-default-parameters-value
-  [{:keys [parameters] :as dashboard}]
-  (cond-> dashboard
-    (seq parameters)
-    (update :parameters (fn [parameters]
-                          (map #(merge {:values_query_type "list"
-                                        :values_source_type nil
-                                        :values_source_config {}}
-                                       %) parameters)))))
-
 (defn- post-update
   [dashboard]
   (update-dashboard-subscription-pulses! dashboard))
@@ -165,7 +155,7 @@
   :post-insert post-insert
   :pre-update  pre-update
   :post-update post-update
-  :post-select (comp public-settings/remove-public-uuid-if-public-sharing-is-disabled with-default-parameters-value)})
+  :post-select (comp public-settings/remove-public-uuid-if-public-sharing-is-disabled)})
 
 (defmethod serdes.hash/identity-hash-fields Dashboard
   [_dashboard]
