@@ -99,30 +99,51 @@
   [notification]
   (boolean (:alert_condition notification)))
 
-(defn- is-dashboard-subscription?
-  "Whether `notification` is a Dashboard Subscription (as opposed to a regular Pulse or an Alert)."
-  [notification]
-  (boolean (:dashboard_id notification)))
-
-;;; Permissions to read or write a *Pulse* or *Dashboard Subscription* are the same as those of its parent Collection.
-;;;
 ;;; Permissions to read or write an *Alert* are the same as those of its 'parent' *Card*. For all intents and purposes,
 ;;; an Alert cannot be put into a Collection.
+;;;
+;;; Permissions to read a *Dashboard Subscription* are more complex. A non-admin can read a Dashboard Subscription if
+;;; they have read access to its parent *Collection*, and they are a creator or recipient of the subscription. A
+;;; non-admin can write a Dashboard Subscription only if they are its creator. (Admins have full read and write
+;;; permissions for all objects.) These checks are handled by the `can-read?` and `can-write?` methods below.
+
 (defmethod mi/perms-objects-set Pulse
   [notification read-or-write]
   (if (is-alert? notification)
     (mi/perms-objects-set (alert->card notification) read-or-write)
     (perms/perms-objects-set-for-parent-collection notification read-or-write)))
 
-;;; A user with read-only permissions for a dashboard should be able to create subscriptions, and update subscriptions
-;;; that they created, but not edit anyone else's subscriptions.
+(defn- current-user-is-creator?
+  [notification]
+  (= api/*current-user-id* (:creator_id notification)))
+
+(defn- current-user-is-recipient?
+  [notification]
+  (let [channels (:channels (hydrate notification [:channels :recipients]))
+        recipient-ids (for [{recipients :recipients} channels
+                            recipient recipients]
+                        (:id recipient))]
+    (boolean
+     (some #{api/*current-user-id*} recipient-ids))))
+
+(defmethod mi/can-read? Pulse
+  [notification]
+  (if (is-alert? notification)
+   (mi/current-user-has-full-permissions? :read notification)
+   (or api/*is-superuser?*
+       (and (mi/current-user-has-full-permissions? :read notification)
+            (or (current-user-is-creator? notification)
+                (current-user-is-recipient? notification))))))
+
+;; Non-admins should be able to create subscriptions, and update subscriptions that they created, but not edit anyone
+;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).
 (defmethod mi/can-write? Pulse
   [notification]
-  (if (and (is-dashboard-subscription? notification)
-           (mi/current-user-has-full-permissions? :read notification)
-           (not (mi/current-user-has-full-permissions? :write notification)))
-    (= api/*current-user-id* (:creator_id notification))
-    (mi/current-user-has-full-permissions? :write notification)))
+  (if (is-alert? notification)
+    (mi/current-user-has-full-permissions? :write notification)
+    (or api/*is-superuser?*
+        (and (mi/current-user-has-full-permissions? :read notification)
+             (current-user-is-creator? notification)))))
 
 (mi/define-methods
  Pulse
@@ -312,24 +333,28 @@
 
 (s/defn retrieve-pulses :- [(mi/InstanceOf Pulse)]
   "Fetch all `Pulses`."
-  [{:keys [archived? dashboard-id user-id]
-    :or   {archived? false}}]
+  [{:keys [archived? dashboard-id can-read? user-id]
+    :or   {archived? false
+           can-read? false}}]
   (let [query {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
                :from            [[:pulse :p]]
                :left-join       (concat
                                  [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
-                                 (when user-id
+                                 (when can-read?
                                    [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
                                     [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
                :where           [:and
                                  [:= :p.alert_condition nil]
                                  [:= :p.archived archived?]
+                                 ;; Only return dashboard subscriptions for non-archived dashboards
                                  [:or
                                   [:= :p.dashboard_id nil]
                                   [:= :d.archived false]]
                                  (when dashboard-id
                                    [:= :p.dashboard_id dashboard-id])
-                                 (when user-id
+                                 ;; Only return dashboard subscriptions when `can-read?` is `true` so that legacy
+                                 ;; pulses don't show up in the notification management page
+                                 (when can-read?
                                    [:and
                                     [:not= :p.dashboard_id nil]
                                     [:or

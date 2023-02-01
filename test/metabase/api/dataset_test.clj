@@ -5,6 +5,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.data.csv :as csv]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -396,3 +397,77 @@
             (is (= ["AK" "Organic" 0 25] (second rows)))
             (is (= ["VA" nil 2 29] (nth rows 130)))
             (is (= [nil nil 3 2009] (last rows)))))))))
+
+(deftest parameter-values-test
+  (mt/dataset sample-dataset
+    (testing "static-list"
+      (let [parameter {:values_query_type "list",
+                       :values_source_type "static-list",
+                       :values_source_config {:values ["foo1" "foo2" "bar"]},
+                       :name "Text",
+                       :slug "text",
+                       :id "89e8bb5f",
+                       :type :string/=,
+                       :sectionId "string"}]
+        (testing "values"
+          (is (partial= {:values ["foo1" "foo2" "bar"]}
+                        (mt/user-http-request :rasta :post 200
+                                              "dataset/parameter/values"
+                                              {:parameter parameter}))))
+        (testing "search"
+          (is (partial= {:values ["foo1" "foo2"]}
+                        (mt/user-http-request :rasta :post 200
+                                              "dataset/parameter/search/fo"
+                                              {:parameter parameter}))))))
+    (mt/with-temp* [Card [{card-id :id} {:database_id (mt/id)
+                                         :dataset_query (mt/mbql-query products)}]]
+      (let [parameter {:values_query_type "list",
+                       :values_source_type "card",
+                       :values_source_config {:card_id card-id,
+                                              :value_field
+                                              [:field (mt/id :products :category) nil]},
+                       :name "Text 1",
+                       :slug "text_1",
+                       :id "2487b568",
+                       :type :string/=,
+                       :sectionId "string"}]
+        (testing "card"
+          (testing "values"
+            (let [values (-> (mt/user-http-request :rasta :post 200
+                                                   "dataset/parameter/values"
+                                                   {:parameter parameter})
+                             :values set)]
+              (is (= #{"Gizmo" "Widget" "Gadget" "Doohickey"} values))))
+          (testing "search"
+            (let [values (-> (mt/user-http-request :rasta :post 200
+                                                   "dataset/parameter/search/g"
+                                                   {:parameter parameter})
+                             :values set)]
+              (is (= #{"Gizmo" "Widget" "Gadget"} values)))))))
+    (testing "nil value (current behavior of field values)"
+      (let [parameter {:values_query_type "list",
+                       :values_source_type nil,
+                       :values_source_config {},
+                       :name "Text 2",
+                       :slug "text_2",
+                       :id "707f4bbf",
+                       :type :string/=,
+                       :sectionId "string"}]
+        (testing "values"
+          (let [values (-> (mt/user-http-request :rasta :post 200
+                                                 "dataset/parameter/values"
+                                                 {:parameter parameter
+                                                  :field_ids [(mt/id :products :category)
+                                                              (mt/id :people :source)]})
+                           :values set)]
+            (is (set/subset? #{["Doohickey"] ["Facebook"]} values))))
+        (testing "search"
+          (let [values (-> (mt/user-http-request :rasta :post 200
+                                                 "dataset/parameter/search/g"
+                                                 {:parameter parameter
+                                                  :field_ids [(mt/id :products :category)
+                                                              (mt/id :people :source)]})
+                           :values set)]
+            ;; results matched on g, does not include Doohickey (which is in above results)
+            (is (set/subset? #{["Widget"] ["Google"]} values))
+            (is (not (contains? values ["Doohickey"])))))))))

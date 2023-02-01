@@ -211,7 +211,7 @@
 
 (defn- date-format
   [format-settings unit]
-  (let [base-style (str/lower-case (::mb.viz/date-style format-settings "mmmm d, yyyy"))
+  (let [base-style (u/lower-case-en (::mb.viz/date-style format-settings "mmmm d, yyyy"))
         unit-style (case unit
                      :month (month-style base-style)
                      :year "yyyy"

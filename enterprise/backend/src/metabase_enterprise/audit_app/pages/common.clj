@@ -3,7 +3,6 @@
   (:require
    [clojure.core.async :as a]
    [clojure.core.memoize :as memoize]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [honeysql.core :as hsql]
    [honeysql.format :as hformat]
@@ -245,7 +244,7 @@
   (add-search-clause {} \"birds\" :t.name :db.name)"
   [query query-string & fields-to-search]
   (hh/merge-where query (when (seq query-string)
-                          (let [query-string (str \% (str/lower-case query-string) \%)]
+                          (let [query-string (str \% (u/lower-case-en query-string) \%)]
                             (cons
                               :or
                               (for [field fields-to-search]

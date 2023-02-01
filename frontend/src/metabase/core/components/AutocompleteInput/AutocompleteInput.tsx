@@ -104,7 +104,7 @@ const AutocompleteInput = ({
                 id={item}
                 name={item}
                 onSelect={item => {
-                  handleOptionSelect(item);
+                  handleOptionSelect(String(item));
                   closePopover();
                 }}
               >

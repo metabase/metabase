@@ -4,6 +4,7 @@
    [metabase.api.action :as api.action]
    [metabase.models :refer [Card]]
    [metabase.models.action :refer [Action]]
+   [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.schema :as su]
@@ -25,6 +26,8 @@
    :parameters             s/Any
    :parameter_mappings     s/Any
    :visualization_settings su/Map
+   :creator_id             su/IntGreaterThanZero
+   :creator                user/DefaultUser
    s/Keyword               s/Any})
 
 (deftest list-actions-test

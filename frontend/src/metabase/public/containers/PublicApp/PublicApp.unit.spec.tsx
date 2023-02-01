@@ -1,4 +1,5 @@
 import React from "react";
+import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
@@ -29,18 +30,20 @@ function setup({
   const settings = mockSettings({ "hide-embed-branding?": !hasEmbedBranding });
 
   renderWithProviders(
-    <PublicApp>
-      <EmbedFrame {...embedFrameProps}>
-        <h1 data-testid="test-content">Test</h1>
-      </EmbedFrame>
-    </PublicApp>,
+    <Route
+      path="/public/dashboard/:id"
+      component={props => (
+        <PublicApp {...props}>
+          <EmbedFrame {...embedFrameProps}>
+            <h1 data-testid="test-content">Test</h1>
+          </EmbedFrame>
+        </PublicApp>
+      )}
+    />,
     {
       mode: "public",
+      initialRoute: `/public/dashboard/UUID${hash}`,
       storeInitialState: { app, settings },
-      initialRouterState: {
-        route: "/public/dashboard/:id",
-        location: `/public/dashboard/UUID${hash}`,
-      },
       withRouter: true,
     },
   );

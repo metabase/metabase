@@ -6,6 +6,7 @@ import {
 } from "metabase-types/api";
 import { createMockNativeDatasetQuery } from "./query";
 import { createMockParameter } from "./parameters";
+import { createMockUserInfo } from "./user";
 
 export const createMockActionParameter = (
   opts?: Partial<WritebackParameter>,
@@ -22,6 +23,7 @@ export const createMockActionParameter = (
 
 export const createMockQueryAction = ({
   dataset_query = createMockNativeDatasetQuery(),
+  creator = createMockUserInfo(),
   ...opts
 }: Partial<WritebackQueryAction> = {}): WritebackQueryAction => {
   return {
@@ -31,6 +33,8 @@ export const createMockQueryAction = ({
     description: null,
     model_id: 1,
     parameters: [],
+    creator_id: creator.id,
+    creator,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     ...opts,
@@ -38,9 +42,10 @@ export const createMockQueryAction = ({
   };
 };
 
-export const createMockImplicitQueryAction = (
-  options: Partial<WritebackImplicitQueryAction>,
-): WritebackImplicitQueryAction => ({
+export const createMockImplicitQueryAction = ({
+  creator = createMockUserInfo(),
+  ...opts
+}: Partial<WritebackImplicitQueryAction>): WritebackImplicitQueryAction => ({
   id: 1,
   kind: "row/create",
   name: "",
@@ -48,9 +53,11 @@ export const createMockImplicitQueryAction = (
   model_id: 1,
   parameters: [],
   visualization_settings: undefined,
+  creator_id: creator.id,
+  creator,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
-  ...options,
+  ...opts,
   type: "implicit",
 });
 

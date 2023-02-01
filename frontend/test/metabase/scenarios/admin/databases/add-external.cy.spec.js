@@ -1,4 +1,9 @@
 import { restore, typeAndBlurUsingLabel } from "__support__/e2e/helpers";
+import {
+  QA_MONGO_PORT,
+  QA_MYSQL_PORT,
+  QA_POSTGRES_PORT,
+} from "__support__/e2e/cypress_data";
 
 describe(
   "admin > database > add > external databases",
@@ -40,7 +45,7 @@ describe(
       // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
       typeAndBlurUsingLabel("Display name", "QA Postgres12");
       typeAndBlurUsingLabel("Host", "localhost");
-      typeAndBlurUsingLabel("Port", "5432");
+      typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
       typeAndBlurUsingLabel("Database name", "sample");
       typeAndBlurUsingLabel("Username", "metabase");
       typeAndBlurUsingLabel("Password", "metasample123");
@@ -87,7 +92,7 @@ describe(
 
       typeAndBlurUsingLabel("Display name", "QA Mongo4");
       typeAndBlurUsingLabel("Host", "localhost");
-      typeAndBlurUsingLabel("Port", "27017");
+      typeAndBlurUsingLabel("Port", QA_MONGO_PORT);
       typeAndBlurUsingLabel("Database name", "sample");
       typeAndBlurUsingLabel("Username", "metabase");
       typeAndBlurUsingLabel("Password", "metasample123");
@@ -116,7 +121,7 @@ describe(
 
       typeAndBlurUsingLabel("Display name", "QA MySQL8");
       typeAndBlurUsingLabel("Host", "localhost");
-      typeAndBlurUsingLabel("Port", "3306");
+      typeAndBlurUsingLabel("Port", QA_MYSQL_PORT);
       typeAndBlurUsingLabel("Database name", "sample");
       typeAndBlurUsingLabel("Username", "metabase");
       typeAndBlurUsingLabel("Password", "metasample123");
