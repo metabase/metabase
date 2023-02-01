@@ -71,7 +71,7 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("Visualization").closest(".Button").as("vizButton");
     cy.get("@vizButton").find(".Icon-pinmap");
     cy.get("@vizButton").click();
-    cy.findByText("Choose a visualization");
+    cy.findByTestId("display-options-sensible");
 
     cy.findByTestId("sidebar-left").as("vizSidebar");
 

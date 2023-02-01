@@ -388,9 +388,7 @@
                   :order-by    [[:asc $id]]})))))))
 
 (deftest expression-using-aggregation-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
-                         ;; The limit in source-query is ignored (#27249)
-                         :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use aggregations from previous steps in expressions (#12762)"
       (is (= [["20th Century Cafe" 2 2 0]
               [ "25°" 2 2 0]
