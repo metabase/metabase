@@ -1,6 +1,7 @@
 name: Accessibility Tests
 
 on:
+  push:
   workflow_dispatch:
   schedule:
     - cron: '0 11 * * 0'
@@ -66,7 +67,7 @@ jobs:
       run: |
         yarn run test-cypress-run \
         --env grepTags=@a11y \
-        --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
+        --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js' \
         --config-file 'frontend/test/__support__/e2e/cypress-a11y.config.js'
       env:
         TERM: xterm
