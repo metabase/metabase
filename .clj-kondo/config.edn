@@ -100,6 +100,7 @@
   {:aliases
    {buddy.core.hash                                                 buddy-hash
     cheshire.generate                                               json.generate
+    clojure.tools.logging                                           log
     clj-http.client                                                 http
     clj-ldap.client                                                 ldap
     clj-time.coerce                                                 time.coerce
