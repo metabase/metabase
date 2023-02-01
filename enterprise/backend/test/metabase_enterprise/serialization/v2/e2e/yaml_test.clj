@@ -286,7 +286,7 @@
                   (is (= (count extracted-set)
                          (count @extraction)))
                   (is (= extracted-set
-                       (set (keys (#'ingest.yaml/ingest-all (io/file dump-dir))))))))
+                         (set (keys (#'ingest.yaml/ingest-all (io/file dump-dir))))))))
 
               (testing "doing ingestion"
                 (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
@@ -297,6 +297,27 @@
                   (is (= (clean-entity coll)
                          (->> (db/select-one 'Action :entity_id entity_id)
                               (serdes.base/extract-one "Action" {})
+                              clean-entity)))))
+
+              (testing "for QueryActions"
+                (doseq [{:keys [entity_id] :as coll} (get @entities "QueryAction")]
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one 'QueryAction :entity_id entity_id)
+                              (serdes.base/extract-one "QueryAction" {})
+                              clean-entity)))))
+
+              (testing "for ImplicitActions"
+                (doseq [{:keys [entity_id] :as coll} (get @entities "ImplicitAction")]
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one 'ImplicitAction :entity_id entity_id)
+                              (serdes.base/extract-one "ImplicitAction" {})
+                              clean-entity)))))
+
+              (testing "for HTTPActions"
+                (doseq [{:keys [entity_id] :as coll} (get @entities "HTTPAction")]
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one 'HTTPAction :entity_id entity_id)
+                              (serdes.base/extract-one "HTTPAction" {})
                               clean-entity)))))
 
               (testing "for Collections"

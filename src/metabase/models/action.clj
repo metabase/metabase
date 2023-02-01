@@ -225,6 +225,14 @@
   [_action]
   [(serdes.hash/hydrated-hash :action "<none>")])
 
+(defmethod serdes.hash/identity-hash-fields ImplicitAction
+  [_action]
+  [(serdes.hash/hydrated-hash :action "<none>")])
+
+(defmethod serdes.hash/identity-hash-fields HTTPAction
+  [_action]
+  [(serdes.hash/hydrated-hash :action "<none>")])
+
 (defmethod serdes.base/extract-one "Action"
   [_model-name _opts action]
   (-> (serdes.base/extract-one-basics "Action" action)
@@ -238,15 +246,35 @@
       (update :creator_id serdes.util/import-fk-keyed 'User :email)))
 
 (defmethod serdes.base/extract-one "QueryAction"
-  [_model-name _opts action]
-  (-> (serdes.base/extract-one-basics "QueryAction" action)
+  [_model-name _opts query-action]
+  (-> (serdes.base/extract-one-basics "QueryAction" query-action)
       (update :database_id serdes.util/export-fk-keyed 'Database :name)
-      (assoc :action_id (serdes.util/export-fk (:action_id action) 'Action))))
+      (assoc :action_id (serdes.util/export-fk (:action_id query-action) 'Action))))
 
-(defmethod serdes.base/load-xform "QueryAction" [action]
-  (-> action
+(defmethod serdes.base/load-xform "QueryAction" [query-action]
+  (-> query-action
       serdes.base/load-xform-basics
       (update :database_id serdes.util/import-fk-keyed 'Database :name)
+      (update :action_id serdes.util/import-fk 'Action)))
+
+(defmethod serdes.base/extract-one "ImplicitAction"
+  [_model-name _opts implicit-action]
+  (-> (serdes.base/extract-one-basics "ImplicitAction" implicit-action)
+      (assoc :action_id (serdes.util/export-fk (:action_id implicit-action) 'Action))))
+
+(defmethod serdes.base/load-xform "ImplicitAction" [implicit-action]
+  (-> implicit-action
+      serdes.base/load-xform-basics
+      (update :action_id serdes.util/import-fk 'Action)))
+
+(defmethod serdes.base/extract-one "HTTPAction"
+  [_model-name _opts http-action]
+  (-> (serdes.base/extract-one-basics "HTTPAction" http-action)
+      (assoc :action_id (serdes.util/export-fk (:action_id http-action) 'Action))))
+
+(defmethod serdes.base/load-xform "HTTPAction" [http-action]
+  (-> http-action
+      serdes.base/load-xform-basics
       (update :action_id serdes.util/import-fk 'Action)))
 
 (defmethod serdes.base/serdes-generate-path "Action"
@@ -255,14 +283,27 @@
 
 (defmethod serdes.base/serdes-generate-path "QueryAction"
   [_ action]
-  [(serdes.base/infer-self-path "Action" (db/select-one 'Action :id (:action_id action)))
-   (assoc (serdes.base/infer-self-path "QueryAction" action) :label "query_action")])
+  [(assoc (serdes.base/infer-self-path "QueryAction" action) :label "query_action")])
+
+(defmethod serdes.base/serdes-generate-path "ImplicitAction"
+  [_ action]
+  [(assoc (serdes.base/infer-self-path "ImplicitAction" action) :label "implicit_action")])
+
+(defmethod serdes.base/serdes-generate-path "HTTPAction"
+  [_ action]
+  [(assoc (serdes.base/infer-self-path "HTTPAction" action) :label "http_action")])
 
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   [[{:model "Card" :id (:model_id action)}]])
 
 (defmethod serdes.base/serdes-dependencies "QueryAction" [query-action]
   [[{:model "Action" :id (:action_id query-action)}]])
+
+(defmethod serdes.base/serdes-dependencies "HTTPAction" [http-action]
+  [[{:model "Action" :id (:action_id http-action)}]])
+
+(defmethod serdes.base/serdes-dependencies "ImplicitAction" [implicit-action]
+  [[{:model "Action" :id (:action_id implicit-action)}]])
 
 (defmethod serdes.base/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]
@@ -271,6 +312,14 @@
 (defmethod serdes.base/storage-path "QueryAction" [query-action _ctx]
   (let [{:keys [id label]} (-> query-action serdes.base/serdes-path last)]
     ["query_actions" (serdes.base/storage-leaf-file-name id label)]))
+
+(defmethod serdes.base/storage-path "ImplicitAction" [implicit-action _ctx]
+  (let [{:keys [id label]} (-> implicit-action serdes.base/serdes-path last)]
+    ["implicit_actions" (serdes.base/storage-leaf-file-name id label)]))
+
+(defmethod serdes.base/storage-path "HTTPAction" [http-action _ctx]
+  (let [{:keys [id label]} (-> http-action serdes.base/serdes-path last)]
+    ["http_actions" (serdes.base/storage-leaf-file-name id label)]))
 
 ;; This is coupled to storage-path
 ;; storage-path converts a serdes path to a storage path.
@@ -287,36 +336,38 @@
        slug (assoc :label slug)
        true vector))))
 
-(comment
-  (db/select-field :entity_id 'QueryAction)
-  (require '[metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml])
-  (require '[metabase-enterprise.serialization.v2.load :as serdes.load])
+(serdes.base/register-ingestion-path!
+ "QueryAction"
+ ;; ["query_actions" "my-query-action"]
+ (fn [path]
+   (when-let [[id slug] (and (= (first path) "query_actions")
+                             ;; TODO: make action a directory with itself
+                             ;; (apply = (take-last 2 path))
+                             (serdes.base/split-leaf-file-name (last path)))]
+     (cond-> {:model "QueryAction" :id id}
+       slug (assoc :label slug)
+       true vector))))
 
-  (def action (db/select-one 'Action :id 1))
-  (def action (serdes.base/extract-one "Action" {} (db/select-one 'Action :id 1)))
-  (serdes.base/extract-one "QueryAction" {} (db/select-one 'QueryAction))
-  ;; Delete the test-dump directory if it exists
-  (metabase-enterprise.serialization.cmd/dump "test-dump" {:v2 true})
-  ;; Example path:
-  ("collections" "actions" "xHsWRtzi_eptAaM6jEySb_hello")
-  (tap> (set (keys (#'ingest.yaml/ingest-all (clojure.java.io/file "test-dump")))))
-  (def extraction (into [] (metabase-enterprise.serialization.v2.extract/extract-metabase {})))
-  (def extraction 1)
-  (#'ingest.yaml/strip-labels (serdes.base/serdes-path (nth extraction 3)))
-  ;; => [{:id "0hZO_Oc28Z7aYDrlhYy_k", :model "Action"}]
-  (def ingested (#'ingest.yaml/ingest-yaml "test-dump"))
-  (first ingested)
-  (serdes.load/load-metabase ingested)
+(serdes.base/register-ingestion-path!
+ "ImplicitAction"
+ ;; ["implicit_actions" "my-implicit-action"]
+ (fn [path]
+   (when-let [[id slug] (and (= (first path) "implicit_actions")
+                             ;; TODO: make action a directory with itself
+                             ;; (apply = (take-last 2 path))
+                             (serdes.base/split-leaf-file-name (last path)))]
+     (cond-> {:model "ImplicitAction" :id id}
+       slug (assoc :label slug)
+       true vector))))
 
-
-  ;; I could just do the same thing as before, and have top-level query actions etc.
-  )
-
-;; TODO:
-;; - [ ] Check tests are sufficient for Action
-;; - [ ] Change Action to use a directory, like databases
-;; - [ ] Serdes for QueryAction?
-
-
-
-;; QueryAction
+(serdes.base/register-ingestion-path!
+ "HTTPAction"
+ ;; ["http_actions" "my-http-action"]
+ (fn [path]
+   (when-let [[id slug] (and (= (first path) "http_actions")
+                             ;; TODO: make action a directory with itself
+                             ;; (apply = (take-last 2 path))
+                             (serdes.base/split-leaf-file-name (last path)))]
+     (cond-> {:model "HTTPAction" :id id}
+       slug (assoc :label slug)
+       true vector))))

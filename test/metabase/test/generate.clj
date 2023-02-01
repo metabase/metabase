@@ -108,7 +108,7 @@
 ;; * card
 (s/def ::display #{:table})
 (s/def ::visualization_settings #{"{}"})
-(s/def ::dataset_query #{""})
+(s/def ::dataset_query #{"{}"})
 
 ;; * dashboardcard_series
 (s/def ::position pos-int?)
