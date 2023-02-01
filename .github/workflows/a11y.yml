@@ -2,10 +2,10 @@ name: Accessibility Tests
 
 on:
   workflow_dispatch:
-
+  schedule:
+    - cron: '0 11 * * 0'
 
 jobs:
-
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 25
