@@ -7,7 +7,7 @@
    [metabase.models :refer [Action Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
                             Dimension Field Metric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
-                            QueryAction Segment Table Timeline TimelineEvent User]]
+                            QueryAction ImplicitAction HTTPAction Segment Table Timeline TimelineEvent User]]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
    [talltale.core :as tt]
@@ -127,6 +127,12 @@
 
 (s/def :action/type #{:implicit :query :http})
 
+;; * implicit_action
+(s/def ::kind #{"row/create" "row/update" "row/delete"})
+
+;; * http_action
+(s/def ::template #{{}})
+
 ;; * pulse
 (s/def ::row pos-int?)
 (s/def ::col pos-int?)
@@ -137,6 +143,9 @@
 
 (s/def ::action (s/keys :req-un [::id :action/type ::name]))
 (s/def ::query-action (s/keys :req-un [::dataset_query ::entity_id]))
+(s/def ::implicit-action (s/keys :req-un [::kind ::entity_id]))
+(s/def ::http-action (s/keys :req-un [::template ::entity_id]))
+
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
 (s/def ::collection (s/keys :req-un [::id ::name ::color]))
 (s/def ::activity (s/keys :req-un [::id ::topic ::details ::timestamp]))
@@ -195,6 +204,14 @@
                                   :insert!   {:model QueryAction}
                                   :relations {:database_id [:database :id]
                                               :action_id   [:action :id]}}
+   :implicit-action              {:prefix    :implicit-action
+                                  :spec      ::implicit-action
+                                  :insert!   {:model ImplicitAction}
+                                  :relations {:action_id   [:action :id]}}
+   :http-action                  {:prefix    :http-action
+                                  :spec      ::http-action
+                                  :insert!   {:model HTTPAction}
+                                  :relations {:action_id   [:action :id]}}
    :activity                     {:prefix    :ac
                                   :spec      ::activity
                                   :relations {:user_id [:core-user :id]}

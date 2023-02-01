@@ -99,7 +99,23 @@
                                                         (-> refs
                                                             (assoc :action_id (keyword (str "action" idx)))
                                                             (assoc :entity_id (keyword (str "eid" idx)))))))
-                                         (many-random-fks 10 {} {:database_id [:db 100]}))
+                                         (many-random-fks 10 {} {:database_id [:db 10]}))
+               :implicit-action         (map-indexed
+                                         (fn [idx x]
+                                           (update-in x [1 :refs]
+                                                      (fn [refs]
+                                                        (-> refs
+                                                            (assoc :action_id (keyword (str "action" idx)))
+                                                            (assoc :entity_id (keyword (str "eid" idx)))))))
+                                         (many-random-fks 10 {} {}))
+               :http-action             (map-indexed
+                                         (fn [idx x]
+                                           (update-in x [1 :refs]
+                                                      (fn [refs]
+                                                        (-> refs
+                                                            (assoc :action_id (keyword (str "action" idx)))
+                                                            (assoc :entity_id (keyword (str "eid" idx)))))))
+                                         (many-random-fks 10 {} {}))
                :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                          [10  {:refs     {:personal_owner_id ::rs/omit}
                                                :spec-gen {:namespace :snippets}}]]
@@ -189,6 +205,13 @@
             (testing "for QueryActions"
               (is (= 10 (count (dir->file-set (io/file dump-dir "query_actions"))))))
 
+            (testing "for ImplicitActions"
+              (is (= 10 (count (dir->file-set (io/file dump-dir "implicit_actions"))))))
+
+            (testing "for HTTPActions"
+              (is (= 10 (count (dir->file-set (io/file dump-dir "http_actions"))))))
+
+            (testing "for Collections"
               (is (= 110 (count (for [f (file-set (io/file dump-dir))
                                       :when (and (= (first f) "collections")
                                                  (let [[a b] (take-last 2 f)]
