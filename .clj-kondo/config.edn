@@ -97,7 +97,9 @@
 
   :unresolved-var
   {:exclude
-   [colorize.core]}
+   [colorize.core
+    metabase.util.honeysql-extensions/call
+    metabase.util.honeysql-extensions/raw]}
 
   :unsorted-required-namespaces             {:level :warning}
 
