@@ -51,7 +51,7 @@ const DeleteDatabaseModal = ({
   onClose,
   onDelete,
 }: DeleteDatabaseModalProps) => {
-  const { data: usageInfo } = useFetch<DatabaseUsageInfo>(
+  const { data: usageInfo, isLoading } = useFetch<DatabaseUsageInfo>(
     `/api/database/${database.id}/usage_info`,
   );
 
@@ -85,7 +85,9 @@ const DeleteDatabaseModal = ({
   const shouldShowDbNameInputConfirmation =
     isContentRemovalConfirmed || !hasContent;
   const canDelete =
-    (isContentRemovalConfirmed || !hasContent) && isDatabaseNameConfirmed;
+    !isLoading &&
+    (isContentRemovalConfirmed || !hasContent) &&
+    isDatabaseNameConfirmed;
 
   const deleteButtonLabel = hasContent
     ? t`Delete this content and the DB connection`

@@ -48,7 +48,10 @@ describe("DeleteDatabaseModal", () => {
   });
 
   it("should allow deleting database without content after confirming its name", () => {
-    useFetchMock.mockReturnValue({ data: getUsageInfo(false) } as any);
+    useFetchMock.mockReturnValue({
+      data: getUsageInfo(false),
+      isLoading: false,
+    } as any);
 
     const { onDelete } = setup();
 
@@ -73,7 +76,10 @@ describe("DeleteDatabaseModal", () => {
   });
 
   it("should allow deleting database with content after confirming its name and its content removal", () => {
-    useFetchMock.mockReturnValue({ data: getUsageInfo(true) } as any);
+    useFetchMock.mockReturnValue({
+      data: getUsageInfo(true),
+      isLoading: false,
+    } as any);
 
     const { onDelete } = setup();
 
@@ -103,9 +109,12 @@ describe("DeleteDatabaseModal", () => {
   });
 
   it("shows an error if removal failed", () => {
-    useFetchMock.mockReturnValue({ data: getUsageInfo(false) } as any);
+    useFetchMock.mockReturnValue({
+      data: getUsageInfo(false),
+      isLoading: false,
+    } as any);
 
-    const { onDelete } = setup({
+    setup({
       onDelete: () => {
         throw new Error("Something went wrong");
       },
