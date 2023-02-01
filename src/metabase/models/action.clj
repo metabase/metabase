@@ -58,7 +58,7 @@
   action)
 
 (def ^:private Action-subtype-IModel-impl
-  "[[models/IModel]] impl for `HTTPAction` and `QueryAction`"
+  "[[models/IModel]] impl for `HTTPAction`, `ImplicitAction`, and `QueryAction`"
   {:primary-key (constantly :action_id) ; This is ok as long as we're 1:1
    :pre-delete pre-delete
    :pre-update pre-update})
