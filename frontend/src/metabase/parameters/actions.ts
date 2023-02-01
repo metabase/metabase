@@ -2,11 +2,10 @@ import { CardApi, DashboardApi, ParameterApi } from "metabase/services";
 import {
   CardId,
   DashboardId,
+  FieldId,
   Parameter,
-  ParameterValuesRequest,
-  ParameterValuesResponse,
-  CardParameterValuesRequest,
-  DashboardParameterValuesRequest,
+  ParameterId,
+  ParameterValues,
 } from "metabase-types/api";
 import { Dispatch, GetState } from "metabase-types/store";
 import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
@@ -24,7 +23,7 @@ export interface FetchParameterValuesOpts {
 
 export interface FetchParameterValuesPayload {
   requestKey: string;
-  response: ParameterValuesResponse;
+  response: ParameterValues;
 }
 
 export const fetchParameterValues =
@@ -97,6 +96,12 @@ export const fetchDashboardParameterValues =
     );
   };
 
+interface ParameterValuesRequest {
+  parameter: Parameter;
+  field_ids: FieldId[];
+  query?: string;
+}
+
 const loadParameterValues = async (request: ParameterValuesRequest) => {
   const { values, has_more_values } = request.query
     ? await ParameterApi.parameterSearch(request)
@@ -108,6 +113,12 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
   };
 };
 
+interface CardParameterValuesRequest {
+  cardId: CardId;
+  paramId: ParameterId;
+  query?: string;
+}
+
 const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
   const { values, has_more_values } = request.query
     ? await CardApi.parameterSearch(request)
@@ -118,6 +129,12 @@ const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
     has_more_values: request.query ? true : has_more_values,
   };
 };
+
+interface DashboardParameterValuesRequest {
+  dashId: DashboardId;
+  paramId: ParameterId;
+  query?: string;
+}
 
 const loadDashboardParameterValues = async (
   request: DashboardParameterValuesRequest,
@@ -134,7 +151,7 @@ const loadDashboardParameterValues = async (
 
 const fetchParameterValuesWithCache = async <T>(
   request: T,
-  loadValues: (request: T) => Promise<ParameterValuesResponse>,
+  loadValues: (request: T) => Promise<ParameterValues>,
   dispatch: Dispatch,
   getState: GetState,
 ) => {

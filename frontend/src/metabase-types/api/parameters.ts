@@ -67,25 +67,7 @@ export interface ValuesSourceConfig {
 
 export type ParameterValue = [RowValue];
 
-export interface ParameterValuesRequest {
-  parameter: Parameter;
-  field_ids: FieldId[];
-  query?: string;
-}
-
-export interface ParameterValuesResponse {
+export interface ParameterValues {
   values: ParameterValue[];
   has_more_values: boolean;
-}
-
-export interface CardParameterValuesRequest {
-  cardId: CardId;
-  paramId: ParameterId;
-  query?: string;
-}
-
-export interface DashboardParameterValuesRequest {
-  dashId: DashboardId;
-  paramId: ParameterId;
-  query?: string;
 }

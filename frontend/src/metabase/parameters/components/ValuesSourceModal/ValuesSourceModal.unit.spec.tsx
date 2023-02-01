@@ -2,17 +2,17 @@ import React from "react";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { Card, FieldValues } from "metabase-types/api";
+import { Card, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockField,
-  createMockFieldValues,
+  createMockParameterValues,
 } from "metabase-types/api/mocks";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
-  setupFieldsValuesEndpoints,
+  setupParameterValuesEndpoints,
   setupUnauthorizedCardsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -40,12 +40,9 @@ describe("ValuesSourceModal", () => {
         parameter: createMockUiParameter({
           fields: [new Field(createMockField({ id: 1 }))],
         }),
-        fieldsValues: [
-          createMockFieldValues({
-            field_id: 1,
-            values: [],
-          }),
-        ],
+        parameterValues: createMockParameterValues({
+          values: [],
+        }),
       });
 
       expect(
@@ -61,16 +58,9 @@ describe("ValuesSourceModal", () => {
             new Field(createMockField({ id: 2 })),
           ],
         }),
-        fieldsValues: [
-          createMockFieldValues({
-            field_id: 1,
-            values: [["A"], [null], ["B"], ["A"]],
-          }),
-          createMockFieldValues({
-            field_id: 2,
-            values: [["B", "Remapped"], ["C"]],
-          }),
-        ],
+        parameterValues: createMockParameterValues({
+          values: [["A"], ["B"], ["C"]],
+        }),
       });
 
       await waitFor(() => {
@@ -204,15 +194,15 @@ describe("ValuesSourceModal", () => {
 
 interface SetupOpts {
   parameter?: UiParameter;
+  parameterValues?: ParameterValues;
   cards?: Card[];
-  fieldsValues?: FieldValues[];
   hasDataAccess?: boolean;
 }
 
 const setup = ({
   parameter = createMockUiParameter(),
+  parameterValues = createMockParameterValues(),
   cards = [],
-  fieldsValues = [],
   hasDataAccess = true,
 }: SetupOpts = {}) => {
   const scope = nock(location.origin);
@@ -222,7 +212,7 @@ const setup = ({
   if (hasDataAccess) {
     setupCollectionsEndpoints(scope, [createMockCollection(ROOT_COLLECTION)]);
     setupCardsEndpoints(scope, cards);
-    setupFieldsValuesEndpoints(scope, fieldsValues);
+    setupParameterValuesEndpoints(scope, parameter, parameterValues);
   } else {
     setupUnauthorizedCardsEndpoints(scope, cards);
   }

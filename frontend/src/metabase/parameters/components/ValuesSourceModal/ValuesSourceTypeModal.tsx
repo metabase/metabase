@@ -16,6 +16,7 @@ import Select, {
 } from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -24,7 +25,7 @@ import {
   ValuesSourceConfig,
   ValuesSourceType,
   Parameter,
-  ParameterValuesResponse,
+  ParameterValues,
   ParameterValue,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
@@ -77,7 +78,7 @@ interface ModalStateProps {
 interface ModalDispatchProps {
   onFetchParameterValues: (
     opts: FetchParameterValuesOpts,
-  ) => Promise<ParameterValuesResponse>;
+  ) => Promise<ParameterValues>;
 }
 
 type ModalProps = ModalOwnProps &
@@ -147,7 +148,7 @@ interface FieldSourceModalProps {
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (
     opts: FetchParameterValuesOpts,
-  ) => Promise<ParameterValuesResponse>;
+  ) => Promise<ParameterValues>;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
 }
 
@@ -210,7 +211,7 @@ interface CardSourceModalProps {
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (
     opts: FetchParameterValuesOpts,
-  ) => Promise<ParameterValuesResponse>;
+  ) => Promise<ParameterValues>;
   onChangeCard: () => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
@@ -390,26 +391,32 @@ interface UseParameterValuesOpts {
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (
     opts: FetchParameterValuesOpts,
-  ) => Promise<ParameterValuesResponse>;
+  ) => Promise<ParameterValues>;
 }
 
 const useParameterValues = ({
-  parameter,
+  parameter: initialParameter,
   sourceType,
   sourceConfig,
   onFetchParameterValues,
 }: UseParameterValuesOpts) => {
   const [values, setValues] = useState<ParameterValue[]>();
+  const handleFetchValues = useSafeAsyncFunction(onFetchParameterValues);
+
+  const parameter = useMemo(
+    () => ({
+      ...initialParameter,
+      values_source_type: sourceType,
+      values_source_config: sourceConfig,
+    }),
+    [initialParameter, sourceType, sourceConfig],
+  );
 
   useEffect(() => {
-    onFetchParameterValues({
-      parameter: {
-        ...parameter,
-        values_source_type: sourceType,
-        values_source_config: sourceConfig,
-      },
-    }).then(({ values }) => setValues(values));
-  }, [parameter, sourceType, sourceConfig, onFetchParameterValues]);
+    handleFetchValues({ parameter })
+      .then(({ values }) => setValues(values))
+      .catch(() => setValues([]));
+  }, [parameter, handleFetchValues]);
 
   return values;
 };
