@@ -6,8 +6,7 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase.models
-    :refer [Action
-            Card
+    :refer [Card
             Collection
             Dashboard
             DashboardCard
@@ -19,7 +18,6 @@
             NativeQuerySnippet
             Pulse
             PulseCard
-            QueryAction
             Segment
             Table
             Timeline
@@ -747,6 +745,104 @@
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest implicit-action-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{ann-id       :id} {:first_name "Ann"
+                                                       :last_name  "Wilson"
+                                                       :email      "ann@heart.band"}]
+                       Database   [{db-id :id :as db} {:name "My Database"}]]
+      (mt/with-db db
+        (mt/with-actions [{card-id-1  :id
+                           card-eid-1 :entity_id} {:name          "Source question"
+                                                   :database_id   db-id
+                                                   :dataset       true
+                                                   :query_type    :native
+                                                   :dataset_query (mt/native-query {:native "select 1"})
+                                                   :creator_id    ann-id}
+                          {:keys [action-id]} {:name          "My Action"
+                                               :type          :implicit
+                                               :creator_id    ann-id
+                                               :model_id      card-id-1}]
+          (let [action          (db/select-one 'Action :id 1)
+                implicit-action (db/select-one 'ImplicitAction :action_id action-id)]
+            (testing "action"
+              (let [ser (serdes.base/extract-one "Action" {} (db/select-one 'Action :id action-id))]
+                (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
+                              :creator_id  (s/eq "ann@heart.band")
+                              :created_at  OffsetDateTime
+                              :model_id    (s/eq card-eid-1)
+                              s/Keyword    s/Any}
+                             ser))
+                (is (not (contains? ser :id)))
+
+                (testing "depends on the Model"
+                  (is (= #{[{:model "Card" :id card-eid-1}]}
+                         (set (serdes.base/serdes-dependencies ser)))))))
+
+            (testing "implicit action"
+              (let [ser (serdes.base/extract-one "ImplicitAction" {} (db/select-one 'ImplicitAction :action_id action-id))]
+                (is (schema= {:serdes/meta   (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}
+                                                    {:id    (:entity_id implicit-action)
+                                                     :model "ImplicitAction"
+                                                     :label "implicit_action"}])
+                              :action_id     (s/eq (:entity_id action))
+                              s/Keyword      s/Any}
+                             ser))
+                (is (not (contains? ser :id)))
+
+                (testing "depends on the Action"
+                  (is (= #{[{:model "Action" :id (:entity_id action)}]}
+                         (set (serdes.base/serdes-dependencies ser)))))))))))))
+
+(deftest http-action-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{ann-id       :id} {:first_name "Ann"
+                                                       :last_name  "Wilson"
+                                                       :email      "ann@heart.band"}]
+                       Database   [{db-id :id :as db} {:name "My Database"}]]
+      (mt/with-db db
+        (mt/with-actions [{card-id-1  :id
+                           card-eid-1 :entity_id} {:name          "Source question"
+                                                   :database_id   db-id
+                                                   :dataset       true
+                                                   :query_type    :native
+                                                   :dataset_query (mt/native-query {:native "select 1"})
+                                                   :creator_id    ann-id}
+                          {:keys [action-id]} {:name          "My Action"
+                                               :type          :http
+                                               :creator_id    ann-id
+                                               :model_id      card-id-1}]
+          (let [action          (db/select-one 'Action :id 1)
+                http-action (db/select-one 'HTTPAction :action_id action-id)]
+            (testing "action"
+              (let [ser (serdes.base/extract-one "Action" {} (db/select-one 'Action :id action-id))]
+                (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
+                              :creator_id  (s/eq "ann@heart.band")
+                              :created_at  OffsetDateTime
+                              :model_id    (s/eq card-eid-1)
+                              s/Keyword    s/Any}
+                             ser))
+                (is (not (contains? ser :id)))
+
+                (testing "depends on the Model"
+                  (is (= #{[{:model "Card" :id card-eid-1}]}
+                         (set (serdes.base/serdes-dependencies ser)))))))
+
+            (testing "http action"
+              (let [ser (serdes.base/extract-one "HTTPAction" {} (db/select-one 'HTTPAction :action_id action-id))]
+                (is (schema= {:serdes/meta   (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}
+                                                    {:id    (:entity_id http-action)
+                                                     :model "HTTPAction"
+                                                     :label "http_action"}])
+                              :action_id     (s/eq (:entity_id action))
+                              s/Keyword      s/Any}
+                             ser))
+                (is (not (contains? ser :id)))
+
+                (testing "depends on the Action"
+                  (is (= #{[{:model "Action" :id (:entity_id action)}]}
+                         (set (serdes.base/serdes-dependencies ser)))))))))))))
 
 (deftest action-test
   (ts/with-empty-h2-app-db
