@@ -170,8 +170,7 @@
                     dashboard-defaults
                     {:name           test-dashboard-name
                      :creator_id     (mt/user->id :rasta)
-                     :parameters     [{:id "abc123", :name "test", :type "date"
-                                       :values_query_type "list", :values_source_type nil, :values_source_config {}}]
+                     :parameters     [{:id "abc123", :name "test", :type "date"}]
                      :updated_at     true
                      :created_at     true
                      :collection_id  true
@@ -1088,6 +1087,8 @@
                                          {:cardId                 card-id
                                           :row                    4
                                           :col                    4
+                                          :size_x                 4
+                                          :size_y                 4
                                           :parameter_mappings     [{:parameter_id "abc"
                                                                     :card_id 123
                                                                     :hash "abc"
@@ -1114,13 +1115,15 @@
       (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
         (let [dashboard-card (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
                                                    {:cardId card-id
-                                                    :row    4
-                                                    :col    4
+                                                    :row     4
+                                                    :col     4
+                                                    :size_x  4
+                                                    :size_y  4
                                                     :series [{:id series-id-1}]})]
-          (is (= {:size_x                 4
-                  :size_y                 4
+          (is (= {:row                    4
                   :col                    4
-                  :row                    4
+                  :size_x                 4
+                  :size_y                 4
                   :parameter_mappings     []
                   :visualization_settings {}
                   :series                 [{:name                   "Series Card"
@@ -1162,6 +1165,8 @@
                                                   {:cardId             card-id
                                                    :row                0
                                                    :col                0
+                                                   :size_x             4
+                                                   :size_y             4
                                                    :parameter_mappings mappings}))
             :dashcards    (fn [] (db/select DashboardCard :dashboard_id dashboard-id))})))))
 

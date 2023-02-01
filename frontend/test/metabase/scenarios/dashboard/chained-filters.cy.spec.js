@@ -159,6 +159,10 @@ describe("scenarios > dashboard > chained filter", () => {
         // Add previously created question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 8,
+          size_y: 6,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Connect filter to that question
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {

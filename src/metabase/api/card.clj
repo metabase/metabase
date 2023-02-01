@@ -4,7 +4,6 @@
    [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.data :as data]
-   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [compojure.core :refer [DELETE GET POST PUT]]
@@ -25,11 +24,11 @@
             CardBookmark
             Collection
             Database
-            Field
             PersistedInfo
             Pulse
             Table
             ViewLog]]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
@@ -923,15 +922,7 @@ saved later when it is ready."
   [card param query]
   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
     (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
-      (if (str/blank? query)
-        (api.field/check-perms-and-return-field-values field-id)
-        (let [field (api/check-404 (db/select-one Field :id field-id))]
-          ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
-          ;; is what the return-field-values returns above
-          {:values (map (comp vector first) (api.field/search-values field field query))
-           ;; assume there are more
-           :has_more_values true
-           :field_id field-id})))))
+      (api.field/field-id->values field-id query))))
 
 (mu/defn param-values
   "Fetch values for a parameter.
@@ -945,7 +936,11 @@ saved later when it is ready."
   ([card      :- ms/Map
     param-key :- ms/NonBlankString
     query     :- [:maybe ms/NonBlankString]]
-   (let [param       (get (m/index-by :id (:parameters card)) param-key)
+   (let [param       (get (m/index-by :id (or (seq (:parameters card))
+                                              ;; some older cards or cards in e2e just use the template tags on native
+                                              ;; queries
+                                              (card/template-tag-parameters card)))
+                          param-key)
          source-type (:values_source_type param)]
      (when-not param
        (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
