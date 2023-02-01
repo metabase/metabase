@@ -1,4 +1,5 @@
 import React from "react";
+import { IndexRedirect, Redirect, Route } from "react-router";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
@@ -57,11 +58,6 @@ import {
 } from "metabase-lib/mocks";
 
 import ModelDetailPage from "./ModelDetailPage";
-
-// eslint-disable-next-line react/display-name
-jest.mock("metabase/core/components/Link", () => ({ to, ...props }: any) => (
-  <a {...props} href={to} />
-));
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -175,6 +171,7 @@ const COLLECTION_2 = createMockCollection({
 
 type SetupOpts = {
   model: Question;
+  tab?: string;
   actions?: WritebackAction[];
   hasActionsEnabled?: boolean;
   collections?: Collection[];
@@ -183,6 +180,7 @@ type SetupOpts = {
 
 async function setup({
   model,
+  tab = "usage",
   actions = [],
   collections = [],
   usedBy = [],
@@ -193,7 +191,6 @@ async function setup({
   const modelUpdateSpy = jest.spyOn(Models.actions, "update");
 
   const card = model.card() as Card;
-  const slug = `${card.id}-model-name`;
 
   setupDatabasesEndpoints(scope, [
     hasActionsEnabled ? TEST_DATABASE_WITH_ACTIONS : TEST_DATABASE,
@@ -211,28 +208,33 @@ async function setup({
   setupActionsEndpoints(scope, model.id(), actions);
   setupCollectionsEndpoints(scope, collections);
 
-  const { store } = renderWithProviders(<ModelDetailPage params={{ slug }} />);
+  const name = model.displayName()?.toLowerCase();
+  const slug = `${model.id()}-${name}`;
+  const baseUrl = `/model/${slug}/detail`;
+  const initialRoute = `${baseUrl}/${tab}`;
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
+  const { store, history } = renderWithProviders(
+    <Route path="/model/:slug/detail">
+      <IndexRedirect to="usage" />
+      <Route path="usage" component={ModelDetailPage} />
+      <Route path="schema" component={ModelDetailPage} />
+      <Route path="actions" component={ModelDetailPage} />
+      <Redirect from="*" to="usage" />
+    </Route>,
+    { withRouter: true, initialRoute },
   );
+
+  await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/i));
 
   const metadata = getMetadata(store.getState());
 
-  return { metadata, scope, modelUpdateSpy };
+  return { history, baseUrl, metadata, scope, modelUpdateSpy };
 }
 
-type SetupActionsOpts = Omit<SetupOpts, "hasActionsEnabled">;
+type SetupActionsOpts = Omit<SetupOpts, "tab" | "hasActionsEnabled">;
 
 async function setupActions(opts: SetupActionsOpts) {
-  const result = await setup({ ...opts, hasActionsEnabled: true });
-
-  userEvent.click(screen.getByText("Actions"));
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
-
-  return result;
+  return setup({ ...opts, tab: "actions", hasActionsEnabled: true });
 }
 
 describe("ModelDetailPage", () => {
@@ -393,7 +395,7 @@ describe("ModelDetailPage", () => {
         it("displays model schema", async () => {
           const model = getModel();
           const fields = model.getResultMetadata();
-          await setup({ model });
+          await setup({ model, tab: "schema" });
 
           userEvent.click(screen.getByText("Schema"));
 
@@ -417,6 +419,22 @@ describe("ModelDetailPage", () => {
         it("isn't shown if actions are disabled for model's database", async () => {
           await setup({ model: getModel(), hasActionsEnabled: false });
           expect(screen.queryByText("Actions")).not.toBeInTheDocument();
+        });
+
+        it("redirects to 'Used by' when trying to access actions tab without them enabled", async () => {
+          const { baseUrl, history } = await setup({
+            model: getModel(),
+            hasActionsEnabled: false,
+            tab: "actions",
+          });
+
+          expect(history?.getCurrentLocation().pathname).toBe(
+            `${baseUrl}/usage`,
+          );
+          expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
+            "aria-selected",
+            "true",
+          );
         });
 
         it("shows empty state if there are no actions", async () => {
@@ -653,6 +671,57 @@ describe("ModelDetailPage", () => {
       expect(
         screen.queryByTestId("model-relationships"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("navigation", () => {
+    const model = getStructuredModel();
+
+    it("navigates between tabs", async () => {
+      const { baseUrl, history } = await setup({
+        model,
+        hasActionsEnabled: true,
+      });
+
+      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
+      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      userEvent.click(screen.getByText("Schema"));
+      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/schema`);
+      expect(screen.getByRole("tab", { name: "Schema" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      userEvent.click(screen.getByText("Actions"));
+      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/actions`);
+      expect(screen.getByRole("tab", { name: "Actions" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      userEvent.click(screen.getByText("Used by"));
+      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
+      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+    });
+
+    it("redirects to 'Used by' when opening an unknown tab", async () => {
+      const { baseUrl, history } = await setup({
+        model,
+        tab: "foo-bar",
+      });
+
+      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
+      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
     });
   });
 });
