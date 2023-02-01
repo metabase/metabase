@@ -50,27 +50,25 @@
   If provided, additional and clauses will be added to the final where clause.
   Note that and clauses should be aliased as c (for collection)."
   [owner-id & and-clauses]
-  {:with      [[:owner-match {:select [:c.personal_owner_id
-                                       [[:concat "/" :c.id "/%"] :pc_prefix]]
-                              :from   [[:collection :c]]
-                              :where  [:not= :c.personal_owner_id nil]}]
-               [:collection-with-owner {:select    [[:c.id :id]
-                                                    [[:coalesce
-                                                      :c.personal_owner_id
-                                                      :om.personal_owner_id] :owner]]
-                                        :from      [[:collection :c]]
-                                        :left-join [[:owner-match :om]
-                                                    [:like :c.location :om.pc_prefix]]}]
-               [:active-ids {:select [[:cwo.id :id]
-                                      [true :selected]]
-                             :from   [[:collection-with-owner :cwo]]
-                             :where  [:or
-                                      [:= :cwo.owner owner-id]
-                                      [:= :cwo.owner nil]]}]]
+  {:with      [[:personal-roots {:select [[[:concat "/" :c.id "/"] :prefix]]
+                                 :from   [[:collection :c]]
+                                 :where  [:and
+                                          [:not= :c.personal_owner_id nil]
+                                          [:not= :c.personal_owner_id owner-id]]}]
+               [:personal-tree  {:union
+                                 [{:select [:id]
+                                   :from [:collection]
+                                   :where [:and
+                                           [:not= :personal_owner_id nil]
+                                           [:not= :personal_owner_id owner-id]]}
+                                  {:select [:id]
+                                   :from [:collection]
+                                   :join [[:personal-roots :roots]
+                                          [:like :location :roots.prefix]]}]}]]
    :select    [:c.*]
    :from      [[:collection :c]]
-   :left-join [[:active-ids :a] [:= :a.id :c.id]]
-   :where     (into [:and [:= :a.selected true]] and-clauses)
+   :where     (into [:and [:not-in :c.id {:select [:id] :from :personal-tree}]]
+                    and-clauses)
    :order-by  [[:%lower.name :asc]]})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
