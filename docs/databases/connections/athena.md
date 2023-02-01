@@ -42,7 +42,7 @@ The AWS region where your database is hosted, for Amazon Athena. For example, yo
 
 ### Workgroup
 
-AWS workgroup. For example: `primary`. See [documentation on workgroups](https://docs.aws.amazon.com/athena/latest/ug/user-created-workgroups.html)
+AWS workgroup. For example: `primary`. See [documentation on workgroups](https://docs.aws.amazon.com/athena/latest/ug/user-created-workgroups.html).
 
 ### S3 Staging directory
 

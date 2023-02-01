@@ -20,7 +20,13 @@ What you want Metabase to call the database in its user interface.
 
 Enter your Account ID with the region that your Snowflake cluster is running on. E.g., `xxxxxxxxx.us-east-3.aws`.
 
-This field requires the alphanumeric account ID _with_ the region that your Snowflake cluster is running on. For example, if you're running Snowflake on AWS and your account URL is `https://az12345.ca-central-1.snowflakecomputing.com`, then the `Account` would be `az12345.ca-central-1.aws` (note the `.aws` suffix). There are some regions that don't need this suffix, so please [refer to the official Snowflake documentation](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html#locator-formats-by-cloud-platform-and-region) for this
+Enter your Snowflake [Account Identifier](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html). For example, if you're running Snowflake on AWS and your account URL is `https://az12345.ca-central-1.snowflakecomputing.com`:
+- `<account_identifier>`: `az12345.ca-central-1`.
+- `<cloud_platform>`: `aws`.
+
+You'd enter `az12345.ca-central-1.aws` as the account name in Metabase.
+
+> Not all regions require the cloud platform identifier. If you are in `us-west-2`, you would enter `az12345` as the account name. For the requirements per region, see [the official Snowflake's documentation](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html#non-vps-account-locator-formats-by-cloud-platform-and-region).
 
 ### Username
 
@@ -69,7 +75,11 @@ Note that only the `*` wildcard is supported; you can't use other special charac
 
 ### Role (optional)
 
-Specify a role to override the database user's default role. For example, if the database user is `REPORTER` with default role `REPORTER`, but the user also has access to role `REPORTERPRODUCT`, then filling in `REPORTERPRODUCT` in the `Role` field will ensure that the `REPORTERPRODUCT` role is used instead of the user's default `REPORTER` role.
+Specify a role to override the database user's default role. For example, if the database user `METABASE` has the roles:
+- Default role `APPLICATION`.
+- Additional role `ANALYTICS`.
+
+You can enter `ANALYTICS` in the Role field to ensure that the `METABASE` user connects to Snowflake using the `ANALYTICS` role by default.
 
 ## Use an SSH tunnel
 

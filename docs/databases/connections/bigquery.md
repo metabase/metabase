@@ -42,7 +42,7 @@ You can edit these settings at any time. Just remember to save your changes.
 
 What you want Metabase to call the database in its user interface.
 
-## Project ID
+### Project ID
 
 Each BigQuery dataset will have a **Project ID**. You can find this ID via the [Google Cloud Console](https://console.cloud.google.com/). If you're not sure where to find the **Project ID**, see Google's documentation on [getting information on datasets](https://cloud.google.com/bigquery/docs/dataset-metadata#getting_dataset_information).
 
@@ -50,7 +50,7 @@ Each BigQuery dataset will have a **Project ID**. You can find this ID via the [
 
 ### Service account JSON file
 
-JSON file contains the credentials your Metabase application will need to read and query your dataset in BigQuery, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
+The JSON file contains the credentials your Metabase application will need to access BigQuery datasets, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
 
 ### Datasets
 
@@ -81,7 +81,7 @@ We suggest you leave this off unless you're doing manual timezone casting in man
 
 ### Include User ID and query hash in queries
 
-This can be useful for auditing and debugging, but prevents BigQuery from caching results and may increase your costs.
+This can be useful for [auditing](../../usage-and-performance-tools/audit.md) and debugging, but prevents BigQuery from caching results and may increase your costs.
 
 ### Re-run queries for simple explorations
 

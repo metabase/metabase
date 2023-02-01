@@ -14,7 +14,7 @@ Fill out the fields for that database, and click **Save changes** at the bottom.
 
 Connection details for a PostgreSQL database.
 
-## Display name
+### Display name
 
 What you want Metabase to call the database in its user interface.
 
