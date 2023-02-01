@@ -34,7 +34,7 @@ You can edit these settings at any time. Just remember to save your changes.
 
 ### Display name
 
-What you want Metabase to call the database in its user interface.
+The display name for the database in the Metabase interface.
 
 ### Region
 
