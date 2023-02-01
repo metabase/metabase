@@ -8,7 +8,15 @@
    [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
+   [metabase.models :refer [Card
+                            Collection
+                            Dashboard
+                            Database
+                            ParameterCard
+                            Field
+                            Table]]
    [metabase.models.serialization.base :as serdes.base]
+   [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [reifyhealth.specmonstah.core :as rs]
    [toucan.db :as db]
@@ -31,6 +39,10 @@
   (->> dir
        .listFiles
        (remove #(.isFile %))))
+
+(defn- by-model [entities model-name]
+  (filter #(-> % :serdes/meta last :model (= model-name))
+          entities))
 
 (defn- collections [dir]
   (for [coll-dir (subdirs dir)
@@ -346,3 +358,97 @@
                (is (= (into {} (for [{:keys [key value]} (get @entities "Setting")]
                                  [key value]))
                       (yaml/from-file (io/file dump-dir "settings.yaml"))))))))))))
+
+;; This is a seperate test instead of a `testing` block inside `e2e-storage-ingestion-test`
+;; because it's quite tricky to set up the generative test to generate parameters with source is card
+(deftest card-and-dashboard-has-parameter-with-source-is-card-test
+  (testing "Dashboard and Card that has parameter with source is a card must be deserialized correctly"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-source-and-dest-dbs
+        (ts/with-source-db
+          ;; preparation
+          (mt/with-temp*
+            [Database   [db1s {:name "my-db"}]
+             Collection [coll1s {:name "My Collection"}]
+             Table      [table1s {:name  "CUSTOMERS"
+                                  :db_id (:id db1s)}]
+             Field      [field1s {:name     "NAME"
+                                  :table_id (:id table1s)}]
+             Card       [card1s  {:name "Source card"}]
+             Card       [card2s  {:name "Card with parameter"
+                                  :database_id (:id db1s)
+                                  :table_id (:id table1s)
+                                  :collection_id (:id coll1s)
+                                  :parameters [{:id                   "abc"
+                                                :type                 "category"
+                                                :name                 "CATEGORY"
+                                                :values_source_type   "card"
+                                                ;; card_id is in a different collection with dashboard's collection
+                                                :values_source_config {:card_id     (:id card1s)
+                                                                       :value_field [:field (:id field1s) nil]}}]}]
+             Dashboard  [dash1s {:name "A dashboard"
+                                 :collection_id (:id coll1s)
+                                 :parameters [{:id                   "abc"
+                                               :type                 "category"
+                                               :name                 "CATEGORY"
+                                               :values_source_type   "card"
+                                               ;; card_id is in a different collection with dashboard's collection
+                                               :values_source_config {:card_id     (:id card1s)
+                                                                      :value_field [:field (:id field1s) nil]}}]}]]
+
+            (testing "make sure we insert ParameterCard when insert Dashboard/Card"
+              ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
+              (is (= 2 (db/count ParameterCard))))
+
+            (testing "extract and store"
+              (let [extraction (into [] (extract/extract-metabase {}))]
+                (is (= [{:id                   "abc",
+                         :name                 "CATEGORY",
+                         :type                 :category,
+                         :values_source_config {:card_id     (:entity_id card1s),
+                                                :value_field [:field
+                                                              ["my-db" nil "CUSTOMERS" "NAME"]
+                                                              nil]},
+                         :values_source_type "card"}]
+                       (:parameters (first (by-model extraction "Dashboard")))))
+
+                (is (= [{:id                   "abc",
+                         :name                 "CATEGORY",
+                         :type                 :category,
+                         :values_source_config {:card_id     (:entity_id card1s),
+                                                :value_field [:field
+                                                              ["my-db" nil "CUSTOMERS" "NAME"]
+                                                              nil]},
+                         :values_source_type "card"}]
+                       (:parameters (first (by-model extraction "Card")))))
+
+                (storage.yaml/store! (seq extraction) dump-dir)))
+
+            (testing "ingest and load"
+              (ts/with-dest-db
+                ;; ingest
+                (testing "doing ingestion"
+                  (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                      "successful"))
+
+                (let [dash1d (db/select-one Dashboard :name (:name dash1s))
+                      card1d (db/select-one Card :name (:name card1s))
+                      card2d (db/select-one Card :name (:name card2s))
+                      field1d (db/select-one Field :name (:name field1s))]
+                  (testing "parameter on dashboard is loaded correctly"
+                    (is (= {:card_id     (:id card1d),
+                            :value_field [:field (:id field1d) nil]}
+                           (-> dash1d
+                               :parameters
+                               first
+                               :values_source_config)))
+                    (is (some? (db/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+
+                  (testing "parameter on card is loaded correctly"
+                    (is (= {:card_id     (:id card1d),
+                            :value_field [:field (:id field1d) nil]}
+                           (-> card2d
+                               :parameters
+                               first
+                               :values_source_config)))
+                    (is (some? (db/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
