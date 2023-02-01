@@ -189,7 +189,7 @@
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
-(defn- sample-documents [conn table sort-direction]
+(defn- sample-documents [^com.mongodb.DB conn table sort-direction]
   (-> (.getCollection conn (:name table))
       mq/empty-query
       (assoc :sort {:_id sort-direction}
