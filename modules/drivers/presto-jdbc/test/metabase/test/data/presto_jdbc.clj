@@ -2,6 +2,7 @@
   "Presto JDBC driver test extensions."
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
+            [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
@@ -119,7 +120,7 @@
             (sql-jdbc.execute/set-parameters! driver stmt params)
             (let [tbl-nm        ((comp last :components) (into {} table-identifier))
                   rows-affected (.executeUpdate stmt)]
-              (println (format "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm))))
+              (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm)))
           (catch Throwable e
             (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
                      {:driver driver, :sql sql, :params params}
