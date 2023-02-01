@@ -96,7 +96,11 @@ If you are on a paid plan, you can also set cache duration per questions. See [A
 
 ## Connecting to MySQL 8+ servers
 
-Metabase uses the MariaDB connector to connect to MariaDB and MySQL servers. The MariaDB connector does not currently support MySQL 8's default authentication plugin, so in order to connect, you'll need to change the plugin used by the Metabase user to `mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_password BY 'thepassword';`
+Metabase uses the MariaDB connector to connect to MariaDB and MySQL servers. The MariaDB connector does not currently support MySQL 8's default authentication plugin, so in order to connect, you'll need to change the plugin used by the Metabase user to 
+
+```
+mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_password BY 'thepassword';
+```
 
 ### Unable to log in with correct credentials
 
@@ -104,11 +108,27 @@ Metabase uses the MariaDB connector to connect to MariaDB and MySQL servers. The
 
 For example, if the MySQL server is running in a Docker container, and your `metabase` user was created with `CREATE USER 'metabase'@'localhost' IDENTIFIED BY 'thepassword';`, the `localhost` will be resolved to the Docker container, and not the host machine, causing access to be denied.
 
-You can identify this issue by looking in the Metabase server logs for the error message `Access denied for user 'metabase'@'172.17.0.1' (using password: YES)`. Note the host name `172.17.0.1` (in this case a Docker network IP address), and `using password: YES` at the end.
+You can identify this issue by looking in the Metabase server logs for the error message:
+
+```
+Access denied for user 'metabase'@'172.17.0.1' (using password: YES).
+```
+
+Note the host name `172.17.0.1` (in this case a Docker network IP address), and `using password: YES` at the end.
 
 You'll see the same error message when attempting to connect to the MySQL server with the command-line client: `mysql -h 127.0.0.1 -u metabase -p`.
 
-**How to fix this:** Recreate the MySQL user with the correct host name: `CREATE USER 'metabase'@'172.17.0.1' IDENTIFIED BY 'thepassword';`. Otherwise, if necessary, a wildcard may be used for the host name: `CREATE USER 'metabase'@'%' IDENTIFIED BY 'thepassword';`
+**How to fix this:** Recreate the MySQL user with the correct host name: 
+
+```
+CREATE USER 'metabase'@'172.17.0.1' IDENTIFIED BY 'thepassword';
+```
+
+Otherwise, if necessary, a wildcard may be used for the host name: 
+
+```
+CREATE USER 'metabase'@'%' IDENTIFIED BY 'thepassword';
+```
 
 That user's permissions will need to be set:
 
@@ -117,7 +137,11 @@ GRANT SELECT ON targetdb.* TO 'metabase'@'172.17.0.1';
 FLUSH PRIVILEGES;
 ```
 
-Remember to drop the old user: `DROP USER 'metabase'@'localhost';`.
+Remember to drop the old user: 
+
+```
+DROP USER 'metabase'@'localhost';
+```
 
 ## Syncing records that include JSON
 

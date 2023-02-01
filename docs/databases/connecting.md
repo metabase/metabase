@@ -31,7 +31,7 @@ The databases listed below have official drivers maintained by the Metabase team
 - [Oracle](./connections/oracle.md)
 - [PostgreSQL](connections/postgresql.md)
 - Presto
-- Redshift (Amazon Web Services)
+- [Redshift (Amazon Web Services)](./connections/redshift.md)
 - [Snowflake](./connections/snowflake.md)
 - SparkSQL
 - SQL Server
