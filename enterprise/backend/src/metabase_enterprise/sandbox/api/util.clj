@@ -27,14 +27,16 @@
   A sandbox is not enforced if the user is in a different permissions group that grants full access to the table."
   [sandboxes]
   (let [group-ids           (dedupe (map :group_id sandboxes))
-        perms               (db/select Permissions {:where [:in :group_id group-ids]})
+        perms               (when (seq group-ids)
+                             (db/select Permissions {:where [:in :group_id group-ids]}))
         group-id->perms-set (-> (group-by :group_id perms)
                                 (update-vals (fn [perms] (into #{} (map :object perms)))))]
     (filter (partial enforce-sandbox? group-id->perms-set)
             sandboxes)))
 
 (defn segmented-user?
-  "Returns true if the currently logged in user has segmented permissions"
+  "Returns true if the currently logged in user has segmented permissions. Throws an exception if no current user
+  is bound."
   []
   (boolean
    (when-not *is-superuser?*
