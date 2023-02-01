@@ -160,12 +160,12 @@ export const getPKRowIndexMap = createSelector(
     if (!result || !Number.isSafeInteger(PKColumnIndex)) {
       return {};
     }
+
     const { rows } = result.data;
     if (PKColumnIndex < 0) {
-      console.log("🚀", { rows });
       return rows;
-      // return rows.map((_, index) => index);
     }
+
     const map = {};
     rows.forEach((row, index) => {
       const PKValue = row[PKColumnIndex];

@@ -272,7 +272,6 @@ class Visualization extends React.PureComponent {
       return;
     }
 
-    console.log("🚀", "In handleVisualizationClick", { clicked });
     const didPerformDefaultAction = performDefaultAction(
       this.getClickActions(clicked),
       {
