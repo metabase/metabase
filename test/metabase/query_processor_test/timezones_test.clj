@@ -167,13 +167,13 @@
                   :target ["dimension" ["template-tag" "just_a_date"]]
                   :value  "2014-08-02"}]}})
 
-(deftest native-params-filter-test
+(deftest native-sql-params-filter-test
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
   ;; to match anything with a `2014-08-02` date
-  (mt/test-drivers (disj (set/intersection (set-timezone-drivers)
-                                           (mt/normal-drivers-with-feature :native-parameters))
-                         ;; sql only
-                         :mongo)
+  (mt/test-drivers (filter
+                     #(isa? driver/hierarchy % :sql)
+                     (set/intersection (set-timezone-drivers)
+                                       (mt/normal-drivers-with-feature :native-parameters)))
     (mt/dataset test-data-with-timezones
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (testing "Native dates should be parsed with the report timezone"
@@ -226,11 +226,10 @@
    (when (supports-datetime-with-zone-id?)
      {:datetime_tz_id (t/zoned-date-time "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]")})))
 
-(deftest time-timezone-handling-test
+(deftest sql-time-timezone-handling-test
   ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
   ;; Oracle doesn't have a time type
-  ;; Mongo only has a datetime type
-  (mt/test-drivers (disj (set-timezone-drivers) :mongo)
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (set-timezone-drivers))
     (mt/dataset attempted-murders
       (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
         (mt/with-temporary-setting-values [report-timezone timezone]
@@ -287,3 +286,21 @@
                                     [:last_login])
                                   row)]
             (is (= expected result-row)))))))))
+
+(deftest filter-datetime-by-date-in-timezone-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :set-timezone)
+    (mt/dataset attempted-murders
+      (doseq [[timezone date-filter] [["US/Pacific" "2019-11-15"]
+                                      ["US/Eastern" "2019-11-15"]
+                                      ["UTC" "2019-11-16"]
+                                      ["Asia/Hong_Kong" "2019-11-16"]]
+              :let [expected (-> (u.date/with-time-zone-same-instant #t "2019-11-16T00:07:25.292Z" timezone)
+                                 (u.date/format-sql)
+                                 (str/replace #" " "T"))]]
+        (mt/with-temporary-setting-values [report-timezone timezone]
+          (is (= [expected]
+                 (mt/first-row
+                   (mt/run-mbql-query attempts
+                                      {:fields [$datetime_tz]
+                                       :filter [:and [:= $id 15]
+                                                [:= $datetime_tz date-filter]]})))))))))
