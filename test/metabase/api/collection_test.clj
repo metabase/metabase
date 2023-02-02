@@ -103,14 +103,15 @@
                     sort)))))
 
     (testing "You should only see your collection and public collections"
-      (let [user-id (u/the-id (test.users/fetch-user :crowberto))]
+      (let [user-id (u/the-id (test.users/fetch-user :crowberto))
+            crowberto-root    (db/select-one Collection :personal_owner_id user-id)]
         (mt/with-temp* [Collection [collection]
                         Collection [{collection-id :id} {:name "Collection with Items"}]
                         Collection [_ {:name            "subcollection"
                                        :location        (format "/%d/" collection-id)
                                        :authority_level "official"}]
                         Collection [_ {:name     "Crowberto's Child Collection"
-                                       :location (format "/%d/" user-id)}]]
+                                       :location (collection/location-path crowberto-root)}]]
           (let [public-collections #{"Our analytics" (:name collection) "Collection with Items" "subcollection"}
                 crowbertos         (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
                 luckys             (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
