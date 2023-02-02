@@ -185,23 +185,19 @@ describe("ActionCreator", () => {
         getIcon("gear", "button").click();
 
         expect(screen.getByText("Action settings")).toBeInTheDocument();
-        expect(
-          screen.getByRole("switch", { name: "Make public" }),
-        ).not.toBeChecked();
+        const makePublicToggle = screen.getByRole("switch", {
+          name: "Make public",
+        });
+        expect(makePublicToggle).not.toBeChecked();
         expect(
           screen.queryByRole("textbox", { name: "Public action link URL" }),
         ).not.toBeInTheDocument();
 
         screen.getByRole("switch", { name: "Make public" }).click();
 
-        await waitFor(
-          () => {
-            expect(
-              screen.getByRole("switch", { name: "Make public" }),
-            ).toBeChecked();
-          },
-          { timeout: 5000 },
-        );
+        await waitFor(() => {
+          expect(makePublicToggle).toBeChecked();
+        });
 
         const expectedPublicLinkUrl = `${SITE_URL}/public/action/${mockUuid}`;
         expect(
@@ -218,28 +214,24 @@ describe("ActionCreator", () => {
         getIcon("gear", "button").click();
 
         expect(screen.getByText("Action settings")).toBeInTheDocument();
-        expect(
-          screen.getByRole("switch", { name: "Make public" }),
-        ).toBeChecked();
+        const makePublicToggle = screen.getByRole("switch", {
+          name: "Make public",
+        });
+        expect(makePublicToggle).toBeChecked();
         const expectedPublicLinkUrl = `${SITE_URL}/public/action/${mockUuid}`;
         expect(
           screen.getByRole("textbox", { name: "Public action link URL" }),
         ).toHaveValue(expectedPublicLinkUrl);
 
-        screen.getByRole("switch", { name: "Make public" }).click();
+        makePublicToggle.click();
         expect(
           screen.getByRole("heading", { name: "Disable this public link?" }),
         ).toBeInTheDocument();
         screen.getByRole("button", { name: "Yes" }).click();
 
-        await waitFor(
-          () => {
-            expect(
-              screen.getByRole("switch", { name: "Make public" }),
-            ).not.toBeChecked();
-          },
-          { timeout: 5000 },
-        );
+        await waitFor(() => {
+          expect(makePublicToggle).not.toBeChecked();
+        });
 
         expect(
           screen.queryByRole("textbox", { name: "Public action link URL" }),
