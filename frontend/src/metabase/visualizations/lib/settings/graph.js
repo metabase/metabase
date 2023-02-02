@@ -688,10 +688,6 @@ export const SANKEY_DATA_SETTINGS = {
     ) => cols,
     hidden: true,
   }),
-  "graph._metric_filter": {
-    getDefault: ([{ card }]) => isMetric,
-    useRawSeries: true,
-  },
   "graph.start": {
     section: t`Data`,
     title: t`Starting Point`,
@@ -775,7 +771,6 @@ export const SANKEY_DATA_SETTINGS = {
         showColumnSetting: false,
       };
     },
-    readDependencies: ["graph._metric_filter"],
     writeDependencies: ["graph.start", "graph.destinations"],
     dashboard: false,
     useRawSeries: true,
