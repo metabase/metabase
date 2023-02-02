@@ -9,7 +9,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
-import Radio from "metabase/core/components/Radio";
+import Radio, { RadioOption } from "metabase/core/components/Radio";
 import Select, {
   Option,
   SelectChangeEvent,
@@ -34,6 +34,7 @@ import Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
+import { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
 import { fetchParameterValues, FetchParameterValuesOpts } from "../../actions";
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
@@ -50,14 +51,8 @@ import {
 
 const NEW_LINE = "\n";
 
-const SOURCE_TYPE_OPTIONS = [
-  { name: t`From connected fields`, value: null },
-  { name: t`From another model or question`, value: "card" },
-  { name: t`Custom list`, value: "static-list" },
-];
-
 interface ModalOwnProps {
-  parameter: Parameter;
+  parameter: ParameterWithTemplateTagTarget;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
@@ -98,6 +93,10 @@ const ValuesSourceTypeModal = ({
   onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
+  const sourceTypeOptions = useMemo(() => {
+    return getSourceTypeOptions(parameter);
+  }, [parameter]);
+
   return (
     <ModalContent
       title={t`Selectable values for ${parameter.name}`}
@@ -115,6 +114,7 @@ const ValuesSourceTypeModal = ({
         <FieldSourceModal
           parameter={parameter}
           sourceType={sourceType}
+          sourceTypeOptions={sourceTypeOptions}
           sourceConfig={sourceConfig}
           onFetchParameterValues={onFetchParameterValues}
           onChangeSourceType={onChangeSourceType}
@@ -124,6 +124,7 @@ const ValuesSourceTypeModal = ({
           parameter={parameter}
           question={question}
           sourceType={sourceType}
+          sourceTypeOptions={sourceTypeOptions}
           sourceConfig={sourceConfig}
           onFetchParameterValues={onFetchParameterValues}
           onChangeCard={onChangeCard}
@@ -133,6 +134,7 @@ const ValuesSourceTypeModal = ({
       ) : sourceType === "static-list" ? (
         <ListSourceModal
           sourceType={sourceType}
+          sourceTypeOptions={sourceTypeOptions}
           sourceConfig={sourceConfig}
           onChangeSourceType={onChangeSourceType}
           onChangeSourceConfig={onChangeSourceConfig}
@@ -145,6 +147,7 @@ const ValuesSourceTypeModal = ({
 interface FieldSourceModalProps {
   parameter: Parameter;
   sourceType: ValuesSourceType;
+  sourceTypeOptions: RadioOption<ValuesSourceType>[];
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (
     opts: FetchParameterValuesOpts,
@@ -155,6 +158,7 @@ interface FieldSourceModalProps {
 const FieldSourceModal = ({
   parameter,
   sourceType,
+  sourceTypeOptions,
   sourceConfig,
   onFetchParameterValues,
   onChangeSourceType,
@@ -181,7 +185,7 @@ const FieldSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <Radio
             value={sourceType}
-            options={SOURCE_TYPE_OPTIONS}
+            options={sourceTypeOptions}
             vertical
             onChange={onChangeSourceType}
           />
@@ -208,6 +212,7 @@ interface CardSourceModalProps {
   parameter: Parameter;
   question: Question | undefined;
   sourceType: ValuesSourceType;
+  sourceTypeOptions: RadioOption<ValuesSourceType>[];
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (
     opts: FetchParameterValuesOpts,
@@ -221,6 +226,7 @@ const CardSourceModal = ({
   parameter,
   question,
   sourceType,
+  sourceTypeOptions,
   sourceConfig,
   onFetchParameterValues,
   onChangeCard,
@@ -264,7 +270,7 @@ const CardSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <Radio
             value={sourceType}
-            options={SOURCE_TYPE_OPTIONS}
+            options={sourceTypeOptions}
             vertical
             onChange={onChangeSourceType}
           />
@@ -318,6 +324,7 @@ const CardSourceModal = ({
 
 interface ListSourceModalProps {
   sourceType: ValuesSourceType;
+  sourceTypeOptions: RadioOption<ValuesSourceType>[];
   sourceConfig: ValuesSourceConfig;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
@@ -325,6 +332,7 @@ interface ListSourceModalProps {
 
 const ListSourceModal = ({
   sourceType,
+  sourceTypeOptions,
   sourceConfig,
   onChangeSourceType,
   onChangeSourceConfig,
@@ -343,7 +351,7 @@ const ListSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <Radio
             value={sourceType}
-            options={SOURCE_TYPE_OPTIONS}
+            options={sourceTypeOptions}
             vertical
             onChange={onChangeSourceType}
           />
@@ -383,6 +391,18 @@ const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
 const getSupportedFields = (question: Question) => {
   const fields = question.composeThisQuery()?.table()?.fields ?? [];
   return fields.filter(field => field.isString());
+};
+
+const getSourceTypeOptions = (
+  parameter: ParameterWithTemplateTagTarget,
+): RadioOption<ValuesSourceType>[] => {
+  return [
+    ...(parameter.hasVariableTemplateTagTarget
+      ? []
+      : [{ name: t`From connected fields`, value: null }]),
+    { name: t`From another model or question`, value: "card" },
+    { name: t`Custom list`, value: "static-list" },
+  ];
 };
 
 interface UseParameterValuesOpts {

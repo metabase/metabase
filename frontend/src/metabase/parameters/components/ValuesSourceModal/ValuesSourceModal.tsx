@@ -9,6 +9,7 @@ import {
   getSourceConfigForType,
   getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
+import { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
 import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 import ValuesSourceCardModal from "./ValuesSourceCardModal";
 
@@ -29,7 +30,7 @@ const ValuesSourceModal = ({
   onClose,
 }: ModalProps): JSX.Element => {
   const [step, setStep] = useState<ModalStep>("main");
-  const [sourceType, setSourceType] = useState(getSourceType(parameter));
+  const [sourceType, setSourceType] = useState(getInitialSourceType(parameter));
   const [sourceConfig, setSourceConfig] = useState(getSourceConfig(parameter));
 
   const handlePickerOpen = useCallback(() => {
@@ -65,6 +66,12 @@ const ValuesSourceModal = ({
       onClose={onClose}
     />
   );
+};
+
+const getInitialSourceType = (parameter: ParameterWithTemplateTagTarget) => {
+  return parameter.hasVariableTemplateTagTarget
+    ? "card"
+    : getSourceType(parameter);
 };
 
 export default ValuesSourceModal;
