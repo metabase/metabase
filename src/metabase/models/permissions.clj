@@ -369,7 +369,7 @@
                       {:path path :result result})))
     (first result)))
 
-(def DataPath "A permissions path that's garanteed to be a v1 data-permissions path"
+(def DataPath "A permissions path that's guaranteed to be a v1 data-permissions path"
   [:re (u.regex/rx "^/" v1-data-permissions-rx "$")])
 
 (mu/defn classify-data-path :- DataKind [data-path :- DataPath]
