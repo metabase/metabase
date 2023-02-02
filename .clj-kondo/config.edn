@@ -83,7 +83,12 @@
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.core/print        {:message "Use clojure.tools.logging instead of clojure.core/print"}
+  {
+   ;; NOTE - print is used in some of our hooks and when macro expanded in test
+   ;; will create false warnings that can't currently be easily suppressed.
+   ;; There isn't an easy fix for this ATM, but a fix for this issue
+   ;; https://github.com/clj-kondo/clj-kondo/issues/1980 should do the trick.
+   ;clojure.core/print        {:message "Use clojure.tools.logging instead of clojure.core/print"}
    clojure.core/println      {:message "Use clojure.tools.logging instead of clojure.core/println"}
    clojure.core/printf       {:message "Use clojure.tools.logging instead of clojure.core/printf"}
    clojure.core/prn          {:message "Use clojure.tools.logging instead of clojure.core/prn"}
@@ -97,9 +102,7 @@
 
   :unresolved-var
   {:exclude
-   [colorize.core
-    metabase.util.honeysql-extensions/call
-    metabase.util.honeysql-extensions/raw]}
+   [colorize.core]}
 
   :unsorted-required-namespaces             {:level :warning}
 
