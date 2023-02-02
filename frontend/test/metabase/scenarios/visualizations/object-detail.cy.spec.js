@@ -192,7 +192,7 @@ describe("scenarios > question > object details", () => {
         .closest("[data-testid^=draggable-item]")
         .trigger("mousedown", 0, 0, { force: true })
         .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, 100, { force: true })
+        .trigger("mousemove", 0, 300, { force: true })
         .trigger("mouseup", 0, 100, { force: true });
     });
 
