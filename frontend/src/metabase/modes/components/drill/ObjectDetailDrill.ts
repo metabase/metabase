@@ -33,14 +33,15 @@ function getAction({
       return {
         question: () => objectDetailFKDrillQuestion({ question, clicked }),
       };
-    case "zoom":
+    case "zoom": {
       return {
         action: () =>
           zoomInRow({
             objectId,
-            zoomedRowColumnIndex: clicked?.origin?.columnIndex,
+            zoomedRowColumnIndex: getZoomedRowColumnIndex(clicked),
           }),
       };
+    }
     case "dashboard":
       return { question: () => question };
   }
@@ -48,18 +49,32 @@ function getAction({
 
 function getActionExtraData({
   objectId,
-  columnIndex,
+  zoomedRowColumnIndex,
   hasManyPKColumns,
 }: {
   objectId: RowValue;
-  columnIndex?: number;
+  zoomedRowColumnIndex?: number;
   hasManyPKColumns: boolean;
 }) {
   if (!hasManyPKColumns) {
     return {
-      extra: () => ({ objectId, zoomedRowColumnIndex: columnIndex }),
+      extra: () => ({ objectId, zoomedRowColumnIndex }),
     };
   }
+}
+
+function getZoomedRowColumnIndex(clicked) {
+  if (!clicked) {
+    return;
+  }
+
+  const clickedColumnId = clicked?.column?.id;
+
+  // This way to find the index may seem too complicated.
+  // With it we can do drills in tables with reordered/hidden columns.
+  // It ensures we find the correct column position
+  // according to the way result rows/columns are ordered later when the drill happens.
+  return clicked?.data?.findIndex(entry => clickedColumnId === entry.col.id);
 }
 
 const ObjectDetailDrill: Drill = ({ question, clicked }) => {
@@ -70,7 +85,7 @@ const ObjectDetailDrill: Drill = ({ question, clicked }) => {
 
   const { type, objectId, hasManyPKColumns } = drill;
 
-  const columnIndex = clicked?.origin?.columnIndex;
+  const zoomedRowColumnIndex = getZoomedRowColumnIndex(clicked);
 
   return [
     {
@@ -81,7 +96,11 @@ const ObjectDetailDrill: Drill = ({ question, clicked }) => {
       icon: "document",
       default: true,
       ...getAction({ question, clicked, type: type as DrillType, objectId }),
-      ...getActionExtraData({ objectId, hasManyPKColumns, columnIndex }),
+      ...getActionExtraData({
+        objectId,
+        hasManyPKColumns,
+        zoomedRowColumnIndex,
+      }),
     },
   ];
 };
