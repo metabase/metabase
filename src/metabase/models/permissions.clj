@@ -171,6 +171,7 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.api.permission-graph :as api.permission-graph]
@@ -323,26 +324,22 @@
          admin-permissions-rx]
    "$"))
 
-(def ^:private query-permissions-rx
-  [:and "query"])
-
 (def ^:private rx->kind
-  {(u.regex/rx "^/" v1-data-permissions-rx "$")         :data
-   (u.regex/rx "^/" v2-data-permissions-rx "$")         :data-v2
-   (u.regex/rx "^/" query-permissions-rx "$")           :query
-   (u.regex/rx "^/" v2-query-permissions-rx "$")        :query-v2
-   (u.regex/rx "^/" download-permissions-rx "$")        :download
-   (u.regex/rx "^/" data-model-permissions-rx "$")      :data-model
-   (u.regex/rx "^/" db-conn-details-permissions-rx "$") :db-conn-details
-   (u.regex/rx "^/" execute-permissions-rx "$")         :execute
-   (u.regex/rx "^/" collection-permissions-rx "$")      :collection
-   (u.regex/rx "^/" non-scoped-permissions-rx "$")      :non-scoped
-   (u.regex/rx "^/" block-permissions-rx "$")           :block
-   (u.regex/rx "^/" admin-permissions-rx "$")           :admin})
+  [[(u.regex/rx "^/" v1-data-permissions-rx "$")         :data]
+   [(u.regex/rx "^/" v2-data-permissions-rx "$")         :data-v2]
+   [(u.regex/rx "^/" v2-query-permissions-rx "$")        :query-v2]
+   [(u.regex/rx "^/" download-permissions-rx "$")        :download]
+   [(u.regex/rx "^/" data-model-permissions-rx "$")      :data-model]
+   [(u.regex/rx "^/" db-conn-details-permissions-rx "$") :db-conn-details]
+   [(u.regex/rx "^/" execute-permissions-rx "$")         :execute]
+   [(u.regex/rx "^/" collection-permissions-rx "$")      :collection]
+   [(u.regex/rx "^/" non-scoped-permissions-rx "$")      :non-scoped]
+   [(u.regex/rx "^/" block-permissions-rx "$")           :block]
+   [(u.regex/rx "^/" admin-permissions-rx "$")           :admin]])
 
 (def ^:private path-regex-v2
-  "Regex for a valid permissions path. will not match a path like /db/1 The [[metabase.util.regex/rx]] macro is used to make the big-and-hairy regex
-  somewhat readable."
+  "Regex for a valid permissions path. will not match a path like \"/db/1\" or \"/db/1/\".
+   [[metabase.util.regex/rx]] is used to make the big-and-hairy regex somewhat readable."
   (u.regex/rx
    "^/" [:or
          v2-data-permissions-rx
@@ -357,13 +354,7 @@
          admin-permissions-rx]
    "$"))
 
-(def ^:private Kind (into [:enum] (vals rx->kind)))
-
-(def Path
-  "A permission path. "
-  [:or
-   [:re path-regex-v1]
-   [:re path-regex-v2]])
+(def ^:private Kind (into [:enum] (map second rx->kind)))
 
 (mu/defn classify-path :- Kind [path :- Path]
   (let [result (keep (fn [[permission-rx kind]]
@@ -400,22 +391,26 @@
           (str/replace #"\\" "\\\\\\\\")   ; \ -> \\
           (str/replace #"/" "\\\\/"))) ; / -> \/
 
-(defn valid-path?
-  "Is `path` a valid, known permissions path?"
-  ^Boolean [^String path]
-  (boolean (when (and (string? path) (seq path))
-             (or (re-matches path-regex-v1 path)
-                 (re-matches path-regex-v2 path)))))
+(def Path
+  "A permission path. "
+  [:or
+   [:re path-regex-v1]
+   [:re path-regex-v2]])
 
-(defn valid-path-format?
-  "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
+(let [path-validator (mc/validator Path)]
+  (defn valid-path?
+    "Is `path` a valid, known permissions path?"
+    ^Boolean [^String path]
+    (path-validator path)))
+
+(let [path-format-validator (mc/validator [:re (re-pattern (str "^/(" path-char "*/)*$"))])]
+  (defn valid-path-format?
+    "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
   just checks that the path components contain alphanumeric characters or dashes, separated by slashes
   This should be used for schema validation in most places, to preserve downgradability when new permissions paths are
   added."
-  ^Boolean [^String path]
-  (boolean (when (and (string? path)
-                      (seq path))
-             (re-matches (re-pattern (str "^/(" path-char "*/)*$")) path))))
+    ^Boolean [^String path]
+    (path-format-validator path)))
 
 (def PathSchema
   "Schema for a permissions path with a valid format."
@@ -817,13 +812,13 @@
 (defn- all-permissions
   "Handle '/' permission"
   [db-ids]
-  (apply merge
-   (map (fn [db-id]
-          {db-id {:data       {:native :write :schemas :all}
-                  :download   {:native :full  :schemas :full}
-                  :data-model {               :schemas :all}
-                  :details :yes}})
-        db-ids)))
+  (into {}
+        (map (fn [db-id]
+               [db-id {:data       {:native :write :schemas :all}
+                       :download   {:native :full  :schemas :full}
+                       :data-model {               :schemas :all}
+                       :details :yes}])
+             db-ids)))
 
 (defn- permissions-by-group-ids [where-clause]
   (let [permissions (db/select [Permissions [:group_id :group-id] [:object :path]]
@@ -833,7 +828,7 @@
             {}
             permissions)))
 
-(s/defn data-perms-graph
+(defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
@@ -843,7 +838,10 @@
         db-ids          (delay (db/select-ids 'Database))
         group-id->graph (m/map-vals
                          (fn [paths]
-                           (let [permissions-graph (perms-parse/permissions->graph paths)]
+                           ;; Currently we do not use v2 permissions paths, and permissions->graph doesn't handle them.
+                           ;; so we ignore those until that work is complete.
+                           (let [v1-paths (filter #(mc/validate path-regex-v1 %) paths)
+                                 permissions-graph (perms-parse/permissions->graph v1-paths)]
                              (if (= permissions-graph :all)
                                (all-permissions @db-ids)
                                (:db permissions-graph))))
@@ -851,7 +849,7 @@
     {:revision (perms-revision/latest-id)
      :groups   group-id->graph}))
 
-(s/defn execution-perms-graph
+(defn execution-perms-graph
   "Fetch a graph representing the current *execution* permissions status for
   every Group and all permissioned databases."
   []
@@ -927,40 +925,36 @@
   (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :full) path-components))
   (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :limited) path-components)))
 
-(let [delete (fn delete [s to-delete] (str/replace s to-delete ""))
-      data-query-split (fn data-query-split [path]
-                         [(str "/data" path) (str "/query" path)])]
+
+(letfn [(delete [s to-delete] (str/replace s to-delete ""))
+        (data-query-split [path] [(str "/data" path) (str "/query" path)])]
   (def ^:private data-kind->rewrite-fn
     "lookup table to generate v2 query + data permission from a v1 data permission."
     {:dk/db                                 data-query-split
      :dk/db-native                          (fn [path] (data-query-split (delete path "native/")))
-     :dk/db-schema                          (fn [path] [(str "/data" (delete path "schema/"))
-                                                        (str "/query" path)])
+     :dk/db-schema                          (fn [path] [(str "/data" (delete path "schema/")) (str "/query" path)])
      :dk/db-schema-name                     data-query-split
      :dk/db-schema-name-and-table           data-query-split
      :dk/db-schema-name-table-and-read      (constantly [])
      :dk/db-schema-name-table-and-query     (fn [path] (data-query-split (delete path "query/")))
      :dk/db-schema-name-table-and-segmented (fn [path] (data-query-split (delete path "query/segmented/")))}))
 
-
-
 (mu/defn ^:private ->v2-path :- [:vector [:re path-regex-v2]]
   [path :- [:or [:re path-regex-v1] [:re path-regex-v2]]]
   ;; See: https://www.notion.so/metabase/Permissions-Refactor-Design-Doc-18ff5e6be32f4a52b9422bd7f4237ca7#5603afe084a7435ca7dc928fc94d4bda
   (let [kind (classify-path path)]
-    (cond
-      (= kind :data) (let [data-permission-kind (classify-data-path path)
-                           rewrite-fn (data-kind->rewrite-fn data-permission-kind)]
-                       (rewrite-fn path))
-      (= kind :admin) ["/"]
-      (= kind :block) []
+    (case kind
+      :data (let [data-permission-kind (classify-data-path path)
+                  rewrite-fn (data-kind->rewrite-fn data-permission-kind)]
+              (rewrite-fn path))
+      :admin ["/"]
+      :block []
 
-      ;; explicitly, move is idempotent mapcatting move over a sequence of v1 paths multiple times will result in the same value.
-      ;; so these are no-ops:
-      (= kind :data-v2) [path]
-      (= kind :query-v2) [path]
+      ;; for sake of idempotency, v2 perm-paths should be left untouched.
+      (:data-v2 :query-v2) [path]
 
-      :else [path])))
+      ;; other paths should be left untouched too
+      [path])))
 
 (defn grant-permissions!
   "Grant permissions for `group-or-id`. Two-arity grants any arbitrary Permissions `path`. With > 2 args, grants the
@@ -969,11 +963,15 @@
    (grant-permissions! group-or-id (apply data-perms-path db-id schema more)))
 
   ([group-or-id path]
+   ;; TEMPORARY HACK: v2 paths won't be in the graph, hence will not get deleted.
+   ;; But we can delete them here:
+   (db/delete! Permissions :object [:like "/query/%"])
+   (db/delete! Permissions :object [:like "/data/%"])
    (try
      (db/insert-many! Permissions
        (map (fn [path-object]
               {:group_id (u/the-id group-or-id) :object path-object})
-            (conj (->v2-path path) path)))
+            (distinct (conj (->v2-path path) path))))
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
        (log/error e (u/format-color 'red (tru "Failed to grant permissions")))
@@ -1261,10 +1259,6 @@
   (doseq [[db-id new-db-perms] new-group-perms
           [perm-type new-perms] new-db-perms]
     (case perm-type
-      ;; TODO  use query
-      ;;       (update-_query_-data-access-permissions! group-id db-id new-perms)
-      ;;       -- or --
-      ;;       do "move" here
 
       :data
       (update-db-data-access-permissions! group-id db-id new-perms)
