@@ -928,7 +928,6 @@
                                     w w   w w;
                                     ) ) ) ) ) )
 
-
 (deftest data-permissions-v2-migration-move-test
   (testing "move admin"
     (is (= ["/"] (#'perms/->v2-path "/"))))
