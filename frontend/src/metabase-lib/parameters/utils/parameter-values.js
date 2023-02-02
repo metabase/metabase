@@ -33,7 +33,6 @@ export function normalizeParameter(parameter) {
     name: parameter.name,
     slug: parameter.slug,
     type: parameter.type,
-    value: normalizeParameterValue(parameter.type, parameter.value),
     target: parameter.target,
     values_query_type: getQueryType(parameter),
     values_source_type: getSourceType(parameter),
