@@ -3,6 +3,7 @@ import { updateIn } from "icepick";
 import { createAction } from "redux-actions";
 
 import { createEntity, undo } from "metabase/lib/entities";
+import * as Urls from "metabase/lib/urls";
 import { ActionsApi } from "metabase/services";
 
 import type {
@@ -153,7 +154,9 @@ const Actions = createEntity({
     }
   },
   objectSelectors: {
-    getUrl: (action, opts) => action && "oh-no",
+    getUrl: (action: WritebackAction) =>
+      Urls.action({ id: action.model_id }, action.id),
+    getIcon: () => ({ name: "bolt" }),
   },
 });
 
