@@ -20,6 +20,7 @@ export default class CopyWidget extends Component {
           }
           value={value}
           onChange={onChange}
+          readOnly={value && !onChange}
           {...props}
         />
         <CopyWidgetButton value={value} />
