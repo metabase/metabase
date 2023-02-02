@@ -1,5 +1,4 @@
 import React, { useRef, useMemo } from "react";
-import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -8,8 +7,6 @@ import type {
   ActionDashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import Search from "metabase/entities/search";
 
 import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";
@@ -23,7 +20,7 @@ import Sidebar from "metabase/dashboard/components/Sidebar";
 import { ConnectedActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
 import ActionViz from "metabase/actions/components/ActionViz";
 
-import { addActionToDashboard, closeSidebar } from "metabase/dashboard/actions";
+import { closeSidebar } from "metabase/dashboard/actions";
 import { isActionDashCard } from "metabase/actions/utils";
 
 import {
@@ -36,7 +33,6 @@ import {
 const buttonVariantOptions = ActionViz.settings["button.variant"].props.options;
 
 const mapDispatchToProps = {
-  addAction: addActionToDashboard,
   closeSidebar,
 };
 
@@ -47,7 +43,7 @@ interface ActionSidebarProps {
   onClose: () => void;
 }
 
-function ActionSidebarFn({
+export function ActionSidebarFn({
   dashboard,
   dashcardId,
   onUpdateVisualizationSettings,
@@ -72,12 +68,12 @@ function ActionSidebarFn({
       <SidebarHeader>
         <Heading>{t`Button properties`}</Heading>
       </SidebarHeader>
-      <SidebarBody data-dashcardId={dashcard.id}>
+      <SidebarBody>
         <FormProvider
           initialValues={{
-            name:
+            button_text:
               dashcard?.visualization_settings?.["button.label"] ?? t`Click me`,
-            variant:
+            button_variant:
               dashcard?.visualization_settings?.["button.variant"] ?? "primary",
           }}
           enableReinitialize
@@ -86,7 +82,7 @@ function ActionSidebarFn({
           <Form>
             <FormInput
               title={t`Button text`}
-              name="name"
+              name="button_text"
               placeholder={t`Button text`}
               autoFocus
               onChangeCapture={e =>
@@ -97,7 +93,7 @@ function ActionSidebarFn({
             />
             <FormSelect
               title={t`Button variant`}
-              name="variant"
+              name="button_variant"
               options={buttonVariantOptions}
               onChange={e =>
                 onUpdateVisualizationSettings({
@@ -136,13 +132,4 @@ function ActionSidebarFn({
   );
 }
 
-export const ActionSidebar = _.compose(
-  Search.loadList({
-    query: () => ({
-      models: ["dataset"],
-    }),
-    loadingAndErrorWrapper: false,
-    listName: "models",
-  }),
-  connect(null, mapDispatchToProps),
-)(ActionSidebarFn);
+export const ActionSidebar = connect(null, mapDispatchToProps)(ActionSidebarFn);
