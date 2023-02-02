@@ -422,6 +422,7 @@ const useParameterValues = ({
 }: UseParameterValuesOpts) => {
   const [values, setValues] = useState<ParameterValue[]>();
   const handleFetchValues = useSafeAsyncFunction(onFetchParameterValues);
+  const isValidSource = isValidSourceConfig(sourceType, sourceConfig);
 
   const parameter = useMemo(
     () => ({
@@ -433,10 +434,12 @@ const useParameterValues = ({
   );
 
   useEffect(() => {
-    handleFetchValues({ parameter })
-      .then(({ values }) => setValues(values))
-      .catch(() => setValues([]));
-  }, [parameter, handleFetchValues]);
+    if (isValidSource) {
+      handleFetchValues({ parameter })
+        .then(({ values }) => setValues(values))
+        .catch(() => setValues([]));
+    }
+  }, [parameter, isValidSource, handleFetchValues]);
 
   return values;
 };
