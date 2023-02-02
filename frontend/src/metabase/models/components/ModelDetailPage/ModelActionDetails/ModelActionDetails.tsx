@@ -35,6 +35,7 @@ interface OwnProps {
 
 interface DispatchProps {
   handleEnableImplicitActions: () => void;
+  handleArchiveAction: (action: WritebackAction) => void;
 }
 
 interface ActionsLoaderProps {
@@ -47,6 +48,8 @@ function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
   return {
     handleEnableImplicitActions: () =>
       dispatch(Actions.actions.enableImplicitActionsForModel(model.id())),
+    handleArchiveAction: (action: WritebackAction) =>
+      dispatch(Actions.objectActions.setArchived(action, true)),
   };
 }
 
@@ -54,6 +57,7 @@ function ModelActionDetails({
   model,
   actions,
   handleEnableImplicitActions,
+  handleArchiveAction,
 }: Props) {
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
@@ -78,17 +82,21 @@ function ModelActionDetails({
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
       const editorUrl = Urls.action(model.card() as Card, action.id);
+      const onArchive = canWrite
+        ? () => handleArchiveAction(action)
+        : undefined;
       return (
         <li key={action.id} aria-label={action.name}>
           <ModelActionListItem
             action={action}
             editorUrl={editorUrl}
             canWrite={canWrite}
+            onArchive={onArchive}
           />
         </li>
       );
     },
-    [model, canWrite],
+    [model, canWrite, handleArchiveAction],
   );
 
   const newActionUrl = Urls.newAction(model.card() as Card);

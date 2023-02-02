@@ -1,7 +1,14 @@
 import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
+
+export const ActionHeader = styled.div`
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+`;
 
 export const ActionTitle = styled.h4`
   font-size: 1rem;
@@ -25,6 +32,17 @@ export const ActionSubtitlePart = styled.span`
     margin-right: 6px;
   }
 `;
+
+export const MenuIcon = styled(Icon)`
+  color: ${color("text-dark")};
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
+MenuIcon.defaultProps = { size: 14 };
 
 export const Card = styled.div`
   display: block;
