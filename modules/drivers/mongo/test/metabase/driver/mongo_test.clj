@@ -2,6 +2,7 @@
   "Tests for Mongo driver."
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.db.metadata-queries :as metadata-queries]
@@ -438,8 +439,8 @@
                   (throw (ex-info (format "Error inserting row: %s" (ex-message e))
                                   {:database database-name, :collection collection-name, :details details, :row row}
                                   e)))))
-            (println (format "Inserted %d rows into %s collection %s."
-                             (count row-maps) (pr-str database-name) (pr-str collection-name))))
+            (log/infof "Inserted %d rows into %s collection %s."
+                       (count row-maps) (pr-str database-name) (pr-str collection-name)))
           ;; now sync the Database.
           (let [db (db/insert! Database {:name database-name, :engine "mongo", :details details})]
             (sync/sync-database! db)
