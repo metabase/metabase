@@ -31,8 +31,6 @@ import {
   HIDE_ADD_PARAMETER_POPOVER,
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
-  SAVE_DASHBOARD_AND_CARDS,
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
@@ -291,26 +289,6 @@ const parameterValues = handleActions(
   {},
 );
 
-const parameterValuesSearchCache = handleActions(
-  {
-    [INITIALIZE]: { next: () => ({}) },
-    [SAVE_DASHBOARD_AND_CARDS]: {
-      next: () => ({}),
-    },
-    [FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE]: {
-      next: (state, { payload }) =>
-        payload
-          ? assoc(state, payload.cacheKey, {
-              results: payload.results,
-              has_more_values: payload.has_more_values,
-            })
-          : state,
-    },
-    [RESET]: { next: state => ({}) },
-  },
-  {},
-);
-
 const loadingDashCards = handleActions(
   {
     [INITIALIZE]: {
@@ -433,6 +411,5 @@ export default combineReducers({
   loadingDashCards,
   isAddParameterPopoverOpen,
   sidebar,
-  parameterValuesSearchCache,
   missingActionParameters,
 });

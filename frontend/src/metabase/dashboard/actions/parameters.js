@@ -6,23 +6,13 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
   createParameter,
   setParameterName as setParamName,
-  getFilteringParameterValuesMap,
-  getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import { DashboardApi } from "metabase/services";
-
 import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
-import {
-  getDashboard,
-  getParameterValues,
-  getDashboardParameterValuesSearchCache,
-  getDashboardParameterValuesCache,
-  getParameters,
-} from "../selectors";
+import { getDashboard, getParameterValues, getParameters } from "../selectors";
 
 import { isVirtualDashCard } from "../utils";
 
@@ -272,58 +262,6 @@ export const showAddParameterPopover = createAction(SHOW_ADD_PARAMETER_POPOVER);
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
 export const hideAddParameterPopover = createAction(HIDE_ADD_PARAMETER_POPOVER);
-
-export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE =
-  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE";
-
-export const fetchDashboardParameterValuesWithCache = createThunkAction(
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
-  ({ dashboardId, parameter, parameters, query }) =>
-    async (dispatch, getState) => {
-      const parameterValuesSearchCache = getDashboardParameterValuesSearchCache(
-        getState(),
-      );
-      const filteringParameterValues = getFilteringParameterValuesMap(
-        parameter,
-        parameters,
-      );
-      const cacheKey = getParameterValuesSearchKey({
-        dashboardId,
-        parameterId: parameter.id,
-        query,
-        filteringParameterValues,
-      });
-
-      if (parameterValuesSearchCache[cacheKey]) {
-        return;
-      }
-
-      const endpoint = query
-        ? DashboardApi.parameterSearch
-        : DashboardApi.parameterValues;
-      const { values, has_more_values } = await endpoint({
-        paramId: parameter.id,
-        dashId: dashboardId,
-        query,
-        ...filteringParameterValues,
-      });
-
-      return {
-        cacheKey,
-        results: values.map(value => [].concat(value)),
-        has_more_values: query ? true : has_more_values,
-      };
-    },
-);
-
-export const fetchDashboardParameterValues =
-  args => async (dispatch, getState) => {
-    await dispatch(fetchDashboardParameterValuesWithCache(args));
-    const dashboardParameterValuesCache = getDashboardParameterValuesCache(
-      getState(),
-    );
-    return dashboardParameterValuesCache.get(args) || [];
-  };
 
 export const setOrUnsetParameterValues =
   parameterIdValuePairs => (dispatch, getState) => {
