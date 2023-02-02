@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
@@ -22,9 +23,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.util.honeysql-extensions :as hx])
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan.db :as db])
   (:import
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
