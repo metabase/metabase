@@ -66,14 +66,14 @@ explain-fn-fail!
                     (->> arities val :arities (map parse)))
         raw-arglists (map :raw-arglist parglists)
         schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
-        annotated-doc (str "Inputs: " (if single
-                                        (pr-str (first (mapv :raw-arglist parglists)))
-                                        (str "("
-                                             (str/join "\n           "
-                                                       (map (comp pr-str :raw-arglist) parglists))
-                                             ")"))
-                           "\n  Returns: " (pr-str (:schema return))
-                           (when (not-empty doc) (str "\n\n  " doc)))
+        annotated-doc (str/trim
+                       (str "Inputs: " (if single
+                                         (pr-str (first (mapv :raw-arglist parglists)))
+                                         (str "(" (str/join "\n           " (map (comp pr-str :raw-arglist) parglists)) ")"))
+                            "\n  Return: " (str/replace (u/pprint-to-str (:schema return))
+                                                        "\n"
+                                                        (str "\n          "))
+                            (when (not-empty doc) (str "\n\n  " doc))))
         id (str (gensym "id"))]
     `(let [defn# (core/defn
                    ~name

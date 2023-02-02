@@ -1,5 +1,6 @@
 (ns ^:mb/once metabase.util.malli-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
@@ -25,9 +26,44 @@
             (try (baz)
                  (catch Exception e (ex-data e)))))
         "when baz returns an invalid form um/defn throws")
+    (is (= "Inputs: []\n  Return: [:map [:x int?] [:y int?]]" (:doc (meta #'baz))))
     (ns-unmap *ns* 'baz)))
 
+(deftest mu-defn-docstrings
+  (testing "docstrings are preserved"
+    (mu/defn ^:private boo :- :int "something very important to remember goes here" [x])
+    (is (str/ends-with? (:doc (meta #'boo)) "something very important to remember goes here"))
+    (ns-unmap *ns* 'boo))
+
+  (testing "multi-arity, and varargs doc strings should work"
+    (mu/defn ^:private foo :- [:multi {:dispatch :type}
+                               [:sized [:map [:type [:= :sized]]
+                                        [:size int?]]]
+                               [:human [:map
+                                        [:type [:= :human]]
+                                        [:name string?]
+                                        [:address [:map [:street string?]]]]]]
+      ([] {:type :sized :size 3})
+      ([a :- :int] {:type :sized :size a})
+      ([a :- :int b :- :int] {:type :sized :size (+ a b)})
+      ([a b & c :- [:* :int]] {:type :human
+                               :name "Jim"
+                               :address {:street (str  (+ a b (apply + c)) " ln")}}))
+    (is (= (str/join "\n"
+                     [  "Inputs: ([]"
+                      "           [a :- :int]"
+                      "           [a :- :int b :- :int]"
+                      "           [a b & c :- [:* :int]])"
+                      "  Return: [:multi"
+                      "           {:dispatch :type}"
+                      "           [:sized [:map [:type [:= :sized]] [:size int?]]]"
+                      "           [:human [:map [:type [:= :human]] [:name string?] [:address [:map [:street string?]]]]]]"])
+           (:doc (meta #'foo))))
+    (is (true? (:private (meta #'foo)))))
+  (ns-unmap *ns* 'foo))
+
 (deftest with-api-error-message
+
   (let [less-than-four-fxn (fn [x] (< x 4))]
     (testing "outer schema"
       (let [special-lt-4-schema (mu/with-api-error-message
