@@ -6,7 +6,7 @@
    [clojure.tools.logging :as log]
    [metabase.models.collection :as collection]
    [metabase.util.cron :as u.cron]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [trs tru]]))
 
 (def table-metadata
@@ -64,7 +64,7 @@
                :channel.schedule_day
                :channel.schedule_frame
                [:creator.id :creator_id]
-               [(hx/concat :creator.first_name (hx/literal " ") :creator.last_name) :creator_name]
+               [(h2x/concat :creator.first_name (h2x/literal " ") :creator.last_name) :creator_name]
                [:channel.created_at :created_at]
                [:pulse.parameters :pulse_parameters]]
    :from      [[:pulse_channel :channel]]

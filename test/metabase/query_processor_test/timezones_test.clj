@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
    [java-time :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -121,8 +120,8 @@
                                   :from     [(table-identifier :users)]
                                   :where    [:between
                                              (field-identifier :users :last_login)
-                                             (hsql/raw "{{date1}}")
-                                             (hsql/raw "{{date2}}")]
+                                             (hx/raw "{{date1}}")
+                                             (hx/raw "{{date2}}")]
                                   :order-by [[(field-identifier :users :id) :asc]]})
                  :template-tags {:date1 {:name "date1" :display_name "Date1" :type "date"}
                                  :date2 {:name "date2" :display_name "Date2" :type "date"}}}
@@ -138,7 +137,7 @@
                                  {:select   (mapv (partial field-identifier :users)
                                                   [:id :name :last_login])
                                   :from     [(table-identifier :users)]
-                                  :where    (hsql/raw "{{ts_range}}")
+                                  :where    (hx/raw "{{ts_range}}")
                                   :order-by [[(field-identifier :users :id) :asc]]})
                  :template-tags {:ts_range {:name         "ts_range"
                                             :display_name "Timestamp Range"
@@ -154,7 +153,7 @@
                                  {:select   (mapv (partial field-identifier :users)
                                                   [:id :name :last_login])
                                   :from     [(table-identifier :users)]
-                                  :where    (hsql/raw "{{just_a_date}}")
+                                  :where    (hx/raw "{{just_a_date}}")
                                   :order-by [[(field-identifier :users :id) :asc]]})
                  :template-tags {:just_a_date {:name         "just_a_date"
                                                :display_name "Just A Date"

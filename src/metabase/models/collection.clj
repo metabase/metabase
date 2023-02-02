@@ -8,7 +8,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase.api.common
     :as api
@@ -612,7 +611,7 @@
       ;; we need to update all the descendant collections as well...
       (db/execute!
        {:update :collection
-        :set    {:location (hsql/call :replace :location orig-children-location new-children-location)}
+        :set    {:location (hx/call :replace :location orig-children-location new-children-location)}
         :where  [:like :location (str orig-children-location "%")]}))))
 
 (s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
