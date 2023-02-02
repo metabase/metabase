@@ -48,7 +48,9 @@
 (defn- coll-query
   "Generate a query to return collections viewable by the current user.
   If provided, additional and clauses will be added to the final where clause.
-  Note that and clauses should be aliased as c (for collection)."
+  Note that and clauses should be aliased as c (for collection). Note also that
+  MySQL 5.7 does not support CTEs so this was all inlined. A much more readable
+  solution existed with CTEs, but we needed to inline for backwards compatibility."
   [owner-id & and-clauses]
   {:select    [:c.*]
    :from      [[:collection :c]]
