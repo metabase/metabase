@@ -737,8 +737,8 @@
           (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
             (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                           :query          (s/eq (mt/obj->json->obj query))
-                          :required-perms [perms/Path]
-                          :actual-perms   [perms/Path]
+                          :required-perms [perms/PathSchema]
+                          :actual-perms   [perms/PathSchema]
                           :trace          [s/Any]
                           s/Keyword       s/Any}
                          (create-card! :rasta 403)))))))))
@@ -1264,8 +1264,8 @@
               (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
                 (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                               :query          (s/eq (mt/obj->json->obj (mt/mbql-query users)))
-                              :required-perms [perms/Path]
-                              :actual-perms   [perms/Path]
+                              :required-perms [perms/PathSchema]
+                              :actual-perms   [perms/PathSchema]
                               :trace          [s/Any]
                               s/Keyword       s/Any}
                              (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
