@@ -73,12 +73,12 @@
   background-color: color-mod(var(--color-bg-black) alpha(-40%));
 }
 
-.Modal-backdrop.Modal-leave {
+.Modal-backdrop.Modal-exit {
   transition: background-color 200ms ease-in-out 100ms;
   background-color: color-mod(var(--color-bg-black) alpha(-40%));
 }
 
-.Modal-backdrop.Modal-leave-active {
+.Modal-backdrop.Modal-exit-active {
   background-color: color-mod(var(--color-bg-black) alpha(-99%));
 }
 
@@ -97,13 +97,13 @@
   transform: translate(0, 0);
 }
 
-.Modal-backdrop.Modal-leave .Modal {
+.Modal-backdrop.Modal-exit .Modal {
   transition: opacity 200ms linear, transform 200ms ease-in-out;
   opacity: 1;
   transform: translate(0, 0);
 }
 
-.Modal-backdrop.Modal-leave-active .Modal {
+.Modal-backdrop.Modal-exit-active .Modal {
   opacity: 0.01;
   transform: translate(0, -40px);
 }
@@ -111,10 +111,10 @@
 @media (prefers-reduced-motion) {
   .Modal-backdrop.Modal-appear,
   .Modal-backdrop.Modal-enter,
-  .Modal-backdrop.Modal-leave,
+  .Modal-backdrop.Modal-exit,
   .Modal-backdrop.Modal-appear .Modal,
   .Modal-backdrop.Modal-enter .Modal,
-  .Modal-backdrop.Modal-leave .Modal {
+  .Modal-backdrop.Modal-exit .Modal {
     transition: none;
   }
 }
