@@ -42,7 +42,8 @@
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
   (let [bean-id   (.getCanonicalName jmx-bean)
-        props     [:numConnections :numIdleConnections :numBusyConnections :minPoolSize :maxPoolSize]]
+        props     [:numConnections :numIdleConnections :numBusyConnections
+                   :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
       (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props))))
 
 (defn connection-pool-info
