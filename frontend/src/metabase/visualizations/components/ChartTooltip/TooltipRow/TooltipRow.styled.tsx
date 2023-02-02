@@ -27,6 +27,10 @@ export const Cell = styled.td`
   vertical-align: middle;
   padding: 0.375rem 0.5rem;
   font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
 
   & + & {
     padding-left: 0.5rem;
@@ -45,6 +49,15 @@ export const Cell = styled.td`
   &:last-of-type {
     border-bottom-right-radius: 4px;
     border-top-right-radius: 4px;
+  }
+`;
+
+export const ColorIndicatorCell = styled(Cell)`
+  width: 1%;
+  text-align: center;
+
+  && {
+    padding-right: 0.25rem;
   }
 `;
 

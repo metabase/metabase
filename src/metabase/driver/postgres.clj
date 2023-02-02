@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [clojure.walk :as walk]
-   [honeysql.core :as hsql]
    [honeysql.format :as hformat]
    [java-time :as t]
    [metabase.db.spec :as mdb.spec]
@@ -95,9 +94,7 @@
     (recur driver hsql-form (* 3 amount) :month)
     (let [hsql-form (->timestamp hsql-form)]
       (-> (hx/+ hsql-form (let [s (format "(INTERVAL '%s %s')" amount (name unit))]
-                            (case hx/*honey-sql-version*
-                              1 (hsql/raw s)
-                              2 [:raw s])))
+                            (hx/raw s)))
           (hx/with-type-info (hx/type-info hsql-form))))))
 
 (defmethod driver/humanize-connection-error-message :postgres
@@ -247,19 +244,19 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
-  (hsql/call :to_timestamp expr))
+  (hx/call :to_timestamp expr))
 
 (defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  (hsql/call :to_timestamp expr (hx/literal "YYYYMMDDHH24MISS")))
+  (hx/call :to_timestamp expr (hx/literal "YYYYMMDDHH24MISS")))
 
 (defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
-                               (hsql/call :convert_from expr (hx/literal "UTF8"))))
+                               (hx/call :convert_from expr (hx/literal "UTF8"))))
 
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (->timestamp expr)))
-(defn- extract    [unit expr] (hsql/call :extract    unit              (->timestamp expr)))
+(defn- date-trunc [unit expr] (hx/call :date_trunc (hx/literal unit) (->timestamp expr)))
+(defn- extract    [unit expr] (hx/call :extract    unit              (->timestamp expr)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
@@ -307,9 +304,9 @@
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
         expr         (cond->> expr
                        (not timestamptz?)
-                       (hsql/call :timezone source-timezone)
+                       (hx/call :timezone source-timezone)
                        :always
-                       (hsql/call :timezone target-timezone))]
+                       (hx/call :timezone target-timezone))]
     (hx/with-database-type-info expr "timestamp")))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
@@ -331,8 +328,8 @@
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]
-  (let [interval (hsql/call :age (date-trunc :day y) (date-trunc :day x))]
-    (hx/->integer (hsql/call :extract :year interval))))
+  (let [interval (hx/call :age (date-trunc :day y) (date-trunc :day x))]
+    (hx/->integer (hx/call :extract :year interval))))
 
 (defmethod sql.qp/datetime-diff [:postgres :quarter]
   [driver _unit x y]
@@ -340,9 +337,9 @@
 
 (defmethod sql.qp/datetime-diff [:postgres :month]
   [_driver _unit x y]
-  (let [interval           (hsql/call :age (date-trunc :day y) (date-trunc :day x))
-        year-diff          (hsql/call :extract :year interval)
-        month-of-year-diff (hsql/call :extract :month interval)]
+  (let [interval           (hx/call :age (date-trunc :day y) (date-trunc :day x))
+        year-diff          (hx/call :extract :year interval)
+        month-of-year-diff (hx/call :extract :month interval)]
     (hx/->integer (hx/+ month-of-year-diff (hx/* year-diff 12)))))
 
 (defmethod sql.qp/datetime-diff [:postgres :week]
@@ -352,7 +349,7 @@
 (defmethod sql.qp/datetime-diff [:postgres :day]
   [_driver _unit x y]
   (let [interval (hx/- (date-trunc :day y) (date-trunc :day x))]
-    (hx/->integer (hsql/call :extract :day interval))))
+    (hx/->integer (hx/call :extract :day interval))))
 
 (defmethod sql.qp/datetime-diff [:postgres :hour]
   [driver _unit x y]
@@ -365,7 +362,7 @@
 (defmethod sql.qp/datetime-diff [:postgres :second]
   [_driver _unit x y]
   (let [seconds (hx/- (extract :epoch y) (extract :epoch x))]
-    (hx/->integer (hsql/call :trunc seconds))))
+    (hx/->integer (hx/call :trunc seconds))))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
   hformat/ToSql
