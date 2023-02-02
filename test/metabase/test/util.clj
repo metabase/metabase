@@ -6,7 +6,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
@@ -306,7 +305,7 @@
    model-var
    ::reload
    (fn [_key _reference _old-state _new-state]
-     (log/infof "%s changed, reloading with-temp-defaults" model-var)
+     (println (format "%s changed, reloading with-temp-defaults" model-var))
      (set-with-temp-defaults!))))
 
 

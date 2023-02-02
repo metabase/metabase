@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [java-time :as t]
    [metabase.config :as config]
@@ -352,10 +351,10 @@
       (testing "MySQL with SSL connectivity using PEM certificate"
         (mt/with-env-keys-renamed-by #(str/replace-first % "mb-mysql-ssl-test" "mb-mysql-test")
           (string-extracts-test/test-breakout)))
-      (log/info (u/format-color 'yellow
-                                "Skipping %s because %s env var is not set"
-                                "mysql-connect-with-ssl-and-pem-cert-test"
-                                "MB_MYSQL_SSL_TEST_SSL_CERT")))))
+      (println (u/format-color 'yellow
+                               "Skipping %s because %s env var is not set"
+                               "mysql-connect-with-ssl-and-pem-cert-test"
+                               "MB_MYSQL_SSL_TEST_SSL_CERT")))))
 
 ;; MariaDB doesn't have support for explicit JSON columns, it does it in a more SQL Server-ish way
 ;; where LONGTEXT columns are the actual JSON columns and there's JSON functions that just work on them,

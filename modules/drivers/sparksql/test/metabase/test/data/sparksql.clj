@@ -1,7 +1,6 @@
 (ns metabase.test.data.sparksql
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [metabase.config :as config]
@@ -75,7 +74,7 @@
         (doseq [sql+args statements]
           (jdbc/execute! {:connection conn} sql+args {:transaction? false}))
         (catch java.sql.SQLException e
-          (log/infof "Error inserting data: %s" (u/pprint-to-str 'red statements))
+          (println "Error inserting data:" (u/pprint-to-str 'red statements))
           (jdbc/print-sql-exception-chain e)
           (throw e))))))
 

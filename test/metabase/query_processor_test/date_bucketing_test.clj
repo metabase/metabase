@@ -17,7 +17,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -944,7 +943,7 @@
     ;; TODO - perhaps this should be rolled into `mt/dataset` itself -- it seems like a useful feature?
     (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
       (binding [*recreate-db-if-stale?* false]
-        (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
+        (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
         (db/delete! Database :id (mt/id))
         (apply count-of-grouping dataset field-grouping relative-datetime-args))
       (let [results (mt/run-mbql-query checkins

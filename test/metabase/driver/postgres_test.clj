@@ -5,7 +5,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -277,7 +276,7 @@
                 ;; all three of these tables should appear in the metadata (including, importantly, the "main" table)
                 (is (= {:tables (set (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"]))}
                        (driver/describe-database :postgres database)))))
-            (log/warn
+            (println
              (u/format-color
               'yellow
               "Skipping partitioned-table-test; Postgres major version %d doesn't support PARTITION BY" major-v))))))))
@@ -932,10 +931,10 @@
       (testing "We should be able to connect to a Postgres instance, providing our own root CA via a secret property"
         (mt/with-env-keys-renamed-by #(str/replace-first % "mb-postgres-ssl-test" "mb-postgres-test")
           (id-field-parameter-test)))
-      (log/warn (u/format-color 'yellow
-                                "Skipping %s because %s env var is not set"
-                                "postgres-ssl-connectivity-test"
-                                "MB_POSTGRES_SSL_TEST_SSL")))))
+      (println (u/format-color 'yellow
+                               "Skipping %s because %s env var is not set"
+                               "postgres-ssl-connectivity-test"
+                               "MB_POSTGRES_SSL_TEST_SSL")))))
 
 (def ^:private dummy-pem-contents
   (str "-----BEGIN CERTIFICATE-----\n"

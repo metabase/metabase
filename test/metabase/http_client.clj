@@ -123,7 +123,7 @@
       (or (:id response)
           (throw (ex-info "Unexpected response" {:response response}))))
     (catch Throwable e
-      (log/errorf "Failed to authenticate with credentials %s %s" credentials e)
+      (println "Failed to authenticate with credentials" credentials e)
       (throw (ex-info "Failed to authenticate with credentials"
                       {:credentials credentials}
                       e)))))

@@ -12,20 +12,20 @@
    (try
      (#'handler/app request)
      (catch Throwable e
-       (log/errorf "ERROR HANDLING REQUEST! <sync> %s" request)
-       (log/error e)
+       (println "ERROR HANDLING REQUEST! <sync>" request)
+       (println e)
        (throw e))))
 
   ([request respond raise]
    (letfn [(raise' [e]
-             (log/errorf "ERROR HANDLING REQUEST! <async raise> %s" request)
-             (log/error e)
+             (println "ERROR HANDLING REQUEST! <async raise>" request)
+             (println e)
              (raise e))]
      (try
        (#'handler/app request respond raise')
        (catch Throwable e
-         (log/errorf "ERROR HANDLING REQUEST! <async thrown> %s" request)
-         (log/error e)
+         (println "ERROR HANDLING REQUEST! <async thrown>" request)
+         (println e)
          (throw e))))))
 
 (defn init! []

@@ -6,7 +6,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [hawk.init]
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
@@ -300,7 +299,7 @@
 
   ([format-fns format-nil-values? response]
    (when (= (:status response) :failed)
-     (log/warnf "Error running query: %s" (u/pprint-to-str 'red response))
+     (println "Error running query:" (u/pprint-to-str 'red response))
      (throw (ex-info (:error response) response)))
 
    (let [format-fns (map format-rows-fn (format-rows-fns format-fns))]

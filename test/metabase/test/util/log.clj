@@ -92,7 +92,6 @@
                          (.getFilter parent-logger))]
       (.addLogger (configuration) (logger-name a-namespace) new-logger)
       (.updateLoggers (logger-context))
-      #_{:clj-kondo/ignore [:discouraged-var]}
       (println "Created a new logger for" (logger-name a-namespace)))))
 
 (s/defn set-ns-log-level!

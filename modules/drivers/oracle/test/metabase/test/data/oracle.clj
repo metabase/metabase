@@ -2,7 +2,6 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [honeysql.format :as hformat]
             [medley.core :as m]
             [metabase.db :as mdb]
@@ -129,14 +128,14 @@
           (let [existing-db-id (u/the-id existing-db)
                 all-schemas    (db/select-field :schema Table :db_id existing-db-id)]
             (when-not (= all-schemas #{session-schema})
-              (log/warn (u/format-color 'yellow
-                                        (str "[oracle] At least one table's schema for the existing '%s' Database"
+              (println (u/format-color 'yellow
+                                       (str "[oracle] At least one table's schema for the existing '%s' Database"
                                             " (id %d), which include all of [%s], does not match current session-schema"
                                             " of %s; deleting this DB so it can be recreated")
-                                        database-name
-                                        existing-db-id
-                                        (str/join "," all-schemas)
-                                        session-schema))
+                                       database-name
+                                       existing-db-id
+                                       (str/join "," all-schemas)
+                                       session-schema))
               (db/delete! Database :id existing-db-id))))
         (swap! oracle-test-dbs-created-by-this-instance conj database-name)))))
 
@@ -216,9 +215,9 @@
 ;; TL;DR Oracle schema == Oracle user. Create new user for session-schema
 (defn- execute! [format-string & args]
   (let [sql (apply format format-string args)]
-    (log/info (u/format-color 'blue "[oracle] %s" sql))
+    (println (u/format-color 'blue "[oracle] %s" sql))
     (jdbc/execute! (dbspec) sql))
-  (log/info (u/format-color 'blue "[ok]")))
+  (println (u/format-color 'blue "[ok]")))
 
 (defn create-user!
   ;; default to using session-password for all users created this session

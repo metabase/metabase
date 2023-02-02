@@ -1,6 +1,5 @@
 (ns metabase.test.data.redshift
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.test.data.interface :as tx]
@@ -77,9 +76,9 @@
 (defn execute! [format-string & args]
   (let [sql  (apply format format-string args)
         spec (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
-    (log/info (u/format-color 'blue "[redshift] %s" sql))
+    (println (u/format-color 'blue "[redshift] %s" sql))
     (jdbc/execute! spec sql))
-  (log/info (u/format-color 'blue "[ok]")))
+  (println (u/format-color 'blue "[ok]")))
 
 (defmethod tx/before-run :redshift
   [_]
