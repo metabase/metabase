@@ -79,7 +79,7 @@ describe("scenarios > models > actions", () => {
     cy.intercept("PUT", "/api/action/*").as("updateAction");
   });
 
-  it("should allow to view, create and edit model actions", () => {
+  it("should allow to view, create, edit, and archive model actions", () => {
     cy.get("@modelId").then(id => {
       cy.visit(`/model/${id}/detail`);
       cy.wait("@getModel");
@@ -119,6 +119,16 @@ describe("scenarios > models > actions", () => {
         "DELETE FROM orders WHERE id = {{ id }} AND status = 'pending'",
       )
       .should("be.visible");
+
+    openActionMenuFor("Delete Order");
+    popover().findByText("Archive").click();
+
+    modal().within(() => {
+      cy.findByText("Archive Delete Order?").should("be.visible");
+      cy.findByRole("button", { name: "Archive" }).click();
+    });
+
+    cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
   });
 
   it("should allow to make actions public and execute them", () => {
@@ -226,6 +236,12 @@ function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
   cy.findByRole("listitem", { name: actionName }).within(() => {
     const icon = isReadOnly ? "eye" : "pencil";
     cy.icon(icon).click();
+  });
+}
+
+function openActionMenuFor(actionName) {
+  cy.findByRole("listitem", { name: actionName }).within(() => {
+    cy.icon("ellipsis").click();
   });
 }
 
