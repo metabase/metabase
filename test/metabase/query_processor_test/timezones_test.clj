@@ -288,7 +288,7 @@
             (is (= expected result-row)))))))))
 
 (deftest filter-datetime-by-date-in-timezone-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :set-timezone)
+  (mt/test-drivers (set-timezone-drivers)
     (mt/dataset test-data-with-timezones
       (doseq [[timezone date-filter] [["US/Pacific" "2014-07-02"]
                                       ["US/Eastern" "2014-07-02"]
