@@ -289,18 +289,18 @@
 
 (deftest filter-datetime-by-date-in-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :set-timezone)
-    (mt/dataset attempted-murders
-      (doseq [[timezone date-filter] [["US/Pacific" "2019-11-15"]
-                                      ["US/Eastern" "2019-11-15"]
-                                      ["UTC" "2019-11-16"]
-                                      ["Asia/Hong_Kong" "2019-11-16"]]
-              :let [expected (-> (u.date/with-time-zone-same-instant #t "2019-11-16T00:07:25.292Z" timezone)
+    (mt/dataset test-data-with-timezones
+      (doseq [[timezone date-filter] [["US/Pacific" "2014-07-02"]
+                                      ["US/Eastern" "2014-07-02"]
+                                      ["UTC" "2014-07-03"]
+                                      ["Asia/Hong_Kong" "2014-07-03"]]
+              :let [expected (-> (u.date/with-time-zone-same-instant #t "2014-07-03T01:30:00Z" timezone)
                                  (u.date/format-sql)
                                  (str/replace #" " "T"))]]
         (mt/with-temporary-setting-values [report-timezone timezone]
           (is (= [expected]
                  (mt/first-row
-                   (mt/run-mbql-query attempts
-                                      {:fields [$datetime_tz]
-                                       :filter [:and [:= $id 15]
-                                                [:= $datetime_tz date-filter]]})))))))))
+                   (mt/run-mbql-query users
+                                      {:fields [$last_login]
+                                       :filter [:and [:= $id 12]
+                                                [:= $last_login date-filter]]})))))))))
