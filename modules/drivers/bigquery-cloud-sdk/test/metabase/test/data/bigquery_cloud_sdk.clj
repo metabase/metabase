@@ -234,8 +234,7 @@
 
           (> seconds-to-wait-for-load 0)
           (do (Thread/sleep 1000)
-              (print ".")
-              (flush)
+              (log/info ".")
               (recur (dec seconds-to-wait-for-load)))
 
           :else
