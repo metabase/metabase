@@ -6,7 +6,7 @@
   "repository": "https://github.com/metabase/metabase",
   "license": "private",
   "engines": {
-    "node": ">=14.2",
+    "node": ">=16",
     "yarn": ">=1.12.3"
   },
   "dependencies": {
@@ -256,7 +256,6 @@
     "webpack-dev-server": "4.11.1",
     "webpack-notifier": "1.15.0",
     "xlsx": "0.18.3",
-    "xmlhttprequest": "^1.8.0",
     "yaml-lint": "~1.6.0"
   },
   "resolutions": {
