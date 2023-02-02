@@ -15,21 +15,23 @@ import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormInput from "metabase/core/components/FormInput";
+import FormSelect from "metabase/core/components/FormSelect";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import { ConnectedActionVizSettings } from "metabase/actions/components/ActionViz/ActionVizSettings";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import { addActionToDashboard, closeSidebar } from "metabase/dashboard/actions";
 
-import FormSelect from "metabase/core/components/FormSelect";
+import { ConnectedActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
 import ActionViz from "metabase/actions/components/ActionViz";
+
+import { addActionToDashboard, closeSidebar } from "metabase/dashboard/actions";
+import { isActionDashCard } from "metabase/actions/utils";
 
 import {
   Heading,
   SidebarBody,
   SidebarHeader,
   SidebarFooter,
-} from "./AddActionSidebar.styled";
+} from "./ActionSidebar.styled";
 
 const buttonVariantOptions = ActionViz.settings["button.variant"].props.options;
 
@@ -40,18 +42,30 @@ const mapDispatchToProps = {
 
 interface ActionSidebarProps {
   dashboard: Dashboard;
-  dashcard: ActionDashboardCard;
+  dashcardId: number;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   onClose: () => void;
 }
 
-function AddActionSidebarFn({
+function ActionSidebarFn({
   dashboard,
-  dashcard,
+  dashcardId,
   onUpdateVisualizationSettings,
   onClose,
 }: ActionSidebarProps) {
-  const actionVizSettingsModalRef = useRef<any>(null);
+  const actionSettingsModalRef = useRef<any>(null);
+
+  const dashcard = useMemo(
+    () =>
+      dashboard.ordered_cards.find(
+        dc => dc?.id === dashcardId && isActionDashCard(dc),
+      ) as ActionDashboardCard | undefined,
+    [dashboard.ordered_cards, dashcardId],
+  );
+
+  if (!dashcard) {
+    return null;
+  }
 
   return (
     <Sidebar>
@@ -82,7 +96,7 @@ function AddActionSidebarFn({
               }
             />
             <FormSelect
-              title={t`Variant`}
+              title={t`Button variant`}
               name="variant"
               options={buttonVariantOptions}
               onChange={e =>
@@ -95,7 +109,7 @@ function AddActionSidebarFn({
         </FormProvider>
 
         <ModalWithTrigger
-          ref={actionVizSettingsModalRef}
+          ref={actionSettingsModalRef}
           fit
           enableMouseEvents
           triggerElement={
@@ -104,11 +118,11 @@ function AddActionSidebarFn({
             </Button>
           }
         >
-          <ConnectedActionVizSettings
+          <ConnectedActionDashcardSettings
             dashboard={dashboard}
             dashcard={dashcard as ActionDashboardCard}
             onClose={() => {
-              actionVizSettingsModalRef.current?.close();
+              actionSettingsModalRef.current?.close();
             }}
           />
         </ModalWithTrigger>
@@ -122,7 +136,7 @@ function AddActionSidebarFn({
   );
 }
 
-export const AddActionSidebar = _.compose(
+export const ActionSidebar = _.compose(
   Search.loadList({
     query: () => ({
       models: ["dataset"],
@@ -131,4 +145,4 @@ export const AddActionSidebar = _.compose(
     listName: "models",
   }),
   connect(null, mapDispatchToProps),
-)(AddActionSidebarFn);
+)(ActionSidebarFn);

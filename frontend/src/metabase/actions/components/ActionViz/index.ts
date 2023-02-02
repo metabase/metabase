@@ -1,2 +1,2 @@
 export { default } from "./ActionViz";
-export { ActionVizSettings } from "./ActionVizSettings";
+export { ActionDashcardSettings } from "./ActionDashcardSettings";

@@ -3,14 +3,7 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import { useToggle } from "metabase/hooks/use-toggle";
-
-import Icon from "metabase/components/Icon";
 import Select from "metabase/core/components/Select";
-import Button from "metabase/core/components/Button";
-
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import Actions from "metabase/entities/actions";
 import Questions from "metabase/entities/questions";
@@ -33,12 +26,10 @@ import EmptyState from "metabase/components/EmptyState";
 import type Question from "metabase-lib/Question";
 
 import {
-  ActionParameterTriggerContainer,
   ParameterMapperContainer,
   ParameterFormSection,
   ParameterFormLabel,
-  ParameterMapperTitleContainer,
-} from "./ActionOptions.styled";
+} from "./ActionParameterMapper.styled";
 
 interface ActionParameterMapperProps {
   dashcard: ActionDashboardCard;
@@ -68,84 +59,6 @@ const mapDispatchToProps = {
   setParameterMapping,
 };
 
-export const ActionParameterOptions = ({
-  dashcard,
-  dashboard,
-  action,
-}: ActionParameterMapperProps) => {
-  const [
-    isActionCreatorOpen,
-    { toggle: toggleIsActionCreatorVisible, turnOff: hideActionCreator },
-  ] = useToggle();
-  const actionParameters = dashcard?.action?.parameters ?? [];
-  const dashboardParameters = dashboard.parameters ?? [];
-
-  const canEditAction = dashcard.action?.type !== "implicit";
-  const hasParameters = actionParameters.length && dashboardParameters.length;
-
-  if (!hasParameters && !canEditAction) {
-    return null;
-  }
-
-  if (!hasParameters) {
-    return (
-      <>
-        <ActionParameterTriggerContainer onClick={toggleIsActionCreatorVisible}>
-          <Icon name="pencil" size={11} tooltip={t`Edit action`} />
-        </ActionParameterTriggerContainer>
-        {isActionCreatorOpen && (
-          <ActionCreator
-            modelId={dashcard.card?.id}
-            databaseId={dashcard.card?.database_id}
-            actionId={dashcard?.action?.id}
-            onClose={hideActionCreator}
-          />
-        )}
-      </>
-    );
-  }
-
-  return (
-    <>
-      {isActionCreatorOpen && (
-        <ActionCreator
-          modelId={dashcard.card?.id}
-          databaseId={dashcard.card?.database_id}
-          actionId={dashcard?.action?.id}
-          onClose={hideActionCreator}
-        />
-      )}
-      <TippyPopoverWithTrigger
-        isInitiallyVisible={dashcard.justAdded}
-        placement="right"
-        renderTrigger={({ onClick, visible }) => (
-          <ActionParameterTriggerContainer onClick={onClick}>
-            <Icon
-              name="bolt"
-              size={14}
-              tooltip={t`Assign action parameter values`}
-            />
-          </ActionParameterTriggerContainer>
-        )}
-        popoverContent={({ closePopover }) => (
-          <ConnectedActionParameterMappingForm
-            dashcard={dashcard}
-            dashboard={dashboard}
-            showEditModal={
-              canEditAction
-                ? () => {
-                    toggleIsActionCreatorVisible();
-                    closePopover();
-                  }
-                : undefined
-            }
-          />
-        )}
-      />
-    </>
-  );
-};
-
 const getTargetKey = (param: WritebackParameter | ActionParametersMapping) =>
   JSON.stringify(param.target);
 
@@ -154,17 +67,10 @@ export const ActionParameterMappingForm = ({
   dashboard,
   action: passedAction,
   setParameterMapping,
-  showEditModal,
-}: ActionParameterMapperProps &
-  DispatchProps & { showEditModal?: () => void }) => {
+}: ActionParameterMapperProps & DispatchProps) => {
   const action = passedAction ?? dashcard?.action;
   const actionParameters = action?.parameters ?? [];
   const dashboardParameters = dashboard.parameters ?? [];
-
-  const actionName = useMemo(
-    () => action?.name ?? action?.id ?? t`Action`,
-    [action],
-  );
 
   const currentMappings = Object.fromEntries(
     dashcard.parameter_mappings?.map(mapping => [

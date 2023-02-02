@@ -5,7 +5,6 @@ import { t } from "ttag";
 import type {
   ActionDashboardCard,
   Dashboard,
-  VisualizationSettings,
   WritebackAction,
 } from "metabase-types/api";
 
@@ -14,7 +13,7 @@ import Button from "metabase/core/components/Button";
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import EmptyState from "metabase/components/EmptyState";
-import { ConnectedActionParameterMappingForm } from "./ActionOptions";
+import { ConnectedActionParameterMappingForm } from "./ActionParameterMapper";
 
 import {
   ActionSettingsWrapper,
@@ -23,7 +22,7 @@ import {
   ActionSettingsLeft,
   ActionSettingsRight,
   ModalActions,
-} from "./ActionVizSettings.styled";
+} from "./ActionDashcardSettings.styled";
 
 const mapDispatchToProps = {
   setActionForDashcard,
@@ -39,7 +38,7 @@ interface Props {
   ) => void;
 }
 
-export function ActionVizSettings({
+export function ActionDashcardSettings({
   dashboard,
   dashcard,
   onClose,
@@ -87,7 +86,7 @@ const EmptyActionState = () => (
   <EmptyState className="p3" message={t`Select an action to get started`} />
 );
 
-export const ConnectedActionVizSettings = connect(
+export const ConnectedActionDashcardSettings = connect(
   null,
   mapDispatchToProps,
-)(ActionVizSettings);
+)(ActionDashcardSettings);

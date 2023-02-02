@@ -148,7 +148,7 @@ export const setEditingDashcardId =
     if (dashcardId != null) {
       dispatch(
         setSidebar({
-          name: SIDEBAR_NAME.addActionButton,
+          name: SIDEBAR_NAME.action,
           props: {
             dashcardId,
           },

@@ -23,7 +23,6 @@ import {
   setNumericValues,
 } from "./utils";
 import ActionVizForm from "./ActionVizForm";
-import { ActionParameterOptions } from "./ActionOptions";
 import { StyledButton } from "./ActionButton.styled";
 
 export interface ActionProps extends VisualizationProps {
@@ -38,7 +37,6 @@ export function ActionComponent({
   dashboard,
   dispatch,
   isSettings,
-  isEditing,
   settings,
   parameterValues,
 }: ActionProps) {
@@ -91,8 +89,6 @@ export function ActionComponent({
     },
     [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
   );
-
-  const showParameterMapper = isEditing && !isSettings;
 
   return (
     <ActionVizForm
