@@ -22,9 +22,9 @@ import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
 import {
   fetchParameterValues,
-  fetchQuestionParameterValues,
+  fetchCardParameterValues,
+  fetchDashboardParameterValues,
 } from "metabase/parameters/actions";
-import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
 
 import Fields from "metabase/entities/fields";
 import {
@@ -54,7 +54,7 @@ const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues,
   fetchParameterValues,
-  fetchQuestionParameterValues,
+  fetchCardParameterValues,
   fetchDashboardParameterValues,
 };
 
@@ -139,20 +139,21 @@ class FieldValuesWidgetInner extends Component {
     let valuesMode = this.state.valuesMode;
     try {
       if (canUseDashboardEndpoints(this.props.dashboard)) {
-        const { results, has_more_values } =
+        const { values, has_more_values } =
           await this.fetchDashboardParameterValues(query);
-        options = results;
+        options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
-      } else if (canUseQuestionEndpoints(this.props.question)) {
-        const { results, has_more_values } =
-          await this.fetchQuestionParameterValues(query);
-        options = results;
-        valuesMode = has_more_values ? "search" : valuesMode;
-      } else if (canUseParameterEndpoints(this.props.parameter)) {
-        const { results, has_more_values } = await this.fetchParameterValues(
+      } else if (canUseCardEndpoints(this.props.question)) {
+        const { values, has_more_values } = await this.fetchCardParameterValues(
           query,
         );
-        options = results;
+        options = values;
+        valuesMode = has_more_values ? "search" : valuesMode;
+      } else if (canUseParameterEndpoints(this.props.parameter)) {
+        const { values, has_more_values } = await this.fetchParameterValues(
+          query,
+        );
+        options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else {
         options = await this.fetchFieldValues(query);
@@ -217,11 +218,11 @@ class FieldValuesWidgetInner extends Component {
     });
   };
 
-  fetchQuestionParameterValues = async query => {
+  fetchCardParameterValues = async query => {
     const { question, parameter } = this.props;
 
-    return this.props.fetchQuestionParameterValues({
-      question,
+    return this.props.fetchCardParameterValues({
+      cardId: question.id(),
       parameter,
       query,
     });
@@ -492,7 +493,7 @@ function canUseParameterEndpoints(parameter) {
   return parameter != null;
 }
 
-function canUseQuestionEndpoints(question) {
+function canUseCardEndpoints(question) {
   return question?.isSaved();
 }
 
