@@ -1,6 +1,4 @@
 import {
-  Dataset,
-  FieldValue,
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -117,20 +115,4 @@ export const canSearchFieldValues = (
   );
 
   return hasFields && canSearch && hasFieldValues;
-};
-
-const getUniqueNonNullValues = (values: unknown[]) => {
-  return Array.from(new Set(values))
-    .filter(value => value != null)
-    .map(value => String(value));
-};
-
-export const getFieldSourceValues = (fieldsValues: FieldValue[][]) => {
-  const allValues = fieldsValues.flatMap(values => values.map(([key]) => key));
-  return getUniqueNonNullValues(allValues);
-};
-
-export const getCardSourceValues = (dataset: Dataset) => {
-  const allValues = dataset.data.rows.map(([value]) => value);
-  return getUniqueNonNullValues(allValues);
 };
