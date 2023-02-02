@@ -101,6 +101,18 @@
                     (map :name)
                     sort)))))
 
+    (testing "You should only see your collection and public collections"
+      (mt/with-temp Collection [collection]
+        (let [public-collections #{"Our analytics" (:name collection)}
+              crowbertos (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
+              luckys (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
+          (is (= (conj public-collections "Crowberto Corv's Personal Collection")
+                 crowbertos))
+          (is (false? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
+          (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
+                 luckys))
+          (is (false? (contains? luckys "Crowberto Corv's Personal Collection"))))))
+
     (testing "Personal Collection's name and slug should be returned in user's locale"
       (with-french-user-and-personal-collection user _collection
         (is (= [{:name "Collection personnelle de Taco Bell"
