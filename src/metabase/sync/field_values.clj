@@ -96,7 +96,14 @@
 (s/defn ^:private delete-expired-advanced-field-values-for-database!
   [_database :- i/DatabaseInstance
    tables :- [i/TableInstance]]
-  {:deleted (apply + (map delete-expired-advanced-field-values-for-table! tables))})
+  {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
+                             (map (fn [result]
+                                    (if (instance? Throwable result)
+                                      (throw result)
+                                      result))))
+                       +
+                       0
+                       tables)})
 
 (defn- make-sync-field-values-steps
   [tables]
@@ -109,7 +116,7 @@
 
 (s/defn update-field-values!
   "Update the advanced FieldValues (distinct values for categories and certain other fields that are shown
-   in widgets like filters) for the Tables in DATABASE (as needed)."
+   in widgets like filters) for the Tables in `database` (as needed)."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
                                                                  (sync-util/name-for-logging database))

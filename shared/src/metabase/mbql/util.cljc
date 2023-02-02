@@ -6,6 +6,7 @@
    [(:require
      [clojure.string :as str]
      [clojure.tools.logging :as log]
+     [metabase.mbql.predicates :as mbql.preds]
      [metabase.mbql.schema :as mbql.s]
      [metabase.mbql.schema.helpers :as schema.helpers]
      [metabase.mbql.util.match :as mbql.match]
@@ -17,6 +18,7 @@
    :cljs
    [(:require
      [clojure.string :as str]
+     [metabase.mbql.predicates :as mbql.preds]
      [metabase.mbql.schema :as mbql.s]
      [metabase.mbql.schema.helpers :as schema.helpers]
      [metabase.mbql.util.match :as mbql.match]
@@ -281,6 +283,22 @@
     [(op :guard temporal-extract-ops) field & args]
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
+(defn- desugar-divide-with-extra-args [expression]
+  (mbql.match/replace expression
+    [:/ x y z & more]
+    (recur (into [:/ [:/ x y]] (cons z more)))))
+
+(s/defn desugar-expression :- mbql.s/FieldOrExpressionDef
+  "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
+  to compile."
+  [expression :- mbql.s/FieldOrExpressionDef]
+  (-> expression
+      desugar-divide-with-extra-args))
+
+(defn- maybe-desugar-expression [clause]
+  (cond-> clause
+    (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
+
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
@@ -296,7 +314,8 @@
       desugar-is-empty-and-not-empty
       desugar-inside
       simplify-compound-filter
-      desugar-temporal-extract))
+      desugar-temporal-extract
+      maybe-desugar-expression))
 
 (defmulti ^:private negate* first)
 

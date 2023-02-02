@@ -49,6 +49,13 @@
     1 (apply h1x/identifier identifier-type components)
     2 (apply h2x/identifier identifier-type components)))
 
+(defn identifier?
+  "Whether `x` is a valid identifier for the current Honey SQL version."
+  [x]
+  ((case *honey-sql-version*
+     1 h1x/identifier?
+     2 h2x/identifier?) x))
+
 (defn literal
   "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
 

@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
@@ -18,17 +17,15 @@
   on the resulting `Identifier`. Uses the `sql.qp/quote-style` of the current driver. You can implement `->honeysql`
   for `Identifier` if you need custom behavior here.
 
-    (quote-name :mysql \"wow\") ; -> \"`wow`\"
-    (quote-name :h2 \"wow\")    ; -> \"\\\"WOW\\\"\"
+    (quote-name :mysql :field \"wow\") ; -> \"`wow`\"
+    (quote-name :h2    :field \"wow\") ; -> \"\\\"WOW\\\"\"
 
   You should only use this function for places where you are not using HoneySQL, such as queries written directly in
   SQL. For HoneySQL forms, `Identifier` is converted to SQL automatically when it is compiled."
-  {:style/indent 2}
   [driver :- s/Keyword identifier-type :- hx/IdentifierType & components]
   (first
-   (hsql/format (sql.qp/->honeysql driver (apply hx/identifier identifier-type components))
-     :quoting             (sql.qp/quote-style driver)
-     :allow-dashed-names? true)))
+   (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+     (sql.qp/format-honeysql driver (apply hx/identifier identifier-type components)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Deduplicate Field Aliases                                            |

@@ -2,7 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
+   [honey.sql :as sql]
    [java-time :as t]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -18,17 +18,19 @@
 
    This helps to address unexpectedly large/long running queries."
   [tx]
-  (let [existing-timeout (->> (hsql/format {:select [:setting]
-                                            :from [:pg_settings]
-                                            :where [:= :name "statement_timeout"]})
+  (let [existing-timeout (->> #_{:clj-kondo/ignore [:discouraged-var]}
+                              (sql/format {:select [:setting]
+                                           :from   [:pg_settings]
+                                           :where  [:= :name "statement_timeout"]}
+                                          {:quoted false})
                               (sql.ddl/jdbc-query tx)
                               first
                               :setting
                               parse-long)
-        ten-minutes (.toMillis (t/minutes 10))
-        new-timeout (if (zero? existing-timeout)
-                      ten-minutes
-                      (min ten-minutes existing-timeout))]
+        ten-minutes      (.toMillis (t/minutes 10))
+        new-timeout      (if (zero? existing-timeout)
+                           ten-minutes
+                           (min ten-minutes existing-timeout))]
     ;; Can't use a prepared parameter with these statements
     (sql.ddl/execute! tx [(format "SET LOCAL statement_timeout TO '%s'" (str new-timeout))])))
 

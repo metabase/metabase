@@ -1,9 +1,7 @@
 (ns metabase.test.data.sql.ddl
   "Methods for creating DDL statements for things like creating/dropping databases and loading data."
   (:require
-   [honeysql.core :as hsql]
-   [honeysql.format :as hformat]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -61,10 +59,10 @@
       (when table-comment
         (add! (sql.tx/standalone-table-comment-sql driver dbdef tabledef))))
     ;; Add the SQL for adding column comments
-    (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
-      (doseq [{:keys [field-comment], :as fielddef} field-definitions]
-        (when field-comment
-          (add! (sql.tx/standalone-column-comment-sql driver dbdef tabledef fielddef)))))
+    (doseq [{:keys [field-definitions], :as tabledef} table-definitions
+            {:keys [field-comment], :as fielddef}     field-definitions
+            :when                                     field-comment]
+      (add! (sql.tx/standalone-column-comment-sql driver dbdef tabledef fielddef)))
     @statements))
 
 ;; The methods below are currently only used by `:sql-jdbc` drivers, but you can use them to help implement your
@@ -100,9 +98,9 @@
           1 {:columns [(first h-cols)]}
           ;; at least two columns, so we can use hh/columns, but the first param we pass to it must be a map, since
           ;; we're using the threading macro backwards
-          (apply hh/columns (conj h-cols {})))
-        (hh/insert-into table-identifier)
-        (hh/values values))))
+          (apply sql.helpers/columns (conj h-cols {})))
+        (assoc :insert-into (sql.qp/maybe-wrap-unaliased-expr table-identifier))
+        (sql.helpers/values values))))
 
 (defmulti insert-rows-ddl-statements
   "Return appropriate SQL DDL statemtents for inserting `row-or-rows` (each row should be a map) into a Table named by
@@ -115,7 +113,5 @@
 
 (defmethod insert-rows-ddl-statements :sql/test-extensions
   [driver table-identifier row-or-rows]
-  [(binding [hformat/*subquery?* false]
-     (hsql/format (insert-rows-honeysql-form driver table-identifier row-or-rows)
-       :quoting             (sql.qp/quote-style driver)
-       :allow-dashed-names? true))])
+  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+    [(sql.qp/format-honeysql driver (insert-rows-honeysql-form driver table-identifier row-or-rows))]))

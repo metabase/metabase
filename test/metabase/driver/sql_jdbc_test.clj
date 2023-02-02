@@ -11,12 +11,12 @@
    [metabase.test :as mt]
    [toucan.db :as db]))
 
-(deftest describe-database-test
+(deftest ^:parallel describe-database-test
   (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]
                          {:name table, :schema "PUBLIC", :description nil}))}
          (driver/describe-database :h2 (mt/db)))))
 
-(deftest describe-table-test
+(deftest ^:parallel describe-table-test
   (is (= {:name   "VENUES"
           :schema "PUBLIC"
           :fields #{{:name              "ID"
@@ -52,14 +52,14 @@
                      :database-required false}}}
          (driver/describe-table :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
 
-(deftest describe-table-fks-test
+(deftest ^:parallel describe-table-fks-test
   (is (= #{{:fk-column-name   "CATEGORY_ID"
             :dest-table       {:name   "CATEGORIES"
                                :schema "PUBLIC"}
             :dest-column-name "ID"}}
          (driver/describe-table-fks :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
 
-(deftest table-rows-sample-test
+(deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (is (= [["20th Century Cafe"]
             ["25°"]
@@ -73,7 +73,7 @@
                 (sort-by first)
                 (take 5))))))
 
-(deftest table-rows-seq-test
+(deftest ^:parallel table-rows-seq-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (is (= [{:name "Red Medicine", :price 3, :category_id 4, :id 1}
             {:name "Stout Burgers & Beers", :price 2, :category_id 11, :id 2}
@@ -89,7 +89,7 @@
                  (update :category_id int)
                  (update :id int)))))))
 
-(deftest invalid-ssh-credentials-test
+(deftest ^:parallel invalid-ssh-credentials-test
   (mt/test-driver :postgres
     (testing "Make sure invalid ssh credentials are detected if a direct connection is possible"
       (is (thrown?
@@ -121,7 +121,7 @@
 
 ;;; --------------------------------- Tests for splice-parameters-into-native-query ----------------------------------
 
-(deftest splice-parameters-native-test
+(deftest ^:parallel splice-parameters-native-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing (str "test splicing a single param\n"
                   "(This test won't work if a driver that doesn't use single quotes for string literals comes along. "
@@ -171,7 +171,7 @@
          :type     :native
          :native   spliced})))))
 
-(deftest splice-parameters-mbql-test
+(deftest ^:parallel splice-parameters-mbql-test
   (testing "`splice-parameters-into-native-query` should generate a query that works correctly"
     (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
       (mt/$ids venues

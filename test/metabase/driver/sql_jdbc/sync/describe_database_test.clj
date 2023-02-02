@@ -23,6 +23,11 @@
 
 (deftest simple-select-probe-query-test
   (testing "simple-select-probe-query shouldn't actually return any rows"
+    (are [driver] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
+                     (sql-jdbc.describe-database/simple-select-probe-query driver "schema" "wow"))
+      ;; at the time of this writing, :h2 uses Honey SQL 1 while Postgres uses Honey SQL 2; test both
+      :h2
+      :postgres)
     (let [{:keys [name schema]} (db/select-one Table :id (mt/id :venues))]
       (is (= []
              (mt/rows

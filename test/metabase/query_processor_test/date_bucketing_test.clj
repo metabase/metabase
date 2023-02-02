@@ -1225,7 +1225,7 @@
               (is (= expected-rows
                      (mt/formatted-rows [int int] (qp/process-query query)))))))))))
 
-(deftest filter-by-current-quarter-test
+(deftest ^:parallel filter-by-current-quarter-test
   ;; Oracle doesn't work on March 31st because March 31st + 3 months = June 31st, which doesn't exist. See #10072
   (mt/test-drivers (disj (mt/normal-drivers) :oracle)
     (testing "Should be able to filter by current quarter (#20683)"
@@ -1242,7 +1242,7 @@
                (mt/formatted-rows [int] (qp/process-query query)))))))))
 
 ;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
-(deftest june-31st-test
+(deftest ^:parallel june-31st-test
   (testing "What happens when you try to add 3 months to March 31st? It should still work (#10072, #21968, #21969)"
     ;; only testing the SQL drivers for now since I'm not 100% sure how to mock this for everyone else. Maybe one day
     ;; when we support expressions like `+` for temporal types we can do an `:absolute-datetime` plus
@@ -1255,25 +1255,26 @@
                         #t "2022-03-31T00:00:00"
                         #t "2022-03-31T00:00:00-00:00"]]
         (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-          (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
-                june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
-                checkins     (mt/with-everything-store
-                               (sql.qp/->honeysql driver/*driver* (db/select-one Table :id (mt/id :checkins))))
-                honeysql     {:select [[june-31 :june_31]]
-                              :from   [checkins]}
-                honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
-                [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
-                query        (mt/native-query {:query sql, :params args})]
-            (mt/with-native-query-testing-context query
-              (is (re= (u.regex/rx #"^2022-"
-                                   ;; We don't really care if someone returns June 29th or 30th or July 1st here. I
-                                   ;; guess you could make a case for either June 30th or July 1st. I don't really know
-                                   ;; how you can get June 29th from this, but that's what Vertica returns. :shrug: The
-                                   ;; main thing here is that it's not barfing.
-                                   (or (and "06-" (or "29" "30")) "07-01")
-                                   ;; We also don't really care if this is returned as a date or a timestamp with or
-                                   ;; without time zone.
-                                   (opt (or "T" #"\s")
-                                        "00:00:00"
-                                        (opt "Z")))
-                       (first (mt/first-row (qp/process-query query))))))))))))
+          (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+            (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
+                  june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
+                  checkins     (mt/with-everything-store
+                                 (sql.qp/->honeysql driver/*driver* (db/select-one Table :id (mt/id :checkins))))
+                  honeysql     {:select [[june-31 :june_31]]
+                                :from   [(sql.qp/maybe-wrap-unaliased-expr checkins)]}
+                  honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
+                  [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
+                  query        (mt/native-query {:query sql, :params args})]
+              (mt/with-native-query-testing-context query
+                (is (re= (u.regex/rx #"^2022-"
+                                     ;; We don't really care if someone returns June 29th or 30th or July 1st here. I
+                                     ;; guess you could make a case for either June 30th or July 1st. I don't really know
+                                     ;; how you can get June 29th from this, but that's what Vertica returns. :shrug: The
+                                     ;; main thing here is that it's not barfing.
+                                     (or (and "06-" (or "29" "30")) "07-01")
+                                     ;; We also don't really care if this is returned as a date or a timestamp with or
+                                     ;; without time zone.
+                                     (opt (or "T" #"\s")
+                                          "00:00:00"
+                                          (opt "Z")))
+                         (first (mt/first-row (qp/process-query query)))))))))))))

@@ -664,8 +664,18 @@
  ;;
  ;; this list isn't exhaustive because it misses some stuff like the test runner and HTTP client but it's easier to go
  ;; fix those namespaces than it is to make this regex super hairy.
- [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"
-   :name    test-namespaces}
+ [{:name    test-namespaces
+   :pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"}
+  ;; drivers that should by using `hx/` and support BOTH Honey SQL 1 and Honey SQL 2 for the time being, but that
+  ;; should move towards Honey SQL 2. These are drivers that are also used by app DB code
+  {:name    cross-compatible-drivers
+   :pattern "^metabase\\.(?:(?:driver)|(?:test\\.data))\\.(?:(?:postgres)|(?:sql(?!server)(?!ite))).*"}
+  ;; drivers that should be using Honey SQL 2 *ONLY*
+  ;;
+  ;; Currently just Redshift, more will be added in the future.
+  {:pattern "^metabase\\.(?:(?:driver)|(?:test\\.data))\\.redshift.*"
+   :name    honey-sql-2-only-drivers}
+  ;; namespaces allowed to use `println`
   {:pattern "metabase\\.cmd.*"
    :name    printable-namespaces}]
 
@@ -678,6 +688,31 @@
 
     ;; custom linters
     :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
+
   printable-namespaces
   {:linters
-   {:discouraged-var {:level :off}}}}}
+   {:discouraged-var {:level :off}}}
+
+  honey-sql-2-only-drivers
+  {:linters
+   {:discouraged-namespace
+    {honeysql.core                        {:message "Use Honey SQL 2"}
+     honeysql.format                      {:message "Use Honey SQL 2"}
+     honeysql.helpers                     {:message "Use Honey SQL 2"}
+     honeysql.types                       {:message "Use Honey SQL 2"}
+     metabase.util.honey-sql-extensions   {:message "Use metabase.util.honey-sql-2-extensions"}
+     metabase.util.honey-sql-1-extensions {:message "Use metabase.util.honey-sql-2-extensions"}}}}
+
+  cross-compatible-drivers
+  {:linters
+   {:discouraged-namespace
+    {honeysql.core                        {:message "Do not use Honey SQL 1 directly in cross-compatible drivers"}
+     honeysql.format                      {:message "Do not use Honey SQL 1 directly in cross-compatible drivers"}
+     honeysql.helpers                     {:message "Use honey.sql.helpers"}
+     honeysql.types                       {:message "Do not use Honey SQL 1 directly in cross-compatible drivers"}
+     metabase.util.honey-sql-1-extensions {:message "Use metabase.util.honey-sql-extensions"}
+     metabase.util.honey-sql-2-extensions {:message "Use metabase.util.honey-sql-extensions"}}
+
+    :discouraged-var
+    {honey.sql/call   {:message "Use hx/call"}
+     honey.sql/format {:message "Use sql.qp/format-honeysql"} }}}}}

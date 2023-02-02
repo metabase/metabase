@@ -42,9 +42,13 @@
   (^String [^String sql db-type]
    (when sql
      (let [formatter (SqlFormatter/of (case db-type
-                                        :mysql    Dialect/MySql
-                                        :postgres Dialect/PostgreSql
-                                        :h2       Dialect/StandardSql))]
+                                        :mysql     Dialect/MySql
+                                        :postgres  Dialect/PostgreSql
+                                        :redshift  Dialect/Redshift
+                                        :sparksql  Dialect/SparkSql
+                                        :sqlserver Dialect/TSql
+                                        :oracle    Dialect/PlSql
+                                        Dialect/StandardSql))]
        (.format formatter sql)))))
 
 (defmulti compile

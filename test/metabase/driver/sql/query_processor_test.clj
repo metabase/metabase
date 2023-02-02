@@ -1,24 +1,40 @@
 (ns metabase.driver.sql.query-processor-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
+   [malli.core :as mc]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.sql.query-processor.deprecated]
    [metabase.models.field :refer [Field]]
    [metabase.models.setting :as setting]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
+   [metabase.test.data.env :as tx.env]
    [metabase.util.honeysql-extensions :as hx]
    [schema.core :as s]))
 
-(deftest sql-source-query-validation-test
+(comment metabase.driver.sql.query-processor.deprecated/keep-me)
+
+(deftest ^:parallel default-select-test
+  (are [hsql-version expected] (= expected
+                                  (binding [hx/*honey-sql-version* hsql-version]
+                                    (->> {:from [[(sql.qp/sql-source-query "SELECT *" nil)
+                                                  (sql.qp/maybe-wrap-unaliased-expr (hx/identifier :table-alias "source"))]]}
+                                         (#'sql.qp/add-default-select :sql)
+                                         (sql.qp/format-honeysql :sql))))
+    1 ["SELECT \"source\".* FROM (SELECT *) \"source\""]
+    2 ["SELECT \"source\".* FROM (SELECT *) AS \"source\""]))
+
+(deftest ^:parallel sql-source-query-validation-test
   (testing "[[sql.qp/sql-source-query]] should throw Exceptions if you pass in invalid nonsense"
     (doseq [params [nil [1000]]]
       (testing (format "Params = %s" (pr-str params))
-        (is (instance? metabase.driver.sql.query_processor.SQLSourceQuery
+        (is (instance? metabase.driver.sql.query_processor.deprecated.SQLSourceQuery
                        (sql.qp/sql-source-query "SELECT *" params)))))
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -29,7 +45,7 @@
          #"Expected native source query parameters to be sequential, got: java.lang.Long"
          (sql.qp/sql-source-query "SELECT *" 1000)))))
 
-(deftest process-mbql-query-keys-test
+(deftest ^:parallel process-mbql-query-keys-test
   (testing "make sure our logic for deciding which order to process keys in the query works as expected"
     (is (= [:source-table :breakout :aggregation :fields :abc :def]
            (#'sql.qp/query->keys-in-application-order
@@ -47,7 +63,7 @@
           :query
           sql.qp-test-util/pretty-sql))))
 
-(deftest not-null-test
+(deftest ^:parallel not-null-test
   (is (= '{:select [count (*) AS count]
            :from   [CHECKINS]
            :where  [CHECKINS.DATE IS NOT NULL]}
@@ -57,7 +73,7 @@
              mbql->native
              sql.qp-test-util/sql->sql-map))))
 
-(deftest case-test
+(deftest ^:parallel case-test
   (testing "Test that boolean case defaults are kept (#24100)"
     (is (= [[1 1 true]
             [2 0 false]]
@@ -70,40 +86,42 @@
                :fields       [$id [:expression "First int" nil] [:expression "First bool" nil]]
                :limit        2}))))))
 
-(deftest join-test
+(deftest ^:parallel join-test
   (testing "Test that correct identifiers are used for joins"
-    (is (= '{:select    [VENUES.ID          AS ID
-                         VENUES.NAME        AS NAME
-                         VENUES.CATEGORY_ID AS CATEGORY_ID
-                         VENUES.LATITUDE    AS LATITUDE
-                         VENUES.LONGITUDE   AS LONGITUDE
-                         VENUES.PRICE       AS PRICE]
-             :from      [VENUES]
-             :left-join [CATEGORIES c
-                         ON VENUES.CATEGORY_ID = c.ID]
-             :where     [c.NAME = ?]
-             :order-by  [VENUES.ID ASC]
-             :limit     [100]}
-           (-> (mt/mbql-query venues
-                 {:source-table $$venues
-                  :order-by     [[:asc $id]]
-                  :filter       [:=
-                                 &c.categories.name
-                                 [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
-                  :fields       [$id $name $category_id $latitude $longitude $price]
-                  :limit        100
-                  :joins        [{:source-table $$categories
-                                  :alias        "c"
-                                  :strategy     :left-join
-                                  :condition    [:=
-                                                 $category_id
-                                                 &c.categories.id]
-                                  :fk-field-id  (mt/id :venues :category_id)
-                                  :fields       :none}]})
-               mbql->native
-               sql.qp-test-util/sql->sql-map)))))
+    (are [join-type] (= '{:select   [VENUES.ID          AS ID
+                                     VENUES.NAME        AS NAME
+                                     VENUES.CATEGORY_ID AS CATEGORY_ID
+                                     VENUES.LATITUDE    AS LATITUDE
+                                     VENUES.LONGITUDE   AS LONGITUDE
+                                     VENUES.PRICE       AS PRICE]
+                          :from     [VENUES]
+                          join-type [CATEGORIES c
+                                     ON VENUES.CATEGORY_ID = c.ID]
+                          :where    [c.NAME = ?]
+                          :order-by [VENUES.ID ASC]
+                          :limit    [100]}
+                        (-> (mt/mbql-query venues
+                              {:source-table $$venues
+                               :order-by     [[:asc $id]]
+                               :filter       [:=
+                                              &c.categories.name
+                                              [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
+                               :fields       [$id $name $category_id $latitude $longitude $price]
+                               :limit        100
+                               :joins        [{:source-table $$categories
+                                               :alias        "c"
+                                               :strategy     join-type
+                                               :condition    [:=
+                                                              $category_id
+                                                              &c.categories.id]
+                                               :fk-field-id  (mt/id :venues :category_id)
+                                               :fields       :none}]})
+                            mbql->native
+                            sql.qp-test-util/sql->sql-map))
+      :left-join
+      :inner-join)))
 
-(deftest nested-query-and-join-test
+(deftest ^:parallel nested-query-and-join-test
   (testing "This HAIRY query tests that the correct identifiers and aliases are used with both a nested query and JOIN in play."
     (is (= '{:select    [v.NAME AS v__NAME
                          count (*) AS count]
@@ -146,7 +164,7 @@
                mbql->native
                sql.qp-test-util/sql->sql-map)))))
 
-(deftest handle-named-aggregations-test
+(deftest ^:parallel handle-named-aggregations-test
   (testing "Check that named aggregations are handled correctly"
     (is (= '{:select   [VENUES.PRICE AS PRICE
                         avg (VENUES.CATEGORY_ID) AS avg_2]
@@ -161,7 +179,7 @@
                mbql->native
                sql.qp-test-util/sql->sql-map)))))
 
-(deftest handle-source-query-params-test
+(deftest ^:paralell handle-source-query-params-test
   (driver/with-driver :h2
     (mt/with-everything-store
       (testing "params from source queries should get passed in to the top-level. Semicolons should be removed"
@@ -174,7 +192,7 @@
                    :source-metadata [{:name "name", :base_type :type/Integer}]
                    :filter          [:!= *name/Integer "Lucky Pigeon"]}))))))))
 
-(deftest joins-against-native-queries-test
+(deftest ^:parallel joins-against-native-queries-test
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"
     (mt/with-everything-store
       (driver/with-driver :h2
@@ -196,22 +214,30 @@
                                                                       ::add/source-table "card"
                                                                       ::add/source-alias "id"}]]}))))))))
 
-(deftest compile-honeysql-test
+(defn- compile-join [driver]
+  (driver/with-driver driver
+    (mt/with-everything-store
+      (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+        (let [join (sql.qp/join->honeysql
+                    driver
+                    (mt/$ids checkins
+                      {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                       :alias        "card"
+                       :strategy     :left-join
+                       :condition    [:=
+                                      [:field %venue_id {::add/source-table $$checkins
+                                                         ::add/source-alias "VENUE_ID"}]
+                                      [:field "id" {:base-type         :type/Text
+                                                    ::add/source-table "card"
+                                                    ::add/source-alias "id"}]]}))]
+          (sql.qp/format-honeysql driver {:join join}))))))
+
+(deftest ^:parallel compile-honeysql-test
   (testing "make sure the generated HoneySQL will compile to the correct SQL"
-    (is (= ["INNER JOIN (SELECT * FROM VENUES) card ON PUBLIC.CHECKINS.VENUE_ID = card.id"]
-           (hsql/format {:join (mt/with-everything-store
-                                 (driver/with-driver :h2
-                                   (sql.qp/join->honeysql :h2
-                                                          (mt/$ids checkins
-                                                            {:source-query {:native "SELECT * FROM VENUES;", :params []}
-                                                             :alias        "card"
-                                                             :strategy     :left-join
-                                                             :condition    [:=
-                                                                            [:field %venue_id {::add/source-table $$checkins
-                                                                                               ::add/source-alias "VENUE_ID"}]
-                                                                            [:field "id" {:base-type         :type/Text
-                                                                                          ::add/source-table "card"
-                                                                                          ::add/source-alias "id"}]]}))))})))))
+    (are [driver expected] (= [expected]
+                              (compile-join driver))
+      :h2       "INNER JOIN (SELECT * FROM VENUES) \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""
+      :postgres "INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"public\".\"checkins\".\"VENUE_ID\" = \"card\".\"id\"")))
 
 (deftest adjust-start-of-week-test
   (driver/with-driver :h2
@@ -245,7 +271,7 @@
                   :order-by     [[:asc [:field "A" {:base-type :type/Text}]]]}
                  query)})))
 
-(deftest correct-for-null-behaviour
+(deftest ^:parallel correct-for-null-behaviour
   (testing "NULLs should be treated intuitively in filters (SQL has somewhat unintuitive semantics where NULLs get propagated out of expressions)."
     (is (= [[nil] ["bar"]]
            (query-on-dataset-with-nils {:filter [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]]})))
@@ -265,7 +291,7 @@
                                :alias        "u"
                                :condition    [:= $user_id &u.users.id]}]}))))))
 
-(deftest joined-field-clauses-test
+(deftest ^:parallel joined-field-clauses-test
   (testing "Should correctly compile `:field` clauses with `:join-alias`"
     (testing "when the join is at the same level"
       (is (= {:select    '[c.NAME AS c__NAME]
@@ -300,7 +326,7 @@
                  mbql->native
                  sql.qp-test-util/sql->sql-map))))))
 
-(deftest ambiguous-field-metadata-test
+(deftest ^:parallel ambiguous-field-metadata-test
   (testing "With queries that refer to the same field more than once, can we generate sane SQL?"
     (mt/dataset sample-dataset
       (is (= '{:select    [ORDERS.ID                       AS ID
@@ -333,7 +359,7 @@
                  mbql->native
                  sql.qp-test-util/sql->sql-map))))))
 
-(deftest simple-expressions-test
+(deftest ^:parallel simple-expressions-test
   (is (= '{:select [source.ID          AS ID
                     source.NAME        AS NAME
                     source.CATEGORY_ID AS CATEGORY_ID
@@ -368,7 +394,7 @@
              mbql->native
              sql.qp-test-util/sql->sql-map))))
 
-(deftest multiple-joins-with-expressions-test
+(deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
     (mt/dataset sample-dataset
       (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
@@ -452,7 +478,7 @@
                  mbql->native
                  sql.qp-test-util/sql->sql-map))))))
 
-(deftest reference-aggregation-expressions-in-joins-test
+(deftest ^:parallel reference-aggregation-expressions-in-joins-test
   (testing "See if we can correctly compile a query that references expressions that come from a join"
     (is (= '{:select [source.ID                           AS ID
                       source.NAME                         AS NAME
@@ -545,7 +571,7 @@
                             (s/one s/Num "expression")]
                            (-> results mt/rows first))))))))))
 
-(deftest nested-mbql-source-query-test
+(deftest ^:parallel nested-mbql-source-query-test
   (is (= '{:select    [VENUES.ID          AS ID
                        VENUES.NAME        AS NAME
                        VENUES.CATEGORY_ID AS CATEGORY_ID
@@ -569,7 +595,7 @@
              mbql->native
              sql.qp-test-util/sql->sql-map))))
 
-(deftest join-inside-source-query-test
+(deftest ^:parallel join-inside-source-query-test
   (testing "Make sure a JOIN inside a source query gets compiled as expected"
     (mt/dataset sample-dataset
       (mt/with-everything-store
@@ -591,7 +617,7 @@
                    mbql->native
                    sql.qp-test-util/sql->sql-map)))))))
 
-(deftest join-against-source-query-test
+(deftest ^:parallel join-against-source-query-test
   (testing "Make sure a JOIN referencing fields from the source query use correct aliases/etc"
     (mt/dataset sample-dataset
       (mt/with-everything-store
@@ -627,7 +653,7 @@
                    mbql->native
                    sql.qp-test-util/sql->sql-map)))))))
 
-(deftest implicit-join-test
+(deftest ^:parallel implicit-join-test
   (is (= '{:select    [VENUES.NAME                       AS NAME
                        CATEGORIES__via__CATEGORY_ID.NAME AS CATEGORIES__via__CATEGORY_ID__NAME]
            :from      [VENUES]
@@ -647,7 +673,7 @@
              mbql->native
              sql.qp-test-util/sql->sql-map))))
 
-(deftest another-source-query-test
+(deftest ^:parallel another-source-query-test
   (is (= '{:select [source.DATE  AS DATE
                     source.sum   AS sum
                     source.sum_2 AS sum_2]
@@ -670,7 +696,7 @@
              mbql->native
              sql.qp-test-util/sql->sql-map))))
 
-(deftest expression-with-duplicate-column-name-test
+(deftest ^:parallel expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
     (mt/dataset sample-dataset
       (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
@@ -698,7 +724,7 @@
                  mbql->native
                  sql.qp-test-util/sql->sql-map))))))
 
-(deftest join-source-queries-with-joins-test
+(deftest ^:parallel join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
     (mt/dataset sample-dataset
       (is (= '{:select    [source.P1__CATEGORY   AS P1__CATEGORY
@@ -758,7 +784,7 @@
                  mbql->native
                  sql.qp-test-util/sql->sql-map))))))
 
-(deftest floating-point-division-test
+(deftest ^:parallel floating-point-division-test
   (testing "Make sure FLOATING POINT division is done when dividing by expressions/fields"
     (is (= '{:select   [source.my_cool_new_field AS my_cool_new_field]
              :from     [{:select [VENUES.ID          AS ID
@@ -787,7 +813,7 @@
                mbql->native
                sql.qp-test-util/sql->sql-map)))))
 
-(deftest duplicate-aggregations-test
+(deftest ^:parallel duplicate-aggregations-test
   (testing "Make sure multiple aggregations of the same type get unique aliases"
     ;; ([[metabase.query-processor.middleware.pre-alias-aggregations]] should actually take care of this, but this test
     ;; is here to be extra safe anyway.)
@@ -801,7 +827,7 @@
                              [:sum $price]]
                :limit       1}))))))
 
-(deftest join-against-query-with-implicit-joins-test
+(deftest ^:parallel join-against-query-with-implicit-joins-test
   (testing "Should be able to do subsequent joins against a query with implicit joins (#17767)"
     (mt/dataset sample-dataset
       (is (= '{:select    [source.PRODUCTS__via__PRODUCT_ID__ID AS PRODUCTS__via__PRODUCT_ID__ID
@@ -834,7 +860,7 @@
                                  :alias        "Reviews"}]
                  :limit        1})))))))
 
-(deftest join-table-on-itself-with-custom-column-test
+(deftest ^:parallel join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
     (mt/dataset sample-dataset
       (is (= '{:select    [source.CATEGORY AS CATEGORY
@@ -889,7 +915,7 @@
                                  :fields       :all}]
                  :limit        1})))))))
 
-(deftest mega-query-test
+(deftest ^:parallel mega-query-test
   (testing "Should generate correct SQL for joins against source queries that contain joins (#12928)"
     (mt/dataset sample-dataset
       (is (= '{:select    [source.P1__CATEGORY   AS P1__CATEGORY
@@ -950,3 +976,52 @@
                     :limit        2})
                  mbql->native
                  sql.qp-test-util/sql->sql-map))))))
+
+(deftest ^:parallel format-honeysql-test
+  (are [version honeysql expected] (= expected
+                                      (sql.qp/format-honeysql version :ansi (binding [hx/*honey-sql-version* version]
+                                                                              honeysql)))
+    1 {:select [:*], :from [:table]} ["SELECT * FROM \"table\""]
+    2 {:select [:*], :from [:table]} ["SELECT * FROM \"table\""]
+
+    1 (hx/identifier :field "A" "B") ["\"A\".\"B\""]
+    2 (hx/identifier :field "A" "B") ["\"A\".\"B\""]
+
+    ;; don't complain on 'suspicious' characters since we're quoting things anyway!
+    1 (hx/identifier :field "A;B") ["\"A;B\""]
+    2 (hx/identifier :field "A;B") ["\"A;B\""]
+
+    ;; but we should be escaping quotes.
+    1 (hx/identifier :field "A\"B") ["\"A\"\"B\""]
+    2 (hx/identifier :field "A\"B") ["\"A\"\"B\""]
+
+    ;; make sure kebab-case is preserved.
+    1 (hx/identifier :field "test-data") ["\"test-data\""]
+    2 (hx/identifier :field "test-data") ["\"test-data\""]
+
+    1 {:select [[(hx/identifier :field "test-data") :a]]} ["SELECT \"test-data\" AS \"a\""]
+    2 {:select [[(hx/identifier :field "test-data") :a]]} ["SELECT \"test-data\" AS \"a\""]
+
+    ;; Honey SQL 2 can't be configured to always inline numbers, so we have to remember to do it, otherwise it won't
+    ;; do it for us =(
+    1 [:= "A" 1] ["? = 1" "A"]
+    2 [:= "A" 1] ["? = ?" "A" 1]))
+
+(deftest day-of-week-inline-numbers-test
+  (testing "Numbers should be returned inline, even when targeting Honey SQL 2."
+    (mt/test-drivers (filter #(isa? driver/hierarchy (driver/the-driver %) :sql)
+                             (tx.env/test-drivers))
+      (doseq [day [:sunday
+                   :monday
+                   :tuesday
+                   :wednesday
+                   :thursday
+                   :friday
+                   :saturday]]
+        (metabase.test/with-temporary-setting-values [start-of-week day]
+          (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+            (let [sql-args (-> (sql.qp/format-honeysql driver/*driver* (sql.qp/date driver/*driver* :day-of-week :x))
+                               vec
+                               (update 0 #(str/split-lines (mdb.query/format-sql % driver/*driver*))))]
+              (testing "this query should not have any parameters"
+                (is (mc/validate [:cat [:sequential :string]] sql-args))))))))))

@@ -61,8 +61,9 @@
   (testing "`literal` should handle namespaced keywords correctly"
     (is (= ["WHERE name = 'ab/c'"]
            (sql/format {:where [:= :name (h2x/literal :ab/c)]}
-                       {:quoted false}))))
+                       {:quoted false})))))
 
+(deftest ^:parallel identifier-test
   (testing "make sure `identifier` properly handles components with dots and both strings & keywords"
     (is (= ["SELECT `A`.`B`.`C.D`.`E.F`"]
            (sql/format {:select [[(h2x/identifier :field "A" :B "C.D" :E.F)]]}
@@ -113,7 +114,14 @@
 
   (testing "the `identifier` function should convert everything to strings so drivers that manipulate `:components` don't need to worry about that"
     (is (= (h2x/identifier :field "keyword" "qualified/keyword")
-           (h2x/identifier :field :keyword :qualified/keyword)))))
+           (h2x/identifier :field :keyword :qualified/keyword))))
+
+  (testing "Should get formatted correctly inside aliases"
+    ;; Apparently you have to wrap the alias form in ANOTHER vector to make it work -- see
+    ;; https://clojurians.slack.com/archives/C1Q164V29/p1675301408026759
+    (is (= ["SELECT \"A\".\"B\" AS \"C\""]
+           (sql/format {:select [[(h2x/identifier :field "A" "B") [(h2x/identifier :field-alias "C")]]]}
+                       {:dialect :ansi})))))
 
 (deftest h2-quoting-test
   (testing (str "We provide our own quoting function for `:h2` databases. We quote and uppercase the identifier. Using "
@@ -134,6 +142,10 @@
                           (:h2 :postgres) 0.1
                           :mysql          0.1M)}]
            (mdb.query/query {:select [[(/ 1 10) :one_tenth]]})))))
+
+(deftest ^:parallel quoted-cast-test
+  (is (= ["SELECT CAST(? AS \"bird type\")" "toucan"]
+         (sql/format {:select [[(h2x/quoted-cast "bird type" "toucan")]]} {:quoted true, :dialect :ansi}))))
 
 (defn- ->sql [expr]
   (sql/format {:select [[expr]]} {:quoted false}))
@@ -188,7 +200,15 @@
            (h2x/with-type-info typed-form {::hx/database-type "date"})))
     (testing "should normalize :database-type"
       (is (= (h2x/with-type-info :field {::hx/database-type "date"})
-             (h2x/with-type-info typed-form {::hx/database-type "date"}))))))
+             (h2x/with-type-info typed-form {::hx/database-type "date"})))))
+  (testing "Should compile with parentheses if the form it wraps would have been compiled with parens"
+    (is (= ["(x - 1) + 2"]
+           (sql/format-expr [:+
+                             [:- :x [:inline 1]]
+                             [:inline 2]])
+           (sql/format-expr [:+
+                             (h2x/with-database-type-info [:- :x [:inline 1]] "integer")
+                             [:inline 2]])))))
 
 (deftest ^:parallel with-database-type-info-test
   (testing "should be the same as calling `with-type-info` with `::hx/database-type`"

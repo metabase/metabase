@@ -38,3 +38,7 @@
 (def ^{:arglists '([filter-clause])} DatetimeExpression?
   "Is this a valid DatetimeExpression clause?"
   (complement (s/checker mbql.s/DatetimeExpression)))
+
+(def ^{:arglists '([field-clause])} FieldOrExpressionDef?
+  "Is this a something that is valid as a top-level expression definition?"
+  (complement (s/checker mbql.s/FieldOrExpressionDef)))

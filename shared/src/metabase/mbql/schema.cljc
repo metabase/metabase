@@ -927,7 +927,6 @@
 (def ^:private StringExpression*
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
 
-
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
   `:+` clause or a `:field` clause."
@@ -936,8 +935,8 @@
    (partial is-clause? string-functions)   StringExpression
    (partial is-clause? boolean-functions)  BooleanExpression
    (partial is-clause? datetime-functions) DatetimeExpression
-   (partial is-clause? :case)                        case
-   :else                                             Field))
+   (partial is-clause? :case)              case
+   :else                                   Field))
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 

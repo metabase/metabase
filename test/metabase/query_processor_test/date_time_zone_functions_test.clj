@@ -707,7 +707,7 @@
 ;;; |                                            Datetime diff tests                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest datetime-diff-base-test
+(deftest ^:parallel datetime-diff-base-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset sample-dataset
       (letfn [(query [x y unit]

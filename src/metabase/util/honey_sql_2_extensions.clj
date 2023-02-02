@@ -31,11 +31,11 @@
 ;; register the `extract` function with HoneySQL
 ;; (hsql/format (sql/call :extract :a :b)) -> "extract(a from b)"
 (defn- format-extract [_fn [unit expr]]
-  (let [[sql & args] (sql/format-expr expr)]
-    (into [(str "extract(" (name unit) " from " sql ")")]
+  (let [[sql & args] (sql/format-expr expr {:nested true})]
+    (into [(clojure.core/format "extract(%s from %s)" (name unit) sql)]
           args)))
 
-(sql/register-fn! ::extract format-extract)
+(sql/register-fn! ::extract #'format-extract)
 
 ;; register the function `distinct-count` with HoneySQL
 (defn- format-distinct-count
@@ -47,26 +47,23 @@
     (into [(str "count(distinct " sql ")")]
           args)))
 
-(sql/register-fn! ::distinct-count format-distinct-count)
+(sql/register-fn! ::distinct-count #'format-distinct-count)
 
 ;; register the function `percentile` with HoneySQL
-;; (hsql/format (sql/call :percentile-cont :a 0.9)) -> "percentile_cont(0.9) within group (order by a)"
-(defn- format-percentile-cont [_fn [expr p]]
-  {:pre [(number? p)]}
-  (let [[sql & args] (sql/format-expr expr)]
-    (into [(str "PERCENTILE_CONT(" p ") within group (order by " sql ")")]
-          args)))
+(defn- format-percentile-cont
+  "(hsql/format (sql/call :percentile-cont :a 0.9)) => \"percentile_cont(0.9) within group (order by a)\""
+  [_fn [expr p]]
+  (let [p                      (if (number? p)
+                                 [:inline p]
+                                 p)
+        [expr-sql & expr-args] (sql/format-expr expr)
+        [p-sql & p-args]       (sql/format-expr p)]
+    (into [(clojure.core/format "PERCENTILE_CONT(%s) within group (order by %s)" p-sql expr-sql)]
+          cat
+          [expr-args
+           p-args])))
 
-(sql/register-fn! ::percentile-cont format-percentile-cont)
-
-;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see
-;; https://github.com/jkk/honeysql/pull/122. However, this broke some of Metabase's behavior, specifically queries
-;; with calculated columns with numeric literals -- some SQL databases can't recognize that a calculated field in a
-;; SELECT clause and a GROUP BY clause is the same thing if the calculation involves parameters. Go ahead an use the
-;; old behavior so we can keep our HoneySQL dependency up to date.
-#_(extend-protocol honeysql.format/ToSql
-    Number
-    (to-sql [x] (str x)))
+(sql/register-fn! ::percentile-cont #'format-percentile-cont)
 
 (def IdentifierType
   "Malli schema for valid Identifier types."
@@ -78,25 +75,32 @@
    ;; Suppose we have a query like:
    ;; SELECT my_field f FROM my_table t
    ;; then:
-   :table                               ; is `my_table`
-   :table-alias                         ; is `t`
-   :field                               ; is `my_field`
-   :field-alias])  ; is `f`
+   :table       ; is `my_table`
+   :table-alias ; is `t`
+   :field       ; is `my_field`
+   :field-alias ; is `f`
+   ;; for [[quoted-cast]]
+   :type-name])
 
-(defn- identifier? [x]
+(defn identifier?
+  "Whether `x` is a valid `::identifier`."
+  [x]
   (and (vector? x)
        (= (first x) ::identifier)))
 
 (defn- format-identifier [_fn [_identifier-type components]]
-  ;; `:aliased` `true` => don't split dots in the middle of components
-  [(str/join \. (map (fn [component]
-                       (sql/format-entity component {:aliased true}))
-                     components))])
+  ;; don't error if the identifier has something 'suspicious' like a semicolon in it -- it's ok because we're quoting
+  ;; everything
+  (binding [sql/*allow-suspicious-entities* true]
+    [(str/join \. (map (fn [component]
+                         ;; `:aliased` `true` => don't split dots in the middle of components
+                         (sql/format-entity component {:aliased true}))
+                       components))]))
 
-(sql/register-fn! ::identifier format-identifier)
+(sql/register-fn! ::identifier #'format-identifier)
 
 (mu/defn identifier
-  "Define an identifer of type with `components`. Prefer this to using keywords for identifiers, as those do not
+  "Define an identifier of type with `components`. Prefer this to using keywords for identifiers, as those do not
   properly handle identifiers with slashes in them.
 
   `identifier-type` represents the type of identifier in question, which is important context for some drivers, such
@@ -104,7 +108,8 @@
 
   This function automatically unnests any Identifiers passed as arguments, removes nils, and converts all args to
   strings."
-  [identifier-type :- IdentifierType & components]
+  [identifier-type :- IdentifierType
+   & components    :- [:* {:min 1} [:maybe [:or :keyword ms/NonBlankString [:fn identifier?]]]]]
   [::identifier
    identifier-type
    (vec (for [component components
@@ -121,10 +126,10 @@
     (str/replace <> #"(?<![\\'])'(?![\\'])"  "''")
     (str \' <> \')))
 
-(sql/register-fn!
- ::literal
- (fn [_fn [s]]
-   [(escape-and-quote-literal s)]))
+(defn- format-literal [_fn [s]]
+  [(escape-and-quote-literal s)])
+
+(sql/register-fn! ::literal #'format-literal)
 
 (defn literal
   "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
@@ -137,7 +142,7 @@
   [::literal (u/qualified-name s)])
 
 (defn- format-at-time-zone [_fn [expr zone]]
-  (let [[expr-sql & expr-args] (sql/format-expr expr)
+  (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})
         [zone-sql & zone-args] (sql/format-expr (literal zone))]
     (into [(clojure.core/format "(%s AT TIME ZONE %s)"
                                 expr-sql
@@ -145,9 +150,7 @@
           cat
           [expr-args zone-args])))
 
-(sql/register-fn!
- ::at-time-zone
- format-at-time-zone)
+(sql/register-fn! ::at-time-zone #'format-at-time-zone)
 
 (defn at-time-zone
   "Create a Honey SQL form that returns `expr` at time `zone`. Does not add type info! Add appropriate DB type info
@@ -168,9 +171,9 @@
     Otherwise, returns form as-is."))
 
 (defn- format-typed [_fn [expr _type-info]]
-  (sql/format-expr expr))
+  (sql/format-expr expr {:nested true}))
 
-(sql/register-fn! ::typed format-typed)
+(sql/register-fn! ::typed #'format-typed)
 
 (def ^:private NormalizedTypeInfo
   [:map
@@ -273,7 +276,7 @@
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [db-type expr]
   (-> [:cast expr [:raw (name db-type)]]
-      (with-type-info {:metabase.util.honeysql-extensions/database-type db-type})))
+      (with-database-type-info db-type)))
 
 (mu/defn quoted-cast :- TypedExpression
   "Generate a statement like `cast(expr AS \"sql-type\")`.
@@ -282,16 +285,16 @@
   that may have a space in the name, for example Postgres enum types.
 
   Returns a typed HoneySQL form."
-  [sql-type expr]
-  (-> [:cast expr (keyword sql-type)]
-      (with-type-info {:metabase.util.honeysql-extensions/database-type sql-type})))
+  [sql-type :- ms/NonBlankString expr]
+  (-> [:cast expr (identifier :type-name sql-type)]
+      (with-database-type-info sql-type)))
 
 (mu/defn maybe-cast :- TypedExpression
   "Cast `expr` to `sql-type`, unless `expr` is typed and already of that type. Returns a typed HoneySQL form."
   [sql-type expr]
   (if (is-of-type? expr sql-type)
-      expr
-      (cast sql-type expr)))
+    expr
+    (cast sql-type expr)))
 
 (defn cast-unless-type-in
   "Cast `expr` to `desired-type` unless `expr` is of one of the `acceptable-types`. Returns a typed HoneySQL form.
@@ -311,7 +314,12 @@
     (let [arg-db-type (some (fn [arg]
                               (-> arg type-info type-info->db-type))
                             args)]
-      (cond-> (apply sql/call operator args)
+      (cond-> (into [operator]
+                    (map (fn [arg]
+                           (if (number? arg)
+                             [:inline arg]
+                             arg)))
+                    args)
         arg-db-type (with-database-type-info arg-db-type)))))
 
 (def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between `exprs` and wrap in parentheses." (math-operator :+))

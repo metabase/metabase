@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [clojure.walk :as walk]
-   [honeysql.format :as hformat]
+   [honey.sql :as sql]
    [java-time :as t]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
@@ -31,14 +31,11 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs]]
-   [potemkin :as p]
-   [pretty.core :refer [PrettyPrintable]])
+   [metabase.util.i18n :refer [trs]])
   (:import
    (java.sql ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
-   (java.util Date UUID)
-   (metabase.util.honey_sql_1_extensions Identifier)))
+   (java.util Date UUID)))
 
 (comment
   ;; method impls live in these namespaces.
@@ -84,19 +81,6 @@
     [driver _feat _db]
     ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
     (= driver :postgres)))
-
-(defn- ->timestamp [honeysql-form]
-  (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
-
-(defmethod sql.qp/add-interval-honeysql-form :postgres
-  [driver hsql-form amount unit]
-  ;; Postgres doesn't support quarter in intervals (#20683)
-  (if (= unit :quarter)
-    (recur driver hsql-form (* 3 amount) :month)
-    (let [hsql-form (->timestamp hsql-form)]
-      (-> (hx/+ hsql-form (let [s (format "(INTERVAL '%s %s')" amount (name unit))]
-                            (hx/raw s)))
-          (hx/with-type-info (hx/type-info hsql-form))))))
 
 (defmethod driver/humanize-connection-error-message :postgres
   [_ message]
@@ -239,6 +223,23 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod sql.qp/honey-sql-version :postgres
+  [_driver]
+  2)
+
+(defn- ->timestamp [honeysql-form]
+  (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
+
+(defmethod sql.qp/add-interval-honeysql-form :postgres
+  [driver hsql-form amount unit]
+  ;; Postgres doesn't support quarter in intervals (#20683)
+  (if (= unit :quarter)
+    (recur driver hsql-form (* 3 amount) :month)
+    (let [hsql-form (->timestamp hsql-form)]
+      (-> (hx/+ hsql-form (let [s (format "(INTERVAL '%s %s')" amount (name unit))]
+                            (hx/raw s)))
+          (hx/with-type-info (hx/type-info hsql-form))))))
+
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
   [_driver]
   (hx/with-database-type-info :%now "timestamptz"))
@@ -256,8 +257,16 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                (hx/call :convert_from expr (hx/literal "UTF8"))))
 
-(defn- date-trunc [unit expr] (hx/call :date_trunc (hx/literal unit) (->timestamp expr)))
-(defn- extract    [unit expr] (hx/call :extract    unit              (->timestamp expr)))
+(defn- date-trunc [unit expr]
+  (hx/call :date_trunc (hx/literal unit) (->timestamp expr)))
+
+(defn- extract [unit expr]
+  (case hx/*honey-sql-version*
+    1 (hx/call :extract unit expr)
+    2 [:metabase.util.honey-sql-2-extensions/extract unit expr]))
+
+(defn- extract-from-timestamp [unit expr]
+  (extract unit (->timestamp expr)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
@@ -280,7 +289,7 @@
 (defmethod sql.qp/date [:postgres :week-of-year-iso] [_driver _ expr] (extract-integer :week expr))
 
 (defmethod sql.qp/date [:postgres :day-of-week]
-  [_ driver expr]
+  [driver _unit expr]
   ;; Postgres extract(dow ...) returns Sunday(0)...Saturday(6)
   ;;
   ;; Since that's different than what we normally consider the [[metabase.driver/db-start-of-week]] for Postgres
@@ -330,7 +339,7 @@
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]
   (let [interval (hx/call :age (date-trunc :day y) (date-trunc :day x))]
-    (hx/->integer (hx/call :extract :year interval))))
+    (hx/->integer (extract :year interval))))
 
 (defmethod sql.qp/datetime-diff [:postgres :quarter]
   [driver _unit x y]
@@ -339,8 +348,8 @@
 (defmethod sql.qp/datetime-diff [:postgres :month]
   [_driver _unit x y]
   (let [interval           (hx/call :age (date-trunc :day y) (date-trunc :day x))
-        year-diff          (hx/call :extract :year interval)
-        month-of-year-diff (hx/call :extract :month interval)]
+        year-diff          (extract :year interval)
+        month-of-year-diff (extract :month interval)]
     (hx/->integer (hx/+ month-of-year-diff (hx/* year-diff 12)))))
 
 (defmethod sql.qp/datetime-diff [:postgres :week]
@@ -350,7 +359,7 @@
 (defmethod sql.qp/datetime-diff [:postgres :day]
   [_driver _unit x y]
   (let [interval (hx/- (date-trunc :day y) (date-trunc :day x))]
-    (hx/->integer (hx/call :extract :day interval))))
+    (hx/->integer (extract :day interval))))
 
 (defmethod sql.qp/datetime-diff [:postgres :hour]
   [driver _unit x y]
@@ -362,48 +371,69 @@
 
 (defmethod sql.qp/datetime-diff [:postgres :second]
   [_driver _unit x y]
-  (let [seconds (hx/- (extract :epoch y) (extract :epoch x))]
+  (let [seconds (hx/- (extract-from-timestamp :epoch y) (extract-from-timestamp :epoch x))]
     (hx/->integer (hx/call :trunc seconds))))
 
-(p/defrecord+ RegexMatchFirst [identifier pattern]
-  hformat/ToSql
-  (to-sql [_]
-    (str "substring(" (hformat/to-sql identifier) " FROM " (hformat/to-sql pattern) ")")))
+(defn- format-regex-match-first [_fn [identifier pattern]]
+  (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})
+        [pattern-sql & pattern-args]       (sql/format-expr pattern {:nested true})]
+    (into [(format "substring(%s FROM %s)" identifier-sql pattern-sql)]
+          cat
+          [identifier-args
+           pattern-args])))
+
+(sql/register-fn! ::regex-match-first #'format-regex-match-first)
 
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
-    (->RegexMatchFirst identifier pattern)))
+    [::regex-match-first identifier pattern]))
 
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]
   (hx/->time time-value))
+
+(defn- format-pg-conversion [_fn [expr psql-type]]
+  (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
+    (into [(format "%s::%s" expr-sql (name psql-type))]
+          expr-args)))
+
+(sql/register-fn! ::pg-conversion #'format-pg-conversion)
 
 (defn- pg-conversion
   "HoneySQL form that adds a Postgres-style `::` cast e.g. `expr::type`.
 
     (pg-conversion :my_field ::integer) -> HoneySQL -[Compile]-> \"my_field\"::integer"
   [expr psql-type]
-  (reify
-    hformat/ToSql
-    (to-sql [_]
-      (format "%s::%s" (hformat/to-sql expr) (name psql-type)))
-    PrettyPrintable
-    (pretty [_]
-      (format "%s::%s" (pr-str expr) (name psql-type)))))
+  [::pg-conversion expr psql-type])
+
+(defn- format-json-query
+  "e.g.
+
+  ```clj
+  [::json-query [::h2x/identifier :field [\"boop\" \"bleh\"]] \"bigint\" \"{meh}\"]
+  =>
+  [\"(boop.bleh#>> ?::text[])::bigint\" \"{meh}\"]
+  ```"
+  [_fn [parent-identifier field-type names]]
+  (let [[parent-id-sql & parent-id-args] (sql/format-expr parent-identifier {:nested true})
+        [names-sql & names-args]         (sql/format-expr names {:nested true})]
+    (into [(format "(%s#>> %s::text[])::%s" parent-id-sql names-sql field-type)]
+          cat
+          [parent-id-args names-args])))
+
+(sql/register-fn! ::json-query #'format-json-query)
 
 (defmethod sql.qp/json-query :postgres
-  [_ unwrapped-identifier nfc-field]
+  [_driver unwrapped-identifier nfc-field]
+  (assert (hx/identifier? unwrapped-identifier)
+          (format "Invalid identifier: %s" (pr-str unwrapped-identifier)))
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
           names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
-      (reify
-        hformat/ToSql
-        (to-sql [_]
-          (hformat/to-params-default names "nfc_path")
-          (format "(%s#>> ?::text[])::%s " (hformat/to-sql parent-identifier) field-type))))))
+      [::json-query parent-identifier field-type names])))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name opts :as clause]]
@@ -418,7 +448,7 @@
       (field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
-        (walk/postwalk #(if (instance? Identifier %)
+        (walk/postwalk #(if (hx/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
                           %)
                        identifier))

@@ -244,7 +244,6 @@
   (testing "bulk/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled
-
         (is (= 75
                (categories-row-count)))
         (is (= {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}

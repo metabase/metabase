@@ -9,7 +9,7 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [clojure.tools.reader.edn :as edn]
-   [environ.core :refer [env]]
+   [environ.core :as env]
    [hawk.init]
    [medley.core :as m]
    [metabase.db :as mdb]
@@ -660,18 +660,29 @@
 ;;; |                                                 Test Env Vars                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- db-test-env-var-keyword [driver env-var]
+  (keyword (format "mb-%s-test-%s" (name driver) (name env-var))))
+
 (defn db-test-env-var
   "Look up test environment var `env-var` for the given `driver` containing connection related parameters.
   If no `:default` param is specified and the var isn't found, throw.
 
-     (db-test-env-var :mysql :user) ; Look up `MB_MYSQL_TEST_USER`"
+     (db-test-env-var :mysql :user) ; Look up `MB_MYSQL_TEST_USER`
+
+  You can change this value at run time with [[db-test-env-var!]]."
   ([driver env-var]
    (db-test-env-var driver env-var nil))
 
   ([driver env-var default]
-   (get env
-        (keyword (format "mb-%s-test-%s" (name driver) (name env-var)))
-        default)))
+   (get env/env (db-test-env-var-keyword driver env-var) default)))
+
+(defn db-test-env-var!
+  "Update or the value of a test env var. A `nil` new-value removes the env var value."
+  [driver env-var new-value]
+  (if (some? new-value)
+    (alter-var-root #'env/env assoc (db-test-env-var-keyword driver env-var) (str new-value))
+    (alter-var-root #'env/env dissoc (db-test-env-var-keyword driver env-var)))
+  nil)
 
 (defn- to-system-env-var-str
   "Converts the clojure environment variable form (a keyword) to a stringified version that will be specified at the
