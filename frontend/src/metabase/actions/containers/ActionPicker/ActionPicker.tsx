@@ -18,6 +18,7 @@ import { isImplicitAction } from "metabase/actions/utils";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import {
+  ActionsList,
   ActionItem,
   EditButton,
   EmptyState,
@@ -99,12 +100,16 @@ function ModelActionPicker({
         initialState={hasCurrentAction ? "expanded" : "collapsed"}
       >
         {actions?.length ? (
-          <ul>
+          <ActionsList>
             {actions?.map(action => (
-              <ActionItem key={action.id}>
-                <Button onlyText onClick={() => onClick(action)}>
-                  <span>{action.name}</span>
-                </Button>
+              <ActionItem
+                key={action.id}
+                role="button"
+                isSelected={currentAction?.id === action.id}
+                aria-selected={currentAction?.id === action.id}
+                onClick={() => onClick(action)}
+              >
+                <span>{action.name}</span>
                 {!isImplicitAction(action) && (
                   <EditButton
                     icon="pencil"
@@ -117,18 +122,16 @@ function ModelActionPicker({
                 )}
               </ActionItem>
             ))}
-            <ActionItem>
-              <Button onlyText onClick={toggleIsActionCreatorVisible}>
-                {t`Create new action`}
-              </Button>
+            <ActionItem role="button" onClick={toggleIsActionCreatorVisible}>
+              {t`Create new action`}
             </ActionItem>
-          </ul>
+          </ActionsList>
         ) : (
           <EmptyModelStateContainer>
             <div>{t`There are no actions for this model`}</div>
-            <Button onClick={toggleIsActionCreatorVisible} borderless>
+            <ActionItem onClick={toggleIsActionCreatorVisible} role="button">
               {t`Create new action`}
-            </Button>
+            </ActionItem>
           </EmptyModelStateContainer>
         )}
       </ModelCollapseSection>

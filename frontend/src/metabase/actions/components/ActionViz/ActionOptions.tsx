@@ -56,7 +56,7 @@ type NewParameterChangeEvent = {
 type ParameterMappingFn = (
   parameterId: ParameterId,
   dashcardId: number,
-  cardId: number,
+  cardId: number | undefined,
   target: ParameterTarget,
 ) => void;
 
@@ -175,14 +175,12 @@ export const ActionParameterMappingForm = ({
 
   const handleParameterChange = useCallback(
     (dashboardParameterId, target) => {
-      if (dashcard.card?.id) {
-        setParameterMapping(
-          dashboardParameterId,
-          dashcard.id,
-          dashcard.card.id,
-          target,
-        );
-      }
+      setParameterMapping(
+        dashboardParameterId,
+        dashcard.id,
+        undefined, // this is irrelevant for action parameters
+        target,
+      );
     },
     [dashcard, setParameterMapping],
   );

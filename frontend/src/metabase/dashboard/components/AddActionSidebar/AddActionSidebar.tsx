@@ -1,28 +1,37 @@
-import React from "react";
+import React, { useRef, useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
 import type {
-  ActionDisplayType,
   Dashboard,
-  WritebackAction,
-  Card,
+  ActionDashboardCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import Search from "metabase/entities/search";
 
-import ActionPicker from "metabase/actions/containers/ActionPicker";
+import Button from "metabase/core/components/Button";
+import Form from "metabase/core/components/Form";
+import FormProvider from "metabase/core/components/FormProvider";
+import FormInput from "metabase/core/components/FormInput";
+
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import { ConnectedActionVizSettings } from "metabase/actions/components/ActionViz/ActionVizSettings";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import { addActionToDashboard, closeSidebar } from "metabase/dashboard/actions";
 
-import Button from "metabase/core/components/Button";
+import FormSelect from "metabase/core/components/FormSelect";
+import ActionViz from "metabase/actions/components/ActionViz";
 
 import {
   Heading,
-  SidebarContent,
-  BorderedSidebarContent,
+  SidebarBody,
+  SidebarHeader,
+  SidebarFooter,
 } from "./AddActionSidebar.styled";
+
+const buttonVariantOptions = ActionViz.settings["button.variant"].props.options;
 
 const mapDispatchToProps = {
   addAction: addActionToDashboard,
@@ -31,44 +40,84 @@ const mapDispatchToProps = {
 
 interface ActionSidebarProps {
   dashboard: Dashboard;
-  addAction: ({
-    dashId,
-    action,
-    displayType,
-  }: {
-    dashId: number;
-    action: WritebackAction;
-    displayType: ActionDisplayType;
-  }) => void;
-  models: Card[];
-  displayType: ActionDisplayType;
+  dashcard: ActionDashboardCard;
+  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  onClose: () => void;
 }
 
 function AddActionSidebarFn({
   dashboard,
-  addAction,
-  models,
-  displayType,
+  dashcard,
+  onUpdateVisualizationSettings,
+  onClose,
 }: ActionSidebarProps) {
-  const handleActionSelected = async (action: WritebackAction) => {
-    await addAction({ dashId: dashboard.id, action: {}, displayType });
-  };
+  const actionVizSettingsModalRef = useRef<any>(null);
 
   return (
     <Sidebar>
-      <BorderedSidebarContent>
-        <Heading>
-          {t`Add a ${
-            displayType === "button" ? t`button` : t`form`
-          } to the dashboard`}
-        </Heading>
-      </BorderedSidebarContent>
+      <SidebarHeader>
+        <Heading>{t`Button properties`}</Heading>
+      </SidebarHeader>
+      <SidebarBody data-dashcardId={dashcard.id}>
+        <FormProvider
+          initialValues={{
+            name:
+              dashcard?.visualization_settings?.["button.label"] ?? t`Click me`,
+            variant:
+              dashcard?.visualization_settings?.["button.variant"] ?? "primary",
+          }}
+          enableReinitialize
+          onSubmit={onClose}
+        >
+          <Form>
+            <FormInput
+              title={t`Button text`}
+              name="name"
+              placeholder={t`Button text`}
+              autoFocus
+              onChangeCapture={e =>
+                onUpdateVisualizationSettings({
+                  "button.label": e.currentTarget.value,
+                })
+              }
+            />
+            <FormSelect
+              title={t`Variant`}
+              name="variant"
+              options={buttonVariantOptions}
+              onChange={e =>
+                onUpdateVisualizationSettings({
+                  "button.variant": e.target.value,
+                })
+              }
+            />
+          </Form>
+        </FormProvider>
 
-      <SidebarContent>
-        <Button primary onClick={handleActionSelected}>
-          {t`Add New Action Button`}
+        <ModalWithTrigger
+          ref={actionVizSettingsModalRef}
+          fit
+          enableMouseEvents
+          triggerElement={
+            <Button primary={!dashcard.action} fullWidth>
+              {dashcard.action ? t`Update assigned action` : t`Pick an action`}
+            </Button>
+          }
+        >
+          <ConnectedActionVizSettings
+            dashboard={dashboard}
+            dashcard={dashcard as ActionDashboardCard}
+            onClose={() => {
+              actionVizSettingsModalRef.current?.close();
+            }}
+          />
+        </ModalWithTrigger>
+      </SidebarBody>
+      <SidebarFooter>
+        <Button onClick={onClose} primary small>
+          {t`Close`}
         </Button>
-      </SidebarContent>
+      </SidebarFooter>
     </Sidebar>
   );
 }

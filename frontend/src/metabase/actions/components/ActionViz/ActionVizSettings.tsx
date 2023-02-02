@@ -45,11 +45,10 @@ export function ActionVizSettings({
   onClose,
   setActionForDashcard,
 }: Props) {
-  const [action, setAction] = useState(dashcard.action);
+  const action = dashcard.action;
 
-  const save = () => {
-    action && setActionForDashcard(dashcard, action);
-    onClose();
+  const setAction = (newAction: WritebackAction) => {
+    setActionForDashcard(dashcard, newAction);
   };
 
   return (
@@ -61,22 +60,18 @@ export function ActionVizSettings({
       <ActionSettingsRight>
         {action ? (
           <>
-            <ActionSettingsHeader>
-              {action.name ?? t`Action Settings`}
-            </ActionSettingsHeader>
+            <ActionSettingsHeader>{action.name}</ActionSettingsHeader>
             <ParameterMapperContainer>
               <ConnectedActionParameterMappingForm
-                dashcard={{
-                  ...dashcard,
-                  action,
-                }}
+                dashcard={dashcard}
                 dashboard={dashboard}
+                action={dashcard.action}
               />
             </ParameterMapperContainer>
             <ModalActions>
               <Button onClick={onClose}>Cancel</Button>
-              <Button primary onClick={save}>
-                {t`Use this action`}
+              <Button primary onClick={onClose}>
+                {t`Done`}
               </Button>
             </ModalActions>
           </>

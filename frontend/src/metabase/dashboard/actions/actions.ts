@@ -8,6 +8,7 @@ import {
 import { addUndo } from "metabase/redux/undo";
 
 import { ActionsApi, PublicApi } from "metabase/services";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import type {
   ActionDashboardCard,
@@ -24,6 +25,7 @@ import type { Dispatch } from "metabase-types/store";
 import { getDashboardType } from "../utils";
 import { setDashCardAttributes } from "./core";
 import { reloadDashboardCards } from "./data-fetching";
+import { setSidebar, closeSidebar } from "./ui";
 
 interface DashboardAttributes {
   card_id?: CardId | null;
@@ -140,3 +142,19 @@ export const executeRowAction = async ({
     return { success: false, error: message, message };
   }
 };
+
+export const setEditingDashcardId =
+  (dashcardId: number | null) => (dispatch: Dispatch) => {
+    if (dashcardId != null) {
+      dispatch(
+        setSidebar({
+          name: SIDEBAR_NAME.addActionButton,
+          props: {
+            dashcardId,
+          },
+        }),
+      );
+    } else {
+      dispatch(closeSidebar());
+    }
+  };

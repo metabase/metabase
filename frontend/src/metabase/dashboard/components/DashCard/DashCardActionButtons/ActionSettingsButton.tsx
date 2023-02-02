@@ -1,42 +1,41 @@
-import React, { useRef } from "react";
+import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
-
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-
-import { ConnectedActionVizSettings } from "metabase/actions/components/ActionViz/ActionVizSettings";
+import { connect } from "react-redux";
 
 import type { ActionDashboardCard, Dashboard } from "metabase-types/api";
 
+import { setEditingDashcardId } from "metabase/dashboard/actions";
+
 import DashCardActionButton from "./DashCardActionButton";
+
+const mapDispatchToProps = {
+  setEditingDashcardId,
+};
 
 interface Props {
   dashboard: Dashboard;
   dashcard: ActionDashboardCard;
+  setEditingDashcardId: (dashcardId: number) => void;
 }
 
-export default function ActionSettingsButton({ dashboard, dashcard }: Props) {
-  const actionVizSettingsModalRef = useRef<any>(null);
+function ActionSettingsButton({
+  dashboard,
+  dashcard,
+  setEditingDashcardId,
+}: Props) {
+  if (dashcard.justAdded) {
+    setEditingDashcardId(dashcard.id);
+  }
 
   return (
-    <ModalWithTrigger
-      ref={actionVizSettingsModalRef}
-      wide
-      isInitiallyOpen={dashcard.justAdded}
-      triggerElement={
-        <DashCardActionButton tooltip={t`Action Settings`}>
-          <DashCardActionButton.Icon name="bolt" />
-        </DashCardActionButton>
-      }
-      enableMouseEvents
+    <DashCardActionButton
+      tooltip={t`Action Settings`}
+      onClick={() => setEditingDashcardId(dashcard.id)}
     >
-      <ConnectedActionVizSettings
-        dashboard={dashboard}
-        dashcard={dashcard}
-        onClose={() => {
-          actionVizSettingsModalRef.current?.close();
-        }}
-      />
-    </ModalWithTrigger>
+      <DashCardActionButton.Icon name="bolt" />
+    </DashCardActionButton>
   );
 }
+
+export default connect(null, mapDispatchToProps)(ActionSettingsButton);

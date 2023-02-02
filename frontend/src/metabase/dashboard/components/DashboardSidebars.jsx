@@ -98,15 +98,30 @@ export function DashboardSidebars({
         />
       );
     case SIDEBAR_NAME.addActionForm:
-    case SIDEBAR_NAME.addActionButton:
+    case SIDEBAR_NAME.addActionButton: {
+      const editingDashcard = dashboard.ordered_cards.find(
+        dc => dc.id === sidebar.props.dashcardId,
+      );
+
+      if (!editingDashcard) {
+        return null;
+      }
+
+      const onUpdateVisualizationSettings = settings =>
+        onUpdateDashCardVisualizationSettings(editingDashcard.id, settings);
+
       return (
         <AddActionSidebar
           dashboard={dashboard}
+          dashcard={editingDashcard}
           displayType={
             sidebar.name === SIDEBAR_NAME.addActionForm ? "form" : "button"
           }
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onClose={closeSidebar}
         />
       );
+    }
     case SIDEBAR_NAME.clickBehavior:
       return (
         <ClickBehaviorSidebar
