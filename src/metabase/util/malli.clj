@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [defn])
   (:require
    [clojure.core :as core]
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
@@ -32,12 +33,16 @@
        (<= 2000 (count url)) nil
        :else url))))
 
+(core/defn- humanize-include-value
+  "Pass into mu/humanize to include the value recieved in the error message."
+  [{:keys [value message]}] (str message ", received: " (pr-str value)))
+
 (core/defn- explain-fn-fail!
   "Used as reporting function to minst/instrument!"
   [type data]
   (let [{:keys [input args output value]} data
-        humanized (cond input (me/humanize (mc/explain input args))
-                        output (me/humanize (mc/explain output value)))]
+        humanized (cond input (me/humanize (mc/explain input args) {:wrap humanize-include-value})
+                        output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))]
     (throw (ex-info
             (pr-str humanized)
             (merge {:type type :data data}
@@ -61,10 +66,18 @@ explain-fn-fail!
                     (->> arities val :arities (map parse)))
         raw-arglists (map :raw-arglist parglists)
         schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
+        annotated-doc (str "Inputs: " (if single
+                                        (pr-str (first (mapv :raw-arglist parglists)))
+                                        (str "("
+                                             (str/join "\n           "
+                                                       (map (comp pr-str :raw-arglist) parglists))
+                                             ")"))
+                           "\n  Returns: " (pr-str (:schema return))
+                           (when (not-empty doc) (str "\n\n  " doc)))
         id (str (gensym "id"))]
     `(let [defn# (core/defn
                    ~name
-                   ~@(some-> doc vector)
+                   ~@(some-> annotated-doc vector)
                    ~(assoc meta
                            :raw-arglists (list 'quote raw-arglists)
                            :schema schema

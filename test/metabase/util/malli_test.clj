@@ -9,8 +9,8 @@
 (deftest mu-defn-test
   (testing "invalid input"
     (mu/defn bar [x :- [:map [:x int?] [:y int?]]] (str x))
-    (is (= [{:x ["missing required key"]
-             :y ["missing required key"]}]
+    (is (= [{:x ["missing required key, received: nil"]
+             :y ["missing required key, received: nil"]}]
            (:humanized
             (try (bar {})
                  (catch Exception e (ex-data e)))))
@@ -19,8 +19,8 @@
 
   (testing "invalid output"
     (mu/defn baz :- [:map [:x int?] [:y int?]] [] {:x "3"})
-    (is (= {:x ["should be an int"]
-            :y ["missing required key"]}
+    (is (= {:x ["should be an int, received: \"3\""]
+            :y ["missing required key, received: nil"]}
            (:humanized
             (try (baz)
                  (catch Exception e (ex-data e)))))
@@ -40,6 +40,9 @@
 
         (is (= ["Special Number that has to be less than four"]
                (me/humanize (mc/explain special-lt-4-schema 8))))
+
+        (is (= ["Special Number that has to be less than four, received: 8"]
+               (me/humanize (mc/explain special-lt-4-schema 8) {:wrap #'mu/humanize-include-value})))
 
         (is (= "Special Number that has to be less than four"
                (umd/describe special-lt-4-schema)))))
