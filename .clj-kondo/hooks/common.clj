@@ -46,9 +46,10 @@
   ;; unused variables since Kondo was smart enough to realize that we sometimes were calling pure functions early in
   ;; the `do` and the value was getting thrown away. `print` tricks Kondo into thinking everything is used.
   [{{[_ & args] :children} :node}]
-  (let [node* (hooks/list-node
+  (let [noop (constantly nil)
+        node* (hooks/list-node
                (list*
-                (hooks/token-node 'print)
+                (hooks/token-node noop)
                 args))]
     {:node node*}))
 
