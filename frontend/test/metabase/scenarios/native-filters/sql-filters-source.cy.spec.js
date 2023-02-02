@@ -100,7 +100,6 @@ describe("scenarios > filters > sql filters > values source", () => {
 
     it("should properly cache parameter values api calls", () => {
       cy.createQuestion(structuredSourceQuestion);
-
       openNativeEditor();
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
