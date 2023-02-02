@@ -9,8 +9,8 @@ const ConfirmContent = _ConfirmContent as any;
 
 export type ConfirmationState = {
   title: string;
-  onConfirm: () => Promise<void>;
   message?: string;
+  onConfirm: () => void;
   confirmButtonText?: string;
   cancelButtonText?: string;
 };
