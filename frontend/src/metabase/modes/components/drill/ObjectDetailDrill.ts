@@ -2,6 +2,7 @@ import { t } from "ttag";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 import type { RowValue } from "metabase-types/api";
+import type { ClickObject, Drill, DrillOptions } from "metabase/modes/types";
 import type Question from "metabase-lib/Question";
 
 import {
@@ -9,8 +10,6 @@ import {
   objectDetailFKDrillQuestion,
   objectDetailPKDrillQuestion,
 } from "metabase-lib/queries/drills/object-detail-drill";
-
-import type { Drill, DrillOptions } from "../../types";
 
 type DrillType = "pk" | "fk" | "zoom" | "dashboard";
 
@@ -63,14 +62,14 @@ function getActionExtraData({
   }
 }
 
-function getZoomedRowColumnIndex(clicked) {
+function getZoomedRowColumnIndex(clicked: ClickObject | undefined) {
   if (!clicked) {
     return;
   }
 
   const clickedColumnId = clicked?.column?.id;
 
-  // This way to find the index may seem too complicated.
+  // This way to find the index does seem too complicated.
   // With it we can do drills in tables with reordered/hidden columns.
   // It ensures we find the correct column position
   // according to the way result rows/columns are ordered later when the drill happens.

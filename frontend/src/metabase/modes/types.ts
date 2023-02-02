@@ -15,6 +15,10 @@ type DimensionValue = {
 };
 
 export type ClickObject = {
+  data?: {
+    value: RowValue;
+    col: DatasetColumn;
+  }[];
   value?: RowValue;
   column?: DatasetColumn;
   dimensions?: DimensionValue[];
