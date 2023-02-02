@@ -4,14 +4,20 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 
 import Actions from "metabase/entities/actions";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { parseTimestamp } from "metabase/lib/time";
+import * as Urls from "metabase/lib/urls";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 
-import type { WritebackAction, WritebackActionId } from "metabase-types/api";
+import type {
+  Card,
+  WritebackAction,
+  WritebackActionId,
+} from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
@@ -107,11 +113,13 @@ function ModelActionDetails({
     [canWrite, handleEditAction],
   );
 
+  const newActionUrl = Urls.newAction(model.card() as Card);
+
   return (
     <Root>
       {canWrite && (
         <ActionsHeader>
-          <Button onClick={showActionCreator}>{t`New action`}</Button>
+          <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
           {!hasImplicitActions && (
             <ActionMenu
               triggerIcon="ellipsis"

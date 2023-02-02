@@ -87,6 +87,7 @@ import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 
+import ActionCreator from "metabase/actions/containers/ActionCreator";
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
@@ -245,7 +246,13 @@ export const getRoutes = store => (
           <IndexRedirect to="usage" />
           <Route path="usage" component={ModelDetailPage} />
           <Route path="schema" component={ModelDetailPage} />
-          <Route path="actions" component={ModelDetailPage} />
+          <Route path="actions" component={ModelDetailPage}>
+            <ModalRoute
+              path="new"
+              modal={ActionCreator}
+              modalProps={{ wide: true, enableTransition: false }}
+            />
+          </Route>
           <Redirect from="*" to="usage" />
         </Route>
 
