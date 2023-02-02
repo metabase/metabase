@@ -43,8 +43,7 @@
 
 (defn dataset
   [{{[_ dataset & body] :children} :node}]
-  (let [noop (constantly nil)
-        body (case (dataset-type dataset)
+  (let [body (case (dataset-type dataset)
                ;; non-symbol, qualified symbols, and unqualified symbols from the current namespace/let-bound can all
                ;; get converted from something like
                ;;
@@ -68,7 +67,7 @@
                ;; (this used to be a `do` form (which makes a lot more semantic sense), but that resulted in warnings
                ;; about unused values
                (:unqualified/from-dataset-defs-namespace :unqualified/unknown)
-               (list* (hooks/token-node noop)
+               (list* (hooks/token-node 'print)
                       body))]
     {:node (with-meta (hooks/list-node (with-meta body
                                                   (meta dataset)))
