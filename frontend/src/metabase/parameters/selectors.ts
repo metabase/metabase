@@ -1,5 +1,5 @@
 import { State } from "metabase-types/store";
 
 export const getParameterValuesCache = (state: State) => {
-  return state.parameters.valuesCache;
+  return state.parameters.parameterValuesCache;
 };

@@ -12,7 +12,7 @@ import {
 import { ParameterValuesCache } from "metabase-types/store/parameters";
 import { FETCH_PARAMETER_VALUES, FetchParameterValuesPayload } from "./actions";
 
-export const valuesCache = handleActions<
+export const parameterValuesCache = handleActions<
   ParameterValuesCache,
   FetchParameterValuesPayload
 >(
