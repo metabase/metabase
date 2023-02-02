@@ -354,14 +354,18 @@
          admin-permissions-rx]
    "$"))
 
-(def ^:private Kind (into [:enum] (map second rx->kind)))
+(def ^:private Path "A permission path."
+  [:or [:re path-regex-v1] [:re path-regex-v2]])
+
+(def ^:private Kind
+  (into [:enum] (map second rx->kind)))
 
 (mu/defn classify-path :- Kind [path :- Path]
   (let [result (keep (fn [[permission-rx kind]]
                        (when (re-matches (u.regex/rx permission-rx) path) kind))
                      rx->kind)]
     (when-not (= 1 (count result))
-      (throw (ex-info (str "Unclassified path!! " (pr-str {:path path :result result}))
+      (throw (ex-info (str "Unclassifiable path! " (pr-str {:path path :result result}))
                       {:path path :result result})))
     (first result)))
 
@@ -390,12 +394,6 @@
   (some-> s
           (str/replace #"\\" "\\\\\\\\")   ; \ -> \\
           (str/replace #"/" "\\\\/"))) ; / -> \/
-
-(def Path
-  "A permission path. "
-  [:or
-   [:re path-regex-v1]
-   [:re path-regex-v2]])
 
 (let [path-validator (mc/validator Path)]
   (defn valid-path?
@@ -963,10 +961,12 @@
    (grant-permissions! group-or-id (apply data-perms-path db-id schema more)))
 
   ([group-or-id path]
-   ;; TEMPORARY HACK: v2 paths won't be in the graph, hence will not get deleted.
-   ;; But we can delete them here:
-   (db/delete! Permissions :object [:like "/query/%"])
-   (db/delete! Permissions :object [:like "/data/%"])
+   ;; TEMPORARY HACK: v2 paths won't be in the graph, so they will not be seen in the old graph, so will be
+   ;; interpreted as being new, and hence will not get deleted.
+   ;; But we can simply delete them here:
+   ;; This must be pulled out once we are properly parsing v2 query and data permissions
+   (db/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/query/%"])
+   (db/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/data/%"])
    (try
      (db/insert-many! Permissions
        (map (fn [path-object]
