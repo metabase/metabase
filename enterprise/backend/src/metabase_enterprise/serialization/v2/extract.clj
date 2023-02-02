@@ -132,25 +132,25 @@
   "Given the analysis map from [[escape-analysis]], report the results in a human-readable format with Card titles etc."
   [{:keys [escaped-dashcards escaped-questions]}]
   (when-not (empty? escaped-dashcards)
-    (log/info "Dashboard cards outside the collection")
-    (log/info "======================================")
+    (println "Dashboard cards outside the collection")
+    (println "======================================")
     (doseq [[dash-id card-ids] escaped-dashcards
             :let [dash-name (db/select-one-field :name Dashboard :id dash-id)]]
-      (log/infof "Dashboard %d: %s\n" dash-id dash-name)
+      (printf "Dashboard %d: %s\n" dash-id dash-name)
       (doseq [card_id card-ids
               :let [card (db/select-one [Card :collection_id :name] :id card_id)]]
-        (log/infof "          \tCard %d: %s\n"    card_id (:name card))
-        (log/infof "        from collection %s\n" (collection-label (:collection_id card))))))
+        (printf "          \tCard %d: %s\n"    card_id (:name card))
+        (printf "        from collection %s\n" (collection-label (:collection_id card))))))
 
   (when-not (empty? escaped-questions)
-    (log/info "Questions based on outside questions")
-    (log/info "====================================")
+    (println "Questions based on outside questions")
+    (println "====================================")
     (doseq [[curated-id alien-id] escaped-questions
             :let [curated-card (db/select-one [Card :collection_id :name] :id curated-id)
                   alien-card   (db/select-one [Card :collection_id :name] :id alien-id)]]
-      (log/infof "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
-                 curated-id (:name curated-card) (collection-label (:collection_id curated-card))
-                 alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))
+      (printf "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
+              curated-id (:name curated-card) (collection-label (:collection_id curated-card))
+              alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))
 
 (defn extract-subtrees
   "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.

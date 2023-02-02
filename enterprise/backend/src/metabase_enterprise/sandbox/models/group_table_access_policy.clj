@@ -34,10 +34,10 @@
 (when *compile-files*
   (defonce previous-compilation-trace (atom nil))
   (when @previous-compilation-trace
-    (log/info "THIS FILE HAS ALREADY BEEN COMPILED!!!!!")
-    (log/info "This compilation trace:")
+    (println "THIS FILE HAS ALREADY BEEN COMPILED!!!!!")
+    (println "This compilation trace:")
     ((requiring-resolve 'clojure.pprint/pprint) (vec (.getStackTrace (Thread/currentThread))))
-    (log/info "Previous compilation trace:")
+    (println "Previous compilation trace:")
     ((requiring-resolve 'clojure.pprint/pprint) @previous-compilation-trace)
     (throw (ex-info "THIS FILE HAS ALREADY BEEN COMPILED!!!!!" {})))
   (reset! previous-compilation-trace (vec (.getStackTrace (Thread/currentThread)))))

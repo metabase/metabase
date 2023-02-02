@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.group-table-access-policy
@@ -427,7 +426,7 @@
                                            (reset! remark <>)))]
       (let [results (run-query-fn)]
         (or (some-> @remark (str/replace #"queryHash: \w+" "queryHash: <hash>"))
-            (log/infof "NO REMARK FOUND:\n %s" (u/pprint-to-str 'red results))
+            (println "NO REMARK FOUND:\n" (u/pprint-to-str 'red results))
             (throw (ex-info "No remark found!" {:results results})))))))
 
 (deftest remark-test
