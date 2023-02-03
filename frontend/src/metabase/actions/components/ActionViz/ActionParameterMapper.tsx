@@ -121,15 +121,7 @@ export const ActionParameterMappingForm = ({
   );
 };
 
-export const ConnectedActionParameterMappingForm = _.compose(
-  Actions.load({
-    id: (state: State, props: ActionParameterMapperProps) =>
-      props.dashcard.action?.id,
-  }),
-  Questions.load({
-    id: (state: State, props: ActionParameterMapperProps) =>
-      props?.dashcard.card?.id,
-    entityAlias: "model",
-  }),
-  connect(null, mapDispatchToProps),
+export const ConnectedActionParameterMappingForm = connect(
+  null,
+  mapDispatchToProps,
 )(ActionParameterMappingForm);
