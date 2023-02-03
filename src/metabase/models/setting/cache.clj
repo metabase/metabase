@@ -71,8 +71,8 @@
   []
   (log/debug (trs "Updating value of settings-last-updated in DB..."))
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb.connection/db-type) :mysql) :char :text)
-                                                       [:raw "current_timestamp"])]
+  (let [current-timestamp-as-string-honeysql (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text)
+                                                      (hx/raw "current_timestamp"))]
     ;; attempt to UPDATE the existing row. If no row exists, `update-where!` will return false...
     (or (db/update-where! 'Setting {:key settings-last-updated-key} :value current-timestamp-as-string-honeysql)
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both

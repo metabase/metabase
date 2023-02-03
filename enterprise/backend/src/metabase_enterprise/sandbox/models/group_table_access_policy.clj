@@ -10,6 +10,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.table :as table]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -23,7 +24,7 @@
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
-(models/defmodel GroupTableAccessPolicy :group_table_access_policy)
+(models/defmodel GroupTableAccessPolicy :sandboxes)
 
 ;;; only admins can work with GTAPs
 (derive GroupTableAccessPolicy ::mi/read-policy.superuser)
@@ -34,10 +35,10 @@
 (when *compile-files*
   (defonce previous-compilation-trace (atom nil))
   (when @previous-compilation-trace
-    (println "THIS FILE HAS ALREADY BEEN COMPILED!!!!!")
-    (println "This compilation trace:")
+    (log/info "THIS FILE HAS ALREADY BEEN COMPILED!!!!!")
+    (log/info "This compilation trace:")
     ((requiring-resolve 'clojure.pprint/pprint) (vec (.getStackTrace (Thread/currentThread))))
-    (println "Previous compilation trace:")
+    (log/info "Previous compilation trace:")
     ((requiring-resolve 'clojure.pprint/pprint) @previous-compilation-trace)
     (throw (ex-info "THIS FILE HAS ALREADY BEEN COMPILED!!!!!" {})))
   (reset! previous-compilation-trace (vec (.getStackTrace (Thread/currentThread)))))
@@ -126,20 +127,23 @@
 
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be
-  created."
+  created. New sandboxes must have a `:table_id` corresponding to a sandboxed query path in the `permissions` table;
+  if this does not exist, the sandbox will not be created."
   :feature :sandboxes
   [sandboxes]
   (for [sandbox sandboxes]
     (if-let [id (:id sandbox)]
+      ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
+      ;; This allows existing values to be "cleared" by being set to nil
       (do
-        ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
-        ;; This allows existing values to be "cleared" by being set to nil
         (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
           (db/update! GroupTableAccessPolicy
                       id
                       (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
         (db/select-one GroupTableAccessPolicy :id id))
-      (db/insert! GroupTableAccessPolicy sandbox))))
+      (let [expected-permission-path (perms/table-segmented-query-path (:table_id sandbox))]
+        (when-let [permission-path-id (db/select-one-field :id Permissions :object expected-permission-path)]
+          (db/insert! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id)))))))
 
 (defn- pre-insert [gtap]
   (u/prog1 gtap

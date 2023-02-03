@@ -282,6 +282,8 @@
    (setting/user-readable-values-map :public)
    (when @api/*current-user*
      (setting/user-readable-values-map :authenticated))
+   (when (setting/has-advanced-setting-access?)
+     (setting/user-readable-values-map :settings-manager))
    (when api/*is-superuser?*
      (setting/user-readable-values-map :admin))))
 

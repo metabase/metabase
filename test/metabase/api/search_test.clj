@@ -25,7 +25,6 @@
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan.db :as db]))
 
 (def ^:private default-search-row
@@ -78,7 +77,6 @@
     test-collection
     (make-result "card test card", :model "card", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
-    (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
      (table-search-results))
@@ -101,7 +99,7 @@
       search-item)))
 
 (defn- default-results-with-collection []
-  (on-search-types #{"dashboard" "pulse" "card" "dataset"}
+  (on-search-types #{"dashboard" "card" "dataset"}
                    #(assoc % :collection {:id true, :name true :authority_level nil})
                    (default-search-results)))
 
@@ -117,14 +115,12 @@
                     Card       [dataset   (assoc (coll-data-map "dataset %s dataset" coll)
                                                  :dataset true)]
                     Dashboard  [dashboard (coll-data-map "dashboard %s dashboard" coll)]
-                    Pulse      [pulse     (coll-data-map "pulse %s pulse" coll)]
                     Metric     [metric    (data-map "metric %s metric")]
                     Segment    [segment   (data-map "segment %s segment")]]
       (f {:collection coll
           :card       card
           :dataset    dataset
           :dashboard  dashboard
-          :pulse      pulse
           :metric     metric
           :segment    segment}))))
 
@@ -253,7 +249,7 @@
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"
       ;; sometimes there is a "table" in these responses. might be do to garbage in CI
-      (is (set/subset? #{"dashboard" "dataset" "segment" "collection" "pulse" "database" "metric" "card"}
+      (is (set/subset? #{"dashboard" "dataset" "segment" "collection" "database" "metric" "card"}
                        (-> (mt/user-http-request :crowberto :get 200 "search?q=test")
                            :available_models
                            set)))))
@@ -586,23 +582,18 @@
                                  (= (:id %) pulse-id)))
                    first))]
       (mt/with-temp Pulse [pulse {:name "Electro-Magnetic Pulse"}]
-        (testing "sanity check: should be able to fetch a Pulse normally"
-          (is (schema= {:name (s/eq "Electro-Magnetic Pulse")
-                        s/Keyword s/Any}
-                       (search-for-pulses pulse))))
+        (testing "Pulses are not searchable"
+          (is (= nil (search-for-pulses pulse))))
         (mt/with-temp* [Card      [card-1]
                         PulseCard [_ {:pulse_id (:id pulse), :card_id (:id card-1)}]
                         Card      [card-2]
                         PulseCard [_ {:pulse_id (:id pulse), :card_id (:id card-2)}]]
-          (testing "Create some Pulse Cards: should still be able to search for it it"
-            (is (schema= {:name     (s/eq "Electro-Magnetic Pulse")
-                          s/Keyword s/Any}
-                         (search-for-pulses pulse))))
-          (testing "Now make this Pulse a dashboard subscription; Pulse should no longer come back from search-results"
+          (testing "Create some Pulse Cards: we should not find them."
+            (is (= nil (search-for-pulses pulse))))
+          (testing "Even as a dashboard subscription, the pulse is not found."
             (mt/with-temp* [Dashboard [dashboard]]
               (db/update! Pulse (:id pulse) :dashboard_id (:id dashboard))
-              (is (= nil
-                     (search-for-pulses pulse))))))))))
+              (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest card-dataset-query-test
   (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one."

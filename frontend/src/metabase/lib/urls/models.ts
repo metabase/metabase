@@ -17,9 +17,9 @@ export function model(
   return question(card as LegacyCard, opts);
 }
 
-export function modelDetail(card: CardOrSearchResult) {
-  const baseUrl = model(card);
-  return `${baseUrl}/detail`;
+export function modelDetail(card: CardOrSearchResult, tab = "") {
+  const baseUrl = `${model(card)}/detail`;
+  return tab ? `${baseUrl}/${tab}` : baseUrl;
 }
 
 type ModelEditorUrlBuilderOpts = {

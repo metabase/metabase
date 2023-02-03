@@ -50,7 +50,7 @@
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}
         card-params    (fn [card-id] (merge default-params {:values_source_type "card"
-                                                            :values_source_config {:card_id card-id}}) )]
+                                                            :values_source_config {:card_id card-id}}))]
     (testing "With no associated cards"
       (tt/with-temp Card [card]
         (is (zero? (hydrated-count card)))))

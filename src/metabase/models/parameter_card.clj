@@ -1,6 +1,8 @@
 (ns metabase.models.parameter-card
   (:require
    [metabase.models.interface :as mi]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -33,7 +35,8 @@
 
 (mi/define-methods
  ParameterCard
- {:properties (constantly {::mi/timestamped? true})
+ {:properties (constantly {::mi/timestamped? true
+                           ::mi/entity-id    true})
   :types      (constantly {:parameterized_object_type :keyword})
   :pre-insert pre-insert
   :pre-update pre-update})
@@ -45,12 +48,11 @@
    (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id []))
 
   ([parameterized-object-type parameterized-object-id parameter-ids-still-in-use]
-   (db/delete! ParameterCard
-               :parameterized_object_type parameterized-object-type
-               :parameterized_object_id parameterized-object-id
-               (if (empty? parameter-ids-still-in-use)
-                 {}
-                 {:where [:not-in :parameter_id parameter-ids-still-in-use]}))))
+   (let [conditions (concat [:parameterized_object_type parameterized-object-type
+                             :parameterized_object_id parameterized-object-id]
+                            (when (seq parameter-ids-still-in-use)
+                              [:parameter_id [:not-in parameter-ids-still-in-use]]))]
+     (apply db/delete! ParameterCard conditions))))
 
 (defn- upsert-from-parameters!
   [parameterized-object-type parameterized-object-id parameters]
@@ -74,3 +76,18 @@
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-from-parameters! parameterized-object-type parameterized-object-id upsertable-parameters)
     (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id (map :id upsertable-parameters))))
+
+;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
+;; ParameterCard are not serialized as their own, separate entities. They are inlined onto their parent ParameterizedObjects
+
+(defmethod serdes.base/load-xform "ParameterCard"
+  [parameter-card]
+  (let [parameterized-model (case (:parameterized_object_type parameter-card)
+                              "dashboard" 'Dashboard
+                              "card"      'Card)]
+    (-> parameter-card
+        (dissoc :serdes/meta)
+        (update :card_id                 serdes.util/import-fk 'Card)
+        (update :parameterized_object_id serdes.util/import-fk parameterized-model)
+        (update :parameter_mappings      serdes.util/import-parameter-mappings)
+        (update :visualization_settings  serdes.util/import-visualization-settings))))

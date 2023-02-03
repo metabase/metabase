@@ -1084,11 +1084,8 @@
                      (client/client :get 200 (param-values-url :card card-uuid (:static-list param-keys))))))
 
             (testing "parameter with source is a card"
-              (is (= {:values          ["Red Medicine"
-                                        "Stout Burgers & Beers"
-                                        "The Apple Pan"
-                                        "Wurstküche"
-                                        "Brite Spot Family Restaurant"]
+              (is (= {:values          ["Brite Spot Family Restaurant" "Red Medicine"
+                                        "Stout Burgers & Beers" "The Apple Pan" "Wurstküche"]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :card card-uuid (:card param-keys))))))
 
@@ -1158,11 +1155,8 @@
                        :has_more_values false}
                       (client/client :get 200 (param-values-url :card uuid (:static-list param-keys)))))
 
-               (is (= {:values          ["Red Medicine"
-                                         "Stout Burgers & Beers"
-                                         "The Apple Pan"
-                                         "Wurstküche"
-                                         "Brite Spot Family Restaurant"]
+               (is (= {:values          ["Brite Spot Family Restaurant" "Red Medicine"
+                                         "Stout Burgers & Beers" "The Apple Pan" "Wurstküche"]
                        :has_more_values false}
                       (client/client :get 200 (param-values-url :card uuid (:card param-keys))))))
 

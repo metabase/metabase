@@ -3,7 +3,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.group-table-access-policy
@@ -82,38 +82,38 @@
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/supports? driver/*driver* :native-parameters))
     {:query (mt/native-query
-              {:query
-               (format-honeysql
-                {:select   [:*]
-                 :from     [(identifier :venues)]
-                 :where    [:= (identifier :venues :category_id) (hsql/raw "{{cat}}")]
-                 :order-by [(identifier :venues :id)]})
+             {:query
+              (format-honeysql
+               {:select   [:*]
+                :from     [(identifier :venues)]
+                :where    [:= (identifier :venues :category_id) (hx/raw "{{cat}}")]
+                :order-by [(identifier :venues :id)]})
 
-               :template_tags
-               {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+              :template_tags
+              {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
      :remappings {:cat ["variable" ["template-tag" "cat"]]}}))
 
 (defn- parameterized-sql-with-join-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/supports? driver/*driver* :native-parameters))
     {:query (mt/native-query
-              {:query
-               (format-honeysql
-                {:select    [(identifier :checkins :id)
-                             (identifier :checkins :user_id)
-                             (identifier :venues :name)
-                             (identifier :venues :category_id)]
-                 :from      [(identifier :checkins)]
-                 :left-join [(identifier :venues)
-                             [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
-                 :where     [:= (identifier :checkins :user_id) (hsql/raw "{{user}}")]
-                 :order-by  [[(identifier :checkins :id) :asc]]})
+             {:query
+              (format-honeysql
+               {:select    [(identifier :checkins :id)
+                            (identifier :checkins :user_id)
+                            (identifier :venues :name)
+                            (identifier :venues :category_id)]
+                :from      [(identifier :checkins)]
+                :left-join [(identifier :venues)
+                            [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
+                :where     [:= (identifier :checkins :user_id) (hx/raw "{{user}}")]
+                :order-by  [[(identifier :checkins :id) :asc]]})
 
-               :template_tags
-               {"user" {:name         "user"
-                        :display-name "User ID"
-                        :type         :number
-                        :required     true}}})
+              :template_tags
+              {"user" {:name         "user"
+                       :display-name "User ID"
+                       :type         :number
+                       :required     true}}})
      :remappings {:user ["variable" ["template-tag" "user"]]}}))
 
 (defn- venue-names-native-gtap-def []
@@ -429,7 +429,7 @@
                                            (reset! remark <>)))]
       (let [results (run-query-fn)]
         (or (some-> @remark (str/replace #"queryHash: \w+" "queryHash: <hash>"))
-            (println "NO REMARK FOUND:\n" (u/pprint-to-str 'red results))
+            (log/infof "NO REMARK FOUND:\n %s" (u/pprint-to-str 'red results))
             (throw (ex-info "No remark found!" {:results results})))))))
 
 (deftest remark-test

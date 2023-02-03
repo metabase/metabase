@@ -228,25 +228,3 @@ export function getFilteringParameterValuesMap(
 
   return filteringParameterValues;
 }
-
-export function getParameterValuesSearchKey({
-  dashboardId,
-  parameterId,
-  query = null,
-  filteringParameterValues = {},
-}: {
-  dashboardId: number;
-  parameterId: string;
-  query: string | null;
-  filteringParameterValues: { [parameterId: string]: unknown };
-}) {
-  const BY_PARAMETER_ID = "0";
-  // sorting the filteringParameterValues map by its parameter id key to ensure entry order doesn't affect the outputted cache key
-  const sortedParameterValues = _.sortBy(
-    Object.entries(filteringParameterValues),
-    BY_PARAMETER_ID,
-  );
-  const stringifiedParameterValues = JSON.stringify(sortedParameterValues);
-
-  return `dashboardId: ${dashboardId}, parameterId: ${parameterId}, query: ${query}, filteringParameterValues: ${stringifiedParameterValues}`;
-}

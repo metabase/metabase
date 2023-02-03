@@ -22,8 +22,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.urls :as urls]
-   [schema.core :as s]
-   [toucan.db :as db]))
+   [schema.core :as s]))
 
 (def ^:private ^:const default-limit Integer/MAX_VALUE)
 
@@ -100,7 +99,7 @@
     (let [honeysql-query (cond-> honeysql-query
                            ;; MySQL 5.x does not support CTEs, so convert them to subselects instead
                            (= driver :mysql) CTEs->subselects)]
-      (db/honeysql->sql (add-default-params honeysql-query)))
+      (sql/format (add-default-params honeysql-query)))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling audit query: {0}" (ex-message e))
                       {:driver driver, :honeysql-query honeysql-query}
@@ -218,9 +217,9 @@
 (defn first-non-null
   "Build a `CASE` statement that returns the first non-`NULL` of `exprs`."
   [& exprs]
-  (into [:case] (mapcat (fn [expr]
-                          [[:not= expr nil] expr])
-                        exprs)))
+  (into [:case]
+        (mapcat (fn [expr] [[:not= expr nil] expr]))
+        exprs))
 
 (defn zero-if-null
   "Build a `CASE` statement that will replace results of `expr` with `0` when it's `NULL`, perfect for things like

@@ -255,6 +255,7 @@
 (s/defn cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [db-type expr]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (-> (hsql/call :cast expr (hsql/raw (name db-type)))
       (with-type-info {:metabase.util.honeysql-extensions/database-type db-type})))
 
@@ -266,6 +267,7 @@
 
   Returns a typed HoneySQL form."
   [sql-type expr]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (-> (hsql/call :cast expr (keyword sql-type))
       (with-type-info {:metabase.util.honeysql-extensions/database-type sql-type})))
 
@@ -294,6 +296,7 @@
     (let [arg-db-type (some (fn [arg]
                               (-> arg type-info type-info->db-type))
                             args)]
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (cond-> (apply hsql/call operator args)
         arg-db-type (with-database-type-info arg-db-type)))))
 
@@ -309,11 +312,13 @@
 (defn format
   "SQL `format` function."
   [format-str expr]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (hsql/call :format expr (literal format-str)))
 
 (defn round
   "SQL `round` function."
   [x decimal-places]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (hsql/call :round x decimal-places))
 
 (defn ->date                     "CAST `x` to a `date`."                     [x] (maybe-cast :date x))
@@ -325,26 +330,27 @@
 (defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (maybe-cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
-(def ^{:arglists '([& exprs])} abs     "SQL `abs` function."     (partial hsql/call :abs))
-(def ^{:arglists '([& exprs])} ceil    "SQL `ceil` function."    (partial hsql/call :ceil))
-(def ^{:arglists '([& exprs])} floor   "SQL `floor` function."   (partial hsql/call :floor))
-(def ^{:arglists '([& exprs])} second  "SQL `second` function."  (partial hsql/call :second))
-(def ^{:arglists '([& exprs])} minute  "SQL `minute` function."  (partial hsql/call :minute))
-(def ^{:arglists '([& exprs])} hour    "SQL `hour` function."    (partial hsql/call :hour))
-(def ^{:arglists '([& exprs])} day     "SQL `day` function."     (partial hsql/call :day))
-(def ^{:arglists '([& exprs])} week    "SQL `week` function."    (partial hsql/call :week))
-(def ^{:arglists '([& exprs])} month   "SQL `month` function."   (partial hsql/call :month))
-(def ^{:arglists '([& exprs])} quarter "SQL `quarter` function." (partial hsql/call :quarter))
-(def ^{:arglists '([& exprs])} year    "SQL `year` function."    (partial hsql/call :year))
-(def ^{:arglists '([& exprs])} concat  "SQL `concat` function."  (partial hsql/call :concat))
+(def ^{:arglists '([& exprs])} abs     "SQL `abs` function."     (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :abs))
+(def ^{:arglists '([& exprs])} ceil    "SQL `ceil` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :ceil))
+(def ^{:arglists '([& exprs])} floor   "SQL `floor` function."   (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :floor))
+(def ^{:arglists '([& exprs])} second  "SQL `second` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :second))
+(def ^{:arglists '([& exprs])} minute  "SQL `minute` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :minute))
+(def ^{:arglists '([& exprs])} hour    "SQL `hour` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :hour))
+(def ^{:arglists '([& exprs])} day     "SQL `day` function."     (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :day))
+(def ^{:arglists '([& exprs])} week    "SQL `week` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :week))
+(def ^{:arglists '([& exprs])} month   "SQL `month` function."   (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :month))
+(def ^{:arglists '([& exprs])} quarter "SQL `quarter` function." (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :quarter))
+(def ^{:arglists '([& exprs])} year    "SQL `year` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :year))
+(def ^{:arglists '([& exprs])} concat  "SQL `concat` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :concat))
 
 ;; Etc (Dev Stuff)
 
 (extend-protocol pretty/PrettyPrintable
   honeysql.types.SqlCall
   (pretty [{fn-name :name, args :args, :as this}]
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (with-meta (apply list `hsql/call fn-name args)
-      (meta this))))
+               (meta this))))
 
 (defmethod print-method honeysql.types.SqlCall
   [call writer]

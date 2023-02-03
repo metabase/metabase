@@ -6,7 +6,7 @@
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [partial= query= re= schema= sql= =?])
+    (clojure.test/is [query= sql=])
     (clojure.tools.macro/macrolet)
     (metabase.async.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
@@ -24,22 +24,22 @@
     (taoensso.nippy/extend-freeze)
     (taoensso.nippy/extend-thaw)]}
 
-  :refer-all                    {:level   :warning
-                                 :exclude [clojure.test]}
+  :refer-all                                {:level   :warning
+                                             :exclude [clojure.test]}
   ;; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
-  :unexpected-recur             {:level :off}
+  :unexpected-recur                         {:level :off}
   ;; TODO (cam): can we fix these?
-  :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
-  :missing-else-branch          {:level :warning}
-  :misplaced-docstring          {:level :warning}
-  :non-arg-vec-return-type-hint {:level :warning}
-  :missing-body-in-when         {:level :warning}
-  :missing-docstring            {:level :warning}
+  :unused-referred-var                      {:exclude {compojure.core [GET DELETE POST PUT]}}
+  :missing-else-branch                      {:level :warning}
+  :misplaced-docstring                      {:level :warning}
+  :non-arg-vec-return-type-hint             {:level :warning}
+  :missing-body-in-when                     {:level :warning}
+  :missing-docstring                        {:level :warning}
   ;; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
-  :namespace-name-mismatch      {:level :off}
-  :use                          {:level :warning}
-  :redundant-fn-wrapper         {:level :warning}
-  :invalid-arity                {:skip-args [metabase.mbql.util.match/match]}
+  :namespace-name-mismatch                  {:level :off}
+  :use                                      {:level :warning}
+  :redundant-fn-wrapper                     {:level :warning}
+  :invalid-arity                            {:skip-args [metabase.mbql.util.match/match]}
   ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
   ;; :docstring-no-summary                  {:level :warning}
   ;; :docstring-leading-trailing-whitespace {:level :warning}
@@ -83,8 +83,15 @@
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.string/lower-case {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
+  {clojure.core/print        {:message "Use clojure.tools.logging instead of clojure.core/print"}
+   clojure.core/println      {:message "Use clojure.tools.logging instead of clojure.core/println"}
+   clojure.core/printf       {:message "Use clojure.tools.logging instead of clojure.core/printf"}
+   clojure.core/prn          {:message "Use clojure.tools.logging instead of clojure.core/prn"}
+   clojure.core/pr           {:message "Use clojure.tools.logging instead of clojure.core/pr"}
+   clojure.string/lower-case {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
+   honeysql.core/call        {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
+   honeysql.core/raw         {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
    toucan.db/query           {:message "Use mdb.query/query instead of toucan.db/query"}
    toucan.db/reducible-query {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
 
@@ -92,12 +99,13 @@
   {:exclude
    [colorize.core]}
 
-  :unsorted-required-namespaces {:level :warning}
+  :unsorted-required-namespaces             {:level :warning}
 
   :consistent-alias
   {:aliases
    {buddy.core.hash                                                 buddy-hash
     cheshire.generate                                               json.generate
+    clojure.tools.logging                                           log
     clj-http.client                                                 http
     clj-ldap.client                                                 ldap
     clj-time.coerce                                                 time.coerce
@@ -326,10 +334,6 @@
     metabase.sync.util-test                                         sync.util-test
     metabase.task.sync-databases                                    task.sync-databases
     metabase.test                                                   mt
-    metabase.test-runner.assert-exprs                               test-runner.assert-exprs
-    metabase.test-runner.init                                       test-runner.init
-    metabase.test-runner.junit                                      test-runner.junit
-    metabase.test-runner.parallel                                   test-runner.parallel
     metabase.test.data.dataset-definitions                          defs
     metabase.test.data.env.impl                                     tx.env.impl
     metabase.test.data.impl                                         data.impl
@@ -662,77 +666,18 @@
  ;; fix those namespaces than it is to make this regex super hairy.
  [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"
    :name    test-namespaces}
-  ;; all `metabase` namespaces except for ones starting with `metabase.driver`, `metabase.query-processor`,
-  ;; `metabase.test.data`, `metabase.util.honey-sql-1-extensions`, or `metabase.util.honeysql-extensions` should be
-  ;; nicely forced to use Honey SQL 2.
-  ;;
-  ;; We don't really need to skip `metabase.util.honeysql-extensions`, but you can't write rules for it if you do
-  ;; because of https://github.com/clj-kondo/clj-kondo/issues/1942
-  {:pattern "^metabase(?:-enterprise)?\\.(?!driver)(?!util\\.(?:(?:honey-sql-1)|(?:honeysql))-extensions)(?!query-processor)(?!test\\.data\\.).*$"
-   :name    namespaces-that-should-use-honey-sql-2}
-  ;; Namespaces to match 3rd party libs
-  {:pattern "^honeysql\\..*"
-   :name    honey-sql-1}]
+  {:pattern "metabase\\.cmd.*"
+   :name    printable-namespaces}]
 
  :config-in-ns
  {test-namespaces
   {:linters
-   {:inline-def        {:level :off}
-    :missing-docstring {:level :off}
-    :private-call      {:level :off}
+   {:inline-def                                    {:level :off}
+    :missing-docstring                             {:level :off}
+    :private-call                                  {:level :off}
 
     ;; custom linters
     :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
-
-  namespaces-that-should-use-honey-sql-2
+  printable-namespaces
   {:linters
-   {:discouraged-namespace
-    {honey-sql-1 {:message "Use Honey SQL 2"}}
-
-    ;; we can't use `discouraged-namespace` here, because `hx/*honey-sql-version*` is ok, and because of
-    ;; https://github.com/clj-kondo/clj-kondo/issues/1942
-    :discouraged-var
-    {clojure.java.jdbc/with-db-transaction                        {:message "Use t2/with-transaction"}
-     metabase.util.honeysql-extensions/*                          {:message "Use h2x/*"}
-     metabase.util.honeysql-extensions/+                          {:message "Use h2x/+"}
-     metabase.util.honeysql-extensions/-                          {:message "Use h2x/-"}
-     metabase.util.honeysql-extensions/->boolean                  {:message "Use h2x/->boolean"}
-     metabase.util.honeysql-extensions/->date                     {:message "Use h2x/->date"}
-     metabase.util.honeysql-extensions/->datetime                 {:message "Use h2x/->datetime"}
-     metabase.util.honeysql-extensions/->integer                  {:message "Use h2x/->integer"}
-     metabase.util.honeysql-extensions/->time                     {:message "Use h2x/->time"}
-     metabase.util.honeysql-extensions/->timestamp                {:message "Use h2x/->timestamp"}
-     metabase.util.honeysql-extensions/->timestamp-with-time-zone {:message "Use h2x/->timestamp-with-time-zone"}
-     metabase.util.honeysql-extensions//                          {:message "Use h2x//"}
-     metabase.util.honeysql-extensions/IdentifierType             {:message "Use h2x/IdentifierType"}
-     metabase.util.honeysql-extensions/abs                        {:message "Use h2x/abs"}
-     metabase.util.honeysql-extensions/at-time-zone               {:message "Use h2x/at-time-zone"}
-     metabase.util.honeysql-extensions/cast                       {:message "Use h2x/cast"}
-     metabase.util.honeysql-extensions/cast-unless-type-in        {:message "Use h2x/cast-unless-type-in"}
-     metabase.util.honeysql-extensions/ceil                       {:message "Use h2x/ceil"}
-     metabase.util.honeysql-extensions/concat                     {:message "Use h2x/concat"}
-     metabase.util.honeysql-extensions/database-type              {:message "Use h2x/database-type"}
-     metabase.util.honeysql-extensions/day                        {:message "Use h2x/day"}
-     metabase.util.honeysql-extensions/dec                        {:message "Use h2x/dec"}
-     metabase.util.honeysql-extensions/floor                      {:message "Use h2x/floor"}
-     metabase.util.honeysql-extensions/format                     {:message "Use h2x/format"}
-     metabase.util.honeysql-extensions/hour                       {:message "Use h2x/hour"}
-     metabase.util.honeysql-extensions/identifier                 {:message "Use h2x/identifier"}
-     metabase.util.honeysql-extensions/inc                        {:message "Use h2x/inc"}
-     metabase.util.honeysql-extensions/is-of-type?                {:message "Use h2x/is-of-type?"}
-     metabase.util.honeysql-extensions/literal                    {:message "Use h2x/literal"}
-     metabase.util.honeysql-extensions/maybe-cast                 {:message "Use h2x/maybe-cast"}
-     metabase.util.honeysql-extensions/minute                     {:message "Use h2x/minute"}
-     metabase.util.honeysql-extensions/mod                        {:message "Use h2x/mod"}
-     metabase.util.honeysql-extensions/month                      {:message "Use h2x/month"}
-     metabase.util.honeysql-extensions/quarter                    {:message "Use h2x/quarter"}
-     metabase.util.honeysql-extensions/quoted-cast                {:message "Use h2x/quoted-cast"}
-     metabase.util.honeysql-extensions/round                      {:message "Use h2x/round"}
-     metabase.util.honeysql-extensions/second                     {:message "Use h2x/second"}
-     metabase.util.honeysql-extensions/type-info                  {:message "Use h2x/type-info"}
-     metabase.util.honeysql-extensions/type-info->db-type         {:message "Use h2x/type-info->db-type"}
-     metabase.util.honeysql-extensions/unwrap-typed-honeysql-form {:message "Use h2x/unwrap-typed-honeysql-form"}
-     metabase.util.honeysql-extensions/week                       {:message "Use h2x/week"}
-     metabase.util.honeysql-extensions/with-database-type-info    {:message "Use h2x/with-database-type-info"}
-     metabase.util.honeysql-extensions/with-type-info             {:message "Use h2x/with-type-info"}
-     metabase.util.honeysql-extensions/year                       {:message "Use h2x/year"}}}}}}
+   {:discouraged-var {:level :off}}}}}
