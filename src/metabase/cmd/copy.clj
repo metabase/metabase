@@ -320,7 +320,7 @@
     (step (trs "Setting Postgres sequence ids to proper values...")
       (doseq [e     entities
               :when (not (contains? entities-without-autoinc-ids e))
-              :let  [table-name (name (:table e))
+              :let  [table-name (name (t2/table-name e))
                      seq-name   (str table-name "_id_seq")
                      sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val"
                                         seq-name (name table-name))]]
