@@ -114,6 +114,23 @@
                                  [:* [:count $id] [:sum $price]]]]
                   :breakout    [$price]})))))))
 
+(deftest nested-post-multi-aggregation-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+    (testing "nested post-aggregation math: count + (count * sum)"
+      (is (= [[1 990]
+              [2 10502]
+              [3 689]
+              [4 186]]
+             (mt/formatted-rows [int int]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:+
+                                 [:count $id]
+                                 [:* [:count $id] [:sum [:+ $price 1]]]]
+                                [:count $id]
+                                [:count]
+                                [:share [:< $price 4]]]
+                  :breakout    [$price]})))))))
+
 (deftest math-inside-aggregations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)"

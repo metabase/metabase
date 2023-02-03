@@ -938,13 +938,41 @@
           [(into [op] (map (fn [arg ge] (if ge embedding-expr arg)) args ges))
            aggregation'])))))
 
-(defn- expand-embedded-aggregation [aggregation]
-  (let [aggr-name (annotate/aggregation-name aggregation)
-        [embedding-expr aggregation-expr] (extract-aggregation aggregation aggr-name)
-        expanded (expand-aggregation aggregation-expr)]
-    (cond-> expanded
-      (not (string? embedding-expr))
-      (update :post conj {aggr-name (->rvalue embedding-expr)}))))
+(defn- extract-aggregations*
+  ([aggr-expr parent-name] (extract-aggregations* aggr-expr parent-name {}))
+  ([aggr-expr parent-name aggregations-seen]
+   (if (and (vector? aggr-expr) (seq aggr-expr))
+     (let [[op & args] aggr-expr
+           seen (get aggregations-seen aggr-expr)]
+       (cond
+         seen
+         [(str \$ seen) aggregations-seen]
+
+         (aggregation-op op)
+         (let [aggr-name (str parent-name "~" (annotate/aggregation-name aggr-expr))]
+           [(str \$ aggr-name) (assoc aggregations-seen aggr-expr aggr-name)])
+
+         :else
+         (reduce (fn [[ges as] arg]
+                   (let [[ge as] (extract-aggregations* arg parent-name as)]
+                     [(conj ges ge) as]))
+                 [[op] aggregations-seen]
+                 args)))
+     [aggr-expr aggregations-seen])))
+
+(defn- extract-aggregations [aggr-expr]
+  (let [options? (and (vector? aggr-expr)
+                      (= (first aggr-expr) :aggregation-options))
+        aggr-expr' (cond-> aggr-expr
+                     options? second)
+        aggr-name (annotate/aggregation-name aggr-expr)
+        [aggr-expr'' aggregations-seen] (extract-aggregations* aggr-expr' aggr-name)
+        raggr-expr (->rvalue aggr-expr'')
+        expandeds (map (fn [[aggr name]]
+                         (expand-aggregation [:aggregation-options aggr {:name name}]))
+                       aggregations-seen)]
+    {:group (into {} (map :group) expandeds)
+     :post [(into {} (mapcat :post) expandeds) {aggr-name raggr-expr}]}))
 
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
@@ -956,13 +984,12 @@
    of preceding stages.
    The intermittent results accrued in `$group` stage are discarded in the final `$project` stage."
   [id aggregations]
-  (let [expanded-ags (map expand-embedded-aggregation aggregations)
+  (let [expanded-ags (map extract-aggregations aggregations)
         group-ags    (mapcat :group expanded-ags)
         post-ags     (mapcat :post expanded-ags)]
     (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
-          (map (fn [p] {:$addFields p}))
+          (keep (fn [p] (when (seq p) {:$addFields p})))
           post-ags)))
-
 (defn- projection-group-map [fields]
   (reduce
    (fn [m field-clause]
