@@ -41,8 +41,11 @@ interface OwnProps {
   onClose?: () => void;
 }
 
-interface StateProps {
+interface ActionLoaderProps {
   action?: WritebackQueryAction;
+}
+
+interface StateProps {
   question?: Question;
   metadata: Metadata;
 }
@@ -52,15 +55,17 @@ interface DispatchProps {
   onUpdateAction: (params: UpdateQueryActionParams) => void;
 }
 
-type ActionCreatorProps = OwnProps & StateProps & DispatchProps;
+type ActionCreatorProps = OwnProps &
+  ActionLoaderProps &
+  StateProps &
+  DispatchProps;
 
 const mapStateToProps = (
   state: State,
-  { action }: { action: WritebackQueryAction },
+  { action }: OwnProps & ActionLoaderProps,
 ) => ({
-  action,
-  question: action ? createQuestionFromAction(state, action) : undefined,
   metadata: getMetadata(state),
+  question: action ? createQuestionFromAction(state, action) : undefined,
 });
 
 const mapDispatchToProps = {
@@ -73,10 +78,10 @@ const EXAMPLE_QUERY =
 
 function ActionCreatorComponent({
   action,
-  question: passedQuestion,
-  metadata,
   modelId,
   databaseId,
+  metadata,
+  question: passedQuestion,
   onCreateAction,
   onUpdateAction,
   onClose,
@@ -120,7 +125,6 @@ function ActionCreatorComponent({
   }
 
   const query = question.query() as NativeQuery;
-
   const isNew = !action && !question.isSaved();
 
   const handleClickSave = () => {
