@@ -246,9 +246,13 @@
 
 (defmethod serdes.base/extract-one "Action"
   [_model-name _opts action]
-  (-> (serdes.base/extract-one-basics "Action" action)
-      (update :creator_id serdes.util/export-user)
-      (update :model_id serdes.util/export-fk 'Card)))
+  (let [action (-> (serdes.base/extract-one-basics "Action" action)
+                   (update :creator_id serdes.util/export-user)
+                   (update :model_id serdes.util/export-fk 'Card))]
+    (case (:type action)
+      :query      (update action :database_id serdes.util/export-fk-keyed 'Database :name)
+      (:http
+       :implicit) action)))
 
 (defmethod serdes.base/load-xform "Action" [action]
   (-> action
@@ -256,32 +260,16 @@
       (update :model_id serdes.util/import-fk 'Card)
       (update :creator_id serdes.util/import-fk-keyed 'User :email)))
 
-(defmethod serdes.base/extract-one "QueryAction"
-  [_model-name _opts query-action]
-  (-> (serdes.base/extract-one-basics "QueryAction" query-action)
-      (update :database_id serdes.util/export-fk-keyed 'Database :name)
-      (assoc :action_id (serdes.util/export-fk (:action_id query-action) 'Action))))
-
 (defmethod serdes.base/load-xform "QueryAction" [query-action]
   (-> query-action
       serdes.base/load-xform-basics
       (update :database_id serdes.util/import-fk-keyed 'Database :name)
       (update :action_id serdes.util/import-fk 'Action)))
 
-(defmethod serdes.base/extract-one "ImplicitAction"
-  [_model-name _opts implicit-action]
-  (-> (serdes.base/extract-one-basics "ImplicitAction" implicit-action)
-      (assoc :action_id (serdes.util/export-fk (:action_id implicit-action) 'Action))))
-
 (defmethod serdes.base/load-xform "ImplicitAction" [implicit-action]
   (-> implicit-action
       serdes.base/load-xform-basics
       (update :action_id serdes.util/import-fk 'Action)))
-
-(defmethod serdes.base/extract-one "HTTPAction"
-  [_model-name _opts http-action]
-  (-> (serdes.base/extract-one-basics "HTTPAction" http-action)
-      (assoc :action_id (serdes.util/export-fk (:action_id http-action) 'Action))))
 
 (defmethod serdes.base/load-xform "HTTPAction" [http-action]
   (-> http-action
