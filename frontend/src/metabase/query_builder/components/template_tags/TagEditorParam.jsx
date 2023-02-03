@@ -315,7 +315,7 @@ export class TagEditorParam extends Component {
             <ContainerLabel>{t`Default filter widget value`}</ContainerLabel>
             <DefaultParameterValueWidget
               parameter={
-                tag.type === "dimension"
+                tag.type === "text" || tag.type === "dimension"
                   ? parameter || {
                       fields: [],
                       ...tag,
