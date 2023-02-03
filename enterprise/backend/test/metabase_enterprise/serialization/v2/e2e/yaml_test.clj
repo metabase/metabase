@@ -3,7 +3,6 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models.action :as action]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
@@ -16,6 +15,7 @@
                             ParameterCard
                             Field
                             Table]]
+   [metabase.models.action :as action]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
