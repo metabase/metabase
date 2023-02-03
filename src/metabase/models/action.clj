@@ -277,10 +277,6 @@
   (log/tracef "Inserting Action: %s" (pr-str ingested))
   (insert! ingested))
 
-(defmethod serdes.base/serdes-generate-path "Action"
-  [_ action]
-  (serdes.base/maybe-labeled "Action" action :name))
-
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   (cond-> [[{:model "Card" :id (:model_id action)}]]
     (= (:type action) :query)
