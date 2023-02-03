@@ -307,15 +307,17 @@ function getWidgetDefinition(parameter) {
 }
 
 function isTextWidget(parameter) {
-  const canQuery = getQueryType(parameter) !== "none";
-  return parameter.hasVariableTemplateTagTarget && !canQuery;
+  if (parameter.hasVariableTemplateTagTarget) {
+    return getQueryType(parameter) === "none";
+  } else {
+    return false;
+  }
 }
 
 function isFieldWidget(parameter) {
-  const canQuery = getQueryType(parameter) !== "none";
-  const hasFields = getFields(parameter).length > 0;
-
-  return parameter.hasVariableTemplateTagTarget
-    ? canQuery
-    : canQuery || hasFields;
+  if (parameter.hasVariableTemplateTagTarget) {
+    return getQueryType(parameter) !== "none";
+  } else {
+    return getFields(parameter).length > 0;
+  }
 }

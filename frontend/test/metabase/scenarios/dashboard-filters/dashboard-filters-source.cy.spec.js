@@ -11,10 +11,11 @@ import {
   setFilterListSource,
   visitEmbeddedPage,
   visitPublicDashboard,
+  describeEE,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const structuredSourceQuestion = {
   name: "GUI source",
@@ -204,21 +205,57 @@ describe("scenarios > dashboard > filters", () => {
   });
 });
 
+describeEE.only("scenarios > dashboard > filters", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should sandbox parameter values based on cards", () => {
+    cy.sandboxTable({
+      table_id: PRODUCTS_ID,
+      attribute_remappings: {
+        attr_uid: ["dimension", ["field", PRODUCTS.ID, null]],
+      },
+    });
+
+    cy.createQuestion(structuredSourceQuestion).then(
+      ({ body: { id: questionId } }) => {
+        cy.createQuestionAndDashboard({
+          questionDetails: targetQuestion,
+          dashboardDetails: getStructuredDashboard(questionId),
+        }).then(({ body: card }) => {
+          cy.editDashboardCard(card, getParameterMapping(card));
+          cy.signOut();
+          cy.signInAsSandboxedUser();
+          visitDashboard(card.dashboard_id);
+        });
+      },
+    );
+
+    filterDashboard({ isSandboxed: true });
+  });
+});
+
 const mapFilterToQuestion = () => {
   cy.findByText("Select…").click();
   popover().within(() => cy.findByText("Category").click());
 };
 
-const filterDashboard = () => {
+const filterDashboard = ({ isSandboxed } = {}) => {
   cy.findByText("Text").click();
 
   popover().within(() => {
-    cy.findByText("Doohickey").should("be.visible");
     cy.findByText("Gadget").should("be.visible");
     cy.findByText("Gizmo").should("not.exist");
+    cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
+    cy.findByText("Doohickey").should(isSandboxed ? "not.exist" : "be.visible");
 
-    cy.findByPlaceholderText("Search the list").type("Gadget");
+    cy.findByPlaceholderText("Search the list").type("et");
+    cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
     cy.findByText("Doohickey").should("not.exist");
+    cy.findByText("Gizmo").should("not.exist");
+
     cy.findByText("Gadget").click();
     cy.button("Add filter").click();
   });
