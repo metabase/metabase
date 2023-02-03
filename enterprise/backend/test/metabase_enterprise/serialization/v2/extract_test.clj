@@ -23,6 +23,7 @@
             Timeline
             TimelineEvent
             User]]
+   [metabase.models.action :as action]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.test :as mt]
    [schema.core :as s]
@@ -760,14 +761,16 @@
                                                    :creator_id    ann-id}
                           {:keys [action-id]} {:name          "My Action"
                                                :type          :implicit
+                                               :kind          "row/update"
                                                :creator_id    ann-id
                                                :model_id      card-id-1}]
-          (let [action          (db/select-one 'Action :id 1)
-                implicit-action (db/select-one 'ImplicitAction :action_id action-id)]
-            (testing "action"
-              (let [ser (serdes.base/extract-one "Action" {} (db/select-one 'Action :id action-id))]
+          (let [action (action/select-one :id action-id)]
+            (testing "implicit action"
+              (let [ser (serdes.base/extract-one "Action" {} action)]
                 (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
                               :creator_id  (s/eq "ann@heart.band")
+                              :type        (s/eq :implicit)
+                              :kind        (s/eq "row/update")
                               :created_at  OffsetDateTime
                               :model_id    (s/eq card-eid-1)
                               s/Keyword    s/Any}
@@ -776,21 +779,6 @@
 
                 (testing "depends on the Model"
                   (is (= #{[{:model "Card" :id card-eid-1}]}
-                         (set (serdes.base/serdes-dependencies ser)))))))
-
-            (testing "implicit action"
-              (let [ser (serdes.base/extract-one "ImplicitAction" {} (db/select-one 'ImplicitAction :action_id action-id))]
-                (is (schema= {:serdes/meta   (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}
-                                                    {:id    (:entity_id implicit-action)
-                                                     :model "ImplicitAction"
-                                                     :label "implicit_action"}])
-                              :action_id     (s/eq (:entity_id action))
-                              s/Keyword      s/Any}
-                             ser))
-                (is (not (contains? ser :id)))
-
-                (testing "depends on the Action"
-                  (is (= #{[{:model "Action" :id (:entity_id action)}]}
                          (set (serdes.base/serdes-dependencies ser)))))))))))))
 
 (deftest http-action-test
@@ -809,15 +797,16 @@
                                                    :creator_id    ann-id}
                           {:keys [action-id]} {:name          "My Action"
                                                :type          :http
+                                               :template      {}
                                                :creator_id    ann-id
                                                :model_id      card-id-1}]
-          (let [action          (db/select-one 'Action :id 1)
-                http-action (db/select-one 'HTTPAction :action_id action-id)]
+          (let [action (action/select-one :id action-id)]
             (testing "action"
-              (let [ser (serdes.base/extract-one "Action" {} (db/select-one 'Action :id action-id))]
+              (let [ser (serdes.base/extract-one "Action" {} action)]
                 (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
                               :creator_id  (s/eq "ann@heart.band")
                               :created_at  OffsetDateTime
+                              :template    (s/eq {})
                               :model_id    (s/eq card-eid-1)
                               s/Keyword    s/Any}
                              ser))
@@ -825,24 +814,9 @@
 
                 (testing "depends on the Model"
                   (is (= #{[{:model "Card" :id card-eid-1}]}
-                         (set (serdes.base/serdes-dependencies ser)))))))
-
-            (testing "http action"
-              (let [ser (serdes.base/extract-one "HTTPAction" {} (db/select-one 'HTTPAction :action_id action-id))]
-                (is (schema= {:serdes/meta   (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}
-                                                    {:id    (:entity_id http-action)
-                                                     :model "HTTPAction"
-                                                     :label "http_action"}])
-                              :action_id     (s/eq (:entity_id action))
-                              s/Keyword      s/Any}
-                             ser))
-                (is (not (contains? ser :id)))
-
-                (testing "depends on the Action"
-                  (is (= #{[{:model "Action" :id (:entity_id action)}]}
                          (set (serdes.base/serdes-dependencies ser)))))))))))))
 
-(deftest action-test
+(deftest query-action-test
   (ts/with-empty-h2-app-db
     (ts/with-temp-dpc [User       [{ann-id       :id} {:first_name "Ann"
                                                        :last_name  "Wilson"
@@ -858,38 +832,25 @@
                                                    :creator_id    ann-id}
                           {:keys [action-id]} {:name          "My Action"
                                                :type          :query
+                                               :dataset_query {:type "native", :native {:native "select 1"}, :database db-id}
                                                :creator_id    ann-id
                                                :model_id      card-id-1}]
-          (let [action       (db/select-one 'Action :id action-id)
-                query-action (db/select-one 'QueryAction :action_id action-id)]
+          (let [action (action/select-one :id action-id)]
             (testing "action"
-              (let [ser (serdes.base/extract-one "Action" {} (db/select-one 'Action :id action-id))]
-                (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
-                              :creator_id  (s/eq "ann@heart.band")
-                              :created_at  OffsetDateTime
-                              :model_id    (s/eq card-eid-1)
-                              s/Keyword    s/Any}
+              (let [ser (serdes.base/extract-one "Action" {} action)]
+                (is (schema= {:serdes/meta   (s/eq [{:model "Action"
+                                                     :id    (:entity_id action)
+                                                     :label "my_action"}])
+                              :creator_id    (s/eq "ann@heart.band")
+                              :created_at    OffsetDateTime
+                              :dataset_query (s/eq {:type "native", :native {:native "select 1"}, :database db-id})
+                              :model_id      (s/eq card-eid-1)
+                              s/Keyword      s/Any}
                              ser))
                 (is (not (contains? ser :id)))
 
                 (testing "depends on the Model"
                   (is (= #{[{:model "Card" :id card-eid-1}]}
-                         (set (serdes.base/serdes-dependencies ser)))))))
-
-            (testing "query action"
-              (let [ser (serdes.base/extract-one "QueryAction" {} (db/select-one 'QueryAction :action_id action-id))]
-                (is (schema= {:serdes/meta   (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}
-                                                    {:id    (:entity_id query-action)
-                                                     :model "QueryAction"
-                                                     :label "query_action"}])
-                              :action_id     (s/eq (:entity_id action))
-                              :database_id   (s/eq "My Database")
-                              s/Keyword      s/Any}
-                             ser))
-                (is (not (contains? ser :id)))
-
-                (testing "depends on the Action"
-                  (is (= #{[{:model "Action" :id (:entity_id action)}]}
                          (set (serdes.base/serdes-dependencies ser)))))))))))))
 
 (deftest field-values-test
