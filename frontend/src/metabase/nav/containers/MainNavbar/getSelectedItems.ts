@@ -2,7 +2,7 @@ import * as Urls from "metabase/lib/urls";
 
 import { coerceCollectionId } from "metabase/collections/utils";
 
-import type { Dashboard } from "metabase-types/api";
+import type { Card, Dashboard } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 
 import { SelectedItem } from "./types";
@@ -13,14 +13,20 @@ type Opts = {
     slug?: string;
     pageId?: string;
   };
-  question?: Question;
+  card?: Card;
   dashboard?: Dashboard;
 };
+
+const MODEL_DETAIL_PAGE_PATTERN = /\/model\/.*\/detail.*/;
+
+export function isModelDetailPathname(pathname: string): boolean {
+  return MODEL_DETAIL_PAGE_PATTERN.test(pathname);
+}
 
 function getSelectedItems({
   pathname,
   params,
-  question,
+  card,
   dashboard,
 }: Opts): SelectedItem[] {
   const { slug } = params;
@@ -29,7 +35,7 @@ function getSelectedItems({
   const isUsersCollectionPath = pathname.startsWith("/collection/users");
   const isQuestionPath = pathname.startsWith("/question");
   const isModelPath = pathname.startsWith("/model");
-  const isModelDetailPath = isModelPath && pathname.endsWith("/detail");
+  const isModelDetailPath = isModelDetailPathname(pathname);
   const isDashboardPath = pathname.startsWith("/dashboard");
 
   if (isCollectionPath) {
@@ -52,14 +58,14 @@ function getSelectedItems({
       },
     ];
   }
-  if ((isQuestionPath || isModelPath) && question) {
+  if ((isQuestionPath || isModelPath) && card) {
     return [
       {
-        id: question.id(),
+        id: card.id,
         type: "card",
       },
       {
-        id: coerceCollectionId(question.collectionId()),
+        id: coerceCollectionId(card.collection_id),
         type: "collection",
       },
     ];

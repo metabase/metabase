@@ -409,5 +409,24 @@ describe("nav > containers > MainNavbar", () => {
         screen.getByRole("treeitem", { name: /Our analytics/i }),
       ).toHaveAttribute("aria-selected", "false");
     });
+
+    it("should highlight model's collection when on model detail page", async () => {
+      const model = createMockCard({
+        collection_id: TEST_COLLECTION.id as number,
+        dataset: true,
+      });
+      await setup({
+        route: "/model/:slug/detail",
+        pathname: `/model/${model.id}/detail`,
+        openQuestionCard: model,
+      });
+
+      expect(
+        screen.getByRole("treeitem", { name: /Test collection/i }),
+      ).toHaveAttribute("aria-selected", "true");
+      expect(
+        screen.getByRole("treeitem", { name: /Our analytics/i }),
+      ).toHaveAttribute("aria-selected", "false");
+    });
   });
 });

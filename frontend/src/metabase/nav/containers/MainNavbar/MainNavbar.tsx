@@ -3,14 +3,16 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { LocationDescriptor } from "history";
 
-import { closeNavbar, openNavbar } from "metabase/redux/app";
+import * as Urls from "metabase/lib/urls";
 
-import { getQuestion } from "metabase/query_builder/selectors";
+import { closeNavbar, openNavbar } from "metabase/redux/app";
+import Questions from "metabase/entities/questions";
+
+import { getCard as getQueryBuilderCard } from "metabase/query_builder/selectors";
 import { getDashboard } from "metabase/dashboard/selectors";
 
-import type { Dashboard } from "metabase-types/api";
+import type { Card, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
 
 import MainNavbarContainer from "./MainNavbarContainer";
 
@@ -20,11 +22,11 @@ import {
   MainNavbarDispatchProps,
   SelectedItem,
 } from "./types";
-import getSelectedItems from "./getSelectedItems";
+import getSelectedItems, { isModelDetailPathname } from "./getSelectedItems";
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 
 interface StateProps {
-  question?: Question;
+  card?: Card;
   dashboard?: Dashboard;
 }
 
@@ -34,9 +36,20 @@ interface DispatchProps {
 
 type Props = MainNavbarProps & StateProps & DispatchProps;
 
-function mapStateToProps(state: State) {
+function getModelDetailPageCard(state: State, params: { slug?: string }) {
+  const entityId = Urls.extractEntityId(params.slug);
+  return Questions.selectors.getObject(state, { entityId });
+}
+
+function mapStateToProps(
+  state: State,
+  { location, params }: MainNavbarOwnProps,
+) {
+  const isModelDetailPage = isModelDetailPathname(location.pathname);
   return {
-    question: getQuestion(state),
+    card: isModelDetailPage
+      ? getModelDetailPageCard(state, params)
+      : getQueryBuilderCard(state),
     dashboard: getDashboard(state),
   };
 }
@@ -51,7 +64,7 @@ function MainNavbar({
   isOpen,
   location,
   params,
-  question,
+  card,
   dashboard,
   openNavbar,
   closeNavbar,
@@ -80,10 +93,10 @@ function MainNavbar({
       getSelectedItems({
         pathname: location.pathname,
         params,
-        question,
+        card,
         dashboard,
       }),
-    [location, params, question, dashboard],
+    [location, params, card, dashboard],
   );
 
   return (
