@@ -1,6 +1,8 @@
 import React from "react";
 import { t } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
+
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
 import { isNotNull } from "metabase/core/utils/types";
@@ -10,7 +12,7 @@ import {
   ActionSubtitle,
   Card,
   CodeBlock,
-  EditButton,
+  EditorLink,
   ImplicitActionCardContentRoot,
   ImplicitActionMessage,
   ActionSubtitlePart,
@@ -18,7 +20,7 @@ import {
 
 interface Props {
   action: WritebackAction;
-  onEdit?: () => void;
+  canWrite: boolean;
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
@@ -34,8 +36,8 @@ function ImplicitActionCardContent() {
   );
 }
 
-function ModelActionListItem({ action, onEdit }: Props) {
-  const canEdit = action.type !== "implicit" && onEdit;
+function ModelActionListItem({ action, canWrite }: Props) {
+  const canEdit = action.type !== "implicit" && canWrite;
 
   const renderCardContent = () =>
     action.type === "query" ? (
@@ -62,7 +64,9 @@ function ModelActionListItem({ action, onEdit }: Props) {
       )}
       <Card>
         {renderCardContent()}
-        {canEdit && <EditButton onClick={onEdit} />}
+        {canEdit && (
+          <EditorLink to={Urls.action({ id: action.model_id }, action.id)} />
+        )}
       </Card>
     </>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -77,11 +77,11 @@ const EXAMPLE_QUERY =
 
 function resolveQuestion(
   action: WritebackQueryAction | undefined,
-  { metadata }: { metadata: Metadata; databaseId?: DatabaseId },
+  { metadata, databaseId }: { metadata: Metadata; databaseId?: DatabaseId },
 ) {
   return action
     ? convertActionToQuestion(action, metadata)
-    : newQuestion(metadata);
+    : newQuestion(metadata, databaseId);
 }
 
 function ActionCreator({
@@ -103,6 +103,9 @@ function ActionCreator({
 
   const [showSaveModal, setShowSaveModal] = useState(false);
 
+  const query = question.query() as NativeQuery;
+  const isNew = !action && !question.isSaved();
+
   useEffect(() => {
     setQuestion(resolveQuestion(action, { metadata, databaseId }));
 
@@ -118,28 +121,12 @@ function ActionCreator({
     [setQuestion],
   );
 
-  const defaultModelId: number | undefined = useMemo(() => {
-    if (modelId) {
-      return modelId;
-    }
-    const params = new URLSearchParams(window.location.search);
-    const modelQueryParam = params.get("model-id");
-    return modelId ? Number(modelQueryParam) : undefined;
-  }, [modelId]);
-
-  if (!question || !metadata) {
-    return null;
-  }
-
-  const query = question.query() as NativeQuery;
-  const isNew = !action && !question.isSaved();
-
   const handleClickSave = () => {
     if (isNew) {
       setShowSaveModal(true);
     } else {
       const action = convertQuestionToAction(question, formSettings);
-      onUpdateAction({ ...action, model_id: defaultModelId as number });
+      onUpdateAction({ ...action, model_id: modelId as number });
       onClose?.();
     }
   };
@@ -169,6 +156,10 @@ function ActionCreator({
     );
   };
 
+  if (!question || !metadata) {
+    return null;
+  }
+
   return (
     <>
       <ActionCreatorView
@@ -192,7 +183,7 @@ function ActionCreator({
             initialValues={{
               name: question.displayName() ?? "",
               description: question.description(),
-              model_id: defaultModelId,
+              model_id: modelId,
             }}
             onCreate={handleCreate}
             onCancel={handleCloseNewActionModal}
