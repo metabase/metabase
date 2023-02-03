@@ -638,6 +638,17 @@
 
 (def ^:private axis-group-threshold 0.33)
 
+(defn- group-axes-at-once
+  [group-keys {viz-settings :viz-settings metadata :results_metadata} group-threshold]
+  (let [starting-positions (into {} (for [k group-keys]
+                                      [k (series-setting viz-settings k :axis)]))]
+    (intern 'user 'cols-meta (:columns metadata))
+    (if (some nil? (vals starting-positions))
+      ;; we do some logic to group the unknowns into L or R
+      (update-vals starting-positions #(or % "left"))
+      ;; all starting positions are set
+      starting-positions)))
+
 (defn- single-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
@@ -664,15 +675,17 @@
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
   [chart-type joined-rows x-cols _y-cols {:keys [viz-settings] :as data} card-name]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)
-        groups       (keys grouped-rows)]
+        groups       (keys grouped-rows)
+        y-positions  (group-axes-at-once groups data axis-group-threshold)]
     (for [[idx group-key] (map-indexed vector groups)]
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
                                    (nth default-combo-chart-types idx))
-            y-axis-pos         (or (series-setting viz-settings group-key :axis)
-                                   (nth (default-y-pos data axis-group-threshold) idx))]
+            #_y-axis-pos       #_(or (series-setting viz-settings group-key :axis)
+                                     (nth (default-y-pos data axis-group-threshold) idx))
+            y-axis-pos         (get y-positions group-key)]
         {:cardName      card-name
          :type          card-type
          :data          selected-row-group
@@ -733,7 +746,6 @@
         joined-rows     (mapv vector x-rows y-rows)
         viz-settings    (set-default-stacked viz-settings card)
         [x-cols y-cols] ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
-
         enforced-type   (if (= chart-type :combo)
                           nil
                           chart-type)

@@ -62,7 +62,14 @@ export const XYChart = ({
     series = calculateStackedItems(series);
   }
 
-  const yDomains = calculateYDomains(series, settings.goal?.value);
+  const setMinValue = settings.visualization_settings["graph.y_axis.min"];
+  const setMaxValue = settings.visualization_settings["graph.y_axis.max"];
+  const yDomains = calculateYDomains(
+    series,
+    settings.goal?.value,
+    setMinValue,
+    setMaxValue,
+  );
   const yTickWidths = getYTickWidths(
     settings.y.format,
     style.axes.ticks.fontSize,
