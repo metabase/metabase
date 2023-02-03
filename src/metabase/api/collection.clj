@@ -1,9 +1,8 @@
 (ns metabase.api.collection
   "`/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
-  the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
-  `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
-  To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
-  `?namespace=snippet`)."
+  the namespace that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
+  `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
+  endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`)."
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [compojure.core :refer [GET POST PUT]]
