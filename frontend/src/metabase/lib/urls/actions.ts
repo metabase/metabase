@@ -7,7 +7,8 @@ type ParentModelProps = {
 };
 
 export function newAction(parentModel: ParentModelProps) {
-  const baseUrl = modelDetail({ ...parentModel, dataset: true }, "actions");
+  const model = { ...parentModel, dataset: true };
+  const baseUrl = modelDetail(model, "actions");
   return `${baseUrl}/new`;
 }
 
@@ -15,7 +16,8 @@ export function action(
   parentModel: ParentModelProps,
   actionId: WritebackActionId,
 ) {
-  const baseUrl = modelDetail({ ...parentModel, dataset: true }, "actions");
+  const model = { ...parentModel, dataset: true };
+  const baseUrl = modelDetail(model, "actions");
   return `${baseUrl}/${actionId}`;
 }
 
