@@ -1,5 +1,15 @@
 (ns metabase.models.params
-  "Utility functions for dealing with parameters for Dashboards and Cards."
+  "Utility functions for dealing with parameters for Dashboards and Cards.
+
+  Parameter are objects that exists on Dashboard/Card. In FE terms, we call it \"Widget\".
+  The values of a parameter is provided so the Widget can show a list of options to the user.
+
+
+  There are 3 mains ways to provide values to a parameter:
+  - chain-filter: see [metabase.models.params.chain-filter]
+  - field-values: see [metabase.models.params.field-values]
+  - custom-values: see [metabase.models.params.custom-values]
+  "
   (:require
    [clojure.set :as set]
    [clojure.tools.logging :as log]
@@ -9,8 +19,6 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
-   [metabase.models.params.card-values :as params.card-values]
-   [metabase.models.params.static-values :as params.static-values]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
@@ -237,23 +245,3 @@
 
 (defmethod param-fields "Card" [card]
   (-> card card->template-tag-field-ids param-field-ids->fields))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 Custom Values                                                  |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn parameter-values
-  "A DOC"
-  [parameter query fallback-fn]
-  (case (:values_source_type parameter)
-    "static-list" (params.static-values/param->values parameter query)
-    "card"        (try
-                    (params.card-values/check-can-get-card-values? (get-in parameter [:values_source_config :card_id])
-                                                                   (get-in parameter [:values_source_config :value_field]))
-                    (params.card-values/param->values parameter query)
-                    (catch clojure.lang.ExceptionInfo _e
-                      (fallback-fn)))
-    nil           (fallback-fn)
-    (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
-                    {:status-code 400
-                     :parameter parameter}))))

@@ -33,8 +33,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.params :as params]
-   [metabase.models.params.card-values :as params.card-values]
-   [metabase.models.params.static-values :as params.static-values]
+   [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
@@ -945,7 +944,7 @@ saved later when it is ready."
      (when-not param
        (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
                        {:status-code 400})))
-     (params/parameter-values param query (fn [] (mapping->field-values card param query))))))
+     (custom-values/parameter->values param query (fn [] (mapping->field-values card param query))))))
 
 (api/defendpoint GET "/:card-id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`.
