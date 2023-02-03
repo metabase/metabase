@@ -360,7 +360,9 @@
 (def ^:private Kind
   (into [:enum] (map second rx->kind)))
 
-(mu/defn classify-path :- Kind [path :- Path]
+(mu/defn classify-path
+  "Classifies a permission [[metabase.models.permissions/Path]] into a [[metabase.models.permissions/Kind]], or throws."
+  :- Kind [path :- Path]
   (let [result (keep (fn [[permission-rx kind]]
                        (when (re-matches (u.regex/rx permission-rx) path) kind))
                      rx->kind)]
@@ -372,7 +374,9 @@
 (def DataPath "A permissions path that's guaranteed to be a v1 data-permissions path"
   [:re (u.regex/rx "^/" v1-data-permissions-rx "$")])
 
-(mu/defn classify-data-path :- DataKind [data-path :- DataPath]
+(mu/defn classify-data-path
+  "Classifies data path permissions [[metabase.models.permissions/DataPath]] into a [[metabase.models.permissions/DataKind]]"
+  :- DataKind [data-path :- DataPath]
   (let [result (keep (fn [[data-rx kind]]
                        (when (re-matches (u.regex/rx [:and "^/" data-rx]) data-path) kind))
                      data-rx->data-kind)]
