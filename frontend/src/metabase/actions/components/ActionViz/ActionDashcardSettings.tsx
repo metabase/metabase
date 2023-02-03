@@ -67,16 +67,17 @@ export function ActionDashcardSettings({
                 action={dashcard.action}
               />
             </ParameterMapperContainer>
-            <ModalActions>
-              <Button onClick={onClose}>Cancel</Button>
-              <Button primary onClick={onClose}>
-                {t`Done`}
-              </Button>
-            </ModalActions>
           </>
         ) : (
-          <EmptyActionState />
+          <ParameterMapperContainer>
+            <EmptyActionState />
+          </ParameterMapperContainer>
         )}
+        <ModalActions>
+          <Button primary onClick={onClose}>
+            {t`Done`}
+          </Button>
+        </ModalActions>
       </ActionSettingsRight>
     </ActionSettingsWrapper>
   );

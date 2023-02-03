@@ -103,7 +103,7 @@ export const setParameterMapping = createThunkAction(
 
     let parameter_mappings = dashcard.parameter_mappings || [];
 
-    // allow mapping the same parameeter to multiple action targets
+    // allow mapping the same parameter to multiple action targets
     if (!isAction) {
       parameter_mappings = parameter_mappings.filter(
         m => m.card_id !== card_id || m.parameter_id !== parameter_id,
@@ -138,7 +138,6 @@ export const SET_ACTION_FOR_DASHCARD =
 export const setActionForDashcard = createThunkAction(
   SET_PARAMETER_MAPPING,
   (dashcard, newAction) => dispatch => {
-    console.log("setActionForDashcard", dashcard, newAction);
     dispatch(
       setDashCardAttributes({
         id: dashcard.id,

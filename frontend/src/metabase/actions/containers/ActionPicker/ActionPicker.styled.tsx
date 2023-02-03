@@ -48,3 +48,7 @@ export const EditButton = styled(Button)`
   color: ${color("text-light")};
   padding: 0 0.5rem;
 `;
+
+export const NewActionButton = styled(Button)`
+  margin: 0.25rem 0.75rem;
+`;

@@ -20,6 +20,7 @@ import {
   EmptyState,
   ModelCollapseSection,
   EmptyModelStateContainer,
+  NewActionButton,
 } from "./ActionPicker.styled";
 
 export default function ActionPicker({
@@ -108,16 +109,16 @@ function ModelActionPicker({
                 )}
               </ActionItem>
             ))}
-            <ActionItem role="button" onClick={toggleIsActionCreatorVisible}>
+            <NewActionButton onlyText onClick={toggleIsActionCreatorVisible}>
               {t`Create new action`}
-            </ActionItem>
+            </NewActionButton>
           </ActionsList>
         ) : (
           <EmptyModelStateContainer>
             <div>{t`There are no actions for this model`}</div>
-            <ActionItem onClick={toggleIsActionCreatorVisible} role="button">
+            <NewActionButton onlyText onClick={toggleIsActionCreatorVisible}>
               {t`Create new action`}
-            </ActionItem>
+            </NewActionButton>
           </EmptyModelStateContainer>
         )}
       </ModelCollapseSection>
