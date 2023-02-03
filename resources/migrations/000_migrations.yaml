@@ -14128,54 +14128,6 @@ databaseChangeLog:
             tableName: action
 
   - changeSet:
-      id: v46.00-071
-      author: calherries
-      comment: Added 0.46.0 - add entity_id column to implicit_action
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: implicit_action
-
-  - changeSet:
-      id: v46.00-072
-      author: calherries
-      comment: Added 0.46.0 - add entity_id column to http_action
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: http_action
-
-  - changeSet:
-      id: v46.00-073
-      author: calherries
-      comment: Added 0.46.0 - add entity_id column to query_action
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: query_action
-
-  - changeSet:
       id: v46.00-075
       author: noahmoss
       comment: Add foreign key constraint on sandboxes.permission_id
