@@ -1,6 +1,7 @@
 (ns metabase.server.handler
   "Top-level Metabase Ring handler."
   (:require
+   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
@@ -85,5 +86,5 @@
   (doseq [varr  (cons #'routes/routes middleware)
           :when (instance? clojure.lang.IRef varr)]
     (add-watch varr ::reload (fn [_ _ _ _]
-                               (printf "%s changed, rebuilding %s" varr #'app)
+                               (log/infof "%s changed, rebuilding %s" varr #'app)
                                (alter-var-root #'app (constantly (apply-middleware routes/routes)))))))

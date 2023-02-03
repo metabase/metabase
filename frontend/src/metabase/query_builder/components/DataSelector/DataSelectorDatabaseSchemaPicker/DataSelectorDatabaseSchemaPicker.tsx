@@ -65,7 +65,7 @@ const DataSelectorDatabaseSchemaPicker = ({
           }))
         : [],
     className: database.is_saved_questions ? "bg-light" : null,
-    icon: database.is_saved_questions ? "all" : "database",
+    icon: database.is_saved_questions ? "collection" : "database",
     loading:
       selectedDatabase?.id === database.id &&
       database.schemas.length === 0 &&
