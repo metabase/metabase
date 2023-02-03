@@ -23,14 +23,14 @@ const structuredSourceQuestion = {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
     breakout: [["field", PRODUCTS.CATEGORY, null]],
-    filter: ["!=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"],
+    filter: ["!=", ["field", PRODUCTS.CATEGORY, null], "Doohickey"],
   },
 };
 
 const nativeSourceQuestion = {
   name: "SQL source",
   native: {
-    query: "select distinct CATEGORY from PRODUCTS order by CATEGORY limit 2",
+    query: "select CATEGORY from PRODUCTS WHERE CATEGORY != 'Doohickey'",
   },
 };
 
@@ -174,7 +174,7 @@ describe("scenarios > dashboard > filters", () => {
       editDashboard();
       setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      setFilterListSource({ values: ["Doohickey", "Gadget"] });
+      setFilterListSource({ values: ["Gadget", "Gizmo", "Widget"] });
       saveDashboard();
       filterDashboard();
     });
@@ -205,7 +205,7 @@ describe("scenarios > dashboard > filters", () => {
   });
 });
 
-describeEE.only("scenarios > dashboard > filters", () => {
+describeEE("scenarios > dashboard > filters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -246,17 +246,17 @@ const filterDashboard = ({ isSandboxed } = {}) => {
   cy.findByText("Text").click();
 
   popover().within(() => {
-    cy.findByText("Gadget").should("be.visible");
-    cy.findByText("Gizmo").should("not.exist");
+    cy.findByText("Gizmo").should("be.visible");
+    cy.findByText("Doohickey").should("not.exist");
+    cy.findByText("Gadget").should(isSandboxed ? "not.exist" : "be.visible");
     cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
-    cy.findByText("Doohickey").should(isSandboxed ? "not.exist" : "be.visible");
 
-    cy.findByPlaceholderText("Search the list").type("et");
+    cy.findByPlaceholderText("Search the list").type("i");
+    cy.findByText("Gadget").should("not.exist");
     cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
     cy.findByText("Doohickey").should("not.exist");
-    cy.findByText("Gizmo").should("not.exist");
 
-    cy.findByText("Gadget").click();
+    cy.findByText("Gizmo").click();
     cy.button("Add filter").click();
   });
 };
@@ -311,7 +311,7 @@ const getListDashboard = () => {
   return getTargetDashboard({
     values_source_type: "static-list",
     values_source_config: {
-      values: ["Doohickey", "Gadget"],
+      values: ["Gadget", "Gizmo", "Widget"],
     },
   });
 };
