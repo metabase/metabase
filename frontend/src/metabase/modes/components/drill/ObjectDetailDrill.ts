@@ -30,7 +30,9 @@ function getAction({
         question: () => objectDetailFKDrillQuestion({ question, clicked }),
       };
     case "zoom":
-      return { action: () => zoomInRow({ objectId }) };
+      return {
+        action: () => zoomInRow({ objectId, tableId: clicked.column.table_id }),
+      };
     case "dashboard":
       return { question: () => question };
   }

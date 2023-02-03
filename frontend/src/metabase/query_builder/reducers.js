@@ -339,6 +339,20 @@ export const zoomedRowObjectId = handleActions(
   null,
 );
 
+export const zoomedRowTableId = handleActions(
+  {
+    [INITIALIZE_QB]: {
+      next: (state, { payload }) => payload?.tableId ?? null,
+    },
+    [ZOOM_IN_ROW]: {
+      next: (state, { payload }) => payload.tableId,
+    },
+    [RESET_ROW_ZOOM]: { next: () => null },
+    [RESET_QB]: { next: () => null },
+  },
+  null,
+);
+
 // the card that is actively being worked on
 export const card = handleActions(
   {

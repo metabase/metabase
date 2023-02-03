@@ -20,9 +20,11 @@ import { updateUrl } from "./navigation";
 
 export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
 export const zoomInRow =
-  ({ objectId }) =>
+  ({ objectId, tableId }) =>
   (dispatch, getState) => {
-    dispatch({ type: ZOOM_IN_ROW, payload: { objectId } });
+    console.log("🚀", "In zoomInRow", { tableId });
+
+    dispatch({ type: ZOOM_IN_ROW, payload: { objectId, tableId } });
 
     // don't show object id in url if it is a row index
     const hasPK = getPKColumnIndex(getState()) !== -1;

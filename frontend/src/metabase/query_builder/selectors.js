@@ -95,6 +95,9 @@ export const getSelectedTimelineEventIds = state =>
 
 const getRawQueryResults = state => state.qb.queryResults;
 
+export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
+export const getZoomedTableId = state => state.qb.zoomedRowTableId;
+
 export const getIsBookmarked = (state, props) =>
   props.bookmarks.some(
     bookmark =>
@@ -140,13 +143,18 @@ export const getFirstQueryResult = createSelector([getQueryResults], results =>
 );
 
 export const getPKColumnIndex = createSelector(
-  [getFirstQueryResult],
-  result => {
+  [getFirstQueryResult, getZoomedTableId],
+  (result, zoomedTableId) => {
     if (!result) {
       return;
     }
+
     const { cols } = result.data;
-    const hasMultiplePks = cols.filter(isPK).length > 1;
+    const columnsFromZoomedTable = cols.filter(
+      col => col.table_id === zoomedTableId,
+    );
+    const hasMultiplePks = columnsFromZoomedTable.filter(isPK).length > 1;
+
     if (hasMultiplePks) {
       return -1;
     }
@@ -492,8 +500,6 @@ export const getIsResultDirty = createSelector(
     );
   },
 );
-
-export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
 
 const getZoomedObjectRowIndex = createSelector(
   [getPKRowIndexMap, getZoomedObjectId],
