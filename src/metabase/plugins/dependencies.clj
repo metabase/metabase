@@ -1,11 +1,11 @@
 (ns metabase.plugins.dependencies
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [environ.core :as env]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 (def ^:private plugins-with-unsatisfied-deps
   (atom #{}))

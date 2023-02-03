@@ -2,7 +2,6 @@
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -11,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]

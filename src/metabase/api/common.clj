@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :as compojure]
    [honeysql.types :as htypes]
    [medley.core :as m]
@@ -21,6 +20,7 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as schema]
    [toucan.db :as db]))

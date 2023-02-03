@@ -2,7 +2,6 @@
   (:require [clojure.core.async :as a]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
@@ -19,6 +18,7 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.log :as log]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])

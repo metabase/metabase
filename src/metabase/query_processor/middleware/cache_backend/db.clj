@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [honey.sql :as sql]
    [java-time :as t]
    [metabase.db :as mdb]
@@ -9,6 +8,7 @@
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db])
   (:import
    (java.sql Connection PreparedStatement ResultSet Types)))

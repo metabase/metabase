@@ -2,13 +2,13 @@
   "Functions for generating human friendly query descriptions"
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.segment :refer [Segment]]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (defn- get-table-description

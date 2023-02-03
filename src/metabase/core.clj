@@ -1,7 +1,6 @@
 (ns metabase.core
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.tools.trace :as trace]
    [java-time :as t]
    [metabase.analytics.prometheus :as prometheus]
@@ -26,6 +25,7 @@
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (comment

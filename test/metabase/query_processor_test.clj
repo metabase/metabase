@@ -6,7 +6,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [hawk.init]
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
@@ -21,6 +20,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db]))
 
