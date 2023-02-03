@@ -102,31 +102,32 @@
         (ts/with-source-db
           (testing "insert"
             (test-gen/insert!
-              {:action                  (many-random-fks 10 {} {:model_id   [:c 100]
-                                                                :creator_id [:u 10]})
+              {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
+               ;; We generate 10 actions for each subtype, and 10 of each subtype.
+               ;; actions 0-9 are query actions, 10-19 are implicit actions, and 20-29 are http actions.
+               :action                  (apply concat
+                                               (for [type [:query :implicit :http]]
+                                                 (many-random-fks 10
+                                                                  {:spec-gen {:type type}}
+                                                                  {:model_id   [:c 100]
+                                                                   :creator_id [:u 10]})))
                :query-action            (map-indexed
                                          (fn [idx x]
                                            (update-in x [1 :refs]
                                                       (fn [refs]
-                                                        (-> refs
-                                                            (assoc :action_id (keyword (str "action" idx)))
-                                                            (assoc :entity_id (keyword (str "eid" idx)))))))
+                                                        (assoc refs :action_id (keyword (str "action" idx))))))
                                          (many-random-fks 10 {} {:database_id [:db 10]}))
                :implicit-action         (map-indexed
                                          (fn [idx x]
                                            (update-in x [1 :refs]
                                                       (fn [refs]
-                                                        (-> refs
-                                                            (assoc :action_id (keyword (str "action" idx)))
-                                                            (assoc :entity_id (keyword (str "eid" idx)))))))
+                                                        (assoc refs :action_id (keyword (str "action" (+ 10 idx)))))))
                                          (many-random-fks 10 {} {}))
                :http-action             (map-indexed
                                          (fn [idx x]
                                            (update-in x [1 :refs]
                                                       (fn [refs]
-                                                        (-> refs
-                                                            (assoc :action_id (keyword (str "action" idx)))
-                                                            (assoc :entity_id (keyword (str "eid" idx)))))))
+                                                        (assoc refs :action_id (keyword (str "action" (+ 20 idx)))))))
                                          (many-random-fks 10 {} {}))
                :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                          [10  {:refs     {:personal_owner_id ::rs/omit}
@@ -212,7 +213,7 @@
             (storage.yaml/store! (seq @extraction) dump-dir)
 
             (testing "for Actions"
-              (is (= 10 (count (dir->file-set (io/file dump-dir "actions"))))))
+              (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
 
             (testing "for QueryActions"
               (is (= 10 (count (dir->file-set (io/file dump-dir "query_actions"))))))
@@ -307,7 +308,7 @@
               (testing "for Actions"
                 (doseq [{:keys [entity_id] :as coll} (get @entities "Action")]
                   (is (= (clean-entity coll)
-                         (->> (db/select-one 'Action :entity_id entity_id)
+                         (->> (action/select-one :entity_id entity_id)
                               (serdes.base/extract-one "Action" {})
                               clean-entity)))))
 

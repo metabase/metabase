@@ -94,15 +94,7 @@
               (-> first str))))
         (gen/return nil)))))
 
-(s/def ::nano-id
-  (s/with-gen string?
-    #(gen/fmap
-      (fn [_]
-        (u/generate-nano-id))
-      (gen/return nil))))
-
 (s/def ::name ::weird-str)
-(s/def ::entity_id ::nano-id)
 (s/def ::description ::weird-str)
 
 ;; * card
@@ -134,7 +126,7 @@
 (s/def ::parameter  (s/keys :req-un [:parameter/id :parameter/type]))
 (s/def ::parameters (s/coll-of ::parameter))
 
-(s/def :action/type #{:implicit :query :http})
+(s/def :action/type #{:query :implicit :http})
 
 ;; * implicit_action
 (s/def ::kind #{"row/create" "row/update" "row/delete"})
@@ -151,9 +143,9 @@
 (s/def ::parameter_mappings #{[{}]})
 
 (s/def ::action (s/keys :req-un [::id :action/type ::name]))
-(s/def ::query-action (s/keys :req-un [::dataset_query ::entity_id]))
-(s/def ::implicit-action (s/keys :req-un [::kind ::entity_id]))
-(s/def ::http-action (s/keys :req-un [::template ::entity_id]))
+(s/def ::query-action (s/keys :req-un [::dataset_query]))
+(s/def ::implicit-action (s/keys :req-un [::kind]))
+(s/def ::http-action (s/keys :req-un [::template]))
 
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
 (s/def ::collection (s/keys :req-un [::id ::name ::color]))

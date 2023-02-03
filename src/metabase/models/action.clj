@@ -1,6 +1,7 @@
 (ns metabase.models.action
   (:require
    [cheshire.core :as json]
+   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
@@ -19,9 +20,10 @@
 (models/defmodel Action :action)
 
 (defn type->model
-  "Returns the model from an action type"
+  "Returns the model from an action type.
+   `action-type` can be a string or a keyword."
   [action-type]
-  (case action-type
+  (case (keyword action-type)
     :http     HTTPAction
     :implicit ImplicitAction
     :query    QueryAction))
@@ -52,24 +54,9 @@
   :properties (constantly {::mi/timestamped? true
                            ::mi/entity-id    true})})
 
-(defn- pre-update
-  [action]
-  ;; All possible sub-type columns
-  (when-let [sub-type-action (not-empty (select-keys action [:kind
-                                                             :database_id :dataset_query
-                                                             :template :response_handle :error_handle]))]
-    (assoc sub-type-action :action_id (or (:id action) (:action_id action)))))
-
-(defn- pre-delete
-  [action]
-  (db/simple-delete! Action :id (:action_id action))
-  action)
-
 (def ^:private Action-subtype-IModel-impl
   "[[models/IModel]] impl for `HTTPAction`, `ImplicitAction`, and `QueryAction`"
-  {:primary-key (constantly :action_id) ; This is ok as long as we're 1:1
-   :pre-delete pre-delete
-   :pre-update pre-update})
+  {:primary-key (constantly :action_id)}) ; This is ok as long as we're 1:1
 
 (mi/define-methods
  QueryAction
@@ -86,19 +73,36 @@
  (merge Action-subtype-IModel-impl
         {:types (constantly {:template ::json-with-nested-parameters})}))
 
+(def action-columns
+  "The columns that are common to all Action types."
+  [:type :name :description :model_id :parameters :parameter_mappings :visualization_settings :creator_id
+   :created_at :updated_at :entity_id])
+
 (defn insert!
   "Inserts an Action and related type table. Returns the action id."
   [action-data]
   (db/transaction
     (let [action (db/insert! Action (select-keys action-data action-columns))
-          model  (type->model (keyword (:type action)))]
+          model  (type->model (:type action))]
       (db/execute! {:insert-into model
                     :values [(-> (apply dissoc action-data action-columns)
-                                 (mi/add-entity-id)
                                  (u/update-if-exists :template json/encode)
                                  (u/update-if-exists :dataset_query json/encode)
                                  (assoc :action_id (:id action)))]})
       (:id action))))
+
+(defn update! [{:keys [id] :as action}]
+  (let [existing-action (db/select-one Action :id id)
+        existing-model  (type->model (:type existing-action))]
+    (when-let [action-row (not-empty (select-keys action action-columns))]
+      (db/update! Action id action-row))
+    (when-let [type-row (not-empty (apply dissoc action :id action-columns))]
+      (let [type-row (assoc type-row :action_id id)]
+        (if (and (:type action) (not= (:type action) (:type existing-action)))
+          (let [new-model (type->model (:type action))]
+            (db/delete! existing-model :action_id id)
+            (db/insert! new-model (assoc type-row :action_id id)))
+          (db/update! existing-model id type-row))))))
 
 (defn- hydrate-subtype [action]
   (let [subtype (type->model (:type action))]
@@ -241,18 +245,6 @@
   [_action]
   [:name (serdes.hash/hydrated-hash :model "<none>") :created_at])
 
-(defmethod serdes.hash/identity-hash-fields QueryAction
-  [_action]
-  [(serdes.hash/hydrated-hash :action "<none>")])
-
-(defmethod serdes.hash/identity-hash-fields ImplicitAction
-  [_action]
-  [(serdes.hash/hydrated-hash :action "<none>")])
-
-(defmethod serdes.hash/identity-hash-fields HTTPAction
-  [_action]
-  [(serdes.hash/hydrated-hash :action "<none>")])
-
 (defmethod serdes.base/extract-one "Action"
   [_model-name _opts action]
   (let [action (-> (serdes.base/extract-one-basics "Action" action)
@@ -267,59 +259,34 @@
   (-> action
       serdes.base/load-xform-basics
       (update :model_id serdes.util/import-fk 'Card)
-      (update :creator_id serdes.util/import-fk-keyed 'User :email)))
+      (update :creator_id serdes.util/import-fk-keyed 'User :email)
+      (cond-> (= (:type action) "query")
+        (update :database_id serdes.util/import-fk-keyed 'Database :name))))
 
-(defmethod serdes.base/load-xform "QueryAction" [query-action]
-  (-> query-action
-      serdes.base/load-xform-basics
-      (update :database_id serdes.util/import-fk-keyed 'Database :name)
-      (update :action_id serdes.util/import-fk 'Action)))
+(defmethod serdes.base/load-one! "Action" [ingested maybe-local]
+  ((get-method serdes.base/load-one! :default) ingested maybe-local))
 
-(defmethod serdes.base/load-xform "ImplicitAction" [implicit-action]
-  (-> implicit-action
-      serdes.base/load-xform-basics
-      (update :action_id serdes.util/import-fk 'Action)))
+(defmethod serdes.base/load-update! "Action" [_model-name ingested local]
+  (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))
+  (update! (assoc ingested :id (:id local)))
+  (select-one :id (:id local)))
 
-(defmethod serdes.base/load-xform "HTTPAction" [http-action]
-  (-> http-action
-      serdes.base/load-xform-basics
-      (update :action_id serdes.util/import-fk 'Action)))
+(defmethod serdes.base/load-insert! "Action" [_model-name ingested]
+  (log/tracef "Inserting Action: %s" (pr-str ingested))
+  (insert! ingested))
 
 (defmethod serdes.base/serdes-generate-path "Action"
   [_ action]
   (serdes.base/maybe-labeled "Action" action :name))
 
-(defmethod serdes.base/serdes-generate-path "ImplicitAction" [_model implicit-action]
-  [(serdes.base/infer-self-path "Action" (db/select-one 'Action :id (:action_id implicit-action)))
-   (serdes.base/infer-self-path "ImplicitAction" implicit-action)])
-
-(defmethod serdes.base/serdes-generate-path "HTTPAction" [_model http-action]
-  [(serdes.base/infer-self-path "Action" (db/select-one 'Action :id (:action_id http-action)))
-   (serdes.base/infer-self-path "HTTPAction" http-action)])
-
-(defmethod serdes.base/serdes-generate-path "QueryAction" [_model query-action]
-  [(serdes.base/infer-self-path "Action" (db/select-one 'Action :id (:action_id query-action)))
-   (serdes.base/infer-self-path "QueryAction" query-action)])
-
+;; WIP: add database to dependencies if it's a query action
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   [[{:model "Card" :id (:model_id action)}]])
-
-(defmethod serdes.base/serdes-dependencies "QueryAction" [query-action]
-  [[{:model "Action" :id (:action_id query-action)}]])
-
-(defmethod serdes.base/serdes-dependencies "HTTPAction" [http-action]
-  [[{:model "Action" :id (:action_id http-action)}]])
-
-(defmethod serdes.base/serdes-dependencies "ImplicitAction" [implicit-action]
-  [[{:model "Action" :id (:action_id implicit-action)}]])
 
 (defmethod serdes.base/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]
     ["actions" (serdes.base/storage-leaf-file-name id label)]))
 
-;; This is coupled to storage-path
-;; storage-path converts a serdes path to a storage path.
-;; ingestion-path converts a storage path to a serdes path.
 (serdes.base/register-ingestion-path!
  "Action"
   ;; ["actions" "my-action"]
@@ -329,38 +296,5 @@
                              ;; (apply = (take-last 2 path))
                              (serdes.base/split-leaf-file-name (last path)))]
      (cond-> {:model "Action" :id id}
-       slug (assoc :label slug)
-       true vector))))
-
-(serdes.base/register-ingestion-path!
- "QueryAction"
- ;; ["actions" "query_actions" "my-query-action"]
- (fn [path]
-   (when-let [[id slug] (and (= (first path) "actions")
-                             (= (second path) "query_actions")
-                             (serdes.base/split-leaf-file-name (last path)))]
-     (cond-> {:model "QueryAction" :id id}
-       slug (assoc :label slug)
-       true vector))))
-
-(serdes.base/register-ingestion-path!
- "ImplicitAction"
- ;; ["actions" "implicit_actions" "my-implicit-action"]
- (fn [path]
-   (when-let [[id slug] (and (= (first path) "actions")
-                             (= (second path) "implicit_actions")
-                             (serdes.base/split-leaf-file-name (last path)))]
-     (cond-> {:model "ImplicitAction" :id id}
-       slug (assoc :label slug)
-       true vector))))
-
-(serdes.base/register-ingestion-path!
- "HTTPAction"
- ;; ["actions" "http_actions" "my-http-action"]
- (fn [path]
-   (when-let [[id slug] (and (= (first path) "actions")
-                             (= (second path) "http_actions")
-                             (serdes.base/split-leaf-file-name (last path)))]
-     (cond-> {:model "HTTPAction" :id id}
        slug (assoc :label slug)
        true vector))))
