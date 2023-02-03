@@ -87,7 +87,12 @@ function MainNavbar({
   );
 
   return (
-    <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
+    <Sidebar
+      className="Nav"
+      isOpen={isOpen}
+      aria-hidden={!isOpen}
+      data-testid="main-navbar-root"
+    >
       <NavRoot isOpen={isOpen}>
         <MainNavbarContainer
           isOpen={isOpen}
