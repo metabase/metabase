@@ -94,18 +94,17 @@
 (defn update!
   "Updates an Action and the related type table.
    Deletes the old type table row if the type has changed."
-  [{:keys [id] :as action}]
-  (let [existing-action (db/select-one Action :id id)
-        existing-model  (type->model (:type existing-action))]
-    (when-let [action-row (not-empty (select-keys action action-columns))]
-      (db/update! Action id action-row))
-    (when-let [type-row (not-empty (apply dissoc action :id action-columns))]
-      (let [type-row (assoc type-row :action_id id)]
-        (if (and (:type action) (not= (:type action) (:type existing-action)))
-          (let [new-model (type->model (:type action))]
-            (db/delete! existing-model :action_id id)
-            (db/insert! new-model (assoc type-row :action_id id)))
-          (db/update! existing-model id type-row))))))
+  [{:keys [id] :as action} existing-action]
+  (when-let [action-row (not-empty (select-keys action action-columns))]
+    (db/update! Action id action-row))
+  (when-let [type-row (not-empty (apply dissoc action :id action-columns))]
+    (let [type-row (assoc type-row :action_id id)
+          existing-model (type->model (:type existing-action))]
+      (if (and (:type action) (not= (:type action) (:type existing-action)))
+        (let [new-model (type->model (:type action))]
+          (db/delete! existing-model :action_id id)
+          (db/insert! new-model (assoc type-row :action_id id)))
+        (db/update! existing-model id type-row)))))
 
 (defn- hydrate-subtype [action]
   (let [subtype (type->model (:type action))]
@@ -271,7 +270,7 @@
 
 (defmethod serdes.base/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))
-  (update! (assoc ingested :id (:id local)))
+  (update! (assoc ingested :id (:id local)) local)
   (select-one :id (:id local)))
 
 (defmethod serdes.base/load-insert! "Action" [_model-name ingested]

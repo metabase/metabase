@@ -119,18 +119,8 @@
    template               [:maybe http-action-template]
    type                   [:maybe supported-action-type]
    visualization_settings [:maybe map?]}
-  (let [action-columns       [:type :name :description :parameters :parameter_mappings :visualization_settings]
-        existing-action      (api/write-check Action id)
-        existing-action-type (:type existing-action)
-        existing-model       (action/type->model existing-action-type)]
-    (when-let [action-row (not-empty (select-keys action action-columns))]
-      (db/update! Action id action-row))
-    (when-let [type-row (not-empty (apply dissoc action action-columns))]
-      (if (and (:type action) (not= (:type action) existing-action-type))
-        (let [new-model (action/type->model (:type action))]
-          (db/delete! existing-model id)
-          (db/insert! new-model (assoc type-row :action_id id)))
-        (db/update! existing-model id type-row))))
+  (let [existing-action (api/write-check Action id)]
+    (action/update! action existing-action))
   (first (action/actions-with-implicit-params nil :id id)))
 
 (api/define-routes)
