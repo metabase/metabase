@@ -289,14 +289,6 @@ export class TagEditorParam extends Component {
           </InputContainer>
         )}
 
-        <InputContainer lessBottomPadding>
-          <ContainerLabel>{t`Required?`}</ContainerLabel>
-          <Toggle
-            value={tag.required}
-            onChange={value => this.setRequired(value)}
-          />
-        </InputContainer>
-
         {parameter && canUseCustomSource(parameter) && (
           <InputContainer>
             <ContainerLabel>{t`How should users filter on this variable?`}</ContainerLabel>
@@ -307,6 +299,14 @@ export class TagEditorParam extends Component {
             />
           </InputContainer>
         )}
+
+        <InputContainer lessBottomPadding>
+          <ContainerLabel>{t`Required?`}</ContainerLabel>
+          <Toggle
+            value={tag.required}
+            onChange={value => this.setRequired(value)}
+          />
+        </InputContainer>
 
         {((tag.type !== "dimension" && tag.required) ||
           tag.type === "dimension" ||
