@@ -15,7 +15,6 @@
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
    [methodical.core :as methodical]
    [toucan.db :as db]
@@ -223,26 +222,6 @@
   (let [field-ids (set (map :id fields))]
     (m/index-by :field_id (when (seq field-ids)
                             (apply db/select model :field_id [:in field-ids] conditions)))))
-
-(defn nfc-field->parent-identifier
-  "Take a nested field column field corresponding to something like an inner key within a JSON column,
-  and then get the parent column's identifier from its own identifier and the nfc path stored in the field.
-
-  Suppose you have the child with corresponding identifier
-
-  (metabase.util.honeysql-extensions/identifier :field \"blah -> boop\")
-
-  Ultimately, this is just a way to get the parent identifier
-
-  (metabase.util.honeysql-extensions/identifier :field \"blah\")"
-  [field-identifier field]
-  (let [nfc-path          (:nfc_path field)
-        parent-components (-> (:components field-identifier)
-                              (vec)
-                              (pop)
-                              (conj (first nfc-path)))]
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (apply hx/identifier (cons :field parent-components))))
 
 (mi/define-batched-hydration-method with-values
   :values

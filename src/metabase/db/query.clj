@@ -25,7 +25,6 @@
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
-   [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
    [toucan2.jdbc :as t2.jdbc])
   (:import
@@ -65,8 +64,7 @@
   ;; make sure metabase.db.setup is loaded so the `:metabase.db.setup/application-db` gets defined
   (classloader/require 'metabase.db.setup)
   (let [sql-args (try
-                   (binding [hx/*honey-sql-version* 2]
-                     (sql/format honey-sql {:quoted true, :dialect :metabase.db.setup/application-db}))
+                   (sql/format honey-sql {:quoted true, :dialect :metabase.db.setup/application-db})
                    (catch Throwable e
                      ;; this is not i18n'ed because it (hopefully) shouldn't be user-facing -- we shouldn't be running
                      ;; in to unexpected Honey SQL compilation errors at run time -- if we are it means we're not being

@@ -22,6 +22,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.models.field :as field]
@@ -397,7 +398,7 @@
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
-          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
+          parent-identifier    (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)
           names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
       (reify
         hformat/ToSql

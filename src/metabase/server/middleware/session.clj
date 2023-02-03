@@ -23,6 +23,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
    [ring.util.response :as response]

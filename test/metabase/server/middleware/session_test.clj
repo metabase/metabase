@@ -16,6 +16,7 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :as i18n]
    [ring.mock.request :as ring.mock]

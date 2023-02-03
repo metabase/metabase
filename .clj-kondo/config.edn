@@ -667,7 +667,9 @@
  [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"
    :name    test-namespaces}
   {:pattern "metabase\\.cmd.*"
-   :name    printable-namespaces}]
+   :name    printable-namespaces}
+  {:pattern "metabase\\.(?!driver)(?!test\\.data)(?!query-processor)(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1-extensions))).*"
+   :name    honey-sql-2-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -680,4 +682,15 @@
     :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
   printable-namespaces
   {:linters
-   {:discouraged-var {:level :off}}}}}
+   {:discouraged-var {:level :off}}}
+
+  honey-sql-2-namespaces
+  {:linters
+   {:discouraged-namespace
+    {honeysql.core                        {:message "Use Honey SQL 2"}
+     honeysql.format                      {:message "Use Honey SQL 2"}
+     honeysql.helpers                     {:message "Use Honey SQL 2"}
+     honeysql.types                       {:message "Use Honey SQL 2"}
+     honeysql.util                        {:message "Use Honey SQL 2"}
+     metabase.util.honeysql-extensions    {:message "Use h2x"}
+     metabase.util.honey-sql-1-extensions {:message "Use h2x"}}}}}}
