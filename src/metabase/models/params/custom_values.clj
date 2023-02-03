@@ -74,7 +74,7 @@
                        (and (= (:name field-info)
                                id-or-name)
                             (= (:base-type options)
-                               (:base-type field-info))))
+                               (:base_type field-info))))
                      result-metadata)))))
 
 (defn- values-from-card-query
@@ -145,22 +145,17 @@
   [card-id value-field]
   (let [card (db/select-one Card :id card-id)]
     (when-not (mi/can-read? card)
-      (throw (ex-info (tru "You don't have permissions to view this card.")
-                      {:card-id     card-id
-                       :status-code 401})))
+      (throw (ex-info (tru "You don''t have permissions to do that.")
+                      {:status-code 403})))
     (when-not card
       (throw (ex-info (tru "Source card not found")
-                      {:card-id     card-id
-                       :status-code 400})))
+                      {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (tru "Source card is archived")
-                      {:card-id     card-id
-                       :status-code 400})))
+                      {:status-code 400})))
     (when-not (field->field-info value-field (:result_metadata card))
       (throw (ex-info (tru "Field not found")
-                      {:card-id     card-id
-                       :value_field value-field
-                       :status-code 400})))))
+                      {:status-code 400})))))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
@@ -169,12 +164,13 @@
   [parameter query fallback-fn]
   (case (:values_source_type parameter)
     "static-list" (static-list-values parameter query)
-    "card"        (try
+    "card"        (do
                     (check-can-get-card-values? (get-in parameter [:values_source_config :card_id])
                                                 (get-in parameter [:values_source_config :value_field]))
-                    (card-values parameter query)
-                    (catch clojure.lang.ExceptionInfo _e
-                      (fallback-fn)))
+                    (try
+                      (card-values parameter query)
+                      (catch clojure.lang.ExceptionInfo _e
+                        (fallback-fn))))
     nil           (fallback-fn)
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
                     {:status-code 400
