@@ -12,10 +12,9 @@ import Actions, {
 import Database from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import { createQuestionFromAction } from "metabase/actions/selectors";
-
 import type {
   ActionFormSettings,
+  DatabaseId,
   WritebackActionId,
   WritebackQueryAction,
 } from "metabase-types/api";
@@ -28,7 +27,11 @@ import type Question from "metabase-lib/Question";
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import { getDefaultFormSettings } from "../../utils";
-import { newQuestion, convertQuestionToAction } from "./utils";
+import {
+  newQuestion,
+  convertActionToQuestion,
+  convertQuestionToAction,
+} from "./utils";
 import ActionCreatorView from "./ActionCreatorView";
 import CreateActionForm, {
   FormValues as CreateActionFormValues,
@@ -60,12 +63,8 @@ type ActionCreatorProps = OwnProps &
   StateProps &
   DispatchProps;
 
-const mapStateToProps = (
-  state: State,
-  { action }: OwnProps & ActionLoaderProps,
-) => ({
+const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
-  question: action ? createQuestionFromAction(state, action) : undefined,
 });
 
 const mapDispatchToProps = {
@@ -76,18 +75,26 @@ const mapDispatchToProps = {
 const EXAMPLE_QUERY =
   "UPDATE products\nSET rating = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
 
-function ActionCreatorComponent({
+function resolveQuestion(
+  action: WritebackQueryAction | undefined,
+  { metadata }: { metadata: Metadata; databaseId?: DatabaseId },
+) {
+  return action
+    ? convertActionToQuestion(action, metadata)
+    : newQuestion(metadata);
+}
+
+function ActionCreator({
   action,
   modelId,
   databaseId,
   metadata,
-  question: passedQuestion,
   onCreateAction,
   onUpdateAction,
   onClose,
 }: ActionCreatorProps) {
   const [question, setQuestion] = useState(
-    passedQuestion ?? newQuestion(metadata, databaseId),
+    resolveQuestion(action, { metadata, databaseId }),
   );
 
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
@@ -97,7 +104,7 @@ function ActionCreatorComponent({
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   useEffect(() => {
-    setQuestion(passedQuestion ?? newQuestion(metadata, databaseId));
+    setQuestion(resolveQuestion(action, { metadata, databaseId }));
 
     // we do not want to update this any time the props or metadata change, only if action id changes
   }, [action?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -203,4 +210,4 @@ export default _.compose(
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
-)(ActionCreatorComponent);
+)(ActionCreator);

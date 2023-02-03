@@ -173,3 +173,11 @@ export const convertQuestionToAction = (
     visualization_settings,
   };
 };
+
+export const convertActionToQuestion = (
+  action: WritebackQueryAction,
+  metadata: Metadata,
+) => {
+  const question = new Question(convertActionToQuestionCard(action), metadata);
+  return question.setParameters(action.parameters);
+};
