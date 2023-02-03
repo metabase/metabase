@@ -6,7 +6,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]

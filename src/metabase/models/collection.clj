@@ -22,6 +22,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.schema :as su]
    [potemkin :as p]
