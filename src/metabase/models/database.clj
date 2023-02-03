@@ -1,6 +1,5 @@
 (ns metabase.models.database
   (:require
-   [cheshire.generate :as json.generate]
    [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
@@ -270,7 +269,7 @@
   Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
   an API response!"
   [db json-generator]
-  (json.generate/encode-map
+  (next-method
    (if (not (mi/can-write? db))
      (dissoc db :details :settings)
      (update db :details (fn [details]
