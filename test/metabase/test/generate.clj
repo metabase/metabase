@@ -2,6 +2,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.test.check.generators :as gen]
+   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
@@ -348,7 +349,7 @@
                                  sm-db
                                  (assoc visit-opts :visit-val (:spec-gen attrs))))
                     (catch Throwable e
-                      (println e)))))
+                      (log/error e)))))
       (rs/attr-map :insert!)))
 
 (defn generate-horror-show! []

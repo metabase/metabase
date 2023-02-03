@@ -5,6 +5,7 @@ import { DashboardState } from "./dashboard";
 import { EmbedState } from "./embed";
 import { EntitiesState } from "./entities";
 import { QueryBuilderState } from "./qb";
+import { ParametersState } from "./parameters";
 import { SettingsState } from "./settings";
 import { SetupState } from "./setup";
 
@@ -16,6 +17,7 @@ export interface State {
   embed: EmbedState;
   entities: EntitiesState;
   qb: QueryBuilderState;
+  parameters: ParametersState;
   settings: SettingsState;
   setup: SetupState;
 }

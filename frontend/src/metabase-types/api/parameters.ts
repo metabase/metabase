@@ -1,4 +1,7 @@
+import { DashboardId } from "./dashboard";
+import { RowValue } from "./dataset";
 import { CardId } from "./card";
+import { FieldId } from "./field";
 
 export type StringParameterType =
   | "string/="
@@ -60,4 +63,11 @@ export interface ValuesSourceConfig {
   values?: string[];
   card_id?: CardId;
   value_field?: unknown[];
+}
+
+export type ParameterValue = [RowValue];
+
+export interface ParameterValues {
+  values: ParameterValue[];
+  has_more_values: boolean;
 }

@@ -24,22 +24,22 @@
     (taoensso.nippy/extend-freeze)
     (taoensso.nippy/extend-thaw)]}
 
-  :refer-all                    {:level   :warning
-                                 :exclude [clojure.test]}
+  :refer-all                                {:level   :warning
+                                             :exclude [clojure.test]}
   ;; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
-  :unexpected-recur             {:level :off}
+  :unexpected-recur                         {:level :off}
   ;; TODO (cam): can we fix these?
-  :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
-  :missing-else-branch          {:level :warning}
-  :misplaced-docstring          {:level :warning}
-  :non-arg-vec-return-type-hint {:level :warning}
-  :missing-body-in-when         {:level :warning}
-  :missing-docstring            {:level :warning}
+  :unused-referred-var                      {:exclude {compojure.core [GET DELETE POST PUT]}}
+  :missing-else-branch                      {:level :warning}
+  :misplaced-docstring                      {:level :warning}
+  :non-arg-vec-return-type-hint             {:level :warning}
+  :missing-body-in-when                     {:level :warning}
+  :missing-docstring                        {:level :warning}
   ;; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
-  :namespace-name-mismatch      {:level :off}
-  :use                          {:level :warning}
-  :redundant-fn-wrapper         {:level :warning}
-  :invalid-arity                {:skip-args [metabase.mbql.util.match/match]}
+  :namespace-name-mismatch                  {:level :off}
+  :use                                      {:level :warning}
+  :redundant-fn-wrapper                     {:level :warning}
+  :invalid-arity                            {:skip-args [metabase.mbql.util.match/match]}
   ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
   ;; :docstring-no-summary                  {:level :warning}
   ;; :docstring-leading-trailing-whitespace {:level :warning}
@@ -83,7 +83,12 @@
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.string/lower-case {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
+  {clojure.core/print        {:message "Use clojure.tools.logging instead of clojure.core/print"}
+   clojure.core/println      {:message "Use clojure.tools.logging instead of clojure.core/println"}
+   clojure.core/printf       {:message "Use clojure.tools.logging instead of clojure.core/printf"}
+   clojure.core/prn          {:message "Use clojure.tools.logging instead of clojure.core/prn"}
+   clojure.core/pr           {:message "Use clojure.tools.logging instead of clojure.core/pr"}
+   clojure.string/lower-case {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
    honeysql.core/call        {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw         {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
@@ -94,12 +99,13 @@
   {:exclude
    [colorize.core]}
 
-  :unsorted-required-namespaces {:level :warning}
+  :unsorted-required-namespaces             {:level :warning}
 
   :consistent-alias
   {:aliases
    {buddy.core.hash                                                 buddy-hash
     cheshire.generate                                               json.generate
+    clojure.tools.logging                                           log
     clj-http.client                                                 http
     clj-ldap.client                                                 ldap
     clj-time.coerce                                                 time.coerce
@@ -659,14 +665,19 @@
  ;; this list isn't exhaustive because it misses some stuff like the test runner and HTTP client but it's easier to go
  ;; fix those namespaces than it is to make this regex super hairy.
  [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"
-   :name    test-namespaces}]
+   :name    test-namespaces}
+  {:pattern "metabase\\.cmd.*"
+   :name    printable-namespaces}]
 
  :config-in-ns
  {test-namespaces
   {:linters
-   {:inline-def        {:level :off}
-    :missing-docstring {:level :off}
-    :private-call      {:level :off}
+   {:inline-def                                    {:level :off}
+    :missing-docstring                             {:level :off}
+    :private-call                                  {:level :off}
 
     ;; custom linters
-    :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}}}
+    :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
+  printable-namespaces
+  {:linters
+   {:discouraged-var {:level :off}}}}}

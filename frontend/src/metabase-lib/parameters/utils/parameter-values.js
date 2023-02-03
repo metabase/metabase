@@ -30,8 +30,9 @@ export function hasParameterValue(value) {
 export function normalizeParameter(parameter) {
   return {
     id: parameter.id,
+    name: parameter.name,
+    slug: parameter.slug,
     type: parameter.type,
-    value: normalizeParameterValue(parameter.type, parameter.value),
     target: parameter.target,
     values_query_type: getQueryType(parameter),
     values_source_type: getSourceType(parameter),
@@ -42,7 +43,12 @@ export function normalizeParameter(parameter) {
 export function normalizeParameters(parameters) {
   return parameters
     .filter(parameter => _.has(parameter, "value"))
-    .map(normalizeParameter);
+    .map(({ type, value, target, id }) => ({
+      id,
+      type,
+      value: normalizeParameterValue(type, value),
+      target,
+    }));
 }
 
 export function normalizeParameterValue(type, value) {
