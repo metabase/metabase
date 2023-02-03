@@ -9,7 +9,6 @@
                             HTTPAction ImplicitAction Metric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient QueryAction
                             Segment Table Timeline TimelineEvent User]]
-   [metabase.util :as u]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
    [talltale.core :as tt]

@@ -91,7 +91,10 @@
                                  (assoc :action_id (:id action)))]})
       (:id action))))
 
-(defn update! [{:keys [id] :as action}]
+(defn update!
+  "Updates an Action and the related type table.
+   Deletes the old type table row if the type has changed."
+  [{:keys [id] :as action}]
   (let [existing-action (db/select-one Action :id id)
         existing-model  (type->model (:type existing-action))]
     (when-let [action-row (not-empty (select-keys action action-columns))]
