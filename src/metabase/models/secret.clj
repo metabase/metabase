@@ -1,6 +1,5 @@
 (ns metabase.models.secret
   (:require
-   [cheshire.generate :refer [encode-map]]
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -323,6 +322,6 @@
 (methodical/defmethod mi/to-json Secret
   "Never include the secret value in JSON."
   [secret json-generator]
-  (encode-map
+  (next-method
    (dissoc secret :value)
    json-generator))
