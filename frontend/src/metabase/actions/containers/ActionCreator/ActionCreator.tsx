@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
-import type { LocationDescriptor } from "history";
 
 import Modal from "metabase/components/Modal";
 
@@ -16,9 +15,9 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { createQuestionFromAction } from "metabase/actions/selectors";
 
 import type {
-  WritebackQueryAction,
   ActionFormSettings,
-  WritebackAction,
+  WritebackActionId,
+  WritebackQueryAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -34,6 +33,26 @@ import ActionCreatorView from "./ActionCreatorView";
 import CreateActionForm, {
   FormValues as CreateActionFormValues,
 } from "./CreateActionForm";
+
+interface OwnProps {
+  actionId?: WritebackActionId;
+  modelId?: number;
+  databaseId?: number;
+  onClose?: () => void;
+}
+
+interface StateProps {
+  action?: WritebackQueryAction;
+  question?: Question;
+  metadata: Metadata;
+}
+
+interface DispatchProps {
+  onCreateAction: (params: CreateQueryActionParams) => void;
+  onUpdateAction: (params: UpdateQueryActionParams) => void;
+}
+
+type ActionCreatorProps = OwnProps & StateProps & DispatchProps;
 
 const mapStateToProps = (
   state: State,
@@ -52,26 +71,6 @@ const mapDispatchToProps = {
 const EXAMPLE_QUERY =
   "UPDATE products\nSET rating = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
 
-interface OwnProps {
-  modelId?: number;
-  databaseId?: number;
-  onClose?: () => void;
-}
-
-interface StateProps {
-  action?: WritebackAction;
-  question?: Question;
-  metadata: Metadata;
-}
-
-interface DispatchProps {
-  onCreateAction: (params: CreateQueryActionParams) => void;
-  onUpdateAction: (params: UpdateQueryActionParams) => void;
-  onChangeLocation: (nextLocation: LocationDescriptor) => void;
-}
-
-type ActionCreatorProps = OwnProps & StateProps & DispatchProps;
-
 function ActionCreatorComponent({
   action,
   question: passedQuestion,
@@ -85,9 +84,11 @@ function ActionCreatorComponent({
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata, databaseId),
   );
+
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
     getDefaultFormSettings(action?.visualization_settings),
   );
+
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   useEffect(() => {
@@ -193,7 +194,7 @@ function ActionCreatorComponent({
 
 export default _.compose(
   Actions.load({
-    id: (state: State, props: { actionId?: number }) => props.actionId,
+    id: (state: State, props: OwnProps) => props.actionId,
     loadingAndErrorWrapper: false,
   }),
   Database.loadList(),
