@@ -1,4 +1,5 @@
 import React from "react";
+import { Route } from "react-router";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
@@ -77,15 +78,17 @@ async function setup({
     .reply(shouldExecutionFail ? 400 : 200, executionResponse);
 
   renderWithProviders(
-    <PublicApp>
-      <PublicAction params={{ uuid: TEST_PUBLIC_ID }} />
-    </PublicApp>,
+    <Route
+      path="/public/action/:uuid"
+      component={props => (
+        <PublicApp {...props}>
+          <PublicAction {...props} />
+        </PublicApp>
+      )}
+    />,
     {
       mode: "public",
-      initialRouterState: {
-        route: "/public/action/:uuid",
-        location: `/public/action/${TEST_PUBLIC_ID}`,
-      },
+      initialRoute: `/public/action/${TEST_PUBLIC_ID}`,
       withRouter: true,
     },
   );
