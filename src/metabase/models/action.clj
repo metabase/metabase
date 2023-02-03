@@ -18,6 +18,14 @@
 (models/defmodel ImplicitAction :implicit_action)
 (models/defmodel Action :action)
 
+(defn type->model
+  "Returns the model from an action type"
+  [action-type]
+  (case action-type
+    :http     HTTPAction
+    :implicit ImplicitAction
+    :query    QueryAction))
+
 ;;; You can read/write an Action if you can read/write its model (Card)
 (doto Action
   (derive ::mi/read-policy.full-perms-for-perms-set)
@@ -82,12 +90,8 @@
   "Inserts an Action and related type table. Returns the action id."
   [action-data]
   (db/transaction
-    (let [action-columns [:type :name :description :model_id :parameters :parameter_mappings :visualization_settings :creator_id]
-          action         (db/insert! Action (select-keys action-data action-columns))
-          model          (case (keyword (:type action))
-                           :http HTTPAction
-                           :query QueryAction
-                           :implicit ImplicitAction)]
+    (let [action (db/insert! Action (select-keys action-data action-columns))
+          model  (type->model (keyword (:type action)))]
       (db/execute! {:insert-into model
                     :values [(-> (apply dissoc action-data action-columns)
                                  (mi/add-entity-id)
@@ -97,10 +101,7 @@
       (:id action))))
 
 (defn- hydrate-subtype [action]
-  (let [subtype (case (:type action)
-                  :http HTTPAction
-                  :query QueryAction
-                  :implicit ImplicitAction)]
+  (let [subtype (type->model (:type action))]
     (-> action
         (merge (db/select-one subtype :action_id (:id action)))
         (dissoc :action_id))))

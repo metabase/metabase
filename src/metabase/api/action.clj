@@ -5,7 +5,7 @@
    [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
-   [metabase.models :refer [Action Card Database HTTPAction ImplicitAction QueryAction]]
+   [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -59,17 +59,11 @@
       (hydrate :creator)
       api/read-check))
 
-(defn- type->model [existing-action-type]
-  (case existing-action-type
-    :http     HTTPAction
-    :implicit ImplicitAction
-    :query    QueryAction))
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:action-id"
   [action-id]
   (let [{existing-action-type :type} (api/write-check Action action-id)]
-    (db/delete! (type->model existing-action-type) :action_id action-id))
+    (db/delete! (action/type->model existing-action-type) :action_id action-id))
   api/generic-204-no-content)
 
 (api/defendpoint POST "/"
@@ -128,12 +122,12 @@
   (let [action-columns       [:type :name :description :parameters :parameter_mappings :visualization_settings]
         existing-action      (api/write-check Action id)
         existing-action-type (:type existing-action)
-        existing-model       (type->model existing-action-type)]
+        existing-model       (action/type->model existing-action-type)]
     (when-let [action-row (not-empty (select-keys action action-columns))]
       (db/update! Action id action-row))
     (when-let [type-row (not-empty (apply dissoc action action-columns))]
       (if (and (:type action) (not= (:type action) existing-action-type))
-        (let [new-model (type->model (:type action))]
+        (let [new-model (action/type->model (:type action))]
           (db/delete! existing-model id)
           (db/insert! new-model (assoc type-row :action_id id)))
         (db/update! existing-model id type-row))))
