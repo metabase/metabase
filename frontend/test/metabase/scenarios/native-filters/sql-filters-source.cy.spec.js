@@ -21,7 +21,7 @@ const structuredSourceQuestion = {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
     breakout: [["field", PRODUCTS.CATEGORY, null]],
-    filter: ["!=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"],
+    filter: ["!=", ["field", PRODUCTS.CATEGORY, null], "Doohickey"],
   },
 };
 
@@ -60,8 +60,8 @@ describe("scenarios > filters > sql filters > values source", () => {
       saveQuestion("SQL filter");
 
       FieldFilter.openEntryForm();
-      checkFilterValueNotInList("Gizmo");
-      FieldFilter.selectFilterValueFromList("Gadget");
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
     });
 
@@ -76,8 +76,8 @@ describe("scenarios > filters > sql filters > values source", () => {
       saveQuestion("SQL filter");
 
       FieldFilter.openEntryForm();
-      checkFilterValueNotInList("Gizmo");
-      FieldFilter.selectFilterValueFromList("Gadget");
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
     });
 
@@ -91,10 +91,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
 
       FieldFilter.openEntryForm();
-      checkFilterValueNotInList("Gizmo");
-      FieldFilter.setWidgetStringFilter("Gadget");
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.setWidgetStringFilter("Gizmo");
       checkFilterValueNotInList("Widget");
-      FieldFilter.selectFilterValueFromList("Gadget");
+      FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("dataset");
     });
 
@@ -108,10 +108,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
       FieldFilter.openEntryForm();
       cy.wait("@parameterValues");
-      checkFilterValueInList("Gadget");
+      checkFilterValueInList("Gizmo");
       FieldFilter.closeEntryForm();
       FieldFilter.openEntryForm();
-      checkFilterValueInList("Gadget");
+      checkFilterValueInList("Gizmo");
       cy.get("@parameterValues.all").should("have.length", 1);
       setFilterListSource({ values: ["A", "B"] });
       FieldFilter.openEntryForm();
@@ -130,7 +130,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       updateQuestion();
       FieldFilter.openEntryForm();
       cy.wait("@cardParameterValues");
-      checkFilterValueInList("Gadget");
+      checkFilterValueInList("Gizmo");
     });
 
     it("should be able to use a structured question source when embedded", () => {
@@ -145,8 +145,8 @@ describe("scenarios > filters > sql filters > values source", () => {
       );
 
       FieldFilter.openEntryForm();
-      checkFilterValueNotInList("Gizmo");
-      FieldFilter.selectFilterValueFromList("Gadget");
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gizmo");
     });
 
     it("should be able to use a structured question source when public", () => {
@@ -161,8 +161,8 @@ describe("scenarios > filters > sql filters > values source", () => {
       );
 
       FieldFilter.openEntryForm();
-      checkFilterValueNotInList("Gizmo");
-      FieldFilter.selectFilterValueFromList("Gadget");
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gizmo");
     });
   });
 
