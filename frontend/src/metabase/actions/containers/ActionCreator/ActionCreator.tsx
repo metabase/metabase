@@ -13,11 +13,14 @@ import { createQuestionFromAction } from "metabase/actions/selectors";
 import type {
   WritebackQueryAction,
   ActionFormSettings,
+  WritebackActionId,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type { SavedCard } from "metabase-types/types/Card";
 
 import Modal from "metabase/components/Modal";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { getSetting } from "metabase/selectors/settings";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
@@ -34,6 +37,8 @@ const mapStateToProps = (
   metadata: getMetadata(state),
   question: action ? createQuestionFromAction(state, action) : undefined,
   actionId: action ? action.id : undefined,
+  isAdmin: getUserIsAdmin(state),
+  isPublicSharingEnabled: getSetting(state, "enable-public-sharing"),
 });
 
 const mapDispatchToProps = {
@@ -51,9 +56,11 @@ interface OwnProps {
 }
 
 interface StateProps {
-  actionId?: number;
+  actionId?: WritebackActionId;
   question?: Question;
   metadata: Metadata;
+  isAdmin: boolean;
+  isPublicSharingEnabled: boolean;
 }
 
 interface DispatchProps {
@@ -71,6 +78,8 @@ function ActionCreatorComponent({
   databaseId,
   update,
   onClose,
+  isAdmin,
+  isPublicSharingEnabled,
 }: ActionCreatorProps) {
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata, databaseId),
@@ -147,7 +156,9 @@ function ActionCreatorComponent({
     <>
       <ActionCreatorView
         isNew={isNew}
+        hasSharingPermission={isAdmin && isPublicSharingEnabled}
         canSave={query.isEmpty()}
+        actionId={actionId}
         question={question}
         onChangeQuestionQuery={handleChangeQuestionQuery}
         onChangeName={newName =>

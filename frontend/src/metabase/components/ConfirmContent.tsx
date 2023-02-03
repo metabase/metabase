@@ -1,23 +1,33 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import _ from "underscore";
 
 import { t } from "ttag";
 import ModalContent from "metabase/components/ModalContent";
 
 import Button from "metabase/core/components/Button";
 
-const nop = () => {};
+interface ConfirmContentProps {
+  title: string;
+  content?: string | null;
+  message?: string;
+  onClose?: () => void;
+  onAction?: () => void;
+  onCancel?: () => void;
+  confirmButtonText?: string;
+  cancelButtonText?: string;
+}
 
 const ConfirmContent = ({
   title,
   content = null,
   message = t`Are you sure you want to do this?`,
-  onClose = nop,
-  onAction = nop,
-  onCancel = nop,
+  onClose = _.noop,
+  onAction = _.noop,
+  onCancel = _.noop,
   confirmButtonText = t`Yes`,
   cancelButtonText = t`Cancel`,
-}) => (
+}: ConfirmContentProps) => (
   <ModalContent
     title={title}
     formModal

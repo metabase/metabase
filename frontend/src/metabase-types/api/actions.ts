@@ -28,6 +28,7 @@ export interface WritebackActionBase {
   creator: UserInfo;
   updated_at: string;
   created_at: string;
+  public_uuid: string | null;
 }
 
 export interface QueryAction {
