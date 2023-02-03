@@ -1,36 +1,41 @@
-import React, { ChangeEvent, useCallback, useEffect, useMemo } from "react";
+import React, {
+  ChangeEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
-import Radio from "metabase/core/components/Radio";
+import Radio, { RadioOption } from "metabase/core/components/Radio";
 import Select, {
   Option,
   SelectChangeEvent,
 } from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
-import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
-import Fields from "metabase/entities/fields";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
-  Dataset,
   Card,
   ValuesSourceConfig,
   ValuesSourceType,
-  FieldValue,
+  Parameter,
+  ParameterValues,
+  ParameterValue,
 } from "metabase-types/api";
-import { Dispatch, State } from "metabase-types/store";
+import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import {
-  getCardSourceValues,
-  getFieldSourceValues,
-  isValidSourceConfig,
-} from "metabase-lib/parameters/utils/parameter-source";
+import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
+import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
+import { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
+import { fetchParameterValues, FetchParameterValuesOpts } from "../../actions";
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
   ModalHelpMessage,
@@ -46,15 +51,8 @@ import {
 
 const NEW_LINE = "\n";
 
-const SOURCE_TYPE_OPTIONS = [
-  { name: t`From connected fields`, value: null },
-  { name: t`From another model or question`, value: "card" },
-  { name: t`Custom list`, value: "static-list" },
-];
-
 interface ModalOwnProps {
-  name: string;
-  fields: Field[];
+  parameter: ParameterWithTemplateTagTarget;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
@@ -70,16 +68,12 @@ interface ModalCardProps {
 
 interface ModalStateProps {
   question: Question | undefined;
-  fieldsValues: FieldValue[][];
-  isLoadingFieldValues: boolean;
 }
 
 interface ModalDispatchProps {
-  onFetchFieldValues: (fields: Field[]) => void;
-}
-
-interface QuestionLoaderProps {
-  result?: Dataset;
+  onFetchParameterValues: (
+    opts: FetchParameterValuesOpts,
+  ) => Promise<ParameterValues>;
 }
 
 type ModalProps = ModalOwnProps &
@@ -88,27 +82,24 @@ type ModalProps = ModalOwnProps &
   ModalDispatchProps;
 
 const ValuesSourceTypeModal = ({
-  name,
-  fields,
-  fieldsValues,
-  isLoadingFieldValues,
+  parameter,
   question,
   sourceType,
   sourceConfig,
-  onFetchFieldValues,
+  onFetchParameterValues,
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeCard,
   onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
-  useEffect(() => {
-    onFetchFieldValues(fields);
-  }, [fields, onFetchFieldValues]);
+  const sourceTypeOptions = useMemo(() => {
+    return getSourceTypeOptions(parameter);
+  }, [parameter]);
 
   return (
     <ModalContent
-      title={t`Selectable values for ${name}`}
+      title={t`Selectable values for ${parameter.name}`}
       footer={[
         <Button
           key="submit"
@@ -121,17 +112,21 @@ const ValuesSourceTypeModal = ({
     >
       {sourceType === null ? (
         <FieldSourceModal
-          fields={fields}
-          fieldsValues={fieldsValues}
-          isLoadingFieldValues={isLoadingFieldValues}
+          parameter={parameter}
           sourceType={sourceType}
+          sourceTypeOptions={sourceTypeOptions}
+          sourceConfig={sourceConfig}
+          onFetchParameterValues={onFetchParameterValues}
           onChangeSourceType={onChangeSourceType}
         />
       ) : sourceType === "card" ? (
         <CardSourceModal
+          parameter={parameter}
           question={question}
           sourceType={sourceType}
+          sourceTypeOptions={sourceTypeOptions}
           sourceConfig={sourceConfig}
+          onFetchParameterValues={onFetchParameterValues}
           onChangeCard={onChangeCard}
           onChangeSourceType={onChangeSourceType}
           onChangeSourceConfig={onChangeSourceConfig}
@@ -139,6 +134,7 @@ const ValuesSourceTypeModal = ({
       ) : sourceType === "static-list" ? (
         <ListSourceModal
           sourceType={sourceType}
+          sourceTypeOptions={sourceTypeOptions}
           sourceConfig={sourceConfig}
           onChangeSourceType={onChangeSourceType}
           onChangeSourceConfig={onChangeSourceConfig}
@@ -149,30 +145,38 @@ const ValuesSourceTypeModal = ({
 };
 
 interface FieldSourceModalProps {
-  fields: Field[];
-  fieldsValues: FieldValue[][];
-  isLoadingFieldValues: boolean;
+  parameter: Parameter;
   sourceType: ValuesSourceType;
+  sourceTypeOptions: RadioOption<ValuesSourceType>[];
+  sourceConfig: ValuesSourceConfig;
+  onFetchParameterValues: (
+    opts: FetchParameterValuesOpts,
+  ) => Promise<ParameterValues>;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
 }
 
 const FieldSourceModal = ({
-  fields,
-  fieldsValues,
-  isLoadingFieldValues,
+  parameter,
   sourceType,
+  sourceTypeOptions,
+  sourceConfig,
+  onFetchParameterValues,
   onChangeSourceType,
 }: FieldSourceModalProps) => {
-  const fieldValues = useMemo(() => {
-    return getFieldSourceValues(fieldsValues);
-  }, [fieldsValues]);
+  const parameterValues = useParameterValues({
+    parameter,
+    sourceType,
+    sourceConfig,
+    onFetchParameterValues,
+  });
 
-  const fieldValuesText = useMemo(() => {
-    return getValuesText(fieldValues);
-  }, [fieldValues]);
+  const parameterValuesText = useMemo(
+    () => getParameterValuesText(parameterValues),
+    [parameterValues],
+  );
 
-  const hasFields = fields.length > 0;
-  const hasFieldValues = fieldValues.length > 0;
+  const hasFields = getFields(parameter).length > 0;
+  const hasEmptyValues = parameterValues && parameterValues.length === 0;
 
   return (
     <ModalBodyWithPane>
@@ -181,7 +185,7 @@ const FieldSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <Radio
             value={sourceType}
-            options={SOURCE_TYPE_OPTIONS}
+            options={sourceTypeOptions}
             vertical
             onChange={onChangeSourceType}
           />
@@ -192,12 +196,12 @@ const FieldSourceModal = ({
           <ModalEmptyState>
             {t`You haven’t connected a field to this filter yet, so there aren’t any values.`}
           </ModalEmptyState>
-        ) : !hasFieldValues && !isLoadingFieldValues ? (
+        ) : hasEmptyValues ? (
           <ModalEmptyState>
             {t`We don’t have any cached values for the connected fields. Try one of the other options, or change this widget to a search box.`}
           </ModalEmptyState>
         ) : (
-          <ModalTextArea value={fieldValuesText} readOnly fullWidth />
+          <ModalTextArea value={parameterValuesText} readOnly fullWidth />
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -205,18 +209,26 @@ const FieldSourceModal = ({
 };
 
 interface CardSourceModalProps {
+  parameter: Parameter;
   question: Question | undefined;
   sourceType: ValuesSourceType;
+  sourceTypeOptions: RadioOption<ValuesSourceType>[];
   sourceConfig: ValuesSourceConfig;
+  onFetchParameterValues: (
+    opts: FetchParameterValuesOpts,
+  ) => Promise<ParameterValues>;
   onChangeCard: () => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
 }
 
 const CardSourceModal = ({
+  parameter,
   question,
   sourceType,
+  sourceTypeOptions,
   sourceConfig,
+  onFetchParameterValues,
   onChangeCard,
   onChangeSourceType,
   onChangeSourceConfig,
@@ -229,9 +241,17 @@ const CardSourceModal = ({
     return getFieldByReference(fields, sourceConfig.value_field);
   }, [fields, sourceConfig]);
 
-  const fieldValuesQuestion = useMemo(() => {
-    return question && selectedField && question.toFieldValues(selectedField);
-  }, [question, selectedField]);
+  const parameterValues = useParameterValues({
+    parameter,
+    sourceType,
+    sourceConfig,
+    onFetchParameterValues,
+  });
+
+  const parameterValuesText = useMemo(
+    () => getParameterValuesText(parameterValues),
+    [parameterValues],
+  );
 
   const handleFieldChange = useCallback(
     (event: SelectChangeEvent<Field>) => {
@@ -250,7 +270,7 @@ const CardSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <Radio
             value={sourceType}
-            options={SOURCE_TYPE_OPTIONS}
+            options={sourceTypeOptions}
             vertical
             onChange={onChangeSourceType}
           />
@@ -295,15 +315,7 @@ const CardSourceModal = ({
         ) : !selectedField ? (
           <ModalEmptyState>{t`Pick a column`}</ModalEmptyState>
         ) : (
-          <QuestionResultLoader question={fieldValuesQuestion}>
-            {({ result }: QuestionLoaderProps) => (
-              <ModalTextArea
-                value={result ? getValuesText(getCardSourceValues(result)) : ""}
-                readOnly
-                fullWidth
-              />
-            )}
-          </QuestionResultLoader>
+          <ModalTextArea value={parameterValuesText} readOnly fullWidth />
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -312,6 +324,7 @@ const CardSourceModal = ({
 
 interface ListSourceModalProps {
   sourceType: ValuesSourceType;
+  sourceTypeOptions: RadioOption<ValuesSourceType>[];
   sourceConfig: ValuesSourceConfig;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
@@ -319,6 +332,7 @@ interface ListSourceModalProps {
 
 const ListSourceModal = ({
   sourceType,
+  sourceTypeOptions,
   sourceConfig,
   onChangeSourceType,
   onChangeSourceConfig,
@@ -337,7 +351,7 @@ const ListSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <Radio
             value={sourceType}
-            options={SOURCE_TYPE_OPTIONS}
+            options={sourceTypeOptions}
             vertical
             onChange={onChangeSourceType}
           />
@@ -346,7 +360,7 @@ const ListSourceModal = ({
       </ModalPane>
       <ModalMain>
         <ModalTextArea
-          defaultValue={getValuesText(sourceConfig.values)}
+          defaultValue={getStaticValuesText(sourceConfig.values)}
           fullWidth
           onChange={handleValuesChange}
         />
@@ -355,8 +369,12 @@ const ListSourceModal = ({
   );
 };
 
-const getValuesText = (values?: string[]) => {
-  return values?.join(NEW_LINE) ?? "";
+const getParameterValuesText = (values: ParameterValue[] = []) => {
+  return values.map(([value]) => value).join(NEW_LINE);
+};
+
+const getStaticValuesText = (values: string[] = []) => {
+  return values.join(NEW_LINE);
 };
 
 const getStaticValues = (value: string) => {
@@ -375,29 +393,67 @@ const getSupportedFields = (question: Question) => {
   return fields.filter(field => field.isString());
 };
 
+const getSourceTypeOptions = (
+  parameter: ParameterWithTemplateTagTarget,
+): RadioOption<ValuesSourceType>[] => {
+  return [
+    ...(parameter.hasVariableTemplateTagTarget
+      ? []
+      : [{ name: t`From connected fields`, value: null }]),
+    { name: t`From another model or question`, value: "card" },
+    { name: t`Custom list`, value: "static-list" },
+  ];
+};
+
+interface UseParameterValuesOpts {
+  parameter: Parameter;
+  sourceType: ValuesSourceType;
+  sourceConfig: ValuesSourceConfig;
+  onFetchParameterValues: (
+    opts: FetchParameterValuesOpts,
+  ) => Promise<ParameterValues>;
+}
+
+const useParameterValues = ({
+  parameter: initialParameter,
+  sourceType,
+  sourceConfig,
+  onFetchParameterValues,
+}: UseParameterValuesOpts) => {
+  const [values, setValues] = useState<ParameterValue[]>();
+  const handleFetchValues = useSafeAsyncFunction(onFetchParameterValues);
+  const isValidSource = isValidSourceConfig(sourceType, sourceConfig);
+
+  const parameter = useMemo(
+    () => ({
+      ...initialParameter,
+      values_source_type: sourceType,
+      values_source_config: sourceConfig,
+    }),
+    [initialParameter, sourceType, sourceConfig],
+  );
+
+  useEffect(() => {
+    if (isValidSource) {
+      handleFetchValues({ parameter })
+        .then(({ values }) => setValues(values))
+        .catch(() => setValues([]));
+    }
+  }, [parameter, isValidSource, handleFetchValues]);
+
+  return values;
+};
+
 const mapStateToProps = (
   state: State,
-  { card, fields }: ModalOwnProps & ModalCardProps,
+  { card }: ModalOwnProps & ModalCardProps,
 ): ModalStateProps => ({
   question: card ? new Question(card, getMetadata(state)) : undefined,
-  fieldsValues: fields.map(field =>
-    Fields.selectors.getFieldValues(state, { entityId: field.id }),
-  ),
-  isLoadingFieldValues: fields.every(field =>
-    Fields.selectors.getLoading(state, {
-      entityId: field.id,
-      requestType: "values",
-    }),
-  ),
 });
 
-const mapDispatchToProps = (dispatch: Dispatch): ModalDispatchProps => ({
-  onFetchFieldValues: (fields: Field[]) => {
-    fields.forEach(field =>
-      dispatch(Fields.actions.fetchFieldValues({ id: field.id })),
-    );
-  },
-});
+const mapDispatchToProps = {
+  onFetchParameterValues: fetchParameterValues,
+};
 
 export default _.compose(
   Tables.load({

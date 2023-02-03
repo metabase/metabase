@@ -2,10 +2,12 @@
   "`/api/action/` endpoints."
   (:require
    [compojure.core :as compojure :refer [POST]]
+   [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
-   [metabase.models :refer [Action Card HTTPAction ImplicitAction QueryAction]]
+   [metabase.models :refer [Action Card Database HTTPAction ImplicitAction QueryAction]]
    [metabase.models.action :as action]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
@@ -89,7 +91,15 @@
    template               [:maybe http-action-template]
    response_handle        [:maybe json-query-schema]
    error_handle           [:maybe json-query-schema]}
+
   (api/write-check Card model_id)
+  (when (and (nil? database_id)
+             (= "query" type))
+    (throw (ex-info (tru "Must provide a database_id for query actions")
+                    {:type        type
+                     :status-code 400})))
+  (when database_id
+    (actions/check-actions-enabled! (db/select-one Database :id database_id)))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id
       (first (action/actions-with-implicit-params nil :id action-id))

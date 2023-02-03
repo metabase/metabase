@@ -1,7 +1,6 @@
 import {
   restore,
   describeEE,
-  mockSessionProperty,
   popover,
   visitDashboard,
   rightSidebar,
@@ -10,8 +9,8 @@ import {
 describeEE("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     restore();
-    mockSessionProperty("enable-query-caching", true);
     cy.signInAsAdmin();
+    cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 
   it("can set cache ttl for a saved question", () => {

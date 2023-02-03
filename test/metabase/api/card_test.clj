@@ -377,8 +377,12 @@
                     Database [{other-database-id :id}]
                     ;; database doesn't quite match
                     Card [card-6 {:name "Card 6", :database_id other-database-id
-                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]]
-      (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6]
+                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                    ;; same as matching question, but archived
+                    Card [card-7 {:name "Card 7"
+                                  :archived true
+                                  :dataset_query {:query {:source-table (str "card__" model-id)}}}]]
+      (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))))))
@@ -733,8 +737,8 @@
           (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
             (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                           :query          (s/eq (mt/obj->json->obj query))
-                          :required-perms [perms/Path]
-                          :actual-perms   [perms/Path]
+                          :required-perms [perms/PathSchema]
+                          :actual-perms   [perms/PathSchema]
                           :trace          [s/Any]
                           s/Keyword       s/Any}
                          (create-card! :rasta 403)))))))))
@@ -1260,8 +1264,8 @@
               (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
                 (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                               :query          (s/eq (mt/obj->json->obj (mt/mbql-query users)))
-                              :required-perms [perms/Path]
-                              :actual-perms   [perms/Path]
+                              :required-perms [perms/PathSchema]
+                              :actual-perms   [perms/PathSchema]
                               :trace          [s/Any]
                               s/Keyword       s/Any}
                              (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
@@ -2302,7 +2306,9 @@
                               (u/the-id parchived)))
               "Scheduled refresh of archived model"))))))
 
-(defn- param-values-url
+(defn param-values-url
+  "Returns an URL used to get values for parameter of a card.
+  Use search end point if a `query` is provided."
   ([card-or-id param-key]
    (param-values-url card-or-id param-key nil))
   ([card-or-id param-key query]
@@ -2373,6 +2379,61 @@
   [[binding card-values] & body]
   `(do-with-card-param-values-fixtures ~card-values (fn [~binding] ~@body)))
 
+(deftest parameters-with-source-is-card-test
+  (testing "getting values"
+    (with-card-param-values-fixtures [{:keys [card param-keys]}]
+      (testing "GET /api/card/:card-id/params/:param-key/values"
+        (is (=? {:values          ["Brite Spot Family Restaurant"
+                                   "Red Medicine"
+                                   "Stout Burgers & Beers"
+                                   "The Apple Pan"
+                                   "Wurstküche"]
+                 :has_more_values false}
+                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
+
+      (testing "GET /api/card/:card-id/params/:param-key/search/:query"
+        (is (= {:values          ["Red Medicine"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))
+
+  (testing "users must have permissions to read the collection that source card is in"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp*
+        [Collection [coll1 {:name "Source card collection"}]
+         Card       [{source-card-id :id}
+                     {:collection_id (:id coll1)
+                      :database_id   (mt/id)
+                      :table_id      (mt/id :venues)
+                      :dataset_query (mt/mbql-query venues {:limit 5})}]
+         Collection [coll2 {:name "Card collections"}]
+         Card       [{card-id         :id}
+                     {:collection_id  (:id coll2)
+                      :database_id    (mt/id)
+                      :dataset_query  (mt/mbql-query venues)
+                      :parameters     [{:id                   "abc"
+                                        :type                 "category"
+                                        :name                 "CATEGORY"
+                                        :values_source_type   "card"
+                                        :values_source_config {:card_id     source-card-id
+                                                               :value_field (mt/$ids $venues.name)}}]
+                      :table_id       (mt/id :venues)}]]
+        (testing "Fail because user doesn't have read permissions to coll1"
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc"))))
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc" "search-query")))))
+        ;; grant permission to read the collection contains the card
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll2)
+        (testing "having read permissions to the card collection is not enough"
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc"))))
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc" "search-query")))))
+        ;; grant permission to read the collection contains the source card
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll1)
+        (testing "success if has read permission to the source card's collection"
+          (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc"))))
+          (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "search-query")))))))))
 (deftest paramters-using-old-style-field-values
   (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
     (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
@@ -2389,23 +2450,26 @@
                                                                "bar"))]
           (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                            (-> response :values set)))
-          (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil"))))))))
-
-(deftest parameters-with-source-is-card-test
-  (with-card-param-values-fixtures [{:keys [card param-keys]}]
-    (testing "GET /api/card/:card-id/params/:param-key/values"
-      (is (=? {:values          ["Red Medicine"
-                                 "Stout Burgers & Beers"
-                                 "The Apple Pan"
-                                 "Wurstküche"
-                                 "Brite Spot Family Restaurant"]
-               :has_more_values false}
-              (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
-
-    (testing "GET /api/card/:card-id/params/:param-key/search/:query"
-      (is (= {:values          ["Red Medicine"]
-              :has_more_values false}
-             (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))
+          (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))
+  (testing "Old style, inferred parameters from native template-tags"
+    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+      ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
+      (db/update! Card (:id field-filter-card) :parameters [])
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
+        (testing "without search query"
+          (let [response (mt/user-http-request :rasta :get 200
+                                               (param-values-url field-filter-card (:field-values param-keys)))]
+            (is (false? (:has_more_values response)))
+            (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                             (-> response :values set)))))
+        (testing "with search query"
+          (let [response (mt/user-http-request :rasta :get 200
+                                               (param-values-url field-filter-card
+                                                                 (:field-values param-keys)
+                                                                 "bar"))]
+            (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                             (-> response :values set)))
+            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
 (deftest parameters-with-source-is-static-list-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]

@@ -127,9 +127,9 @@
   (let [details  (tx/dbdef->connection-details driver :db dbdef)
         execute! (partial #'presto/execute-query-for-sync details)]
     (doseq [{:keys [table-name], :as tabledef} table-definitions]
-      (println (format "[Presto] destroying %s.%s" (pr-str database-name) (pr-str table-name)))
+      (log/infof "[Presto] destroying %s.%s" (pr-str database-name) (pr-str table-name))
       (execute! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef))
-      (println "[Presto] [ok]"))))
+      (log/info "[Presto] [ok]"))))
 
 (defmethod ddl.i/format-name :presto
   [_ s]
