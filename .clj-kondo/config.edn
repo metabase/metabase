@@ -668,7 +668,7 @@
    :name    test-namespaces}
   {:pattern "metabase\\.cmd.*"
    :name    printable-namespaces}
-  {:pattern "metabase\\.(?!driver)(?!test\\.data)(?!query-processor)(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1-extensions))).*"
+  {:pattern "^metabase\\.(?!driver)(?!test\\.data)(?!query-processor)(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1-extensions))).*"
    :name    honey-sql-2-namespaces}]
 
  :config-in-ns

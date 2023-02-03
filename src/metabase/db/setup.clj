@@ -9,8 +9,6 @@
   (:require
    [clojure.tools.logging :as log]
    [honey.sql :as sql]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [honeysql.format :as hformat]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
@@ -22,7 +20,9 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan2.jdbc :as t2.jdbc]
-   [toucan2.map-backend.honeysql2 :as t2.honeysql])
+   [toucan2.map-backend.honeysql2 :as t2.honeysql]
+   [methodical.core :as methodical]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (liquibase.exception LockException)))
 
@@ -164,11 +164,7 @@
   ([s]
    (quote-for-application-db (mdb.connection/quoting-style (mdb.connection/db-type)) s))
   ([db-type s]
-   ((get @#'hformat/quote-fns db-type) s)))
-
-;;; register with Honey SQL 1
-(alter-var-root #'hformat/quote-fns assoc ::application-db quote-for-application-db)
-(db/set-default-quoting-style! ::application-db)
+   ((:quote (sql/get-dialect db-type)) s)))
 
 ;;; register with Honey SQL 2
 (sql/register-dialect!
@@ -193,3 +189,12 @@
 (reset! t2.jdbc/global-options
         {:read-columns mdb.jdbc-protocols/read-columns
          :label-fn     u/lower-case-en})
+
+(methodical/defmethod t2.pipeline/compile :around :default
+  "Normally, our Honey SQL 2 `:dialect` is set to `::application-db`; however, Toucan 2 does need to know the actual
+  dialect to do special compilation magic. When doing query compilation, make sure `:dialect` is bound to the *actual*
+  dialect for the application database."
+  [query-type model built-query]
+  (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
+                                         :dialect (mdb.connection/quoting-style (mdb.connection/db-type)))]
+    (next-method query-type model built-query)))
