@@ -773,12 +773,7 @@
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
-     (case (:values_source_type param)
-       "static-list" (params.static-values/param->values param query)
-       "card"        (do
-                       (api/read-check Card (get-in param [:values_source_config :card_id]))
-                       (params.card-values/param->values param query))
-       nil           (chain-filter dashboard param-key constraint-param-key->value query)))))
+     (params/parmeter-values param query (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/params/:param-key/values"

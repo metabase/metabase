@@ -3,6 +3,7 @@
   (:require
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models :refer [Card]]
+   [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -106,3 +107,25 @@
                       {:card-id     card-id
                        :status-code 400})))
     (values-from-card card (:value_field config) query)))
+
+(defn check-can-get-card-values?
+  "Throw an exception if can't get values for parameter card"
+  [card-id value-field]
+  (let [card (db/select-one Card :id card-id)]
+    (when-not (mi/can-read? card)
+      (throw (ex-info (tru "You don't have permissions to view this card.")
+                      {:card-id     card-id
+                       :status-code 401})))
+    (when-not card
+      (throw (ex-info (tru "Source card not found")
+                      {:card-id     card-id
+                       :status-code 400})))
+    (when (:archived card)
+      (throw (ex-info (tru "Source card is archived")
+                      {:card-id     card-id
+                       :status-code 400})))
+    (when-not (field->field-info value-field (:result_metadata card))
+      (throw (ex-info (tru "Field not found")
+                      {:card-id     card-id
+                       :value_field value-field
+                       :status-code 400})))))
