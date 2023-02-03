@@ -37,13 +37,6 @@
          :read  perms/collection-read-path
          :write perms/collection-readwrite-path) collection)}))
 
-;;; TODO FIXME
-#_(extend RootCollection
-    models/IModel
-    (merge
-     models/IModelDefaults
-     {:types {:type :keyword}}))
-
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."
   (map->RootCollection {::is-root? true, :authority_level nil}))
