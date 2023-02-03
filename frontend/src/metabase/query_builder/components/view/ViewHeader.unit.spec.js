@@ -540,6 +540,17 @@ describe("View Header | Saved native question", () => {
     setupSavedNative({ settings: { enableNestedQueries: false } });
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
   });
+
+  it("doesn't offer to explore results if the database doesn't support nested queries (metabase#22822)", () => {
+    const originalDatabaseFeatures = SAMPLE_DATABASE.features;
+    const nestedQueriesExcluded = originalDatabaseFeatures.filter(
+      f => f !== "nested-queries",
+    );
+    SAMPLE_DATABASE.features = nestedQueriesExcluded;
+    setupSavedNative();
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+    SAMPLE_DATABASE.features = originalDatabaseFeatures;
+  });
 });
 
 describe("View Header | Read only permissions", () => {
