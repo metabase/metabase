@@ -5,7 +5,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.tools.logging :as log]
-   [honey.sql :as sql]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.data-migrations :refer [DataMigrations]]
    [metabase.db.setup :as mdb.setup]
    [metabase.models
@@ -133,7 +133,7 @@
   ;; should be ok now that #16344 is resolved -- we might be able to remove this code entirely now. Quoting identifiers
   ;; is still a good idea tho.)
   (let [source-keys (keys (first objs))
-        quote-fn    (partial mdb.setup/quote-for-application-db (sql/get-dialect target-db-type))
+        quote-fn    (partial mdb.setup/quote-for-application-db (mdb.connection/quoting-style target-db-type))
         dest-keys   (for [k source-keys]
                       (quote-fn (name k)))]
     {:cols dest-keys
