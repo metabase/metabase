@@ -10,6 +10,7 @@
    [malli.instrument :as minst]
    [malli.util :as mut]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [ring.util.codec :as codec]))
 
 (core/defn- ->malli-io-link
@@ -87,16 +88,23 @@ explain-fn-fail!
   [:and any?
    [:fn {:description "a malli schema"} mc/schema]])
 
+(def ^:private localized-string-schema
+  [:fn i18n/localized-string?])
+
 (defn with-api-error-message :- Schema
   "Update a malli schema to have a :description (picked up by api docs),
-  and a :error/message (used by defendpoint). They don't have to be the same, but usually are."
-  ([mschema :- Schema message :- string?]
-   (with-api-error-message mschema message message))
-  ([mschema :- Schema
-    docs-message :- string?
-    error-message :- string?]
-   (mut/update-properties mschema assoc
-                          ;; override generic description in api docs
-                          :description docs-message
-                          ;; override generic description in defendpoint api errors
-                          :error/message error-message)))
+  and a :error/message (used by defendpoint). They don't have to be the same, but usually are.
+
+    (with-api-error-message
+      [:string {:min 1}]
+      (deferred-tru \"Must be a string with at least 1 character.\"))"
+  ([mschema :- Schema error-message :- localized-string-schema]
+   (with-api-error-message mschema error-message error-message))
+  ([mschema         :- Schema
+    error-message   :- localized-string-schema
+    specific-errors :- localized-string-schema]
+   (mut/update-properties (mc/schema mschema) assoc
+                          ;; override generic description in api docs and :errors in API's response
+                          :description error-message
+                          ;; override generic description in :specific-errors in API's response
+                          :error/fn    (fn [_ _] specific-errors))))

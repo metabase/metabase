@@ -248,8 +248,6 @@
   [format-string format-string-pl n]
   `(str* (deferred-trsn ~format-string ~format-string-pl ~n)))
 
-;; TODO - I seriously doubt whether these are still actually needed now that `tru` and `trs` generate forms wrapped in
-;; `str` by default
 (defn localized-string?
   "Returns true if `x` is a system or user localized string instance"
   [x]
