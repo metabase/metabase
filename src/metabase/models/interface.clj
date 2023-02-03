@@ -281,14 +281,11 @@
   :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
 
-(defn add-entity-id
-  "Add an `:entity_id` to `obj` unless:
-     (a) there's already one set; or
-     (b) we're deserializing. Generating them at deserialization time can lead to duplicated entities if
-         they're deserialized again."
-  [obj & _]
+(defn- add-entity-id [obj & _]
   (if (or (contains? obj :entity_id)
           *deserializing?*)
+    ;; Don't generate a new entity_id if either: (a) there's already one set; or (b) we're deserializing.
+    ;; Generating them at deserialization time can lead to duplicated entities if they're deserialized again.
     obj
     (assoc obj :entity_id (u/generate-nano-id))))
 
