@@ -243,19 +243,15 @@
   (eduction (map hydrate-subtype)
             (db/select-reducible 'Action)))
 
-(defmethod serdes.hash/identity-hash-fields Action
-  [_action]
+(defmethod serdes.hash/identity-hash-fields Action [_action]
   [:name (serdes.hash/hydrated-hash :model "<none>") :created_at])
 
-(defmethod serdes.base/extract-one "Action"
-  [_model-name _opts action]
-  (let [action (-> (serdes.base/extract-one-basics "Action" action)
-                   (update :creator_id serdes.util/export-user)
-                   (update :model_id serdes.util/export-fk 'Card))]
-    (case (:type action)
-      :query      (update action :database_id serdes.util/export-fk-keyed 'Database :name)
-      (:http
-       :implicit) action)))
+(defmethod serdes.base/extract-one "Action" [_model-name _opts action]
+  (-> (serdes.base/extract-one-basics "Action" action)
+          (update :creator_id serdes.util/export-user)
+          (update :model_id serdes.util/export-fk 'Card)
+      (cond-> (= (:type action) :query)
+              (update :database_id serdes.util/export-fk-keyed 'Database :name))))
 
 (defmethod serdes.base/load-xform "Action" [action]
   (-> action
@@ -264,9 +260,6 @@
       (update :creator_id serdes.util/import-fk-keyed 'User :email)
       (cond-> (= (:type action) "query")
         (update :database_id serdes.util/import-fk-keyed 'Database :name))))
-
-(defmethod serdes.base/load-one! "Action" [ingested maybe-local]
-  ((get-method serdes.base/load-one! :default) ingested maybe-local))
 
 (defmethod serdes.base/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))
