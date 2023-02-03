@@ -51,6 +51,35 @@
   "Function that parses permission strings"
   (insta/parser grammar))
 
+(do (require '[hyperfiddle.rcf :as rcf]) (rcf/enable!))
+(rcf/tests " tests"
+          1 := 1
+          2 := 2
+          2 :is even?)
+
+(rcf/tests
+ "parser works for v2 tests"
+ (parser "/data/db/1/")                        := [:permission [:data-v2 "1"]]
+ (parser "/query/db/1/")                       := [:permission [:query-v2 "1"]]
+
+ (parser "/query/db/1/schema/")                := [:permission [:query-v2 "1" [:schemas]]]
+ (parser "/data/db/1/schema/")                 := [:permission [:data-v2 "1" [:schemas]]]
+
+ (parser "/data/db/1/schema//")                := [:permission [:data-v2 "1" [:schemas [:schema [:schema-name ""]]]]]
+ (parser "/query/db/1/schema//")               := [:permission [:query-v2 "1" [:schemas [:schema [:schema-name ""]]]]]
+
+ (parser "/data/db/1/schema/PUBLIC/")          := [:permission [:data-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"]]]]]
+ (parser "/query/db/1/schema/PUBLIC/")         := [:permission [:query-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"]]]]]
+
+ (parser "/data/db/1/schema/PUBLIC/table/1/")  := [:permission [:data-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
+ (parser "/query/db/1/schema/PUBLIC/table/1/") := [:permission [:query-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
+
+ (parser "/data/db/1/schema/PUBLIC/table/1/")  := [:permission [:data-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
+ (parser "/query/db/1/schema/PUBLIC/table/1/") := [:permission [:query-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
+
+ (parser "/data/db/1/schema/PUBLIC/table/1/")  := [:permission [:data-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
+ (parser "/query/db/1/schema/PUBLIC/table/1/") := [:permission [:query-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]])
+
 (defn- collection-id
   [id]
   (if (= id "root") :root (Long/parseUnsignedLong id)))
@@ -122,6 +151,11 @@
     [:collection id "read"]        [:collection (collection-id id) :read]
     ;; return nil if the tree could not be parsed, so that we can try calling `path2` instead
     :else                          nil))
+
+(rcf/tests
+ "s"
+ (path1 [:permission [:query-v2 "1"]]) := [[:db 1 :query2 :native :write] [:db 1 :query2 :data :schemas :all]]
+ (path1 [:permission [:data-v2 "1"]]) := [[:db 1 :data2 :native :write] [:db 1 :data2 :data :schemas :all]])
 
 (defn- path2
   [tree]
