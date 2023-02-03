@@ -312,7 +312,7 @@
 
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
-  #{Setting Session DataMigrations})
+  #{Setting Session DataMigrations ImplicitAction HTTPAction QueryAction})
 
 (defmulti ^:private update-sequence-values!
   {:arglists '([db-type data-source])}
