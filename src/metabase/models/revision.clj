@@ -64,12 +64,12 @@
   "Call the appropriate `post-select` methods (including the type functions) on the `:object` this Revision recorded.
   This is important for things like Card revisions, where the `:dataset_query` property needs to be normalized when
   coming out of the DB."
-  [{:keys [model object], :as revision}]
+  [{:keys [model], :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
   (let [model (u/ignore-exceptions (db/resolve-model (symbol model)))]
     (cond-> revision
-      (and model object) (update :object (partial models/do-post-select model)))))
+      model (update :object (partial models/do-post-select model)))))
 
 (mi/define-methods
  Revision

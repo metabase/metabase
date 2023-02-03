@@ -207,7 +207,8 @@
                            Dashboard     {dash-id :id} {}
                            Revision      _             {:model    "Dashboard"
                                                         :model_id dash-id
-                                                        :user_id  (mt/user->id :rasta)}
+                                                        :user_id  (mt/user->id :rasta)
+                                                        :object   {}}
                            DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
                            DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
     (binding [api/*current-user-id*              (mt/user->id :rasta)
