@@ -153,5 +153,4 @@ export const QA_DB_CREDENTIALS = {
   host: "localhost",
   database: "sample",
   ssl: false,
-  port: QA_POSTGRES_PORT,
 };

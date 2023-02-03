@@ -307,7 +307,7 @@
     "ci-backend": "clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood && clojure -X:dev:test",
     "test-cypress-run": "node ./frontend/test/__runner__/run_cypress_tests.js",
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-run --e2e --open",
-    "test-cypress-open-qa": "yarn test-qa-dbs:up && ./bin/build-for-test && QA_DB_ENABLED=true yarn test-cypress-run --e2e --open",
+    "test-cypress-open-qa": "yarn test-qa-dbs:up && QA_DB_ENABLED=true yarn test-cypress-open",
     "test-cypress-open-no-backend": "E2E_HOST='http://localhost:3000' yarn test-cypress-run --e2e --open",
     "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-run",
     "test-qa-dbs:up": "docker-compose -f ./frontend/test/metabase/scenarios/docker-compose.yml up -d",
