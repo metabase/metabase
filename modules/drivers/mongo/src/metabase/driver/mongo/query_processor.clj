@@ -899,6 +899,9 @@
          seen
          [(str \$ seen) aggregations-seen]
 
+         (= :aggregation-options op)
+         (extract-aggregations* (first args) parent-name aggregations-seen)
+
          (aggregation-op op)
          (let [aggr-name (str parent-name "~" (annotate/aggregation-name aggr-expr))]
            [(str \$ aggr-name) (assoc aggregations-seen aggr-expr aggr-name)])
@@ -912,13 +915,9 @@
      [aggr-expr aggregations-seen])))
 
 (defn- extract-aggregations [aggr-expr]
-  (let [options? (and (vector? aggr-expr)
-                      (= (first aggr-expr) :aggregation-options))
-        aggr-expr' (cond-> aggr-expr
-                     options? second)
-        aggr-name (annotate/aggregation-name aggr-expr)
-        [aggr-expr'' aggregations-seen] (extract-aggregations* aggr-expr' aggr-name)
-        raggr-expr (->rvalue aggr-expr'')
+  (let [aggr-name (annotate/aggregation-name aggr-expr)
+        [aggr-expr' aggregations-seen] (extract-aggregations* aggr-expr aggr-name)
+        raggr-expr (->rvalue aggr-expr')
         expandeds (map (fn [[aggr name]]
                          (expand-aggregation [:aggregation-options aggr {:name name}]))
                        aggregations-seen)]
@@ -941,6 +940,7 @@
     (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
           (keep (fn [p] (when (seq p) {:$addFields p})))
           post-ags)))
+
 (defn- projection-group-map [fields]
   (reduce
    (fn [m field-clause]
