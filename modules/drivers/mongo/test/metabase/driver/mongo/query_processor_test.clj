@@ -89,8 +89,8 @@
                     :mbql?       true}
                    (qp/compile
                     (mt/mbql-query attempts
-                                   {:aggregation [[:count]]
-                                    :filter      [:time-interval $datetime :last :month]}))))
+                      {:aggregation [[:count]]
+                       :filter      [:time-interval $datetime :last :month]}))))
 
             (testing "should still work even with bucketing bucketing"
               (let [tz (qp.timezone/results-timezone-id :mongo mt/db)
