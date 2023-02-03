@@ -9,18 +9,20 @@ import { createMockNativeDatasetQuery } from "./query";
 import { createMockParameter } from "./parameters";
 import { createMockUserInfo } from "./user";
 
-export const createMockActionParameter = (
-  opts?: Partial<WritebackParameter>,
-): WritebackParameter => ({
-  target: opts?.target || ["variable", ["template-tag", "id"]],
-  ...createMockParameter({
-    id: "id",
+export const createMockActionParameter = ({
+  id = "id",
+  target = ["variable", ["template-tag", id]],
+  ...opts
+}: Partial<WritebackParameter> = {}): WritebackParameter => {
+  const parameter = createMockParameter({
+    id,
     name: "ID",
     type: "type/Integer",
     slug: "id",
     ...opts,
-  }),
-});
+  });
+  return { ...parameter, target };
+};
 
 export const createMockQueryAction = ({
   dataset_query = createMockNativeDatasetQuery(),
