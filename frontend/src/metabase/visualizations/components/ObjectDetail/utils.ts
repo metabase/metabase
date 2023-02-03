@@ -48,23 +48,19 @@ export interface GetDisplayIdArgs {
 export const getDisplayId = ({
   cols,
   zoomedRow,
-  zoomedRowColumnIndex,
   zoomedTableId,
 }: GetDisplayIdArgs): ObjectId | null => {
-  // include zoomedTableId in defining if hasSinglePK
-  // …
-  const hasSinglePk =
-    cols.reduce(
-      (pks: number, col: Column) => (isPK(col) ? pks + 1 : pks),
-      0,
-    ) === 1;
-
   if (!zoomedRow) {
     return null;
   }
 
-  if (hasSinglePk) {
-    const pkColumn = cols.findIndex(isPK);
+  const columnsFromZoomedTable = cols.filter(
+    col => col.table_id === zoomedTableId,
+  );
+  const hasSinglePK = columnsFromZoomedTable.filter(isPK).length === 1;
+
+  if (hasSinglePK) {
+    const pkColumn = columnsFromZoomedTable.findIndex(isPK);
     return zoomedRow[pkColumn] as ObjectId;
   }
 

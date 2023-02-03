@@ -26,6 +26,7 @@ import {
   getTableForeignKeyReferences,
   getZoomRow,
   getZoomedObjectId,
+  getZoomedTableId,
   getCanZoomPreviousRow,
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
@@ -75,6 +76,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     tableForeignKeys: getTableForeignKeys(state) as ForeignKey[],
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
     zoomedRowID,
+    zoomedTableId: getZoomedTableId(state),
     zoomedRow,
     canZoom: isZooming && !!zoomedRow,
     canZoomPreviousRow,
@@ -132,6 +134,7 @@ export function ObjectDetailFn({
   table,
   zoomedRow,
   zoomedRowID,
+  zoomedTableId,
   tableForeignKeys,
   tableForeignKeyReferences,
   settings,
@@ -243,7 +246,7 @@ export function ObjectDetailFn({
     zoomedRow,
   });
 
-  const displayId = getDisplayId({ cols: data.cols, zoomedRow });
+  const displayId = getDisplayId({ cols: data.cols, zoomedRow, zoomedTableId });
   const hasPk = !!data.cols.find(isPK);
   const hasRelationships =
     showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
