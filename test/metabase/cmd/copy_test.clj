@@ -17,8 +17,8 @@
                                         :when    (not (re-find #"test" (name ns)))
                                         [_ varr] (do (classloader/require ns)
                                                      (ns-interns ns))
-                                        :let     [model (var-get varr)]
+                                        :let     [{model-name :name, :as model} (var-get varr)]
                                         :when    (and (models/model? model)
-                                                      (not (contains? models-to-exclude (:name model))))]
-                                     (:name model)))]
+                                                      (not (contains? models-to-exclude model-name)))]
+                                    model-name))]
     (is (= all-model-names migrated-model-names))))
