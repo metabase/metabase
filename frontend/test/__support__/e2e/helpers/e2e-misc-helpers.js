@@ -247,6 +247,7 @@ export function saveQuestion(
 export function visitPublicQuestion(id) {
   cy.request("POST", `/api/card/${id}/public_link`).then(
     ({ body: { uuid } }) => {
+      cy.signOut();
       cy.visit(`/public/question/${uuid}`);
     },
   );
@@ -255,6 +256,7 @@ export function visitPublicQuestion(id) {
 export function visitPublicDashboard(id) {
   cy.request("POST", `/api/dashboard/${id}/public_link`).then(
     ({ body: { uuid } }) => {
+      cy.signOut();
       cy.visit(`/public/dashboard/${uuid}`);
     },
   );
