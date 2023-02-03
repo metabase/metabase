@@ -96,16 +96,20 @@
                                  (assoc :action_id (:id action)))]})
       (:id action))))
 
+(defn- hydrate-subtype [action]
+  (let [subtype (case (:type action)
+                  :http HTTPAction
+                  :query QueryAction
+                  :implicit ImplicitAction)]
+    (-> action
+        (merge (db/select-one subtype :action_id (:id action)))
+        (dissoc :action_id))))
+
 (defn select-one
   "Selects an action and fills in the subtype data.
    `options` is passed to `db/select-one` `& options` arg."
   [& options]
-  (let [action  (apply db/select-one Action options)
-        subtype (case (:type action)
-                  :http HTTPAction
-                  :query QueryAction
-                  :implicit ImplicitAction)]
-    (merge action (db/select-one subtype :action_id (:id action)))))
+  (hydrate-subtype (apply db/select-one Action options)))
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
@@ -228,6 +232,10 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
+(defmethod serdes.base/extract-query "Action" [_model _opts]
+  (eduction (map hydrate-subtype)
+            (db/select-reducible 'Action)))
+
 (defmethod serdes.hash/identity-hash-fields Action
   [_action]
   [:name (serdes.hash/hydrated-hash :model "<none>") :created_at])
@@ -280,17 +288,17 @@
   [_ action]
   (serdes.base/maybe-labeled "Action" action :name))
 
-(defmethod serdes.base/serdes-generate-path "QueryAction"
-  [_ action]
-  [(assoc (serdes.base/infer-self-path "QueryAction" action) :label "query_action")])
+(defmethod serdes.base/serdes-generate-path "ImplicitAction" [_model implicit-action]
+  [(serdes.base/infer-self-path "Action" (db/select-one 'Action :id (:action_id implicit-action)))
+   (serdes.base/infer-self-path "ImplicitAction" implicit-action)])
 
-(defmethod serdes.base/serdes-generate-path "ImplicitAction"
-  [_ action]
-  [(assoc (serdes.base/infer-self-path "ImplicitAction" action) :label "implicit_action")])
+(defmethod serdes.base/serdes-generate-path "HTTPAction" [_model http-action]
+  [(serdes.base/infer-self-path "Action" (db/select-one 'Action :id (:action_id http-action)))
+   (serdes.base/infer-self-path "HTTPAction" http-action)])
 
-(defmethod serdes.base/serdes-generate-path "HTTPAction"
-  [_ action]
-  [(assoc (serdes.base/infer-self-path "HTTPAction" action) :label "http_action")])
+(defmethod serdes.base/serdes-generate-path "QueryAction" [_model query-action]
+  [(serdes.base/infer-self-path "Action" (db/select-one 'Action :id (:action_id query-action)))
+   (serdes.base/infer-self-path "QueryAction" query-action)])
 
 (defmethod serdes.base/serdes-dependencies "Action" [action]
   [[{:model "Card" :id (:model_id action)}]])
@@ -307,18 +315,6 @@
 (defmethod serdes.base/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]
     ["actions" (serdes.base/storage-leaf-file-name id label)]))
-
-(defmethod serdes.base/storage-path "QueryAction" [query-action _ctx]
-  (let [{:keys [id label]} (-> query-action serdes.base/serdes-path last)]
-    ["actions" "query_actions" (serdes.base/storage-leaf-file-name id label)]))
-
-(defmethod serdes.base/storage-path "ImplicitAction" [implicit-action _ctx]
-  (let [{:keys [id label]} (-> implicit-action serdes.base/serdes-path last)]
-    ["actions" "implicit_actions" (serdes.base/storage-leaf-file-name id label)]))
-
-(defmethod serdes.base/storage-path "HTTPAction" [http-action _ctx]
-  (let [{:keys [id label]} (-> http-action serdes.base/serdes-path last)]
-    ["actions" "http_actions" (serdes.base/storage-leaf-file-name id label)]))
 
 ;; This is coupled to storage-path
 ;; storage-path converts a serdes path to a storage path.
