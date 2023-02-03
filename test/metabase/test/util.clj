@@ -495,7 +495,7 @@
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model                    (db/resolve-model model)
         [original-column->value] (mdb.query/query {:select (keys column->temp-value)
-                                                   :from   [(keyword (t2/table-name model))]
+                                                   :from   [(t2/table-name model)]
                                                    :where  [:= :id (u/the-id object-or-id)]})]
     (assert original-column->value
             (format "%s %d not found." (name model) (u/the-id object-or-id)))
@@ -505,7 +505,7 @@
       (f)
       (finally
         (db/execute!
-         {:update (keyword (t2/table-name model))
+         {:update (t2/table-name model)
           :set    original-column->value
           :where  [:= :id (u/the-id object-or-id)]})))))
 
@@ -654,7 +654,7 @@
                        max-id-condition      [:> (models/primary-key model) old-max-id]
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (db/execute!
-           {:delete-from (keyword (t2/table-name model))
+           {:delete-from (t2/table-name model)
             :where       (if (seq additional-conditions)
                            [:and max-id-condition additional-conditions]
                            max-id-condition)}))))))

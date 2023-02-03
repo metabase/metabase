@@ -152,7 +152,7 @@
                                                    "from clause")]
   [model :- SearchableModel]
   (let [db-model (get search-config/model-to-db-model model)]
-    [[(keyword (t2/table-name db-model)) (-> db-model name u/lower-case-en keyword)]]))
+    [[(t2/table-name db-model) (-> db-model name u/lower-case-en keyword)]]))
 
 (defmulti ^:private archived-where-clause
   {:arglists '([model archived?])}

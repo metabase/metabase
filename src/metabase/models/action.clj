@@ -85,7 +85,7 @@
                           :http     HTTPAction
                           :query    QueryAction
                           :implicit ImplicitAction)]
-     (db/execute! {:insert-into (keyword (t2/table-name model))
+     (db/execute! {:insert-into (t2/table-name model)
                    :values      [(-> (apply dissoc action-data action-columns)
                                      (u/update-if-exists :template json/encode)
                                      (u/update-if-exists :dataset_query json/encode)

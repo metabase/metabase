@@ -909,7 +909,6 @@
                                     ;; current stored value and check against the incoming details
                                     (and (get-in existing-database [:details :let-user-control-scheduling])
                                          (not (:let-user-control-scheduling details)))
-
                                     (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
 
                                     ;; if user is controlling schedules

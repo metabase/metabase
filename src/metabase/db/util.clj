@@ -14,7 +14,7 @@
        (mdb/join [FieldValues :field_id] [Field :id])
        :active true)"
   [[source-entity fk] [dest-entity pk]]
-  {:left-join [(keyword (t2/table-name (db/resolve-model dest-entity)))
+  {:left-join [(t2/table-name (db/resolve-model dest-entity))
                [:= (db/qualify source-entity fk) (db/qualify dest-entity pk)]]})
 
 (def ^:private NamespacedKeyword

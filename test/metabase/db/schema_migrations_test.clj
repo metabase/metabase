@@ -481,7 +481,7 @@
                                                                  :database_id            1
                                                                  :collection_id          nil}]}))}]
 
-              :let [table-name-keyword (keyword (t2/table-name model))]]
+              :let [table-name-keyword (t2/table-name model)]]
         (testing (format "create %s Collection for %s in the Root Collection"
                          (pr-str collection-name)
                          (name model))
