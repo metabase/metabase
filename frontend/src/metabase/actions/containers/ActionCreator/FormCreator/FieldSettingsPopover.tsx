@@ -176,8 +176,6 @@ function PlaceholderInput({
   value: string;
   onChange: (newPlaceholder: string) => void;
 }) {
-  const inputTypes = useMemo(getInputTypes, []);
-
   return (
     <div>
       <SectionLabel>{t`Placeholder text`}</SectionLabel>

@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 import { t } from "ttag";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
