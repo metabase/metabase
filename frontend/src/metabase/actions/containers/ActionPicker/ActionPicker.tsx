@@ -2,18 +2,19 @@ import React, { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Button from "metabase/core/components/Button";
+import Icon from "metabase/components/Icon";
+
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import Actions from "metabase/entities/actions";
 import Questions from "metabase/entities/questions";
 
+import { isImplicitAction } from "metabase/actions/utils";
+import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
+
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import Button from "metabase/core/components/Button";
-
-import { isImplicitAction } from "metabase/actions/utils";
-import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import {
   ActionItem,
@@ -111,7 +112,7 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       {isActionCreatorOpen && (
-        <ActionCreator
+        <ActionCreatorModal
           modelId={model.id}
           databaseId={model.database_id}
           actionId={editingActionId}

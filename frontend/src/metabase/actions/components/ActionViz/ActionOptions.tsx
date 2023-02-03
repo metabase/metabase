@@ -5,12 +5,13 @@ import _ from "underscore";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 
-import Icon from "metabase/components/Icon";
-import Select from "metabase/core/components/Select";
 import Button from "metabase/core/components/Button";
+import Icon from "metabase/components/Icon";
+import Modal from "metabase/components/Modal";
+import Select from "metabase/core/components/Select";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import ActionCreator from "metabase/actions/containers/ActionCreator";
+import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
 
 import Actions from "metabase/entities/actions";
 import Questions from "metabase/entities/questions";
@@ -93,12 +94,14 @@ export const ActionParameterOptions = ({
           <Icon name="pencil" size={11} tooltip={t`Edit action`} />
         </ActionParameterTriggerContainer>
         {isActionCreatorOpen && (
-          <ActionCreator
-            modelId={dashcard.card?.id}
-            databaseId={dashcard.card?.database_id}
-            actionId={dashcard?.action?.id}
-            onClose={hideActionCreator}
-          />
+          <Modal onClose={hideActionCreator}>
+            <ActionCreatorModal
+              modelId={dashcard.card?.id}
+              databaseId={dashcard.card?.database_id}
+              actionId={dashcard?.action?.id}
+              onClose={hideActionCreator}
+            />
+          </Modal>
         )}
       </>
     );
@@ -107,12 +110,14 @@ export const ActionParameterOptions = ({
   return (
     <>
       {isActionCreatorOpen && (
-        <ActionCreator
-          modelId={dashcard.card?.id}
-          databaseId={dashcard.card?.database_id}
-          actionId={dashcard?.action?.id}
-          onClose={hideActionCreator}
-        />
+        <Modal onClose={hideActionCreator}>
+          <ActionCreatorModal
+            modelId={dashcard.card?.id}
+            databaseId={dashcard.card?.database_id}
+            actionId={dashcard?.action?.id}
+            onClose={hideActionCreator}
+          />
+        </Modal>
       )}
       <TippyPopoverWithTrigger
         isInitiallyVisible={dashcard.justAdded}

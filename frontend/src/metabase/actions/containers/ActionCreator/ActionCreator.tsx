@@ -58,10 +58,9 @@ interface DispatchProps {
   onUpdateAction: (params: UpdateQueryActionParams) => void;
 }
 
-type ActionCreatorProps = OwnProps &
-  ActionLoaderProps &
-  StateProps &
-  DispatchProps;
+export type ActionCreatorProps = OwnProps;
+
+type Props = OwnProps & ActionLoaderProps & StateProps & DispatchProps;
 
 const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
@@ -92,7 +91,7 @@ function ActionCreator({
   onCreateAction,
   onUpdateAction,
   onClose,
-}: ActionCreatorProps) {
+}: Props) {
   const [question, setQuestion] = useState(
     resolveQuestion(action, { metadata, databaseId }),
   );
