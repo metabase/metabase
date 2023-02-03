@@ -311,15 +311,15 @@
 
 (defmethod serdes.base/storage-path "QueryAction" [query-action _ctx]
   (let [{:keys [id label]} (-> query-action serdes.base/serdes-path last)]
-    ["query_actions" (serdes.base/storage-leaf-file-name id label)]))
+    ["actions" "query_actions" (serdes.base/storage-leaf-file-name id label)]))
 
 (defmethod serdes.base/storage-path "ImplicitAction" [implicit-action _ctx]
   (let [{:keys [id label]} (-> implicit-action serdes.base/serdes-path last)]
-    ["implicit_actions" (serdes.base/storage-leaf-file-name id label)]))
+    ["actions" "implicit_actions" (serdes.base/storage-leaf-file-name id label)]))
 
 (defmethod serdes.base/storage-path "HTTPAction" [http-action _ctx]
   (let [{:keys [id label]} (-> http-action serdes.base/serdes-path last)]
-    ["http_actions" (serdes.base/storage-leaf-file-name id label)]))
+    ["actions" "http_actions" (serdes.base/storage-leaf-file-name id label)]))
 
 ;; This is coupled to storage-path
 ;; storage-path converts a serdes path to a storage path.
@@ -338,11 +338,10 @@
 
 (serdes.base/register-ingestion-path!
  "QueryAction"
- ;; ["query_actions" "my-query-action"]
+ ;; ["actions" "query_actions" "my-query-action"]
  (fn [path]
-   (when-let [[id slug] (and (= (first path) "query_actions")
-                             ;; TODO: make action a directory with itself
-                             ;; (apply = (take-last 2 path))
+   (when-let [[id slug] (and (= (first path) "actions")
+                             (= (second path) "query_actions")
                              (serdes.base/split-leaf-file-name (last path)))]
      (cond-> {:model "QueryAction" :id id}
        slug (assoc :label slug)
@@ -350,11 +349,10 @@
 
 (serdes.base/register-ingestion-path!
  "ImplicitAction"
- ;; ["implicit_actions" "my-implicit-action"]
+ ;; ["actions" "implicit_actions" "my-implicit-action"]
  (fn [path]
-   (when-let [[id slug] (and (= (first path) "implicit_actions")
-                             ;; TODO: make action a directory with itself
-                             ;; (apply = (take-last 2 path))
+   (when-let [[id slug] (and (= (first path) "actions")
+                             (= (second path) "implicit_actions")
                              (serdes.base/split-leaf-file-name (last path)))]
      (cond-> {:model "ImplicitAction" :id id}
        slug (assoc :label slug)
@@ -362,11 +360,10 @@
 
 (serdes.base/register-ingestion-path!
  "HTTPAction"
- ;; ["http_actions" "my-http-action"]
+ ;; ["actions" "http_actions" "my-http-action"]
  (fn [path]
-   (when-let [[id slug] (and (= (first path) "http_actions")
-                             ;; TODO: make action a directory with itself
-                             ;; (apply = (take-last 2 path))
+   (when-let [[id slug] (and (= (first path) "actions")
+                             (= (second path) "http_actions")
                              (serdes.base/split-leaf-file-name (last path)))]
      (cond-> {:model "HTTPAction" :id id}
        slug (assoc :label slug)
