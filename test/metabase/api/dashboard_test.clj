@@ -45,7 +45,8 @@
    [ring.util.codec :as codec]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan2.protocols :as t2.protocols])
+   [toucan2.protocols :as t2.protocols]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.util UUID)))
 
@@ -369,7 +370,7 @@
                                             :cache_ttl      1234
                                             :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
                                                              :last_name "Toucan" :email "rasta@metabase.com"}
-                                            :collection_id true})
+                                            :collection_id  true})
                  (dashboard-response
                   (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                         {:name        "My Cool Dashboard"
@@ -384,7 +385,20 @@
                                             :cache_ttl     1234
                                             :creator_id    (mt/user->id :rasta)
                                             :collection_id true})
-                 (dashboard-response (db/select-one Dashboard :id dashboard-id)))))))))
+                 (dashboard-response (db/select-one Dashboard :id dashboard-id)))))
+
+        (testing "No-op PUT: Do not return 500"
+          (t2.with-temp/with-temp [Card          {card-id :id} {}
+                                   DashboardCard dashcard      {:card_id card-id, :dashboard_id dashboard-id}]
+            ;; so, you can't actually set `:cards` with THIS endpoint (you have to use PUT /api/dashboard/:id/cards),
+            ;; but the e2e tests are trying to do it. With Toucan 1, it would silently do nothing and return truthy for
+            ;; whatever reason (I'm guessing it was a bug?) if you did something like (update! Dashboard 1 {}). Toucan 2
+            ;; returns falsey, since it doesn't do anything, which is what Toucan 1 SAID it was supposed to do.
+            ;;
+            ;; In the interest of un-busting the e2e tests let's just check to make sure the endpoint no-ops
+            (is (=? {:id dashboard-id}
+                    (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                          {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))))
 
 (deftest update-dashboard-guide-columns-test
   (testing "PUT /api/dashboard/:id"
