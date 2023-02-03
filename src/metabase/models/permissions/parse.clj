@@ -190,3 +190,10 @@
   (->> permissions
        (map (comp path parser))
        graph))
+
+(do (require '[hyperfiddle.rcf :as rcf]) (rcf/enable!))
+
+(rcf/tests "example tests"
+           (permissions->graph ["/data/db/209/" "/query/db/209/schema/"])
+           :=
+           {:db {209 {:data2 {:native :write, :data {:schemas :all}}}}, :query2 {209 {:data {:schemas :all}}}})
