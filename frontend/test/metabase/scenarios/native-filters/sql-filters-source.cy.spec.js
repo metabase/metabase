@@ -1,19 +1,23 @@
 import {
+  describeEE,
+  modal,
   openNativeEditor,
+  popover,
   restore,
-  setFilterQuestionSource,
   saveQuestion,
   setFilterListSource,
+  setFilterQuestionSource,
   visitEmbeddedPage,
   visitPublicQuestion,
-  popover,
-  modal,
+  visitQuestion,
 } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { COLLECTION_GROUP } = USER_GROUPS;
 
 const structuredSourceQuestion = {
   name: "MBQL source",
@@ -256,6 +260,56 @@ describe("scenarios > filters > sql filters > values source", () => {
       checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
     });
+  });
+});
+
+describeEE("scenarios > filters > sql filters > values source", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
+    cy.intercept("GET", "/api/card/*/params/*/values").as(
+      "cardParameterValues",
+    );
+  });
+
+  it("should sandbox parameter values in questions", () => {
+    cy.updatePermissionsGraph({
+      [COLLECTION_GROUP]: {
+        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+      },
+    });
+
+    cy.sandboxTable({
+      table_id: PRODUCTS_ID,
+      attribute_remappings: {
+        attr_uid: ["dimension", ["field", PRODUCTS.ID, null]],
+      },
+    });
+
+    cy.createQuestion(structuredSourceQuestion).then(
+      ({ body: { id: sourceQuestionId } }) => {
+        cy.createNativeQuestion(
+          getStructuredTargetQuestion(sourceQuestionId),
+        ).then(({ body: { id: targetQuestionId } }) => {
+          cy.signOut();
+          cy.signInAsSandboxedUser();
+          visitQuestion(targetQuestionId);
+        });
+      },
+    );
+
+    FieldFilter.openEntryForm();
+    cy.wait("@cardParameterValues");
+    checkFilterValueNotInList("Gadget");
+    checkFilterValueNotInList("Doohickey");
+    FieldFilter.selectFilterValueFromList("Gizmo");
+
+    cy.findByText("Open Editor").click();
+    cy.icon("variable").click();
+    FieldFilter.openEntryForm(true);
+    cy.wait("@parameterValues");
+    FieldFilter.selectFilterValueFromList("Gizmo");
   });
 });
 

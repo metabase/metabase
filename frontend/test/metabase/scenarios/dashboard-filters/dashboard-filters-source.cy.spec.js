@@ -211,7 +211,7 @@ describeEE("scenarios > dashboard > filters", () => {
     cy.signInAsAdmin();
   });
 
-  it("should sandbox parameter values based on cards", () => {
+  it("should sandbox parameter values in dashboards", () => {
     cy.sandboxTable({
       table_id: PRODUCTS_ID,
       attribute_remappings: {
