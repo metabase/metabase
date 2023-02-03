@@ -13890,6 +13890,22 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
+      id: v46.00-039
+      author: qnkhuat
+      comment: Added 0.46.0 - add entity_id to parameter_card
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: parameter_card
+
+  - changeSet:
       id: v46.00-040
       author: tsmacdonald
       comment: Added 0.46.0 -- Bump default dashcard size to 4x4
@@ -14046,6 +14062,68 @@ databaseChangeLog:
             constraintName: fk_action_creator_id
             nullable: false
 
+  - changeSet:
+      id: v46.00-064
+      author: noahmoss
+      comment: Added 0.46.0 -- rename `group_table_access_policy` to `sandboxes`
+      changes:
+        - renameTable:
+            newTableName: sandboxes
+            oldTableName: group_table_access_policy
+
+  - changeSet:
+      id: v46.00-065
+      author: noahmoss
+      comment: Added 0.46.0 -- add `permission_id` to `sandboxes`
+      changes:
+      - addColumn:
+          tableName: sandboxes
+          columns:
+          - column:
+              name: permission_id
+              type: int
+              remarks: The ID of the corresponding permissions path for this sandbox
+
+  - changeSet:
+      id: v46.00-066
+      author: noahmoss
+      comment: Added 0.46.0 -- backfill `permission_id` values in `sandboxes`
+      changes:
+        - sql: >-
+            UPDATE sandboxes s
+            SET permission_id = (
+              SELECT id
+              FROM permissions p
+              WHERE
+                p.object LIKE CONCAT('%/table/', s.table_id, '/query/segmented/')
+                AND p.group_id = s.group_id
+            );
+      rollback:
+        # not required, new values added here are dropped in the rollback of v46.00-065
+
+  - changeSet:
+      id: v46.00-067
+      author: noahmoss
+      comment: Added 0.46.0 -- remove orphaned entries in `sandboxes`
+      changes:
+        - sql: >-
+            DELETE FROM sandboxes
+            WHERE permission_id IS NULL;
+      rollback:
+        # not required, orphaned sandboxes should not be re-added to the DB
+
+  - changeSet:
+      id: v46.00-075
+      author: noahmoss
+      comment: Add foreign key constraint on sandboxes.permission_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: sandboxes
+            baseColumnNames: permission_id
+            referencedTableName: permissions
+            referencedColumnNames: id
+            constraintName: fk_sandboxes_ref_permissions
+            nullable: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

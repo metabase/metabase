@@ -29,7 +29,7 @@
   "Map with the various allowed search parameters, used to construct the SQL query"
   {:search-string                (s/maybe su/NonBlankString)
    :archived?                    s/Bool
-   :current-user-perms           #{perms/Path}
+   :current-user-perms           #{perms/PathSchema}
    (s/optional-key :models)      (s/maybe #{su/NonBlankString})
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)
@@ -69,7 +69,7 @@
    :display_name        :text
    :description         :text
    :archived            :boolean
-   ;; returned for Card, Dashboard, Pulse, and Collection
+   ;; returned for Card, Dashboard, and Collection
    :collection_id       :integer
    :collection_name     :text
    :collection_authority_level :text
@@ -299,16 +299,6 @@
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 
-(s/defmethod search-query-for-model "pulse"
-  [model search-ctx :- SearchContext]
-  ;; Pulses don't currently support being archived, omit if archived is true
-  (-> (base-query-for-model model search-ctx)
-      (add-collection-join-and-where-clauses :pulse.collection_id search-ctx)
-      ;; We don't want alerts included in pulse results
-      (sql.helpers/where [:and
-                          [:= :alert_condition nil]
-                          [:= :pulse.dashboard_id nil]])))
-
 (s/defmethod search-query-for-model "metric"
   [model search-ctx :- SearchContext]
   (-> (base-query-for-model model search-ctx)
@@ -411,7 +401,7 @@
        :order-by order-clause})))
 
 (s/defn ^:private search
-  "Builds a search query that includes all of the searchable entities and runs it"
+  "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
   (let [search-query      (full-search-query search-ctx)
         _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))

@@ -570,7 +570,7 @@
         existing-hash  (some-> varr meta ::defmodel-hash)
         has-same-hash? (= existing-hash (hash &form))]
     (when has-same-hash?
-      (println model "has not changed, skipping redefinition"))
+      (log/infof "%s has not changed, skipping redefinition" model))
     (when-not has-same-hash?
       `(do
          ~(apply original-defmodel &form &env model args)

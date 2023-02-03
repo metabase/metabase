@@ -25,13 +25,6 @@ export interface DashboardState {
   dashcardData: DashCardDataMap;
 
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  parameterValuesSearchCache: Record<
-    ParameterValueCacheKey,
-    {
-      has_more_values: boolean;
-      results: ParameterValueOrArray[];
-    }
-  >;
 
   loadingDashCards: {
     dashcardIds: DashCardId[];

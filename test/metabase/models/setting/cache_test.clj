@@ -1,7 +1,6 @@
 (ns metabase.models.setting.cache-test
   (:require
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
    [metabase.db :as mdb]
    [metabase.models.setting :refer [Setting]]
    [metabase.models.setting-test :as setting-test]
@@ -9,6 +8,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.honeysql-extensions :as hx]
    [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -26,12 +26,12 @@
   updating our locally cached value.."
   []
   (db/update-where! Setting {:key setting.cache/settings-last-updated-key}
-    :value (hsql/raw (case (mdb/db-type)
-                       ;; make it one second in the future so we don't end up getting an exact match when we try to test
-                       ;; to see if things update below
-                       :h2       "cast(dateadd('second', 1, current_timestamp) AS text)"
-                       :mysql    "cast((current_timestamp + interval 1 second) AS char)"
-                       :postgres "cast((current_timestamp + interval '1 second') AS text)"))))
+    :value (hx/raw (case (mdb/db-type)
+                     ;; make it one second in the future so we don't end up getting an exact match when we try to test
+                     ;; to see if things update below
+                     :h2       "cast(dateadd('second', 1, current_timestamp) AS text)"
+                     :mysql    "cast((current_timestamp + interval 1 second) AS char)"
+                     :postgres "cast((current_timestamp + interval '1 second') AS text)"))))
 
 (defn- simulate-another-instance-updating-setting! [setting-name new-value]
   (if new-value

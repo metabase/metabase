@@ -14,7 +14,7 @@
 
   This middleware resolves Card ID `:source-table`s at all levels of the query, but the top-level query often uses the
   so-called `virtual-id`, because the frontend client might not know the original Database; this middleware will
-  replace that ID with the approiate ID, e.g.
+  replace that ID with the appropriate ID, e.g.
 
     {:database <virtual-id>, :type :query, :query {:source-table \"card__1\"}}
     ->
@@ -109,6 +109,26 @@
          (assoc m :field_ref [:field (:name m) {:base-type (:base_type m)}]))
        metadata))
 
+(defn- source-query
+  "Get the query to be run from the card"
+  [{dataset-query :dataset_query card-id :id :as card}]
+  (let [{mbql-query                                      :query
+         {template-tags :template-tags :as native-query} :native} dataset-query]
+    (or
+     mbql-query
+     ;; rename `:query` to `:native` because source queries have a slightly different shape
+     (when-some [native-query (set/rename-keys native-query {:query :native})]
+       (let [collection (:collection native-query)]
+         (cond-> native-query
+                 ;; MongoDB native  queries consist of a collection and a pipelne (query)
+                 collection (update :native (fn [pipeline] {:collection collection
+                                                            :query      pipeline}))
+                 ;; trim trailing comments from SQL, but not other types of native queries
+                 (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
+                 (empty? template-tags) (dissoc :template-tags))))
+     (throw (ex-info (tru "Missing source query in Card {0}" card-id)
+                     {:card card})))))
+
 (s/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
   "Return the source query info for Card with `card-id`. Pass true as the optional second arg `log?` to enable
   logging. (The circularity check calls this and will print more than desired)"
@@ -118,38 +138,14 @@
    (let [;; todo: we need to cache this. We are running this in preprocess, compile, and then again
          card           (or (db/select-one Card :id card-id)
                             (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                    {:card-id card-id})))
+                                            {:card-id card-id})))
          persisted-info (db/select-one PersistedInfo :card_id card-id)
 
-         {{mbql-query                   :query
-           database-id                  :database
-           {template-tags :template-tags
-            :as           native-query} :native} :dataset_query
-          result-metadata                        :result_metadata
-          dataset?                               :dataset}
-         card
-
-         persisted? (qp.persisted/can-substitute? card persisted-info)
-
-         source-query (cond
-                        mbql-query
-                        mbql-query
-
-                        native-query
-                        ;; rename `:query` to `:native` because source queries have a slightly different shape
-                        (let [native-query (set/rename-keys native-query {:query :native})
-                              collection (:collection native-query)]
-                          (cond-> native-query
-                            ;; MongoDB native  queries consist of a collection and a pipelne (query)
-                            collection (update :native (fn [pipeline] {:collection collection
-                                                                      :query pipeline}))
-                            ;; trim trailing comments from SQL, but not other types of native queries
-                            (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
-                            (empty? template-tags)           (dissoc :template-tags)))
-
-                        :else
-                        (throw (ex-info (tru "Missing source query in Card {0}" card-id)
-                                        {:card card})))]
+         {{database-id :database} :dataset_query
+          result-metadata         :result_metadata
+          dataset?                :dataset} card
+         persisted?     (qp.persisted/can-substitute? card persisted-info)
+         source-query   (source-query card)]
      (when (and persisted? log?)
        (log/info (trs "Found substitute cached query for card {0} from {1}.{2}"
                       card-id

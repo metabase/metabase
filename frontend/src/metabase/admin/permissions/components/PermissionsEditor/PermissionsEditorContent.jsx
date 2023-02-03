@@ -94,7 +94,7 @@ export function PermissionsEditorContent({
           onAction={onAction}
           emptyState={
             <EditorEmptyStateContainer>
-              <EmptyState message={t`Nothing here`} icon="all" />
+              <EmptyState message={t`Nothing here`} icon="folder" />
             </EditorEmptyStateContainer>
           }
         />

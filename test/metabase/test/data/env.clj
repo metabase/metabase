@@ -18,6 +18,7 @@
 (defonce ^:private env-test-drivers
   (delay
     (let [drivers (tx.env.impl/get-test-drivers)]
+      ;; this is println on purpose so it always shows up regardless of log level
       (log/info (colorize/cyan "Running QP tests against these drivers: " drivers))
       (when-not (= drivers #{:h2})
         (initialize/initialize-if-needed! :plugins))

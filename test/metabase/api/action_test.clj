@@ -116,54 +116,62 @@
                                    :model_id card-id
                                    :kind "row/create"
                                    :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}]]
-            (let [update-fn (fn [m]
-                              (cond-> (assoc m :name "New name")
-                                (= (:type initial-action) "implicit")
-                                (assoc :kind "row/update" :description "A new description")
+            (let [update-fn      (fn [m]
+                                   (cond-> (assoc m :name "New name")
+                                     (= (:type initial-action) "implicit")
+                                     (assoc :kind "row/update" :description "A new description")
 
-                                (= (:type initial-action) "query")
-                                (assoc :dataset_query (update (mt/native-query {:query "update users set name = 'bar' where id = {{x}}"})
-                                                              :type name))
+                                     (= (:type initial-action) "query")
+                                     (assoc :dataset_query (update (mt/native-query {:query "update users set name = 'bar' where id = {{x}}"})
+                                                                   :type name))
 
-                                (= (:type initial-action) "http")
-                                (-> (assoc :response_handle ".body.result"  :description nil))))
-                  expected-fn (fn [m]
-                                (cond-> m
-                                  (= (:type initial-action) "implicit")
-                                  (assoc :parameters [{:id "id" :type "type/BigInteger" :special "hello"}])))
-                  created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
-                  updated-action (update-fn initial-action)
-                  action-path (str "action/" (:id created-action))]
-              (testing "Create"
-                (is (partial= (expected-fn initial-action) created-action))
-                (testing "Should not be possible without permission"
+                                     (= (:type initial-action) "http")
+                                     (-> (assoc :response_handle ".body.result"  :description nil))))
+                  expected-fn    (fn [m]
+                                   (cond-> m
+                                     (= (:type initial-action) "implicit")
+                                     (assoc :parameters [{:id "id" :type "type/BigInteger" :special "hello"}])))
+                  updated-action (update-fn initial-action)]
+              (testing "Create fails with"
+                (testing "no permission"
                   (is (= "You don't have permissions to do that."
-                         (mt/user-http-request :rasta :post 403 "action" initial-action)))))
-              (testing "Update"
-                (is (partial= (expected-fn updated-action)
-                              (mt/user-http-request :crowberto :put 200 action-path (update-fn {}))))
-                (testing "Should not be possible without permission"
-                  (is (= "You don't have permissions to do that."
-                         (mt/user-http-request :rasta :put 403 action-path (update-fn {}))))))
-              (testing "Get"
-                (is (partial= (expected-fn updated-action)
-                              (mt/user-http-request :crowberto :get 200 action-path)))
-                (testing "Should not be possible without permission"
-                  (is (= "You don't have permissions to do that."
-                         (mt/user-http-request :rasta :get 403 action-path)))))
-              (testing "Get All"
-                (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
-                               (expected-fn updated-action)]
-                              (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))
-                (testing "Should not be possible without permission"
-                  (is (= "You don't have permissions to do that."
-                         (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id))))))
-              (testing "Delete"
-                (testing "Should not be possible without permission"
-                  (is (= "You don't have permissions to do that."
-                         (mt/user-http-request :rasta :delete 403 action-path))))
-                (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
-                (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path)))))))))))
+                         (mt/user-http-request :rasta :post 403 "action" initial-action))))
+                (when (= "query" (:type initial-action))
+                  (testing "actions disabled"
+                    (mt/with-actions-disabled
+                      (is (= "Actions are not enabled."
+                             (:cause
+                              (mt/user-http-request :crowberto :post 400 "action" initial-action))))))))
+              (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
+                    action-path    (str "action/" (:id created-action))]
+                (testing "Create"
+                  (testing "works with acceptable params"
+                    (is (partial= (expected-fn initial-action) created-action))))
+                (testing "Update"
+                  (is (partial= (expected-fn updated-action)
+                                (mt/user-http-request :crowberto :put 200 action-path (update-fn {}))))
+                  (testing "Should not be possible without permission"
+                    (is (= "You don't have permissions to do that."
+                           (mt/user-http-request :rasta :put 403 action-path (update-fn {})))))
+                  (testing "Get"
+                    (is (partial= (expected-fn updated-action)
+                                  (mt/user-http-request :crowberto :get 200 action-path)))
+                    (testing "Should not be possible without permission"
+                      (is (= "You don't have permissions to do that."
+                             (mt/user-http-request :rasta :get 403 action-path)))))
+                  (testing "Get All"
+                    (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
+                                   (expected-fn updated-action)]
+                                  (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))
+                    (testing "Should not be possible without permission"
+                      (is (= "You don't have permissions to do that."
+                             (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))))))
+                (testing "Delete"
+                  (testing "Should not be possible without permission"
+                    (is (= "You don't have permissions to do that."
+                           (mt/user-http-request :rasta :delete 403 action-path))))
+                  (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
+                  (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))))))
 
 (deftest action-parameters-test
   (mt/with-actions-enabled
