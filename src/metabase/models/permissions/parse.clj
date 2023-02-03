@@ -183,7 +183,6 @@
                                    [:block :all :some :write :read :segmented :full :limited :yes]))
                            x)))))
 
-
 (defn permissions->graph
   "Given a set of permission strings, return a graph that expresses the most permissions possible for the set"
   [permissions]
@@ -192,8 +191,6 @@
        graph))
 
 (do (require '[hyperfiddle.rcf :as rcf]) (rcf/enable!))
-
 (rcf/tests "example tests"
-           (permissions->graph ["/data/db/209/" "/query/db/209/schema/"])
-           :=
-           {:db {209 {:data2 {:native :write, :data {:schemas :all}}}}, :query2 {209 {:data {:schemas :all}}}})
+           (permissions->graph ["/query/db/209/schema/"]) := {:query2 {209 {:data {:schemas :all}}}}
+           (permissions->graph ["/data/db/209/"]) := {:db {209 {:data2 {:native :write, :data {:schemas :all}}}}})
