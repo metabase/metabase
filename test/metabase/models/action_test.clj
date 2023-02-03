@@ -18,7 +18,7 @@
                        :name "Query Example"
                        :model_id model-id
                        :parameters [{:id "id" :type :number}]}
-                      (action/select-action :id action-id)))))))
+                      (action/select-one :id action-id)))))))
 
 (deftest hydrate-http-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -33,7 +33,7 @@
                        :name "Echo Example"
                        :parameters [{:id "id" :type :number}
                                     {:id "fail" :type :text}]}
-                      (action/select-action :id action-id)))))))
+                      (action/select-one :id action-id)))))))
 
 (deftest hydrate-creator-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -52,4 +52,4 @@
                        :creator_id (mt/user->id :crowberto)
                        :creator {:common_name "Crowberto Corv"}
                        :parameters [{:id "id" :type :number}]}
-                      (hydrate (action/select-action :id action-id) :creator)))))))
+                      (hydrate (action/select-one :id action-id) :creator)))))))
