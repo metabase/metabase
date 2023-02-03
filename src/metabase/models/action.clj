@@ -96,6 +96,17 @@
                                  (assoc :action_id (:id action)))]})
       (:id action))))
 
+(defn select-action
+  "Selects an action and fills in the subtype data.
+   `options` is passed to `db/select-one` `& options` arg."
+  [& options]
+  (let [action  (apply db/select-one Action options)
+        subtype (case (:type action)
+                  :http HTTPAction
+                  :query QueryAction
+                  :implicit ImplicitAction)]
+    (merge action (db/select-one subtype :action_id (:id action)))))
+
 (defn- normalize-query-actions [actions]
   (when (seq actions)
     (let [query-actions (db/select QueryAction :action_id [:in (map :id actions)])
