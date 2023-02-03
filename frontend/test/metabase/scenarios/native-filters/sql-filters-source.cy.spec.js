@@ -309,6 +309,8 @@ describeEE("scenarios > filters > sql filters > values source", () => {
     cy.icon("variable").click();
     FieldFilter.openEntryForm(true);
     cy.wait("@parameterValues");
+    checkFilterValueNotInList("Gadget");
+    checkFilterValueNotInList("Doohickey");
     FieldFilter.selectFilterValueFromList("Gizmo");
   });
 });
