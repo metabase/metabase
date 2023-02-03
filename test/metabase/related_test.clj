@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard Metric Segment]]
+    :refer [Card Collection Dashboard DashboardCard Metric Revision Segment]]
    [metabase.related :as related]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -205,8 +205,12 @@
                            Card          card-2        {}
                            Card          card-3        {}
                            Dashboard     {dash-id :id} {}
+                           Revision      _             {:model    "Dashboard"
+                                                        :model_id dash-id
+                                                        :user_id  (mt/user->id :rasta)}
                            DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
                            DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (binding [api/*current-user-id*              (mt/user->id :rasta)
+              api/*current-user-permissions-set* (atom #{"/"})]
       (is (=? [{:id dash-id}]
               (#'related/recommended-dashboards [card-1 card-2 card-3]))))))

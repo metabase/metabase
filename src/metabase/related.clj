@@ -191,7 +191,7 @@
                                                (concat [:card_id [:in (map :id cards)]])
 
                                                (seq recent)
-                                               (concat [:dashboard_id [:not-in recent]])))
+                                               (concat [:dashboard_id [:not-in (map :id recent)]])))
                                       (group-by :card_id))
         dashboard-ids (->> (map :id cards)
                            (mapcat card-id->dashboard-cards)
