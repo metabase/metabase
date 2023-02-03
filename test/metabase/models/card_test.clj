@@ -170,8 +170,6 @@
         (is (= (mt/derecordize metadata)
                (mt/derecordize (db/select-one-field :result_metadata Card :id card-id))))))))
 
-
-;; TOUCAN-2-FIXME
 (deftest populate-result-metadata-if-needed-test
   (doseq [[creating-or-updating f]
           {"creating" (fn [properties f]
