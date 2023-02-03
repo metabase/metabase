@@ -889,55 +889,6 @@
   [ag]
   {:group {(annotate/aggregation-name ag) (aggregation->rvalue ag)}})
 
-(defn- extract-aggregation
-  "Separate the expression `aggregation` named `aggr-name` into two parts:
-  an simple expression and an aggregation expression, where the simple expression
-  references the result of the aggregation expression such that first evaluating
-  the aggregation expression and binding its result to `aggr-name` and then
-  evaluating the simple expression in this context, the result is the same as
-  evaluating the whole expression `aggregation`.
-  This separation is necessary, because MongoDB doesn't support embedding
-  aggregations in `normal' expressions.
-
-  For example the aggregation
-    [:aggregation-options
-     [:+ [:/ [:sum
-              [:case [[[:< [:field 12 nil] [:field 7 nil]]
-                       [:field 12 nil]]]
-               {:default 0}]]
-             2]
-         1]
-     {:name \"expression\"}]
-  is transformed into the simple expression
-    [:+ [:/ \"$expression\" 2] 1]
-  and the aggregation expression
-    [:aggregation-options
-     [:sum
-      [:case [[[:< [:field 12 nil] [:field 7 nil]]
-               [:field 12 nil]]]
-       {:default 0}]]
-     {:name \"expression\"}]"
-  [aggregation aggr-name]
-  (when (and (vector? aggregation) (seq aggregation))
-    (let [[op & args] aggregation]
-      (cond
-        (= op :aggregation-options)
-        (let [[embedding-expr aggregation'] (extract-aggregation (first args) aggr-name)]
-          [embedding-expr (into [:aggregation-options aggregation'] (rest args))])
-
-        (aggregation-op op)
-        [(str \$ aggr-name) aggregation]
-
-        :else
-        (let [ges (map #(extract-aggregation % aggr-name) args)
-              [embedding-expr aggregation'] (first (filter some? ges))]
-          (when-not aggregation'
-            (throw
-             (ex-info (tru "Don''t know how to handle aggregation {0}" aggregation)
-                      {:type :invalid-query, :clause aggregation})))
-          [(into [op] (map (fn [arg ge] (if ge embedding-expr arg)) args ges))
-           aggregation'])))))
-
 (defn- extract-aggregations*
   ([aggr-expr parent-name] (extract-aggregations* aggr-expr parent-name {}))
   ([aggr-expr parent-name aggregations-seen]
