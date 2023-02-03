@@ -1,6 +1,7 @@
 (ns metabase.test.data.snowflake
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.util.unprepare :as unprepare]
@@ -80,7 +81,7 @@
   (defn- existing-datasets []
     (when-not (seq @datasets)
       (reset! datasets (existing-dataset-names))
-      (println "These Snowflake datasets have already been loaded:\n" (u/pprint-to-str (sort @datasets))))
+      (log/infof "These Snowflake datasets have already been loaded:\n%s" (u/pprint-to-str (sort @datasets))))
     @datasets)
 
   (defn- add-existing-dataset! [database-name]
@@ -94,7 +95,7 @@
   (let [{:keys [database-name], :as db-def} (update db-def :database-name qualified-db-name)]
     ;; ok, now check if already created. If already created, no-op
     (when-not (contains? (existing-datasets) database-name)
-      (println (format "Creating new Snowflake database %s..." (pr-str database-name)))
+      (log/infof "Creating new Snowflake database %s..." (pr-str database-name))
       ;; if not created, create the DB...
       (try
         ;; call the default impl for SQL JDBC drivers
@@ -105,8 +106,8 @@
         ;; load it next time around
         (catch Throwable e
           (let [drop-db-sql (format "DROP DATABASE \"%s\";" database-name)]
-            (println "Creating DB failed:" e)
-            (println "[Snowflake]" drop-db-sql)
+            (log/errorf "Creating DB failed: %s" e)
+            (log/errorf "[Snowflake] %s" drop-db-sql)
             (jdbc/execute! (no-db-connection-spec) [drop-db-sql]))
           (throw e))))))
 
@@ -114,7 +115,7 @@
   [_ {:keys [database-name]}]
   (let [database-name (qualified-db-name database-name)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
-    (println "[Snowflake]" sql)
+    (log/infof "[Snowflake] %s" sql)
     (jdbc/execute! (no-db-connection-spec) [sql])
     (remove-existing-dataset! database-name)))
 
