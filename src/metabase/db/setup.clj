@@ -17,11 +17,11 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan2.jdbc :as t2.jdbc]
    [toucan2.map-backend.honeysql2 :as t2.honeysql]
-   [methodical.core :as methodical]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (liquibase.exception LockException)))
