@@ -1,6 +1,5 @@
 (ns metabase.models.pulse-channel
   (:require
-   [cheshire.generate :as json.generate]
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
@@ -353,8 +352,7 @@
 (methodical/defmethod mi/to-json PulseChannel
   "Don't include `:emails`, we use that purely internally"
   [pulse-channel json-generator]
-  (json.generate/encode-map (m/dissoc-in pulse-channel [:details :emails])
-                            json-generator))
+  (next-method (m/dissoc-in pulse-channel [:details :emails]) json-generator))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 
