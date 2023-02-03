@@ -74,7 +74,6 @@
                    (update :from (fn [[table]]
                                    [[table (sql.qp/->honeysql
                                             :sparksql
-                                            #_{:clj-kondo/ignore [:discouraged-var]}
                                             (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
     (first (hsql/format honeysql, :quoting (sql.qp/quote-style driver/*driver*), :allow-dashed-names? true))))
 
