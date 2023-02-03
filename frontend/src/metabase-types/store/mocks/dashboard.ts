@@ -9,7 +9,6 @@ export const createMockDashboardState = (
   dashcards: {},
   dashcardData: {},
   parameterValues: {},
-  parameterValuesSearchCache: {},
   loadingDashCards: {
     dashcardIds: [],
     loadingIds: [],

@@ -12,6 +12,7 @@ import {
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import { toggleRequired } from "./helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -63,6 +64,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       checkFilterValueNotInList("Gizmo");
       FieldFilter.selectFilterValueFromList("Gadget");
       SQLFilter.runQuery("cardQuery");
+
+      toggleRequired();
+      FieldFilter.openEntryForm(true);
+      FieldFilter.selectFilterValueFromList("Gadget");
     });
 
     it("should be able to use a structured question source with a text tag", () => {
@@ -79,6 +84,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       checkFilterValueNotInList("Gizmo");
       FieldFilter.selectFilterValueFromList("Gadget");
       SQLFilter.runQuery("cardQuery");
+
+      toggleRequired();
+      FieldFilter.openEntryForm(true);
+      FieldFilter.selectFilterValueFromList("Gadget");
     });
 
     it("should be able to use a structured question source without saving the question", () => {

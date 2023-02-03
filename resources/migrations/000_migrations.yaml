@@ -14113,6 +14113,21 @@ databaseChangeLog:
         # not required, orphaned sandboxes should not be re-added to the DB
 
   - changeSet:
+      id: v46.00-074
+      author: metamben
+      comment: Added 0.46.0 -- increase precision of updated_at of report_card
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: updated_at
+            newDataType: DATETIME
+
+  - changeSet:
       id: v46.00-075
       author: noahmoss
       comment: Add foreign key constraint on sandboxes.permission_id
@@ -14124,6 +14139,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_sandboxes_ref_permissions
             nullable: true
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
