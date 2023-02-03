@@ -925,15 +925,29 @@
                  args)))
      [aggr-expr aggregations-seen])))
 
+(defn- simplify-extracted-aggregations
+  [aggr-name [aggr-expr aggregations-seen :as extracted-aggr]]
+  (if-let [aggr-group (and (string? aggr-expr)
+                           (str/starts-with? aggr-expr (str \$ aggr-name "~"))
+                           (= (count aggregations-seen) 1)
+                           (let [[k v] (first aggregations-seen)]
+                             (when (= v (subs aggr-expr 1))
+                               k)))]
+    [(str \$ aggr-name) {aggr-group aggr-name}]
+    extracted-aggr))
+
 (defn- extract-aggregations [aggr-expr]
   (let [aggr-name (annotate/aggregation-name aggr-expr)
-        [aggr-expr' aggregations-seen] (extract-aggregations* aggr-expr aggr-name)
+        [aggr-expr' aggregations-seen] (simplify-extracted-aggregations
+                                        aggr-name
+                                        (extract-aggregations* aggr-expr aggr-name))
         raggr-expr (->rvalue aggr-expr')
         expandeds (map (fn [[aggr name]]
                          (expand-aggregation [:aggregation-options aggr {:name name}]))
                        aggregations-seen)]
     {:group (into {} (map :group) expandeds)
-     :post [(into {} (mapcat :post) expandeds) {aggr-name raggr-expr}]}))
+     :post (cond-> [(into {} (mapcat :post) expandeds)]
+             (not= raggr-expr (str \$ aggr-name)) (conj {aggr-name raggr-expr}))}))
 
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
