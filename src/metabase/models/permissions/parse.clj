@@ -14,8 +14,10 @@
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
-  "permission = ( all | execute | db | block | download | data-model | details | collection )
+  "permission = ( all | execute | db | block | download | data-model | details | collection | data-v2 | query-v2)
   all         = <'/'>
+  data-v2     = <'/data/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
+  query-v2    = <'/query/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
   db          = <'/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
   execute     = <'/execute/'> ( <'db/'> #'\\d+' <'/'> )?
   native      = <'native/'>
@@ -76,11 +78,17 @@
     [:permission t]                (path1 t)
     [:schema-name schema-name]     (unescape-path-component schema-name)
     [:all]                         [:all] ; admin permissions
-    [:db db-id]                    (let [db-id (Long/parseUnsignedLong db-id)]
-                                     [[:db db-id :data :native :write]
-                                      [:db db-id :data :schemas :all]])
-    [:db db-id db-node]            (let [db-id (Long/parseUnsignedLong db-id)]
-                                     (into [:db db-id] (path1 db-node)))
+    [:db db-id]                    (let [db-id (Long/parseUnsignedLong db-id)] [[:db db-id :data :native :write] [:db db-id :data :schemas :all]])
+    [:db db-id db-node]            (into [:db (Long/parseUnsignedLong db-id)] (path1 db-node))
+
+    [:query-v2 db-id]              (let [db-id (Long/parseUnsignedLong db-id)] [[:db db-id :query2 :native :write]
+                                                                                [:db db-id :query2 :data :schemas :all]])
+    [:query-v2 db-id db-node]      (into [:query2 (Long/parseUnsignedLong db-id)] (path1 db-node))
+
+    [:data-v2 db-id]              (let [db-id (Long/parseUnsignedLong db-id)] [[:db db-id :data2 :native :write]
+                                                                               [:db db-id :data2 :data :schemas :all]])
+    [:data-v2 db-id db-node]      (into [:data2 (Long/parseUnsignedLong db-id)] (path1 db-node))
+
     [:schemas]                     [:data :schemas :all]
     [:schemas schema]              (into [:data :schemas] (path1 schema))
     [:schema schema-name]          [(path1 schema-name) :all]
@@ -162,14 +170,11 @@
                    (conj paths path)))
                [])
        (walk/prewalk (fn [x]
-                       (if (and (sequential? x)
-                                (sequential? (first x))
-                                (seq (first x)))
+                       (if (and (sequential? x) (sequential? (first x)) (seq (first x)))
                          (->> x
                               (group-by first)
                               (reduce-kv (fn [m k v]
-                                           (assoc m k (->> (map rest v)
-                                                           (filter seq))))
+                                           (assoc m k (->> (map rest v) (filter seq))))
                                          {}))
                          x)))
        (walk/prewalk (fn [x]

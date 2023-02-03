@@ -836,10 +836,7 @@
         db-ids          (delay (db/select-ids 'Database))
         group-id->graph (m/map-vals
                          (fn [paths]
-                           ;; Currently we do not use v2 permissions paths, and permissions->graph doesn't handle them.
-                           ;; so we ignore those until that work is complete.
-                           (let [v1-paths (filter #(mc/validate path-regex-v1 %) paths)
-                                 permissions-graph (perms-parse/permissions->graph v1-paths)]
+                           (let [permissions-graph (perms-parse/permissions->graph paths)]
                              (if (= permissions-graph :all)
                                (all-permissions @db-ids)
                                (:db permissions-graph))))
