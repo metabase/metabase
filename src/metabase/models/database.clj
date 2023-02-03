@@ -60,14 +60,24 @@
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! database)))
 
-(defn- post-select [{driver :engine, :as database}]
-  (cond-> database
-    ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-    (driver.impl/registered? driver)
-    (assoc :features (driver.u/features driver database))
+(def ^:private ^:dynamic *normalizing-details*
+  "Track whether we're calling [[driver/normalize-db-details]] already to prevent infinite
+  recursion. [[driver/normalize-db-details]] is actually done for side effects!"
+  false)
 
-    (and (driver.impl/registered? driver) (:details database))
-    (->> (driver/normalize-db-details driver))))
+(defn- post-select [{driver :engine, :as database}]
+  (letfn [(normalize-details [db]
+            (binding [*normalizing-details* true]
+              (driver/normalize-db-details driver db)))]
+    (cond-> database
+      ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
+      (driver.impl/registered? driver)
+      (assoc :features (driver.u/features driver database))
+
+      (and (driver.impl/registered? driver)
+           (:details database)
+           (not *normalizing-details*))
+      normalize-details)))
 
 (defn- delete-orphaned-secrets!
   "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will

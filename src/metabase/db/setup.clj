@@ -16,6 +16,7 @@
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2-extensions]
    [metabase.util.i18n :refer [trs]]
    [methodical.core :as methodical]
    [schema.core :as s]
@@ -25,6 +26,11 @@
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (liquibase.exception LockException)))
+
+(set! *warn-on-reflection* true)
+
+;;; needed so the `:h2` dialect gets registered with Honey SQL
+(comment metabase.util.honey-sql-2-extensions/keep-me)
 
 (defn- print-migrations-and-quit-if-needed!
   "If we are not doing auto migrations then print out migration SQL for user to run manually. Then throw an exception to
@@ -163,8 +169,9 @@
   "Quote SQL identifier string `s` appropriately for the currently bound application database."
   ([s]
    (quote-for-application-db (mdb.connection/quoting-style (mdb.connection/db-type)) s))
-  ([db-type s]
-   ((:quote (sql/get-dialect db-type)) s)))
+  ([dialect s]
+   {:pre [(#{:h2 :ansi :mysql} dialect)]}
+   ((:quote (sql/get-dialect dialect)) s)))
 
 ;;; register with Honey SQL 2
 (sql/register-dialect!
@@ -190,11 +197,11 @@
         {:read-columns mdb.jdbc-protocols/read-columns
          :label-fn     u/lower-case-en})
 
-(methodical/defmethod t2.pipeline/compile :around :default
+(methodical/defmethod t2.pipeline/build :around :default
   "Normally, our Honey SQL 2 `:dialect` is set to `::application-db`; however, Toucan 2 does need to know the actual
-  dialect to do special compilation magic. When doing query compilation, make sure `:dialect` is bound to the *actual*
-  dialect for the application database."
-  [query-type model built-query]
+  dialect to do special query building magic. When building a Honey SQL form, make sure `:dialect` is bound to the
+  *actual* dialect for the application database."
+  [query-type model parsed-args resolved-query]
   (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
                                          :dialect (mdb.connection/quoting-style (mdb.connection/db-type)))]
-    (next-method query-type model built-query)))
+    (next-method query-type model parsed-args resolved-query)))
