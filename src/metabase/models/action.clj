@@ -279,9 +279,10 @@
   [_ action]
   (serdes.base/maybe-labeled "Action" action :name))
 
-;; WIP: add database to dependencies if it's a query action
 (defmethod serdes.base/serdes-dependencies "Action" [action]
-  [[{:model "Card" :id (:model_id action)}]])
+  (cond-> [[{:model "Card" :id (:model_id action)}]]
+    (= (:type action) :query)
+    (conj [{:model "Database" :id (:database_id action)}])))
 
 (defmethod serdes.base/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]

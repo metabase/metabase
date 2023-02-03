@@ -833,6 +833,7 @@
                           {:keys [action-id]} {:name          "My Action"
                                                :type          :query
                                                :dataset_query {:type "native", :native {:native "select 1"}, :database db-id}
+                                               :database_id   db-id
                                                :creator_id    ann-id
                                                :model_id      card-id-1}]
           (let [action (action/select-one :id action-id)]
@@ -849,8 +850,9 @@
                              ser))
                 (is (not (contains? ser :id)))
 
-                (testing "depends on the Model"
-                  (is (= #{[{:model "Card" :id card-eid-1}]}
+                (testing "depends on the Model and Database"
+                  (is (= #{[{:model "Database" :id "My Database"}]
+                           [{:model "Card" :id card-eid-1}]}
                          (set (serdes.base/serdes-dependencies ser)))))))))))))
 
 (deftest field-values-test
