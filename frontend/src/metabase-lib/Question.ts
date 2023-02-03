@@ -1256,7 +1256,11 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
-  getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
+  getUrlWithParameters(
+    parameters,
+    parameterValues,
+    { objectId, clean, zoomedRowTableId } = {},
+  ) {
     const includeDisplayIsLocked = true;
 
     if (this.isStructured()) {
@@ -1270,7 +1274,7 @@ class QuestionInner {
             clean,
             originalQuestion: this,
             includeDisplayIsLocked,
-            query: { objectId },
+            query: { objectId, zoomedRowTableId },
           });
       } else {
         const query = getParameterValuesBySlug(parameters, parameterValues);

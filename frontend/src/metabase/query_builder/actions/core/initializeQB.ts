@@ -329,6 +329,10 @@ async function handleQBInit(
   });
 
   const objectId = params?.objectId || queryParams?.objectId;
+  const zoomedRowTableId =
+    params?.zoomedRowTableId || queryParams?.zoomedRowTableId;
+
+  console.log("🚀", "In initQB", { zoomedRowTableId });
 
   dispatch({
     type: INITIALIZE_QB,
@@ -338,6 +342,7 @@ async function handleQBInit(
       uiControls,
       parameterValues,
       objectId,
+      zoomedRowTableId,
     },
   });
 
@@ -354,6 +359,7 @@ async function handleQBInit(
         replaceState: true,
         preserveParameters: hasCard,
         objectId,
+        zoomedRowTableId,
       }),
     );
   }

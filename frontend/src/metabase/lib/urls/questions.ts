@@ -22,11 +22,17 @@ export type QuestionUrlBuilderParams = {
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
+  zoomedRowTableId?: number;
 };
 
 export function question(
   card: Card | null,
-  { hash = "", query = "", objectId }: QuestionUrlBuilderParams = {},
+  {
+    hash = "",
+    query = "",
+    objectId,
+    zoomedRowTableId,
+  }: QuestionUrlBuilderParams = {},
 ) {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
@@ -75,6 +81,10 @@ export function question(
 
   if (objectId) {
     path = `${path}/${objectId}`;
+  }
+
+  if (zoomedRowTableId) {
+    path += "/" + zoomedRowTableId;
   }
 
   return `${path}${query}${hash}`;

@@ -76,7 +76,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     tableForeignKeys: getTableForeignKeys(state) as ForeignKey[],
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
     zoomedRowID,
-    zoomedTableId: getZoomedTableId(state),
+    zoomedRowTableId: getZoomedTableId(state),
     zoomedRow,
     canZoom: isZooming && !!zoomedRow,
     canZoomPreviousRow,
@@ -134,7 +134,7 @@ export function ObjectDetailFn({
   table,
   zoomedRow,
   zoomedRowID,
-  zoomedTableId,
+  zoomedRowTableId,
   tableForeignKeys,
   tableForeignKeyReferences,
   settings,
@@ -152,6 +152,7 @@ export function ObjectDetailFn({
   viewNextObjectDetail,
   closeObjectDetail,
 }: ObjectDetailProps): JSX.Element | null {
+  console.log("🚀", "In ObjectDetail", { zoomedRowTableId });
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const prevZoomedRowId = usePrevious(zoomedRowID);
   const prevData = usePrevious(data);
@@ -246,7 +247,11 @@ export function ObjectDetailFn({
     zoomedRow,
   });
 
-  const displayId = getDisplayId({ cols: data.cols, zoomedRow, zoomedTableId });
+  const displayId = getDisplayId({
+    cols: data.cols,
+    zoomedRow,
+    zoomedRowTableId,
+  });
   const hasPk = !!data.cols.find(isPK);
   const hasRelationships =
     showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);

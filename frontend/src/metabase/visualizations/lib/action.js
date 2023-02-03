@@ -34,6 +34,7 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
         nextCard: question.card(),
         ...extra,
         objectId: extra.objectId,
+        zoomedRowTableId: extra.zoomedRowTableId,
       });
       didPerform = true;
     }

@@ -40,14 +40,16 @@ function getAction({
 
 function getActionExtraData({
   objectId,
+  zoomedRowTableId,
   hasManyPKColumns,
 }: {
   objectId: RowValue;
+  zoomedRowTableId?: number;
   hasManyPKColumns: boolean;
 }) {
   if (!hasManyPKColumns) {
     return {
-      extra: () => ({ objectId }),
+      extra: () => ({ objectId, zoomedRowTableId }),
     };
   }
 }
@@ -60,6 +62,8 @@ const ObjectDetailDrill: Drill = ({ question, clicked }) => {
 
   const { type, objectId, hasManyPKColumns } = drill;
 
+  const zoomedRowTableId = clicked.column.table_id;
+
   return [
     {
       name: "object-detail",
@@ -69,7 +73,7 @@ const ObjectDetailDrill: Drill = ({ question, clicked }) => {
       icon: "document",
       default: true,
       ...getAction({ question, clicked, type: type as DrillType, objectId }),
-      ...getActionExtraData({ objectId, hasManyPKColumns }),
+      ...getActionExtraData({ objectId, zoomedRowTableId, hasManyPKColumns }),
     },
   ];
 };

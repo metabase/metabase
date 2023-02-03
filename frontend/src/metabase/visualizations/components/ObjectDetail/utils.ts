@@ -48,19 +48,28 @@ export interface GetDisplayIdArgs {
 export const getDisplayId = ({
   cols,
   zoomedRow,
-  zoomedTableId,
+  zoomedRowTableId,
 }: GetDisplayIdArgs): ObjectId | null => {
   if (!zoomedRow) {
     return null;
   }
 
-  const columnsFromZoomedTable = cols.filter(
-    col => col.table_id === zoomedTableId,
-  );
+  const columnsFromZoomedTable = cols.filter(col => {
+    return col.table_id === parseInt(zoomedRowTableId);
+  });
+
+  // console.log("🚀", "columnsFromZoomedTable", columnsFromZoomedTable);
+
   const hasSinglePK = columnsFromZoomedTable.filter(isPK).length === 1;
 
   if (hasSinglePK) {
-    const pkColumn = columnsFromZoomedTable.findIndex(isPK);
+    console.log("🚀", "columnsFromZoomedTable", columnsFromZoomedTable);
+    const pkColumn = columnsFromZoomedTable.findIndex(col => {
+      // console.log("🚀", "cooool", col);
+      return col.table_id === parseInt(zoomedRowTableId) && isPK(col);
+    });
+    // const pkColumn = columnsFromZoomedTable.findIndex(isPK);
+    // console.log("🚀", "zoomedRow", zoomedRow, "pkColumn", pkColumn);
     return zoomedRow[pkColumn] as ObjectId;
   }
 
@@ -71,6 +80,12 @@ export const getDisplayId = ({
   }
 
   // TODO: respect user column reordering
+  console.log("🚀", "In getDisplayId", {
+    cols,
+    columnsFromZoomedTable,
+    zoomedRow,
+    zoomedRowTableId,
+  });
   return zoomedRow[0] as ObjectId;
 };
 

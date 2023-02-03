@@ -158,6 +158,11 @@ export const getPKColumnIndex = createSelector(
     if (hasMultiplePks) {
       return -1;
     }
+
+    console.log("🚀", "In getPKColumnIndex", {
+      zoomedTableId,
+      hasMultiplePks,
+    });
     return cols.findIndex(isPK);
   },
 );

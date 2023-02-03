@@ -123,9 +123,11 @@ export const updateUrl = createThunkAction(
         queryBuilderMode,
         datasetEditorTab,
         objectId,
+        zoomedRowTableId,
       } = {},
     ) =>
     (dispatch, getState) => {
+      console.log("🚀", "In updateUrl", { zoomedRowTableId });
       let question;
       if (!card) {
         card = getCard(getState());
@@ -159,11 +161,18 @@ export const updateUrl = createThunkAction(
         card,
         cardId: card.id,
         objectId,
+        zoomedRowTableId,
       };
 
       const { currentState } = getState().qb;
       const queryParams = preserveParameters ? getCurrentQueryParams() : {};
-      const url = getURLForCardState(newState, dirty, queryParams, objectId);
+      const url = getURLForCardState(
+        newState,
+        dirty,
+        queryParams,
+        objectId,
+        zoomedRowTableId,
+      );
 
       const urlParsed = parseUrl(url);
       const locationDescriptor = {

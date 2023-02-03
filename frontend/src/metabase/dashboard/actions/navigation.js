@@ -24,7 +24,7 @@ import Question from "metabase-lib/Question";
 const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardFromDashboard = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
-  ({ nextCard, previousCard, dashcard, objectId }) =>
+  ({ nextCard, previousCard, dashcard, objectId, zoomedRowTableId }) =>
     (dispatch, getState) => {
       const metadata = getMetadata(getState());
       const { dashboardId, dashboards, parameterValues } = getState().dashboard;
@@ -66,6 +66,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         {
           clean: !isDrillingFromNativeModel,
           objectId,
+          zoomedRowTableId,
         },
       );
 
