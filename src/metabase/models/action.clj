@@ -96,7 +96,7 @@
                                  (assoc :action_id (:id action)))]})
       (:id action))))
 
-(defn select-action
+(defn select-one
   "Selects an action and fills in the subtype data.
    `options` is passed to `db/select-one` `& options` arg."
   [& options]
