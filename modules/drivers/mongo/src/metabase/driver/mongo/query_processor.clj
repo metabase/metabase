@@ -949,6 +949,11 @@
      :post (cond-> [(into {} (mapcat :post) expandeds)]
              (not= raggr-expr (str \$ aggr-name)) (conj {aggr-name raggr-expr}))}))
 
+(defn- order-postprocessing [posts]
+  (when (seq posts)
+    (for [i (range (apply max (map count posts)))]
+      (into {} (map #(get % i)) posts))))
+
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
    though [:/ [:count-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
@@ -961,7 +966,7 @@
   [id aggregations]
   (let [expanded-ags (map extract-aggregations aggregations)
         group-ags    (mapcat :group expanded-ags)
-        post-ags     (mapcat :post expanded-ags)]
+        post-ags     (order-postprocessing (map :post expanded-ags))]
     (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
           (keep (fn [p] (when (seq p) {:$addFields p})))
           post-ags)))
