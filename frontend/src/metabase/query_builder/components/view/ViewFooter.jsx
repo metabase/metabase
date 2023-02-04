@@ -14,10 +14,7 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
 } from "metabase/query_builder/containers/QuestionEmbedWidget";
-import {
-  getVisualizationRaw,
-  getIconForVisualizationType,
-} from "metabase/visualizations";
+import { getIconForVisualizationType } from "metabase/visualizations";
 import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
@@ -31,12 +28,9 @@ const ViewFooter = ({
   question,
   result,
   className,
-  isShowingChartTypeSidebar,
   isShowingChartSettingsSidebar,
   isShowingRawTable,
-  onOpenChartType,
   onOpenModal,
-  onCloseChartType,
   onOpenChartSettings,
   onCloseChartSettings,
   setUIControls,
@@ -76,19 +70,6 @@ const ViewFooter = ({
       <ButtonBar
         className="flex-full"
         left={[
-          !hideChartSettings && (
-            <VizTypeButton
-              key="viz-type"
-              question={question}
-              result={result}
-              active={isShowingChartTypeSidebar}
-              onClick={
-                isShowingChartTypeSidebar
-                  ? () => onCloseChartType()
-                  : () => onOpenChartType()
-              }
-            />
-          ),
           !hideChartSettings && (
             <VizSettingsButton
               key="viz-settings"
@@ -186,27 +167,6 @@ const ViewFooter = ({
         ]}
       />
     </ViewFooterRoot>
-  );
-};
-
-const VizTypeButton = ({ question, result, ...props }) => {
-  // TODO: move this to QuestionResult or something
-  const { visualization } = getVisualizationRaw([
-    { card: question.card(), data: result.data },
-  ]);
-  const icon = visualization && visualization.iconName;
-
-  return (
-    <ViewButton
-      medium
-      p={[2, 1]}
-      icon={icon}
-      labelBreakpoint="sm"
-      data-testid="viz-type-button"
-      {...props}
-    >
-      {t`Visualization`}
-    </ViewButton>
   );
 };
 

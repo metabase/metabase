@@ -1,9 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { t } from "ttag";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
-import visualizations from "metabase/visualizations";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 export default class ChartSettingsSidebar extends React.Component {
@@ -23,15 +21,14 @@ export default class ChartSettingsSidebar extends React.Component {
       onOpenChartType,
       visualizationSettings,
       isRunning,
+      updateQuestion,
     } = this.props;
     const { sidebarPropsOverride } = this.state;
     return (
       result && (
         <SidebarContent
           className="full-height"
-          title={t`${visualizations.get(question.display()).uiName} options`}
           onDone={onClose}
-          onBack={onOpenChartType}
           {...sidebarPropsOverride}
         >
           <ChartSettings
@@ -50,6 +47,8 @@ export default class ChartSettingsSidebar extends React.Component {
             setSidebarPropsOverride={this.setSidebarPropsOverride}
             computedSettings={visualizationSettings}
             isQueryRunning={isRunning}
+            onOpenChartType={onOpenChartType}
+            updateQuestion={updateQuestion}
           />
         </SidebarContent>
       )

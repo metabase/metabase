@@ -7,6 +7,8 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import visualizations from "metabase/visualizations";
 import { Visualization } from "metabase/visualizations/shared/types/visualization";
 
+import { groupVisualizations } from "metabase/visualizations/shared/utils/visualization";
+
 import Question from "metabase-lib/Question";
 import Query from "metabase-lib/queries/Query";
 
@@ -17,26 +19,6 @@ import {
   OptionText,
   OptionLabel,
 } from "./ChartTypeSidebar.styled";
-
-const DEFAULT_ORDER = [
-  "table",
-  "bar",
-  "line",
-  "pie",
-  "scalar",
-  "row",
-  "area",
-  "combo",
-  "pivot",
-  "smartscalar",
-  "gauge",
-  "progress",
-  "funnel",
-  "object",
-  "map",
-  "scatter",
-  "waterfall",
-];
 
 interface ChartTypeSidebarProps {
   question: Question;
@@ -60,25 +42,10 @@ const ChartTypeSidebar = ({
   setUIControls,
   query,
 }: ChartTypeSidebarProps) => {
-  const [makesSense, nonSense] = useMemo(() => {
-    return _.partition(
-      _.union(
-        DEFAULT_ORDER,
-        Array.from(visualizations)
-          .filter(([_type, visualization]) => !visualization.hidden)
-          .map(([vizType]) => vizType),
-      ),
-      vizType => {
-        const visualization = visualizations.get(vizType);
-        return (
-          result &&
-          result.data &&
-          visualization.isSensible &&
-          visualization.isSensible(result.data, query)
-        );
-      },
-    );
-  }, [result, query]);
+  const [makesSense, nonSense] = useMemo(
+    () => groupVisualizations(result, query),
+    [result, query],
+  );
 
   const handleClick = useCallback(
     display => {

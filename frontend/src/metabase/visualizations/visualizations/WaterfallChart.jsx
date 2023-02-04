@@ -19,6 +19,10 @@ export default class WaterfallChart extends LineAreaBarChart {
   static maxMetricsSupported = 1;
   static maxDimensionsSupported = 1;
 
+  static isSensible({ cols }) {
+    return cols.length <= 2;
+  }
+
   static settings = {
     ...GRAPH_AXIS_SETTINGS,
     "waterfall.increase_color": {

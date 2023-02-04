@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
@@ -8,9 +7,11 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
 
-import Visualization from "metabase/visualizations/components/Visualization";
+import ChartTypeWidget from "metabase/query_builder/components/ChartTypeWidget";
 
+import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
@@ -34,6 +35,14 @@ import {
   SectionContainer,
   SectionWarnings,
   TitleButton,
+  ChartSettingsRoot,
+  ChartSettingsMenu,
+  ChartSettingsPreview,
+  ChartSettingsListContainer,
+  ChartSettingsVisualizationContainer,
+  SectionContainer,
+  SectionWarnings,
+  ChartSettingsFooterRoot,
 } from "./ChartSettings.styled";
 
 // section names are localized
@@ -276,6 +285,17 @@ class ChartSettings extends Component {
     return null;
   };
 
+  handleUpdateDisplay = display => {
+    const { updateQuestion, question } = this.props;
+
+    const newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
+
+    updateQuestion(newQuestion, {
+      reload: false,
+      shouldUpdateUrl: question.query().isEditable(),
+    });
+  };
+
   render() {
     const {
       className,
@@ -287,6 +307,9 @@ class ChartSettings extends Component {
       isDashboard,
       title,
       onBack,
+      onOpenChartType,
+      query,
+      series,
     } = this.props;
     const { popoverWidget, popoverRef, currentWidget } = this.state;
 
@@ -365,7 +388,7 @@ class ChartSettings extends Component {
     };
 
     const sectionPicker = (
-      <SectionContainer>
+      <SectionContainer isDashboard={isDashboard}>
         <Radio
           value={currentSection}
           onChange={this.handleShowSection}
@@ -373,7 +396,7 @@ class ChartSettings extends Component {
           optionNameFn={v => v}
           optionValueFn={v => v}
           optionKeyFn={v => v}
-          variant="bubble"
+          variant="underlined"
         />
       </SectionContainer>
     );
@@ -397,70 +420,56 @@ class ChartSettings extends Component {
 
     // default layout with visualization
     return (
-      <div className={cx(className, "flex flex-column")}>
-        {showSectionPicker && (
-          <div
-            className={cx("flex flex-no-shrink pl4 pb1", {
-              pt3: isDashboard,
-            })}
-          >
-            {sectionPicker}
-          </div>
-        )}
-        {noPreview ? (
-          <div className="full-height relative scroll-y scroll-show pt2 pb4">
+      <ChartSettingsRoot className={className}>
+        <ChartSettingsMenu>
+          {!isDashboard && (
+            <ChartTypeWidget
+              onOpenChartType={onOpenChartType}
+              results={series[0]}
+              query={query}
+              question={question}
+              onUpdateDisplay={this.handleUpdateDisplay}
+            />
+          )}
+          {showSectionPicker && sectionPicker}
+          <ChartSettingsListContainer className="scroll-show">
+            {title && (
+              <TitleButton onClick={onBack} icon="chevronleft" onlyText>
+                {title}
+              </TitleButton>
+            )}
             <ChartSettingsWidgetList
               widgets={visibleWidgets}
               extraWidgetProps={extraWidgetProps}
             />
-          </div>
-        ) : (
-          <div className="Grid flex-full">
-            <div
-              className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4"
-              data-testid="chartsettings-sidebar"
-            >
-              {title && (
-                <TitleButton onClick={onBack} icon="chevronleft" onlyText>
-                  {title}
-                </TitleButton>
-              )}
-              <ChartSettingsWidgetList
-                widgets={visibleWidgets}
-                extraWidgetProps={extraWidgetProps}
+          </ChartSettingsListContainer>
+        </ChartSettingsMenu>
+        {!noPreview && (
+          <ChartSettingsPreview>
+            <SectionWarnings warnings={this.state.warnings} size={20} />
+            <ChartSettingsVisualizationContainer>
+              <Visualization
+                className="spread"
+                rawSeries={rawSeries}
+                showTitle
+                isEditing
+                isDashboard
+                dashboard={dashboard}
+                dashcard={dashcard}
+                isSettings
+                showWarnings
+                onUpdateVisualizationSettings={this.handleChangeSettings}
+                onUpdateWarnings={warnings => this.setState({ warnings })}
               />
-            </div>
-            <div className="Grid-cell flex flex-column pt2">
-              <div className="mx4 flex flex-column">
-                <SectionWarnings
-                  className="mx2 align-self-end"
-                  warnings={this.state.warnings}
-                  size={20}
-                />
-              </div>
-              <div className="mx4 flex-full relative">
-                <Visualization
-                  className="spread"
-                  rawSeries={rawSeries}
-                  showTitle
-                  isEditing
-                  isDashboard
-                  dashboard={dashboard}
-                  dashcard={dashcard}
-                  isSettings
-                  showWarnings
-                  onUpdateVisualizationSettings={this.handleChangeSettings}
-                  onUpdateWarnings={warnings => this.setState({ warnings })}
-                />
-              </div>
-              <ChartSettingsFooter
-                onDone={this.handleDone}
-                onCancel={this.handleCancel}
-                onReset={onReset}
-              />
-            </div>
-          </div>
+            </ChartSettingsVisualizationContainer>
+            <ChartSettingsFooter
+              onDone={this.handleDone}
+              onCancel={this.handleCancel}
+              onReset={onReset}
+            />
+          </ChartSettingsPreview>
         )}
+
         <ChartSettingsWidgetPopover
           currentWidgetKey={
             popoverWidget?.props?.initialKey || popoverWidget?.props?.seriesKey
@@ -471,37 +480,31 @@ class ChartSettings extends Component {
           )}
           handleEndShowWidget={this.handleEndShowWidget}
         />
-      </div>
+      </ChartSettingsRoot>
     );
   }
 }
 
-const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => (
-  <div className={cx("py2 px4", className)}>
-    <div className="float-right">
-      <Button
-        className="ml2"
-        onClick={onCancel}
-        data-metabase-event="Chart Settings;Cancel"
-      >{t`Cancel`}</Button>
-      <Button
-        primary
-        className="ml2"
-        onClick={onDone}
-        data-metabase-event="Chart Settings;Done"
-      >{t`Done`}</Button>
-    </div>
-
+const ChartSettingsFooter = ({ onDone, onCancel, onReset }) => (
+  <ChartSettingsFooterRoot>
     {onReset && (
       <Button
         borderless
         icon="refresh"
-        className="float-right ml2"
         data-metabase-event="Chart Settings;Reset"
         onClick={onReset}
       >{t`Reset to defaults`}</Button>
     )}
-  </div>
+    <Button
+      onClick={onCancel}
+      data-metabase-event="Chart Settings;Cancel"
+    >{t`Cancel`}</Button>
+    <Button
+      primary
+      onClick={onDone}
+      data-metabase-event="Chart Settings;Done"
+    >{t`Done`}</Button>
+  </ChartSettingsFooterRoot>
 );
 
 export default ChartSettings;
