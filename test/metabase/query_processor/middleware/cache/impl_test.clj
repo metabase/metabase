@@ -4,6 +4,7 @@
    [flatland.ordered.map :as ordered-map]
    [metabase.query-processor.middleware.cache-backend.serialization :as cache.serdes]
    [metabase.query-processor.middleware.cache.impl :as impl]
+   [metabase.test :as mt]
    [potemkin.types :as p.types])
   (:import
    (java.io ByteArrayInputStream)))
@@ -34,7 +35,8 @@
            (reduce rf (rf) rows)))))))
 
 (deftest e2e-test
-  (doseq [serializer [cache.serdes/nippy-bounded-serializer]]
+  (doseq [serializer [cache.serdes/nippy-bounded-serializer
+                      cache.serdes/unbounded-edn-serializer]]
     (impl/do-with-serialization
      serializer
      (fn [in result]
@@ -43,7 +45,9 @@
                 (in obj))))
        (let [val (result)]
          (is (instance? (Class/forName "[B") val))
-         (is (= objects
+         (is (= (if (= serializer cache.serdes/unbounded-edn-serializer)
+                  (mt/derecordize objects)
+                  objects)
                 (if (instance? Throwable val)
                   (throw val)
                   (deserialize serializer val)))))))))

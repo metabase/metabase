@@ -1,6 +1,9 @@
 (ns metabase.query-processor.middleware.cache-backend.serialization
   (:require
+   [clojure.java.io :as io]
    [clojure.tools.logging :as log]
+   [clojure.tools.reader.edn :as edn]
+   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
@@ -97,6 +100,41 @@
     (-metadata-and-reducible-rows [_ is f]
       (with-open [is' (DataInputStream. (GZIPInputStream. (BufferedInputStream. is)))]
         (let [metadata (thaw! is')]
-          (if (= metadata ::eof)
+          (if (= metadata ::eof) ;; v3 is here: metadata is first
             (f nil)
             (f [metadata (reducible-rows is')])))))))
+
+(def unbounded-edn-serializer
+  "Unbounded edn serializer."
+  (let [eof      (Object.)
+        read-edn (fn read-edn [pbr]
+                   (edn/read {:eof eof, :readers *data-readers*} pbr))]
+    (reify
+      i/Ser
+      (-wrapped-output-stream [_ os _options]
+        (BufferedOutputStream. os))
+      (-add! [_ os obj]
+        (let [bytes (.getBytes (pr-str (walk/postwalk #(if (record? %) (into {} %) %) obj)))]
+          (.write os bytes 0 (count bytes))
+          (.write os (.getBytes " ") 0 (count (.getBytes " ")))
+          (.flush os)))
+      (-options [_] {})
+      (-name [_] "v3-unbounded-edn-serializer")
+
+      i/Des
+      (-metadata-and-reducible-rows [_ is f]
+        (with-open [rdr (io/reader is)
+                    pbr (java.io.PushbackReader. rdr)]
+          (let [metadata (read-edn pbr)]
+            (if (= metadata eof)
+              (f nil)
+              (f [metadata (reify clojure.lang.IReduceInit
+                             (reduce [_ rf init]
+                               (loop [acc init]
+                                 (let [row (read-edn pbr)]
+                                   (if (= row eof)
+                                     acc
+                                     (let [result (rf acc row)]
+                                       (if (reduced? result)
+                                         @result
+                                         (recur result))))))))]))))))))

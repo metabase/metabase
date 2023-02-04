@@ -103,6 +103,7 @@
       ([] (rf))
 
       ([result]
+       ;; more v3 breadcrumbs
        (add-object-to-cache! (if (map? result)
                                (m/dissoc-in result [:data :rows])
                                {}))
@@ -151,14 +152,15 @@
 
 (defn- maybe-reduce-cached-results
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
-  [ignore-cache? query-hash max-age-seconds rff context]
+  [serializer ignore-cache? query-hash max-age-seconds rff context]
   (try
     (or (when-not ignore-cache?
           (log/tracef "Looking for cached results for query with hash %s younger than %s\n"
                       (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
           (i/with-cached-results *backend* query-hash max-age-seconds [is]
+            ;; todo: grab version from cache results
             (when is
-              (i/with-reducible-deserialized-results cache.serdes/nippy-bounded-serializer [[metadata reducible-rows] is]
+              (i/with-reducible-deserialized-results serializer [[metadata reducible-rows] is]
                 (log/tracef "Found cached results. Version: %s" (pr-str (:cache-version metadata)))
                 (when (and (= (:cache-version metadata) cache-version)
                            reducible-rows)
@@ -183,16 +185,20 @@
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qp.util/query-hash query)
-        result     (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-ttl rff context)]
+        serializer #_cache.serdes/nippy-bounded-serializer cache.serdes/unbounded-edn-serializer
+        result     (maybe-reduce-cached-results #_(:ignore-cached-results? middleware)
+                                                serializer
+                                                false query-hash (or cache-ttl 10000) rff context)]
     (when (= result ::miss)
       (let [start-time-ms (System/currentTimeMillis)]
         (log/trace "Running query and saving cached results (if eligible)...")
         (let [reducef' (fn [rff context metadata rows]
                          (i/do-with-serialization
-                          cache.serdes/nippy-bounded-serializer
+                          serializer
                           (fn [in-fn result-fn]
-                            (binding [*in-fn*     in-fn
-                                      *result-fn* result-fn]
+                            (binding [*in-fn*      in-fn
+                                      *result-fn*  result-fn
+                                      *serializer* serializer]
                               (reducef rff context metadata rows)))))]
           (qp query
               (fn [metadata]
