@@ -17,9 +17,19 @@ export const DeleteDatabaseModalFooter = styled.div`
   }
 `;
 
-export const DeleteDatabaseModalSection = styled.div`
+interface DeleteDatabaseModalSectionProps {
+  isHidden?: boolean;
+}
+
+export const DeleteDatabaseModalSection = styled.div<DeleteDatabaseModalSectionProps>`
+  height: ${props => (props.isHidden ? 0 : "unset")};
+  opacity: ${props => (props.isHidden ? 0 : 1)};
+  padding: 0.125rem;
+  transition: all 350ms, opacity 200ms;
+  overflow: hidden;
+
   & + & {
-    margin-top: 1.5rem;
+    margin-top: 1.25rem;
   }
 `;
 
@@ -29,5 +39,6 @@ export const ErrorMessage = styled.div`
 `;
 
 export const DatabaseNameInputContainer = styled.div`
+  padding: 0.125rem 0;
   width: 300px;
 `;
