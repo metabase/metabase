@@ -132,21 +132,6 @@ describe("ObjectDetail utils", () => {
   });
 
   describe("getIdValue", () => {
-    it("should return the zoomed Row id if present", () => {
-      const id = getIdValue({
-        data: {
-          cols: [idCol, qtyCol, nameCol],
-          rows: [
-            [22, 33, "Giant Sprocket"],
-            [44, 55, "Tiny Sprocket"],
-          ],
-        },
-        zoomedRowID: 1,
-      });
-
-      expect(id).toBe(1);
-    });
-
     // this code should no longer be reachable now that we always reach object detail by zooming
     it("should return the primary key of the first row if now zoomed row id exists", () => {
       const id = getIdValue({
