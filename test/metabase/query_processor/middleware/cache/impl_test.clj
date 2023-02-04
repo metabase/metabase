@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
-   [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.middleware.cache-backend.serialization :as cache.serdes]
+   [metabase.query-processor.middleware.cache.impl :as impl]
    [potemkin.types :as p.types])
   (:import
    (java.io ByteArrayInputStream)))

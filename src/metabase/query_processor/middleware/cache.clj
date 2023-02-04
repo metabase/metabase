@@ -19,6 +19,7 @@
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.query-processor.middleware.cache-backend.serialization :as cache.serdes]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -56,7 +57,7 @@
   (* (public-settings/query-caching-min-ttl) 1000))
 
 (def ^:private ^:dynamic *in-fn*
-  "The `in-fn` provided by [[impl/do-with-serialization]]."
+  "The `in-fn` provided by [[i/do-with-serialization]]."
   nil)
 
 (defn- add-object-to-cache!
@@ -66,7 +67,7 @@
     (*in-fn* object)))
 
 (def ^:private ^:dynamic *result-fn*
-  "The `result-fn` provided by [[impl/do-with-serialization]]."
+  "The `result-fn` provided by [[i/do-with-serialization]]."
   nil)
 
 (defn- serialized-bytes []
@@ -89,7 +90,7 @@
           (purge! *backend*))))
     :done
     (catch Throwable e
-      (if (= (:type (ex-data e)) ::impl/max-bytes)
+      (if (= (:type (ex-data e)) ::cache.serdes/max-bytes)
         (log/debug e (trs "Not caching results: results are larger than {0} KB" (public-settings/query-caching-max-kb)))
         (log/error e (trs "Error saving query results to cache: {0}" (ex-message e)))))))
 
@@ -157,7 +158,7 @@
                       (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
           (i/with-cached-results *backend* query-hash max-age-seconds [is]
             (when is
-              (impl/with-reducible-deserialized-results impl/nippy-bounded-serializer [[metadata reducible-rows] is]
+              (i/with-reducible-deserialized-results cache.serdes/nippy-bounded-serializer [[metadata reducible-rows] is]
                 (log/tracef "Found cached results. Version: %s" (pr-str (:cache-version metadata)))
                 (when (and (= (:cache-version metadata) cache-version)
                            reducible-rows)
@@ -187,7 +188,8 @@
       (let [start-time-ms (System/currentTimeMillis)]
         (log/trace "Running query and saving cached results (if eligible)...")
         (let [reducef' (fn [rff context metadata rows]
-                         (impl/do-with-serialization
+                         (i/do-with-serialization
+                          cache.serdes/nippy-bounded-serializer
                           (fn [in-fn result-fn]
                             (binding [*in-fn*     in-fn
                                       *result-fn* result-fn]
