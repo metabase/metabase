@@ -32,6 +32,14 @@
     "Purge all cache entries older than `max-age-seconds`. Will be called periodically when this backend is in use.
   `max-age-seconds` may be floating-point."))
 
+(p.types/defprotocol+ Ser
+  (-wrapped-output-stream [_ os options])
+  (-add! [_ os obj])
+  (-options [_]))
+
+(p.types/defprotocol+ Des
+  (-metadata-and-reducible-rows [_ is f]))
+
 (defmacro with-cached-results
   "Macro version for consuming `cached-results` from a `backend`.
 

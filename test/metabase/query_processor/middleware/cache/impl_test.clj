@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [metabase.query-processor.middleware.cache.impl :as impl]
+   [metabase.query-processor.middleware.cache-backend.serialization :as cache.serdes]
    [potemkin.types :as p.types])
   (:import
    (java.io ByteArrayInputStream)))
@@ -17,35 +18,39 @@
 
 (defn deserialize
   "Deserialize objects serialized with `serialize-async` using reducing function `rf`."
-  ([^bytes bytea]
-   (deserialize bytea (fn [metadata]
-                        (fn
-                          ([] [metadata])
-                          ([acc] acc)
-                          ([acc row] (conj acc row))))))
+  ([serializer ^bytes bytea]
+   (deserialize serializer  bytea
+                (fn [metadata]
+                  (fn
+                    ([] [metadata])
+                    ([acc] acc)
+                    ([acc row] (conj acc row))))))
 
-  ([^bytes bytea rff]
+  ([serializer ^bytes bytea rff]
    (with-open [bis (ByteArrayInputStream. bytea)]
-     (impl/with-reducible-deserialized-results [[metadata rows] bis]
+     (impl/with-reducible-deserialized-results serializer [[metadata rows] bis]
        (when rows
          (let [rf (rff metadata)]
            (reduce rf (rf) rows)))))))
 
 (deftest e2e-test
-  (impl/do-with-serialization
-   (fn [in result]
-     (doseq [obj objects]
-       (is (= nil
-              (in obj))))
-     (let [val (result)]
-       (is (instance? (Class/forName "[B") val))
-       (is (= objects
-              (if (instance? Throwable val)
-                (throw val)
-                (deserialize val))))))))
+  (doseq [serializer [cache.serdes/nippy-bounded-serializer]]
+    (impl/do-with-serialization
+     serializer
+     (fn [in result]
+       (doseq [obj objects]
+         (is (= nil
+                (in obj))))
+       (let [val (result)]
+         (is (instance? (Class/forName "[B") val))
+         (is (= objects
+                (if (instance? Throwable val)
+                  (throw val)
+                  (deserialize serializer val)))))))))
 
 (deftest max-bytes-test
   (impl/do-with-serialization
+   cache.serdes/nippy-bounded-serializer
    (fn [in result]
      (doseq [obj objects]
        (is (= nil
