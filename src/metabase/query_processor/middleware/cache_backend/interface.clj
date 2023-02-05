@@ -28,7 +28,7 @@
 
   `max-age-seconds` may be floating-point. This method *must* return the result of `respond`.")
 
-  (save-results! [this ^bytes query-hash ^bytes results]
+  (save-results! [this ^bytes query-hash ^bytes results serializer-name]
     "Add a cache entry with the `results` of running query with byte array `query-hash`. This should replace any prior
   entries for `query-hash` and update the cache timestamp to the current system time.")
 
@@ -39,7 +39,8 @@
 (p.types/defprotocol+ Ser
   (-wrapped-output-stream [_ os options])
   (-add! [_ os obj])
-  (-options [_]))
+  (-options [_])
+  (-name [_]))
 
 (p.types/defprotocol+ Des
   (-metadata-and-reducible-rows [_ is f]))
@@ -53,8 +54,9 @@
   InputStream `is` will be `nil` if no cached results were available."
   {:style/indent 4}
   [backend query-hash max-age-seconds [is-binding] & body]
-  `(cached-results ~backend ~query-hash ~max-age-seconds (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream)]
-                                                           ~@body)))
+  `(cached-results ~backend ~query-hash ~max-age-seconds
+                   (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream)]
+                     ~@body)))
 
 (defmulti cache-backend
   "Return an instance of a cache backend, which is any object that implements `QueryProcessorCacheBackend`.
@@ -127,5 +129,6 @@
 
   `metadata` and `reducible-rows` will be `nil` if the data fetched from the input stream is invalid, from an older
   cache version, or otherwise unusable."
-  [serializer [metadata-rows-binding is] & body]
-  `(do-reducible-deserialized-results ~serializer ~is (fn [~metadata-rows-binding] ~@body)))
+  [serializer [metadata-rows-binding cache-info] & body]
+  `(do-reducible-deserialized-results ~serializer ~cache-info
+                                      (fn [~metadata-rows-binding] ~@body)))

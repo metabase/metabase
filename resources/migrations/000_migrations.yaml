@@ -14140,6 +14140,20 @@ databaseChangeLog:
             constraintName: fk_sandboxes_ref_permissions
             nullable: true
 
+  - changeSet:
+      id: v46.00-076
+      author: dpsutton
+      comment: Adds serialization name to cache table
+      changes:
+        - addColumn:
+            tableName: query_cache
+            columns:
+              - column:
+                  name: serializer
+                  type: ${text.type}
+                  remarks: 'The serializer used to serialize the cache results'
+                  defaultValue: 'v3-nippy-bounded-serializer'
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

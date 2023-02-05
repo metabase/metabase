@@ -25,7 +25,7 @@
   ;;
   ;; Since application DB can change at run time (during tests) it's not just a plain delay
   (let [f (memoize (fn [_db-type quoting-style]
-                     (first (sql/format {:select   [:results]
+                     (first (sql/format {:select   [:results :serializer]
                                          :from     [:query_cache]
                                          :where    [:and
                                                     [:= :query_hash [:raw "?"]]
@@ -65,7 +65,8 @@
       (if-not (.next rs)
         (respond nil)
         (with-open [is (.getBinaryStream rs 1)]
-          (respond is))))))
+          (respond {:results is
+                    :serializer (.getString rs 2)}))))))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
@@ -82,16 +83,18 @@
 (defn- save-results!
   "Save the `results` of query with `query-hash`, updating an existing QueryCache entry if one already exists, otherwise
   creating a new entry."
-  [^bytes query-hash ^bytes results]
+  [^bytes query-hash ^bytes results serializer-name]
   (log/debug (trs "Caching results for query with hash {0}." (pr-str (i/short-hex-hash query-hash))))
   (try
     (or (db/update-where! QueryCache {:query_hash query-hash}
           :updated_at (t/offset-date-time)
-          :results    results)
+          :results    results
+          :serializer serializer-name)
         (db/insert! QueryCache
           :updated_at (t/offset-date-time)
           :query_hash query-hash
-          :results    results))
+          :results    results
+          :serializer serializer-name))
     (catch Throwable e
       (log/error e (trs "Error saving query results to cache."))))
   nil)
@@ -102,8 +105,8 @@
     (cached-results [_ query-hash max-age-seconds respond]
       (cached-results query-hash max-age-seconds respond))
 
-    (save-results! [_ query-hash is]
-      (save-results! query-hash is)
+    (save-results! [_ query-hash is serializer-name]
+      (save-results! query-hash is serializer-name)
       nil)
 
     (purge-old-entries! [_ max-age-seconds]

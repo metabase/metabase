@@ -95,6 +95,7 @@
     (-add! [_ os obj]
       (freeze! os obj))
     (-options [_] {:max-bytes (* (public-settings/query-caching-max-kb) 1024)})
+    (-name [_] "v3-nippy-bounded-serializer")
 
     i/Des
     (-metadata-and-reducible-rows [_ is f]

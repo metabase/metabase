@@ -20,7 +20,6 @@
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache-backend.serialization :as cache.serdes]
-   [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]])
@@ -70,6 +69,10 @@
   "The `result-fn` provided by [[i/do-with-serialization]]."
   nil)
 
+(def ^:private ^:dynamic *serializer*
+  "The serializer used to serialize/deserialize cache results."
+  nil)
+
 (defn- serialized-bytes []
   (when *result-fn*
     (*result-fn*)))
@@ -80,12 +83,14 @@
   (log/info (trs "Caching results for next time for query with hash {0}."
                  (pr-str (i/short-hex-hash query-hash))) (u/emoji "💾"))
   (try
-    (let [bytez (serialized-bytes)]
+    (let [bytez (serialized-bytes)
+          serializer-name (when *serializer*
+                            (i/-name *serializer*))]
       (if-not (instance? (Class/forName "[B") bytez)
         (log/error (trs "Cannot cache results: expected byte array, got {0}" (class bytez)))
         (do
           (log/trace "Got serialized bytes; saving to cache backend")
-          (i/save-results! *backend* query-hash bytez)
+          (i/save-results! *backend* query-hash bytez serializer-name)
           (log/debug "Successfully cached results for query.")
           (purge! *backend*))))
     :done
@@ -152,22 +157,32 @@
 
 (defn- maybe-reduce-cached-results
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
-  [serializer ignore-cache? query-hash max-age-seconds rff context]
+  [ignore-cache? query-hash max-age-seconds rff context]
   (try
     (or (when-not ignore-cache?
           (log/tracef "Looking for cached results for query with hash %s younger than %s\n"
                       (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
-          (i/with-cached-results *backend* query-hash max-age-seconds [is]
+          (i/with-cached-results *backend* query-hash max-age-seconds [cache-info]
             ;; todo: grab version from cache results
-            (when is
-              (i/with-reducible-deserialized-results serializer [[metadata reducible-rows] is]
-                (log/tracef "Found cached results. Version: %s" (pr-str (:cache-version metadata)))
-                (when (and (= (:cache-version metadata) cache-version)
-                           reducible-rows)
-                  (log/tracef "Reducing cached rows...")
-                  (qp.context/reducef (cached-results-rff rff) context metadata reducible-rows)
-                  (log/tracef "All cached rows reduced")
-                  ::ok)))))
+            (when (:results cache-info)
+              (let [serializer (case (:serializer cache-info)
+                                 "v3-unbounded-edn-serializer"
+                                 cache.serdes/unbounded-edn-serializer
+
+                                 "v3-nippy-bounded-serializer"
+                                 cache.serdes/nippy-bounded-serializer
+                                 (throw (ex-info "Don't recorgnize serializer" {})))]
+                (i/with-reducible-deserialized-results serializer [[metadata reducible-rows]
+                                                                   (:results cache-info)]
+                  (log/tracef "Found cached results. Version: %s Serialized: %s"
+                              (pr-str (:cache-version metadata))
+                              (:serializer cache-info))
+                  (when (and (= (:cache-version metadata) cache-version)
+                             reducible-rows)
+                    (log/tracef "Reducing cached rows...")
+                    (qp.context/reducef (cached-results-rff rff) context metadata reducible-rows)
+                    (log/tracef "All cached rows reduced")
+                    ::ok))))))
         ::miss)
     (catch EofException _
       (log/debug (trs "Request is closed; no one to return cached results to"))

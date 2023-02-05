@@ -17,8 +17,9 @@
    [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.query-processor.middleware.cache-backend.interface-test :as interface-test]
+   [metabase.query-processor.middleware.cache-backend.serialization :as cache.serdes]
    [metabase.query-processor.middleware.cache.impl :as impl]
-   [metabase.query-processor.middleware.cache.impl-test :as impl-test]
    [metabase.query-processor.middleware.process-userland-query
     :as process-userland-query]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -66,7 +67,7 @@
       CacheContents
       (contents [_]
         (into {} (for [[k v] store]
-                   [k (impl-test/deserialize v)])))
+                   [k (interface-test/deserialize cache.serdes/nippy-bounded-serializer  v)])))
 
       i/CacheBackend
       (cached-results [this query-hash max-age-seconds respond]
@@ -79,10 +80,12 @@
                                     (when (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds)))
                                       results))]
             (with-open [is (java.io.ByteArrayInputStream. results)]
-              (respond is))
+              (respond {:results is
+                        :serializer #_"v3-nippy-bounded-serializer"
+                        "v3-unbounded-edn-serializer"}))
             (respond nil))))
 
-      (save-results! [this query-hash results]
+      (save-results! [this query-hash results serializer-name]
         (let [hex-hash (codecs/bytes->hex query-hash)]
           (swap! store assoc hex-hash {:results results
                                        :created (t/instant)})
@@ -281,7 +284,8 @@
           (is (= true
                  (i/cached-results cache/*backend* query-hash 100
                    some?))))
-        (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
+        ;; todo: fixme "fake-name"
+        (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]) "fake-name")
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
                  (run-query))))))))
@@ -391,7 +395,9 @@
                          :cache-ttl 100)]
         (with-open [os (java.io.ByteArrayOutputStream.)]
           (qp/process-query query (qp.streaming/streaming-context :csv os))
-          (mt/wait-for-result save-chan))
+          (let [response (mt/wait-for-result save-chan 2000)]
+            (when (and (keyword? response) (= (name response) "timed-out"))
+              (throw (ex-info "Timed out populating cache with csv" {})))))
         (is (= true
                (:cached (qp/process-query query)))
             "Results should be cached")

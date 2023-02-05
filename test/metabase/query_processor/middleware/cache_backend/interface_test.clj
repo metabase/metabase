@@ -1,9 +1,9 @@
-(ns metabase.query-processor.middleware.cache.impl-test
+(ns metabase.query-processor.middleware.cache-backend.interface-test
   (:require
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
+   [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache-backend.serialization :as cache.serdes]
-   [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.test :as mt]
    [potemkin.types :as p.types])
   (:import
@@ -29,7 +29,7 @@
 
   ([serializer ^bytes bytea rff]
    (with-open [bis (ByteArrayInputStream. bytea)]
-     (impl/with-reducible-deserialized-results serializer [[metadata rows] bis]
+     (i/with-reducible-deserialized-results serializer [[metadata rows] bis]
        (when rows
          (let [rf (rff metadata)]
            (reduce rf (rf) rows)))))))
@@ -37,7 +37,7 @@
 (deftest e2e-test
   (doseq [serializer [cache.serdes/nippy-bounded-serializer
                       cache.serdes/unbounded-edn-serializer]]
-    (impl/do-with-serialization
+    (i/do-with-serialization
      serializer
      (fn [in result]
        (doseq [obj objects]
@@ -53,7 +53,7 @@
                   (deserialize serializer val)))))))))
 
 (deftest max-bytes-test
-  (impl/do-with-serialization
+  (i/do-with-serialization
    cache.serdes/nippy-bounded-serializer
    (fn [in result]
      (doseq [obj objects]
