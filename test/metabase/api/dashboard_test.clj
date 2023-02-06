@@ -1503,7 +1503,7 @@
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
                                                  (format "dashboard/%d/public_link" (u/the-id dashboard)))]
           (is (db/exists? Dashboard :id (u/the-id dashboard), :public_uuid uuid))
-          (testing "Test that if a Dashboard has already been shared we reüse the existing UUID"
+          (testing "Test that if a Dashboard has already been shared we reuse the existing UUID"
             (is (= uuid
                    (:uuid (mt/user-http-request :crowberto :post 200
                                                 (format "dashboard/%d/public_link" (u/the-id dashboard))))))))))
