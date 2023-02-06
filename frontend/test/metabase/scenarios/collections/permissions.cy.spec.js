@@ -7,6 +7,7 @@ import {
   navigationSidebar,
   openNativeEditor,
   openCollectionMenu,
+  modal,
 } from "__support__/e2e/helpers";
 
 import { USERS } from "__support__/e2e/cypress_data";
@@ -71,10 +72,10 @@ describe("collection permissions", () => {
                   cy.findByTestId("pinned-items").should("not.exist");
 
                   pinItem("Orders in a dashboard");
-                  unpinnedItemsLeft(3);
+                  unpinnedItemsLeft(5);
 
                   pinItem("Orders, Count");
-                  unpinnedItemsLeft(2);
+                  unpinnedItemsLeft(4);
 
                   // Should see "pinned items" and items should be in that section
                   cy.findByTestId("pinned-items").within(() => {
@@ -386,9 +387,12 @@ describe("collection permissions", () => {
                 cy.findByText("Dashboard").click();
 
                 // Coming from the root collection, the initial offered collection will be "Our analytics" (read-only access)
-                cy.findByText(
-                  `${first_name} ${last_name}'s Personal Collection`,
-                ).click();
+                modal().within(() => {
+                  cy.findByText(
+                    `${first_name} ${last_name}'s Personal Collection`,
+                  ).click();
+                });
+
                 popover().within(() => {
                   cy.findByText("My personal collection");
                   // Test will fail on this step first
@@ -435,7 +439,8 @@ function pinItem(item) {
 }
 
 function exposeChildrenFor(collectionName) {
-  cy.findByText(collectionName)
+  navigationSidebar()
+    .findByText(collectionName)
     .parentsUntil("[data-testid=sidebar-collection-link-root]")
     .find(".Icon-chevronright")
     .eq(0) // there may be more nested icons, but we need the top level one
