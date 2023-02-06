@@ -695,7 +695,7 @@ export class UnconnectedDataSelector extends Component {
       },
       [FIELD_STEP]: () => {
         return Promise.all([
-          loadersForSteps[FIELD_STEP](),
+          loadersForSteps[TABLE_STEP](),
           ...(this.state.selectedTableId != null
             ? [this.props.fetchFields(this.state.selectedTableId)]
             : []),
