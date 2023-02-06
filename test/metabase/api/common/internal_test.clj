@@ -71,73 +71,64 @@
 
 (deftest defendpoint-test
   (let [server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})
-        port (.. server getURI getPort)
-        post! (fn [route body]
-                (http/post (str "http://localhost:" port route)
-                           {:throw-exceptions false
-                            :accept :json
-                            :as :json
-                            :coerce :always
-                            :body (json/generate-string body)}))]
+        port   (.. server getURI getPort)
+        post!  (fn [route body]
+                 (http/post (str "http://localhost:" port route)
+                            {:throw-exceptions false
+                             :accept           :json
+                             :as               :json
+                             :coerce           :always
+                             :body             (json/generate-string body)}))]
     (is (= {:a 1 :b 2} (:body (post! "/post/any" {:a 1 :b 2}))))
 
     (is (= {:id 1} (:body (post! "/post/id-int" {:id 1}))))
-    (is (= {:errors {:id "integer"},
+    (is (= {:errors          {:id "integer"},
             :specific-errors {:id ["should be an int"]}}
            (:body (post! "/post/id-int" {:id "1"}))))
 
-    (is (= {:id "myid"
-            :tags ["abc"]
-            :address {:street "abc" :city "sdasd" :zip 2999 :lonlat [0.0 0.0]}}
-           (:body (post! "/post/test-address"
-                         {:id "myid"
-                          :tags ["abc"]
-                          :address {:street "abc"
-                                    :city "sdasd"
-                                    :zip 2999
-                                    :lonlat [0.0 0.0]}}))))
-
-    (mt/with-log-level :warn
+    (mt/with-log-level [metabase.api.common :warn]
+      (is (= {:id      "myid"
+              :tags    ["abc"]
+              :address {:street "abc" :city "sdasd" :zip 2999 :lonlat [0.0 0.0]}}
+             (:body (post! "/post/test-address"
+                           {:id      "myid"
+                            :tags    ["abc"]
+                            :address {:street "abc"
+                                      :city   "sdasd"
+                                      :zip    2999
+                                      :lonlat [0.0 0.0]}}))))
       (is (some (fn [{message :msg, :as entry}]
                   (when (str/includes? (str message) "Unexpected parameters")
                     entry))
-                (mb.logger/messages))
-          (post! "/post/test-address"
-                 {:id         "myid"
-                  :tags       ["abc"]
-                  :extraneous "parameter"
-                  :address    {:street "abc"
-                               :city "sdasd"
-                               :zip 2999
-                               :lonlat [0.0 0.0]}})))
+                (mb.logger/messages))))
 
     (is (= {:errors
             {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
-            :specific-errors {:address {:id ["missing required key"],
-                                        :tags ["missing required key"],
+            :specific-errors {:address {:id      ["missing required key"],
+                                        :tags    ["missing required key"],
                                         :address ["missing required key"]}}}
            (:body (post! "/post/test-address" {:x "1"}))))
 
     (is (= {:errors
             {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
             :specific-errors {:address
-                              {:id ["should be a string"]
-                               :tags ["invalid type"]
+                              {:id      ["should be a string"]
+                               :tags    ["invalid type"]
                                :address {:street ["missing required key"]
-                                         :zip ["should be an int"]}}}}
-           (:body (post! "/post/test-address" {:id 1288
-                                               :tags "a,b,c"
+                                         :zip    ["should be an int"]}}}}
+           (:body (post! "/post/test-address" {:id      1288
+                                               :tags    "a,b,c"
                                                :address {:streeqt "abc"
-                                                         :city "sdasd"
-                                                         :zip "12342"
-                                                         :lonlat [0.0 0.0]}}))))
+                                                         :city    "sdasd"
+                                                         :zip     "12342"
+                                                         :lonlat  [0.0 0.0]}}))))
 
     (is (= {:errors
             {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>} with no other keys>} with no other keys"},
             :specific-errors {:address
                               {:address ["missing required key"],
-                               :a ["disallowed key"],
-                               :b ["disallowed key"]}}}
+                               :a       ["disallowed key"],
+                               :b       ["disallowed key"]}}}
            (:body (post! "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2}))))))
 
 (deftest route-fn-name-test
