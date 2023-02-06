@@ -12,34 +12,34 @@ import Select from "metabase/core/components/Select";
 import { isDateTimeField } from "metabase-lib/queries/utils/field-ref";
 import Join from "metabase-lib/queries/structured/Join";
 
-import { NotebookCellItem, NotebookCellAdd } from "../NotebookCell";
+import { NotebookCellAdd, NotebookCellItem } from "../NotebookCell";
 import {
-  FieldsPickerIcon,
   FieldPickerContentContainer,
   FIELDS_PICKER_STYLES,
+  FieldsPickerIcon,
 } from "../FieldsPickerIcon";
 import FieldsPicker from "./FieldsPicker";
 import {
   DimensionContainer,
   DimensionSourceName,
-  JoinStepRoot,
-  JoinClausesContainer,
-  JoinClauseRoot,
   JoinClauseContainer,
-  JoinStrategyIcon,
-  JoinTypeSelectRoot,
-  JoinTypeOptionRoot,
-  JoinTypeIcon,
-  JoinDimensionControlsContainer,
-  JoinWhereConditionLabelContainer,
-  JoinWhereConditionLabel,
+  JoinClauseRoot,
+  JoinClausesContainer,
   JoinConditionLabel,
+  JoinDimensionControlsContainer,
+  JoinOperatorButton,
+  JoinStepRoot,
+  JoinStrategyIcon,
+  JoinTypeIcon,
+  JoinTypeOptionRoot,
+  JoinTypeSelectRoot,
+  JoinWhereConditionLabel,
+  JoinWhereConditionLabelContainer,
+  PrimaryJoinCell,
   RemoveDimensionIcon,
   RemoveJoinIcon,
   Row,
-  PrimaryJoinCell,
   SecondaryJoinCell,
-  JoinOperatorButton,
 } from "./JoinStep.styled";
 
 const stepShape = {
@@ -419,7 +419,10 @@ function JoinTablePicker({
     query.database().savedQuestionsDatabase(),
   ].filter(Boolean);
 
-  const sourceDataBucketId = getDataBucketId(sourceQuestion);
+  const sourceDataBucketId =
+    sourceQuestion != null && sourceQuestion.isDataset()
+      ? DATA_BUCKET.DATASETS
+      : undefined;
   const hasSourceTable = join.joinSourceTableId() != null;
 
   function onChange(tableId) {
@@ -466,16 +469,6 @@ function JoinTablePicker({
       />
     </NotebookCellItem>
   );
-}
-
-function getDataBucketId(question) {
-  if (!question) {
-    return undefined;
-  } else if (question.isDataset()) {
-    return DATA_BUCKET.DATASETS;
-  } else {
-    return DATA_BUCKET.SAVED_QUESTIONS;
-  }
 }
 
 JoinTablePicker.propTypes = joinTablePickerPropTypes;
