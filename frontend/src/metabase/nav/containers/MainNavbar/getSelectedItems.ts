@@ -3,7 +3,6 @@ import * as Urls from "metabase/lib/urls";
 import { coerceCollectionId } from "metabase/collections/utils";
 
 import type { Card, Dashboard } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
 
 import { SelectedItem } from "./types";
 
@@ -19,8 +18,28 @@ type Opts = {
 
 const MODEL_DETAIL_PAGE_PATTERN = /\/model\/.*\/detail.*/;
 
-export function isModelDetailPathname(pathname: string): boolean {
+function isCollectionPath(pathname: string): boolean {
+  return pathname.startsWith("/collection");
+}
+
+function isUsersCollectionPath(pathname: string): boolean {
+  return pathname.startsWith("/collection/users");
+}
+
+function isQuestionPath(pathname: string): boolean {
+  return pathname.startsWith("/question");
+}
+
+function isModelPath(pathname: string): boolean {
+  return pathname.startsWith("/model");
+}
+
+export function isModelDetailPath(pathname: string): boolean {
   return MODEL_DETAIL_PAGE_PATTERN.test(pathname);
+}
+
+function isDashboardPath(pathname: string): boolean {
+  return pathname.startsWith("/dashboard");
 }
 
 function getSelectedItems({
@@ -31,22 +50,17 @@ function getSelectedItems({
 }: Opts): SelectedItem[] {
   const { slug } = params;
 
-  const isCollectionPath = pathname.startsWith("/collection");
-  const isUsersCollectionPath = pathname.startsWith("/collection/users");
-  const isQuestionPath = pathname.startsWith("/question");
-  const isModelPath = pathname.startsWith("/model");
-  const isModelDetailPath = isModelDetailPathname(pathname);
-  const isDashboardPath = pathname.startsWith("/dashboard");
-
-  if (isCollectionPath) {
+  if (isCollectionPath(pathname)) {
     return [
       {
-        id: isUsersCollectionPath ? "users" : Urls.extractCollectionId(slug),
+        id: isUsersCollectionPath(pathname)
+          ? "users"
+          : Urls.extractCollectionId(slug),
         type: "collection",
       },
     ];
   }
-  if (isDashboardPath && dashboard) {
+  if (isDashboardPath(pathname) && dashboard) {
     return [
       {
         id: dashboard.id,
@@ -58,7 +72,7 @@ function getSelectedItems({
       },
     ];
   }
-  if ((isQuestionPath || isModelPath) && card) {
+  if ((isQuestionPath(pathname) || isModelPath(pathname)) && card) {
     return [
       {
         id: card.id,
@@ -70,7 +84,7 @@ function getSelectedItems({
       },
     ];
   }
-  if (isModelDetailPath) {
+  if (isModelDetailPath(pathname)) {
     return [
       {
         id: Urls.extractEntityId(slug),

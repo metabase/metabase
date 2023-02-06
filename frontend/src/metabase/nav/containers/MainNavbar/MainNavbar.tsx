@@ -22,7 +22,7 @@ import {
   MainNavbarDispatchProps,
   SelectedItem,
 } from "./types";
-import getSelectedItems, { isModelDetailPathname } from "./getSelectedItems";
+import getSelectedItems, { isModelDetailPath } from "./getSelectedItems";
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 
 interface StateProps {
@@ -45,7 +45,7 @@ function mapStateToProps(
   state: State,
   { location, params }: MainNavbarOwnProps,
 ) {
-  const isModelDetailPage = isModelDetailPathname(location.pathname);
+  const isModelDetailPage = isModelDetailPath(location.pathname);
   return {
     card: isModelDetailPage
       ? getModelDetailPageCard(state, params)
