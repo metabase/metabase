@@ -27,14 +27,13 @@ describe("scenarios > collection defaults", () => {
     it("should navigate effortlessly through collections tree", () => {
       visitRootCollection();
 
-      cy.log(
-        "should allow a user to expand a collection without navigating to it",
-      );
-
-      // 1. click on the chevron to expand the sub collection
-      displaySidebarChildOf("First collection");
-
       navigationSidebar().within(() => {
+        cy.log(
+          "should allow a user to expand a collection without navigating to it",
+        );
+
+        // 1. click on the chevron to expand the sub collection
+        displaySidebarChildOf("First collection");
         // 2. I should see the nested collection name
         cy.findByText("Second collection");
         cy.findByText("Third collection").should("not.exist");
@@ -98,7 +97,9 @@ describe("scenarios > collection defaults", () => {
       });
 
       // 1. Expand so that deeply nested collection is showing
-      displaySidebarChildOf("Fourth collection");
+      navigationSidebar().within(() => {
+        displaySidebarChildOf("Fourth collection");
+      });
 
       // 2. Ensure we show the helpful tooltip with the full (long) collection name
       cy.findByText("Fifth collection with a very long name").realHover();
