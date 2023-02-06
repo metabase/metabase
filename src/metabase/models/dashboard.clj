@@ -501,7 +501,8 @@
                 card-id (cond-> (set (keep :card_id parameter_mappings))
                           card_id (conj card_id))]
             ["Card" card-id]))
-     (set (for [{:keys [action_id]} dashcards]
+     (set (for [{:keys [action_id]} dashcards
+                :when action_id]
             ["Action" action_id]))
       ;; parameter with values_source_type = "card" will depend on a card
      (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
