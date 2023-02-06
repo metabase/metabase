@@ -13,6 +13,7 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -257,9 +258,17 @@
   [field unit]
   (if (= unit :default)
     field
-    (let [column field]
+    (let [supports-dateTrunc? (-> (get-mongo-version)
+                                  :semantic-version
+                                  (driver.u/semantic-version-gte [5]))
+          column field]
       (letfn [(truncate [unit]
-                (truncate-to-resolution column unit))]
+                (if supports-dateTrunc?
+                  {:$dateTrunc {:date column
+                                :unit (name unit)
+                                :timezone (qp.timezone/results-timezone-id)
+                                :startOfWeek (name (public-settings/start-of-week))}}
+                  (truncate-to-resolution column unit)))]
         (case unit
           :default          column
           :second-of-minute (extract $second column)
@@ -271,9 +280,14 @@
           :day-of-week      (day-of-week column)
           :day-of-month     (extract $dayOfMonth column)
           :day-of-year      (extract $dayOfYear column)
-          :week             (truncate-to-resolution (week column) :day)
-          :week-of-year     {:$ceil {$divide [{$dayOfYear (week column)}
-                                              7.0]}}
+          :week             (if supports-dateTrunc?
+                              (truncate :week)
+                              (truncate-to-resolution (week column) :day))
+          :week-of-year     (let [week-start (if supports-dateTrunc?
+                                               (truncate :week)
+                                               (week column))]
+                              {:$ceil {$divide [{$dayOfYear week-start}
+                                                7.0]}})
           :week-of-year-iso {:$isoWeek column}
           :week-of-year-us  (week-of-year column :us)
           :week-of-year-instance  (week-of-year column :instance)
@@ -283,19 +297,17 @@
           ;; stringify it as yyyy-MM Subtracting (($dayOfYear(column) % 91) - 3) days will put you in correct month.
           ;; Trust me.
           :quarter
-          (mongo-let [#_:clj-kondo/ignore parts {:$dateToParts {:date column :timezone (qp.timezone/results-timezone-id)}}]
-            {:$dateFromParts {:year  :$$parts.year
-                              :month {$subtract [:$$parts.month
-                                                 {$mod [{$add [:$$parts.month 2]}
-                                                        3]}]}
-                              :timezone (qp.timezone/results-timezone-id)}})
+          (if supports-dateTrunc?
+            (truncate :quarter)
+            (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (qp.timezone/results-timezone-id)}}]
+              {:$dateFromParts {:year  :$$parts.year
+                                :month {$subtract [:$$parts.month
+                                                   {$mod [{$add [:$$parts.month 2]}
+                                                          3]}]}
+                                :timezone (qp.timezone/results-timezone-id)}}))
 
           :quarter-of-year
-          (mongo-let [month {$month {:date column :timezone (qp.timezone/results-timezone-id)}}]
-            {:$toInt {$divide [{$subtract [{$add [month 2]}
-                                           {$mod [{$add [month 2]}
-                                                  3]}]}
-                               3]}})
+          {:$toInt {:$ceil {$divide [{$month {:date column :timezone (qp.timezone/results-timezone-id)}} 3.0]}}}
 
           :year
           (truncate :year)

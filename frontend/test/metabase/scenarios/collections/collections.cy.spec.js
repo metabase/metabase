@@ -97,7 +97,9 @@ describe("scenarios > collection defaults", () => {
       });
 
       // 1. Expand so that deeply nested collection is showing
-      displaySidebarChildOf("Fourth collection");
+      navigationSidebar().within(() => {
+        displaySidebarChildOf("Fourth collection");
+      });
 
       // 2. Ensure we show the helpful tooltip with the full (long) collection name
       cy.findByText("Fifth collection with a very long name").realHover();
@@ -402,7 +404,7 @@ describe("scenarios > collection defaults", () => {
             cy.findByRole("checkbox");
             cy.icon("dash").click({ force: true });
             cy.icon("dash").should("not.exist");
-            cy.findByText("4 items selected");
+            cy.findByText("6 items selected");
 
             // Deselect all
             cy.icon("check").click({ force: true });
@@ -537,9 +539,11 @@ function moveOpenedCollectionTo(newParent) {
 
   cy.findAllByTestId("item-picker-item").contains(newParent).click();
 
-  cy.button("Move").click();
+  modal().within(() => {
+    cy.button("Move").click();
+  });
   // Make sure modal closed
-  cy.button("Move").should("not.exist");
+  modal().should("not.exist");
 }
 
 function dragAndDrop(subjectAlias, targetAlias) {

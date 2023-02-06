@@ -68,6 +68,9 @@
                                            [:field "date-field"]
                                            [:absolute-datetime date]]))))))))
 
+(defn- date-arithmetic-supported? []
+  (driver/database-supports? :mongo :date-arithmetics (mt/db)))
+
 (deftest no-initial-projection-test
   (mt/test-driver :mongo
     (testing "Don't need to create initial projections anymore (#4216)"
@@ -90,29 +93,39 @@
                        :filter      [:time-interval $datetime :last :month]}))))
 
             (testing "should still work even with bucketing bucketing"
-              (let [query (mt/with-everything-store
+              (let [tz (qp.timezone/results-timezone-id :mongo mt/db)
+                    query (mt/with-everything-store
                             (qp/compile
                              (mt/mbql-query attempts
-                               {:aggregation [[:count]]
-                                :breakout    [[:field %datetime {:temporal-unit :month}]
-                                              [:field %datetime {:temporal-unit :day}]]
-                                :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
+                                            {:aggregation [[:count]]
+                                             :breakout    [[:field %datetime {:temporal-unit :month}]
+                                                           [:field %datetime {:temporal-unit :day}]]
+                                             :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
                 (is (= {:projections ["datetime~~~month" "datetime~~~day" "count"]
                         :query       [{"$match"
                                        {"$and"
                                         [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
                                          {:$expr {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
-                                      {"$group" {"_id"   {"datetime~~~month" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                   :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
-                                                                                     :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                             :month "$$parts.month"
-                                                                                                             :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}},
-                                                          "datetime~~~day"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                   :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
-                                                                                     :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                             :month "$$parts.month"
-                                                                                                             :day   "$$parts.day"
-                                                                                                             :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}}
+                                      {"$group" {"_id"   (if (date-arithmetic-supported?)
+                                                           {"datetime~~~month" {:$dateTrunc {:date "$datetime"
+                                                                                             :startOfWeek "sunday"
+                                                                                             :timezone tz
+                                                                                             :unit "month"}}
+                                                            "datetime~~~day" {:$dateTrunc {:date "$datetime"
+                                                                                           :startOfWeek "sunday"
+                                                                                           :timezone tz
+                                                                                           :unit "day"}}}
+                                                           {"datetime~~~month" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
+                                                                                                                     :timezone tz}}}
+                                                                                       :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                               :month "$$parts.month"
+                                                                                                               :timezone tz}}}}
+                                                            "datetime~~~day"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
+                                                                                                                     :timezone tz}}}
+                                                                                       :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                               :month "$$parts.month"
+                                                                                                               :day   "$$parts.day"
+                                                                                                               :timezone tz}}}}})
                                                  "count" {"$sum" 1}}}
                                       {"$sort" {"_id" 1}}
                                       {"$project" {"_id"              false
@@ -333,11 +346,19 @@
                   {"$group"
                    {"_id"
                     {"date~~~day"
-                     {:$let
-                      {:vars {:parts {:$dateToParts {:date "$date"
-                                                     :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}},
-                       :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month", :day "$$parts.day"
-                                               :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}}}}
+                     (let [tz (qp.timezone/results-timezone-id :mongo mt/db)]
+                       (if (date-arithmetic-supported?)
+                         {:$dateTrunc {:date "$date"
+                                       :startOfWeek "sunday"
+                                       :timezone tz
+                                       :unit "day"}}
+                         {:$let
+                          {:vars {:parts {:$dateToParts {:date "$date"
+                                                         :timezone tz}}}
+                           :in   {:$dateFromParts {:year "$$parts.year"
+                                                   :month "$$parts.month"
+                                                   :day "$$parts.day"
+                                                   :timezone tz}}}}))}}}
                   {"$sort" {"_id" 1}}
                   {"$project" {"_id" false, "date~~~day" "$_id.date~~~day"}}
                   {"$sort" {"date~~~day" 1}}

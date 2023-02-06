@@ -461,6 +461,7 @@
                                                               (mt/id :people :source)]})
                            :values set)]
             (is (set/subset? #{["Doohickey"] ["Facebook"]} values))))
+
         (testing "search"
           (let [values (-> (mt/user-http-request :rasta :post 200
                                                  "dataset/parameter/search/g"
@@ -470,4 +471,13 @@
                            :values set)]
             ;; results matched on g, does not include Doohickey (which is in above results)
             (is (set/subset? #{["Widget"] ["Google"]} values))
-            (is (not (contains? values ["Doohickey"])))))))))
+            (is (not (contains? values ["Doohickey"])))))
+
+        (testing "deduplicates the values returned from multiple fields"
+          (let [values (-> (mt/user-http-request :rasta :post 200
+                                                 "dataset/parameter/values"
+                                                 {:parameter parameter
+                                                  :field_ids [(mt/id :people :source)
+                                                              (mt/id :people :source)]})
+                           :values)]
+            (is (= [["Twitter"] ["Organic"] ["Affiliate"] ["Google"] ["Facebook"]] values))))))))
