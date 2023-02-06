@@ -17,7 +17,7 @@
    string?
    (mu/with-api-error-message
      [:fn #(http-action/apply-json-query {} %)]
-     (deferred-tru "must be a valid json-query, something like '.item.title'"))])
+     (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
 
 (def ^:private supported-action-type
   (mu/with-api-error-message
