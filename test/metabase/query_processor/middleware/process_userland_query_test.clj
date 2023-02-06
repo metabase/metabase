@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.events :as events]
@@ -10,17 +11,23 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (defn- do-with-query-execution [query run]
-  (mt/with-open-channels [save-chan (a/promise-chan)]
-    (with-redefs [process-userland-query/save-query-execution!* (partial a/>!! save-chan)]
-      (run
-        (fn qe-result* []
-          (let [qe (mt/wait-for-result save-chan)]
-            (cond-> qe
-              (:running_time qe) (update :running_time int?)
-              (:hash qe)         (update :hash (fn [^bytes a-hash]
-                                                 (when a-hash
-                                                   (java.util.Arrays/equals a-hash (qp.util/query-hash query))))))))))))
+  (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
+    (let [original-hash (qp.util/query-hash query)
+          result        (promise)]
+      (with-redefs [process-userland-query/save-query-execution!* (fn [query-execution]
+                                                                    (when-let [^bytes qe-hash (:hash query-execution)]
+                                                                      (when (java.util.Arrays/equals qe-hash original-hash)
+                                                                        (deliver result query-execution))))]
+        (run
+          (fn qe-result* []
+            (let [qe (deref result 1000 ::timed-out)]
+              (cond-> qe
+                (:running_time qe) (update :running_time int?)
+                (:hash qe)         (update :hash (fn [^bytes a-hash]
+                                                   (some-> a-hash codecs/bytes->hex)))))))))))
 
 (defmacro ^:private with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
@@ -30,11 +37,10 @@
    (process-userland-query query nil))
 
   ([query context]
-   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
-     (let [result (mt/test-qp-middleware process-userland-query/process-userland-query query {} [] context)]
-       (if-not (map? result)
-         result
-         (update (:metadata result) :running_time int?))))))
+   (let [result (mt/test-qp-middleware process-userland-query/process-userland-query query {} [] context)]
+     (if-not (map? result)
+       result
+       (update (:metadata result) :running_time int?)))))
 
 (deftest success-test
   (let [query {:query? true}]
@@ -49,8 +55,8 @@
               :context                nil
               :running_time           true}
              (process-userland-query query))
-          "Result should have query execution info ")
-      (is (= {:hash         true
+          "Result should have query execution info")
+      (is (= {:hash         "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99"
               :database_id  nil
               :result_rows  0
               :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
