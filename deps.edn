@@ -4,7 +4,9 @@
  ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
  ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- {amalloy/ring-buffer                       {:mvn/version "1.3.1"               ; fixed length queue implementation, used in log buffering
+ {com.hyperfiddle/rcf {:mvn/version "20220926-202227"}} ;; nix me
+
+  amalloy/ring-buffer                       {:mvn/version "1.3.1"               ; fixed length queue implementation, used in log buffering
                                              :exclusions  [org.clojure/clojure
                                                            org.clojure/clojurescript]}
   amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
