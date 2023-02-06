@@ -1,14 +1,10 @@
 ---
-title: PostgreSQL
-redirect_from:
-  - /docs/latest/administration-guide/databases/postgresql
+title: SparkSQL
 ---
 
-# PostgreSQL
+# SparkSQL
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
-
-Fill out the fields for that database, and click **Save changes** at the bottom.
 
 ## Settings
 
@@ -24,11 +20,7 @@ Your database's IP address, or its domain name (e.g., esc.mydatabase.com).
 
 ### Port
 
-The database port. E.g., 5432.
-
-### Database name
-
-The name of the database you're connecting to.
+The database port. E.g., 10000
 
 ### Username
 
@@ -38,78 +30,9 @@ The database username for the account that you want to use to connect to your da
 
 The password for the username that you use to connect to the database.
 
-### Schemas
-
-You can specify which schemas you want to sync and scan. Options are:
-
-- All
-- Only these...
-- All except...
-
-For the **Only these** and **All except** options, you can input a comma-separated list of values to tell Metabase which schemas you want to include (or exclude). For example:
-
-```
-foo,bar,baz
-```
-
-You can use the `*` wildcard to match multiple schemas.
-
-Let's say you have three schemas: foo, bar, and baz.
-
-- If you have **Only these...** set, and enter the string `b*`, you'll sync with bar and baz.
-- If you have **All except...** set, and enter the string `b*`, you'll just sync foo.
-
-Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
-
-### Use a secure connection (SSL)
-
-Metabase automatically tries to connect to databases with SSL first, then without if that doesn't work. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we highly recommend keeping SSL turned on to keep your data secure.
-
-#### SSL Mode
-
-PostgreSQL databases support different levels of security with their connections, with different levels of overhead.
-
-SSL Mode options include:
-
-- allow
-- prefer
-- require
-- verify-ca
-- verify-full
-
-See the PostgreSQL docs for a table about the different [SSL Modes](https://jdbc.postgresql.org/documentation/ssl/#configuring-the-client), and select the option that works for you.
-
-#### SSL root certificate (PEM)
-
-If you set the SSL Mode to either "verify-ca" or "verify-full", you'll need to specify a root certificate (PEM). You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
-
 ### Use an SSH tunnel
 
 See our [guide to SSH tunneling](../ssh-tunnel.md).
-
-### Authenticate client certificate
-
-Toggle on to bring up client certificate options.
-
-#### SSL Client Certificate (PEM)
-
-You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
-
-#### SSL Client Key (PKCS-8/DER)
-
-Again, you have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate. You'll also need to input your **SSL Client Key Password**.
-
-The private key must be PKCS8 and stored in DER format.
-
-If you instead have a PEM SSL client key, you can convert that key to the PKCS-8/DER format using [openssl](https://www.openssl.org/). The command would look something like:
-
-```
-openssl pkcs8 -topk8 -inform PEM -outform DER -in client-key.pem -out client-key.pk8 -nocrypt
-```
-
-### Unfold JSON Columns
-
-In some databases, Metabase can unfold JSON columns into component fields to yield a table where each JSON key becomes a column. JSON unfolding is on by default, but you can turn off JSON folding if performance is slow.
 
 ### Additional JDBC connection string options
 
@@ -132,7 +55,7 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll see t
 - **Scan** sets the frequency of the [sync query](../connecting.md#how-database-syncs-work) to hourly (default) or daily.
 - **at** sets the time when your sync query will run against your database (in the timezone of the server where your Metabase app is running).
 
-### Scanning for filter values
+#### Scanning for filter values
 
 Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.
 
