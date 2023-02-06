@@ -150,7 +150,7 @@
   sharing must be enabled."
   [id]
   {id pos-int?}
-  (validation/check-has-application-permission :setting)
+  (api/check-superuser)
   (validation/check-public-sharing-enabled)
   (api/read-check Action id)
   {:uuid (or (db/select-one-field :public_uuid Action :id id)
@@ -163,6 +163,7 @@
   "Delete the publicly-accessible link to this Dashboard."
   [id]
   {id pos-int?}
+  ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Action :id id, :public_uuid [:not= nil])
