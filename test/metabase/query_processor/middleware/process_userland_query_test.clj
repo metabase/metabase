@@ -81,7 +81,7 @@
            (process-userland-query query {:runf (fn [_ _ context]
                                                   (qp.context/raisef (ex-info "Oops!" {:type qp.error-type/qp})
                                                                      context))})))
-      (is (= {:hash         true
+      (is (= {:hash         "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99"
               :database_id  nil
               :error        "Oops!"
               :result_rows  0
