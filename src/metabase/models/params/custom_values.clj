@@ -33,7 +33,7 @@
                                                 (second %)))
                             normalized-query) values)))
 
-(defn static-list-values
+(defn- static-list-values
   [{values-source-options :values_source_config :as _param} query]
   (when-let [values (:values values-source-options)]
     {:values          (if query
@@ -132,8 +132,7 @@
         card    (db/select-one Card :id card-id)]
     (values-from-card card (:value_field config) query)))
 
-(defn check-can-get-card-values?
-  "Throw an exception if can't get values for parameter card."
+(defn- check-can-get-card-values?
   [card value-field]
   (cond
     (:archived card)
@@ -147,7 +146,11 @@
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
 (defn parameter->values
-  "A DOC"
+  "Given a parameter with a custom-values source, return the values.
+
+  `default-case-fn` is a 0-arity function that returns values list when:
+  - :values_source_type = card but the card is archived or value-field does not exists inside the card.
+  - valeus_source_type = ni."
   [parameter query default-case-fn]
   (case (:values_source_type parameter)
     "static-list" (static-list-values parameter query)

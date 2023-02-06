@@ -98,12 +98,6 @@
   [& body]
   `(try ~@body (catch Throwable ~'_)))
 
-(defmacro ignore-exceptions-and-returns
-  "Like `ignore-exceptions`, but always return `result` if an exception occured."
-  {:style/indent 1}
-  [result & body]
-  `(try ~@body (catch Throwable ~'_ ~result)))
-
 (defmacro varargs
   "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
   the result.
