@@ -137,6 +137,7 @@ export const settings = {
     default: true,
     inline: true,
   },
+  "pivot_table.column_widths": {},
   [COLUMN_FORMATTING_SETTING]: {
     section: t`Conditional Formatting`,
     widget: ChartSettingsTableFormatting,

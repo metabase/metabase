@@ -21,7 +21,13 @@
                     Dashboard [dash-1]
                     Dashboard [dash-2]]
       (letfn [(add-card-to-dash! [dash]
-                (db/insert! DashboardCard :card_id card-id, :dashboard_id (u/the-id dash)))
+                (db/insert! DashboardCard
+                            {:card_id      card-id
+                             :dashboard_id (u/the-id dash)
+                             :row          0
+                             :col          0
+                             :size_x       4
+                             :size_y       4}))
               (get-dashboard-count []
                 (card/dashboard-count (db/select-one Card :id card-id)))]
         (is (= 0
@@ -44,7 +50,7 @@
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}
         card-params    (fn [card-id] (merge default-params {:values_source_type "card"
-                                                            :values_source_config {:card_id card-id}}) )]
+                                                            :values_source_config {:card_id card-id}}))]
     (testing "With no associated cards"
       (tt/with-temp Card [card]
         (is (zero? (hydrated-count card)))))

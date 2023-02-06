@@ -11,6 +11,7 @@
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.datasets :as datasets]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [toucan.db :as db]
@@ -138,6 +139,7 @@
                                            :target [:variable [:template-tag "name"]]}]
                              :visualization_settings {:inline true}
                              :database_id (data/id)
+                             :creator_id (test.users/user->id :crowberto)
                              :dataset_query {:database (data/id)
                                              :type :native
                                              :native {:query (str "UPDATE categories\n"
@@ -158,6 +160,7 @@
                                      {:type :implicit
                                       :name "Update Example"
                                       :kind "row/update"
+                                      :creator_id (test.users/user->id :crowberto)
                                       :model_id model-id}
                                      options-map))]
       {:action-id action-id :model-id model-id})
@@ -177,6 +180,7 @@
                                                     :type "text"
                                                     :target [:template-tag "fail"]}]
                                       :response_handle ".body"
+                                      :creator_id (test.users/user->id :crowberto)
                                       :model_id model-id}
                                      options-map))]
       {:action-id action-id :model-id model-id})))
@@ -232,17 +236,23 @@
     (something model-card-id id action-id model-id))
   nil)
 
-(defn do-with-actions-enabled
+(defn do-with-actions-set
   "Impl for [[with-actions-enabled]]."
-  [thunk]
-  (tu/with-temp-vals-in-db Database (data/id) {:settings {:database-enable-actions true}}
+  [enable? thunk]
+  (tu/with-temp-vals-in-db Database (data/id) {:settings {:database-enable-actions enable?}}
     (thunk)))
 
 (defmacro with-actions-enabled
   "Execute `body` with Actions enabled for the current test Database."
   {:style/indent 0}
   [& body]
-  `(do-with-actions-enabled (fn [] ~@body)))
+  `(do-with-actions-set true (fn [] ~@body)))
+
+(defmacro with-actions-disabled
+  "Execute `body` with Actions disabled for the current test Database."
+  {:style/indent 0}
+  [& body]
+  `(do-with-actions-set false (fn [] ~@body)))
 
 (defmacro with-actions-test-data-and-actions-enabled
   "Combines [[with-actions-test-data]] and [[with-actions-enabled]]."

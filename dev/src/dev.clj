@@ -45,6 +45,7 @@
 
 (defn stop!
   []
+  (malli-dev/stop!)
   (metabase.server/stop-web-server!))
 
 (defn restart!

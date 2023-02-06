@@ -16,7 +16,7 @@ describe("UI elements that make no sense for users without data permissions (met
     cy.findByText("Settings");
     cy.findByText("Visualization").click();
 
-    cy.findByTextEnsureVisible("Choose a visualization");
+    cy.findByTestId("display-options-sensible");
     cy.icon("line").click();
 
     cy.findByTextEnsureVisible("Line options");

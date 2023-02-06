@@ -225,6 +225,7 @@
                             [(t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))
                              (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]]]
         (let [expected (or expected t)]
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
             (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
               (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) nil)

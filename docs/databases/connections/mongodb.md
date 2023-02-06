@@ -6,7 +6,7 @@ redirect_from:
 
 # Working with MongoDB in Metabase
 
-Metabase supports MongoDB version 4.2 or higher. 
+Metabase supports MongoDB version 4.2 or higher.
 
 ## How Metabase syncs data in MongoDB
 

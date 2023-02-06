@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import TokenField, {
@@ -20,7 +20,11 @@ import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
-import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
+import {
+  fetchParameterValues,
+  fetchCardParameterValues,
+  fetchDashboardParameterValues,
+} from "metabase/parameters/actions";
 
 import Fields from "metabase/entities/fields";
 import {
@@ -49,6 +53,8 @@ const optionsMessagePropTypes = {
 const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues,
+  fetchParameterValues,
+  fetchCardParameterValues,
   fetchDashboardParameterValues,
 };
 
@@ -132,10 +138,22 @@ class FieldValuesWidgetInner extends Component {
     let options = [];
     let valuesMode = this.state.valuesMode;
     try {
-      if (usesChainFilterEndpoints(this.props.dashboard)) {
-        const { results, has_more_values } =
-          await this.fetchDashboardParamValues(query);
-        options = results;
+      if (canUseDashboardEndpoints(this.props.dashboard)) {
+        const { values, has_more_values } =
+          await this.fetchDashboardParameterValues(query);
+        options = values;
+        valuesMode = has_more_values ? "search" : valuesMode;
+      } else if (canUseCardEndpoints(this.props.question)) {
+        const { values, has_more_values } = await this.fetchCardParameterValues(
+          query,
+        );
+        options = values;
+        valuesMode = has_more_values ? "search" : valuesMode;
+      } else if (canUseParameterEndpoints(this.props.parameter)) {
+        const { values, has_more_values } = await this.fetchParameterValues(
+          query,
+        );
+        options = values;
         valuesMode = has_more_values ? "search" : valuesMode;
       } else {
         options = await this.fetchFieldValues(query);
@@ -191,15 +209,34 @@ class FieldValuesWidgetInner extends Component {
     }
   };
 
-  fetchDashboardParamValues = async query => {
+  fetchParameterValues = async query => {
+    const { parameter } = this.props;
+
+    return this.props.fetchParameterValues({
+      parameter,
+      query,
+    });
+  };
+
+  fetchCardParameterValues = async query => {
+    const { question, parameter } = this.props;
+
+    return this.props.fetchCardParameterValues({
+      cardId: question.id(),
+      parameter,
+      query,
+    });
+  };
+
+  fetchDashboardParameterValues = async query => {
     const { dashboard, parameter, parameters } = this.props;
-    const args = {
+
+    return this.props.fetchDashboardParameterValues({
       dashboardId: dashboard?.id,
       parameter,
       parameters,
       query,
-    };
-    return this.props.fetchDashboardParameterValues(args);
+    });
   };
 
   updateRemappings(options) {
@@ -452,9 +489,15 @@ OptionsMessage.propTypes = optionsMessagePropTypes;
 
 export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
 
-// if [dashboard] parameter ID is specified use the fancy new Chain Filter API endpoints to fetch parameter values.
-// Otherwise (e.g. for Cards) fall back to the old field/:id/values endpoint
-function usesChainFilterEndpoints(dashboard) {
+function canUseParameterEndpoints(parameter) {
+  return parameter != null;
+}
+
+function canUseCardEndpoints(question) {
+  return question?.isSaved();
+}
+
+function canUseDashboardEndpoints(dashboard) {
   return dashboard?.id;
 }
 
@@ -484,7 +527,7 @@ function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
 
     // fallback
     return t`Enter some text`;
-  } else {
+  } else if (firstField) {
     if (firstField.isID()) {
       return t`Enter an ID`;
     } else if (firstField.isString()) {
@@ -496,6 +539,9 @@ function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
     // fallback
     return t`Enter some text`;
   }
+
+  // fallback
+  return t`Enter some text`;
 }
 
 export function searchField(field, disablePKRemappingForSearch) {
@@ -522,6 +568,7 @@ function getSearchableTokenFieldPlaceholder(
 
     placeholder = t`Search by ${name}`;
     if (
+      firstField &&
       firstField.isID() &&
       firstField !== firstField.searchField(disablePKRemappingForSearch)
     ) {

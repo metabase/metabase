@@ -26,6 +26,7 @@
    :card_id              true
    :table_id             true
    :group_id             true
+   :permission_id        false
    :attribute_remappings {:foo 1}})
 
 (defmacro ^:private with-gtap-cleanup
@@ -194,35 +195,38 @@
 
 (deftest bulk-upsert-sandboxes-test
   (testing "PUT /api/permissions/graph"
-    (mt/with-temp* [Table                  [{table-id-1 :id}]
-                    Table                  [{table-id-2 :id}]
+    (mt/with-temp* [Table                  [{table-id-1 :id} {:db_id (mt/id), :schema "PUBLIC"}]
+                    Table                  [{table-id-2 :id} {:db_id (mt/id), :schema "PUBLIC"}]
                     PermissionsGroup       [{group-id :id}]
                     Card                   [{card-id-1 :id}]
                     Card                   [{card-id-2 :id}]]
       (premium-features-test/with-premium-features #{:sandboxes}
         (with-gtap-cleanup
           (testing "Test that we can create a new sandbox using the permission graph API"
-            (let [graph  (assoc (perms/data-perms-graph)
-                                :sandboxes [{:table_id             table-id-1
-                                             :group_id             group-id
-                                             :card_id              card-id-1
-                                             :attribute_remappings {"foo" 1}}])
+            (let [graph  (-> (perms/data-perms-graph)
+                             (assoc-in [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-1 :query] :segmented)
+                             (assoc :sandboxes [{:table_id             table-id-1
+                                                 :group_id             group-id
+                                                 :card_id              card-id-1
+                                                 :attribute_remappings {"foo" 1}}]))
                   result (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
-              (is (partial= [{:table_id table-id-1 :group_id group-id}]
-                            (:sandboxes result)))
-              (is (db/exists? GroupTableAccessPolicy
-                              :table_id table-id-1
-                              :group_id group-id
-                              :card_id  card-id-1))))
+              (is (=? [{:id                   #hawk/schema s/Int
+                        :table_id             table-id-1
+                        :group_id             group-id
+                        :card_id              card-id-1
+                        :attribute_remappings {:foo 1}
+                        :permission_id        #hawk/schema s/Int}]
+                      (:sandboxes result)))
+              (is (db/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
 
           (testing "Test that we can update a sandbox using the permission graph API"
             (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
-                  graph      (assoc (perms/data-perms-graph)
-                                    :sandboxes [{:id                   sandbox-id
-                                                 :card_id              card-id-2
-                                                 :attribute_remappings {"foo" 2}}])
+                  graph      (-> (perms/data-perms-graph)
+                                 (assoc :sandboxes [{:id                   sandbox-id
+                                                     :card_id              card-id-2
+                                                     :attribute_remappings {"foo" 2}}]))
                   result     (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
               (is (partial= [{:table_id table-id-1 :group_id group-id}]
                             (:sandboxes result)))
@@ -236,14 +240,15 @@
             (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
-                  graph      (assoc (perms/data-perms-graph)
-                                    :sandboxes [{:id                   sandbox-id
-                                                 :card_id              card-id-1
-                                                 :attribute_remappings {"foo" 3}}
-                                                {:table_id             table-id-2
-                                                 :group_id             group-id
-                                                 :card_id              card-id-2
-                                                 :attribute_remappings {"foo" 10}}])
+                  graph       (-> (perms/data-perms-graph)
+                                  (assoc-in [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-2 :query] :segmented)
+                                  (assoc :sandboxes [{:id                   sandbox-id
+                                                      :card_id              card-id-1
+                                                      :attribute_remappings {"foo" 3}}
+                                                     {:table_id             table-id-2
+                                                      :group_id             group-id
+                                                      :card_id              card-id-2
+                                                      :attribute_remappings {"foo" 10}}]))
                   result     (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
               (is (partial= [{:table_id table-id-1 :group_id group-id}
                              {:table_id table-id-2 :group_id group-id}]

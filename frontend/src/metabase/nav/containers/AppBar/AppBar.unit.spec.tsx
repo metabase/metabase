@@ -1,4 +1,5 @@
 import React from "react";
+import { Route } from "react-router";
 import nock from "nock";
 import { screen } from "@testing-library/react";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -145,12 +146,9 @@ function setup(embedOptions: Partial<EmbedOptions>) {
   const scope = nock(location.origin);
   setupCollectionsEndpoints(scope, []);
 
-  renderWithProviders(<AppBar />, {
+  renderWithProviders(<Route path="/question/:slug" component={AppBar} />, {
     withRouter: true,
-    initialRouterState: {
-      location: "/question/1",
-      route: "/question/:slug",
-    },
+    initialRoute: "/question/1",
     storeInitialState: {
       app: createMockAppState({ isNavbarOpen: false }),
       embed: createMockEmbedState({

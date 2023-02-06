@@ -3,6 +3,7 @@ export * from "./app";
 export * from "./dashboard";
 export * from "./embed";
 export * from "./entities";
+export * from "./parameters";
 export * from "./qb";
 export * from "./settings";
 export * from "./setup";

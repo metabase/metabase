@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [metabase.util :as u]
    [metabase.util.files :as u.files]))
 
 (defn- normalize-font-dirname
@@ -25,7 +26,7 @@
            (filter contains-font-file?)
            (map #(str/replace (str %) font-path-str ""))
            (map normalize-font-dirname)
-           (sort-by str/lower-case)))))
+           (sort-by u/lower-case-en)))))
 
 (def ^{:arglists '([])} available-fonts
   "Return an alphabetically sorted list of available fonts, as Strings."

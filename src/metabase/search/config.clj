@@ -2,7 +2,7 @@
   (:require
    [cheshire.core :as json]
    [metabase.models
-    :refer [Card Collection Dashboard Database Metric Pulse Segment Table]]
+    :refer [Card Collection Dashboard Database Metric Segment Table]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -39,10 +39,6 @@
   "Show this many words of context before/after matches in long search results"
   2)
 
-(def searchable-db-models
-  "Models that can be searched."
-  #{Dashboard Metric Segment Card Collection Table Pulse Database})
-
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
   {"dashboard"  Dashboard
@@ -52,13 +48,12 @@
    "dataset"    Card
    "collection" Collection
    "table"      Table
-   "pulse"      Pulse
    "database"   Database})
 
 (def all-models
   "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "card" "dataset" "collection" "table" "pulse" "database"])
+  ["dashboard" "metric" "segment" "card" "dataset" "collection" "table" "database"])
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
@@ -157,11 +152,6 @@
 (defmethod columns-for-model "database"
   [_]
   [:id :name :description :updated_at :initial_sync_status])
-
-(defmethod columns-for-model "pulse"
-  [_]
-  [:id :name :collection_id
-   [:collection.name :collection_name]])
 
 (defmethod columns-for-model "collection"
   [_]
