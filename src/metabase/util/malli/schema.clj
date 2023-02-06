@@ -33,7 +33,7 @@
     [:string {:min 1}]
     (deferred-tru "value must be a non-blank string.")))
 
-(def IntGreaterThanOrEqualToZerj
+(def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
   (mu/with-api-error-message
     [:int {:min 0}]

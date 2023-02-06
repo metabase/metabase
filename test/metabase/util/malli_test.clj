@@ -3,6 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.test :as mt]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]))
 
@@ -32,31 +34,30 @@
     (testing "outer schema"
       (let [special-lt-4-schema (mu/with-api-error-message
                                   [:fn less-than-four-fxn]
-                                  "Special Number that has to be less than four")]
-        (is (= [:fn {:description "Special Number that has to be less than four",
-                     :error/message "Special Number that has to be less than four"}
-                less-than-four-fxn]
-               (mc/form special-lt-4-schema)))
+                                  (deferred-tru "Special Number that has to be less than four error")
+                                  (deferred-tru "Special Number that has to be less than four description"))]
 
-        (is (= ["Special Number that has to be less than four"]
+        (is (= [(deferred-tru "Special Number that has to be less than four description")]
                (me/humanize (mc/explain special-lt-4-schema 8))))
 
-        (is (= "Special Number that has to be less than four"
-               (umd/describe special-lt-4-schema)))))
+        (testing "describe should be user-localized"
+          (is (= "Special Number that has to be less than four error"
+                 (umd/describe special-lt-4-schema)))
+
+          (mt/with-mock-i18n-bundles {"es" {:messages {"Special Number that has to be less than four error"
+                                                       "Número especial que tiene que ser menos de cuatro errores"}}}
+            (mt/with-user-locale "es"
+              (is (= "Número especial que tiene que ser menos de cuatro errores"
+                     (umd/describe special-lt-4-schema))))))))
+
     (testing "inner schema"
       (let [special-lt-4-schema [:map [:ltf-key (mu/with-api-error-message
                                                   [:fn less-than-four-fxn]
-                                                  "Special Number that has to be less than four")]]]
-        (is (= [:map
-                [:ltf-key [:fn {:description "Special Number that has to be less than four",
-                                :error/message "Special Number that has to be less than four"}
-                           less-than-four-fxn]]]
-               (mc/form special-lt-4-schema)))
-
+                                                  (deferred-tru "Special Number that has to be less than four"))]]]
         (is (= {:ltf-key ["missing required key"]}
                (me/humanize (mc/explain special-lt-4-schema {}))))
 
-        (is (= {:ltf-key ["Special Number that has to be less than four"]}
+        (is (= {:ltf-key [(deferred-tru "Special Number that has to be less than four")]}
                (me/humanize (mc/explain special-lt-4-schema {:ltf-key 8}))))
 
         (is (= "map where {:ltf-key -> <Special Number that has to be less than four>}"

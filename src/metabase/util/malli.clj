@@ -10,7 +10,7 @@
    [malli.instrument :as minst]
    [malli.util :as mut]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.i18n :as i18n]
    [ring.util.codec :as codec]))
 
 (core/defn- ->malli-io-link
@@ -89,9 +89,10 @@ explain-fn-fail!
    [:fn {:description "a malli schema"} mc/schema]])
 
 (def ^:private localized-string-schema
-  [:fn i18n/localized-string?])
+  [:fn {:error/message "must be a localized string"}
+   i18n/localized-string?])
 
-(defn with-api-error-message :- Schema
+(defn with-api-error-message
   "Update a malli schema to have a :description (picked up by api docs),
   and a :error/message (used by defendpoint). They don't have to be the same, but usually are.
 
@@ -100,7 +101,7 @@ explain-fn-fail!
       (deferred-tru \"Must be a string with at least 1 character.\"))"
   ([mschema :- Schema error-message :- localized-string-schema]
    (with-api-error-message mschema error-message error-message))
-  ([mschema         :- Schema
+  ([mschema         :- :any
     error-message   :- localized-string-schema
     specific-errors :- localized-string-schema]
    (mut/update-properties (mc/schema mschema) assoc
