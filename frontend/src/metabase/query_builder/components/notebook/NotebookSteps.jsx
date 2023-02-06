@@ -42,8 +42,8 @@ export default class NotebookSteps extends React.Component {
       question,
       className,
       reportTimezone,
-      sourceDataBucketId,
-      sourceSchemaId,
+      sourceQuestion,
+      sourceCollection,
       updateQuestion,
     } = this.props;
     const { openSteps, lastOpenedStep } = this.state;
@@ -69,8 +69,8 @@ export default class NotebookSteps extends React.Component {
             <NotebookStep
               key={step.id}
               step={step}
-              sourceDataBucketId={sourceDataBucketId}
-              sourceSchemaId={sourceSchemaId}
+              sourceQuestion={sourceQuestion}
+              sourceCollection={sourceCollection}
               updateQuery={updateQuery}
               openStep={this.openStep}
               closeStep={this.closeStep}

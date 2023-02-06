@@ -6,10 +6,12 @@ import { t } from "ttag";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { DATA_BUCKET } from "metabase/query_builder/components/DataSelector/constants";
 import FieldList from "metabase/query_builder/components/FieldList";
 import Select from "metabase/core/components/Select";
 import { isDateTimeField } from "metabase-lib/queries/utils/field-ref";
 import Join from "metabase-lib/queries/structured/Join";
+import { getCollectionVirtualSchemaId } from "metabase-lib/metadata/utils/saved-questions";
 
 import { NotebookCellItem, NotebookCellAdd } from "../NotebookCell";
 import {
@@ -64,8 +66,8 @@ const joinStepPropTypes = {
   color: PropTypes.string,
   isLastOpened: PropTypes.bool,
   updateQuery: PropTypes.func.isRequired,
-  sourceDataBucketId: PropTypes.string,
-  sourceSchemaId: PropTypes.string,
+  sourceQuestion: PropTypes.object,
+  sourceCollection: PropTypes.object,
 };
 
 const JOIN_OPERATOR_OPTIONS = [
@@ -83,8 +85,8 @@ export default function JoinStep({
   step,
   updateQuery,
   isLastOpened,
-  sourceDataBucketId,
-  sourceSchemaId,
+  sourceQuestion,
+  sourceCollection,
 }) {
   const isSingleJoinStep = step.itemIndex != null;
   let joins = query.joins();
@@ -114,8 +116,8 @@ export default function JoinStep({
                 showRemove={joins.length > 1}
                 updateQuery={updateQuery}
                 isLastOpened={isLastOpened && isLast}
-                sourceDataBucketId={sourceDataBucketId}
-                sourceSchemaId={sourceSchemaId}
+                sourceQuestion={sourceQuestion}
+                sourceCollection={sourceCollection}
               />
             </JoinClauseContainer>
           );
@@ -137,8 +139,8 @@ JoinStep.propTypes = joinStepPropTypes;
 const joinClausePropTypes = {
   color: PropTypes.string,
   join: PropTypes.object,
-  sourceSchemaId: PropTypes.string,
-  sourceDataBucketId: PropTypes.string,
+  sourceCollection: PropTypes.object,
+  sourceQuestion: PropTypes.object,
   showRemove: PropTypes.bool,
   updateQuery: PropTypes.func,
 };
@@ -146,8 +148,8 @@ const joinClausePropTypes = {
 function JoinClause({
   color,
   join,
-  sourceDataBucketId,
-  sourceSchemaId,
+  sourceQuestion,
+  sourceCollection,
   updateQuery,
   showRemove,
 }) {
@@ -245,8 +247,8 @@ function JoinClause({
           query={query}
           joinedTable={joinedTable}
           color={color}
-          sourceDataBucketId={sourceDataBucketId}
-          sourceSchemaId={sourceSchemaId}
+          sourceQuestion={sourceQuestion}
+          sourceCollection={sourceCollection}
           updateQuery={updateQuery}
           onSourceTableSet={onSourceTableSet}
         />
@@ -411,8 +413,8 @@ const joinTablePickerPropTypes = {
   query: PropTypes.object,
   joinedTable: PropTypes.object,
   color: PropTypes.string,
-  sourceDataBucketId: PropTypes.string,
-  sourceSchemaId: PropTypes.string,
+  sourceQuestion: PropTypes.object,
+  sourceCollection: PropTypes.object,
   updateQuery: PropTypes.func,
   onSourceTableSet: PropTypes.func.isRequired,
 };
@@ -422,8 +424,8 @@ function JoinTablePicker({
   query,
   joinedTable,
   color,
-  sourceDataBucketId,
-  sourceSchemaId,
+  sourceQuestion,
+  sourceCollection,
   updateQuery,
   onSourceTableSet,
 }) {
@@ -432,6 +434,8 @@ function JoinTablePicker({
     query.database().savedQuestionsDatabase(),
   ].filter(Boolean);
 
+  const sourceDataBucketId = getDataBucketId(sourceQuestion);
+  const sourceSchemaId = getSchemaId(sourceQuestion, sourceCollection);
   const hasSourceTable = join.joinSourceTableId() != null;
 
   function onChange(tableId) {
@@ -479,6 +483,23 @@ function JoinTablePicker({
       />
     </NotebookCellItem>
   );
+}
+
+function getDataBucketId(question) {
+  if (!question) {
+    return DATA_BUCKET.RAW_DATA;
+  } else if (question.isDataset()) {
+    return DATA_BUCKET.DATASETS;
+  } else {
+    return DATA_BUCKET.SAVED_QUESTIONS;
+  }
+}
+
+function getSchemaId(question, collection) {
+  if (question && collection) {
+    const isDatasets = question.isDataset();
+    return getCollectionVirtualSchemaId(collection, { isDatasets });
+  }
 }
 
 JoinTablePicker.propTypes = joinTablePickerPropTypes;

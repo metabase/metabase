@@ -5,14 +5,13 @@ import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import Questions from "metabase/entities/questions";
 import Collections from "metabase/entities/collections";
+import { getMetadata } from "metabase/selectors/metadata";
 import { coerceCollectionId } from "metabase/collections/utils";
-import { DATA_BUCKET } from "metabase/query_builder/components/DataSelector/constants";
 import { Card, Collection } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
-  getCollectionVirtualSchemaId,
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/metadata/utils/saved-questions";
@@ -32,16 +31,15 @@ interface NotebookOwnProps {
 }
 
 interface NotebookCardProps {
-  card?: Card;
+  sourceCard?: Card;
 }
 
 interface NotebookCollectionProps {
-  collection?: Collection;
+  sourceCollection?: Collection;
 }
 
 interface NotebookStateProps {
-  sourceDataBucketId?: string;
-  sourceSchemaId?: string;
+  sourceQuestion?: Question;
 }
 
 type NotebookProps = NotebookOwnProps &
@@ -98,7 +96,7 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
   );
 };
 
-const getSourceCardId = (question: Question) => {
+function getSourceCardId(question: Question) {
   const query = question.query();
   if (query instanceof StructuredQuery) {
     const sourceTableId = query.sourceTableId();
@@ -106,30 +104,32 @@ const getSourceCardId = (question: Question) => {
       return getQuestionIdFromVirtualTableId(sourceTableId);
     }
   }
-};
+}
 
-const getSourceCollectionId = (card?: Card) => {
-  return coerceCollectionId(card?.collection_id);
-};
+function getSourceCollectionId(sourceCard?: Card) {
+  return coerceCollectionId(sourceCard?.collection_id);
+}
 
-const mapStateToProps = (
+function mapStateToProps(
   state: State,
-  { card, collection }: NotebookCardProps & NotebookCollectionProps,
-): NotebookStateProps => ({
-  sourceDataBucketId: card?.dataset ? DATA_BUCKET.DATASETS : undefined,
-  sourceSchemaId: collection && getCollectionVirtualSchemaId(collection),
-});
+  { sourceCard }: NotebookCardProps,
+): NotebookStateProps {
+  return {
+    sourceQuestion: sourceCard && new Question(sourceCard, getMetadata(state)),
+  };
+}
 
 export default _.compose(
   Questions.load({
     id: (state: State, { question }: NotebookOwnProps) =>
       getSourceCardId(question),
+    entityAlias: "sourceCard",
     loadingAndErrorWrapper: false,
-    entityAlias: "card",
   }),
   Collections.load({
-    id: (state: State, { card }: NotebookCardProps) =>
-      getSourceCollectionId(card),
+    id: (state: State, { sourceCard }: NotebookCardProps) =>
+      getSourceCollectionId(sourceCard),
+    entityAlias: "sourceCollection",
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps),
