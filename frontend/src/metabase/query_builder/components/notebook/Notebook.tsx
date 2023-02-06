@@ -4,10 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import Questions from "metabase/entities/questions";
-import Collections from "metabase/entities/collections";
 import { getMetadata } from "metabase/selectors/metadata";
-import { coerceCollectionId } from "metabase/collections/utils";
-import { Card, Collection } from "metabase-types/api";
+import { Card } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -34,18 +32,11 @@ interface NotebookCardProps {
   sourceCard?: Card;
 }
 
-interface NotebookCollectionProps {
-  sourceCollection?: Collection;
-}
-
 interface NotebookStateProps {
   sourceQuestion?: Question;
 }
 
-type NotebookProps = NotebookOwnProps &
-  NotebookCardProps &
-  NotebookCollectionProps &
-  NotebookStateProps;
+type NotebookProps = NotebookOwnProps & NotebookCardProps & NotebookStateProps;
 
 const Notebook = ({ className, ...props }: NotebookProps) => {
   const {
@@ -106,10 +97,6 @@ function getSourceCardId(question: Question) {
   }
 }
 
-function getSourceCollectionId(sourceCard?: Card) {
-  return coerceCollectionId(sourceCard?.collection_id);
-}
-
 function mapStateToProps(
   state: State,
   { sourceCard }: NotebookCardProps,
@@ -124,12 +111,6 @@ export default _.compose(
     id: (state: State, { question }: NotebookOwnProps) =>
       getSourceCardId(question),
     entityAlias: "sourceCard",
-    loadingAndErrorWrapper: false,
-  }),
-  Collections.load({
-    id: (state: State, { sourceCard }: NotebookCardProps) =>
-      getSourceCollectionId(sourceCard),
-    entityAlias: "sourceCollection",
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps),
