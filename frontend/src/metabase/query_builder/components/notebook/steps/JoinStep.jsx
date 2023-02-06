@@ -486,19 +486,14 @@ function JoinTablePicker({
 }
 
 function getDataBucketId(question) {
-  if (!question) {
-    return DATA_BUCKET.RAW_DATA;
-  } else if (question.isDataset()) {
+  if (question && question.isDataset()) {
     return DATA_BUCKET.DATASETS;
-  } else {
-    return DATA_BUCKET.SAVED_QUESTIONS;
   }
 }
 
 function getSchemaId(question, collection) {
-  if (question && collection) {
-    const isDatasets = question.isDataset();
-    return getCollectionVirtualSchemaId(collection, { isDatasets });
+  if (question && question.isDataset() && collection) {
+    return getCollectionVirtualSchemaId(collection, { isDatasets: true });
   }
 }
 
