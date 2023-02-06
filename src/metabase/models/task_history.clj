@@ -49,8 +49,14 @@
 (defn- task-details-for-snowplow
   "Ensure task_details is less than 2048 characters.
 
+  2048 is the length limit for task_details in our snowplow schema, if exceeds this limit,
+  the event will be considered a bad rows and ignored.
+
   Most of the times it's < 200 characters, but there are cases task-details contains an exception.
-  In those case, we want to make sure the stacktrace are ignored from the task-details."
+  In those case, we want to make sure the stacktrace are ignored from the task-details.
+
+  Return nil if After trying to strip out the stacktraces and the stringified task-details
+  still has more than 2048 chars."
   [task-details]
   (let [;; task-details is {:throwable e} during sync
         ;; check [[metabase.sync.util/run-step-with-metadata]]
@@ -67,7 +73,7 @@
                        (dissoc :trace :via))
         as-string     (json/generate-string task-details)]
     (if (>= (count as-string) 2048)
-      ""
+      nil
       as-string)))
 
 (defn- task->snowplow-event
