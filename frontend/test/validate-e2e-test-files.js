@@ -36,7 +36,8 @@ function validateStagedFiles() {
 
 function validateAllFiles() {
   // Will match all files in the scenarios dir, except the helpers
-  const PATTERN = "frontend/test/metabase/scenarios/*/{*.js,!(helpers)/*.js}";
+  const PATTERN =
+    "frontend/test/metabase/scenarios/*/{*.js,!(helpers|shared)/*.js}";
   const invalidFileNames = glob.sync(PATTERN).filter(fullPath => {
     const basename = path.basename(fullPath);
     return !basename.endsWith(e2eFileExtension);
