@@ -32,6 +32,17 @@
                                                          {:native []}
                                                          :joins [{:source-query "wow"}]}}))))))
 
+(deftest order-postprocessing-test
+  (is (= [{"expression_2~share" {"$divide" ["$count-where-141638" "$count-141639"]}}
+          {"expression" {"$add" ["$expression~count" {"$multiply" ["$expression~count" "$expression~sum"]}]}
+           "expression_2" {"$multiply" [2 "$expression_2~share"]}}]
+         (#'mongo.qp/order-postprocessing
+          [[{} {"expression" {"$add" ["$expression~count" {"$multiply" ["$expression~count" "$expression~sum"]}]}}]
+           [{}]
+           [{}]
+           [{"expression_2~share" {"$divide" ["$count-where-141638" "$count-141639"]}}
+            {"expression_2" {"$multiply" [2 "$expression_2~share"]}}]]))))
+
 (deftest relative-datetime-test
   (mt/test-driver :mongo
     (testing "Make sure relative datetimes are compiled sensibly"
@@ -49,8 +60,8 @@
                   :mbql?       true}
                  (qp/compile
                   (mt/mbql-query attempts
-                    {:aggregation [[:count]]
-                     :filter      [:time-interval $datetime :last :month]})))))))))
+                                 {:aggregation [[:count]]
+                                  :filter      [:time-interval $datetime :last :month]})))))))))
 
 (deftest absolute-datetime-test
   (mt/test-driver :mongo
