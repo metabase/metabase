@@ -1,23 +1,32 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
-
 import Button from "metabase/core/components/Button";
-
+import Question from "metabase-lib/Question";
 import NotebookSteps from "./NotebookSteps";
 import { NotebookRoot } from "./Notebook.styled";
 
-export default function Notebook({ className, ...props }) {
+interface NotebookProps {
+  className?: string;
+  question: Question;
+  isDirty: boolean;
+  isRunnable: boolean;
+  isResultDirty: boolean;
+  hasVisualizeButton?: boolean;
+  updateQuestion: (question: Question) => void;
+  runQuestionQuery: () => void;
+  setQueryBuilderMode: (mode: string) => void;
+}
+
+const Notebook = ({ className, ...props }: NotebookProps) => {
   const {
     question,
     isDirty,
     isRunnable,
     isResultDirty,
+    hasVisualizeButton = true,
+    updateQuestion,
     runQuestionQuery,
     setQueryBuilderMode,
-    updateQuestion,
-    hasVisualizeButton = true,
   } = props;
 
   // When switching out of the notebook editor, cleanupQuestion accounts for
@@ -55,4 +64,6 @@ export default function Notebook({ className, ...props }) {
       )}
     </NotebookRoot>
   );
-}
+};
+
+export default Notebook;
