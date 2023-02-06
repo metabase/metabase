@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.core :refer [POST]]
    [malli.util :as mut]
@@ -9,7 +10,9 @@
    [metabase.api.common :as api]
    [metabase.api.common.internal :as internal]
    [metabase.config :as config]
+   [metabase.logger :as mb.logger]
    [metabase.server.middleware.exceptions :as mw.exceptions]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [ring.adapter.jetty :as jetty]))
 
@@ -94,9 +97,23 @@
                                     :zip 2999
                                     :lonlat [0.0 0.0]}}))))
 
+    (mt/with-log-level :warn
+      (is (some (fn [{message :msg, :as entry}]
+                  (when (str/includes? (str message) "Unexpected parameters")
+                    entry))
+                (mb.logger/messages))
+          (post! "/post/test-address"
+                 {:id         "myid"
+                  :tags       ["abc"]
+                  :extraneous "parameter"
+                  :address    {:street "abc"
+                               :city "sdasd"
+                               :zip 2999
+                               :lonlat [0.0 0.0]}})))
+
     (is (= {:errors
             {:address "map (titled: ‘Address’) where {:id -> <string>, :tags -> <vector of string>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
-             :specific-errors {:address {:id ["missing required key"],
+            :specific-errors {:address {:id ["missing required key"],
                                         :tags ["missing required key"],
                                         :address ["missing required key"]}}}
            (:body (post! "/post/test-address" {:x "1"}))))

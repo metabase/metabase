@@ -265,13 +265,13 @@
 (defn validate-param-values
   "Log a warning if the request body contains any parameters not included in `expected-params` (which is presumably
   populated by the defendpoint schema)"
-  [{method :request-method route :compojure/route-context body :body} expected-params]
+  [{route :compojure/route body :body} expected-params]
   (let [extraneous-params (set/difference (set (keys body))
                                           (set expected-params))]
-    (when (seq? extraneous-params)
-      (log/warn (format (str "Unexpected parameters at %s %s: %s\nPlease add them to the schema or remove them from the"
+    (when (seq extraneous-params)
+      (log/warn (format (str "Unexpected parameters at %s: %s\nPlease add them to the schema or remove them from the"
                              " API client")
-                        method route (vec extraneous-params))))))
+                        route (vec extraneous-params))))))
 
 
 (defn method-symbol->keyword
