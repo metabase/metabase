@@ -62,8 +62,8 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:action-id"
   [action-id]
-  (let [{existing-action-type :type} (api/write-check Action action-id)]
-    (db/delete! Action :id action-id))
+  (api/write-check Action action-id)
+  (db/delete! Action :id action-id)
   api/generic-204-no-content)
 
 (api/defendpoint POST "/"
