@@ -451,7 +451,51 @@ const TITLE_LOCALES_BN = {
   'case.management.subject.based.summary.preview': {
     'en': 'Based on case subject',
     'bn': 'মামলার বিষয় অনুযায়ী'
-  }
+  },
+  'status.wise.training.count': {
+    'en': 'Statistics of Training Status',
+    'bn': 'প্রশিক্ষণের স্ট্যাটাস পরিসংখ্যান'
+  },
+  'training.type. wise.total.training.count': {
+    'en': 'Statistics of Training Types',
+    'bn': 'প্রশিক্ষণের ধরন পরিসংখ্যান'
+  },
+  'foreign,vs.local.training.ratio': {
+    'en': 'Statistics of Foreign/Local Training',
+    'bn': 'বৈদেশিক/স্থানীয় প্রশিক্ষণের পরিসংখ্যান'
+  },
+  'teacher.male.female.ratio.as.trainee': {
+    'en': 'Statistics of Male/Female Teacher as Trainee',
+    'bn': 'প্রশিক্ষনার্থী হিসেবে পুরুষ/মহিলা শিক্ষক পরিসংখ্যান'
+  },
+  'total.training.count': {
+    'en': 'Total Trainings',
+    'bn': 'মোট প্রশিক্ষণ'
+  },
+  'total.teacher.trainee.count': {
+    'en': 'Total Teachers as Trainee',
+    'bn': 'প্রশিক্ষণার্থী হিসেবে মোট শিক্ষক'
+  },
+  'total.officer.trainee.count': {
+    'en': 'Total Officers as Trainee',
+    'bn': 'প্রশিক্ষণার্থী হিসেবে মোট কর্মকর্তা'
+  },
+  'at.ht.training.ratio': {
+    'en': 'Statistics of Head/Assistant Teacher',
+    'bn': 'প্রধান শিক্ষক/সহকারী শিক্ষক পরিসংখ্যান'
+  },
+  'total.trainee.count': {
+    'en': 'Total Trainees',
+    'bn': 'মোট প্রশিক্ষণার্থী'
+  },
+  'online.offline.blended.training.ratio': {
+    'en': 'Statistics of Online, Offline and Blended Trainings',
+    'bn': 'অনলাইন, অফলাইন এবং ব্লেন্ডেড প্রশিক্ষণের পরিসংখ্যান'
+  },
+  'venue.wise.urc.pti.dpeo.office.ddoffice.count': {
+    'en': 'Statistics of Venues(URC, PTI, DPEO, etc)',
+    'bn': 'ট্রেইনিং ভ্যেনু (ইউআরসি, পিটিআই, ডিপিইও, ইত্যাদি) পরিসংখ্যান'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
