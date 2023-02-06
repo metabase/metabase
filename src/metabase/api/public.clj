@@ -555,7 +555,7 @@
 
 (def ^:private action-execution-throttle
   "Rate limit at 1 action per second on a per action basis.
-   The goal of rate limiting should be to prevent very obvioius abuse, but it should
+   The goal of rate limiting should be to prevent very obvious abuse, but it should
    be relatively lax so we don't annoy legitimate users."
   (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 1000 :delay-exponent 1))
 
