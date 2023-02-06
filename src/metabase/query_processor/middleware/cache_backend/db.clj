@@ -56,12 +56,12 @@
         (throw e)))))
 
 (defn- cached-results [query-hash max-age-seconds respond]
+  ;; VERY IMPORTANT! Open up a connection (which internally binds [[toucan2.connection/*current-connectable*]] so it
+  ;; will get reused elsewhere for the duration of results reduction, otherwise we can potentially end up deadlocking if
+  ;; we need to acquire another connection for one reason or another, such as recording QueryExecutions
   (t2/with-connection [conn]
     (with-open [stmt (prepare-statement conn query-hash max-age-seconds)
                 rs   (.executeQuery stmt)]
-      ;; VERY IMPORTANT! Bind [[db/*db-connection*]] so it will get reused elsewhere for the duration of results
-      ;; reduction, otherwise we can potentially end up deadlocking if we need to acquire another connection for one
-      ;; reason or another, such as recording QueryExecutions
       (assert (= t2.connection/*current-connectable* conn))
       (if-not (.next rs)
         (respond nil)
