@@ -27,13 +27,14 @@ describe("scenarios > collection defaults", () => {
     it("should navigate effortlessly through collections tree", () => {
       visitRootCollection();
 
-      navigationSidebar().within(() => {
-        cy.log(
-          "should allow a user to expand a collection without navigating to it",
-        );
+      cy.log(
+        "should allow a user to expand a collection without navigating to it",
+      );
 
-        // 1. click on the chevron to expand the sub collection
-        displaySidebarChildOf("First collection");
+      // 1. click on the chevron to expand the sub collection
+      displaySidebarChildOf("First collection");
+
+      navigationSidebar().within(() => {
         // 2. I should see the nested collection name
         cy.findByText("Second collection");
         cy.findByText("Third collection").should("not.exist");
@@ -402,7 +403,7 @@ describe("scenarios > collection defaults", () => {
             cy.findByRole("checkbox");
             cy.icon("dash").click({ force: true });
             cy.icon("dash").should("not.exist");
-            cy.findByText("4 items selected");
+            cy.findByText("6 items selected");
 
             // Deselect all
             cy.icon("check").click({ force: true });
@@ -537,9 +538,11 @@ function moveOpenedCollectionTo(newParent) {
 
   cy.findAllByTestId("item-picker-item").contains(newParent).click();
 
-  cy.button("Move").click();
+  modal().within(() => {
+    cy.button("Move").click();
+  });
   // Make sure modal closed
-  cy.button("Move").should("not.exist");
+  modal().should("not.exist");
 }
 
 function dragAndDrop(subjectAlias, targetAlias) {
