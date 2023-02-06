@@ -47,7 +47,11 @@
 (defn- active-user-count []
   ;; NOTE: models.user imports public settings, which imports this namespace,
   ;; so we can't import the User model here.
-  (db/count 'User :is_active true))
+  (try
+    (db/count 'User :is_active true)
+    (catch Throwable e
+      (log/error e "Error fetching active user count")
+      (throw e))))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
