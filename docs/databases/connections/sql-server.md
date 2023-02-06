@@ -30,7 +30,7 @@ The name of the database you're connecting to.
 
 ### Database instance name
 
-N/A. If you're running multiple databases on the same host, you can include the instance name here.
+If you're running multiple databases on the same host, you can include the instance name here.
 
 ### Username
 
@@ -46,7 +46,7 @@ Metabase automatically tries to connect to databases with SSL first, then withou
 
 ### ROWCOUNT Override
 
-TODO
+If left empty, Metabase will apply a 2000 row limit to query results. You can set a different limit here, or set to 0 for "unconstrained".
 
 ### Use an SSH tunnel
 
