@@ -14228,6 +14228,14 @@ databaseChangeLog:
             constraintName: fk_sandboxes_ref_permissions
             nullable: true
 
+  - changeSet:
+      id: v46.00-076
+      author: john-metabase
+      comment: Added 0.46.0 -- migrates Databases using deprecated and removed presto driver to presto-jdbc
+      changes:
+        - sql: UPDATE metabase_database SET engine = 'presto-jdbc' WHERE engine = 'presto'
+      rollback: # nothing to do, since we don't know which drivers used to be presto
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

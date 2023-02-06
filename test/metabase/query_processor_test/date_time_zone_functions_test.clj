@@ -190,10 +190,10 @@
                       ;; the timezone that they were inserted in
                       ;; maybe they need explicit convert-timezone to the report-tz before extraction?
                       :get-hour        (case driver/*driver*
-                                         (:sqlserver :presto :presto-jdbc :snowflake :oracle) 5
+                                         (:sqlserver :presto-jdbc :snowflake :oracle) 5
                                          2)
                       :get-minute      (case driver/*driver*
-                                         (:sqlserver :presto :presto-jdbc :snowflake :oracle) 19
+                                         (:sqlserver :presto-jdbc :snowflake :oracle) 19
                                          49)
                       :get-second      9}
                      {:get-year        2003
@@ -312,11 +312,6 @@
                  amount
                  (- amount))
         fmt    (cond
-                 ;; the :date column of :presto should have this format too
-                 ;; but the test data we created for presto is datetime even if we define it as date
-                 (and (= driver/*driver* :presto) (#{:text-as-date} col-type))
-                 "yyyy-MM-dd"
-
                  (= unit :millisecond)
                  "yyyy-MM-dd HH:mm:ss.SSS"
 

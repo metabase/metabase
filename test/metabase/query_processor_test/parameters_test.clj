@@ -118,10 +118,8 @@
         ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
         ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
         (when (and (mt/supports-time-type? driver/*driver*)
-                   ;; TIMEZONE FIXME -- Presto and Snowflake do support TIME types, but this fails for Presto because it
-                   ;; doesn't support TIME WITH TIME ZONE... we should just use TIME instead so we can run this test.
                    ;; Not sure why it's failing for Snowflake, we'll have to investigate.
-                   (not (#{:presto :snowflake} driver/*driver*)))
+                   (not (= :snowflake driver/*driver*)))
           (mt/dataset attempted-murders
             (doseq [field
                     [:datetime
