@@ -6,7 +6,7 @@ import {
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
-import { TIME_OPTIONS } from "./helpers/constants";
+import { TIME_OPTIONS } from "./shared/constants";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 

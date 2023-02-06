@@ -5,7 +5,7 @@ import {
   summarize,
 } from "__support__/e2e/helpers";
 
-import { LONGITUDE_OPTIONS } from "./helpers/constants";
+import { LONGITUDE_OPTIONS } from "./shared/constants";
 
 describe("scenarios > binning > correctness > longitude", () => {
   beforeEach(() => {
