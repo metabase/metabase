@@ -6,7 +6,8 @@
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.models :refer [Action Card Database HTTPAction ImplicitAction QueryAction]]
+   [metabase.models :refer [Action Card Database HTTPAction ImplicitAction
+                            QueryAction]]
    [metabase.models.action :as action]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -148,7 +149,7 @@
   Action has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
   [id]
-  (api/check-superuser)
+  {id pos-int?}
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/read-check Action id)
@@ -161,6 +162,7 @@
 (api/defendpoint DELETE "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [id]
+  {id pos-int?}
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Action :id id, :public_uuid [:not= nil])
