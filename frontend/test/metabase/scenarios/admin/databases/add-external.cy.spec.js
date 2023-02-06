@@ -134,7 +134,6 @@ describe(
       );
 
       cy.findByText("Save").should("not.be.disabled").click();
-
       cy.wait("@createDatabase");
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
