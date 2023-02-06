@@ -67,8 +67,8 @@
                                              :exclusions  [org.clojure/clojure
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
-  io.github.camsaul/toucan2                 {:mvn/version "1.0.511"}
-  io.github.camsaul/toucan2-toucan1         {:mvn/version "1.0.511"}
+  io.github.camsaul/toucan2                 {:mvn/version "1.0.512"}
+  io.github.camsaul/toucan2-toucan1         {:mvn/version "1.0.512"}
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
