@@ -25,10 +25,11 @@ describe("scenarios > collection items listing", () => {
   const PAGE_SIZE = 25;
 
   describe("pagination", () => {
+    const SUBCOLLECTIONS = 2;
     const ADDED_QUESTIONS = 15;
     const ADDED_DASHBOARDS = 14;
 
-    const TOTAL_ITEMS = ADDED_DASHBOARDS + ADDED_QUESTIONS;
+    const TOTAL_ITEMS = SUBCOLLECTIONS + ADDED_DASHBOARDS + ADDED_QUESTIONS;
 
     beforeEach(() => {
       // Removes questions and dashboards included in the default database,
@@ -142,9 +143,10 @@ describe("scenarios > collection items listing", () => {
       toggleSortingFor(/Type/i);
       cy.wait("@getCollectionItems");
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        const dashboardsFirst = _.sortBy(sortedNames, name =>
-          name.toLowerCase().includes("question"),
-        );
+        const dashboardsFirst = _.chain(sortedNames)
+          .sortBy(name => name.toLowerCase().includes("question"))
+          .sortBy(name => name.toLowerCase().includes("collection"))
+          .value();
         expect(actualNames, "sorted dashboards first").to.deep.equal(
           dashboardsFirst,
         );
@@ -153,9 +155,10 @@ describe("scenarios > collection items listing", () => {
       toggleSortingFor(/Type/i);
       cy.wait("@getCollectionItems");
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        const questionsFirst = _.sortBy(sortedNames, name =>
-          name.toLowerCase().includes("dashboard"),
-        );
+        const questionsFirst = _.chain(sortedNames)
+          .sortBy(name => name.toLowerCase().includes("question"))
+          .sortBy(name => name.toLowerCase().includes("dashboard"))
+          .value();
         expect(actualNames, "sorted questions first").to.deep.equal(
           questionsFirst,
         );
@@ -168,7 +171,10 @@ describe("scenarios > collection items listing", () => {
 
       cy.findAllByTestId(lastEditedByColumnTestId).then(nodes => {
         const actualNames = _.map(nodes, "innerText");
-        const sortedNames = _.sortBy(actualNames);
+        const sortedNames = _.chain(actualNames)
+          .sortBy(actualNames)
+          .sortBy(name => !name)
+          .value();
         expect(
           actualNames,
           "sorted by last editor name alphabetically",
@@ -198,9 +204,12 @@ describe("scenarios > collection items listing", () => {
       cy.wait("@getCollectionItems");
 
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        expect(actualNames, "sorted newest first").to.deep.equal(
-          sortedNames.reverse(),
-        );
+        const newestFirst = _.chain(sortedNames)
+          .reverse()
+          .sortBy(name => name.toLowerCase().includes("collection"))
+          .sortBy(name => name.toLowerCase().includes("personal"))
+          .value();
+        expect(actualNames, "sorted newest first").to.deep.equal(newestFirst);
       });
     });
 
