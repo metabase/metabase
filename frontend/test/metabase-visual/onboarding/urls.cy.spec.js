@@ -35,7 +35,7 @@ describe("visual tests > onboarding > URLs", () => {
     cy.wait("@collection-items");
     cy.wait("@collection-items");
 
-    cy.findByText("First collection");
+    cy.findAllByText("First collection");
     cy.findByText("Your personal collection");
     cy.findByText("Orders");
 
