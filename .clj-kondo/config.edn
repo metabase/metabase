@@ -92,6 +92,7 @@
    clojure.string/upper-case {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
    honeysql.core/call        {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw         {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
+   java-time/with-clock      {:message "Use mt/with-clock"}
    toucan.db/query           {:message "Use mdb.query/query instead of toucan.db/query"}
    toucan.db/reducible-query {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
 

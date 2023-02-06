@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.events :as events]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -45,6 +46,9 @@
 (deftest success-test
   (let [query {:query? true}]
     (with-query-execution [qe query]
+      (is (= #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+             (t/zoned-date-time))
+          "sanity check")
       (is (= {:status                 :completed
               :data                   {}
               :row_count              0
