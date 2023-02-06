@@ -34,12 +34,17 @@
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/graph"
+(api/defendpoint GET "/graph"
   "Fetch a graph of all Permissions."
   []
   (api/check-superuser)
   (perms/data-perms-graph))
+
+(api/defendpoint GET "/graph-v2"
+  "Fetch a graph of all Permissions."
+  []
+  (api/check-superuser)
+  (perms/data-perms-graph-v2))
 
 (defenterprise upsert-sandboxes!
   "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."

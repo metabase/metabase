@@ -361,6 +361,7 @@
   (into [:enum] (map second rx->kind)))
 
 (mu/defn classify-path :- Kind [path :- Path]
+  "Classifies a permission [[metabase.models.permissions/Path]] into a [[metabase.models.permissions/Kind]], or throws."
   (let [result (keep (fn [[permission-rx kind]]
                        (when (re-matches (u.regex/rx permission-rx) path) kind))
                      rx->kind)]
@@ -372,7 +373,9 @@
 (def DataPath "A permissions path that's guaranteed to be a v1 data-permissions path"
   [:re (u.regex/rx "^/" v1-data-permissions-rx "$")])
 
-(mu/defn classify-data-path :- DataKind [data-path :- DataPath]
+(mu/defn classify-data-path :- DataKind
+  "Classifies data path permissions [[metabase.models.permissions/DataPath]] into a [[metabase.models.permissions/DataKind]]"
+  [data-path :- DataPath]
   (let [result (keep (fn [[data-rx kind]]
                        (when (re-matches (u.regex/rx [:and "^/" data-rx]) data-path) kind))
                      data-rx->data-kind)]
@@ -826,24 +829,109 @@
             {}
             permissions)))
 
+(mu/defn generate-graph :- :map
+  [db-ids group-id->paths :- [:map-of :int [:* Path]]]
+  (def db-ids db-ids)
+  (def group-id->paths group-id->paths)
+  (m/map-vals
+   (fn [paths]
+     (let [permissions-graph (perms-parse/permissions->graph paths)]
+       (if (= permissions-graph :all)
+         (all-permissions db-ids)
+         (:db permissions-graph))))
+   group-id->paths))
+
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
-  (let [group-id->paths (permissions-by-group-ids [:or
-                                                   [:= :object (hx/literal "/")]
-                                                   [:like :object (hx/literal "%/db/%")]])
-        db-ids          (delay (db/select-ids 'Database))
-        group-id->graph (m/map-vals
-                         (fn [paths]
-                           (let [permissions-graph (perms-parse/permissions->graph paths)]
-                             (if (= permissions-graph :all)
-                               (all-permissions @db-ids)
-                               (:db permissions-graph))))
-                         group-id->paths)]
+  (let [group-id->v1-paths (->> (permissions-by-group-ids [:or
+                                                           [:= :object (hx/literal "/")]
+                                                           [:like :object (hx/literal "%/db/%")]])
+                                (m/map-vals (fn [paths]
+                                              (filter (fn [path]
+                                                        (mc/validate [:re path-regex-v1] path))
+                                                      paths))))
+        _ (def gip group-id->v1-paths)
+        db-ids          (delay (db/select-ids 'Database))]
     {:revision (perms-revision/latest-id)
-     :groups   group-id->graph}))
+     :groups   (generate-graph @db-ids group-id->v1-paths)}))
 
+(defn data-perms-graph-v2
+  "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
+  See [[metabase.models.collection.graph]] for the Collection permissions graph code."
+  []
+  (let [group-id->paths (->> (permissions-by-group-ids [:or
+                                                        [:= :object (hx/literal "/")]
+                                                        [:like :object (hx/literal "%/db/%")]])
+                             (m/map-vals (fn [paths]
+                                           (remove (fn [path]
+                                                     (mc/validate [:re (u.regex/rx v1-data-permissions-rx)] path))
+                                                   paths))))
+        db-ids (delay (db/select-ids 'Database))]
+    {:revision (perms-revision/latest-id)
+     :groups   (generate-graph @db-ids group-id->paths)}))
+
+
+(def output-json
+  (str/join "" ["{"
+                  "   \"revision\":3,"
+                  "   \"groups\":{"
+                  "      \"1\":{"
+                  "         \"1\":{"
+                  "            \"data\":{"
+                  "               \"schemas\":\"all\""
+                  "            },"
+                  "            \"query\":{"
+                  "               \"native\":\"write\","
+                  "               \"schemas\":\"all\""
+                  "            }"
+                  "         }"
+                  "      }"
+                  "   }"
+                  "}"]))
+
+
+(require '[cheshire.core :as json])
+
+(def ^:private output-edn (json/decode output-json true))
+
+(def ^:private output-groups (:groups output-edn))
+
+(do (require '[hyperfiddle.rcf :as rcf]) (rcf/enable!))
+
+(rcf/tests "tests"
+           output-groups
+           :=
+           {:1 {:1 {:data {:schemas "all"}, :query {:native "write", :schemas "all"}}}}
+
+
+           (generate-graph #{2} {1 ["/db/2/"]})
+           :=
+           {1 {2 {:data {:native :write, :schemas :all}}}}
+
+
+           (generate-graph #{2} {1 ["/data/db/2/"]})
+           :=
+           {1 {2 {:data {:native :write}}}}
+
+
+           (generate-graph #{2} {1 ["/query/db/2/schema/"]})
+           :=
+           {1 {2 {:query {:data {:schemas :all}}}}}
+
+
+           (generate-graph #{2} {1 ["/query/db/2/schema/" "/data/db/2/"]})
+           :=
+           {1 {2 {:query {:data {:schemas :all}}, :data {:native :write}}}}
+
+
+           (generate-graph #{2} {1 ["/db/2/schema/"]})
+           :=
+           {1 {2 {:data {:schemas :all}}}})
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn execution-perms-graph
   "Fetch a graph representing the current *execution* permissions status for
   every Group and all permissioned databases."
