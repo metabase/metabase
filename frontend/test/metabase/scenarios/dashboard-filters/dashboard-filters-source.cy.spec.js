@@ -11,10 +11,11 @@ import {
   setFilterListSource,
   visitEmbeddedPage,
   visitPublicDashboard,
+  describeEE,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const structuredSourceQuestion = {
   name: "GUI source",
@@ -22,14 +23,14 @@ const structuredSourceQuestion = {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
     breakout: [["field", PRODUCTS.CATEGORY, null]],
-    filter: ["!=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"],
+    filter: ["!=", ["field", PRODUCTS.CATEGORY, null], "Doohickey"],
   },
 };
 
 const nativeSourceQuestion = {
   name: "SQL source",
   native: {
-    query: "select distinct CATEGORY from PRODUCTS order by CATEGORY limit 2",
+    query: "select CATEGORY from PRODUCTS WHERE CATEGORY != 'Doohickey'",
   },
 };
 
@@ -173,7 +174,7 @@ describe("scenarios > dashboard > filters", () => {
       editDashboard();
       setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      setFilterListSource({ values: ["Doohickey", "Gadget"] });
+      setFilterListSource({ values: ["Gadget", "Gizmo", "Widget"] });
       saveDashboard();
       filterDashboard();
     });
@@ -204,22 +205,58 @@ describe("scenarios > dashboard > filters", () => {
   });
 });
 
+describeEE("scenarios > dashboard > filters", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should sandbox parameter values in dashboards", () => {
+    cy.sandboxTable({
+      table_id: PRODUCTS_ID,
+      attribute_remappings: {
+        attr_uid: ["dimension", ["field", PRODUCTS.ID, null]],
+      },
+    });
+
+    cy.createQuestion(structuredSourceQuestion).then(
+      ({ body: { id: questionId } }) => {
+        cy.createQuestionAndDashboard({
+          questionDetails: targetQuestion,
+          dashboardDetails: getStructuredDashboard(questionId),
+        }).then(({ body: card }) => {
+          cy.editDashboardCard(card, getParameterMapping(card));
+          cy.signOut();
+          cy.signInAsSandboxedUser();
+          visitDashboard(card.dashboard_id);
+        });
+      },
+    );
+
+    filterDashboard({ isSandboxed: true });
+  });
+});
+
 const mapFilterToQuestion = () => {
   cy.findByText("Select…").click();
   popover().within(() => cy.findByText("Category").click());
 };
 
-const filterDashboard = () => {
+const filterDashboard = ({ isSandboxed } = {}) => {
   cy.findByText("Text").click();
 
   popover().within(() => {
-    cy.findByText("Doohickey").should("be.visible");
-    cy.findByText("Gadget").should("be.visible");
-    cy.findByText("Gizmo").should("not.exist");
-
-    cy.findByPlaceholderText("Search the list").type("Gadget");
+    cy.findByText("Gizmo").should("be.visible");
     cy.findByText("Doohickey").should("not.exist");
-    cy.findByText("Gadget").click();
+    cy.findByText("Gadget").should(isSandboxed ? "not.exist" : "be.visible");
+    cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
+
+    cy.findByPlaceholderText("Search the list").type("i");
+    cy.findByText("Gadget").should("not.exist");
+    cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
+    cy.findByText("Doohickey").should("not.exist");
+
+    cy.findByText("Gizmo").click();
     cy.button("Add filter").click();
   });
 };
@@ -274,7 +311,7 @@ const getListDashboard = () => {
   return getTargetDashboard({
     values_source_type: "static-list",
     values_source_config: {
-      values: ["Doohickey", "Gadget"],
+      values: ["Gadget", "Gizmo", "Widget"],
     },
   });
 };
