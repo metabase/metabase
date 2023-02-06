@@ -64,6 +64,8 @@ const joinStepPropTypes = {
   color: PropTypes.string,
   isLastOpened: PropTypes.bool,
   updateQuery: PropTypes.func.isRequired,
+  sourceDataBucketId: PropTypes.string,
+  sourceSchemaId: PropTypes.string,
 };
 
 const JOIN_OPERATOR_OPTIONS = [
@@ -81,6 +83,8 @@ export default function JoinStep({
   step,
   updateQuery,
   isLastOpened,
+  sourceDataBucketId,
+  sourceSchemaId,
 }) {
   const isSingleJoinStep = step.itemIndex != null;
   let joins = query.joins();
@@ -110,6 +114,8 @@ export default function JoinStep({
                 showRemove={joins.length > 1}
                 updateQuery={updateQuery}
                 isLastOpened={isLastOpened && isLast}
+                sourceDataBucketId={sourceDataBucketId}
+                sourceSchemaId={sourceSchemaId}
               />
             </JoinClauseContainer>
           );
@@ -131,11 +137,20 @@ JoinStep.propTypes = joinStepPropTypes;
 const joinClausePropTypes = {
   color: PropTypes.string,
   join: PropTypes.object,
-  updateQuery: PropTypes.func,
+  sourceSchemaId: PropTypes.string,
+  sourceDataBucketId: PropTypes.string,
   showRemove: PropTypes.bool,
+  updateQuery: PropTypes.func,
 };
 
-function JoinClause({ color, join, updateQuery, showRemove }) {
+function JoinClause({
+  color,
+  join,
+  sourceDataBucketId,
+  sourceSchemaId,
+  updateQuery,
+  showRemove,
+}) {
   const joinDimensionPickersRef = useRef([]);
   const parentDimensionPickersRef = useRef([]);
 
@@ -230,6 +245,8 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
           query={query}
           joinedTable={joinedTable}
           color={color}
+          sourceDataBucketId={sourceDataBucketId}
+          sourceSchemaId={sourceSchemaId}
           updateQuery={updateQuery}
           onSourceTableSet={onSourceTableSet}
         />
@@ -394,6 +411,8 @@ const joinTablePickerPropTypes = {
   query: PropTypes.object,
   joinedTable: PropTypes.object,
   color: PropTypes.string,
+  sourceDataBucketId: PropTypes.string,
+  sourceSchemaId: PropTypes.string,
   updateQuery: PropTypes.func,
   onSourceTableSet: PropTypes.func.isRequired,
 };
@@ -403,6 +422,8 @@ function JoinTablePicker({
   query,
   joinedTable,
   color,
+  sourceDataBucketId,
+  sourceSchemaId,
   updateQuery,
   onSourceTableSet,
 }) {
@@ -410,6 +431,8 @@ function JoinTablePicker({
     query.database(),
     query.database().savedQuestionsDatabase(),
   ].filter(Boolean);
+
+  const hasSourceTable = join.joinSourceTableId() != null;
 
   function onChange(tableId) {
     const newJoin = join
@@ -442,10 +465,12 @@ function JoinTablePicker({
         canChangeDatabase={false}
         databases={databases}
         tableFilter={table => table.db_id === query.database().id}
+        selectedDataBucketId={hasSourceTable ? undefined : sourceDataBucketId}
         selectedDatabaseId={query.databaseId()}
+        selectedSchemaId={hasSourceTable ? undefined : sourceSchemaId}
         selectedTableId={join.joinSourceTableId()}
         setSourceTableFn={onChange}
-        isInitiallyOpen={join.joinSourceTableId() == null}
+        isInitiallyOpen={!hasSourceTable}
         triggerElement={
           <FieldPickerContentContainer>
             {joinedTable ? joinedTable.displayName() : t`Pick a table...`}
