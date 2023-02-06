@@ -31,7 +31,7 @@
 
 (deftest mu-defn-docstrings
   (testing "docstrings are preserved"
-    (mu/defn ^:private boo :- :int "something very important to remember goes here" [x])
+    (mu/defn ^:private boo :- :int "something very important to remember goes here" [_x])
     (is (str/ends-with? (:doc (meta #'boo)) "something very important to remember goes here"))
     (ns-unmap *ns* 'boo))
 
@@ -50,6 +50,7 @@
                                :name "Jim"
                                :address {:street (str  (+ a b (apply + c)) " ln")}}))
     (is (= (str/join "\n"
+                     ;;v---doc inserts 2 spaces here, it's not misaligned!
                      [  "Inputs: ([]"
                       "           [a :- :int]"
                       "           [a :- :int b :- :int]"
