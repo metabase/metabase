@@ -584,8 +584,8 @@
         ;; failing because there are no current user perms; if this Dashcard is public
         ;; you're by definition allowed to run it without a perms check anyway
         (binding [api/*current-user-permissions-set* (delay #{"/"})]
-            ;; Undo middleware string->keyword coercion
           (let [action (api/check-404 (first (action/actions-with-implicit-params nil :public_uuid uuid)))]
+            ;; Undo middleware string->keyword coercion
             (actions.execution/execute-action! action (update-keys parameters name))))))))
 
 
