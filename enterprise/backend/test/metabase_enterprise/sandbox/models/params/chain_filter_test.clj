@@ -28,7 +28,8 @@
         (testing "When chain-filter with constraints"
           (testing "creates a linked-filter FieldValues if not sandboxed"
             ;; HACK to run this outside of sandboxing
-            (binding [api/*current-user-permissions-set* (atom #{"/"})]
+            (binding [api/*current-user-id*              nil
+                      api/*current-user-permissions-set* (atom #{"/"})]
               (is (= {:values          ["Artisan"]
                       :has_more_values false}
                      (mt/$ids (chain-filter/chain-filter %categories.name {%categories.id 3})))))

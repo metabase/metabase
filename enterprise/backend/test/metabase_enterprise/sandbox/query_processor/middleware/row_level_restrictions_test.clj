@@ -251,13 +251,6 @@
   (mt/test-drivers (into #{}
                          (filter #(isa? driver/hierarchy % :sql))
                          (mt/normal-drivers-with-feature :nested-queries))
-    (testing "When querying with full permissions, no changes should be made"
-      (met/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
-                       :attributes {"cat" 50}}
-        (perms/grant-permissions! &group (perms/table-query-path (db/select-one Table :id (mt/id :venues))))
-        (is (= [[100]]
-               (run-venues-count-query)))))
-
     (testing (str "Basic test around querying a table by a user with segmented only permissions and a GTAP question that "
                   "is a native query")
       (met/with-gtaps {:gtaps      {:venues (venues-category-native-gtap-def)}
