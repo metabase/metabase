@@ -11,7 +11,7 @@
   (:import
    (org.apache.logging.log4j Level LogManager)
    (org.apache.logging.log4j.core Appender LifeCycle LogEvent Logger LoggerContext)
-   (org.apache.logging.log4j.core.config AppenderRef Configuration LoggerConfig)))
+   (org.apache.logging.log4j.core.config Configuration LoggerConfig)))
 
 (set! *warn-on-reflection* true)
 
