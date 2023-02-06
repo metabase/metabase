@@ -114,7 +114,7 @@
       :error-details (tru "Token validation timed out after {0}" (u/format-milliseconds fetch-token-status-timeout-ms))
       :active-user-count (deref
                           (future (active-user-count))
-                          (u/seconds->ms 10000)
+                          (u/seconds->ms 10)
                           ::timed-out)
       :errors        @errors})))
 
