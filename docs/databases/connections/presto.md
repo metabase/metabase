@@ -46,6 +46,8 @@ Metabase automatically tries to connect to databases with SSL first, then withou
 
 ### Use SSL certificate?
 
+Metabase supports both keystores and truststores.
+
 #### Keystore
 
 You can specify a local file path, or upload a keystore. You'll also need to input your keystore password.
