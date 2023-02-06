@@ -32,6 +32,8 @@ jobs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: e2e-tests
 
     - run: ./bin/build version translations frontend licenses drivers uberjar
 
