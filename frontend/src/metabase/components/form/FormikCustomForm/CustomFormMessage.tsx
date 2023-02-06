@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 
 import FormMessage from "metabase/components/form/FormMessage";
 
