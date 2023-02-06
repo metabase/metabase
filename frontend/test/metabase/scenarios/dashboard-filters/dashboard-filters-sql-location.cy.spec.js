@@ -13,7 +13,7 @@ import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filte
 import {
   DASHBOARD_SQL_LOCATION_FILTERS,
   questionDetails,
-} from "./dashboard-filters-sql-location";
+} from "./shared/dashboard-filters-sql-location";
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {

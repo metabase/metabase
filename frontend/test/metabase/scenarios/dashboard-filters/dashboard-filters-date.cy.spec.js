@@ -9,7 +9,7 @@ import {
 } from "__support__/e2e/helpers";
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
-import { DASHBOARD_DATE_FILTERS } from "./dashboard-filters-date";
+import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
 
 describe("scenarios > dashboard > filters > date", () => {
   beforeEach(() => {

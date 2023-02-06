@@ -13,7 +13,7 @@ import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-he
 import {
   DASHBOARD_SQL_TEXT_FILTERS,
   questionDetails,
-} from "./dashboard-filters-sql-text-category";
+} from "./shared/dashboard-filters-sql-text-category";
 
 describe("scenarios > dashboard > filters > SQL > text/category", () => {
   beforeEach(() => {

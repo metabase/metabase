@@ -9,7 +9,7 @@ import {
 } from "__support__/e2e/helpers";
 
 import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
-import { DASHBOARD_TEXT_FILTERS } from "./dashboard-filters-text-category";
+import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
 
 describe("scenarios > dashboard > filters > text/category", () => {
   beforeEach(() => {
