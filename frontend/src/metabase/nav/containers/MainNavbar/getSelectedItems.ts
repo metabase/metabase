@@ -16,8 +16,6 @@ type Opts = {
   dashboard?: Dashboard;
 };
 
-const MODEL_DETAIL_PAGE_PATTERN = /\/model\/.*\/detail.*/;
-
 function isCollectionPath(pathname: string): boolean {
   return pathname.startsWith("/collection");
 }
@@ -26,19 +24,15 @@ function isUsersCollectionPath(pathname: string): boolean {
   return pathname.startsWith("/collection/users");
 }
 
-function isQuestionPath(pathname: string): boolean {
+export function isQuestionPath(pathname: string): boolean {
   return pathname.startsWith("/question");
 }
 
-function isModelPath(pathname: string): boolean {
+export function isModelPath(pathname: string): boolean {
   return pathname.startsWith("/model");
 }
 
-export function isModelDetailPath(pathname: string): boolean {
-  return MODEL_DETAIL_PAGE_PATTERN.test(pathname);
-}
-
-function isDashboardPath(pathname: string): boolean {
+export function isDashboardPath(pathname: string): boolean {
   return pathname.startsWith("/dashboard");
 }
 
@@ -81,14 +75,6 @@ function getSelectedItems({
       {
         id: coerceCollectionId(card.collection_id),
         type: "collection",
-      },
-    ];
-  }
-  if (isModelDetailPath(pathname)) {
-    return [
-      {
-        id: Urls.extractEntityId(slug),
-        type: "card",
       },
     ];
   }

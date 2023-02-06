@@ -1,15 +1,14 @@
 import React, { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { LocationDescriptor } from "history";
+import _ from "underscore";
+import type { LocationDescriptor } from "history";
 
 import * as Urls from "metabase/lib/urls";
 
 import { closeNavbar, openNavbar } from "metabase/redux/app";
+import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-
-import { getCard as getQueryBuilderCard } from "metabase/query_builder/selectors";
-import { getDashboard } from "metabase/dashboard/selectors";
 
 import type { Card, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -17,42 +16,27 @@ import type { State } from "metabase-types/store";
 import MainNavbarContainer from "./MainNavbarContainer";
 
 import {
-  MainNavbarProps,
   MainNavbarOwnProps,
   MainNavbarDispatchProps,
   SelectedItem,
 } from "./types";
-import getSelectedItems, { isModelDetailPath } from "./getSelectedItems";
+import getSelectedItems, {
+  isDashboardPath,
+  isModelPath,
+  isQuestionPath,
+} from "./getSelectedItems";
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 
-interface StateProps {
+interface EntityLoaderProps {
   card?: Card;
   dashboard?: Dashboard;
 }
 
-interface DispatchProps {
+interface DispatchProps extends MainNavbarDispatchProps {
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
-type Props = MainNavbarProps & StateProps & DispatchProps;
-
-function getModelDetailPageCard(state: State, params: { slug?: string }) {
-  const entityId = Urls.extractEntityId(params.slug);
-  return Questions.selectors.getObject(state, { entityId });
-}
-
-function mapStateToProps(
-  state: State,
-  { location, params }: MainNavbarOwnProps,
-) {
-  const isModelDetailPage = isModelDetailPath(location.pathname);
-  return {
-    card: isModelDetailPage
-      ? getModelDetailPageCard(state, params)
-      : getQueryBuilderCard(state),
-    dashboard: getDashboard(state),
-  };
-}
+type Props = MainNavbarOwnProps & EntityLoaderProps & DispatchProps;
 
 const mapDispatchToProps = {
   openNavbar,
@@ -122,12 +106,33 @@ function MainNavbar({
   );
 }
 
-export default connect<
-  StateProps,
-  MainNavbarDispatchProps & DispatchProps,
-  MainNavbarOwnProps,
-  State
->(
-  mapStateToProps,
-  mapDispatchToProps,
+function maybeGetDashboardId(
+  state: State,
+  { location, params }: MainNavbarOwnProps,
+) {
+  return isDashboardPath(location.pathname)
+    ? Urls.extractEntityId(params.slug)
+    : null;
+}
+
+function maybeGetQuestionId(
+  state: State,
+  { location, params }: MainNavbarOwnProps,
+) {
+  const { pathname } = location;
+  const canFetchQuestion = isQuestionPath(pathname) || isModelPath(pathname);
+  return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
+}
+
+export default _.compose(
+  connect(null, mapDispatchToProps),
+  Dashboards.load({
+    id: maybeGetDashboardId,
+    loadingAndErrorWrapper: false,
+  }),
+  Questions.load({
+    id: maybeGetQuestionId,
+    loadingAndErrorWrapper: false,
+    entityAlias: "card",
+  }),
 )(MainNavbar);

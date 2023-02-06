@@ -8,7 +8,9 @@ import {
   waitForElementToBeRemoved,
 } from "__support__/ui";
 import {
+  setupCardsEndpoints,
   setupCollectionsEndpoints,
+  setupDashboardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
@@ -26,7 +28,6 @@ import {
 import {
   createMockState,
   createMockDashboardState,
-  createMockEntitiesState,
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
 
@@ -64,32 +65,6 @@ const USER_DATABASE = createMockDatabase({
   name: "User Database",
   is_sample: false,
 });
-
-function getInitialState({
-  card,
-  dashboard,
-  user,
-}: {
-  card?: Card;
-  dashboard?: Dashboard;
-  user?: User | null;
-} = {}) {
-  const cards = card ? { [card.id]: card } : {};
-  const dashboards = dashboard ? { [dashboard.id]: dashboard } : {};
-
-  return createMockState({
-    currentUser: user,
-    dashboard: createMockDashboardState({
-      dashboardId: dashboard ? dashboard.id : null,
-      dashboards,
-    }),
-    qb: createMockQueryBuilderState({ card }),
-    entities: createMockEntitiesState({
-      dashboards,
-      questions: cards,
-    }),
-  });
-}
 
 async function setup({
   pathname = "/",
@@ -129,10 +104,19 @@ async function setup({
   setupDatabasesEndpoints(scope, databases);
   scope.get("/api/bookmark").reply(200, []);
 
-  const storeInitialState = getInitialState({
-    card: openQuestionCard,
-    dashboard: openDashboard,
-    user,
+  if (openQuestionCard) {
+    setupCardsEndpoints(scope, [openQuestionCard]);
+  }
+  if (openDashboard) {
+    setupDashboardsEndpoints(scope, [openDashboard]);
+  }
+
+  const dashboards = openDashboard ? { [openDashboard.id]: openDashboard } : {};
+  const dashboardId = openDashboard ? openDashboard.id : null;
+  const storeInitialState = createMockState({
+    currentUser: user,
+    dashboard: createMockDashboardState({ dashboardId, dashboards }),
+    qb: createMockQueryBuilderState({ card: openQuestionCard }),
   });
 
   renderWithProviders(
