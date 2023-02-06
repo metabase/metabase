@@ -186,7 +186,6 @@ export default class NotebookStep extends React.Component {
                   color={color}
                   step={step}
                   query={step.query}
-                  source
                   sourceQuestion={sourceQuestion}
                   sourceCollection={sourceCollection}
                   updateQuery={updateQuery}
