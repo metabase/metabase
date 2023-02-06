@@ -105,9 +105,9 @@ class ChartSettings extends Component {
     this.setState({ popoverRef: ref, popoverWidget: widget });
   };
 
-  handleSetCurrentWidget = widget => {
+  handleSetCurrentWidget = (widget, title) => {
     this.props.setSidebarPropsOverride({
-      title: t`Add or Remove Columns`,
+      title: title,
       onBack: () => {
         this.handleEndShowWidget();
         this.props.setSidebarPropsOverride({});

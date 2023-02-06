@@ -185,6 +185,7 @@ export default class Table extends Component {
           _.all(
             card.visualization_settings["table.columns"],
             columnSetting =>
+              !columnSettings.enabled ||
               findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
           )),
       getDefault: ([
@@ -214,7 +215,10 @@ export default class Table extends Component {
             ),
           },
         }),
-        extraButton: { text: t`Add or remove columns`, key: "table.columns2" },
+        extraButton: {
+          text: t`Add or remove columns`,
+          key: "table.columns_visibility",
+        },
         getItemTitle: columnSetting =>
           getFriendlyName(
             findColumnForColumnSetting(cols, columnSetting) || {
@@ -223,7 +227,7 @@ export default class Table extends Component {
           ),
       }),
     },
-    "table.columns2": {
+    "table.columns_visibility": {
       hidden: true,
       writeSettingId: "table.columns",
       readDependencies: ["table.columns"],

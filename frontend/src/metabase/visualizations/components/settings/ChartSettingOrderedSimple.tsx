@@ -27,7 +27,10 @@ interface ChartSettingOrderedSimpleProps {
     },
     ref: HTMLElement | undefined,
   ) => void;
-  onSetCurrentWidget: (widget: { props: { initialKey?: string } }) => void;
+  onSetCurrentWidget: (
+    widget: { props: { initialKey?: string } },
+    title: string,
+  ) => void;
   series: Series;
   hasEditSettings: boolean;
   hasOnEnable: boolean;
@@ -86,11 +89,14 @@ export const ChartSettingOrderedSimple = ({
 
   const handleExtra = () => {
     if (extraButton) {
-      onSetCurrentWidget({
-        props: {
-          initialKey: extraButton.key,
+      onSetCurrentWidget(
+        {
+          props: {
+            initialKey: extraButton.key,
+          },
         },
-      });
+        extraButton.text,
+      );
     }
   };
 
