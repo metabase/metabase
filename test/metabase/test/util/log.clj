@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
-   [metabase.test-runner.parallel :as test-runner.parallel]
+   [hawk.parallel]
    [potemkin :as p]
    [schema.core :as s])
   (:import [org.apache.logging.log4j Level LogManager]
@@ -92,6 +92,7 @@
                          (.getFilter parent-logger))]
       (.addLogger (configuration) (logger-name a-namespace) new-logger)
       (.updateLoggers (logger-context))
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (println "Created a new logger for" (logger-name a-namespace)))))
 
 (s/defn set-ns-log-level!
@@ -112,7 +113,7 @@
      (.updateLoggers (logger-context)))))
 
 (defn do-with-log-level [a-namespace level thunk]
-  (test-runner.parallel/assert-test-is-not-parallel "with-log-level")
+  (hawk.parallel/assert-test-is-not-parallel "with-log-level")
   (ensure-unique-logger! a-namespace)
   (let [original-log-level (ns-log-level a-namespace)
         logger             (exact-ns-logger a-namespace)
@@ -198,7 +199,7 @@
     (:logs @state)))
 
 (defn do-with-log-messages-for-level [a-namespace level f]
-  (test-runner.parallel/assert-test-is-not-parallel "with-log-messages-for-level")
+  (hawk.parallel/assert-test-is-not-parallel "with-log-messages-for-level")
   (ensure-unique-logger! a-namespace)
   (let [state         (atom nil)
         appender-name (format "%s-%s-%s" `InMemoryAppender (logger-name a-namespace) (name level))

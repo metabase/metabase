@@ -18,9 +18,11 @@ import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 import type { State } from "metabase-types/store";
 
+import Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import LogoBadge from "./LogoBadge";
+import type { FooterVariant } from "./EmbedFrame.styled";
 import {
   Root,
   ContentContainer,
@@ -35,8 +37,10 @@ interface OwnProps {
   className?: string;
   name?: string;
   description?: string;
+  question?: Question;
   dashboard?: Dashboard;
   actionButtons?: JSX.Element[];
+  footerVariant?: FooterVariant;
   parameters?: Parameter[];
   parameterValues?: Record<ParameterId, ParameterValueOrArray>;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
@@ -71,8 +75,10 @@ function EmbedFrame({
   children,
   name,
   description,
+  question,
   dashboard,
   actionButtons,
+  footerVariant = "default",
   location,
   hasEmbedBranding,
   parameters,
@@ -125,6 +131,7 @@ function EmbedFrame({
               <div className="flex">
                 <SyncedParametersList
                   className="mt1"
+                  question={question}
                   dashboard={dashboard}
                   parameters={getValuePopulatedParameters(
                     parameters,
@@ -140,8 +147,10 @@ function EmbedFrame({
         <Body>{children}</Body>
       </ContentContainer>
       {showFooter && (
-        <Footer className="EmbedFrame-footer">
-          {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}
+        <Footer className="EmbedFrame-footer" variant={footerVariant}>
+          {hasEmbedBranding && (
+            <LogoBadge variant={footerVariant} dark={theme === "night"} />
+          )}
           {actionButtons && (
             <ActionButtonsContainer>{actionButtons}</ActionButtonsContainer>
           )}

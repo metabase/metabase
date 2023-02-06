@@ -7,6 +7,7 @@ import type {
   DashboardParameterMapping,
 } from "./dashboard";
 import type { Card, CardId } from "./card";
+import type { UserId, UserInfo } from "./user";
 
 export interface WritebackParameter extends Parameter {
   target: ParameterTarget;
@@ -23,9 +24,17 @@ export interface WritebackActionBase {
   description: string | null;
   parameters: WritebackParameter[];
   visualization_settings?: ActionFormSettings;
+  creator_id: UserId;
+  creator: UserInfo;
   updated_at: string;
   created_at: string;
+  public_uuid: string | null;
 }
+
+export type PublicWritebackAction = Pick<
+  WritebackActionBase,
+  "id" | "name" | "parameters" | "visualization_settings"
+>;
 
 export interface QueryAction {
   type: "query";

@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase-enterprise.audit-app.pages.common.pulses :as common.pulses]))
+   [metabase-enterprise.audit-app.pages.common.pulses :as common.pulses]
+   [metabase.util :as u]))
 
 (def ^:private table-metadata
   (into
@@ -29,8 +30,8 @@
                         (filter some?)
                         [[:not= :pulse.dashboard_id nil]
                          (when-not (str/blank? dashboard-name)
-                           [:like :%lower.dashboard.name (str \% (str/lower-case dashboard-name) \%)])])))
-      (assoc :order-by [[:%lower.dashboard.name :asc]
+                           [:like [:lower :dashboard.name] (str \% (u/lower-case-en dashboard-name) \%)])])))
+      (assoc :order-by [[[:lower :dashboard.name] :asc]
                         ;; Newest first. ID instead of `created_at` because the column is currently only
                         ;; second-resolution for MySQL which busts our tests
                         [:channel.id :desc]])))

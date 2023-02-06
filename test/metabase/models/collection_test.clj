@@ -1264,7 +1264,7 @@
 (defmacro ^:private with-collection-hierarchy-in [parent-location [collection-symb & more] & body]
   (if-not collection-symb
     `(do ~@body)
-    `(mt/with-temp Collection [~collection-symb {:name     ~(str/upper-case (name collection-symb))
+    `(mt/with-temp Collection [~collection-symb {:name     ~(u/upper-case-en (name collection-symb))
                                                  :location ~parent-location}]
        (with-collection-hierarchy-in (collection/children-location ~collection-symb) ~more ~@body))))
 

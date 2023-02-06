@@ -640,6 +640,7 @@
                 (unique-name :x "A")
                 (unique-name :y "A")]))))
 
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (t/testing "options"
     (t/testing :name-key-fn
       (let [f (mbql.u/unique-name-generator :name-key-fn str/lower-case)]

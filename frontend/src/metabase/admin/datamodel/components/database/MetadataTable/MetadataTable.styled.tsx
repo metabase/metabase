@@ -1,8 +1,6 @@
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import { focusOutlineStyle } from "metabase/core/style/input";
 import Input from "metabase/core/components/Input";
 
 interface VisibilityTypeProps {

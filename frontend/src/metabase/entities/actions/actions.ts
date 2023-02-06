@@ -1,4 +1,6 @@
 import { t } from "ttag";
+import { createAction } from "redux-actions";
+import { updateIn } from "icepick";
 import { createEntity } from "metabase/lib/entities";
 
 import type {
@@ -6,6 +8,7 @@ import type {
   ImplicitQueryAction,
   WritebackActionBase,
   WritebackAction,
+  WritebackActionId,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -176,6 +179,9 @@ const enableImplicitActionsForModel =
     dispatch(Actions.actions.invalidateLists());
   };
 
+const CREATE_PUBLIC_LINK = "metabase/entities/actions/CREATE_PUBLIC_LINK";
+const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
+
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",
@@ -200,6 +206,50 @@ const Actions = createEntity({
   },
   actions: {
     enableImplicitActionsForModel,
+  },
+  objectActions: {
+    createPublicLink: createAction(
+      CREATE_PUBLIC_LINK,
+      ({ id }: { id: WritebackActionId }) => {
+        return ActionsApi.createPublicLink({ id }).then(
+          ({ uuid }: { uuid: string }) => {
+            return {
+              id,
+              uuid,
+            };
+          },
+        );
+      },
+    ),
+    deletePublicLink: createAction(
+      DELETE_PUBLIC_LINK,
+      ({ id }: { id: WritebackActionId }) => {
+        return ActionsApi.deletePublicLink({ id }).then(() => {
+          return {
+            id,
+          };
+        });
+      },
+    ),
+  },
+  reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
+    switch (type) {
+      case CREATE_PUBLIC_LINK: {
+        const { id, uuid } = payload;
+        return updateIn(state, [id], action => {
+          return { ...action, public_uuid: uuid };
+        });
+      }
+      case DELETE_PUBLIC_LINK: {
+        const { id } = payload;
+        return updateIn(state, [id], action => {
+          return { ...action, public_uuid: null };
+        });
+      }
+      default: {
+        return state;
+      }
+    }
   },
 });
 

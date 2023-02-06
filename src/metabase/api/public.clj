@@ -499,7 +499,8 @@
   [uuid param-key]
   (validation/check-public-sharing-enabled)
   (let [card (db/select-one Card :public_uuid uuid, :archived false)]
-    (api.card/param-values card param-key)))
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (api.card/param-values card param-key))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid/params/:param-key/search/:query"
@@ -507,7 +508,8 @@
   [uuid param-key query]
   (validation/check-public-sharing-enabled)
   (let [card (db/select-one Card :public_uuid uuid, :archived false)]
-    (api.card/param-values card param-key query)))
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (api.card/param-values card param-key query))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/values"
@@ -553,19 +555,18 @@
 
 (def ^:private action-execution-throttle
   "Rate limit at 1 action per second on a per action basis.
-   The goal of rate limiting should be to prevent very obvioius abuse, but it should
+   The goal of rate limiting should be to prevent very obvious abuse, but it should
    be relatively lax so we don't annoy legitimate users."
   (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 1000 :delay-exponent 1))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/action/:uuid/execute"
+(api/defendpoint POST "/action/:uuid/execute"
   "Execute the Action.
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
   [uuid :as {{:keys [parameters], :as _body} :body}]
-  {uuid        su/UUIDString
-   parameters  (s/maybe {s/Keyword s/Any})}
+  {uuid       ms/UUIDString
+   parameters [:maybe [:map-of :keyword any?]]}
   (let [throttle-message (try
                            (throttle/check action-execution-throttle uuid)
                            nil
@@ -578,14 +579,13 @@
                :body   throttle-message}
         throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
-        ;; TODO: check-actions-enabled for the database
         (validation/check-public-sharing-enabled)
         ;; Run this query with full superuser perms. We don't want the various perms checks
         ;; failing because there are no current user perms; if this Dashcard is public
         ;; you're by definition allowed to run it without a perms check anyway
         (binding [api/*current-user-permissions-set* (delay #{"/"})]
-            ;; Undo middleware string->keyword coercion
           (let [action (api/check-404 (first (action/actions-with-implicit-params nil :public_uuid uuid)))]
+            ;; Undo middleware string->keyword coercion
             (actions.execution/execute-action! action (update-keys parameters name))))))))
 
 

@@ -350,18 +350,20 @@
   set to true when settings are being written directly via /api/setting endpoints."
   false)
 
-(defn- has-advanced-setting-access?
+(defn has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
-  Return `false` when `advanced-permissions` is disabled."
+  Return `false` for all non-admins when `advanced-permissions` is disabled. Return `true` for all admins."
   []
-  (u/ignore-exceptions
-   (classloader/require 'metabase-enterprise.advanced-permissions.common
-                        'metabase.public-settings.premium-features))
-  (if-let [current-user-has-application-permisisons?
-           (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
-                (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
-    (current-user-has-application-permisisons? :setting)
-    false))
+  (or api/*is-superuser?*
+      (do
+        (u/ignore-exceptions
+         (classloader/require 'metabase-enterprise.advanced-permissions.common
+                              'metabase.public-settings.premium-features))
+        (if-let [current-user-has-application-permisisons?
+                 (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
+                      (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
+          (current-user-has-application-permisisons? :setting)
+          false))))
 
 (defn- current-user-can-access-setting?
   "This checks whether the current user should have the ability to read or write the provided setting.
@@ -394,7 +396,7 @@
   (str "MB_" (-> (setting-name setting-definition-or-name)
                  munge-setting-name
                  (str/replace "-" "_")
-                 str/upper-case)))
+                 u/upper-case-en)))
 
 (defn setting-env-map-name
   "Correctly translate a setting to the keyword it will be found at in [[env/env]]."
@@ -509,7 +511,7 @@
   "Interpret a `string-value` of a Setting as a boolean."
   [string-value :- (s/maybe s/Str)]
   (when (seq string-value)
-    (case (str/lower-case string-value)
+    (case (u/lower-case-en string-value)
       "true"  true
       "false" false
       (throw (Exception.

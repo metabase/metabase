@@ -10,19 +10,16 @@ import Questions from "metabase/entities/questions";
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
 
 import { isImplicitAction } from "metabase/actions/utils";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import {
-  ModelTitle,
   ActionItem,
-  ActionName,
   EditButton,
-  ModelActionList,
   EmptyState,
+  ModelCollapseSection,
   EmptyModelStateContainer,
 } from "./ActionPicker.styled";
 
@@ -78,21 +75,14 @@ function ModelActionPicker({
 
   return (
     <>
-      <ModelActionList>
-        <ModelTitle>
-          <div>
-            <Icon name="model" size={16} className="mr2" />
-            {model.name}
-          </div>
-          <Button onlyIcon icon="add" onClick={toggleIsActionCreatorVisible} />
-        </ModelTitle>
+      <ModelCollapseSection header={<h4>{model.name}</h4>}>
         {actions?.length ? (
           <ul>
             {actions?.map(action => (
               <ActionItem key={action.id}>
-                <ActionName onClick={() => onClick(action)}>
-                  {action.name}
-                </ActionName>
+                <Button onlyText onClick={() => onClick(action)}>
+                  <span>{action.name}</span>
+                </Button>
                 {!isImplicitAction(action) && (
                   <EditButton
                     icon="pencil"
@@ -105,6 +95,11 @@ function ModelActionPicker({
                 )}
               </ActionItem>
             ))}
+            <ActionItem>
+              <Button onlyText onClick={toggleIsActionCreatorVisible}>
+                {t`Create new action`}
+              </Button>
+            </ActionItem>
           </ul>
         ) : (
           <EmptyModelStateContainer>
@@ -114,7 +109,7 @@ function ModelActionPicker({
             </Button>
           </EmptyModelStateContainer>
         )}
-      </ModelActionList>
+      </ModelCollapseSection>
       {isActionCreatorOpen && (
         <ActionCreator
           modelId={model.id}

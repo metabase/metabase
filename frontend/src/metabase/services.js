@@ -1,3 +1,4 @@
+import _ from "underscore";
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
@@ -108,6 +109,8 @@ export const CardApi = {
   // related
   related: GET("/api/card/:cardId/related"),
   adHocRelated: POST("/api/card/related"),
+  parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
+  parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
 };
 
 export const DashboardApi = {
@@ -158,6 +161,8 @@ export const CollectionsApi = {
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
+  action: GET("/api/public/action/:uuid"),
+  executeAction: POST("/api/public/action/:uuid/execute"),
   card: GET("/api/public/card/:uuid"),
   cardQuery: GET("/api/public/card/:uuid/query"),
   cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
@@ -286,6 +291,11 @@ export const MetabaseApi = {
     // this prevents the `endpoint` parameter from being URL encoded
     raw: { endpoint: true },
   }),
+};
+
+export const ParameterApi = {
+  parameterValues: POST("/api/dataset/parameter/values"),
+  parameterSearch: POST("/api/dataset/parameter/search/:query"),
 };
 
 export const ModerationReviewApi = {
@@ -422,27 +432,38 @@ export const TaskApi = {
 };
 
 export function setPublicQuestionEndpoints(uuid) {
-  setFieldEndpoints("/api/public/card/:uuid", { uuid });
+  setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
 export function setPublicDashboardEndpoints() {
-  setParamsEndpoints("/api/public");
+  setDashboardEndpoints("/api/public");
 }
 export function setEmbedQuestionEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
-    setFieldEndpoints("/api/embed/card/:token", { token });
+    setCardEndpoints("/api/embed/card/:token", { token });
   }
 }
 export function setEmbedDashboardEndpoints() {
   if (!IS_EMBED_PREVIEW) {
-    setParamsEndpoints("/api/embed");
+    setDashboardEndpoints("/api/embed");
   }
 }
 
-function GET_with(url, params) {
-  return (data, options) => GET(url)({ ...params, ...data }, options);
+function GET_with(url, params, omitKeys) {
+  return (data, options) =>
+    GET(url)({ ...params, ..._.omit(data, omitKeys) }, options);
 }
 
-function setFieldEndpoints(prefix, params) {
+function setCardEndpoints(prefix, params) {
+  CardApi.parameterValues = GET_with(
+    prefix + "/params/:paramId/values",
+    params,
+    ["cardId"],
+  );
+  CardApi.parameterSearch = GET_with(
+    prefix + "/params/:paramId/search/:query",
+    params,
+    ["cardId"],
+  );
   MetabaseApi.field_values = GET_with(
     prefix + "/field/:fieldId/values",
     params,
@@ -457,12 +478,12 @@ function setFieldEndpoints(prefix, params) {
   );
 }
 
-function setParamsEndpoints(prefix) {
+function setDashboardEndpoints(prefix) {
   DashboardApi.parameterValues = GET(
-    prefix + "/dashboard/:dashId/params/:paramId/values",
+    `${prefix}/dashboard/:dashId/params/:paramId/values`,
   );
   DashboardApi.parameterSearch = GET(
-    prefix + "/dashboard/:dashId/params/:paramId/search/:query",
+    `${prefix}/dashboard/:dashId/params/:paramId/search/:query`,
   );
 }
 
@@ -475,4 +496,6 @@ export const ActionsApi = {
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
   execute: POST("/api/dashboard/:dashboardId/dashcard/:dashcardId/execute"),
+  createPublicLink: POST("/api/action/:id/public_link"),
+  deletePublicLink: DELETE("/api/action/:id/public_link"),
 };

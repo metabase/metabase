@@ -1,27 +1,32 @@
 import {
   CardId,
+  PublicWritebackAction,
   WritebackParameter,
   WritebackQueryAction,
   WritebackImplicitQueryAction,
 } from "metabase-types/api";
 import { createMockNativeDatasetQuery } from "./query";
 import { createMockParameter } from "./parameters";
+import { createMockUserInfo } from "./user";
 
-export const createMockActionParameter = (
-  opts?: Partial<WritebackParameter>,
-): WritebackParameter => ({
-  target: opts?.target || ["variable", ["template-tag", "id"]],
-  ...createMockParameter({
-    id: "id",
+export const createMockActionParameter = ({
+  id = "id",
+  target = ["variable", ["template-tag", id]],
+  ...opts
+}: Partial<WritebackParameter> = {}): WritebackParameter => {
+  const parameter = createMockParameter({
+    id,
     name: "ID",
     type: "type/Integer",
     slug: "id",
     ...opts,
-  }),
-});
+  });
+  return { ...parameter, target };
+};
 
 export const createMockQueryAction = ({
   dataset_query = createMockNativeDatasetQuery(),
+  creator = createMockUserInfo(),
   ...opts
 }: Partial<WritebackQueryAction> = {}): WritebackQueryAction => {
   return {
@@ -31,16 +36,20 @@ export const createMockQueryAction = ({
     description: null,
     model_id: 1,
     parameters: [],
+    creator_id: creator.id,
+    creator,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    public_uuid: null,
     ...opts,
     type: "query",
   };
 };
 
-export const createMockImplicitQueryAction = (
-  options: Partial<WritebackImplicitQueryAction>,
-): WritebackImplicitQueryAction => ({
+export const createMockImplicitQueryAction = ({
+  creator = createMockUserInfo(),
+  ...opts
+}: Partial<WritebackImplicitQueryAction>): WritebackImplicitQueryAction => ({
   id: 1,
   kind: "row/create",
   name: "",
@@ -48,9 +57,12 @@ export const createMockImplicitQueryAction = (
   model_id: 1,
   parameters: [],
   visualization_settings: undefined,
+  creator_id: creator.id,
+  creator,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
-  ...options,
+  public_uuid: null,
+  ...opts,
   type: "implicit",
 });
 
@@ -76,3 +88,12 @@ export const createMockImplicitCUDActions = (
     model_id: modelId,
   }),
 ];
+
+export const createMockPublicAction = (
+  opts?: Partial<PublicWritebackAction>,
+): PublicWritebackAction => ({
+  id: 1,
+  name: "Public Action",
+  parameters: [],
+  ...opts,
+});

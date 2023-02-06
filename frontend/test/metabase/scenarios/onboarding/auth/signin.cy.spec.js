@@ -14,9 +14,16 @@ describe("scenarios > auth > signin", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("should redirect to  /auth/login", () => {
+  it("should redirect to /auth/login", () => {
     cy.visit("/");
     cy.url().should("contain", "auth/login");
+  });
+
+  it("should redirect to / when logged in", () => {
+    cy.signInAsAdmin();
+    cy.visit("/auth/login");
+    cy.url().should("not.contain", "auth/login");
+    cy.icon("gear").should("exist");
   });
 
   it("should display an error for incorrect passwords", () => {

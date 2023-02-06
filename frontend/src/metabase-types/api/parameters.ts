@@ -1,3 +1,4 @@
+import { RowValue } from "./dataset";
 import { CardId } from "./card";
 
 export type StringParameterType =
@@ -32,7 +33,7 @@ export type ParameterId = string;
 
 export type ActionParameterValue = string | number;
 
-export interface Parameter {
+export interface Parameter extends ParameterValuesConfig {
   id: ParameterId;
   name: string;
   "display-name"?: string;
@@ -44,6 +45,9 @@ export interface Parameter {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
+}
+
+export interface ParameterValuesConfig {
   values_query_type?: ValuesQueryType;
   values_source_type?: ValuesSourceType;
   values_source_config?: ValuesSourceConfig;
@@ -57,4 +61,11 @@ export interface ValuesSourceConfig {
   values?: string[];
   card_id?: CardId;
   value_field?: unknown[];
+}
+
+export type ParameterValue = [RowValue];
+
+export interface ParameterValues {
+  values: ParameterValue[];
+  has_more_values: boolean;
 }

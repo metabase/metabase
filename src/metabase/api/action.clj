@@ -2,14 +2,18 @@
   "`/api/action/` endpoints."
   (:require
    [compojure.core :as compojure :refer [POST]]
+   [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.models :refer [Action Card HTTPAction ImplicitAction QueryAction]]
+   [metabase.models :refer [Action Card Database HTTPAction ImplicitAction
+                            QueryAction]]
    [metabase.models.action :as action]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
   (:import
    (java.util UUID)))
 
@@ -49,7 +53,9 @@
   (let [model (api/read-check Card model-id)]
     ;; We don't check the permissions on the actions, we assume they are
     ;; readable if the model is readable.
-    (action/actions-with-implicit-params [model] :model_id model-id)))
+    (hydrate
+     (action/actions-with-implicit-params [model] :model_id model-id)
+     :creator)))
 
 (api/defendpoint GET "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
@@ -60,7 +66,10 @@
 
 (api/defendpoint GET "/:action-id"
   [action-id]
-  (api/read-check (first (action/actions-with-implicit-params nil :id action-id))))
+  (-> (action/actions-with-implicit-params nil :id action-id)
+      first
+      (hydrate :creator)
+      api/read-check))
 
 (defn- type->model [existing-action-type]
   (case existing-action-type
@@ -94,8 +103,16 @@
    template               [:maybe http-action-template]
    response_handle        [:maybe json-query-schema]
    error_handle           [:maybe json-query-schema]}
+
   (api/write-check Card model_id)
-  (let [action-id (action/insert! action)]
+  (when (and (nil? database_id)
+             (= "query" type))
+    (throw (ex-info (tru "Must provide a database_id for query actions")
+                    {:type        type
+                     :status-code 400})))
+  (when database_id
+    (actions/check-actions-enabled! (db/select-one Database :id database_id)))
+  (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id
       (first (action/actions-with-implicit-params nil :id action-id))
       ;; db/insert! does not return a value when used with h2
@@ -139,8 +156,8 @@
   Action has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
   [id]
+  {id pos-int?}
   (api/check-superuser)
-  (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/read-check Action id)
   {:uuid (or (db/select-one-field :public_uuid Action :id id)
@@ -152,6 +169,8 @@
 (api/defendpoint DELETE "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [id]
+  {id pos-int?}
+  ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Action :id id, :public_uuid [:not= nil])

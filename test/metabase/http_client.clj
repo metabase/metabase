@@ -123,7 +123,7 @@
       (or (:id response)
           (throw (ex-info "Unexpected response" {:response response}))))
     (catch Throwable e
-      (println "Failed to authenticate with credentials" credentials e)
+      (log/errorf "Failed to authenticate with credentials %s %s" credentials e)
       (throw (ex-info "Failed to authenticate with credentials"
                       {:credentials credentials}
                       e)))))
@@ -197,7 +197,7 @@
         request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)
-        method-name (str/upper-case (name method))
+        method-name (u/upper-case-en (name method))
         _           (log/debug method-name (pr-str url) (pr-str request-map))
         thunk       (fn []
                       (try

@@ -79,8 +79,8 @@
                          :error explained
                          :humanized (me/humanize explained)}))))
     (db/transaction
-      (perms/update-data-perms-graph! (dissoc graph :sandboxes))
-      (if-let [sandboxes (:sandboxes body)]
+     (perms/update-data-perms-graph! (dissoc graph :sandboxes))
+     (if-let [sandboxes (:sandboxes body)]
        (let [new-sandboxes (upsert-sandboxes! sandboxes)]
          (assoc (perms/data-perms-graph) :sandboxes new-sandboxes))
        (perms/data-perms-graph)))))
