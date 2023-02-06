@@ -1,20 +1,24 @@
 import {
+  describeEE,
+  modal,
   openNativeEditor,
+  popover,
   restore,
-  setFilterQuestionSource,
   saveQuestion,
   setFilterListSource,
+  setFilterQuestionSource,
   visitEmbeddedPage,
   visitPublicQuestion,
-  popover,
-  modal,
+  visitQuestion,
 } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 import { toggleRequired } from "./helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { COLLECTION_GROUP } = USER_GROUPS;
 
 const structuredSourceQuestion = {
   name: "MBQL source",
@@ -22,7 +26,7 @@ const structuredSourceQuestion = {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
     breakout: [["field", PRODUCTS.CATEGORY, null]],
-    filter: ["!=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"],
+    filter: ["!=", ["field", PRODUCTS.CATEGORY, null], "Doohickey"],
   },
 };
 
@@ -61,8 +65,8 @@ describe("scenarios > filters > sql filters > values source", () => {
       saveQuestion("SQL filter");
 
       FieldFilter.openEntryForm();
-      checkFilterValueNotInList("Gizmo");
-      FieldFilter.selectFilterValueFromList("Gadget");
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
 
       toggleRequired();
@@ -81,8 +85,8 @@ describe("scenarios > filters > sql filters > values source", () => {
       saveQuestion("SQL filter");
 
       FieldFilter.openEntryForm();
-      checkFilterValueNotInList("Gizmo");
-      FieldFilter.selectFilterValueFromList("Gadget");
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
 
       toggleRequired();
@@ -100,10 +104,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
 
       FieldFilter.openEntryForm();
-      checkFilterValueNotInList("Gizmo");
-      FieldFilter.setWidgetStringFilter("Gadget");
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.setWidgetStringFilter("Gizmo");
       checkFilterValueNotInList("Widget");
-      FieldFilter.selectFilterValueFromList("Gadget");
+      FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("dataset");
     });
 
@@ -117,10 +121,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
       FieldFilter.openEntryForm();
       cy.wait("@parameterValues");
-      checkFilterValueInList("Gadget");
+      checkFilterValueInList("Gizmo");
       FieldFilter.closeEntryForm();
       FieldFilter.openEntryForm();
-      checkFilterValueInList("Gadget");
+      checkFilterValueInList("Gizmo");
       cy.get("@parameterValues.all").should("have.length", 1);
       setFilterListSource({ values: ["A", "B"] });
       FieldFilter.openEntryForm();
@@ -139,7 +143,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       updateQuestion();
       FieldFilter.openEntryForm();
       cy.wait("@cardParameterValues");
-      checkFilterValueInList("Gadget");
+      checkFilterValueInList("Gizmo");
     });
 
     it("should be able to use a structured question source when embedded", () => {
@@ -154,8 +158,8 @@ describe("scenarios > filters > sql filters > values source", () => {
       );
 
       FieldFilter.openEntryForm();
-      checkFilterValueNotInList("Gizmo");
-      FieldFilter.selectFilterValueFromList("Gadget");
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gizmo");
     });
 
     it("should be able to use a structured question source when public", () => {
@@ -170,8 +174,8 @@ describe("scenarios > filters > sql filters > values source", () => {
       );
 
       FieldFilter.openEntryForm();
-      checkFilterValueNotInList("Gizmo");
-      FieldFilter.selectFilterValueFromList("Gadget");
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gizmo");
     });
   });
 
@@ -265,6 +269,58 @@ describe("scenarios > filters > sql filters > values source", () => {
       checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
     });
+  });
+});
+
+describeEE("scenarios > filters > sql filters > values source", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
+    cy.intercept("GET", "/api/card/*/params/*/values").as(
+      "cardParameterValues",
+    );
+  });
+
+  it("should sandbox parameter values in questions", () => {
+    cy.updatePermissionsGraph({
+      [COLLECTION_GROUP]: {
+        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+      },
+    });
+
+    cy.sandboxTable({
+      table_id: PRODUCTS_ID,
+      attribute_remappings: {
+        attr_uid: ["dimension", ["field", PRODUCTS.ID, null]],
+      },
+    });
+
+    cy.createQuestion(structuredSourceQuestion).then(
+      ({ body: { id: sourceQuestionId } }) => {
+        cy.createNativeQuestion(
+          getStructuredTargetQuestion(sourceQuestionId),
+        ).then(({ body: { id: targetQuestionId } }) => {
+          cy.signOut();
+          cy.signInAsSandboxedUser();
+          visitQuestion(targetQuestionId);
+        });
+      },
+    );
+
+    FieldFilter.openEntryForm();
+    cy.wait("@cardParameterValues");
+    checkFilterValueNotInList("Gadget");
+    checkFilterValueNotInList("Doohickey");
+    FieldFilter.selectFilterValueFromList("Gizmo");
+
+    cy.findByText("Open Editor").click();
+    cy.icon("variable").click();
+    FieldFilter.openEntryForm(true);
+    cy.wait("@parameterValues");
+    checkFilterValueNotInList("Gadget");
+    checkFilterValueNotInList("Doohickey");
+    FieldFilter.selectFilterValueFromList("Gizmo");
   });
 });
 
