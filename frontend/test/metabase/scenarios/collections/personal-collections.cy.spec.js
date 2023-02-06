@@ -10,7 +10,8 @@ import {
 
 import { USERS } from "__support__/e2e/cypress_data";
 
-const adminPersonalCollectionId = 1;
+const ADMIN_PERSONAL_COLLECTION_ID = 1;
+const NODATA_PERSONAL_COLLECTION_ID = 5;
 
 describe("personal collections", () => {
   beforeEach(() => {
@@ -77,7 +78,7 @@ describe("personal collections", () => {
       cy.request("POST", "/api/collection", {
         name: "Foo",
         color: "#ff9a9a",
-        parent_id: adminPersonalCollectionId,
+        parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       });
 
       // Go to admin's personal collection
@@ -123,13 +124,14 @@ describe("personal collections", () => {
       });
     });
 
-    it.skip("should be able view other users' personal sub-collections (metabase#15339)", () => {
-      cy.visit("/collection/5");
-      openNewCollectionItemFlowFor("collection");
-      cy.findByLabelText("Name").type("Foo");
-      cy.button("Create").click();
-      // This repro could possibly change depending on the design decision for this feature implementation
-      navigationSidebar().findByText("Foo");
+    it("should be able view other users' personal sub-collections (metabase#15339)", () => {
+      cy.createCollection({
+        name: "Foo",
+        parent_id: NODATA_PERSONAL_COLLECTION_ID,
+      });
+
+      cy.visit(`/collection/${NODATA_PERSONAL_COLLECTION_ID}`);
+      cy.findByText("Foo");
     });
   });
 
