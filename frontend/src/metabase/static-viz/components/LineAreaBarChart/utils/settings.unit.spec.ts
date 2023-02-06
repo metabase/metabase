@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { ChartSettings } from "../../XYChart/types";
 import { adjustSettings } from "./settings";
 

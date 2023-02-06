@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
-import ColorPill from "metabase/core/components/ColorPill";
 import ChartSettingColorPicker from "./ChartSettingColorPicker";
 
 interface ColumnItemRootProps {

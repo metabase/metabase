@@ -1,6 +1,5 @@
 import React from "react";
 import { screen, waitFor } from "@testing-library/react";
-import _ from "underscore";
 
 import { renderWithProviders } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
