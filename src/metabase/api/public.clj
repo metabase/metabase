@@ -559,15 +559,14 @@
    be relatively lax so we don't annoy legitimate users."
   (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 1000 :delay-exponent 1))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/action/:uuid/execute"
+(api/defendpoint POST "/action/:uuid/execute"
   "Execute the Action.
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
   [uuid :as {{:keys [parameters], :as _body} :body}]
-  {uuid        su/UUIDString
-   parameters  (s/maybe {s/Keyword s/Any})}
+  {uuid       ms/UUIDString
+   parameters [:maybe [:map-of :keyword any?]]}
   (let [throttle-message (try
                            (throttle/check action-execution-throttle uuid)
                            nil
@@ -580,7 +579,6 @@
                :body   throttle-message}
         throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
-        ;; TODO: check-actions-enabled for the database
         (validation/check-public-sharing-enabled)
         ;; Run this query with full superuser perms. We don't want the various perms checks
         ;; failing because there are no current user perms; if this Dashcard is public
