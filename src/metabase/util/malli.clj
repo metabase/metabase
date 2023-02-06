@@ -34,7 +34,7 @@
        :else url))))
 
 (core/defn- humanize-include-value
-  "Pass into mu/humanize to include the value recieved in the error message."
+  "Pass into mu/humanize to include the value received in the error message."
   [{:keys [value message]}] (str message ", received: " (pr-str value)))
 
 (core/defn- explain-fn-fail!
