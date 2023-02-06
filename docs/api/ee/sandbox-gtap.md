@@ -18,7 +18,13 @@ Delete a GTAP entry.
 
 ## `GET /api/mt/gtap/`
 
-Fetch a list of all the GTAPs currently in use.
+Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided.
+
+### PARAMS:
+
+*  **`group_id`** nullable integer greater than 0
+
+*  **`table_id`** nullable integer greater than 0
 
 ## `GET /api/mt/gtap/:id`
 
