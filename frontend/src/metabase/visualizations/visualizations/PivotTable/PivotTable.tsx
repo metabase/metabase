@@ -54,7 +54,6 @@ import {
   leftHeaderCellSizeAndPositionGetter,
   topHeaderCellSizeAndPositionGetter,
   getCellWidthsForSection,
-  getWidthForRange,
 } from "./utils";
 
 import {
@@ -92,7 +91,6 @@ function PivotTable({
 }: PivotTableProps) {
   const [gridElement, setGridElement] = useState<HTMLElement | null>(null);
   const columnWidthSettings = settings["pivot_table.column_widths"];
-  const previousColumnWidthSettings = usePrevious(columnWidthSettings);
 
   const [
     { leftHeaderWidths, totalLeftHeaderWidths, valueHeaderWidths },

@@ -1,7 +1,6 @@
 import React from "react";
 import { Area, LinePath } from "@visx/shape";
 import { AccessorForArrayItem, PositionScale } from "@visx/shape/lib/types";
-import { StackedDatum } from "../types";
 
 interface AreaProps<Datum> {
   x: AccessorForArrayItem<Datum, number>;

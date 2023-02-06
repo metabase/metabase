@@ -1,4 +1,3 @@
-import { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import {

@@ -229,6 +229,7 @@
                         column-info))})))
 
 (doseq [feature [:basic-aggregations
+                 :expression-aggregations
                  :nested-fields
                  :nested-queries
                  :native-parameters

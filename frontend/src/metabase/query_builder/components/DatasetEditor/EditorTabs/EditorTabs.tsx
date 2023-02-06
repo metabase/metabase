@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import { TabBar, Tab, RadioInput } from "./EditorTabs.styled";

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";

@@ -10,9 +10,9 @@ To add a database connection, click on the **gear** icon in the top right, and n
 
 Fill out the fields for that database, and click **Save changes** at the bottom.
 
-## Connection settings
+## Settings
 
-Connection details for a PostgreSQL database.
+You can edit these settings at any time. Just remember to save your changes.
 
 ### Display name
 

@@ -7,7 +7,6 @@ import cx from "classnames";
 import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
 import { CalendarDay } from "./Calendar.styled";
 
 export type SelectAll = "after" | "before";
@@ -216,15 +215,8 @@ type WeekProps = {
 class Week extends Component<WeekProps> {
   render() {
     const days = [];
-    let {
-      date,
-      month,
-      selected,
-      selectedEnd,
-      primaryColor = color("brand"),
-      selectAll,
-      isRangePicker,
-    } = this.props;
+    let { date, month, selected, selectedEnd, selectAll, isRangePicker } =
+      this.props;
 
     for (let i = 0; i < 7; i++) {
       const isSelected =
