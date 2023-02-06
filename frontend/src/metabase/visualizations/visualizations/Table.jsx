@@ -180,7 +180,7 @@ export default class Table extends Component {
         // it will be treated as "all columns are hidden",
         // This check ensures it's not empty,
         // otherwise it will be overwritten by `getDefault` below
-        card.visualization_settings["table.columns"] !== 0 &&
+        card.visualization_settings["table.columns"].length !== 0 &&
         (extra.isQueryRunning ||
           _.all(
             card.visualization_settings["table.columns"],
