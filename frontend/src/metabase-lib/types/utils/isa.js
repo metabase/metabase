@@ -1,4 +1,5 @@
 import { isa as cljs_isa } from "cljs/metabase.types";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
 import {
   TYPE,
@@ -208,3 +209,13 @@ export function hasLatitudeAndLongitudeColumns(cols) {
   }
   return hasLatitude && hasLongitude;
 }
+
+export const getIsPKFromTablePredicate = tableId => column => {
+  const isPrimaryKey = isPK(column);
+
+  // FIXME: columns of nested questions at this moment miss table_id value
+  // which makes it impossible to match them with their tables that are nested cards
+  return isVirtualCardId(tableId)
+    ? isPrimaryKey
+    : isPrimaryKey && column.table_id === tableId;
+};

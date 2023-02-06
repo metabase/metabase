@@ -55,11 +55,12 @@ import {
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
+  const table = getTableMetadata(state);
   let zoomedRowID = getZoomedObjectId(state);
   const isZooming = zoomedRowID != null;
 
   if (!isZooming) {
-    zoomedRowID = getIdValue({ data });
+    zoomedRowID = getIdValue({ data, tableId: table?.id });
   }
 
   const zoomedRow = isZooming ? getZoomRow(state) : getSingleResultsRow(data);
@@ -68,7 +69,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
 
   return {
     question: getQuestion(state),
-    table: getTableMetadata(state),
+    table,
     tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
     zoomedRowID,
@@ -237,7 +238,12 @@ export function ObjectDetailFn({
     zoomedRow,
   });
 
-  const displayId = getDisplayId({ cols: data.cols, zoomedRow });
+  const displayId = getDisplayId({
+    cols: data.cols,
+    zoomedRow,
+    tableId: table?.id,
+  });
+
   const hasPk = !!data.cols.find(isPK);
   const hasRelationships =
     showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
