@@ -7,7 +7,6 @@ import {
   waitFor,
   waitForElementToBeRemoved,
   getIcon,
-  queryIcon,
 } from "__support__/ui";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
