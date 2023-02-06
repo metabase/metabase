@@ -10,7 +10,7 @@ import {
   regularQuestion,
   questionWithAggregation,
   joinedQuestion,
-} from "./embedding-questions";
+} from "./shared/embedding-questions";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 

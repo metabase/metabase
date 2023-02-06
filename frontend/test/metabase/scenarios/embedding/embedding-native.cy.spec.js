@@ -6,7 +6,7 @@ import {
   visitIframe,
 } from "__support__/e2e/helpers";
 
-import { questionDetails } from "./embedding-native";
+import { questionDetails } from "./shared/embedding-native";
 
 describe("scenarios > embedding > native questions", () => {
   beforeEach(() => {
