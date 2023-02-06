@@ -7,10 +7,12 @@ import {
   visitEmbeddedPage,
   visitPublicQuestion,
   popover,
+  modal,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import { toggleRequired } from "./helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -40,6 +42,10 @@ describe("scenarios > filters > sql filters > values source", () => {
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
+    cy.intercept("GET", "/api/card/*/params/*/values").as(
+      "cardParameterValues",
+    );
   });
 
   describe("structured question source", () => {
@@ -58,6 +64,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       checkFilterValueNotInList("Gizmo");
       FieldFilter.selectFilterValueFromList("Gadget");
       SQLFilter.runQuery("cardQuery");
+
+      toggleRequired();
+      FieldFilter.openEntryForm(true);
+      FieldFilter.selectFilterValueFromList("Gadget");
     });
 
     it("should be able to use a structured question source with a text tag", () => {
@@ -74,6 +84,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       checkFilterValueNotInList("Gizmo");
       FieldFilter.selectFilterValueFromList("Gadget");
       SQLFilter.runQuery("cardQuery");
+
+      toggleRequired();
+      FieldFilter.openEntryForm(true);
+      FieldFilter.selectFilterValueFromList("Gadget");
     });
 
     it("should be able to use a structured question source without saving the question", () => {
@@ -91,6 +105,41 @@ describe("scenarios > filters > sql filters > values source", () => {
       checkFilterValueNotInList("Widget");
       FieldFilter.selectFilterValueFromList("Gadget");
       SQLFilter.runQuery("dataset");
+    });
+
+    it("should properly cache parameter values api calls", () => {
+      cy.createQuestion(structuredSourceQuestion);
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery(
+        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
+      );
+
+      setFilterQuestionSource({ question: "MBQL source", field: "Category" });
+      FieldFilter.openEntryForm();
+      cy.wait("@parameterValues");
+      checkFilterValueInList("Gadget");
+      FieldFilter.closeEntryForm();
+      FieldFilter.openEntryForm();
+      checkFilterValueInList("Gadget");
+      cy.get("@parameterValues.all").should("have.length", 1);
+      setFilterListSource({ values: ["A", "B"] });
+      FieldFilter.openEntryForm();
+      cy.wait("@parameterValues");
+      checkFilterValueInList("A");
+
+      saveQuestion("SQL filter");
+      FieldFilter.openEntryForm();
+      cy.wait("@cardParameterValues");
+      checkFilterValueInList("A");
+      FieldFilter.closeEntryForm();
+      FieldFilter.openEntryForm();
+      checkFilterValueInList("A");
+      cy.get("@cardParameterValues.all").should("have.length", 1);
+      setFilterQuestionSource({ question: "MBQL source", field: "Category" });
+      updateQuestion();
+      FieldFilter.openEntryForm();
+      cy.wait("@cardParameterValues");
+      checkFilterValueInList("Gadget");
     });
 
     it("should be able to use a structured question source when embedded", () => {
@@ -296,6 +345,18 @@ const getListTargetQuestion = () => {
         values: ["1018947080336", "7663515285824"],
       },
     },
+  });
+};
+
+const updateQuestion = () => {
+  cy.findByText("Save").click();
+  modal().button("Save").click();
+  cy.wait("@updateQuestion");
+};
+
+const checkFilterValueInList = value => {
+  popover().within(() => {
+    cy.findByText(value).should("exist");
   });
 };
 

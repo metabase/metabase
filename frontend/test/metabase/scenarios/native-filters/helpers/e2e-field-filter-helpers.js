@@ -123,6 +123,12 @@ export function openEntryForm(isFilterRequired) {
   selector.click();
 }
 
+export function closeEntryForm() {
+  popover().within(() => {
+    cy.get("input").type("{esc}");
+  });
+}
+
 // LOCAL SCOPE
 
 /**

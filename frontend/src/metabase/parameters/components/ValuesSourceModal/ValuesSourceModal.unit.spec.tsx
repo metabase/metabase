@@ -2,17 +2,17 @@ import React from "react";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { Card, FieldValues } from "metabase-types/api";
+import { Card, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockField,
-  createMockFieldValues,
+  createMockParameterValues,
 } from "metabase-types/api/mocks";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
-  setupFieldsValuesEndpoints,
+  setupParameterValuesEndpoints,
   setupUnauthorizedCardsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -40,12 +40,9 @@ describe("ValuesSourceModal", () => {
         parameter: createMockUiParameter({
           fields: [new Field(createMockField({ id: 1 }))],
         }),
-        fieldsValues: [
-          createMockFieldValues({
-            field_id: 1,
-            values: [],
-          }),
-        ],
+        parameterValues: createMockParameterValues({
+          values: [],
+        }),
       });
 
       expect(
@@ -53,7 +50,7 @@ describe("ValuesSourceModal", () => {
       ).toBeInTheDocument();
     });
 
-    it("should show unique non-null mapped fields values", async () => {
+    it("should show field values", async () => {
       setup({
         parameter: createMockUiParameter({
           fields: [
@@ -61,21 +58,40 @@ describe("ValuesSourceModal", () => {
             new Field(createMockField({ id: 2 })),
           ],
         }),
-        fieldsValues: [
-          createMockFieldValues({
-            field_id: 1,
-            values: [["A"], [null], ["B"], ["A"]],
-          }),
-          createMockFieldValues({
-            field_id: 2,
-            values: [["B", "Remapped"], ["C"]],
-          }),
-        ],
+        parameterValues: createMockParameterValues({
+          values: [["A"], ["B"], ["C"]],
+        }),
       });
 
       await waitFor(() => {
         expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
       });
+    });
+
+    it("should not show the fields option for variable template tags", () => {
+      setup({
+        parameter: createMockUiParameter({
+          hasVariableTemplateTagTarget: true,
+        }),
+      });
+
+      expect(
+        screen.queryByRole("radio", { name: "From connected fields" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: "From another model or question" }),
+      ).toBeChecked();
+    });
+
+    it("should preserve custom list option for variable template tags", () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: "static-list",
+          hasVariableTemplateTagTarget: true,
+        }),
+      });
+
+      expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
     });
   });
 
@@ -146,6 +162,39 @@ describe("ValuesSourceModal", () => {
       });
     });
 
+    it("should show card values", async () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+            value_field: ["field", 2, null],
+          },
+        }),
+        parameterValues: createMockParameterValues({
+          values: [["A"], ["B"], ["C"]],
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockField({
+                id: 2,
+                display_name: "Category",
+                base_type: "type/Text",
+                semantic_type: "type/Category",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      });
+    });
+
     it("should display an error message when the user has no access to the card", async () => {
       setup({
         parameter: createMockUiParameter({
@@ -204,15 +253,15 @@ describe("ValuesSourceModal", () => {
 
 interface SetupOpts {
   parameter?: UiParameter;
+  parameterValues?: ParameterValues;
   cards?: Card[];
-  fieldsValues?: FieldValues[];
   hasDataAccess?: boolean;
 }
 
 const setup = ({
   parameter = createMockUiParameter(),
+  parameterValues = createMockParameterValues(),
   cards = [],
-  fieldsValues = [],
   hasDataAccess = true,
 }: SetupOpts = {}) => {
   const scope = nock(location.origin);
@@ -222,7 +271,7 @@ const setup = ({
   if (hasDataAccess) {
     setupCollectionsEndpoints(scope, [createMockCollection(ROOT_COLLECTION)]);
     setupCardsEndpoints(scope, cards);
-    setupFieldsValuesEndpoints(scope, fieldsValues);
+    setupParameterValuesEndpoints(scope, parameterValues);
   } else {
     setupUnauthorizedCardsEndpoints(scope, cards);
   }
