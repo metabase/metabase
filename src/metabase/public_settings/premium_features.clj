@@ -53,7 +53,7 @@
   (when (seq token)
     (format "%s/api/%s/v2/status" base-url token)))
 
-(def ^:private ^:const fetch-token-status-timeout-ms 10000) ; 10 seconds
+(def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
 
 (def ^:private TokenStatus
   {:valid                               schema/Bool
@@ -101,8 +101,8 @@
                  :error-details (.getMessage e1)})))))))
    fetch-token-status-timeout-ms
    {:valid         false
-    :status        (tru "Unable to validate token")
-    :error-details (tru "Token validation timed out.")}))
+    :status        (tru "Unable to validate token starting with {0}" (str/join (take 4 token)))
+    :error-details (tru "Token validation timed out after {0}" (u/format-milliseconds fetch-token-status-timeout-ms))}))
 
 (def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
@@ -111,7 +111,7 @@
   because checks failed. "
   (memoize/ttl
    fetch-token-status*
-   :ttl/threshold (* 1000 60 5)))
+   :ttl/threshold (u/minutes->ms 5)))
 
 (schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
   [token :- ValidToken]
