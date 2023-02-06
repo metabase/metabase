@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from "react";
-import _ from "underscore";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
