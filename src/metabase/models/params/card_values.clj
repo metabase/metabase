@@ -86,7 +86,7 @@
     query           :- [:any]]
    (let [mbql-query   (values-from-card-query card value-field query)
          result       (qp/process-query mbql-query)
-         values       (map first (get-in result [:data :rows]))]
+         values       (get-in result [:data :rows])]
      {:values          values
       ;; if the row_count returned = the limit we specified, then it's probably has more than that
       :has_more_values (= (:row_count result)
