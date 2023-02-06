@@ -120,7 +120,7 @@
    type                   [:maybe supported-action-type]
    visualization_settings [:maybe map?]}
   (let [existing-action (api/write-check Action id)]
-    (action/update! action existing-action))
+    (action/update! (assoc action :id id) existing-action))
   (first (action/actions-with-implicit-params nil :id id)))
 
 (api/define-routes)
