@@ -465,6 +465,22 @@ describe("ModelDetailPage", () => {
           ).toBeInTheDocument();
         });
 
+        it("lists existing public query actions with public label", async () => {
+          const model = getModel();
+          const action = createMockQueryAction({
+            model_id: model.id(),
+            public_uuid: "mock-uuid",
+          });
+          await setupActions({ model, actions: [action] });
+
+          expect(screen.getByText(action.name)).toBeInTheDocument();
+          expect(screen.getByText(TEST_QUERY)).toBeInTheDocument();
+          expect(screen.getByText("Public Action")).toBeInTheDocument();
+          expect(
+            screen.getByText(`Created by ${action.creator.common_name}`),
+          ).toBeInTheDocument();
+        });
+
         it("lists existing implicit actions", async () => {
           const model = getModel();
           await setupActions({
