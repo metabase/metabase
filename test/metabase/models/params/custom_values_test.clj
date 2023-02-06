@@ -1,7 +1,7 @@
 (ns metabase.models.params.custom-values-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card]]
+   [metabase.models :refer [Card Collection]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.test :as mt]
    [toucan.db :as db]))
@@ -169,30 +169,53 @@
                       "oo")))))))))
 
 (deftest errors-test
-  (testing "error if source card does not exist"
-    (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #"Source card not found"
-         (custom-values/card-values
-           {:name                 "Card as source"
-            :slug                 "card"
-            :id                   "_CARD_"
-            :type                 "category"
-            :values_source_type   "card"
-            :values_source_config {:card_id     (inc (db/count Card))
-                                   :value_field (mt/$ids $venues.name)}}
-           nil))))
-  (testing "error if source card is archived"
-    (mt/with-temp Card [card {:archived true}]
-     (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Source card is archived"
-          (custom-values/card-values
-            {:name                 "Card as source"
-             :slug                 "card"
-             :id                   "_CARD_"
-             :type                 "category"
-             :values_source_type   "card"
-             :values_source_config {:card_id     (:id card)
-                                    :value_field (mt/$ids $venues.name)}}
-            nil))))))
+  (testing "error if doesn't have permissions"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp*
+          [Collection [coll]
+           Card       [card {:collection_id (:id coll)}]]
+          (is (thrown-with-msg?
+                clojure.lang.ExceptionInfo
+                #"You don't have permissions to do that."
+                (custom-values/parameter->values
+                  {:name                 "Card as source"
+                   :slug                 "card"
+                   :id                   "_CARD_"
+                   :type                 "category"
+                   :values_source_type   "card"
+                   :values_source_config {:card_id     (:id card)
+                                          :value_field (mt/$ids $venues.name)}}
+                  nil
+                  (fn [] (throw (ex-info "Shouldn't call this function" {}))))))))))
+
+  ;; bind to an admin to bypass the permissions check
+  (mt/with-current-user (mt/user->id :crowberto)
+    (testing "call to default-case-fn if "
+      (testing "souce card is archived"
+        (mt/with-temp Card [card {:archived true}]
+          (is (= :archived
+                 (custom-values/parameter->values
+                   {:name                 "Card as source"
+                    :slug                 "card"
+                    :id                   "_CARD_"
+                    :type                 "category"
+                    :values_source_type   "card"
+                    :values_source_config {:card_id     (:id card)
+                                           :value_field (mt/$ids $venues.name)}}
+                   nil
+                   (constantly :archived))))))
+
+      (testing "value-field not found in card's result_metadata"
+        (mt/with-temp Card [card {}]
+          (is (= :field-not-found
+                 (custom-values/parameter->values
+                   {:name                 "Card as source"
+                    :slug                 "card"
+                    :id                   "_CARD_"
+                    :type                 "category"
+                    :values_source_type   "card"
+                    :values_source_config {:card_id     (:id card)
+                                           :value_field [:field 0 nil]}}
+                   nil
+                   (constantly :field-not-found)))))))))

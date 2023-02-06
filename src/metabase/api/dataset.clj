@@ -178,6 +178,9 @@
 
 (defn- parameter-field-values
   [field-ids query]
+  (when-not (seq field-ids)
+    (throw (ex-info (tru "Missing field-ids for parameter")
+                    {:status-code 400})))
   (-> (reduce (fn [resp id]
                 (let [{values :values more? :has_more_values} (api.field/field-id->values id query)]
                   (-> resp
@@ -195,12 +198,7 @@
   [parameter field-ids query]
   (custom-values/parameter->values
     parameter query
-    (fn []
-     (if (seq field-ids)
-       (parameter-field-values field-ids query)
-       (throw (ex-info (tru "Missing field-ids for parameter")
-                       {:status-code 400
-                        :parameter parameter}))))))
+    (fn [] (parameter-field-values field-ids query))))
 
 (api/defendpoint POST "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."

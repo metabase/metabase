@@ -130,48 +130,34 @@
   [{config :values_source_config :as _param} query]
   (let [card-id (:card_id config)
         card    (db/select-one Card :id card-id)]
-    (when-not card
-      (throw (ex-info (tru "Source card not found")
-                      {:card-id     card-id
-                       :status-code 400})))
-    (when (:archived card)
-      (throw (ex-info (tru "Source card is archived")
-                      {:card-id     card-id
-                       :status-code 400})))
     (values-from-card card (:value_field config) query)))
 
 (defn check-can-get-card-values?
-  "Throw an exception if can't get values for parameter card"
-  [card-id value-field]
-  (let [card (db/select-one Card :id card-id)]
-    (when-not (mi/can-read? card)
-      (throw (ex-info (tru "You don''t have permissions to do that.")
-                      {:status-code 403})))
-    (when-not card
-      (throw (ex-info (tru "Source card not found")
-                      {:status-code 400})))
-    (when (:archived card)
-      (throw (ex-info (tru "Source card is archived")
-                      {:status-code 400})))
-    (when-not (field->field-info value-field (:result_metadata card))
-      (throw (ex-info (tru "Field not found")
-                      {:status-code 400})))))
+  "Throw an exception if can't get values for parameter card."
+  [card value-field]
+  (cond
+    (:archived card)
+    false
+
+    (not (field->field-info value-field (:result_metadata card)))
+    false
+
+    :else true))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
 (defn parameter->values
   "A DOC"
-  [parameter query fallback-fn]
+  [parameter query default-case-fn]
   (case (:values_source_type parameter)
     "static-list" (static-list-values parameter query)
-    "card"        (do
-                    (check-can-get-card-values? (get-in parameter [:values_source_config :card_id])
-                                                (get-in parameter [:values_source_config :value_field]))
-                    (try
+    "card"        (let [card (db/select-one Card :id (get-in parameter [:values_source_config :card_id]))]
+                    (when-not (mi/can-read? card)
+                      (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
+                    (if (check-can-get-card-values? card (get-in parameter [:values_source_config :value_field]))
                       (card-values parameter query)
-                      (catch clojure.lang.ExceptionInfo _e
-                        (fallback-fn))))
-    nil           (fallback-fn)
+                      (default-case-fn)))
+    nil           (default-case-fn)
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
                     {:status-code 400
                      :parameter parameter}))))
