@@ -66,28 +66,42 @@
 
       CacheContents
       (contents [_]
-        (into {} (for [[k v] store]
-                   [k (interface-test/deserialize cache.serdes/nippy-bounded-serializer  v)])))
+        (into {} (for [[k cache-info] (doto @store tap>)
+                       :let [{:keys [results serializer]} cache-info]
+                       :let [serializer (case serializer
+                                          "v3-unbounded-edn-serializer"
+                                          cache.serdes/unbounded-edn-serializer
+
+                                          "v3-nippy-bounded-serializer"
+                                          cache.serdes/nippy-bounded-serializer
+                                          (throw (ex-info "Don't recorgnize serializer" {})))]]
+                   [k (with-open [bais (java.io.ByteArrayInputStream. results)]
+                        (i/-metadata-and-reducible-rows serializer bais
+                                                        (fn [[metadata reducible-rows]]
+                                                          (into [metadata] reducible-rows))))])))
 
       i/CacheBackend
       (cached-results [this query-hash max-age-seconds respond]
         (let [hex-hash (codecs/bytes->hex query-hash)]
           (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
-          (if-let [^bytes results (when-let [{:keys [created results]} (some (fn [[hash entry]]
-                                                                               (when (= hash hex-hash)
-                                                                                 entry))
-                                                                             @store)]
-                                    (when (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds)))
-                                      results))]
-            (with-open [is (java.io.ByteArrayInputStream. results)]
-              (respond {:results is
-                        :serializer #_"v3-nippy-bounded-serializer"
-                        "v3-unbounded-edn-serializer"}))
+          (if-let [cached (when-let [{:keys [created results]
+                                      :as cr}                 (some (fn [[hash entry]]
+                                                                      (when (= hash hex-hash)
+                                                                        entry))
+                                                                    @store)]
+                            (when (and results
+                                       (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds))))
+                              cr))]
+            (let [^bytes results (:results cached)]
+              (with-open [is (java.io.ByteArrayInputStream. results)]
+                (respond {:results is
+                          :serializer (:serializer cached)})))
             (respond nil))))
 
       (save-results! [this query-hash results serializer-name]
         (let [hex-hash (codecs/bytes->hex query-hash)]
           (swap! store assoc hex-hash {:results results
+                                       :serializer serializer-name
                                        :created (t/instant)})
           (log/tracef "Save results for %s --> store: %s" hex-hash (pretty/pretty this)))
         (a/>!! save-chan results))
@@ -106,20 +120,22 @@
     (mt/with-temporary-setting-values [enable-query-caching  true
                                        query-caching-max-ttl 60
                                        query-caching-min-ttl 0]
-      (binding [cache/*backend* (test-backend save-chan purge-chan)
-                *save-chan*     save-chan
-                *purge-chan*    purge-chan]
-        (let [orig @#'cache/serialized-bytes]
-          (with-redefs [cache/serialized-bytes (fn []
-                                                 ;; if `save-results!` isn't going to get called because `*result-fn*`
-                                                 ;; throws an Exception, catch it and send it to `save-chan` so it still
-                                                 ;; gets a result and tests can finish
-                                                 (try
-                                                   (orig)
-                                                   (catch Throwable e
-                                                     (a/>!! save-chan e)
-                                                     (throw e))))]
-            (f {:save-chan save-chan, :purge-chan purge-chan})))))))
+      (let [test-backend' (test-backend save-chan purge-chan)]
+        (binding [cache/*backend* test-backend'
+                  *save-chan*     save-chan
+                  *purge-chan*    purge-chan]
+          (let [orig @#'cache/serialized-bytes]
+            (with-redefs [cache/serialized-bytes (fn []
+                                                   ;; if `save-results!` isn't going to get called because `*result-fn*`
+                                                   ;; throws an Exception, catch it and send it to `save-chan` so it still
+                                                   ;; gets a result and tests can finish
+                                                   (try
+                                                     (orig)
+                                                     (catch Throwable e
+                                                       (a/>!! save-chan e)
+                                                       (throw e))))]
+              (f {:save-chan save-chan, :purge-chan purge-chan,
+                  :test-backend test-backend'}))))))))
 
 (defmacro with-mock-cache [[& bindings] & body]
   `(do-with-mock-cache (fn [{:keys [~@bindings]}] ~@body)))

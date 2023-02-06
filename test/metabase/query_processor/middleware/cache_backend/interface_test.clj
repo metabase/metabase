@@ -20,7 +20,7 @@
 (defn deserialize
   "Deserialize objects serialized with `serialize-async` using reducing function `rf`."
   ([serializer ^bytes bytea]
-   (deserialize serializer  bytea
+   (deserialize serializer bytea
                 (fn [metadata]
                   (fn
                     ([] [metadata])

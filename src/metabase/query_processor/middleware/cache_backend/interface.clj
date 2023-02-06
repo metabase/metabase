@@ -6,10 +6,8 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.tools.logging :as log]
-   [metabase.util :as u]
    [potemkin.types :as p.types])
-  (:import
-   (java.io ByteArrayOutputStream InputStream)))
+  (:import java.io.InputStream))
 
 (p.types/defprotocol+ CacheBackend
   "Protocol that different Metabase cache backends must implement.
@@ -37,9 +35,13 @@
   `max-age-seconds` may be floating-point."))
 
 (p.types/defprotocol+ Ser
-  (-wrapped-output-stream [_ os options])
-  (-add! [_ os obj])
-  (-options [_])
+  (-get-accumulator [_ options]
+    "Initialize and a pair of [accumulator finalizer]. Accumulator is a function taking an item to serialize
+    with [[-add!]]. Finalizer will clean up any resources and return the accumulated item.")
+  (-add! [_ os obj]
+    "Add an item to the serializing accumulator.")
+  (-options [_]
+    "Return a map of options passed to [[-get-accumulator]]. Useful for overriding.")
   (-name [_]))
 
 (p.types/defprotocol+ Des
@@ -92,27 +94,21 @@
    (do-with-serialization serializer f (-options serializer)))
 
   ([serializer f options]
-   (with-open [bos (ByteArrayOutputStream.)]
-     (let [os    (-wrapped-output-stream serializer bos options)
-           error (atom nil)]
-       (try
-         (f (fn in* [obj]
-              (when-not @error
-                (try
-                  (-add! serializer os obj)
-                  (catch Throwable e
-                    (log/trace e "Caught error when freezing object")
-                    (reset! error e))))
-              nil)
-            (fn result* []
-              (when @error
-                (throw @error))
-              (log/trace "Getting result byte array")
-              (.toByteArray bos)))
-         ;; this is done manually instead of `with-open` because it might throw an Exception when we close it if it's
-         ;; past the byte limit; that's fine and we can ignore it
-         (finally
-           (u/ignore-exceptions (.close os))))))))
+   (let [[serializer-out finalizer] (-get-accumulator serializer options)
+         error                      (atom nil)]
+     (f (fn in* [obj]
+          (when-not @error
+            (try
+              (-add! serializer serializer-out obj)
+              (catch Throwable e
+                (log/trace e "Caught error when freezing object")
+                (reset! error e))))
+          nil)
+        (fn result* []
+          (when @error
+            (throw @error))
+          (log/trace "Getting result byte array")
+          (finalizer))))))
 
 
 

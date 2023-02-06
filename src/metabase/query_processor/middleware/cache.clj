@@ -200,14 +200,20 @@
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qp.util/query-hash query)
-        serializer #_cache.serdes/nippy-bounded-serializer cache.serdes/unbounded-edn-serializer
-        result     (maybe-reduce-cached-results #_(:ignore-cached-results? middleware)
-                                                serializer
-                                                false query-hash (or cache-ttl 10000) rff context)]
+        serializer (rand-nth [cache.serdes/nippy-bounded-serializer
+                              cache.serdes/unbounded-edn-serializer])
+        ;; cache is used here
+        result     (maybe-reduce-cached-results false #_(:ignore-cached-results? middleware) ;; nocommit
+                                                query-hash
+                                                ;; nocommit
+                                                (or cache-ttl 10000)
+                                                rff
+                                                context)]
     (when (= result ::miss)
       (let [start-time-ms (System/currentTimeMillis)]
         (log/trace "Running query and saving cached results (if eligible)...")
         (let [reducef' (fn [rff context metadata rows]
+                         ;; cache is set here
                          (i/do-with-serialization
                           serializer
                           (fn [in-fn result-fn]

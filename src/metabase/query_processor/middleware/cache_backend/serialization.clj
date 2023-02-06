@@ -14,6 +14,7 @@
    (java.io
     BufferedInputStream
     BufferedOutputStream
+    ByteArrayOutputStream
     DataInputStream
     DataOutputStream
     EOFException
@@ -86,14 +87,21 @@
   "Nippy serializer. GZipped and frozen, bounded by size."
   (reify
     i/Ser
-    (-wrapped-output-stream [_ os options]
-      (let [max-bytes (:max-bytes options (* (public-settings/query-caching-max-kb) 1024))]
-        (-> (max-bytes-output-stream max-bytes os)
-            BufferedOutputStream.
-            (GZIPOutputStream. true)
-            DataOutputStream.)))
-    (-add! [_ os obj]
-      (freeze! os obj))
+    (-get-accumulator [_ options]
+      (let [os (ByteArrayOutputStream.)
+            max-bytes (:max-bytes options (* (public-settings/query-caching-max-kb) 1024))
+            gzipping-os  (-> (max-bytes-output-stream max-bytes os)
+                             BufferedOutputStream.
+                             (GZIPOutputStream. true)
+                             DataOutputStream.)
+            finalizer (fn nippy-finalizer []
+                        (let [bytes (.toByteArray os)]
+                          (u/ignore-exceptions (.close gzipping-os))
+                          (u/ignore-exceptions (.close os))
+                          bytes))]
+        [gzipping-os finalizer]))
+    (-add! [_ gzipping-os obj]
+      (freeze! gzipping-os obj))
     (-options [_] {:max-bytes (* (public-settings/query-caching-max-kb) 1024)})
     (-name [_] "v3-nippy-bounded-serializer")
 
@@ -112,8 +120,12 @@
                    (edn/read {:eof eof, :readers *data-readers*} pbr))]
     (reify
       i/Ser
-      (-wrapped-output-stream [_ os _options]
-        (BufferedOutputStream. os))
+      (-get-accumulator [_ _options]
+        (let [os (ByteArrayOutputStream.)
+              buffered (BufferedOutputStream. os)
+              finalizer (fn edn-serializer-finalizer []
+                          (.toByteArray os))]
+          [buffered finalizer]))
       (-add! [_ os obj]
         (let [bytes (.getBytes (pr-str (walk/postwalk #(if (record? %) (into {} %) %) obj)))]
           (.write os bytes 0 (count bytes))
