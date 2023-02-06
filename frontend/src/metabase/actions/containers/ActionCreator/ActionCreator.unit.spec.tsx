@@ -131,7 +131,9 @@ describe("ActionCreator", () => {
 
     it("should not show action settings button", async () => {
       await setup({ isAdmin: true, isPublicSharingEnabled: true });
-      expect(queryIcon("gear", "button")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Action settings" }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -173,7 +175,9 @@ describe("ActionCreator", () => {
           isPublicSharingEnabled: true,
         });
 
-        expect(getIcon("gear", "button")).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: "Action settings" }),
+        ).toBeInTheDocument();
       });
 
       it("should be able to enable action public sharing", async () => {
@@ -182,7 +186,7 @@ describe("ActionCreator", () => {
           isPublicSharingEnabled: true,
         });
 
-        getIcon("gear", "button").click();
+        screen.getByRole("button", { name: "Action settings" }).click();
 
         expect(screen.getByText("Action settings")).toBeInTheDocument();
         const makePublicToggle = screen.getByRole("switch", {
@@ -211,7 +215,7 @@ describe("ActionCreator", () => {
           isAdmin: true,
           isPublicSharingEnabled: true,
         });
-        getIcon("gear", "button").click();
+        screen.getByRole("button", { name: "Action settings" }).click();
 
         expect(screen.getByText("Action settings")).toBeInTheDocument();
         const makePublicToggle = screen.getByRole("switch", {
@@ -246,7 +250,9 @@ describe("ActionCreator", () => {
           isPublicSharingEnabled: false,
         });
 
-        expect(queryIcon("gear", "button")).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "Action settings" }),
+        ).not.toBeInTheDocument();
       });
 
       it("should not show action settings button when user is not admin but public sharing is enabled", async () => {
@@ -255,7 +261,9 @@ describe("ActionCreator", () => {
           isPublicSharingEnabled: true,
         });
 
-        expect(queryIcon("gear", "button")).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "Action settings" }),
+        ).not.toBeInTheDocument();
       });
     });
   });
