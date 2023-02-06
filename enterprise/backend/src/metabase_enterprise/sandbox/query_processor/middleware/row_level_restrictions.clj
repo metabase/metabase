@@ -4,7 +4,6 @@
   for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require
    [clojure.core.memoize :as memoize]
-   [clojure.set :as set]
    [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
@@ -67,25 +66,6 @@
                      :gtaps     gtaps
                      :user      *current-user-id*
                      :group-ids (map :group_id gtaps)}))))
-
-(defn- enforce-sandbox?
-  "Takes the permission set for each group a user is in, and a sandbox, and determines whether the sandbox should be
-  enforced for the current user. This is done by checking whether the set of permissions in all *other* groups provides
-  full data access to the sandboxed table. If so, we don't enforce the sandbox, because the other groups' permissions
-  supercede it."
-  [group-id->perms-set {group-id :group_id, table-id :table_id}]
-  (let [perms-set (->> (dissoc group-id->perms-set group-id)
-                       (vals)
-                       (apply set/union))]
-    (not (perms/set-has-full-permissions? perms-set (perms/table-query-path table-id)))))
-
-(defn- enforced-sandboxes
-  [sandboxes group-ids]
-  (let [perms               (db/select 'Permissions {:where [:in :group_id group-ids]})
-        group-id->perms-set (-> (group-by :group_id perms)
-                                (update-vals (fn [perms] (into #{} (map :object perms)))))]
-    (filter (partial enforce-sandbox? group-id->perms-set)
-            sandboxes)))
 
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]

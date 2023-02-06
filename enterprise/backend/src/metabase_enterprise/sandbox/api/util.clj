@@ -13,9 +13,9 @@
 
 (defn- enforce-sandbox?
   "Takes the permission set for each group a user is in, and a sandbox, and determines whether the sandbox should be
-  enforced for the current user. This is done by checking whether the set of permissions in all *other* groups provides
-  full data access to the sandboxed table. If so, we don't enforce the sandbox, because the other groups' permissions
-  supercede it."
+  enforced for the current user. This is done by checking whether the union of permissions in all *other* groups
+  provides full data access to the sandboxed table. If so, we don't enforce the sandbox, because the other groups'
+  permissions supercede it."
   [group-id->perms-set {group-id :group_id, table-id :table_id}]
   (let [perms-set (->> (dissoc group-id->perms-set group-id)
                        (vals)
@@ -30,7 +30,7 @@
         perms               (when (seq group-ids)
                              (db/select Permissions {:where [:in :group_id group-ids]}))
         group-id->perms-set (-> (group-by :group_id perms)
-                                (update-vals (fn [perms] (into #{} (map :object perms)))))]
+                                (update-vals (fn [perms] (into #{} (map :object) perms))))]
     (filter (partial enforce-sandbox? group-id->perms-set)
             sandboxes)))
 
