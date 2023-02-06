@@ -63,7 +63,7 @@
 (api/defendpoint-schema DELETE "/:action-id"
   [action-id]
   (let [{existing-action-type :type} (api/write-check Action action-id)]
-    (db/delete! (action/type->model existing-action-type) :action_id action-id))
+    (db/delete! Action :id action-id))
   api/generic-204-no-content)
 
 (api/defendpoint POST "/"
