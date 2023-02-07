@@ -20,7 +20,6 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.jdbc :as t2.jdbc]
    [toucan2.map-backend.honeysql2 :as t2.honeysql]
    [toucan2.pipeline :as t2.pipeline])
@@ -178,15 +177,6 @@
  ::application-db
  (assoc (sql/get-dialect :ansi)
         :quote quote-for-application-db))
-
-;;; Define the default Toucan JDBC connection spec; it's just a proxy DataSource that ultimately calls
-;;; [[mdb.connection/data-source]]
-(deftype ^:private AppDBDataSource []
-  javax.sql.DataSource
-  (getConnection [_this]
-    (.getConnection mdb.connection/*application-db*)))
-
-(db/set-default-db-connection! {:datasource (AppDBDataSource.)})
 
 (reset! t2.honeysql/global-options
         {:quoted       true
