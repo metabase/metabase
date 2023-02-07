@@ -113,6 +113,7 @@ const ValuesSourceTypeModal = ({
           sourceConfig={sourceConfig}
           onFetchParameterValues={onFetchParameterValues}
           onChangeSourceType={onChangeSourceType}
+          onChangeSourceConfig={onChangeSourceConfig}
         />
       ) : sourceType === "card" ? (
         <CardSourceModal
@@ -140,25 +141,43 @@ const ValuesSourceTypeModal = ({
 
 interface SourceTypeOptionsProps {
   parameter: Parameter;
+  parameterValues?: ParameterValue[];
   sourceType: ValuesSourceType;
+  sourceConfig: ValuesSourceConfig;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
+  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
 }
 
 const SourceTypeOptions = ({
   parameter,
+  parameterValues = [],
   sourceType,
+  sourceConfig,
   onChangeSourceType,
+  onChangeSourceConfig,
 }: SourceTypeOptionsProps) => {
   const sourceTypeOptions = useMemo(() => {
     return getSourceTypeOptions(parameter);
   }, [parameter]);
+
+  const handleSourceTypeChange = useCallback(
+    (sourceType: ValuesSourceType) => {
+      onChangeSourceType(sourceType);
+
+      if (parameterValues.length > 0) {
+        const values = getSourceValues(parameterValues);
+        onChangeSourceConfig({ ...sourceConfig, values });
+      }
+    },
+    [sourceConfig, parameterValues, onChangeSourceType, onChangeSourceConfig],
+  );
 
   return (
     <Radio
       value={sourceType}
       options={sourceTypeOptions}
       vertical
-      onChange={onChangeSourceType}
+      onChange={handleSourceTypeChange}
     />
   );
 };
@@ -171,6 +190,7 @@ interface FieldSourceModalProps {
     opts: FetchParameterValuesOpts,
   ) => Promise<ParameterValues>;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
+  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
 }
 
 const FieldSourceModal = ({
@@ -179,6 +199,7 @@ const FieldSourceModal = ({
   sourceConfig,
   onFetchParameterValues,
   onChangeSourceType,
+  onChangeSourceConfig,
 }: FieldSourceModalProps) => {
   const parameterValues = useParameterValues({
     parameter,
@@ -188,7 +209,7 @@ const FieldSourceModal = ({
   });
 
   const parameterValuesText = useMemo(
-    () => getParameterValuesText(parameterValues),
+    () => getValuesText(getSourceValues(parameterValues)),
     [parameterValues],
   );
 
@@ -203,7 +224,9 @@ const FieldSourceModal = ({
           <SourceTypeOptions
             parameter={parameter}
             sourceType={sourceType}
+            sourceConfig={sourceConfig}
             onChangeSourceType={onChangeSourceType}
+            onChangeSourceConfig={onChangeSourceConfig}
           />
         </ModalSection>
       </ModalPane>
@@ -263,7 +286,7 @@ const CardSourceModal = ({
   });
 
   const parameterValuesText = useMemo(
-    () => getParameterValuesText(parameterValues),
+    () => getValuesText(getSourceValues(parameterValues)),
     [parameterValues],
   );
 
@@ -285,7 +308,9 @@ const CardSourceModal = ({
           <SourceTypeOptions
             parameter={parameter}
             sourceType={sourceType}
+            sourceConfig={sourceConfig}
             onChangeSourceType={onChangeSourceType}
+            onChangeSourceConfig={onChangeSourceConfig}
           />
         </ModalSection>
         <ModalSection>
@@ -365,14 +390,16 @@ const ListSourceModal = ({
           <SourceTypeOptions
             parameter={parameter}
             sourceType={sourceType}
+            sourceConfig={sourceConfig}
             onChangeSourceType={onChangeSourceType}
+            onChangeSourceConfig={onChangeSourceConfig}
           />
           <ModalHelpMessage>{t`Enter one value per line.`}</ModalHelpMessage>
         </ModalSection>
       </ModalPane>
       <ModalMain>
         <ModalTextArea
-          defaultValue={getStaticValuesText(sourceConfig.values)}
+          defaultValue={getValuesText(sourceConfig.values)}
           fullWidth
           onChange={handleValuesChange}
         />
@@ -381,12 +408,12 @@ const ListSourceModal = ({
   );
 };
 
-const getParameterValuesText = (values: ParameterValue[] = []) => {
-  return values.map(([value]) => value).join(NEW_LINE);
+const getValuesText = (values: string[] = []) => {
+  return values.join(NEW_LINE);
 };
 
-const getStaticValuesText = (values: string[] = []) => {
-  return values.join(NEW_LINE);
+const getSourceValues = (values: ParameterValue[] = []) => {
+  return values.map(([value]) => String(value));
 };
 
 const getStaticValues = (value: string) => {
