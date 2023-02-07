@@ -2,7 +2,6 @@
   "Ring middleware related to session (binding current user and permissions)."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [honeysql.helpers :as hh]
    [java-time :as t]
    [metabase.api.common
@@ -28,6 +27,7 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [ring.util.response :as response]
    [schema.core :as s]
    [toucan.db :as db])

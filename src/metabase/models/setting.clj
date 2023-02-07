@@ -78,7 +78,6 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [environ.core :as env]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -90,6 +89,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.models :as models])

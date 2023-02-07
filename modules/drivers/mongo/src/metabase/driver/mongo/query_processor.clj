@@ -3,7 +3,6 @@
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time :as t]
@@ -23,6 +22,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [monger.operators :refer [$add $addToSet $and $avg $cond
                              $dayOfMonth $dayOfWeek $dayOfYear $divide $eq

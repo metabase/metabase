@@ -425,7 +425,9 @@
                ;; log calls expand to these
                :exclude-call
                [clojure.tools.logging/logf
-                clojure.tools.logging/logp]
+                clojure.tools.logging/logp
+                metabase.util.log/logf
+                metabase.util.log/logp]
 
                :src-ns-path
                ["src" "enterprise/backend/src" "shared/src"]

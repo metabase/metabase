@@ -1,7 +1,6 @@
 (ns metabase-enterprise.serialization.v2.seed-entity-ids
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.models]
@@ -9,6 +8,7 @@
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.models :as models]))
 
