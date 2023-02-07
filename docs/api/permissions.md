@@ -131,7 +131,7 @@ Update the name of a `PermissionsGroup`.
 
 ## `PUT /api/permissions/membership/:group-id/clear`
 
-Remove all members from a `PermissionsGroup`.
+Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group.
 
 ### PARAMS:
 

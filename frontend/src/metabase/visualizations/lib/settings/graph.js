@@ -106,7 +106,7 @@ export const GRAPH_DATA_SETTINGS = {
     widget: "fields",
     getMarginBottom: (series, vizSettings) =>
       vizSettings["graph.dimensions"]?.length === 2 && series.length <= 20
-        ? "0.5rem"
+        ? "0rem"
         : "1rem",
     isValid: (series, vizSettings) =>
       series.some(
@@ -221,6 +221,15 @@ export const GRAPH_DATA_SETTINGS = {
     },
     getHidden: (series, settings) => {
       return settings["graph.dimensions"]?.length < 2 || series.length > 20;
+    },
+    getProps: (series, settings) => {
+      return {
+        getPopoverProps: item => ({
+          props: {
+            seriesKey: item.key,
+          },
+        }),
+      };
     },
     dashboard: false,
     readDependencies: ["series_settings.colors", "series_settings"],
