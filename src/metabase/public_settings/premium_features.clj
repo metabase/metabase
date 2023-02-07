@@ -15,8 +15,10 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.schema :as su]
+   [next.jdbc]
    [schema.core :as schema]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [metabase.db.connection :as mdb.connection]))
 
 (def ^:private ValidToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
@@ -45,9 +47,8 @@
 (declare premium-embedding-token)
 
 (defn- active-user-count []
-  ;; NOTE: models.user imports public settings, which imports this namespace,
-  ;; so we can't import the User model here.
-  (db/count :core_user :is_active true))
+  (first (vals (first (next.jdbc/execute! mdb.connection/*application-db* ["SELECT count(*) AS count FROM core_user;"]))))
+  #_(db/count :core_user :is_active true))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
