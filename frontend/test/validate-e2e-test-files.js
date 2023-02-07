@@ -45,9 +45,9 @@ function getStagedFiles() {
   const stagedFiles = execSync("git diff HEAD --name-only --diff-filter=d", {
     encoding: "utf8",
   });
-  const relevantStagedFiles = stagedFiles.includes(E2E_HOME);
+  const hasRelevantFiles = stagedFiles.includes(E2E_HOME);
 
-  if (relevantStagedFiles) {
+  if (hasRelevantFiles) {
     return stagedFiles.split("\n").filter(isE2ETestFile);
   }
 }
