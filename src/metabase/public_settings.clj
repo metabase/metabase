@@ -30,8 +30,11 @@
   :enabled?   premium-features/enable-whitelabeling?
   :default    "Metabase")
 
-(defn compile-safe-application-name
-  "Application-name getter but defaults to Metabase during the compilation stage."
+(defn application-name-for-setting-descriptions
+  "Returns the value of the [[application-name]] setting so setting docstrings can be generated during the compilation stage.
+   Use this instead of `application-name` in descriptions, otherwise the `application-name` setting's
+   `:enabled?` function will be called during compilation, which will fail because it will attempt to perform i18n, which is
+   not allowed during compilation."
   []
   (if *compile-files*
     "Metabase"
@@ -84,7 +87,8 @@
   :doc        false)
 
 (defsetting site-name
-  (deferred-tru "The name used for this instance of Metabase.")
+  (deferred-tru "The name used for this instance of {0}."
+                (application-name-for-setting-descriptions))
   :default    "Metabase"
   :visibility :settings-manager)
 
@@ -171,7 +175,7 @@
   (deferred-tru
     (str "The default language for all users across the {0} UI, system emails, pulses, and alerts. "
          "Users can individually override this default language from their own account settings.")
-    (compile-safe-application-name))
+    (application-name-for-setting-descriptions))
   :default    "en"
   :visibility :public
   :setter     (fn [new-value]
@@ -185,7 +189,8 @@
   :visibility :authenticated)
 
 (defsetting anon-tracking-enabled
-  (deferred-tru "Enable the collection of anonymous usage data in order to help Metabase improve.")
+  (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
+                (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :public)
@@ -228,7 +233,8 @@
   :visibility :authenticated)
 
 (defsetting embedding-app-origin
-  (deferred-tru "Allow this origin to embed the full Metabase application")
+  (deferred-tru "Allow this origin to embed the full {0} application"
+                (application-name-for-setting-descriptions))
   :visibility :public)
 
 (defsetting enable-nested-queries
@@ -289,7 +295,8 @@
 
 ;; TODO -- this isn't really a TTL at all. Consider renaming to something like `-min-duration`
 (defsetting query-caching-min-ttl
-  (deferred-tru "Metabase will cache all saved questions with an average query execution time longer than this many seconds:")
+  (deferred-tru "{0} will cache all saved questions with an average query execution time longer than this many seconds:"
+                 (application-name-for-setting-descriptions))
   :type    :double
   :default 60.0)
 
@@ -321,8 +328,9 @@
 
 (defsetting application-colors
   (deferred-tru
-   (str "These are the primary colors used in charts and throughout Metabase. "
-        "You might need to refresh your browser to see your changes take effect."))
+    (str "These are the primary colors used in charts and throughout {0}. "
+         "You might need to refresh your browser to see your changes take effect.")
+    (application-name-for-setting-descriptions))
   :visibility :public
   :type       :json
   :enabled?   premium-features/enable-whitelabeling?
