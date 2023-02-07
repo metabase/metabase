@@ -34,4 +34,12 @@ describe("isSingleOrMultiSelectable", () => {
     };
     expect(isSingleOrMultiSelectable(parameter)).toBe(true);
   });
+
+  it("is true for parameters with acceptable types and wildcarded subTypes", () => {
+    const parameter = {
+      ...requiredParameterAttributes,
+      type: "category",
+    };
+    expect(isSingleOrMultiSelectable(parameter)).toBe(true);
+  });
 });
