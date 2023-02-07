@@ -256,8 +256,8 @@
 (defmethod serdes.base/load-xform "Action" [action]
   (-> action
       serdes.base/load-xform-basics
+      (update :creator_id serdes.util/import-user)
       (update :model_id serdes.util/import-fk 'Card)
-      (update :creator_id serdes.util/import-fk-keyed 'User :email)
       (cond-> (= (:type action) "query")
         (update :database_id serdes.util/import-fk-keyed 'Database :name))))
 
