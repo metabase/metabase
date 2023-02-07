@@ -10,38 +10,51 @@ const E2E_HOME = "frontend/test/metabase/scenarios/";
 
 init();
 
-function validateStagedFiles() {
-  const stagedFiles = execSync("git diff HEAD --name-only --diff-filter=d", {
-    encoding: "utf8",
-  });
-  const relevantStagedFiles = stagedFiles.includes(E2E_HOME);
-  if (!relevantStagedFiles) {
+function validateE2EFileNames(files) {
+  if (!files || !Array.isArray(files)) {
     return;
-  } else {
-    const invalidFileNames = stagedFiles
-      .split("\n")
-      .filter(fullPath => {
-        const dirName = path.dirname(fullPath);
-        const excludedPaths =
-          dirName.endsWith("/helpers") || dirName.endsWith("/shared");
-        return dirName.startsWith(E2E_HOME) && !excludedPaths;
-      })
-      .filter(fullPath => {
-        return !path.basename(fullPath).endsWith(E2E_FILE_EXTENSION);
-      });
-
-    printFeedback(invalidFileNames);
   }
-}
 
-function validateAllFiles() {
-  // Will match all files in the scenarios dir, except the helpers
-  const PATTERN = `${E2E_HOME}*/{*.js,!(helpers|shared)/*.js}`;
-  const invalidFileNames = glob.sync(PATTERN).filter(fullPath => {
+  const invalidFileNames = files.filter(fullPath => {
     return !path.basename(fullPath).endsWith(E2E_FILE_EXTENSION);
   });
 
   printFeedback(invalidFileNames);
+}
+
+function validateStagedFiles() {
+  const stagedFiles = getStagedFiles();
+  validateE2EFileNames(stagedFiles);
+}
+
+function validateAllFiles() {
+  const allE2EFiles = getAllE2EFiles();
+  validateE2EFileNames(allE2EFiles);
+}
+
+function getAllE2EFiles() {
+  // Will match all files in the scenarios dir, except the ones in helpers and shared directories
+  const PATTERN = `${E2E_HOME}*/{*.js,!(helpers|shared)/*.js}`;
+
+  return glob.sync(PATTERN);
+}
+
+function getStagedFiles() {
+  const stagedFiles = execSync("git diff HEAD --name-only --diff-filter=d", {
+    encoding: "utf8",
+  });
+  const relevantStagedFiles = stagedFiles.includes(E2E_HOME);
+
+  if (relevantStagedFiles) {
+    return stagedFiles.split("\n").filter(isE2ETestFile);
+  }
+}
+
+function isE2ETestFile(fullPath) {
+  const dirName = path.dirname(fullPath);
+  const excludedPaths =
+    dirName.endsWith("/helpers") || dirName.endsWith("/shared");
+  return dirName.startsWith(E2E_HOME) && !excludedPaths;
 }
 
 function printHints() {
@@ -60,7 +73,7 @@ function printHints() {
 }
 
 function printFeedback(invalidFileNames) {
-  if (invalidFileNames.length > 0) {
+  if (invalidFileNames.length) {
     console.error(
       chalk.red(
         `\nFound Cypress files not ending with '${E2E_FILE_EXTENSION}':\n\n`,
