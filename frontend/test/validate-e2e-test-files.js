@@ -5,8 +5,8 @@ const path = require("path");
 const glob = require("glob");
 const chalk = require("chalk");
 
-const e2eFileExtension = ".cy.spec.js";
-const e2eHome = "frontend/test/metabase/scenarios/";
+const E2E_FILE_EXTENSION = ".cy.spec.js";
+const E2E_HOME = "frontend/test/metabase/scenarios/";
 
 init();
 
@@ -14,7 +14,7 @@ function validateStagedFiles() {
   const stagedFiles = execSync("git diff HEAD --name-only --diff-filter=d", {
     encoding: "utf8",
   });
-  const relevantStagedFiles = stagedFiles.includes(e2eHome);
+  const relevantStagedFiles = stagedFiles.includes(E2E_HOME);
   if (!relevantStagedFiles) {
     return;
   } else {
@@ -24,10 +24,10 @@ function validateStagedFiles() {
         const dirName = path.dirname(fullPath);
         const excludedPaths =
           dirName.endsWith("/helpers") || dirName.endsWith("/shared");
-        return dirName.startsWith(e2eHome) && !excludedPaths;
+        return dirName.startsWith(E2E_HOME) && !excludedPaths;
       })
       .filter(fullPath => {
-        return !path.basename(fullPath).endsWith(e2eFileExtension);
+        return !path.basename(fullPath).endsWith(E2E_FILE_EXTENSION);
       });
 
     printFeedback(invalidFileNames);
@@ -36,11 +36,10 @@ function validateStagedFiles() {
 
 function validateAllFiles() {
   // Will match all files in the scenarios dir, except the helpers
-  const PATTERN =
-    "frontend/test/metabase/scenarios/*/{*.js,!(helpers|shared)/*.js}";
+  const PATTERN = `${E2E_HOME}*/{*.js,!(helpers|shared)/*.js}`;
   const invalidFileNames = glob.sync(PATTERN).filter(fullPath => {
     const basename = path.basename(fullPath);
-    return !basename.endsWith(e2eFileExtension);
+    return !basename.endsWith(E2E_FILE_EXTENSION);
   });
 
   printFeedback(invalidFileNames);
@@ -51,7 +50,7 @@ function printHints() {
     "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -",
   );
   console.log(
-    `• Please make sure E2E specs have '${e2eFileExtension}' file extension.`,
+    `• Please make sure E2E specs have '${E2E_FILE_EXTENSION}' file extension.`,
   );
   console.log(
     `• You can place helpers and support files in 'helpers' or 'support' directories.`,
@@ -65,7 +64,7 @@ function printFeedback(invalidFileNames) {
   if (invalidFileNames.length > 0) {
     console.error(
       chalk.red(
-        `\nFound Cypress files not ending with '${e2eFileExtension}':\n\n`,
+        `\nFound Cypress files not ending with '${E2E_FILE_EXTENSION}':\n\n`,
       ) + invalidFileNames.join("\n"),
     );
 
