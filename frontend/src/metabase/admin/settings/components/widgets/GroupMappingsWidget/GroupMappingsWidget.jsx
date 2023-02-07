@@ -6,11 +6,15 @@ import _ from "underscore";
 import { ModalFooter } from "metabase/components/ModalContent";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import Button from "metabase/core/components/Button";
-import Modal from "metabase/components/Modal";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 
 import SettingToggle from "../SettingToggle";
+import {
+  GroupMappingsWidgetRoot as Root,
+  GroupMappingsWidgetHeader as Header,
+  GroupMappingsWidgetToggleRoot as ToggleRoot,
+} from "./GroupMappingsWidget.styled";
 import MappingRow from "./LDAPMappingRow";
 import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
 
@@ -220,7 +224,7 @@ export default class GroupMappingsWidget extends React.Component {
   render() {
     const {
       showDeleteMappingModal,
-      showEditModal,
+      // showEditModal,
       showAddRow,
       groups,
       mappings,
@@ -231,93 +235,84 @@ export default class GroupMappingsWidget extends React.Component {
     } = this.state;
 
     return (
-      <div className="flex align-center">
-        <SettingToggle {...this.props} />
-        <div className="flex align-center pt1">
-          <Button
-            type="button"
-            className="ml1"
-            medium
-            onClick={this._showEditModal}
-          >{t`Edit Mappings`}</Button>
-        </div>
-        {showEditModal ? (
-          <Modal wide>
-            <div>
-              <div className="pt4 px4">
-                <h2>{t`Group Mappings`}</h2>
-              </div>
-              <div className="px4">
-                <Button
-                  className="float-right"
-                  primary
-                  onClick={this._showAddRow}
-                >{t`Create a mapping`}</Button>
-                <p className="text-measure">
-                  {t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the
+      <Root>
+        <Header>
+          <ToggleRoot>
+            {t`Synchronize Group Memberships`}
+            <SettingToggle {...this.props} hideLabel />
+          </ToggleRoot>
+        </Header>
+        <div>
+          <div className="pt4">
+            <h2>{t`Group Mappings`}</h2>
+          </div>
+          <div>
+            <Button
+              className="float-right"
+              primary
+              onClick={this._showAddRow}
+            >{t`New mapping`}</Button>
+            <p className="text-measure">
+              {t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the
                      directory server. Users are only ever added to or removed from mapped groups.`}
-                </p>
-                <AdminContentTable
-                  columnTitles={[this.props.groupHeading, t`Groups`, ""]}
-                >
-                  {showAddRow ? (
-                    <AddMappingRow
-                      mappings={mappings}
-                      onCancel={this._hideAddRow}
-                      onAdd={this._addMapping}
-                      placeholder={this.props.groupPlaceholder}
-                    />
-                  ) : null}
-                  {Object.entries(mappings).map(([dn, ids]) => {
-                    const isMappingLinkedOnlyToAdminGroup =
-                      groups &&
-                      ids.length === 1 &&
-                      isAdminGroup(groups.find(group => group.id === ids[0]));
+            </p>
+            <AdminContentTable
+              columnTitles={[this.props.groupHeading, t`Groups`, ""]}
+            >
+              {showAddRow ? (
+                <AddMappingRow
+                  mappings={mappings}
+                  onCancel={this._hideAddRow}
+                  onAdd={this._addMapping}
+                  placeholder={this.props.groupPlaceholder}
+                />
+              ) : null}
+              {Object.entries(mappings).map(([dn, ids]) => {
+                const isMappingLinkedOnlyToAdminGroup =
+                  groups &&
+                  ids.length === 1 &&
+                  isAdminGroup(groups.find(group => group.id === ids[0]));
 
-                    const isSavedMapping =
-                      Object.keys(savedMappings).includes(dn);
+                const isSavedMapping = Object.keys(savedMappings).includes(dn);
 
-                    const shouldUseDeleteMappingModal =
-                      ids.length > 0 &&
-                      !isMappingLinkedOnlyToAdminGroup &&
-                      isSavedMapping;
+                const shouldUseDeleteMappingModal =
+                  ids.length > 0 &&
+                  !isMappingLinkedOnlyToAdminGroup &&
+                  isSavedMapping;
 
-                    const onDelete = shouldUseDeleteMappingModal
-                      ? () => this.handleShowDeleteMappingModal(ids, dn)
-                      : () => this._deleteMapping(dn);
+                const onDelete = shouldUseDeleteMappingModal
+                  ? () => this.handleShowDeleteMappingModal(ids, dn)
+                  : () => this._deleteMapping(dn);
 
-                    return (
-                      <MappingRow
-                        key={dn}
-                        dn={dn}
-                        groups={groups || []}
-                        selectedGroups={ids}
-                        onChange={this._changeMapping(dn)}
-                        onDelete={onDelete}
-                      />
-                    );
-                  })}
-                </AdminContentTable>
-              </div>
-              <ModalFooter>
-                {saveError && saveError.data && saveError.data.message ? (
-                  <span className="text-error text-bold">
-                    {saveError.data.message}
-                  </span>
-                ) : null}
-                <Button
-                  type="button"
-                  onClick={this._cancelClick}
-                >{t`Cancel`}</Button>
-                <Button
-                  primary
-                  onClick={this.handleUpdateMappings}
-                >{t`Save`}</Button>
-              </ModalFooter>
-            </div>
-          </Modal>
-        ) : null}
-
+                return (
+                  <MappingRow
+                    key={dn}
+                    dn={dn}
+                    groups={groups || []}
+                    selectedGroups={ids}
+                    onChange={this._changeMapping(dn)}
+                    onDelete={onDelete}
+                  />
+                );
+              })}
+            </AdminContentTable>
+          </div>
+          <ModalFooter>
+            {saveError && saveError.data && saveError.data.message ? (
+              <span className="text-error text-bold">
+                {saveError.data.message}
+              </span>
+            ) : null}
+            <Button
+              type="button"
+              onClick={this._cancelClick}
+            >{t`Cancel`}</Button>
+            <Button
+              primary
+              onClick={this.handleUpdateMappings}
+            >{t`Save`}</Button>
+          </ModalFooter>
+        </div>
         {showDeleteMappingModal ? (
           <DeleteGroupMappingModal
             dn={dnForVisibleDeleteMappingModal}
@@ -326,7 +321,7 @@ export default class GroupMappingsWidget extends React.Component {
             onConfirm={this.handleConfirmDeleteMapping}
           />
         ) : null}
-      </div>
+      </Root>
     );
   }
 }
