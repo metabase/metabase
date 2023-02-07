@@ -15,6 +15,7 @@
                             ParameterCard
                             Field
                             Table]]
+   [metabase.models.action :as action]
    [metabase.models.serialization.base :as serdes.base]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
@@ -102,7 +103,32 @@
         (ts/with-source-db
           (testing "insert"
             (test-gen/insert!
-              {:collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
+              {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
+               ;; We generate 10 actions for each subtype, and 10 of each subtype.
+               ;; actions 0-9 are query actions, 10-19 are implicit actions, and 20-29 are http actions.
+               :action                  (apply concat
+                                               (for [type [:query :implicit :http]]
+                                                 (many-random-fks 10
+                                                                  {:spec-gen {:type type}}
+                                                                  {:model_id   [:c 100]
+                                                                   :creator_id [:u 10]})))
+               :query-action            (map-indexed
+                                         (fn [idx x]
+                                           (assoc-in x [1 :refs :action_id] (keyword (str "action" idx))))
+                                         (many-random-fks 10 {} {:database_id [:db 10]}))
+               :implicit-action         (map-indexed
+                                         (fn [idx x]
+                                           (update-in x [1 :refs]
+                                                      (fn [refs]
+                                                        (assoc refs :action_id (keyword (str "action" (+ 10 idx)))))))
+                                         (many-random-fks 10 {} {}))
+               :http-action             (map-indexed
+                                         (fn [idx x]
+                                           (update-in x [1 :refs]
+                                                      (fn [refs]
+                                                        (assoc refs :action_id (keyword (str "action" (+ 20 idx)))))))
+                                         (many-random-fks 10 {} {}))
+               :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                          [10  {:refs     {:personal_owner_id ::rs/omit}
                                                :spec-gen {:namespace :snippets}}]]
                :database                [[10]]
@@ -114,27 +140,27 @@
                :core-user               [[100]]
                :card                    (mapv #(update-in % [1 :refs] table->db)
                                               (many-random-fks
-                                                100
-                                                {:spec-gen {:dataset_query {:database 1
-                                                                            :query {:source-table 3
-                                                                                    :aggregation [[:count]]
-                                                                                    :breakout [[:field 16 nil]]}
-                                                                            :type :query}}}
-                                                {:table_id      [:t    100]
-                                                 :collection_id [:coll 100]
-                                                 :creator_id    [:u    10]}))
+                                               100
+                                               {:spec-gen {:dataset_query {:database 1
+                                                                           :query {:source-table 3
+                                                                                   :aggregation [[:count]]
+                                                                                   :breakout [[:field 16 nil]]}
+                                                                           :type :query}}}
+                                               {:table_id      [:t    100]
+                                                :collection_id [:coll 100]
+                                                :creator_id    [:u    10]}))
                :dashboard               (many-random-fks 100 {} {:collection_id [:coll 100]
                                                                  :creator_id    [:u    10]})
                :dashboard-card          (many-random-fks 300 {} {:card_id      [:c 100]
                                                                  :dashboard_id [:d 100]})
                :dimension               (vec (concat
                                                ;; 20 with both IDs set
-                                               (many-random-fks 20 {}
-                                                                {:field_id                [:field 1000]
-                                                                 :human_readable_field_id [:field 1000]})
+                                              (many-random-fks 20 {}
+                                                               {:field_id                [:field 1000]
+                                                                :human_readable_field_id [:field 1000]})
                                                ;; 20 with just :field_id
-                                               (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
-                                                                {:field_id [:field 1000]})))
+                                              (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
+                                                               {:field_id [:field 1000]})))
                :metric                  (many-random-fks 30 {:spec-gen {:definition {:aggregation  [[:count]]
                                                                                      :source-table 9}}}
                                                          {:table_id   [:t 100]
@@ -150,25 +176,25 @@
                :timeline-event          (many-random-fks 90 {} {:timeline_id   [:timeline 10]})
                :pulse                   (vec (concat
                                                ;; 10 classic pulses, from collections
-                                               (many-random-fks 10 {} {:collection_id [:coll 100]})
+                                              (many-random-fks 10 {} {:collection_id [:coll 100]})
                                                ;; 10 classic pulses, no collection
-                                               (many-random-fks 10 {:refs {:collection_id ::rs/omit}} {})
+                                              (many-random-fks 10 {:refs {:collection_id ::rs/omit}} {})
                                                ;; 10 dashboard subs
-                                               (many-random-fks 10 {:refs {:collection_id ::rs/omit}}
-                                                                {:dashboard_id  [:d 100]})))
+                                              (many-random-fks 10 {:refs {:collection_id ::rs/omit}}
+                                                               {:dashboard_id  [:d 100]})))
                :pulse-card              (vec (concat
                                                ;; 60 pulse cards for the classic pulses
-                                               (many-random-fks 60 {} {:card_id       [:c 100]
-                                                                       :pulse_id      [:pulse 10]})
+                                              (many-random-fks 60 {} {:card_id       [:c 100]
+                                                                      :pulse_id      [:pulse 10]})
                                                ;; 60 pulse cards connected to dashcards for the dashboard subs
-                                               (many-random-fks 60 {} {:card_id           [:c 100]
-                                                                       :pulse_id          [:pulse 10 20]
-                                                                       :dashboard_card_id [:dc 300]})))
+                                              (many-random-fks 60 {} {:card_id           [:c 100]
+                                                                      :pulse_id          [:pulse 10 20]
+                                                                      :dashboard_card_id [:dc 300]})))
                :pulse-channel           (vec (concat
                                                ;; 15 channels for the classic pulses
-                                               (many-random-fks 15 {} {:pulse_id  [:pulse 10]})
+                                              (many-random-fks 15 {} {:pulse_id  [:pulse 10]})
                                                ;; 15 channels for the dashboard subs
-                                               (many-random-fks 15 {} {:pulse_id  [:pulse 10 20]})))
+                                              (many-random-fks 15 {} {:pulse_id  [:pulse 10 20]})))
                :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
                                                                 :user_id          [:u 100]})}))
 
@@ -184,6 +210,9 @@
 
           (testing "storage"
             (storage.yaml/store! (seq @extraction) dump-dir)
+
+            (testing "for Actions"
+              (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
 
             (testing "for Collections"
               (is (= 110 (count (for [f (file-set (io/file dump-dir))
@@ -253,111 +282,118 @@
             (testing "for settings"
               (is (.exists (io/file dump-dir "settings.yaml")))))
 
-         (testing "ingest and load"
-           (ts/with-dest-db
-             (testing "ingested set matches extracted set"
-               (let [extracted-set (set (map (comp #'ingest.yaml/strip-labels serdes.base/serdes-path) @extraction))]
-                 (is (= (count extracted-set)
-                        (count @extraction)))
-                 (is (= extracted-set
-                      (set (keys (#'ingest.yaml/ingest-all (io/file dump-dir))))))))
+          (testing "ingest and load"
+            (ts/with-dest-db
+              (testing "ingested set matches extracted set"
+                (let [extracted-set (set (map (comp #'ingest.yaml/strip-labels serdes.base/serdes-path) @extraction))]
+                  (is (= (count extracted-set)
+                         (count @extraction)))
+                  (is (= extracted-set
+                         (set (keys (#'ingest.yaml/ingest-all (io/file dump-dir))))))))
 
-             (testing "doing ingestion"
-               (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
-                   "successful"))
+              (testing "doing ingestion"
+                (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                    "successful"))
 
-             (testing "for Collections"
-               (doseq [{:keys [entity_id] :as coll} (get @entities "Collection")]
-                 (is (= (clean-entity coll)
-                        (->> (db/select-one 'Collection :entity_id entity_id)
-                             (serdes.base/extract-one "Collection" {})
-                             clean-entity)))))
+              (testing "for Actions"
+                (doseq [{:keys [entity_id] :as coll} (get @entities "Action")]
+                  (is (= (clean-entity coll)
+                         (->> (action/select-one :entity_id entity_id)
+                              (serdes.base/extract-one "Action" {})
+                              clean-entity)))))
 
-             (testing "for Databases"
-               (doseq [{:keys [name] :as coll} (get @entities "Database")]
-                 (is (= (clean-entity coll)
-                        (->> (db/select-one 'Database :name name)
-                             (serdes.base/extract-one "Database" {})
-                             clean-entity)))))
+              (testing "for Collections"
+                (doseq [{:keys [entity_id] :as coll} (get @entities "Collection")]
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one 'Collection :entity_id entity_id)
+                              (serdes.base/extract-one "Collection" {})
+                              clean-entity)))))
 
-             (testing "for Tables"
-               (doseq [{:keys [db_id name] :as coll} (get @entities "Table")]
-                 (is (= (clean-entity coll)
-                        (->> (db/select-one-field :id 'Database :name db_id)
-                             (db/select-one 'Table :name name :db_id)
-                             (serdes.base/extract-one "Table" {})
-                             clean-entity)))))
+              (testing "for Databases"
+                (doseq [{:keys [name] :as coll} (get @entities "Database")]
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one 'Database :name name)
+                              (serdes.base/extract-one "Database" {})
+                              clean-entity)))))
 
-             (testing "for Fields"
-               (doseq [{[db schema table] :table_id name :name :as coll} (get @entities "Field")]
-                 (is (nil? schema))
-                 (is (= (clean-entity coll)
-                        (->> (db/select-one-field :id 'Database :name db)
-                             (db/select-one-field :id 'Table :schema schema :name table :db_id)
-                             (db/select-one 'Field :name name :table_id)
-                             (serdes.base/extract-one "Field" {})
-                             clean-entity)))))
+              (testing "for Tables"
+                (doseq [{:keys [db_id name] :as coll} (get @entities "Table")]
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one-field :id 'Database :name db_id)
+                              (db/select-one 'Table :name name :db_id)
+                              (serdes.base/extract-one "Table" {})
+                              clean-entity)))))
 
-             (testing "for cards"
-               (doseq [{:keys [entity_id] :as card} (get @entities "Card")]
-                 (is (= (clean-entity card)
-                        (->> (db/select-one 'Card :entity_id entity_id)
-                             (serdes.base/extract-one "Card" {})
-                             clean-entity)))))
+              (testing "for Fields"
+                (doseq [{[db schema table] :table_id name :name :as coll} (get @entities "Field")]
+                  (is (nil? schema))
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one-field :id 'Database :name db)
+                              (db/select-one-field :id 'Table :schema schema :name table :db_id)
+                              (db/select-one 'Field :name name :table_id)
+                              (serdes.base/extract-one "Field" {})
+                              clean-entity)))))
 
-             (testing "for dashboards"
-               (doseq [{:keys [entity_id] :as dash} (get @entities "Dashboard")]
-                 (is (= (clean-entity dash)
-                        (->> (db/select-one 'Dashboard :entity_id entity_id)
-                             (serdes.base/extract-one "Dashboard" {})
-                             clean-entity)))))
+              (testing "for cards"
+                (doseq [{:keys [entity_id] :as card} (get @entities "Card")]
+                  (is (= (clean-entity card)
+                         (->> (db/select-one 'Card :entity_id entity_id)
+                              (serdes.base/extract-one "Card" {})
+                              clean-entity)))))
 
-             (testing "for dashboard cards"
-               (doseq [{:keys [entity_id] :as dashcard} (get @entities "DashboardCard")]
-                 (is (= (clean-entity dashcard)
-                        (->> (db/select-one 'DashboardCard :entity_id entity_id)
-                             (serdes.base/extract-one "DashboardCard" {})
-                             clean-entity)))))
+              (testing "for dashboards"
+                (doseq [{:keys [entity_id] :as dash} (get @entities "Dashboard")]
+                  (is (= (clean-entity dash)
+                         (->> (db/select-one 'Dashboard :entity_id entity_id)
+                              (serdes.base/extract-one "Dashboard" {})
+                              clean-entity)))))
 
-             (testing "for dimensions"
-               (doseq [{:keys [entity_id] :as dim} (get @entities "Dimension")]
-                 (is (= (clean-entity dim)
-                        (->> (db/select-one 'Dimension :entity_id entity_id)
-                             (serdes.base/extract-one "Dimension" {})
-                             clean-entity)))))
+              (testing "for dashboard cards"
+                (doseq [{:keys [entity_id] :as dashcard} (get @entities "DashboardCard")]
+                  (is (= (clean-entity dashcard)
+                         (->> (db/select-one 'DashboardCard :entity_id entity_id)
+                              (serdes.base/extract-one "DashboardCard" {})
+                              clean-entity)))))
 
-             (testing "for metrics"
-               (doseq [{:keys [entity_id] :as metric} (get @entities "Metric")]
-                 (is (= (clean-entity metric)
-                        (->> (db/select-one 'Metric :entity_id entity_id)
-                             (serdes.base/extract-one "Metric" {})
-                             clean-entity)))))
+              (testing "for dimensions"
+                (doseq [{:keys [entity_id] :as dim} (get @entities "Dimension")]
+                  (is (= (clean-entity dim)
+                         (->> (db/select-one 'Dimension :entity_id entity_id)
+                              (serdes.base/extract-one "Dimension" {})
+                              clean-entity)))))
 
-             (testing "for segments"
-               (doseq [{:keys [entity_id] :as segment} (get @entities "Segment")]
-                 (is (= (clean-entity segment)
-                        (->> (db/select-one 'Segment :entity_id entity_id)
-                             (serdes.base/extract-one "Segment" {})
-                             clean-entity)))))
+              (testing "for metrics"
+                (doseq [{:keys [entity_id] :as metric} (get @entities "Metric")]
+                  (is (= (clean-entity metric)
+                         (->> (db/select-one 'Metric :entity_id entity_id)
+                              (serdes.base/extract-one "Metric" {})
+                              clean-entity)))))
 
-             (testing "for native query snippets"
-               (doseq [{:keys [entity_id] :as snippet} (get @entities "NativeQuerySnippet")]
-                 (is (= (clean-entity snippet)
-                        (->> (db/select-one 'NativeQuerySnippet :entity_id entity_id)
-                             (serdes.base/extract-one "NativeQuerySnippet" {})
-                             clean-entity)))))
+              (testing "for segments"
+                (doseq [{:keys [entity_id] :as segment} (get @entities "Segment")]
+                  (is (= (clean-entity segment)
+                         (->> (db/select-one 'Segment :entity_id entity_id)
+                              (serdes.base/extract-one "Segment" {})
+                              clean-entity)))))
 
-             (testing "for timelines and events"
-               (doseq [{:keys [entity_id] :as timeline} (get @entities "Timeline")]
-                 (is (= (clean-entity timeline)
-                        (->> (db/select-one 'Timeline :entity_id entity_id)
-                             (serdes.base/extract-one "Timeline" {})
-                             clean-entity)))))
+              (testing "for native query snippets"
+                (doseq [{:keys [entity_id] :as snippet} (get @entities "NativeQuerySnippet")]
+                  (is (= (clean-entity snippet)
+                         (->> (db/select-one 'NativeQuerySnippet :entity_id entity_id)
+                              (serdes.base/extract-one "NativeQuerySnippet" {})
+                              clean-entity)))))
 
-             (testing "for settings"
-               (is (= (into {} (for [{:keys [key value]} (get @entities "Setting")]
-                                 [key value]))
-                      (yaml/from-file (io/file dump-dir "settings.yaml"))))))))))))
+              (testing "for timelines and events"
+                (doseq [{:keys [entity_id] :as timeline} (get @entities "Timeline")]
+                  (is (= (clean-entity timeline)
+                         (->> (db/select-one 'Timeline :entity_id entity_id)
+                              (serdes.base/extract-one "Timeline" {})
+                              clean-entity)))))
+
+              (testing "for settings"
+                (is (= (into {} (for [{:keys [key value]} (get @entities "Setting")]
+                                  [key value]))
+                       (yaml/from-file (io/file dump-dir "settings.yaml"))))))))))))
 
 ;; This is a seperate test instead of a `testing` block inside `e2e-storage-ingestion-test`
 ;; because it's quite tricky to set up the generative test to generate parameters with source is card
