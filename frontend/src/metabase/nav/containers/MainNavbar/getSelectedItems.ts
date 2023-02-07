@@ -32,7 +32,7 @@ export function isModelPath(pathname: string): boolean {
   return pathname.startsWith("/model");
 }
 
-export function isDashboardPath(pathname: string): boolean {
+function isDashboardPath(pathname: string): boolean {
   return pathname.startsWith("/dashboard");
 }
 

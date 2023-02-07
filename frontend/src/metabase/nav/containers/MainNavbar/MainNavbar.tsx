@@ -7,8 +7,9 @@ import type { LocationDescriptor } from "history";
 import * as Urls from "metabase/lib/urls";
 
 import { closeNavbar, openNavbar } from "metabase/redux/app";
-import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
+
+import { getDashboard } from "metabase/dashboard/selectors";
 
 import type { Card, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -21,7 +22,6 @@ import {
   SelectedItem,
 } from "./types";
 import getSelectedItems, {
-  isDashboardPath,
   isModelPath,
   isQuestionPath,
 } from "./getSelectedItems";
@@ -29,6 +29,9 @@ import { NavRoot, Sidebar } from "./MainNavbar.styled";
 
 interface EntityLoaderProps {
   card?: Card;
+}
+
+interface StateProps {
   dashboard?: Dashboard;
 }
 
@@ -36,7 +39,19 @@ interface DispatchProps extends MainNavbarDispatchProps {
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
-type Props = MainNavbarOwnProps & EntityLoaderProps & DispatchProps;
+type Props = MainNavbarOwnProps &
+  EntityLoaderProps &
+  StateProps &
+  DispatchProps;
+
+function mapStateToProps(state: State) {
+  return {
+    // Can't use dashboard entity loader instead.
+    // The dashboard page uses DashboardsApi.get directly,
+    // so we can't re-use data between these components.
+    dashboard: getDashboard(state),
+  };
+}
 
 const mapDispatchToProps = {
   openNavbar,
@@ -106,15 +121,6 @@ function MainNavbar({
   );
 }
 
-function maybeGetDashboardId(
-  state: State,
-  { location, params }: MainNavbarOwnProps,
-) {
-  return isDashboardPath(location.pathname)
-    ? Urls.extractEntityId(params.slug)
-    : null;
-}
-
 function maybeGetQuestionId(
   state: State,
   { location, params }: MainNavbarOwnProps,
@@ -125,11 +131,7 @@ function maybeGetQuestionId(
 }
 
 export default _.compose(
-  connect(null, mapDispatchToProps),
-  Dashboards.load({
-    id: maybeGetDashboardId,
-    loadingAndErrorWrapper: false,
-  }),
+  connect(mapStateToProps, mapDispatchToProps),
   Questions.load({
     id: maybeGetQuestionId,
     loadingAndErrorWrapper: false,

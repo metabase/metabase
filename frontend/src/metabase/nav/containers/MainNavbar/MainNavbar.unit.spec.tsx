@@ -10,7 +10,6 @@ import {
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
-  setupDashboardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
@@ -28,6 +27,7 @@ import {
 import {
   createMockState,
   createMockDashboardState,
+  createMockEntitiesState,
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
 
@@ -107,9 +107,6 @@ async function setup({
   if (openQuestionCard) {
     setupCardsEndpoints(scope, [openQuestionCard]);
   }
-  if (openDashboard) {
-    setupDashboardsEndpoints(scope, [openDashboard]);
-  }
 
   const dashboards = openDashboard ? { [openDashboard.id]: openDashboard } : {};
   const dashboardId = openDashboard ? openDashboard.id : null;
@@ -117,6 +114,7 @@ async function setup({
     currentUser: user,
     dashboard: createMockDashboardState({ dashboardId, dashboards }),
     qb: createMockQueryBuilderState({ card: openQuestionCard }),
+    entities: createMockEntitiesState({ dashboards }),
   });
 
   renderWithProviders(
