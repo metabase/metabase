@@ -47,8 +47,8 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps = {
-  handleCreateAction: Actions.actions.create,
-  handleUpdateAction: Actions.actions.update,
+  onCreateAction: Actions.actions.create,
+  onUpdateAction: Actions.actions.update,
 };
 
 const EXAMPLE_QUERY =
@@ -69,8 +69,8 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  handleCreateAction: (params: CreateQueryActionParams) => void;
-  handleUpdateAction: (params: UpdateQueryActionParams) => void;
+  onCreateAction: (params: CreateQueryActionParams) => void;
+  onUpdateAction: (params: UpdateQueryActionParams) => void;
   onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
 
@@ -82,8 +82,8 @@ function ActionCreatorComponent({
   actionId,
   modelId,
   databaseId,
-  handleCreateAction,
-  handleUpdateAction,
+  onCreateAction,
+  onUpdateAction,
   onClose,
   isAdmin,
   isPublicSharingEnabled,
@@ -134,13 +134,13 @@ function ActionCreatorComponent({
       setShowSaveModal(true);
     } else {
       const action = convertQuestionToAction(question, formSettings);
-      handleUpdateAction({ ...action, model_id: defaultModelId as number });
+      onUpdateAction({ ...action, model_id: defaultModelId as number });
       onClose?.();
     }
   };
 
   const handleCreate = async (values: any) => {
-    await handleCreateAction({
+    await onCreateAction({
       ...convertQuestionToAction(question, formSettings),
       ...values,
       type: "query",
