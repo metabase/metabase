@@ -65,12 +65,12 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("Doohickey");
-      FieldFilter.addFilterValueFromList("Gizmo");
+      FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
 
       SQLFilter.toggleRequired();
       FieldFilter.openEntryForm(true);
-      FieldFilter.addFilterValueFromList("Gadget");
+      FieldFilter.selectFilterValueFromList("Gadget");
     });
 
     it("should be able to use a structured question source with a text tag", () => {
@@ -85,30 +85,14 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("Doohickey");
-      FieldFilter.addFilterValueFromList("Gizmo");
+      FieldFilter.selectFilterValueFromList("Gadget", { addFilter: false });
+      FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
+      cy.findByText("Showing 51 rows").should("exist");
 
       SQLFilter.toggleRequired();
       FieldFilter.openEntryForm(true);
-      FieldFilter.addFilterValueFromList("Gadget");
-    });
-
-    it("should be able to use only a single parameter with a text tag", () => {
-      cy.createQuestion(structuredSourceQuestion);
-
-      openNativeEditor();
-      SQLFilter.enterParameterizedQuery(
-        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
-      );
-      setFilterQuestionSource({ question: "MBQL source", field: "Category" });
-
-      FieldFilter.openEntryForm();
-      FieldFilter.addFilterValueFromList("Gizmo");
-      SQLFilter.runQuery("dataset");
-
-      FieldFilter.openEntryForm();
-      FieldFilter.updateFilterValueFromList("Gadget");
-      SQLFilter.runQuery("dataset");
+      FieldFilter.selectFilterValueFromList("Gadget");
     });
 
     it("should be able to use a structured question source without saving the question", () => {
@@ -124,7 +108,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       checkFilterValueNotInList("Doohickey");
       FieldFilter.setWidgetStringFilter("Gizmo");
       checkFilterValueNotInList("Widget");
-      FieldFilter.addFilterValueFromList("Gizmo");
+      FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("dataset");
     });
 
@@ -176,7 +160,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("Doohickey");
-      FieldFilter.addFilterValueFromList("Gizmo");
+      FieldFilter.selectFilterValueFromList("Gizmo");
     });
 
     it("should be able to use a structured question source when public", () => {
@@ -192,7 +176,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("Doohickey");
-      FieldFilter.addFilterValueFromList("Gizmo");
+      FieldFilter.selectFilterValueFromList("Gizmo");
     });
   });
 
@@ -210,7 +194,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
-      FieldFilter.addFilterValueFromList("1018947080336");
+      FieldFilter.selectFilterValueFromList("1018947080336");
       SQLFilter.runQuery("cardQuery");
     });
 
@@ -227,7 +211,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
-      FieldFilter.addFilterValueFromList("1018947080336");
+      FieldFilter.selectFilterValueFromList("1018947080336");
     });
 
     it("should be able to use a native question source when public", () => {
@@ -243,7 +227,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
-      FieldFilter.addFilterValueFromList("1018947080336");
+      FieldFilter.selectFilterValueFromList("1018947080336");
     });
   });
 
@@ -259,7 +243,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
-      FieldFilter.addFilterValueFromList("1018947080336");
+      FieldFilter.selectFilterValueFromList("1018947080336");
       SQLFilter.runQuery("cardQuery");
     });
 
@@ -272,7 +256,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
-      FieldFilter.addFilterValueFromList("1018947080336");
+      FieldFilter.selectFilterValueFromList("1018947080336");
     });
 
     it("should be able to use a static list source when public", () => {
@@ -284,7 +268,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
-      FieldFilter.addFilterValueFromList("1018947080336");
+      FieldFilter.selectFilterValueFromList("1018947080336");
     });
   });
 });
@@ -329,7 +313,7 @@ describeEE("scenarios > filters > sql filters > values source", () => {
     cy.wait("@cardParameterValues");
     checkFilterValueNotInList("Gadget");
     checkFilterValueNotInList("Doohickey");
-    FieldFilter.addFilterValueFromList("Gizmo");
+    FieldFilter.selectFilterValueFromList("Gizmo");
 
     cy.findByText("Open Editor").click();
     cy.icon("variable").click();
@@ -337,7 +321,7 @@ describeEE("scenarios > filters > sql filters > values source", () => {
     cy.wait("@parameterValues");
     checkFilterValueNotInList("Gadget");
     checkFilterValueNotInList("Doohickey");
-    FieldFilter.addFilterValueFromList("Gizmo");
+    FieldFilter.selectFilterValueFromList("Gizmo");
   });
 });
 
