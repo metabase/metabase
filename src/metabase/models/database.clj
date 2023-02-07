@@ -1,7 +1,6 @@
 (ns metabase.models.database
   (:require
    [cheshire.generate :refer [add-encoder encode-map]]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -17,6 +16,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.models :as models]))
 

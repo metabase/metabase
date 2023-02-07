@@ -2,7 +2,6 @@
   "Functions for sending Snowplow analytics events"
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [medley.core :as m]
    [metabase.config :as config]
@@ -12,6 +11,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db])
   (:import
    (com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder)

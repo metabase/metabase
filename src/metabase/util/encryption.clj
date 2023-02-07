@@ -7,10 +7,10 @@
    [buddy.core.kdf :as kdf]
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [environ.core :as env]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [ring.util.codec :as codec]))
 
 (defn secret-key->hash

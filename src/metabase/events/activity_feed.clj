@@ -1,7 +1,6 @@
 (ns metabase.events.activity-feed
   (:require
    [clojure.core.async :as a]
-   [clojure.tools.logging :as log]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity :refer [Activity]]
@@ -11,6 +10,7 @@
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (def ^:private activity-feed-topics

@@ -2,7 +2,6 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [honeysql.format :as hformat]
             [medley.core :as m]
             [metabase.db :as mdb]
@@ -17,6 +16,7 @@
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]
+            [metabase.util.log :as log]
             [toucan.db :as db]))
 
 (sql-jdbc.tx/add-test-extensions! :oracle)

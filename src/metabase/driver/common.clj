@@ -5,7 +5,6 @@
    [clj-time.core :as time]
    [clj-time.format :as time.format]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
@@ -13,6 +12,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (java.text SimpleDateFormat)

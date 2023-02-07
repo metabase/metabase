@@ -3,7 +3,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.data :as data]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase-enterprise.serialization.names :refer [name-for-logging]]
    [metabase.models.card :refer [Card]]
@@ -26,6 +25,7 @@
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.models :as models]))
 

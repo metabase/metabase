@@ -1,10 +1,10 @@
 (ns metabase.test.initialize.db
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [metabase.db :as mdb]
    [metabase.task :as task]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (defn init! []

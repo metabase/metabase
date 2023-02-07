@@ -5,7 +5,6 @@
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -29,6 +28,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [pretty.core :as pretty]
    [schema.core :as s]
    [toucan.db :as db]))

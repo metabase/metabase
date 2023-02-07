@@ -4,7 +4,6 @@
   supported application database types."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [honeysql.format :as hformat]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-migrations :refer [DataMigrations]]
@@ -57,6 +56,7 @@
             ViewLog]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (java.sql SQLException)))

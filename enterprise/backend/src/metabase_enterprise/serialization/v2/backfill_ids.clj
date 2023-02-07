@@ -5,11 +5,11 @@
   Note that cross-JVM portability is required - but that's specified for [[java.util.Random]],
   so this should produce identical IDs on all platforms and JVM implementations."
   (:require
-   [clojure.tools.logging :as log]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.models :as models]))
 

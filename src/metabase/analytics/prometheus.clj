@@ -6,7 +6,6 @@
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
   (:require
-   [clojure.tools.logging :as log]
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
@@ -14,6 +13,7 @@
    [metabase.server :as server]
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util.i18n :refer [deferred-trs trs]]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [potemkin.types :as p.types]
    [ring.adapter.jetty :as ring-jetty])

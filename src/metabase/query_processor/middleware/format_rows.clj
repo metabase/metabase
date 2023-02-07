@@ -2,11 +2,11 @@
   "Middleware that formats the results of a query.
    Currently, the only thing this does is convert datetime types to ISO-8601 strings in the appropriate timezone."
   (:require
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [potemkin.types :as p.types])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId)))
