@@ -1,7 +1,7 @@
 import React, {
   ChangeEvent,
   useCallback,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
 } from "react";
@@ -201,20 +201,20 @@ const FieldSourceModal = ({
   onChangeSourceType,
   onChangeSourceConfig,
 }: FieldSourceModalProps) => {
-  const parameterValues = useParameterValues({
+  const { values, isLoading } = useParameterValues({
     parameter,
     sourceType,
     sourceConfig,
     onFetchParameterValues,
   });
 
-  const parameterValuesText = useMemo(
-    () => getValuesText(getSourceValues(parameterValues)),
-    [parameterValues],
+  const valuesText = useMemo(
+    () => getValuesText(getSourceValues(values)),
+    [values],
   );
 
   const hasFields = getFields(parameter).length > 0;
-  const hasEmptyValues = parameterValues && parameterValues.length === 0;
+  const hasEmptyValues = !isLoading && values.length === 0;
 
   return (
     <ModalBodyWithPane>
@@ -223,7 +223,7 @@ const FieldSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <SourceTypeOptions
             parameter={parameter}
-            parameterValues={parameterValues}
+            parameterValues={values}
             sourceType={sourceType}
             sourceConfig={sourceConfig}
             onChangeSourceType={onChangeSourceType}
@@ -241,7 +241,7 @@ const FieldSourceModal = ({
             {t`We don’t have any cached values for the connected fields. Try one of the other options, or change this widget to a search box.`}
           </ModalEmptyState>
         ) : (
-          <ModalTextArea value={parameterValuesText} readOnly fullWidth />
+          <ModalTextArea value={valuesText} readOnly fullWidth />
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -279,16 +279,16 @@ const CardSourceModal = ({
     return getFieldByReference(fields, sourceConfig.value_field);
   }, [fields, sourceConfig]);
 
-  const parameterValues = useParameterValues({
+  const { values, isError } = useParameterValues({
     parameter,
     sourceType,
     sourceConfig,
     onFetchParameterValues,
   });
 
-  const parameterValuesText = useMemo(
-    () => getValuesText(getSourceValues(parameterValues)),
-    [parameterValues],
+  const valuesText = useMemo(
+    () => getValuesText(getSourceValues(values)),
+    [values],
   );
 
   const handleFieldChange = useCallback(
@@ -308,7 +308,7 @@ const CardSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <SourceTypeOptions
             parameter={parameter}
-            parameterValues={parameterValues}
+            parameterValues={values}
             sourceType={sourceType}
             sourceConfig={sourceConfig}
             onChangeSourceType={onChangeSourceType}
@@ -354,8 +354,10 @@ const CardSourceModal = ({
           <ModalEmptyState>{t`Pick a model or question`}</ModalEmptyState>
         ) : !selectedField ? (
           <ModalEmptyState>{t`Pick a column`}</ModalEmptyState>
+        ) : isError ? (
+          <ModalEmptyState>{t`An error occurred in your query`}</ModalEmptyState>
         ) : (
-          <ModalTextArea value={parameterValuesText} readOnly fullWidth />
+          <ModalTextArea value={valuesText} readOnly fullWidth />
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -446,6 +448,12 @@ const getSourceTypeOptions = (
   ];
 };
 
+interface ParameterValuesState {
+  values: ParameterValue[];
+  isLoading?: boolean;
+  isError?: boolean;
+}
+
 interface UseParameterValuesOpts {
   parameter: Parameter;
   sourceType: ValuesSourceType;
@@ -461,7 +469,7 @@ const useParameterValues = ({
   sourceConfig,
   onFetchParameterValues,
 }: UseParameterValuesOpts) => {
-  const [values, setValues] = useState<ParameterValue[]>();
+  const [state, setState] = useState<ParameterValuesState>({ values: [] });
   const handleFetchValues = useSafeAsyncFunction(onFetchParameterValues);
   const isValidSource = isValidSourceConfig(sourceType, sourceConfig);
 
@@ -474,15 +482,17 @@ const useParameterValues = ({
     [initialParameter, sourceType, sourceConfig],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isValidSource) {
+      setState(({ values }) => ({ values, isLoading: true }));
+
       handleFetchValues({ parameter })
-        .then(({ values }) => setValues(values))
-        .catch(() => setValues([]));
+        .then(({ values }) => setState({ values }))
+        .catch(() => setState({ values: [], isError: true }));
     }
   }, [parameter, isValidSource, handleFetchValues]);
 
-  return values;
+  return state;
 };
 
 const mapStateToProps = (
