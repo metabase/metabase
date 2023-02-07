@@ -45,8 +45,17 @@
 
 (declare premium-embedding-token)
 
-(defn- active-user-count []
+(defn- active-user-count* []
   (db/count :core_user :is_active true))
+
+(def ^:private ^{:arglists '([])} active-user-count
+  (let [lock (Object.)
+        f    (memoize/ttl
+              active-user-count*
+              :ttl/threshold (u/minutes->ms 5))]
+    (fn []
+      (locking lock
+        (f)))))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
