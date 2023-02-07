@@ -97,7 +97,8 @@
    toucan.db/reducible-query {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
 
   :discouraged-namespace
-  {clojure.tools.logging {:message "Use metabase.util.log instead of clojure.tools.logging directly"}}
+  {clojure.tools.logging {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
+   metabase.util.jvm     {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
 
   :unresolved-var
   {:exclude
@@ -363,7 +364,9 @@
     metabase.util.honeysql-extensions                               hx
     metabase.util.i18n                                              i18n
     metabase.util.i18n.impl                                         i18n.impl
+    metabase.util.jvm                                               u.jvm
     metabase.util.log                                               log
+    metabase.util.macros                                            u.macros
     metabase.util.malli                                             mu
     metabase.util.malli.schema                                      ms
     metabase.util.password                                          u.password
@@ -387,7 +390,7 @@
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
-  clojure.test.check.clojure-test/defspec                                              clojure.core/def
+  clojure.test.check.clojure-test/defspec                                              clojure.test/deftest
   clojurewerkz.quartzite.jobs/defjob                                                   clojure.core/defn
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
   honeysql.util/defalias                                                               clojure.core/def
@@ -419,6 +422,7 @@
   metabase.query-processor.error-type/deferror                                         clojure.core/def
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results   clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution clojure.core/let
+  metabase.shared.util.namespaces/import-fns                                           potemkin/import-vars
   metabase.sync.util/sum-for                                                           clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                           clojure.core/let
   metabase.test.data.interface/defdataset                                              clojure.core/def
@@ -591,7 +595,6 @@
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache                                                            hooks.common/with-two-bindings
    metabase.sample-data-test/with-temp-sample-database-db                                                                    hooks.common/with-one-binding
-   metabase.test.data.datasets/test-drivers                                                                                  hooks.common/do*
    metabase.test.data.users/with-group                                                                                       hooks.common/let-one-with-optional-value
    metabase.test.data/$ids                                                                                                   hooks.metabase.test.data/$ids
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
@@ -610,8 +613,8 @@
    metabase.test/discard-setting-changes                                                                                     hooks.common/with-ignored-first-arg
    metabase.test/mbql-query                                                                                                  hooks.metabase.test.data/mbql-query
    metabase.test/query                                                                                                       hooks.metabase.test.data/mbql-query
-   metabase.test/run-mbql-query                                                                                              hooks.metabase.test.data/mbql-query
    metabase.test/test-drivers                                                                                                hooks.common/do*
+   metabase.test/run-mbql-query                                                                                              hooks.metabase.test.data/mbql-query
    metabase.test/with-column-remappings                                                                                      hooks.common/with-ignored-first-arg
    metabase.test/with-group                                                                                                  hooks.common/let-one-with-optional-value
    metabase.test/with-log-level                                                                                              hooks.common/with-ignored-first-arg
