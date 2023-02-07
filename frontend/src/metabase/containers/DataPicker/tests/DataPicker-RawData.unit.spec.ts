@@ -50,6 +50,12 @@ describe("DataPicker — picking raw data", () => {
     expect(await screen.findByText(/Nothing here/i)).toBeInTheDocument();
   });
 
+  it("doesn't show saved questions database", async () => {
+    await setup();
+    userEvent.click(screen.getByText("Raw Data"));
+    expect(screen.queryByText(/Saved Questions/i)).not.toBeInTheDocument();
+  });
+
   it("allows to pick multiple tables", async () => {
     const { onChange } = await setup({ isMultiSelect: true });
 

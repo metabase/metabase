@@ -55,7 +55,7 @@ function mapStateToProps(state: State) {
 
 function DataPicker({
   value,
-  databases,
+  databases: allDatabases,
   search: modelLookupResult,
   filters: customFilters = {},
   hasNestedQueriesEnabled,
@@ -74,13 +74,21 @@ function DataPicker({
     [customFilters],
   );
 
+  const databases = useMemo(
+    () => allDatabases.filter(database => !database.is_saved_questions),
+    [allDatabases],
+  );
+
   const dataTypes = useMemo(
     () =>
       getDataTypes({
         hasModels: modelLookupResult.length > 0,
+        hasSavedQuestions: allDatabases.some(
+          database => database.is_saved_questions,
+        ),
         hasNestedQueriesEnabled,
       }).filter(type => filters.types(type.id)),
-    [filters, modelLookupResult, hasNestedQueriesEnabled],
+    [allDatabases, filters, modelLookupResult, hasNestedQueriesEnabled],
   );
 
   const handleDataTypeChange = useCallback(
@@ -146,7 +154,9 @@ function DataPicker({
 
 const DataPickerContainer = _.compose(
   // Required for `hasDataAccess` check
-  Databases.loadList(),
+  Databases.loadList({
+    query: { saved: true },
+  }),
 
   // Lets the picker check there is
   // at least one model, to offer for selection
