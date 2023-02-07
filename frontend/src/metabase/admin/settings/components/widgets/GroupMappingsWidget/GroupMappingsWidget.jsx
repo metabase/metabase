@@ -9,11 +9,15 @@ import Button from "metabase/core/components/Button";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 
-import SettingToggle from "../SettingToggle";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/core/components/Tooltip";
 import {
   GroupMappingsWidgetRoot as Root,
   GroupMappingsWidgetHeader as Header,
   GroupMappingsWidgetToggleRoot as ToggleRoot,
+  GroupMappingsWidgetAbout as About,
+  GroupMappingsToggle as Toggle,
+  GroupMappingsWidgetAboutContentRoot as AboutContentRoot,
 } from "./GroupMappingsWidget.styled";
 import MappingRow from "./LDAPMappingRow";
 import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
@@ -238,35 +242,38 @@ export default class GroupMappingsWidget extends React.Component {
       <Root>
         <Header>
           <ToggleRoot>
-            {t`Synchronize Group Memberships`}
-            <SettingToggle {...this.props} hideLabel />
+            <span>{t`Synchronize Group Memberships`}</span>
+            <Toggle {...this.props} hideLabel />
           </ToggleRoot>
+          <About>
+            <Tooltip
+              tooltip={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. Users are only ever added to or removed from mapped groups.`}
+              placement="top"
+            >
+              <AboutContentRoot>
+                <Icon name="info" />
+                <span>{t`About mappings`}</span>
+              </AboutContentRoot>
+            </Tooltip>
+          </About>
         </Header>
+
         <div>
-          <div className="pt4">
-            <h2>{t`Group Mappings`}</h2>
-          </div>
           <div>
-            <Button
-              className="float-right"
-              primary
-              onClick={this._showAddRow}
-            >{t`New mapping`}</Button>
-            <p className="text-measure">
-              {t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the
-                     directory server. Users are only ever added to or removed from mapped groups.`}
-            </p>
+            <Button className="float-right" primary onClick={this._showAddRow}>
+              {t`New mapping`}
+            </Button>
             <AdminContentTable
               columnTitles={[this.props.groupHeading, t`Groups`, ""]}
             >
-              {showAddRow ? (
+              {showAddRow && (
                 <AddMappingRow
                   mappings={mappings}
                   onCancel={this._hideAddRow}
                   onAdd={this._addMapping}
                   placeholder={this.props.groupPlaceholder}
                 />
-              ) : null}
+              )}
               {Object.entries(mappings).map(([dn, ids]) => {
                 const isMappingLinkedOnlyToAdminGroup =
                   groups &&
@@ -298,29 +305,21 @@ export default class GroupMappingsWidget extends React.Component {
             </AdminContentTable>
           </div>
           <ModalFooter>
-            {saveError && saveError.data && saveError.data.message ? (
+            {saveError && saveError.data && saveError.data.message && (
               <span className="text-error text-bold">
                 {saveError.data.message}
               </span>
-            ) : null}
-            <Button
-              type="button"
-              onClick={this._cancelClick}
-            >{t`Cancel`}</Button>
-            <Button
-              primary
-              onClick={this.handleUpdateMappings}
-            >{t`Save`}</Button>
+            )}
           </ModalFooter>
         </div>
-        {showDeleteMappingModal ? (
+        {showDeleteMappingModal && (
           <DeleteGroupMappingModal
             dn={dnForVisibleDeleteMappingModal}
             groupIds={groupIdsForVisibleDeleteMappingModal}
             onHide={this.handleHideDeleteMappingModal}
             onConfirm={this.handleConfirmDeleteMapping}
           />
-        ) : null}
+        )}
       </Root>
     );
   }
