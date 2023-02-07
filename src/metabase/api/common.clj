@@ -17,6 +17,7 @@
             route-fn-name
             validate-params
             wrap-response-if-needed]]
+   [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
@@ -266,13 +267,13 @@
   "Log a warning if the request body contains any parameters not included in `expected-params` (which is presumably
   populated by the defendpoint schema)"
   [{route :compojure/route body :body} expected-params]
-  (when (map? body)
+  (when (and (not config/is-prod?)
+             (map? body))
     (let [extraneous-params (set/difference (set (keys body))
                                             (set expected-params))]
       (when (seq extraneous-params)
-        (log/warn (format (str "Unexpected parameters at %s: %s\nPlease add them to the schema or remove them from the"
-                               " API client")
-                          route (vec extraneous-params)))))))
+        (log/warnf "Unexpected parameters at %s: %s\nPlease add them to the schema or remove them from the API client"
+                   route (vec extraneous-params))))))
 
 
 (defn method-symbol->keyword
