@@ -376,7 +376,7 @@
     ring.mock.request                                               ring.mock
     ring.util.codec                                                 codec
     ring.util.response                                              response
-    ring.util.servlet                                               servlet
+    ring.adapter.jetty9.servlet                                     servlet
     saml20-clj.core                                                 saml
     toucan.db                                                       db
     toucan.models                                                   models}}

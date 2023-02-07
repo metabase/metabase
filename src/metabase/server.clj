@@ -9,11 +9,11 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [ring.adapter.jetty :as ring-jetty]
-   [ring.util.servlet :as servlet])
+   [ring.adapter.jetty9 :as ring-jetty]
+   [ring.adapter.jetty9.servlet :as servlet])
   (:import
-   (javax.servlet AsyncContext)
-   (javax.servlet.http HttpServletRequest HttpServletResponse)
+   (jakarta.servlet AsyncContext)
+   (jakarta.servlet.http HttpServletRequest HttpServletResponse)
    (org.eclipse.jetty.server Request Server)
    (org.eclipse.jetty.server.handler AbstractHandler StatisticsHandler)))
 

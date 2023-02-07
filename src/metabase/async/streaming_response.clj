@@ -11,16 +11,16 @@
    [metabase.util.log :as log]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [ring.util.response :as response]
-   [ring.util.servlet :as servlet])
+   [ring.adapter.jetty9.common :as common]
+   [ring.util.response :as response])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio ByteBuffer)
    (java.nio.channels ClosedChannelException SocketChannel)
    (java.nio.charset StandardCharsets)
    (java.util.zip GZIPOutputStream)
-   (javax.servlet AsyncContext)
-   (javax.servlet.http HttpServletResponse)
+   (jakarta.servlet AsyncContext)
+   (jakarta.servlet.http HttpServletResponse)
    (org.eclipse.jetty.io EofException)
    (org.eclipse.jetty.server Request)))
 
@@ -187,7 +187,7 @@
       (let [gzip?   (should-gzip-response? request-map)
             headers (cond-> (assoc (merge headers (:headers response-map)) "Content-Type" content-type)
                       gzip? (assoc "Content-Encoding" "gzip"))]
-        (#'servlet/set-headers response headers)
+        (#'common/set-headers response headers)
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)

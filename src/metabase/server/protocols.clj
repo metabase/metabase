@@ -1,7 +1,7 @@
 (ns metabase.server.protocols
   (:require
    [potemkin.types :as p.types]
-   [ring.util.servlet :as servlet]))
+   [ring.adapter.jetty9.servlet :as servlet]))
 
 (p.types/defprotocol+ Respond
   "Protocol for converting API endpoint responses to something Jetty can handle."
@@ -12,10 +12,10 @@
 
   `context` has the following keys:
 
-  * `:request`       -- `javax.servlet.http.HttpServletRequest`
+  * `:request`       -- `jakarta.servlet.http.HttpServletRequest`
   * `:request-map`   -- Ring request map
-  * `:async-context` -- `javax.servlet.AsyncContext`
-  * `:response`      -- `javax.servlet.http.HttpServletResponse`
+  * `:async-context` -- `jakarta.servlet.AsyncContext`
+  * `:response`      -- `jakarta.servlet.http.HttpServletResponse`
   * `:response-map`  -- Ring response map"))
 
 (extend-protocol Respond
