@@ -61,7 +61,7 @@
   []
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (db/select [Action :name :id :public_uuid], :public_uuid [:not= nil]))
+  (db/select [Action :name :id :public_uuid :model_id], :public_uuid [:not= nil]))
 
 (api/defendpoint GET "/:action-id"
   [action-id]
