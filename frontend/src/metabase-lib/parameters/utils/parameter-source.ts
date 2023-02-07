@@ -6,6 +6,7 @@ import {
 } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
 import { ParameterWithTemplateTagTarget } from "../types";
+import { getFields } from "./parameter-fields";
 import { getParameterSubType, getParameterType } from "./parameter-type";
 
 export const getQueryType = (
@@ -71,7 +72,11 @@ export const getSourceConfigForType = (
 
 export const canListParameterValues = (parameter: Parameter) => {
   const queryType = getQueryType(parameter);
-  return queryType === "list";
+  const sourceType = getSourceType(parameter);
+  const fields = getFields(parameter);
+  const canListFields = canListFieldValues(fields);
+
+  return queryType === "list" && (sourceType != null || canListFields);
 };
 
 export const canListFieldValues = (fields: Field[]) => {
@@ -83,9 +88,16 @@ export const canListFieldValues = (fields: Field[]) => {
   return hasFields && hasFieldValues;
 };
 
-export const canSearchParameterValues = (parameter: Parameter) => {
+export const canSearchParameterValues = (
+  parameter: Parameter,
+  disablePKRemapping = false,
+) => {
   const queryType = getQueryType(parameter);
-  return queryType !== "none";
+  const sourceType = getSourceType(parameter);
+  const fields = getFields(parameter);
+  const canSearchFields = canSearchFieldValues(fields, disablePKRemapping);
+
+  return queryType !== "none" && (sourceType != null || canSearchFields);
 };
 
 export const canSearchFieldValues = (
