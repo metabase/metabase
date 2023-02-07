@@ -290,27 +290,6 @@
 
 ;;; ------------------------------------------ Parameters tests ------------------------------------------
 
-(deftest validate-parameters-test
-  (testing "Should validate Card :parameters when"
-    (testing "creating"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with :id and :type keys"
-           (mt/with-temp Card [_ {:parameters {:a :b}}])))
-
-     (mt/with-temp Card [card {:parameters [{:id   "valid-id"
-                                             :type "id"}]}]
-       (is (some? card))))
-
-    (testing "updating"
-      (mt/with-temp Card [{:keys [id]} {:parameters []}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with :id and :type keys"
-             (db/update! Card id :parameters [{:id 100}])))
-        (is (some? (db/update! Card id :parameters [{:id   "new-valid-id"
-                                                     :type "id"}])))))))
-
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
@@ -450,6 +429,7 @@
     (mt/with-temp* [Card [card1 {:name "base card"}]
                     Card [card2 {:name       "derived card"
                                  :parameters [{:id                   "valid-id"
+                                               :name                 "valid-name"
                                                :type                 "id"
                                                :values_source_type   "card"
                                                :values_source_config {:card_id (:id card1)}}]}]]

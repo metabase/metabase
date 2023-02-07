@@ -237,21 +237,25 @@
             :failed-cases  [{:id   "param-id"
                              :name "param-name"}
                             {:id                   "param-id"
+                             :name                 "param-name"
                              :type                 "number"
                              :values_source_type   "invalid-type"
                              :values_source_config {:values [[1 2 3]]}}
                             {:id                   "param-id"
+                             :name                 "param-name"
                              :type                 "number"
                              :values_source_type   "card"
                              :values_source_config {:card_id     3
                                                     :value_field [:aggregation 0]}}]
             :success-cases [{:id                   "param-id"
+                             :name                 "param-name"
                              :type                 "number"
                              :values_source_type   "card"
                              :values_source_config {:card_id     3
                                                     :value_field [:field 3 nil]
                                                     :label_field [:field "name" {:base-type :type/Float}]}}
                             {:id                   "param-id"
+                             :name                 "param-name"
                              :type                 "number"
                              :values_source_type   "static-list"
                              :values_source_config {:values [[1 2 3]]}}]}

@@ -325,20 +325,6 @@
              #"A Dashboard can only go in Collections in the \"default\" namespace"
              (db/update! Dashboard card-id {:collection_id collection-id})))))))
 
-(deftest validate-parameters-test
-  (testing "Should validate Dashboard :parameters when"
-    (testing "creating"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with :id and :type keys"
-           (mt/with-temp Dashboard [_ {:parameters {:a :b}}]))))
-    (testing "updating"
-      (mt/with-temp Dashboard [{:keys [id]} {:parameters []}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with :id and :type keys"
-             (db/update! Dashboard id :parameters [{:id 100}])))))))
-
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
@@ -410,6 +396,7 @@
                     Card      [card      {:name "A card"}]
                     Dashboard [dashboard {:name       "A dashboard"
                                           :parameters [{:id "abc"
+                                                        :name "valid-name"
                                                         :type "category"
                                                         :values_source_type "card"
                                                         :values_source_config {:card_id     (:id card)
