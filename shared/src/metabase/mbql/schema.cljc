@@ -597,11 +597,19 @@
     interval
     NumericExpressionArg))
 
+(def ^:private NumGreaterThanZeroOrNumericExpression
+  (s/conditional
+    number?
+    helpers/IntGreaterThanZero
+
+    :else
+    NumericExpressionArg))
+
 (defclause ^{:requires-features #{:expressions}} coalesce
   a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} substring
-  s StringExpressionArg, start NumericExpressionArg, length (optional NumericExpressionArg))
+  s StringExpressionArg, start NumGreaterThanZeroOrNumericExpression, length (optional NumericExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} length
   s StringExpressionArg)

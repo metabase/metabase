@@ -606,16 +606,13 @@
   [driver [_ & args]]
   (apply hx/call :concat (mapv (partial ->honeysql driver) args)))
 
-;; this pseudo-expression returns only the substring function name, to simplify driver implementations
+;; returns only the substring function name
+
 (defmethod ->honeysql [:sql ::substring-name] [_ _] :substring)
 
 (defmethod ->honeysql [:sql :substring]
   [driver [_ & [arg start & args]]]
-  ;; Standard SQL SUBSTRING uses a start index of 1, and many drivers return unexpected results
-  ;; when start=0, so to make MBQL substring work consistently across all DBs, we update the start
-  ;; index here if necessary.
-  (let [start    (if (= 0 start) 1 start)
-        sql-args (into [::substring-name arg start] args)]
+  (let [sql-args (into [::substring-name arg start] args)]
     (apply hx/call (mapv (partial ->honeysql driver) sql-args))))
 
 (defmethod ->honeysql [:sql :length]
