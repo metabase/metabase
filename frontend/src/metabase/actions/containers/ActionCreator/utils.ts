@@ -117,7 +117,7 @@ export const removeOrphanSettings = (
   formSettings: ActionFormSettings,
   parameters: Parameter[],
 ): ActionFormSettings => {
-  const parameterIds = parameters.map(p => p.id);
+  const parameterIds = parameters.map(parameter => parameter.id);
   return {
     ...formSettings,
     fields: _.pick(formSettings.fields, parameterIds),
@@ -128,7 +128,7 @@ export const addMissingSettings = (
   settings: ActionFormSettings,
   parameters: Parameter[],
 ): ActionFormSettings => {
-  const parameterIds = parameters.map(p => p.id);
+  const parameterIds = parameters.map(parameter => parameter.id);
   const fieldIds = Object.keys(settings.fields);
   const missingIds = _.difference(parameterIds, fieldIds);
 
