@@ -122,6 +122,9 @@
     (fn [token]
       (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
       (locking lock
+        ;; SANITY CHECK!
+        (u/with-timeout (u/seconds->ms 5)
+          (active-user-count))
         (f token)))))
 
 (schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
