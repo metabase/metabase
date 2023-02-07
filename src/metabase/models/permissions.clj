@@ -360,8 +360,9 @@
 (def ^:private Kind
   (into [:enum] (map second rx->kind)))
 
-(mu/defn classify-path :- Kind [path :- Path]
+(mu/defn classify-path :- Kind
   "Classifies a permission [[metabase.models.permissions/Path]] into a [[metabase.models.permissions/Kind]], or throws."
+  [path :- Path]
   (let [result (keep (fn [[permission-rx kind]]
                        (when (re-matches (u.regex/rx permission-rx) path) kind))
                      rx->kind)]
@@ -848,11 +849,11 @@
   (let [group-id->v1-paths (->> (permissions-by-group-ids [:or
                                                            [:= :object (hx/literal "/")]
                                                            [:like :object (hx/literal "%/db/%")]])
+                                ;; remove v2 paths, implicitly keep v1 paths
                                 (m/map-vals (fn [paths]
                                               (filter (fn [path]
                                                         (mc/validate [:re path-regex-v1] path))
                                                       paths))))
-        _ (def gip group-id->v1-paths)
         db-ids          (delay (db/select-ids 'Database))]
     {:revision (perms-revision/latest-id)
      :groups   (generate-graph @db-ids group-id->v1-paths)}))
@@ -861,74 +862,52 @@
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
-  (let [group-id->paths (->> (permissions-by-group-ids [:or
-                                                        [:= :object (hx/literal "/")]
-                                                        [:like :object (hx/literal "%/db/%")]])
-                             (m/map-vals (fn [paths]
-                                           (remove (fn [path]
-                                                     (mc/validate [:re (u.regex/rx v1-data-permissions-rx)] path))
-                                                   paths))))
+  (let [group-id->v2-paths (->> (permissions-by-group-ids [:or
+                                                           [:= :object (hx/literal "/")]
+                                                           [:like :object (hx/literal "%/db/%")]])
+                                (m/map-vals (fn [paths]
+                                              ;; remove v1 paths, implicitly keep v2 paths
+                                              (remove (fn [path] (mc/validate [:re (u.regex/rx "^/" v1-data-permissions-rx "$")]
+                                                                  path))
+                                                      paths))))
         db-ids (delay (db/select-ids 'Database))]
     {:revision (perms-revision/latest-id)
-     :groups   (generate-graph @db-ids group-id->paths)}))
-
-
-(def output-json
-  (str/join "" ["{"
-                  "   \"revision\":3,"
-                  "   \"groups\":{"
-                  "      \"1\":{"
-                  "         \"1\":{"
-                  "            \"data\":{"
-                  "               \"schemas\":\"all\""
-                  "            },"
-                  "            \"query\":{"
-                  "               \"native\":\"write\","
-                  "               \"schemas\":\"all\""
-                  "            }"
-                  "         }"
-                  "      }"
-                  "   }"
-                  "}"]))
-
-
-(require '[cheshire.core :as json])
-
-(def ^:private output-edn (json/decode output-json true))
-
-(def ^:private output-groups (:groups output-edn))
+     :groups   (generate-graph @db-ids group-id->v2-paths)}))
 
 (do (require '[hyperfiddle.rcf :as rcf]) (rcf/enable!))
-
 (rcf/tests "tests"
-           output-groups
-           :=
-           {:1 {:1 {:data {:schemas "all"}, :query {:native "write", :schemas "all"}}}}
-
 
            (generate-graph #{2} {1 ["/db/2/"]})
            :=
            {1 {2 {:data {:native :write, :schemas :all}}}}
 
-
            (generate-graph #{2} {1 ["/data/db/2/"]})
            :=
            {1 {2 {:data {:native :write}}}}
-
 
            (generate-graph #{2} {1 ["/query/db/2/schema/"]})
            :=
            {1 {2 {:query {:data {:schemas :all}}}}}
 
+           (generate-graph #{2} {1 ["/query/db/2/schema/PUBLIC/"]})
+           :=
+           {1 {2 {:query {:data {:schemas {"PUBLIC" :all}}}}}}
+
+           (generate-graph #{2} {1 ["/query/db/2/schema//"]})
+           :=
+           {1 {2 {:query {:data {:schemas {"" :all}}}}}}
+
+           (generate-graph #{2} {1 ["/db/2/schema/"]})
+           :=
+           {1 {2 {:data {:schemas :all}}}}
 
            (generate-graph #{2} {1 ["/query/db/2/schema/" "/data/db/2/"]})
            :=
            {1 {2 {:query {:data {:schemas :all}}, :data {:native :write}}}}
 
-
-           (generate-graph #{2} {1 ["/db/2/schema/"]})
+           (generate-graph #{2} {1 ["/db/2/"]})
            :=
-           {1 {2 {:data {:schemas :all}}}})
+           {1 {2 {:data {:native :write, :schemas :all}}}})
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1301,7 +1280,7 @@
 (mu/defn ^:private update-db-data-access-permissions!
   [group-id :- pos-int?
    db-id :- pos-int?
-   new-db-perms :- metabase.api.permission-graph/strict-data-perms]
+   new-db-perms :- metabase.api.permission-graph/StrictDataPerms]
   (when-let [new-native-perms (:native new-db-perms)]
     (update-native-data-access-permissions! group-id db-id new-native-perms))
   (when-let [schemas (:schemas new-db-perms)]
@@ -1340,7 +1319,7 @@
     (throw (ee-permissions-exception perm-type))))
 
 (mu/defn ^:private update-group-permissions!
-  [group-id :- pos-int? new-group-perms :- api.permission-graph/strict-db-graph]
+  [group-id :- pos-int? new-group-perms :- api.permission-graph/StrictDbGraph]
   (doseq [[db-id new-db-perms] new-group-perms
           [perm-type new-perms] new-db-perms]
     (case perm-type

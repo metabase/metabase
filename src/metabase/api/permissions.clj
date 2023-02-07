@@ -35,13 +35,13 @@
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api/defendpoint GET "/graph"
-  "Fetch a graph of all Permissions."
+  "Fetch a graph of all v1 Permissions (excludes v2 query and data permissions)."
   []
   (api/check-superuser)
   (perms/data-perms-graph))
 
 (api/defendpoint GET "/graph-v2"
-  "Fetch a graph of all Permissions."
+  "Fetch a graph of all v2 Permissions (excludes v1 data permissions)."
   []
   (api/check-superuser)
   (perms/data-perms-graph-v2))
