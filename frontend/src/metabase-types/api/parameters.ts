@@ -1,7 +1,5 @@
-import { DashboardId } from "./dashboard";
 import { RowValue } from "./dataset";
 import { CardId } from "./card";
-import { FieldId } from "./field";
 
 export type StringParameterType =
   | "string/="

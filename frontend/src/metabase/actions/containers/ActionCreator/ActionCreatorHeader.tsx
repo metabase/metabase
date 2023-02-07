@@ -8,6 +8,7 @@ import {
   LeftHeader,
   EditableText,
   CompactSelect,
+  ActionButtons,
 } from "./ActionCreatorHeader.styled";
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
   type: WritebackActionType;
   onChangeName: (name: string) => void;
   onChangeType?: (type: WritebackActionType) => void;
+  actionButtons: React.ReactElement[];
 };
 
 const OPTS = [{ value: "query", name: t`Query`, disabled: true }];
@@ -24,6 +26,7 @@ const ActionCreatorHeader = ({
   type,
   onChangeName,
   onChangeType,
+  actionButtons,
 }: Props) => {
   return (
     <Container>
@@ -33,6 +36,9 @@ const ActionCreatorHeader = ({
           <CompactSelect options={OPTS} value={type} onChange={onChangeType} />
         )}
       </LeftHeader>
+      {actionButtons.length > 0 && (
+        <ActionButtons>{actionButtons}</ActionButtons>
+      )}
     </Container>
   );
 };

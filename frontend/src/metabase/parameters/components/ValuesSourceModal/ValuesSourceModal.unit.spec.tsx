@@ -82,6 +82,17 @@ describe("ValuesSourceModal", () => {
         screen.getByRole("radio", { name: "From another model or question" }),
       ).toBeChecked();
     });
+
+    it("should preserve custom list option for variable template tags", () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: "static-list",
+          hasVariableTemplateTagTarget: true,
+        }),
+      });
+
+      expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
+    });
   });
 
   describe("card source", () => {

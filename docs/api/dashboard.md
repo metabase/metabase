@@ -20,6 +20,8 @@ Delete the publicly-accessible link to this Dashboard.
 
 Delete a Dashboard.
 
+  This will remove also any questions/models/segments/metrics that use this database.
+
 ### PARAMS:
 
 *  **`id`**
@@ -289,6 +291,14 @@ Add a `Card` to a Dashboard.
     _ : 
   )
 )
+
+*  **`row`** value must be an integer greater than or equal to zero.
+
+*  **`col`** value must be an integer greater than or equal to zero.
+
+*  **`size_x`** value must be an integer greater than zero.
+
+*  **`size_y`** value must be an integer greater than zero.
 
 *  **`dashboard-card`**
 
