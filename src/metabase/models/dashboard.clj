@@ -85,7 +85,6 @@
   (let [defaults  {:parameters []}
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
-      (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
 
 (defn- post-insert
@@ -95,7 +94,6 @@
 
 (defn- pre-update [dashboard]
   (u/prog1 dashboard
-    (params/assert-valid-parameters dashboard)
     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 

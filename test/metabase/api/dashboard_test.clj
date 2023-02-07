@@ -132,14 +132,14 @@
 
 (deftest create-dashboard-validation-test
   (testing "POST /api/dashboard"
-    (is (= {:errors {:name "value must be a non-blank string."}}
+    (is (=? {:errors {:name "value must be a non-blank string."},
+             :specific-errors {:name ["value must be a non-blank string."]}}
            (mt/user-http-request :rasta :post 400 "dashboard" {})))
 
-    (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                      "Each parameter must be a map with :id and :type keys")}}
-           (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
-                                                                   :parameters "abc"})))))
-
+    (is (=? {:errors {:parameters "nullable Parameters must be a list of Parameter with unique names"},
+             :specific-errors {:parameters ["invalid type"]}}
+            (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
+                                                                    :parameters "abc"})))))
 (def ^:private dashboard-defaults
   {:archived                false
    :caveats                 nil
@@ -1903,7 +1903,7 @@
                  (:parameters dashboard))))))
 
     (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
-      (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+      (is (= "nullable Parameters must be a list of Parameter with unique names"
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"
                                            {:name       "a dashboard"
                                             :parameters [{:id                    "_value_",
@@ -1912,13 +1912,13 @@
                                                           :values_source_type    "random-type"
                                                           :values_source_config {"values" [1 2 3]}}]})
                      [:errors :parameters])))
-      (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+      (is (= "nullable Parameters must be a list of Parameter with unique names"
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"
                                            {:name       "a dashboard"
-                                            :parameters [{:id                    "_value_",
-                                                          :name                  "value",
-                                                          :type                  "category",
-                                                          :values_source_type    "static-list"
+                                            :parameters [{:id                   "_value_",
+                                                          :name                 "value",
+                                                          :type                 "category",
+                                                          :values_source_type   "static-list"
                                                           :values_source_config []}]})
                      [:errors :parameters]))))))
 

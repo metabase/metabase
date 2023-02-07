@@ -38,6 +38,7 @@
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -72,16 +73,15 @@
                    dashboard)))
           dashboards)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new Dashboard."
   [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
-  {name                su/NonBlankString
-   parameters          (s/maybe [su/Parameter])
-   description         (s/maybe s/Str)
-   cache_ttl           (s/maybe su/IntGreaterThanZero)
-   collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+  {name                ms/NonBlankString
+   parameters          [:maybe ms/Parameters]
+   description         [:maybe :string]
+   cache_ttl           [:maybe ms/IntGreaterThanZero]
+   collection_id       [:maybe ms/IntGreaterThanZero]
+   collection_position [:maybe ms/IntGreaterThanZero]}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -374,8 +374,7 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a Dashboard.
 
   Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate
@@ -384,19 +383,19 @@
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
                    embedding_params position archived collection_id collection_position cache_ttl]
             :as dash-updates} :body}]
-  {name                    (s/maybe su/NonBlankString)
-   description             (s/maybe s/Str)
-   caveats                 (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
-   show_in_getting_started (s/maybe s/Bool)
-   enable_embedding        (s/maybe s/Bool)
-   embedding_params        (s/maybe su/EmbeddingParams)
-   parameters              (s/maybe [su/Parameter])
-   position                (s/maybe su/IntGreaterThanZero)
-   archived                (s/maybe s/Bool)
-   collection_id           (s/maybe su/IntGreaterThanZero)
-   collection_position     (s/maybe su/IntGreaterThanZero)
-   cache_ttl               (s/maybe su/IntGreaterThanZero)}
+  {name                    [:maybe ms/NonBlankString]
+   description             [:maybe :string]
+   caveats                 [:maybe :string]
+   points_of_interest      [:maybe :string]
+   show_in_getting_started [:maybe :boolean]
+   enable_embedding        [:maybe :boolean]
+   embedding_params        [:maybe ms/EmbeddingParams]
+   parameters              [:maybe ms/Parameters]
+   position                [:maybe ms/IntGreaterThanZero]
+   archived                [:maybe :boolean]
+   collection_id           [:maybe ms/IntGreaterThanZero]
+   collection_position     [:maybe ms/IntGreaterThanZero]
+   cache_ttl               [:maybe ms/IntGreaterThanZero]}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)

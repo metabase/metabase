@@ -253,14 +253,25 @@
   (mu/with-api-error-message
     [:map [:id NonBlankString]
      [:type keyword-or-non-blank-str-malli]
+     [:name NonBlankString]
      ;; TODO how to merge this with ParameterSource above?
      [:values_source_type {:optional true} [:enum "static-list" "card" nil]]
      [:values_source_config {:optional true} ValuesSourceConfig]
      [:slug {:optional true} :string]
-     [:name {:optional true} :string]
      [:default {:optional true} :any]
      [:sectionId {:optional true} NonBlankString]]
     (deferred-tru "parameter must be a map with :id and :type keys")))
+
+(def Parameters
+  "Schema for a valid collection of Parameters.
+  Each parameter's name must be unique within the parameters list."
+  (mu/with-api-error-message
+    [:and
+     [:sequential Parameter]
+     #_[:fn (fn [parameters]
+              (= (-> (map :name parameters) set count)
+                 (count parameters)))]]
+    (deferred-tru "Parameters must be a list of Parameter with unique names")))
 
 (def ParameterMapping
   "Schema for a valid Parameter Mapping"

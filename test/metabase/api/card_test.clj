@@ -448,11 +448,12 @@
 
 (deftest create-card-validation-test
   (testing "POST /api/card"
-    (is (= {:errors {:visualization_settings "value must be a map."}}
+    (is (= {:errors {:visualization_settings "Value must be a map."},
+            :specific-errors {:visualization_settings ["Value must be a map."]}}
            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
 
-    (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                      "Each parameter must be a map with :id and :type keys")}}
+    (is (= {:errors {:parameters "nullable Parameters must be a list of Parameter with unique names"},
+            :specific-errors {:parameters ["invalid type"]}}
            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
                                                               :parameters             "abc"})))
     (with-temp-native-card-with-params [db card]
@@ -901,15 +902,19 @@
     (mt/with-temp Card [card]
       (testing "successfully update with valid parameters"
         (is (partial= {:parameters [{:id   "random-id"
+                                     :name "random-name"
                                      :type "number"}]}
                       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                                             {:parameters [{:id   "random-id"
+                                                           :name "random-name"
                                                            :type "number"}]})))))
 
     (mt/with-temp Card [card {:parameters [{:id   "random-id"
+                                            :name "random-name"
                                             :type "number"}]}]
       (testing "nil parameters will no-op"
         (is (partial= {:parameters [{:id   "random-id"
+                                     :name "random-name"
                                      :type "number"}]}
                       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                                             {:parameters nil}))))

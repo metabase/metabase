@@ -20,13 +20,6 @@
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn assert-valid-parameters
-  "Receive a Paremeterized Object and check if its parameters is valid."
-  [{:keys [parameters]}]
-  (when (s/check (s/maybe [su/Parameter]) parameters)
-    (throw (ex-info (tru ":parameters must be a sequence of maps with :id and :type keys")
-                    {:parameters parameters}))))
-
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameter_mappings]}]
