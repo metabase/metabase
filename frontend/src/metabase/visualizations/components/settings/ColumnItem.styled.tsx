@@ -6,12 +6,13 @@ import ChartSettingColorPicker from "./ChartSettingColorPicker";
 
 interface ColumnItemRootProps {
   isDraggable: boolean;
+  isHidden: boolean;
 }
 
 export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
   margin: 0.5rem 0;
   overflow: hidden;
-  display: flex;
+  display: ${({ isHidden }) => (isHidden ? "none" : "flex")};
   align-items: center;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;

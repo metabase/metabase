@@ -63,15 +63,17 @@ export function findColumnIndexForColumnSetting(columns, columnSetting) {
 
 export function findColumnSettingIndexForColumn(columnSettings, column) {
   const fieldRef = normalizeFieldRef(fieldRefForColumn(column));
-  if (fieldRef == null) {
-    return columnSettings.findIndex(
-      columnSetting => columnSetting.name === column.name,
+  if (fieldRef !== null) {
+    const index = columnSettings.findIndex(columnSetting =>
+      _.isEqual(fieldRef, normalizeFieldRef(columnSetting.fieldRef)),
     );
+    if (index >= 0) {
+      return index;
+    }
   }
-  const index = columnSettings.findIndex(columnSetting =>
-    _.isEqual(fieldRef, normalizeFieldRef(columnSetting.fieldRef)),
+  return columnSettings.findIndex(
+    columnSetting => columnSetting.name === column.name,
   );
-  return index;
 }
 
 export function syncTableColumnsToQuery(question) {

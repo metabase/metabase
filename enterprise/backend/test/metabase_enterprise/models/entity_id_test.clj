@@ -34,7 +34,6 @@
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
   #{:metabase.db.data-migrations/DataMigrations
-    :metabase.models.action/Action
     :metabase.models.action/HTTPAction
     :metabase.models.action/ImplicitAction
     :metabase.models.action/QueryAction
@@ -73,7 +72,7 @@
     :metabase.models.view-log/ViewLog
     :metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy})
 
-(deftest comprehensive-entity-id-test
+(deftest ^:parallel comprehensive-entity-id-test
   (doseq [model (->> (descendants :toucan1/model)
                      (remove entities-not-exported)
                      (remove entities-external-name))]
@@ -83,7 +82,7 @@
       (is (contains? (set (keys (models/properties model)))
                      ::mi/entity-id)))))
 
-(deftest comprehensive-identity-hash-test
+(deftest ^:parallel comprehensive-identity-hash-test
   (doseq [model (->> (descendants :toucan1/model)
                      (remove entities-not-exported))]
     (testing (format "Model %s should implement identity-hash-fields" model)

@@ -12,6 +12,8 @@ import {
 } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 
+import Metadata from "metabase-lib/metadata/Metadata";
+
 import DashCardActionButton from "./DashCardActionButton";
 
 import AddSeriesButton from "./AddSeriesButton";
@@ -32,6 +34,7 @@ interface Props {
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
   showClickBehaviorSidebar: () => void;
   onPreviewToggle: () => void;
+  metadata: Metadata;
 }
 
 function DashCardActionButtons({
@@ -47,6 +50,7 @@ function DashCardActionButtons({
   onReplaceAllVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
+  metadata,
 }: Props) {
   const { disableSettingsConfig, supportPreviewing, supportsSeries } =
     getVisualizationRaw(series).visualization;
@@ -77,6 +81,7 @@ function DashCardActionButtons({
           series={series}
           dashboard={dashboard}
           dashcard={dashcard}
+          metadata={metadata}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
         />,
       );

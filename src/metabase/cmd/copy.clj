@@ -9,7 +9,8 @@
    [metabase.db.data-migrations :refer [DataMigrations]]
    [metabase.db.setup :as mdb.setup]
    [metabase.models
-    :refer [Activity
+    :refer [Action
+            Activity
             ApplicationPermissionsRevision
             BookmarkOrdering
             Card
@@ -40,6 +41,9 @@
             PulseCard
             PulseChannel
             PulseChannelRecipient
+            QueryAction
+            ImplicitAction
+            HTTPAction
             Revision
             Secret
             Segment
@@ -121,6 +125,10 @@
    TimelineEvent
    Secret
    ParameterCard
+   Action
+   ImplicitAction
+   HTTPAction
+   QueryAction
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])
@@ -303,7 +311,7 @@
 
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
-  #{Setting Session DataMigrations})
+  #{Setting Session DataMigrations ImplicitAction HTTPAction QueryAction})
 
 (defmulti ^:private update-sequence-values!
   {:arglists '([db-type data-source])}
