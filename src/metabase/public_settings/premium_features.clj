@@ -15,10 +15,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.schema :as su]
-   [next.jdbc]
    [schema.core :as schema]
-   [toucan.db :as db]
-   [metabase.db.connection :as mdb.connection]))
+   [toucan2.core :as t2]))
 
 (def ^:private ValidToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
@@ -47,8 +45,9 @@
 (declare premium-embedding-token)
 
 (defn- active-user-count []
-  (first (vals (first (next.jdbc/execute! mdb.connection/*application-db* ["SELECT count(*) AS count FROM core_user;"]))))
-  #_(db/count :core_user :is_active true))
+  {:post [(integer? %)]}
+  (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
+  (t2/count :core_user :is_active true))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
@@ -121,6 +120,7 @@
               fetch-token-status*
               :ttl/threshold (u/minutes->ms 5))]
     (fn [token]
+      (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
       (locking lock
         (f token)))))
 
@@ -141,8 +141,10 @@
 (def ^:private ^{:arglists '([token])} valid-token->features
   "Check whether `token` is valid. Throws an Exception if not. Returns a set of supported features if it is."
   ;; this is just `valid-token->features*` with some light caching
-  (memoize/ttl valid-token->features*
-               :ttl/threshold valid-token-recheck-interval-ms))
+  (let [f (memoize/ttl valid-token->features* :ttl/threshold valid-token-recheck-interval-ms)]
+    (fn [token]
+      (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
+      (f token))))
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
