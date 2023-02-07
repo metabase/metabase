@@ -48,13 +48,14 @@
 (declare premium-embedding-token)
 
 (defn- active-user-count* []
-  (let [fut (try
-              (db/count :core_user :is_active true)
-              (catch Throwable e
-                (log/error e "ERROR!")
-                (println (colorize/red ">>> ERROR <<<"))
-                (pprint/pprint (Throwable->map e))
-                (throw e)))]
+  (let [fut (future
+              (try
+                (db/count :core_user :is_active true)
+                (catch Throwable e
+                  (log/error e "ERROR!")
+                  (println (colorize/red ">>> ERROR <<<"))
+                  (pprint/pprint (Throwable->map e))
+                  (throw e))))]
     (deref fut
            (u/seconds->ms 3)
            (do
