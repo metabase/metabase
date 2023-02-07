@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 export const DISPLAY_QUOTES = {
   identifierQuoteDefault: "",
   literalQuoteDefault: "",
@@ -121,6 +123,11 @@ export const MBQL_CLAUSES = {
     displayName: `substring`,
     type: "string",
     args: ["string", "number", "number"],
+    validator: function (_arg, start, _length) {
+      if (typeof start === "number" && start <= 0) {
+        return t`Expected positive integer but found ${start}`;
+      }
+    },
   },
   "regex-match-first": {
     displayName: `regexextract`,
