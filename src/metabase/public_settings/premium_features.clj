@@ -46,16 +46,7 @@
 (declare premium-embedding-token)
 
 (defn- active-user-count []
-  ;; NOTE: models.user imports public settings, which imports this namespace,
-  ;; so we can't import the User model here.
-  (when-not ((requiring-resolve 'metabase.db/db-is-set-up?))
-    (throw (ex-info "Metabase DB is not set up yet!" {})))
-  (try
-    (binding [toucan2.log/*level* :trace]
-      (db/count 'User :is_active true))
-    (catch Throwable e
-      (log/error e "Error fetching active user count")
-      (throw e))))
+  (db/count :core_user :is_active true))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
