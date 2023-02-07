@@ -129,13 +129,15 @@
   too many API calls to the Store, which will throttle us if we make too many requests; putting in a bad token could
   otherwise put us in a state where `valid-token->features*` made API calls over and over, never itself getting cached
   because checks failed. "
-  (let [f (memoize/ttl
-           fetch-token-status*
-           :ttl/threshold (* 1000 60 5))]
+  (let [lock (Object.)
+        f    (memoize/ttl
+              fetch-token-status*
+              :ttl/threshold (u/minutes->ms 5))]
     (fn [token]
-      (let [result (f token)]
-        (cond-> result
-          (false? (:valid result)) (assoc :debugging-2 (debugging-info)))))))
+      (locking lock
+        (let [result (f token)]
+          (cond-> result
+            (false? (:valid result)) (assoc :debugging-2 (debugging-info))))))))
 
 (schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
   [token :- ValidToken]
