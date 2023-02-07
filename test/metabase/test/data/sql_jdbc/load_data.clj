@@ -199,7 +199,7 @@
           (jdbc/execute! spec sql+args {:set-parameters (fn [stmt params]
                                                           (sql-jdbc.execute/set-parameters! driver stmt params))}))
         (catch SQLException e
-          (println (u/format-color 'red "INSERT FAILED: \n%s\n" (pr-str statements)))
+          (log/error (u/format-color 'red "INSERT FAILED: \n%s\n" (pr-str statements)))
           (jdbc/print-sql-exception-chain e)
           (throw e))))))
 

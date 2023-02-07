@@ -1,5 +1,4 @@
 import React, { forwardRef } from "react";
-import _ from "underscore";
 
 import FormInputWidget from "metabase/core/components/FormInput";
 import FormTextAreaWidget from "metabase/core/components/FormTextArea";

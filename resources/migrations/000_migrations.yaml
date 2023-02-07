@@ -13950,6 +13950,21 @@ databaseChangeLog:
             indexName: idx_query_execution_context
 
   - changeSet:
+      id: v46.00-045
+      author: calherries
+      comment: Added 0.46.0 -- add public_uuid to action.
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: public_uuid
+                  type: char(36)
+                  remarks: 'Unique UUID used to in publically-accessible links to this Action.'
+                  constraints:
+                    unique: true
+
+  - changeSet:
       id: v46.00-051
       author: calherries
       comment: Added 0.46.0 -- drop defaults for dashcard's position and size
@@ -14006,6 +14021,31 @@ databaseChangeLog:
             defaultValueNumeric: 4
 
   - changeSet:
+      id: v46.00-055
+      author: calherries
+      comment: Added 0.46.0 -- add made_public_by_id
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: made_public_by_id
+                  type: int
+                  remarks: 'The ID of the User who first publically shared this Action.'
+
+  - changeSet:
+      id: v46.00-056
+      author: calherries
+      comment: Added 0.46.0 -- add public_uuid and made_public_by_id to action. public_uuid is indexed
+      changes:
+        - createIndex:
+            tableName: action
+            indexName: idx_action_public_uuid
+            columns:
+              column:
+                name: public_uuid
+
+  - changeSet:
       id: v46.00-057
       author: dpsutton
       comment: Added 0.46.0 -- parameter_card.parameter_id long enough to hold a uuid
@@ -14015,6 +14055,19 @@ databaseChangeLog:
             columnName: parameter_id
             newDataType: varchar(36)
       rollback: #nothing to do, char(32) or char(36) are equivalent
+
+  - changeSet:
+      id: v46.00-058
+      author: calherries
+      comment: Added 0.46.0 -- add FK constraint for action.made_public_by_id with core_user.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: made_public_by_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_action_made_public_by_id
+            onDelete: CASCADE
 
   - changeSet:
       id: v46.00-059
@@ -14128,6 +14181,21 @@ databaseChangeLog:
             tableName: action
 
   - changeSet:
+      id: v46.00-074
+      author: metamben
+      comment: Added 0.46.0 -- increase precision of updated_at of report_card
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: updated_at
+            newDataType: DATETIME
+
+  - changeSet:
       id: v46.00-075
       author: noahmoss
       comment: Add foreign key constraint on sandboxes.permission_id
@@ -14139,6 +14207,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_sandboxes_ref_permissions
             nullable: true
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

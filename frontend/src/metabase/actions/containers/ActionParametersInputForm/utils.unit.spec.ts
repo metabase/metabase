@@ -1,4 +1,3 @@
-import type { FieldSettingsMap } from "metabase-types/api";
 import { getChangedValues, formatValue } from "./utils";
 
 describe("actions > containers > ActionParametersInputForm > utils", () => {

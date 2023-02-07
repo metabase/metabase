@@ -3,6 +3,7 @@
             [cheshire.generate :as json.generate]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
             [metabase.test.data.interface :as tx]
@@ -50,6 +51,10 @@
   (with-mongo-connection [mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
     (mg/drop-db (.getMongo mongo-connection) (tx/escaped-database-name dbdef))))
 
+(def ^:dynamic *remove-nil?*
+  "When creating a dataset, omit any nil-valued fields from the documents."
+  false)
+
 (defmethod tx/create-db! :mongo
   [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
   (when-not skip-drop-db?
@@ -63,7 +68,8 @@
           (try
             ;; Insert each row
             (mcoll/insert mongo-db (name table-name) (into {:_id (inc i)}
-                                                        (zipmap field-names row)))
+                                                           (cond->> (zipmap field-names row)
+                                                             *remove-nil?* (m/remove-vals nil?))))
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))
 

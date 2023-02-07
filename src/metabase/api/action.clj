@@ -5,12 +5,16 @@
    [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
    [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (java.util UUID)))
 
 (def ^:private json-query-schema
   [:and
@@ -122,5 +126,31 @@
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
   (first (action/actions-with-implicit-params nil :id id)))
+
+(api/defendpoint POST "/:id/public_link"
+  "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
+  Action has already been shared, it will return the existing public link rather than creating a new one.) Public
+  sharing must be enabled."
+  [id]
+  {id pos-int?}
+  (api/check-superuser)
+  (validation/check-public-sharing-enabled)
+  (api/read-check Action id)
+  {:uuid (or (db/select-one-field :public_uuid Action :id id)
+             (u/prog1 (str (UUID/randomUUID))
+                      (db/update! Action id
+                                  :public_uuid <>
+                                  :made_public_by_id api/*current-user-id*)))})
+
+(api/defendpoint DELETE "/:id/public_link"
+  "Delete the publicly-accessible link to this Dashboard."
+  [id]
+  {id pos-int?}
+  ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
+  (validation/check-has-application-permission :setting)
+  (validation/check-public-sharing-enabled)
+  (api/check-exists? Action :id id, :public_uuid [:not= nil])
+  (db/update! Action id :public_uuid nil, :made_public_by_id nil)
+  {:status 204, :body nil})
 
 (api/define-routes)

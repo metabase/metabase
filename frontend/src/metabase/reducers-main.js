@@ -12,6 +12,11 @@ import * as setup from "metabase/setup/reducers";
 
 /* dashboards */
 import dashboard from "metabase/dashboard/reducers";
+
+/* parameters */
+import * as parameters from "metabase/parameters/reducers";
+
+/* home page */
 import * as home from "metabase/home/reducers";
 
 /* query builder */
@@ -28,6 +33,7 @@ import alert from "metabase/alert/alert";
 
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
+
 import commonReducers from "./reducers-common";
 
 export default {
@@ -36,6 +42,7 @@ export default {
   // main app reducers
   alert,
   dashboard,
+  parameters: combineReducers(parameters),
   home: combineReducers(home),
   pulse: combineReducers(pulse),
   qb: combineReducers(qb),

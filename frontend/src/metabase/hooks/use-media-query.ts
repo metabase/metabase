@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const useMediaQuery = (query: string) => {
   const queryList = useMemo(() => window.matchMedia(query), [query]);

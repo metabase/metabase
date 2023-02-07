@@ -76,7 +76,7 @@
 (def action-columns
   "The columns that are common to all Action types."
   [:type :name :description :model_id :parameters :parameter_mappings :visualization_settings :creator_id
-   :created_at :updated_at :entity_id])
+   :created_at :updated_at :entity_id :public_uuid :made_public_by_id])
 
 (defn insert!
   "Inserts an Action and related type table. Returns the action id."

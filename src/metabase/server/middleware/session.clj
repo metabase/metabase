@@ -3,7 +3,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
    [honeysql.helpers :as hh]
    [java-time :as t]
    [metabase.api.common
@@ -27,6 +26,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
    [ring.util.response :as response]
    [schema.core :as s]
@@ -238,7 +238,7 @@
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]]
                 :where     [:and
                             [:= :user.is_active true]
-                            [:= :session.id (hsql/raw "?")]
+                            [:= :session.id (hx/raw "?")]
                             (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
                               [:> :session.created_at oldest-allowed])
                             [:= :session.anti_csrf_token (case session-type

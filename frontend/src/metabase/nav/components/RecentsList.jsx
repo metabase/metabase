@@ -123,7 +123,7 @@ function RecentsList({ list, loading, onChangeLocation }) {
 
           {!hasRecents && (
             <EmptyStateContainer>
-              <EmptyState message={t`Nothing here`} icon="all" />
+              <EmptyState message={t`Nothing here`} icon="folder" />
             </EmptyStateContainer>
           )}
         </React.Fragment>
