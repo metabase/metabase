@@ -32,7 +32,6 @@
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
   #{metabase.db.data_migrations.DataMigrationsInstance
-    metabase.models.action.ActionInstance
     metabase.models.action.HTTPActionInstance
     metabase.models.action.ImplicitActionInstance
     metabase.models.action.QueryActionInstance
