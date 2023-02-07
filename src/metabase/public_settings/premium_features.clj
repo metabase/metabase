@@ -16,7 +16,8 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.schema :as su]
    [schema.core :as schema]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.log]))
 
 (def ^:private ValidToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
@@ -48,7 +49,8 @@
   ;; NOTE: models.user imports public settings, which imports this namespace,
   ;; so we can't import the User model here.
   (try
-    (db/count 'User :is_active true)
+    (binding [toucan2.log/*level* :trace]
+      (db/count 'User :is_active true))
     (catch Throwable e
       (log/error e "Error fetching active user count")
       (throw e))))
@@ -127,9 +129,15 @@
   too many API calls to the Store, which will throttle us if we make too many requests; putting in a bad token could
   otherwise put us in a state where `valid-token->features*` made API calls over and over, never itself getting cached
   because checks failed. "
-  (memoize/ttl
-   fetch-token-status*
-   :ttl/threshold (u/minutes->ms 5)))
+  (let [lock (Object.)
+        f    (memoize/ttl
+              fetch-token-status*
+              :ttl/threshold (u/minutes->ms 5))]
+    ;; prevent a million requests all coming in at the same time. Let the first one complete, then we can get the
+    ;; memoized value.
+    (fn [token]
+      (locking lock
+        (f token)))))
 
 (schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
   [token :- ValidToken]
@@ -148,8 +156,13 @@
 (def ^:private ^{:arglists '([token])} valid-token->features
   "Check whether `token` is valid. Throws an Exception if not. Returns a set of supported features if it is."
   ;; this is just `valid-token->features*` with some light caching
-  (memoize/ttl valid-token->features*
-               :ttl/threshold valid-token-recheck-interval-ms))
+  (let [lock (Object.)
+        f    (memoize/ttl
+              valid-token->features*
+              :ttl/threshold valid-token-recheck-interval-ms)]
+    (fn [token]
+      (locking lock
+        (f token)))))
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
