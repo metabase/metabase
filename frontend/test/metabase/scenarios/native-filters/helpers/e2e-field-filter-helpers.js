@@ -38,10 +38,17 @@ export function setWidgetStringFilter(value) {
  * @param {string} value
  */
 
-export function selectFilterValueFromList(value) {
+export function addFilterValueFromList(value) {
   popover().within(() => {
     cy.findByText(value).click();
     cy.button("Add filter").click();
+  });
+}
+
+export function updateFilterValueFromList(value) {
+  popover().within(() => {
+    cy.findByText(value).click();
+    cy.button("Update filter").click();
   });
 }
 
@@ -54,7 +61,7 @@ export function selectFilterValueFromList(value) {
 
 export function applyFilterByType(filter, value) {
   if (["Is", "Is not"].includes(filter)) {
-    selectFilterValueFromList(value);
+    addFilterValueFromList(value);
   } else {
     addWidgetStringFilter(value);
   }
