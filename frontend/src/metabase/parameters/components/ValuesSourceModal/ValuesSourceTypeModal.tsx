@@ -223,6 +223,7 @@ const FieldSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <SourceTypeOptions
             parameter={parameter}
+            parameterValues={parameterValues}
             sourceType={sourceType}
             sourceConfig={sourceConfig}
             onChangeSourceType={onChangeSourceType}
@@ -307,6 +308,7 @@ const CardSourceModal = ({
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
           <SourceTypeOptions
             parameter={parameter}
+            parameterValues={parameterValues}
             sourceType={sourceType}
             sourceConfig={sourceConfig}
             onChangeSourceType={onChangeSourceType}
