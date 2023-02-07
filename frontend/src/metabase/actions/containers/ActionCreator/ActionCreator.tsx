@@ -10,10 +10,12 @@ import Actions, {
   UpdateQueryActionParams,
 } from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
+import Models from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import type {
   ActionFormSettings,
+  Card,
   DatabaseId,
   WritebackActionId,
   WritebackQueryAction,
@@ -47,6 +49,10 @@ interface ActionLoaderProps {
   action?: WritebackQueryAction;
 }
 
+interface ModelLoaderProps {
+  model?: Card;
+}
+
 interface StateProps {
   metadata: Metadata;
 }
@@ -58,7 +64,11 @@ interface DispatchProps {
 
 export type ActionCreatorProps = OwnProps;
 
-type Props = OwnProps & ActionLoaderProps & StateProps & DispatchProps;
+type Props = OwnProps &
+  ActionLoaderProps &
+  ModelLoaderProps &
+  StateProps &
+  DispatchProps;
 
 const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
@@ -191,10 +201,26 @@ function ActionCreator({
   );
 }
 
+function maybeGetModelId(
+  state: State,
+  { action, actionId }: OwnProps & ActionLoaderProps,
+) {
+  const isNewAction = !actionId;
+  if (isNewAction) {
+    return null;
+  }
+  return action?.model_id;
+}
+
 export default _.compose(
   Actions.load({
     id: (state: State, props: OwnProps) => props.actionId,
     loadingAndErrorWrapper: false,
+  }),
+  Models.load({
+    id: maybeGetModelId,
+    loadingAndErrorWrapper: false,
+    entityAlias: "model",
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
