@@ -17,7 +17,9 @@
    [metabase.util.schema :as su]
    [schema.core :as schema]
    [toucan.db :as db]
-   [toucan2.log]))
+   [toucan2.log]
+   [clojure.pprint :as pprint]
+   [colorize.core :as colorize]))
 
 (def ^:private ValidToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
@@ -46,7 +48,18 @@
 (declare premium-embedding-token)
 
 (defn- active-user-count* []
-  (db/count :core_user :is_active true))
+  (let [fut (try
+              (db/count :core_user :is_active true)
+              (catch Throwable e
+                (log/error e "ERROR!")
+                (println (colorize/red ">>> ERROR <<<"))
+                (pprint/pprint (Throwable->map e))
+                (throw e)))]
+    (deref fut
+           (u/seconds->ms 3)
+           (do
+             (future-cancel fut)
+             1))))
 
 (def ^:private ^{:arglists '([])} active-user-count
   (let [lock (Object.)
@@ -89,42 +102,42 @@
   (log/info (trs "Checking with the MetaStore to see whether {0} is valid..."
                  ;; ValidToken will ensure the length of token is 64 chars long
                  (str (subs token 0 4) "..." (subs token 60 64))))
-  (let [errors (atom [])]
+  (let [fut (future
+              (try
+                (fetch-token-and-parse-body token token-check-url)
+                (catch Exception e1
+                  (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
+                  ;; Try the fallback URL, which was the default URL prior to 45.2
+                  (try
+                    (fetch-token-and-parse-body token store-url)
+                    ;; if there was an error fetching the token from both the normal and fallback URLs, log the first error and
+                    ;; return a generic message about the token being invalid. This message will get displayed in the Settings
+                    ;; page in the admin panel so we do not want something complicated
+                    (catch Exception e2
+                      (log/error e2 (trs "Error fetching token status from {0}:" store-url))
+                      (let [body (try
+                                   (some-> (ex-data e1) :body (json/parse-string keyword))
+                                   (catch Throwable _))]
+                        (or
+                         body
+                         {:valid         false
+                          :status        (tru "Unable to validate token")
+                          :error-details (.getMessage e1)})))))))]
     (deref
-     (future
-       (try
-         (fetch-token-and-parse-body token token-check-url)
-         (catch Exception e1
-           (swap! errors conj (ex-message e1))
-           (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
-           ;; Try the fallback URL, which was the default URL prior to 45.2
-           (try
-             (fetch-token-and-parse-body token store-url)
-             ;; if there was an error fetching the token from both the normal and fallback URLs, log the first error and
-             ;; return a generic message about the token being invalid. This message will get displayed in the Settings
-             ;; page in the admin panel so we do not want something complicated
-             (catch Exception e2
-               (swap! errors conj (ex-message e2))
-               (log/error e2 (trs "Error fetching token status from {0}:" store-url))
-               (let [body (try
-                            (some-> (ex-data e1) :body (json/parse-string keyword))
-                            (catch Throwable e3
-                              (swap! errors conj (ex-message e3))
-                              nil))]
-                 (or
-                  body
-                  {:valid         false
-                   :status        (tru "Unable to validate token")
-                   :error-details (.getMessage e1)})))))))
+     fut
      fetch-token-status-timeout-ms
-     {:valid         false
-      :status        (tru "Unable to validate token starting with {0}" (str/join (take 4 token)))
-      :error-details (tru "Token validation timed out after {0}" (u/format-milliseconds fetch-token-status-timeout-ms))
-      :active-user-count (deref
-                          (future (active-user-count))
-                          (u/seconds->ms 10)
-                          ::timed-out)
-      :errors        @errors})))
+     (do
+       (future-cancel fut)
+       {:valid             false
+        :status            (tru "Unable to validate token starting with {0}" (str/join (take 4 token)))
+        :error-details     (tru "Token validation timed out after {0}" (u/format-milliseconds fetch-token-status-timeout-ms))
+        :active-user-count (let [fut (future (active-user-count))]
+                             (deref
+                              fut
+                              (u/seconds->ms 10)
+                              (do
+                                (future-cancel fut)
+                                ::timed-out)))}))))
 
 (def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
