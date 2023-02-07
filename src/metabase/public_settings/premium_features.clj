@@ -74,6 +74,21 @@
           :body
           (json/parse-string keyword)))
 
+(defn- debugging-info []
+  {:user-count {:active-user-count (deref
+                                    (future
+                                      (active-user-count))
+                                    (u/seconds->ms 1)
+                                    ::timed-out)
+                :raw-next.jdbc     (deref
+                                    (future
+                                      (first (vals (first (next.jdbc/execute!
+                                                           mdb.connection/*application-db*
+                                                           ["SELECT count(*) AS count FROM core_user WHERE is_active = true;"])))))
+                                    (u/seconds->ms 1)
+                                    ::timed-out)}
+   :connection (update-vals @(requiring-resolve 'metabase.db.connection/*application-db*) pr-str)})
+
 (schema/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- ValidToken]
@@ -106,19 +121,7 @@
         {:valid         false
          :status        (tru "Unable to validate token")
          :error-details (tru "Token validation timed out.")
-         :user-count    {`active-user-count (deref
-                                             (future
-                                               (active-user-count))
-                                             (u/seconds->ms 5)
-                                             ::timed-out)
-                         'raw               (deref
-                                             (future
-                                               (first (vals (first (next.jdbc/execute!
-                                                                    mdb.connection/*application-db*
-                                                                    ["SELECT count(*) AS count FROM core_user;"]))))
-                                               (active-user-count))
-                                             (u/seconds->ms 5)
-                                             ::timed-out)}})
+         :debugging     (debugging-info)})
       result)))
 
 (def ^{:arglists '([token])} fetch-token-status
@@ -126,9 +129,13 @@
   too many API calls to the Store, which will throttle us if we make too many requests; putting in a bad token could
   otherwise put us in a state where `valid-token->features*` made API calls over and over, never itself getting cached
   because checks failed. "
-  (memoize/ttl
-   fetch-token-status*
-   :ttl/threshold (* 1000 60 5)))
+  (let [f (memoize/ttl
+           fetch-token-status*
+           :ttl/threshold (* 1000 60 5))]
+    (fn [token]
+      (let [result (f token)]
+        (cond-> result
+          (false? (:valid result)) (assoc :debugging-2 (debugging-info)))))))
 
 (schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
   [token :- ValidToken]
