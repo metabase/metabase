@@ -33,7 +33,9 @@ import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/
 
 import { newQuestion, convertQuestionToAction } from "./utils";
 import ActionCreatorView from "./ActionCreatorView";
-import CreateActionForm from "./CreateActionForm";
+import CreateActionForm, {
+  FormValues as CreateActionFormValues,
+} from "./CreateActionForm";
 
 const mapStateToProps = (
   state: State,
@@ -139,17 +141,20 @@ function ActionCreatorComponent({
     }
   };
 
-  const handleCreate = async (values: any) => {
+  const handleCreate = async (values: CreateActionFormValues) => {
+    const action = convertQuestionToAction(question, formSettings);
     await onCreateAction({
-      ...convertQuestionToAction(question, formSettings),
+      ...action,
       ...values,
       type: "query",
     });
+
     const nextQuestion = question
       .setDisplayName(values.name)
       .setDescription(values.description);
     setQuestion(nextQuestion);
-    setTimeout(() => setShowSaveModal(false), 1000);
+
+    setShowSaveModal(false);
     onClose?.();
   };
 

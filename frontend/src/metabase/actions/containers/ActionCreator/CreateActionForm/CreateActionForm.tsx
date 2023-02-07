@@ -26,7 +26,7 @@ const ACTION_SCHEMA = Yup.object({
   model_id: Yup.number().required(Errors.required),
 });
 
-type FormValues = Pick<
+export type FormValues = Pick<
   CreateQueryActionParams,
   "name" | "description" | "model_id"
 >;
