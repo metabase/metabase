@@ -23,6 +23,21 @@
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.premium-features/keep-me)
 
+(defsetting application-name
+  (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
+  :visibility :public
+  :type       :string
+  :enabled?   premium-features/enable-whitelabeling?
+  :default    "Metabase")
+
+(defn compile-safe-application-name
+  "Application-name getter but defaults to Metabase during the compilation stage."
+  []
+  (if *compile-files*
+    "Metabase"
+    (binding [setting/*disable-cache* true]
+      (application-name))))
+
 (defn- google-auth-enabled? []
   (boolean (setting/get :google-auth-enabled)))
 
@@ -154,8 +169,9 @@
 
 (defsetting site-locale
   (deferred-tru
-    (str "The default language for all users across the Metabase UI, system emails, pulses, and alerts. "
-         "Users can individually override this default language from their own account settings."))
+    (str "The default language for all users across the {0} UI, system emails, pulses, and alerts. "
+         "Users can individually override this default language from their own account settings.")
+    (compile-safe-application-name))
   :default    "en"
   :visibility :public
   :setter     (fn [new-value]
@@ -295,13 +311,6 @@
   (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
   :visibility :admin
   :doc        false)
-
-(defsetting application-name
-  (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
-  :visibility :public
-  :type       :string
-  :enabled?   premium-features/enable-whitelabeling?
-  :default    "Metabase")
 
 (defsetting loading-message
   (deferred-tru "Message to show while a query is running.")
@@ -539,12 +548,6 @@
   :visibility :public
   :type       :keyword
   :default    :sunday)
-
-(defsetting ssh-heartbeat-interval-sec
-  (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
-  :visibility :public
-  :type       :integer
-  :default    180)
 
 (defsetting cloud-gateway-ips-url
   "Store URL for fetching the list of Cloud gateway IP addresses"

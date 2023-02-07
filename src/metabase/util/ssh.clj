@@ -5,8 +5,9 @@
   (:require
    [clojure.tools.logging :as log]
    [metabase.driver :as driver]
-   [metabase.public-settings :as public-settings]
-   [metabase.util :as u])
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]])
   (:import
    (java.io ByteArrayInputStream)
    (java.util.concurrent TimeUnit)
@@ -28,6 +29,12 @@
   (doto (SshClient/setUpDefaultClient)
     (.start)
     (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)))
+
+(defsetting ssh-heartbeat-interval-sec
+  (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
+  :visibility :public
+  :type       :integer
+  :default    180)
 
 (defn- maybe-add-tunnel-password!
   [^ClientSession session ^String tunnel-pass]
@@ -56,7 +63,7 @@
   {:pre [(integer? port)]}
   (let [^ConnectFuture conn-future (.connect client tunnel-user tunnel-host tunnel-port)
         ^SessionHolder conn-status (.verify conn-future default-ssh-timeout)
-        hb-sec                     (public-settings/ssh-heartbeat-interval-sec)
+        hb-sec                     (ssh-heartbeat-interval-sec)
         session                    (doto ^ClientSession (.getSession conn-status)
                                      (maybe-add-tunnel-password! tunnel-pass)
                                      (maybe-add-tunnel-private-key! tunnel-private-key tunnel-private-key-passphrase)
