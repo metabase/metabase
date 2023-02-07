@@ -82,11 +82,10 @@ function printFeedback(invalidFileNames) {
 
     printHints();
 
-    return 1;
+    process.exit(1);
   }
 
   console.log("E2E file naming looks correct. Well done!");
-  return 0;
 }
 
 function init() {
