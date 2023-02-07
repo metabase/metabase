@@ -299,7 +299,7 @@
     "build-shared": "yarn && webpack --config webpack.shared.config.js",
     "build-static-viz": "yarn && yarn build:cljs && webpack --config webpack.static-viz.config.js",
     "build-static-viz:watch": "webpack --config webpack.static-viz.config.js --watch",
-    "precommit": "lint-staged && yarn validate-e2e-filenames --staged",
+    "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write '{enterprise/,}frontend/**/*.{js,jsx,ts,tsx,css}'",
     "eslint-fix": "yarn lint-eslint --fix",
@@ -332,6 +332,9 @@
     "+(enterprise|frontend)/**/*.{js,jsx,ts,tsx}": [
       "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0",
       "prettier --write"
+    ],
+    "frontend/test/metabase/scenarios/*/{*.js,!(helpers|shared)/*.js}": [
+      "node frontend/test/validate-e2e-test-files.js"
     ]
   },
   "browserslist": [

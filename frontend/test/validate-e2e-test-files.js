@@ -22,9 +22,12 @@ function validateE2EFileNames(files) {
   printFeedback(invalidFileNames);
 }
 
-function validateStagedFiles() {
+/**
+ * @param {Array<string>} [files] Potential payload if used with `lint-staged`
+ */
+function validateStagedFiles(files) {
   const stagedFiles = getStagedFiles();
-  validateE2EFileNames(stagedFiles);
+  validateE2EFileNames(files || stagedFiles);
 }
 
 function validateAllFiles() {
@@ -92,5 +95,9 @@ function init() {
   const payload = process.argv.slice(2);
   const [scope] = payload;
 
-  scope === "--staged" ? validateStagedFiles() : validateAllFiles();
+  if (!payload.length) {
+    validateAllFiles();
+  }
+
+  scope === "--staged" ? validateStagedFiles() : validateStagedFiles(payload);
 }
