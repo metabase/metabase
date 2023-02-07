@@ -10,10 +10,10 @@
   max-height: 300px;
   transition: max-height 500ms ease-out;
 }
-.saveQuestionModalFields-leave {
+.saveQuestionModalFields-exit {
   max-height: 300px;
 }
-.saveQuestionModalFields-leave.saveQuestionModalFields-leave-active {
+.saveQuestionModalFields-exit.saveQuestionModalFields-exit-active {
   max-height: 0px;
   transition: max-height 500ms ease-out;
 }
