@@ -114,9 +114,7 @@
                                                                    :creator_id [:u 10]})))
                :query-action            (map-indexed
                                          (fn [idx x]
-                                           (update-in x [1 :refs]
-                                                      (fn [refs]
-                                                        (assoc refs :action_id (keyword (str "action" idx))))))
+                                           (assoc-in x [1 :refs :action_id] (keyword (str "action" idx))))
                                          (many-random-fks 10 {} {:database_id [:db 10]}))
                :implicit-action         (map-indexed
                                          (fn [idx x]
@@ -216,15 +214,6 @@
             (testing "for Actions"
               (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
 
-            (testing "for QueryActions"
-              (is (= 10 (count (dir->file-set (io/file dump-dir "query_actions"))))))
-
-            (testing "for ImplicitActions"
-              (is (= 10 (count (dir->file-set (io/file dump-dir "implicit_actions"))))))
-
-            (testing "for HTTPActions"
-              (is (= 10 (count (dir->file-set (io/file dump-dir "http_actions"))))))
-
             (testing "for Collections"
               (is (= 110 (count (for [f (file-set (io/file dump-dir))
                                       :when (and (= (first f) "collections")
@@ -311,27 +300,6 @@
                   (is (= (clean-entity coll)
                          (->> (action/select-one :entity_id entity_id)
                               (serdes.base/extract-one "Action" {})
-                              clean-entity)))))
-
-              (testing "for QueryActions"
-                (doseq [{:keys [entity_id] :as coll} (get @entities "QueryAction")]
-                  (is (= (clean-entity coll)
-                         (->> (db/select-one 'QueryAction :entity_id entity_id)
-                              (serdes.base/extract-one "QueryAction" {})
-                              clean-entity)))))
-
-              (testing "for ImplicitActions"
-                (doseq [{:keys [entity_id] :as coll} (get @entities "ImplicitAction")]
-                  (is (= (clean-entity coll)
-                         (->> (db/select-one 'ImplicitAction :entity_id entity_id)
-                              (serdes.base/extract-one "ImplicitAction" {})
-                              clean-entity)))))
-
-              (testing "for HTTPActions"
-                (doseq [{:keys [entity_id] :as coll} (get @entities "HTTPAction")]
-                  (is (= (clean-entity coll)
-                         (->> (db/select-one 'HTTPAction :entity_id entity_id)
-                              (serdes.base/extract-one "HTTPAction" {})
                               clean-entity)))))
 
               (testing "for Collections"

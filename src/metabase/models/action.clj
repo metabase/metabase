@@ -248,10 +248,10 @@
 
 (defmethod serdes.base/extract-one "Action" [_model-name _opts action]
   (-> (serdes.base/extract-one-basics "Action" action)
-          (update :creator_id serdes.util/export-user)
-          (update :model_id serdes.util/export-fk 'Card)
+      (update :creator_id serdes.util/export-user)
+      (update :model_id serdes.util/export-fk 'Card)
       (cond-> (= (:type action) :query)
-              (update :database_id serdes.util/export-fk-keyed 'Database :name))))
+        (update :database_id serdes.util/export-fk-keyed 'Database :name))))
 
 (defmethod serdes.base/load-xform "Action" [action]
   (-> action
@@ -271,9 +271,9 @@
   (insert! ingested))
 
 (defmethod serdes.base/serdes-dependencies "Action" [action]
-  (cond-> [[{:model "Card" :id (:model_id action)}]]
-    (= (:type action) :query)
-    (conj [{:model "Database" :id (:database_id action)}])))
+  (concat [[{:model "Card" :id (:model_id action)}]]
+    (when (= (:type action) :query)
+      [[{:model "Database" :id (:database_id action)}]])))
 
 (defmethod serdes.base/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes.base/serdes-path last)]
