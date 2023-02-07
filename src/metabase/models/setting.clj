@@ -814,7 +814,7 @@
 (defn- setting-fn-docstring [{:keys [default description], setting-type :type, :as setting}]
   ;; indentation below is intentional to make it clearer what shape the generated documentation is going to take.
   (str
-   description \newline
+   (description) \newline
    \newline
    (format "`%s` is a `%s` Setting. You can get its value by calling:\n" (setting-name setting) setting-type)
    \newline
@@ -984,6 +984,7 @@
                                           (= (:setter options) :none))
                                     description
                                     (validate-description-form description))
+        description               `(fn [] ~description)
         definition-form           (assoc options
                                          :name (keyword setting-symbol)
                                          :description description
@@ -1078,7 +1079,7 @@
                          (log/error e (trs "Error fetching value of Setting"))))
      :is_env_setting set-via-env-var?
      :env_name       (env-var-name setting)
-     :description    (str description)
+     :description    (str (description))
      :default        (if set-via-env-var?
                        (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
