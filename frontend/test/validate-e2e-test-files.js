@@ -26,8 +26,7 @@ function validateE2EFileNames(files) {
  * @param {Array<string>} [files] Potential payload if used with `lint-staged`
  */
 function validateStagedFiles(files) {
-  const stagedFiles = getStagedFiles();
-  validateE2EFileNames(files || stagedFiles);
+  validateE2EFileNames(files || getStagedFiles());
 }
 
 function validateAllFiles() {
