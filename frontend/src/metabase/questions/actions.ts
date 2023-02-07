@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 

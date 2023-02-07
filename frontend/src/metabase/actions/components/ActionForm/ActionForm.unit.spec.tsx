@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 

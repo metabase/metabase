@@ -38,6 +38,7 @@ const ChartSettingFieldsPicker = ({
             {provided => (
               <div {...provided.droppableProps} ref={provided.innerRef}>
                 {fields.map((field, fieldIndex) => {
+                  const lastField = fieldIndex === fields.length - 1;
                   return (
                     <Draggable
                       key={`draggable-${field}`}
@@ -49,7 +50,7 @@ const ChartSettingFieldsPicker = ({
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="mb1"
+                          className={!lastField && "mb1"}
                         >
                           <ChartSettingFieldPicker
                             {...props}

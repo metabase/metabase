@@ -21,10 +21,12 @@ interface SortableColumnFunctions<T> {
   onEnable?: (item: T) => void;
   getItemName: (item: T) => string;
   onColorChange?: (item: T, color: string) => void;
+  hideOnDisabled?: boolean;
 }
 
 interface SortableColumnProps<T> extends SortableColumnFunctions<T> {
   item: T;
+  hideOnDisabled?: boolean;
 }
 
 const SortableColumn = SortableElement(function SortableColumn<
@@ -38,7 +40,9 @@ const SortableColumn = SortableElement(function SortableColumn<
   onAdd,
   onEnable,
   onColorChange,
+  hideOnDisabled,
 }: SortableColumnProps<T>) {
+  const isHidden = !item.enabled && hideOnDisabled;
   return (
     <ColumnItem
       title={getItemName(item)}
@@ -56,6 +60,7 @@ const SortableColumn = SortableElement(function SortableColumn<
       }
       color={item.color}
       draggable
+      isHidden={isHidden}
     />
   );
 }) as unknown as <T extends SortableItem>(
@@ -77,6 +82,7 @@ const SortableColumnList = SortableContainer(function SortableColumnList<
   onEnable,
   onAdd,
   onColorChange,
+  hideOnDisabled = false,
 }: SortableColumnListProps<T>) {
   return (
     <div>
@@ -91,6 +97,7 @@ const SortableColumnList = SortableContainer(function SortableColumnList<
           onEnable={onEnable}
           onAdd={onAdd}
           onColorChange={onColorChange}
+          hideOnDisabled={hideOnDisabled}
         />
       ))}
     </div>
@@ -120,6 +127,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   getItemName,
   items,
   onColorChange,
+  hideOnDisabled,
 }: ChartSettingOrderedItemsProps<T>) {
   return (
     <SortableColumnList
@@ -134,6 +142,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
       onSortEnd={onSortEnd}
       onColorChange={onColorChange}
       distance={5}
+      hideOnDisabled={hideOnDisabled}
     />
   );
 }

@@ -70,7 +70,7 @@
 (def ^:private legal-top-level-paths
   "These are all the legal first segments of paths. This is used by ingestion to avoid `.git`, `.github`, `README.md`
   and other such extras."
-  #{"collections" "databases" "snippets" "settings.yaml"})
+  #{"actions" "collections" "databases" "snippets" "settings.yaml"})
 
 (defn- ingest-all [^File root-dir]
   ;; This returns a map {unlabeled-hierarchy [original-hierarchy File]}.
