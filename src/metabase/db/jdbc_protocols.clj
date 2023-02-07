@@ -5,11 +5,11 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.db.connection :as mdb.connection]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date])
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log])
   (:import
    (java.io BufferedReader)
    (java.sql PreparedStatement ResultSet ResultSetMetaData Types)

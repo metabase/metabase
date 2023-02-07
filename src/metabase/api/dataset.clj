@@ -3,7 +3,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.api.field :as api.field]
@@ -26,6 +25,7 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]

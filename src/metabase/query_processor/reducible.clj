@@ -1,11 +1,11 @@
 (ns metabase.query-processor.reducible
   (:require
    [clojure.core.async :as a]
-   [clojure.tools.logging :as log]
    [metabase.async.util :as async.u]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.context.default :as context.default]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn identity-qp
   "The initial value of `qp` passed to QP middleware."

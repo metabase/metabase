@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.group-table-access-policy
@@ -29,6 +28,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db]))
 

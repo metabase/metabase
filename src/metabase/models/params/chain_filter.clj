@@ -65,7 +65,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
@@ -83,6 +82,7 @@
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))

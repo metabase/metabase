@@ -4,7 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [honeysql.format :as hformat]
    [java-time :as t]
@@ -29,7 +28,8 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [deferred-tru trs]])
+   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log])
   (:import
    (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)

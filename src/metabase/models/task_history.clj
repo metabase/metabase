@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [cheshire.generate :refer [add-encoder encode-map]]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :refer [*current-user-id*]]
@@ -13,6 +12,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]

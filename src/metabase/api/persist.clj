@@ -1,7 +1,6 @@
 (ns metabase.api.persist
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [GET POST]]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
@@ -19,6 +18,7 @@
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]

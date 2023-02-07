@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -12,6 +11,7 @@
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))

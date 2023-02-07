@@ -25,7 +25,6 @@
   `name` is `:remapped_from` `:category_id`."
   (:require
    [clojure.data :as data]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.mbql.schema :as mbql.s]
@@ -33,6 +32,7 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]

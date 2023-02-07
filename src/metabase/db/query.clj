@@ -22,11 +22,11 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
    [toucan.db :as db])
   (:import
    (com.github.vertical_blank.sqlformatter SqlFormatter)

@@ -2,7 +2,6 @@
   "Code for running a query in the context of a specific DashboardCard."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver.common.parameters.operators :as params.ops]
@@ -15,6 +14,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))

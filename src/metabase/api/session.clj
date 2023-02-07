@@ -1,7 +1,6 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require
-   [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE GET POST]]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
@@ -21,6 +20,7 @@
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as s]

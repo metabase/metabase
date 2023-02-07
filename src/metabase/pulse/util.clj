@@ -1,7 +1,6 @@
 (ns metabase.pulse.util
   "Utils for pulses."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard-card
     :as dashboard-card
@@ -11,6 +10,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 ;; TODO - this should be done async

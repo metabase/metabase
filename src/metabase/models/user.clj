@@ -2,7 +2,6 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -18,6 +17,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as schema]
