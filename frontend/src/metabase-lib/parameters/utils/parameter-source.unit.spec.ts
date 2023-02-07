@@ -5,7 +5,7 @@ import {
   canSearchParameterValues,
 } from "./parameter-source";
 
-describe("canListParameterValues", () => {
+describe("parameter source", () => {
   it.each<[ValuesQueryType, boolean]>([
     ["list", true],
     ["search", false],
