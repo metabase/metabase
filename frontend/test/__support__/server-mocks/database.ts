@@ -1,14 +1,8 @@
 import { Scope } from "nock";
 import _ from "underscore";
+import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { Database } from "metabase-types/api";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 import { setupTableEndpoints } from "./table";
-
-const SAVED_QUESTIONS_DB = {
-  id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  name: "Saved Questions",
-  is_saved_questions: true,
-};
 
 export function setupDatabaseEndpoints(scope: Scope, db: Database) {
   scope.get(`/api/database/${db.id}`).reply(200, db);
@@ -24,7 +18,7 @@ export function setupDatabasesEndpoints(
   scope.get("/api/database").reply(200, dbs);
   scope
     .get("/api/database?saved=true")
-    .reply(200, hasSavedQuestions ? [...dbs, SAVED_QUESTIONS_DB] : dbs);
+    .reply(200, hasSavedQuestions ? [...dbs, SAVED_QUESTIONS_DATABASE] : dbs);
 
   dbs.forEach(db => setupDatabaseEndpoints(scope, db));
 }
