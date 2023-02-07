@@ -1,17 +1,16 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 import { t } from "ttag";
 import _ from "underscore";
-import { ModalFooter } from "metabase/components/ModalContent";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 
-import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import SettingToggle from "../SettingToggle";
+import AddMappingRow from "./AddMappingRow";
 import {
   GroupMappingsWidgetRoot as Root,
   GroupMappingsWidgetHeader as Header,
@@ -25,123 +24,102 @@ import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
 
 const groupIsMappable = group => !isDefaultGroup(group);
 
-export default class GroupMappingsWidget extends React.Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {
-      showDeleteMappingModal: false,
-      showEditModal: false,
-      showAddRow: false,
-      groups: null,
-      mappings: {},
-      savedMappings: {},
-      saveError: null,
-      dnForVisibleDeleteMappingModal: null,
-      groupIdsForVisibleDeleteMappingModal: null,
-      whenDeletingMappingGroups: {
-        groupsToClearAllPermissions: [],
-        groupsToDelete: [],
-      },
-    };
-  }
+const whenDeletingMappingGroups = {
+  groupsToClearAllPermissions: [],
+  groupsToDelete: [],
+};
 
-  _showEditModal = async e => {
+function GroupMappingsWidget({ mappingSetting, ...props }) {
+  const [showAddRow, setShowAddRow] = useState(false);
+  const [showDeleteMappingModal, setShowDeleteMappingModal] = useState(false);
+  const [groups, setGroups] = useState(null);
+  const [mappings, setMappings] = useState({});
+  const [savedMappings, setSavedMappings] = useState({});
+  const [saveError, setSaveError] = useState(null);
+  const [dnForVisibleDeleteMappingModal, setDnForVisibleDeleteMappingModal] =
+    useState(null);
+  const [
+    groupIdsForVisibleDeleteMappingModal,
+    setGroupIdsForVisibleDeleteMappingModal,
+  ] = useState(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      const setting = _.findWhere(await SettingsApi.list(), {
+        key: mappingSetting,
+      });
+
+      setMappings(setting?.value || {});
+      setSavedMappings(setting?.value || {});
+
+      PermissionsApi.groups().then(groups =>
+        setGroups(groups.filter(groupIsMappable)),
+      );
+    }
+
+    fetchData();
+  }, [mappingSetting]);
+
+  const handleShowAddRow = e => {
     e.preventDefault();
-
-    // just load the setting again to make sure it's up to date
-    const setting = _.findWhere(await SettingsApi.list(), {
-      key: this.props.mappingSetting,
-    });
-
-    this.setState({
-      mappings: setting?.value || {},
-      savedMappings: setting?.value || {},
-      showEditModal: true,
-    });
-
-    PermissionsApi.groups().then(groups =>
-      this.setState({ groups: groups.filter(groupIsMappable) }),
-    );
+    setShowAddRow(true);
   };
 
-  _showAddRow = e => {
-    e.preventDefault();
-    this.setState({ showAddRow: true });
+  const handleHideAddRow = () => {
+    setShowAddRow(false);
   };
 
-  _hideAddRow = () => {
-    this.setState({ showAddRow: false });
+  const handleAddMapping = dn => {
+    setMappings({ ...mappings, [dn]: [] });
+    setShowAddRow(false);
   };
 
-  _addMapping = dn => {
-    this.setState(prevState => ({
-      mappings: { ...prevState.mappings, [dn]: [] },
-      showAddRow: false,
-    }));
-  };
-
-  _changeMapping = dn => (group, selected) => {
+  const handleChangeMapping = dn => (group, selected) => {
     if (selected) {
-      this.setState(prevState => ({
-        mappings: {
-          ...prevState.mappings,
-          [dn]: [...prevState.mappings[dn], group.id],
-        },
-      }));
+      setMappings({ ...mappings, [dn]: [...mappings[dn], group.id] });
     } else {
-      this.setState(prevState => ({
-        mappings: {
-          ...prevState.mappings,
-          [dn]: prevState.mappings[dn].filter(id => id !== group.id),
-        },
-      }));
+      setMappings({
+        ...mappings,
+        [dn]: mappings[dn].filter(id => id !== group.id),
+      });
     }
   };
 
-  handleShowDeleteMappingModal = (groups, dn) => {
-    this.setState({
-      showDeleteMappingModal: true,
-      showEditModal: false,
-      dnForVisibleDeleteMappingModal: dn,
-      groupIdsForVisibleDeleteMappingModal: groups,
-    });
+  const handleShowDeleteMappingModal = (groups, dn) => {
+    setShowDeleteMappingModal(true);
+    setDnForVisibleDeleteMappingModal(dn);
+    setGroupIdsForVisibleDeleteMappingModal(groups);
   };
 
-  handleHideDeleteMappingModal = () => {
-    this.setState({
-      showDeleteMappingModal: false,
-      showEditModal: true,
-      dnForVisibleDeleteMappingModal: null,
-      groupIdsForVisibleDeleteMappingModal: null,
-    });
+  const handleHideDeleteMappingModal = () => {
+    setShowDeleteMappingModal(false);
+    setDnForVisibleDeleteMappingModal(null);
+    setGroupIdsForVisibleDeleteMappingModal(null);
   };
 
-  handleConfirmDeleteMapping = (whatToDoAboutGroups, groups, dn) => {
-    this._deleteMapping(dn);
+  const handleConfirmDeleteMapping = (whatToDoAboutGroups, groups, dn) => {
+    handleDeleteMapping(dn);
 
-    this.setState({
-      showDeleteMappingModal: false,
-      showEditModal: true,
-      dnForVisibleDeleteMappingModal: null,
-      groupIdsForVisibleDeleteMappingModal: null,
-    });
+    setShowDeleteMappingModal(false);
+    setDnForVisibleDeleteMappingModal(null);
+    setGroupIdsForVisibleDeleteMappingModal(null);
 
-    this.updateGroupsListsForCallbacksAfterDeletingMappings(
+    updateGroupsListsForCallbacksAfterDeletingMappings(
       whatToDoAboutGroups,
       groups,
     );
   };
 
-  updateGroupsListsForCallbacksAfterDeletingMappings = (
+  const updateGroupsListsForCallbacksAfterDeletingMappings = (
     whatToDoAboutGroups,
     groupIds,
   ) => {
-    const { groups } = this.state;
-
     if (whatToDoAboutGroups === "nothing") {
       return;
     }
 
+    // ⚠️ Uncomment and translate
+    /*
     const allGroupIdsExceptAdmin = groupIds.filter(
       groupId => !isAdminGroup(groups.find(group => group.id === groupId)),
     );
@@ -159,66 +137,49 @@ export default class GroupMappingsWidget extends React.Component {
         ),
       },
     }));
+    */
   };
 
-  _deleteMapping = dn => {
-    this.setState(prevState => ({
-      mappings: _.omit(prevState.mappings, dn),
-    }));
+  const handleDeleteMapping = dn => {
+    setMappings(_.omit(mappings, dn));
   };
 
-  _cancelClick = e => {
-    e.preventDefault();
-    this.setState({
-      showEditModal: false,
-      showAddRow: false,
-      dnForVisibleDeleteMappingModal: null,
-      groupIdsForVisibleDeleteMappingModal: null,
-      whenDeletingMappingGroups: {
-        groupsToClearAllPermissions: [],
-        groupsToDelete: [],
-      },
-    });
-  };
-
-  handleUpdateMappings = e => {
+  // ⚠️ This happened after closing the modal
+  // TODO: move what's usable of this to save of entire auth method page
+  /*
+  const handleUpdateMappings = e => {
     e.preventDefault();
 
-    const {
-      state: { mappings },
-      props: { mappingSetting, onChangeSetting },
-    } = this;
+    const { mappingSetting, onChangeSetting } = props;
 
     SettingsApi.put({ key: mappingSetting, value: mappings }).then(
       () => {
         onChangeSetting(mappingSetting, mappings);
 
-        this.updateGroupsFromDeletedMappings();
+        updateGroupsFromDeletedMappings();
 
-        this.setState({
-          showEditModal: false,
-          showAddRow: false,
-          saveError: null,
-        });
+        setShowAddRow(false);
+        setSaveError(null);
       },
-      e => this.setState({ saveError: e }),
+      e => setSaveError(e),
     );
   };
+  */
 
-  updateGroupsFromDeletedMappings = () => {
-    const { groupsToDelete } = this.state.whenDeletingMappingGroups;
+  const updateGroupsFromDeletedMappings = () => {
+    const { groupsToDelete } = whenDeletingMappingGroups;
 
     groupsToDelete.forEach(id => PermissionsApi.deleteGroup({ id }));
 
     // Avoid calling the API for groups that have just been deleted
-    this.getGroupsToClearAllPermissionsThatAreNotAlsoGroupsToDelete().forEach(
-      id => PermissionsApi.clearGroupMembership({ id }),
+    getGroupsToClearAllPermissionsThatAreNotAlsoGroupsToDelete().forEach(id =>
+      PermissionsApi.clearGroupMembership({ id }),
     );
   };
 
-  getGroupsToClearAllPermissionsThatAreNotAlsoGroupsToDelete = () => {
+  const getGroupsToClearAllPermissionsThatAreNotAlsoGroupsToDelete = () => {
     const { groupsToClearAllPermissions, groupsToDelete } =
-      this.state.whenDeletingMappingGroups;
+      whenDeletingMappingGroups;
 
     return groupsToClearAllPermissions.filter(
       groupToClearAllPermission =>
@@ -226,161 +187,88 @@ export default class GroupMappingsWidget extends React.Component {
     );
   };
 
-  render() {
-    const {
-      showDeleteMappingModal,
-      // showEditModal,
-      showAddRow,
-      groups,
-      mappings,
-      saveError,
-      savedMappings,
-      dnForVisibleDeleteMappingModal,
-      groupIdsForVisibleDeleteMappingModal,
-    } = this.state;
-
-    return (
-      <Root>
-        <Header>
-          <ToggleRoot>
-            <span>{t`Synchronize Group Memberships`}</span>
-            <SettingToggle {...this.props} hideLabel />
-          </ToggleRoot>
-          <About>
-            <Tooltip
-              tooltip={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. Users are only ever added to or removed from mapped groups.`}
-              placement="top"
-            >
-              <AboutContentRoot>
-                <Icon name="info" />
-                <span>{t`About mappings`}</span>
-              </AboutContentRoot>
-            </Tooltip>
-          </About>
-        </Header>
-
-        <div>
-          <div>
-            <AddMappingButton primary small onClick={this._showAddRow}>
-              {t`New mapping`}
-            </AddMappingButton>
-            <AdminContentTable
-              columnTitles={[this.props.groupHeading, t`Groups`, ""]}
-            >
-              {showAddRow && (
-                <AddMappingRow
-                  mappings={mappings}
-                  onCancel={this._hideAddRow}
-                  onAdd={this._addMapping}
-                  placeholder={this.props.groupPlaceholder}
-                />
-              )}
-              {Object.entries(mappings).map(([dn, ids]) => {
-                const isMappingLinkedOnlyToAdminGroup =
-                  groups &&
-                  ids.length === 1 &&
-                  isAdminGroup(groups.find(group => group.id === ids[0]));
-
-                const isSavedMapping = Object.keys(savedMappings).includes(dn);
-
-                const shouldUseDeleteMappingModal =
-                  ids.length > 0 &&
-                  !isMappingLinkedOnlyToAdminGroup &&
-                  isSavedMapping;
-
-                const onDelete = shouldUseDeleteMappingModal
-                  ? () => this.handleShowDeleteMappingModal(ids, dn)
-                  : () => this._deleteMapping(dn);
-
-                return (
-                  <MappingRow
-                    key={dn}
-                    dn={dn}
-                    groups={groups || []}
-                    selectedGroups={ids}
-                    onChange={this._changeMapping(dn)}
-                    onDelete={onDelete}
-                  />
-                );
-              })}
-            </AdminContentTable>
-          </div>
-          <ModalFooter>
-            {saveError && saveError.data && saveError.data.message && (
-              <span className="text-error text-bold">
-                {saveError.data.message}
-              </span>
-            )}
-          </ModalFooter>
-        </div>
-        {showDeleteMappingModal && (
-          <DeleteGroupMappingModal
-            dn={dnForVisibleDeleteMappingModal}
-            groupIds={groupIdsForVisibleDeleteMappingModal}
-            onHide={this.handleHideDeleteMappingModal}
-            onConfirm={this.handleConfirmDeleteMapping}
-          />
-        )}
-      </Root>
-    );
-  }
-}
-
-class AddMappingRow extends React.Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {
-      value: "",
-    };
-  }
-
-  _handleSubmit = e => {
-    e.preventDefault();
-    const { onAdd } = this.props;
-    onAdd && onAdd(this.state.value);
-    this.setState({ value: "" });
-  };
-
-  _handleCancelClick = e => {
-    e.preventDefault();
-    const { onCancel } = this.props;
-    onCancel && onCancel();
-    this.setState({ value: "" });
-  };
-
-  render() {
-    const { value } = this.state;
-
-    const isValid = value && this.props.mappings[value] === undefined;
-
-    return (
-      <tr>
-        <td colSpan="3" style={{ padding: 0 }}>
-          <form
-            className="my2 pl1 p1 bordered border-brand rounded relative flex align-center"
-            onSubmit={isValid ? this._handleSubmit : undefined}
+  return (
+    <Root>
+      <Header>
+        <ToggleRoot>
+          <span>{t`Synchronize Group Memberships`}</span>
+          <SettingToggle {...props} hideLabel />
+        </ToggleRoot>
+        <About>
+          <Tooltip
+            tooltip={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. Users are only ever added to or removed from mapped groups.`}
+            placement="top"
           >
-            <input
-              className="input--borderless h3 ml1 flex-full"
-              type="text"
-              value={value}
-              placeholder={this.props.placeholder}
-              autoFocus
-              onChange={e => this.setState({ value: e.target.value })}
-            />
-            <span
-              className="link no-decoration cursor-pointer"
-              onClick={this._handleCancelClick}
-            >{t`Cancel`}</span>
-            <Button
-              className="ml2"
-              type="submit"
-              primary={!!isValid}
-              disabled={!isValid}
-            >{t`Add`}</Button>
-          </form>
-        </td>
-      </tr>
-    );
-  }
+            <AboutContentRoot>
+              <Icon name="info" />
+              <span>{t`About mappings`}</span>
+            </AboutContentRoot>
+          </Tooltip>
+        </About>
+      </Header>
+
+      <div>
+        <div>
+          <AddMappingButton primary small onClick={handleShowAddRow}>
+            {t`New mapping`}
+          </AddMappingButton>
+          <AdminContentTable columnTitles={[props.groupHeading, t`Groups`, ""]}>
+            {showAddRow && (
+              <AddMappingRow
+                mappings={mappings}
+                onCancel={handleHideAddRow}
+                onAdd={handleAddMapping}
+                placeholder={props.groupPlaceholder}
+              />
+            )}
+            {Object.entries(mappings).map(([dn, ids]) => {
+              const isMappingLinkedOnlyToAdminGroup =
+                groups &&
+                ids.length === 1 &&
+                isAdminGroup(groups.find(group => group.id === ids[0]));
+
+              const isSavedMapping = Object.keys(savedMappings).includes(dn);
+
+              const shouldUseDeleteMappingModal =
+                ids.length > 0 &&
+                !isMappingLinkedOnlyToAdminGroup &&
+                isSavedMapping;
+
+              const onDelete = shouldUseDeleteMappingModal
+                ? () => handleShowDeleteMappingModal(ids, dn)
+                : () => handleDeleteMapping(dn);
+
+              return (
+                <MappingRow
+                  key={dn}
+                  dn={dn}
+                  groups={groups || []}
+                  selectedGroups={ids}
+                  onChange={handleChangeMapping(dn)}
+                  onDelete={onDelete}
+                />
+              );
+            })}
+          </AdminContentTable>
+        </div>
+        <div>
+          {saveError?.data?.message && (
+            <span className="text-error text-bold">
+              {saveError.data.message}
+            </span>
+          )}
+        </div>
+      </div>
+      {showDeleteMappingModal && (
+        <DeleteGroupMappingModal
+          dn={dnForVisibleDeleteMappingModal}
+          groupIds={groupIdsForVisibleDeleteMappingModal}
+          onHide={handleHideDeleteMappingModal}
+          onConfirm={handleConfirmDeleteMapping}
+        />
+      )}
+    </Root>
+  );
 }
+
+export default GroupMappingsWidget;
