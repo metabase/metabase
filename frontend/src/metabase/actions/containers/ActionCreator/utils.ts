@@ -17,13 +17,9 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 
-interface FieldTypeMap {
-  [key: string]: ParameterType;
-}
+type FieldTypeMap = Record<string, ParameterType>;
 
-interface TagTypeMap {
-  [key: string]: TemplateTagType;
-}
+type TagTypeMap = Record<string, TemplateTagType>;
 
 const fieldTypeToParameterTypeMap: FieldTypeMap = {
   string: "string/=",
