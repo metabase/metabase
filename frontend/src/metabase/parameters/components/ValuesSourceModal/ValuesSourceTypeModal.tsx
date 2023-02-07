@@ -93,10 +93,6 @@ const ValuesSourceTypeModal = ({
   onSubmit,
   onClose,
 }: ModalProps): JSX.Element => {
-  const sourceTypeOptions = useMemo(() => {
-    return getSourceTypeOptions(parameter);
-  }, [parameter]);
-
   return (
     <ModalContent
       title={t`Selectable values for ${parameter.name}`}
@@ -114,7 +110,6 @@ const ValuesSourceTypeModal = ({
         <FieldSourceModal
           parameter={parameter}
           sourceType={sourceType}
-          sourceTypeOptions={sourceTypeOptions}
           sourceConfig={sourceConfig}
           onFetchParameterValues={onFetchParameterValues}
           onChangeSourceType={onChangeSourceType}
@@ -124,7 +119,6 @@ const ValuesSourceTypeModal = ({
           parameter={parameter}
           question={question}
           sourceType={sourceType}
-          sourceTypeOptions={sourceTypeOptions}
           sourceConfig={sourceConfig}
           onFetchParameterValues={onFetchParameterValues}
           onChangeCard={onChangeCard}
@@ -133,8 +127,8 @@ const ValuesSourceTypeModal = ({
         />
       ) : sourceType === "static-list" ? (
         <ListSourceModal
+          parameter={parameter}
           sourceType={sourceType}
-          sourceTypeOptions={sourceTypeOptions}
           sourceConfig={sourceConfig}
           onChangeSourceType={onChangeSourceType}
           onChangeSourceConfig={onChangeSourceConfig}
@@ -144,10 +138,34 @@ const ValuesSourceTypeModal = ({
   );
 };
 
+interface SourceTypeOptionsProps {
+  parameter: Parameter;
+  sourceType: ValuesSourceType;
+  onChangeSourceType: (sourceType: ValuesSourceType) => void;
+}
+
+const SourceTypeOptions = ({
+  parameter,
+  sourceType,
+  onChangeSourceType,
+}: SourceTypeOptionsProps) => {
+  const sourceTypeOptions = useMemo(() => {
+    return getSourceTypeOptions(parameter);
+  }, [parameter]);
+
+  return (
+    <Radio
+      value={sourceType}
+      options={sourceTypeOptions}
+      vertical
+      onChange={onChangeSourceType}
+    />
+  );
+};
+
 interface FieldSourceModalProps {
   parameter: Parameter;
   sourceType: ValuesSourceType;
-  sourceTypeOptions: RadioOption<ValuesSourceType>[];
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (
     opts: FetchParameterValuesOpts,
@@ -158,7 +176,6 @@ interface FieldSourceModalProps {
 const FieldSourceModal = ({
   parameter,
   sourceType,
-  sourceTypeOptions,
   sourceConfig,
   onFetchParameterValues,
   onChangeSourceType,
@@ -183,11 +200,10 @@ const FieldSourceModal = ({
       <ModalPane>
         <ModalSection>
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
-          <Radio
-            value={sourceType}
-            options={sourceTypeOptions}
-            vertical
-            onChange={onChangeSourceType}
+          <SourceTypeOptions
+            parameter={parameter}
+            sourceType={sourceType}
+            onChangeSourceType={onChangeSourceType}
           />
         </ModalSection>
       </ModalPane>
@@ -212,7 +228,6 @@ interface CardSourceModalProps {
   parameter: Parameter;
   question: Question | undefined;
   sourceType: ValuesSourceType;
-  sourceTypeOptions: RadioOption<ValuesSourceType>[];
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (
     opts: FetchParameterValuesOpts,
@@ -226,7 +241,6 @@ const CardSourceModal = ({
   parameter,
   question,
   sourceType,
-  sourceTypeOptions,
   sourceConfig,
   onFetchParameterValues,
   onChangeCard,
@@ -268,11 +282,10 @@ const CardSourceModal = ({
       <ModalPane>
         <ModalSection>
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
-          <Radio
-            value={sourceType}
-            options={sourceTypeOptions}
-            vertical
-            onChange={onChangeSourceType}
+          <SourceTypeOptions
+            parameter={parameter}
+            sourceType={sourceType}
+            onChangeSourceType={onChangeSourceType}
           />
         </ModalSection>
         <ModalSection>
@@ -323,16 +336,16 @@ const CardSourceModal = ({
 };
 
 interface ListSourceModalProps {
+  parameter: Parameter;
   sourceType: ValuesSourceType;
-  sourceTypeOptions: RadioOption<ValuesSourceType>[];
   sourceConfig: ValuesSourceConfig;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
 }
 
 const ListSourceModal = ({
+  parameter,
   sourceType,
-  sourceTypeOptions,
   sourceConfig,
   onChangeSourceType,
   onChangeSourceConfig,
@@ -349,11 +362,10 @@ const ListSourceModal = ({
       <ModalPane>
         <ModalSection>
           <ModalLabel>{t`Where values should come from`}</ModalLabel>
-          <Radio
-            value={sourceType}
-            options={sourceTypeOptions}
-            vertical
-            onChange={onChangeSourceType}
+          <SourceTypeOptions
+            parameter={parameter}
+            sourceType={sourceType}
+            onChangeSourceType={onChangeSourceType}
           />
           <ModalHelpMessage>{t`Enter one value per line.`}</ModalHelpMessage>
         </ModalSection>
