@@ -4,7 +4,6 @@
   supported application database types."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-migrations :refer [DataMigrations]]
    [metabase.db.setup :as mdb.setup]
@@ -26,6 +25,8 @@
             Dimension
             Field
             FieldValues
+            HTTPAction
+            ImplicitAction
             LoginHistory
             Metric
             MetricImportantField
@@ -42,8 +43,6 @@
             PulseChannel
             PulseChannelRecipient
             QueryAction
-            ImplicitAction
-            HTTPAction
             Revision
             Secret
             Segment
@@ -56,6 +55,7 @@
             ViewLog]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import

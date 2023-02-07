@@ -5,7 +5,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [honeysql.format :as hformat]
    [java-time :as t]
@@ -33,6 +32,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [pretty.core :refer [PrettyPrintable]])
   (:import

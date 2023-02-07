@@ -11,10 +11,10 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 ;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
 

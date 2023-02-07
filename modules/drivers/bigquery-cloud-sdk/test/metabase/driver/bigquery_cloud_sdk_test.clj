@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
@@ -16,6 +15,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan2.core :as t2])
   (:import

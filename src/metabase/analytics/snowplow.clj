@@ -1,7 +1,6 @@
 (ns metabase.analytics.snowplow
   "Functions for sending Snowplow analytics events"
   (:require
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [medley.core :as m]
    [metabase.config :as config]
@@ -11,6 +10,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan2.core :as t2])
   (:import

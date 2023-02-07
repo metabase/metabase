@@ -5,7 +5,6 @@
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
@@ -18,6 +17,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]

@@ -1,7 +1,6 @@
 (ns metabase.server.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
   (:require
-   [clojure.tools.logging :as log]
    [honey.sql.helpers :as sql.helpers]
    [java-time :as t]
    [metabase.api.common
@@ -23,9 +22,9 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [ring.util.response :as response]
    [schema.core :as s]
    [toucan.db :as db]

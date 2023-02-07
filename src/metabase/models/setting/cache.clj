@@ -4,11 +4,11 @@
   (:require
    [clojure.core :as core]
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [metabase.db.connection :as mdb.connection]
    [metabase.util :as u]
    [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db])
   (:import
    (java.util.concurrent.locks ReentrantLock)))

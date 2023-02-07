@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.env :as mdb.env]
@@ -10,6 +9,7 @@
    [metabase.models.setting.cache :as setting.cache]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan2.core :as t2]))
 

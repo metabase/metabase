@@ -2,7 +2,6 @@
   "/api/database endpoints."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
@@ -42,6 +41,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]

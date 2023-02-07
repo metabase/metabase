@@ -7,13 +7,13 @@
    #_:clj-kondo/ignore
    [clojure.spec.alpha :as spec]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [environ.core :refer [env]]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as schema]
    [toucan2.core :as t2]))

@@ -1,7 +1,6 @@
 (ns metabase.models.action
   (:require
    [cheshire.core :as json]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
@@ -10,6 +9,7 @@
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]

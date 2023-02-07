@@ -3,7 +3,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -12,6 +11,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan.db :as db]
    [toucan.models :as models])

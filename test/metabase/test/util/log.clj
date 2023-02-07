@@ -2,6 +2,7 @@
   "Utils for controlling the logging that goes on when running tests."
   (:require
    [clojure.test :refer :all]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
    [hawk.parallel]

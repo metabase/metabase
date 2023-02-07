@@ -1,7 +1,6 @@
 (ns metabase.server.handler
   "Top-level Metabase Ring handler."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
@@ -14,6 +13,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.middleware.ssl :as mw.ssl]
    [metabase.server.routes :as routes]
+   [metabase.util.log :as log]
    [ring.core.protocols :as ring.protocols]
    [ring.middleware.cookies :refer [wrap-cookies]]
    [ring.middleware.gzip :refer [wrap-gzip]]

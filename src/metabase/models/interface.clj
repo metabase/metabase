@@ -6,7 +6,6 @@
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -20,6 +19,7 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
    [schema.core :as schema]

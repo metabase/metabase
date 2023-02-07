@@ -6,12 +6,12 @@
   Note that this is not the same thing as initializing *drivers* -- drivers are initialized lazily when first needed;
   this step on the other hand runs at launch time and sets up that lazy load logic."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.plugins.dependencies :as deps]
    [metabase.plugins.init-steps :as init-steps]
    [metabase.plugins.lazy-loaded-driver :as lazy-loaded-driver]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s]))
 
 (defonce ^:private initialized-plugin-names (atom #{}))

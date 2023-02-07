@@ -1,9 +1,9 @@
 (ns metabase.test.initialize.db
   (:require
-   [clojure.tools.logging :as log]
    [metabase.db :as mdb]
    [metabase.task :as task]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

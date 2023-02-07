@@ -4,7 +4,6 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
@@ -36,6 +35,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (defn- merge-count-maps

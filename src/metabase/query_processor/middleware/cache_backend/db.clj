@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
-   [clojure.tools.logging :as log]
    [honey.sql :as sql]
    [java-time :as t]
    [metabase.db :as mdb]
@@ -8,6 +7,7 @@
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2])

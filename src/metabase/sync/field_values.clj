@@ -1,7 +1,6 @@
 (ns metabase.sync.field-values
   "Logic for updating FieldValues for fields in a database."
   (:require
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -13,6 +12,7 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db]))
 

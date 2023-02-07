@@ -2,10 +2,10 @@
   (:refer-clojure :exclude [load])
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [yaml.core :as yaml])
   (:import
    (java.nio.file Files Path)))

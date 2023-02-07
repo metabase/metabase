@@ -3,13 +3,13 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-group-membership
     :as perms-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (defn sync-group-memberships!

@@ -1,7 +1,6 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require
-   [clojure.tools.logging :as log]
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -21,6 +20,7 @@
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]

@@ -1,6 +1,5 @@
 (ns metabase.models.database
   (:require
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -16,6 +15,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan.db :as db]
    [toucan.models :as models]))

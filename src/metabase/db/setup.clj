@@ -7,7 +7,6 @@
   Because functions here don't know where the JDBC spec came from, you can use them to perform the usual application
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
-   [clojure.tools.logging :as log]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
@@ -18,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2-extensions]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.db :as db]

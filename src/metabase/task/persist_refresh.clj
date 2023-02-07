@@ -1,7 +1,6 @@
 (ns metabase.task.persist-refresh
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -27,6 +26,7 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [potemkin.types :as p]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]

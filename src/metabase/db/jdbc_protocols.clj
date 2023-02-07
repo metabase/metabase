@@ -5,11 +5,11 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.db.connection :as mdb.connection]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [next.jdbc.prepare]
    [toucan2.jdbc.read :as t2.jdbc.read])

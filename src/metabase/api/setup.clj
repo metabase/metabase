@@ -1,6 +1,5 @@
 (ns metabase.api.setup
   (:require
-   [clojure.tools.logging :as log]
    [compojure.core :refer [GET POST]]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
@@ -30,6 +29,7 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db])

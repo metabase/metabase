@@ -21,10 +21,10 @@
   (:refer-clojure :exclude [compile])
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.jdbc :as t2.jdbc])
   (:import
