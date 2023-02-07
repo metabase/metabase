@@ -227,7 +227,7 @@ const helperTextStrings: HelpTextConfig[] = [
     structure:
       "substring(" + t`text` + ", " + t`position` + ", " + t`length` + ")",
     description: () => t`Returns a portion of the supplied text.`,
-    example: "substring([" + t`Title` + "], 0, 10)",
+    example: "substring([" + t`Title` + "], 1, 10)",
     args: [
       {
         name: t`text`,
@@ -235,7 +235,7 @@ const helperTextStrings: HelpTextConfig[] = [
       },
       {
         name: t`position`,
-        description: t`The position to start copying characters.`,
+        description: t`The position to start copying characters. Index starts at position 1.`,
       },
       { name: t`length`, description: t`The number of characters to return.` },
     ],
