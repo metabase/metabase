@@ -50,6 +50,40 @@
            (:doc (meta #'qux))))
     (ns-unmap *ns* 'qux))
 
+  (testing "no return schemas given should work"
+    (mu/defn qux [x :- :int])
+    (is (= "Inputs: [x :- :int]\n  Return: :any"
+           (:doc (meta #'qux))))
+    (ns-unmap *ns* 'qux)
+    (mu/defn qux "Original docstring." [x :- :int])
+    (is (= (str/join "\n"
+                     [  "Inputs: [x :- :int]"
+                      "  Return: :any"
+                      "          "
+                      ""
+                      "  Original docstring."])
+           (:doc (meta #'qux))))
+    (ns-unmap *ns* 'qux))
+
+  (testing "no input schemas given should work"
+    (mu/defn qux :- :int [])
+    (is (= "Inputs: []\n  Return: :int"
+           (:doc (meta #'qux))))
+    (ns-unmap *ns* 'qux)
+    (mu/defn qux :- :int
+      "Original docstring."
+      [x :- :int])
+    (is (= (str/join "\n"
+                     [  "Inputs: [x :- :int]"
+                      "  Return: :int"
+                      "          "
+                      ""
+                      "  Original docstring."])
+           (:doc (meta #'qux))))
+    (ns-unmap *ns* 'qux))
+
+
+
   (testing "multi-arity, and varargs doc strings should work"
     (mu/defn ^:private foo :- [:multi {:dispatch :type}
                                [:sized [:map [:type [:= :sized]]
