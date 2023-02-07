@@ -4,10 +4,12 @@
    [metabase.models
     :refer [Card Collection Dashboard Database Metric Segment Table]]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting search-typeahead-enabled
-  (deferred-tru "Enable typeahead search in the Metabase navbar?")
+  (deferred-tru "Enable typeahead search in the {0} navbar?"
+                (public-settings/application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :authenticated)
