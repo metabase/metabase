@@ -38,7 +38,8 @@
   []
   (if *compile-files*
     "Metabase"
-    (application-name)))
+    (binding [setting/*disable-cache* true]
+      (application-name))))
 
 (defn- google-auth-enabled? []
   (boolean (setting/get :google-auth-enabled)))
