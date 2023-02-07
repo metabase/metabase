@@ -132,14 +132,32 @@
 
 (deftest create-dashboard-validation-test
   (testing "POST /api/dashboard"
-    (is (=? {:errors {:name "value must be a non-blank string."},
+    (is (=? {:errors          {:name "value must be a non-blank string."},
              :specific-errors {:name ["value must be a non-blank string."]}}
            (mt/user-http-request :rasta :post 400 "dashboard" {})))
 
-    (is (=? {:errors {:parameters "nullable Parameters must be a list of Parameter with unique names"},
-             :specific-errors {:parameters ["invalid type"]}}
+    (is (=? {:errors          {:parameters "nullable Parameters must be a list of Parameter with unique names"},
+             :specific-errors {:parameters ["invalid type" "parameter.name must be unique"]}}
             (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
-                                                                    :parameters "abc"})))))
+                                                                    :parameters "abc"})))
+
+    (testing "parameter's name is required"
+      (is (=? {:errors          {:parameters "nullable Parameters must be a list of Parameter with unique names"},
+               :specific-errors {:parameters [{:name ["parameter must be a map with :id, :type, :name keys"]}]}}
+              (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
+                                                                      :parameters [{:id   "param-id"
+                                                                                    :type "category"}]}))))
+
+    (testing "parameter's name must be unique"
+      (is (=? {:errors          {:parameters "nullable Parameters must be a list of Parameter with unique names"},
+               :specific-errors {:parameters ["parameter.name must be unique"]}}
+              (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
+                                                                      :parameters [{:id   "param-id-1"
+                                                                                    :name "name"
+                                                                                    :type "category"}
+                                                                                   {:id   "param-id-2"
+                                                                                    :name "name"
+                                                                                    :type "category"}]}))))))
 (def ^:private dashboard-defaults
   {:archived                false
    :caveats                 nil
@@ -350,6 +368,33 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest update-dashboard-validation-test
+  (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:id   "param-id-1"
+                                                             :name "name-1"
+                                                             :type "category"}
+                                                            {:id   "param-id-2"
+                                                             :name "name-2"
+                                                             :type "category"}]}]
+   (testing "parameter's name is required"
+      (is (=? {:errors          {:parameters "nullable Parameters must be a list of Parameter with unique names"},
+               :specific-errors {:parameters [{:name ["parameter must be a map with :id, :type, :name keys"]}]}}
+              (mt/user-http-request :crowberto :put 400 (str "dashboard/" dashboard-id)
+                                    {:name       "Test"
+                                     :parameters [{:id   "param-id"
+                                                   :type "category"}]}))))
+
+   (testing "parameter's name must be unique"
+    (is (=? {:errors          {:parameters "nullable Parameters must be a list of Parameter with unique names"},
+             :specific-errors {:parameters ["parameter.name must be unique"]}}
+            (mt/user-http-request :crowberto :put 400 (str "dashboard/" dashboard-id)
+                                  {:name       "Test"
+                                   :parameters [{:id   "param-id-1"
+                                                 :name "name"
+                                                 :type "category"}
+                                                {:id   "param-id-2"
+                                                 :name "name"
+                                                 :type "category"}]}))))))
 
 (deftest update-dashboard-test
   (testing "PUT /api/dashboard/:id"
@@ -2746,3 +2791,36 @@
                                       (mt/user-http-request :rasta :post 403 execute-path
                                                             {:parameters {"id" 1}}))
                             "Data permissions should be required")))))))))))))
+
+
+(deftest enforce-parameters-rules-dont-break-existing-dashboard-test
+  (testing "existing dashboard with null parameter.name still works after making parameter.name required"
+    (mt/with-temp Card [{card-id :id} {:dataset_query
+                                       {:database (mt/id)
+                                        :type     :native
+                                        :native   {:query         "select count(*) from venues where {{name}}"
+                                                   :template-tags {"name" {:id           "name_param_id"
+                                                                           :display-name "Name"
+                                                                           :type         :dimension
+                                                                           :name         "name"
+                                                                           :dimension    [:field (mt/id :venues :name) nil]
+                                                                           :required     true}}}}
+                                       :name       "native card with field filter"
+                                       :parameters [{:id     "name_param_id",
+                                                     :type   :string/=,
+                                                     :target [:dimension [:template-tag "name"]],
+                                                     ;; this parameter does not have a name
+                                                     :slug   "name"}]}]
+      (testing "able to get card"
+        (is (some? (mt/user-http-request :rasta :get 200 (str "card/" card-id)))))
+
+      (testing "able to execute card"
+        (is (= [[1]]
+               (get-in (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)
+                                             {:parameters [{:type   :string/=
+                                                            :target [:dimension [:template-tag "name"]]
+                                                            :value  ["Red Medicine"]}]})
+                       [:data :rows]))))
+
+      (testing "able to get link-filter values"
+        (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "name_param_id" "red"))))))))

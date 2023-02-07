@@ -453,31 +453,53 @@
            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
 
     (is (= {:errors {:parameters "nullable Parameters must be a list of Parameter with unique names"},
-            :specific-errors {:parameters ["invalid type"]}}
+            :specific-errors {:parameters ["invalid type" "parameter.name must be unique"]}}
            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
                                                               :parameters             "abc"})))
-    (with-temp-native-card-with-params [db card]
-      (testing "You cannot create a card with variables as a model"
-        (is (= "A model made from a native SQL question cannot have a variable or field filter."
-               (mt/user-http-request :rasta :post 400 "card"
-                                     (merge
-                                      (mt/with-temp-defaults Card)
-                                      {:dataset       true
-                                       :query_type    "native"
-                                       :dataset_query (:dataset_query card)})))))
-      (testing "You can create a card with a saved question CTE as a model"
-        (let [card-tag-name (str "#" (u/the-id card))]
-          (mt/user-http-request :rasta :post 200 "card"
-                                (merge
-                                 (mt/with-temp-defaults Card)
-                                 {:dataset_query {:database (u/the-id db)
-                                                  :type     :native
-                                                  :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
-                                                             :template-tags {card-tag-name {:card-id      (u/the-id card),
-                                                                                             :display-name card-tag-name,
-                                                                                             :id           (str (random-uuid))
-                                                                                             :name         card-tag-name,
-                                                                                             :type         :card}}}}})))))))
+
+    (testing "parameter's name is required"
+      (is (=? {:errors          {:parameters "nullable Parameters must be a list of Parameter with unique names"},
+               :specific-errors {:parameters [{:name ["parameter must be a map with :id, :type, :name keys"]}]}}
+              (mt/user-http-request :crowberto :post 400 "card" {:name                   "Test"
+                                                                 :visualization_settings {}
+                                                                 :parameters             [{:id   "param-id"
+                                                                                           :type "category"}]}))))
+
+    (testing "parameter's name must be unique"
+      (is (=? {:errors          {:parameters "nullable Parameters must be a list of Parameter with unique names"},
+               :specific-errors {:parameters ["parameter.name must be unique"]}}
+              (mt/user-http-request :crowberto :post 400 "card"
+                                    {:name                   "Test"
+                                     :visualization_settings {}
+                                     :parameters             [{:id   "param-id-1"
+                                                               :name "name"
+                                                               :type "category"}
+                                                              {:id   "param-id-2"
+                                                               :name "name"
+                                                               :type "category"}]}))))
+
+   (with-temp-native-card-with-params [db card]
+     (testing "You cannot create a card with variables as a model"
+       (is (= "A model made from a native SQL question cannot have a variable or field filter."
+              (mt/user-http-request :rasta :post 400 "card"
+                                    (merge
+                                     (mt/with-temp-defaults Card)
+                                     {:dataset       true
+                                      :query_type    "native"
+                                      :dataset_query (:dataset_query card)})))))
+     (testing "You can create a card with a saved question CTE as a model"
+       (let [card-tag-name (str "#" (u/the-id card))]
+         (mt/user-http-request :rasta :post 200 "card"
+                               (merge
+                                (mt/with-temp-defaults Card)
+                                {:dataset_query {:database (u/the-id db)
+                                                 :type     :native
+                                                 :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
+                                                            :template-tags {card-tag-name {:card-id      (u/the-id card),
+                                                                                            :display-name card-tag-name,
+                                                                                            :id           (str (random-uuid))
+                                                                                            :name         card-tag-name,
+                                                                                            :type         :card}}}}})))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
@@ -896,6 +918,33 @@
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description ""})
       (is (= ""
              (db/select-one-field :description Card :id (u/the-id card)))))))
+
+(deftest update-card-validation-test
+  (mt/with-temp Card [{card-id :id} {:parameters [{:id   "param-id-1"
+                                                   :name "name-1"
+                                                   :type "category"}
+                                                  {:id   "param-id-2"
+                                                   :name "name-2"
+                                                   :type "category"}]}]
+   (testing "parameter's name is required"
+      (is (=? {:errors          {:parameters "nullable Parameters must be a list of Parameter with unique names"},
+               :specific-errors {:parameters [{:name ["parameter must be a map with :id, :type, :name keys"]}]}}
+              (mt/user-http-request :crowberto :put 400 (str "card/" card-id)
+                                    {:name       "Test"
+                                     :parameters [{:id   "param-id"
+                                                   :type "category"}]}))))
+
+   (testing "parameter's name must be unique"
+    (is (=? {:errors          {:parameters "nullable Parameters must be a list of Parameter with unique names"},
+             :specific-errors {:parameters ["parameter.name must be unique"]}}
+            (mt/user-http-request :crowberto :put 400 (str "card/" card-id)
+                                  {:name       "Test"
+                                   :parameters [{:id   "param-id-1"
+                                                 :name "name"
+                                                 :type "category"}
+                                                {:id   "param-id-2"
+                                                 :name "name"
+                                                 :type "category"}]}))))))
 
 (deftest update-card-parameters-test
   (testing "PUT /api/card/:id"
@@ -2439,6 +2488,7 @@
         (testing "success if has read permission to the source card's collection"
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc"))))
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "search-query")))))))))
+
 (deftest paramters-using-old-style-field-values
   (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
     (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
@@ -2515,3 +2565,35 @@
                  :values_source_type    "static-list"
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
+
+(deftest enforce-parameters-rules-dont-break-existing-cards-test
+  (testing "existing cards with null parameter.name still works after making parameter.name required"
+    (mt/with-temp Card [{card-id :id} {:dataset_query
+                                       {:database (mt/id)
+                                        :type     :native
+                                        :native   {:query         "select count(*) from venues where {{name}}"
+                                                   :template-tags {"name" {:id           "name_param_id"
+                                                                           :display-name "Name"
+                                                                           :type         :dimension
+                                                                           :name         "name"
+                                                                           :dimension    [:field (mt/id :venues :name) nil]
+                                                                           :required     true}}}}
+                                       :name       "native card with field filter"
+                                       :parameters [{:id     "name_param_id",
+                                                     :type   :string/=,
+                                                     :target [:dimension [:template-tag "name"]],
+                                                     ;; this parameter does not have a name
+                                                     :slug   "name"}]}]
+      (testing "able to get card"
+        (is (some? (mt/user-http-request :rasta :get 200 (str "card/" card-id)))))
+
+      (testing "able to execute card"
+        (is (= [[1]]
+              (get-in (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)
+                                            {:parameters [{:type   :string/=
+                                                           :target [:dimension [:template-tag "name"]]
+                                                           :value  ["Red Medicine"]}]})
+                      [:data :rows]))))
+
+      (testing "able to get link-filter values"
+        (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "name_param_id" "red"))))))))

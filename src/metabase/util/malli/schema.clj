@@ -260,7 +260,7 @@
      [:slug {:optional true} :string]
      [:default {:optional true} :any]
      [:sectionId {:optional true} NonBlankString]]
-    (deferred-tru "parameter must be a map with :id and :type keys")))
+    (deferred-tru "parameter must be a map with :id, :type, :name keys")))
 
 (def Parameters
   "Schema for a valid collection of Parameters.
@@ -268,9 +268,12 @@
   (mu/with-api-error-message
     [:and
      [:sequential Parameter]
-     #_[:fn (fn [parameters]
-              (= (-> (map :name parameters) set count)
-                 (count parameters)))]]
+     [:fn
+      {:error/fn (fn [_ _] (deferred-tru "parameter.name must be unique"))}
+      (fn [parameters]
+        (let [param-names (map :name parameters)]
+         (= (-> param-names set count)
+            (count param-names))))]]
     (deferred-tru "Parameters must be a list of Parameter with unique names")))
 
 (def ParameterMapping
