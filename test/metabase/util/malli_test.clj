@@ -35,6 +35,21 @@
     (is (str/ends-with? (:doc (meta #'boo)) "something very important to remember goes here"))
     (ns-unmap *ns* 'boo))
 
+  (testing "no schemas given should work"
+    (mu/defn qux [])
+    (is (= "Inputs: []\n  Return: :any"
+           (:doc (meta #'qux))))
+    (ns-unmap *ns* 'qux)
+    (mu/defn qux "Original docstring." [])
+    (is (= (str/join "\n"
+                     [  "Inputs: []"
+                      "  Return: :any"
+                      "          "
+                      ""
+                      "  Original docstring."])
+           (:doc (meta #'qux))))
+    (ns-unmap *ns* 'qux))
+
   (testing "multi-arity, and varargs doc strings should work"
     (mu/defn ^:private foo :- [:multi {:dispatch :type}
                                [:sized [:map [:type [:= :sized]]
