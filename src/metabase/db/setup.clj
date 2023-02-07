@@ -181,12 +181,12 @@
 
 ;;; Define the default Toucan JDBC connection spec; it's just a proxy DataSource that ultimately calls
 ;;; [[mdb.connection/data-source]]
-(def ^:private ^javax.sql.DataSource data-source*
-  (reify javax.sql.DataSource
-    (getConnection [_]
-      (.getConnection (mdb.connection/data-source)))))
+(deftype ^:private AppDBDataSource []
+  (getConnection [_this]
+    javax.sql.DataSource
+    (.getConnection mdb.connection/*application-db*)))
 
-(db/set-default-db-connection! {:datasource data-source*})
+(db/set-default-db-connection! {:datasource (AppDBDataSource.)})
 
 (reset! t2.honeysql/global-options
         {:quoted       true

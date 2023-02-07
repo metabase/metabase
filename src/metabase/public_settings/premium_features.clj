@@ -4,22 +4,20 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
-   #_:clj-kondo/ignore
    [clojure.spec.alpha :as spec]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [environ.core :refer [env]]
    [metabase.config :as config]
+   [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.schema :as su]
+   [next.jdbc]
    [schema.core :as schema]
-   [toucan.db :as db]
-   [toucan2.log]
-   [clojure.pprint :as pprint]
-   [colorize.core :as colorize]))
+   [toucan.db :as db]))
 
 (def ^:private ValidToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
@@ -47,36 +45,16 @@
 
 (declare premium-embedding-token)
 
-(defn- active-user-count* []
-  (let [fut (future
-              (try
-                (db/count :core_user :is_active true)
-                (catch Throwable e
-                  (log/error e "ERROR!")
-                  (println (colorize/red ">>> ERROR <<<"))
-                  (pprint/pprint (Throwable->map e))
-                  (throw e))))]
-    (let [result (deref fut (u/seconds->ms 3) ::timed-out)]
-      (if (= result ::timed-out)
-        (do
-          (future-cancel fut)
-          1)
-        result))))
-
-(def ^:private ^{:arglists '([])} active-user-count
-  (let [lock (Object.)
-        f    (memoize/ttl
-              active-user-count*
-              :ttl/threshold (u/minutes->ms 5))]
-    (fn []
-      (locking lock
-        (f)))))
+(defn- active-user-count []
+  ;; NOTE: models.user imports public settings, which imports this namespace,
+  ;; so we can't import the User model here.
+  (db/count :core_user :is_active true))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
     (format "%s/api/%s/v2/status" base-url token)))
 
-(def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
+(def ^:private ^:const fetch-token-status-timeout-ms 10000) ; 10 seconds
 
 (def ^:private TokenStatus
   {:valid                               schema/Bool
@@ -105,40 +83,42 @@
                  ;; ValidToken will ensure the length of token is 64 chars long
                  (str (subs token 0 4) "..." (subs token 60 64))))
   (let [fut    (future
-              (try
-                (fetch-token-and-parse-body token token-check-url)
-                (catch Exception e1
-                  (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
-                  ;; Try the fallback URL, which was the default URL prior to 45.2
-                  (try
-                    (fetch-token-and-parse-body token store-url)
-                    ;; if there was an error fetching the token from both the normal and fallback URLs, log the first
-                    ;; error and return a generic message about the token being invalid. This message will get displayed
-                    ;; in the Settings page in the admin panel so we do not want something complicated
-                    (catch Exception e2
-                      (log/error e2 (trs "Error fetching token status from {0}:" store-url))
-                      (let [body (try
-                                   (some-> (ex-data e1) :body (json/parse-string keyword))
-                                   (catch Throwable _))]
-                        (or
-                         body
-                         {:valid         false
-                          :status        (tru "Unable to validate token")
-                          :error-details (.getMessage e1)})))))))
+                 (try (fetch-token-and-parse-body token token-check-url)
+                      (catch Exception e1
+                        (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
+                        ;; Try the fallback URL, which was the default URL prior to 45.2
+                        (try (fetch-token-and-parse-body token store-url)
+                             ;; if there was an error fetching the token from both the normal and fallback URLs, log the first error and
+                             ;; return a generic message about the token being invalid. This message will get displayed in the Settings
+                             ;; page in the admin panel so we do not want something complicated
+                             (catch Exception e2
+                               (log/error e2 (trs "Error fetching token status from {0}:" store-url))
+                               (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                                 (or
+                                  body
+                                  {:valid         false
+                                   :status        (tru "Unable to validate token")
+                                   :error-details (.getMessage e1)})))))))
         result (deref fut fetch-token-status-timeout-ms ::timed-out)]
     (if (= result ::timed-out)
       (do
         (future-cancel fut)
-        {:valid             false
-         :status            (tru "Unable to validate token starting with {0}" (str/join (take 4 token)))
-         :error-details     (tru "Token validation timed out after {0}" (u/format-milliseconds fetch-token-status-timeout-ms))
-         :active-user-count (let [fut    (future (active-user-count))
-                                  result (deref fut (u/seconds->ms 10) ::timed-out)]
-                              (if (= result ::timed-out)
-                                (do
-                                  (future-cancel fut)
-                                  ::timed-out)
-                                result))})
+        {:valid         false
+         :status        (tru "Unable to validate token")
+         :error-details (tru "Token validation timed out.")
+         :user-count    {`active-user-count (deref
+                                             (future
+                                               (active-user-count))
+                                             (u/seconds->ms 5)
+                                             ::timed-out)
+                         'raw               (deref
+                                             (future
+                                               (first (vals (first (next.jdbc/execute!
+                                                                    mdb.connection/*application-db*
+                                                                    ["SELECT count(*) AS count FROM core_user;"]))))
+                                               (active-user-count))
+                                             (u/seconds->ms 5)
+                                             ::timed-out)}})
       result)))
 
 (def ^{:arglists '([token])} fetch-token-status
@@ -146,15 +126,9 @@
   too many API calls to the Store, which will throttle us if we make too many requests; putting in a bad token could
   otherwise put us in a state where `valid-token->features*` made API calls over and over, never itself getting cached
   because checks failed. "
-  (let [lock (Object.)
-        f    (memoize/ttl
-              fetch-token-status*
-              :ttl/threshold (u/minutes->ms 5))]
-    ;; prevent a million requests all coming in at the same time. Let the first one complete, then we can get the
-    ;; memoized value.
-    (fn [token]
-      (locking lock
-        (f token)))))
+  (memoize/ttl
+   fetch-token-status*
+   :ttl/threshold (* 1000 60 5)))
 
 (schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
   [token :- ValidToken]
@@ -173,13 +147,8 @@
 (def ^:private ^{:arglists '([token])} valid-token->features
   "Check whether `token` is valid. Throws an Exception if not. Returns a set of supported features if it is."
   ;; this is just `valid-token->features*` with some light caching
-  (let [lock (Object.)
-        f    (memoize/ttl
-              valid-token->features*
-              :ttl/threshold valid-token-recheck-interval-ms)]
-    (fn [token]
-      (locking lock
-        (f token)))))
+  (memoize/ttl valid-token->features*
+               :ttl/threshold valid-token-recheck-interval-ms))
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
