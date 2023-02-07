@@ -4,18 +4,17 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
+   #_:clj-kondo/ignore
    [clojure.spec.alpha :as spec]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [environ.core :refer [env]]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.schema :as su]
-   [next.jdbc]
    [schema.core :as schema]
    [toucan.db :as db]))
 
@@ -54,7 +53,7 @@
   (when (seq token)
     (format "%s/api/%s/v2/status" base-url token)))
 
-(def ^:private ^:const fetch-token-status-timeout-ms 10000) ; 10 seconds
+(def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
 
 (def ^:private TokenStatus
   {:valid                               schema/Bool
@@ -74,21 +73,6 @@
           :body
           (json/parse-string keyword)))
 
-(defn- debugging-info []
-  {:user-count {:active-user-count (deref
-                                    (future
-                                      (active-user-count))
-                                    (u/seconds->ms 1)
-                                    ::timed-out)
-                :raw-next.jdbc     (deref
-                                    (future
-                                      (first (vals (first (next.jdbc/execute!
-                                                           mdb.connection/*application-db*
-                                                           ["SELECT count(*) AS count FROM core_user WHERE is_active = true;"])))))
-                                    (u/seconds->ms 1)
-                                    ::timed-out)}
-   :connection (update-vals @(requiring-resolve 'metabase.db.connection/*application-db*) pr-str)})
-
 (schema/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- ValidToken]
@@ -103,9 +87,10 @@
                         (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
                         ;; Try the fallback URL, which was the default URL prior to 45.2
                         (try (fetch-token-and-parse-body token store-url)
-                             ;; if there was an error fetching the token from both the normal and fallback URLs, log the first error and
-                             ;; return a generic message about the token being invalid. This message will get displayed in the Settings
-                             ;; page in the admin panel so we do not want something complicated
+                             ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                             ;; first error and return a generic message about the token being invalid. This message
+                             ;; will get displayed in the Settings page in the admin panel so we do not want something
+                             ;; complicated
                              (catch Exception e2
                                (log/error e2 (trs "Error fetching token status from {0}:" store-url))
                                (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
@@ -120,24 +105,23 @@
         (future-cancel fut)
         {:valid         false
          :status        (tru "Unable to validate token")
-         :error-details (tru "Token validation timed out.")
-         :debugging     (debugging-info)})
+         :error-details (tru "Token validation timed out.")})
       result)))
 
 (def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
   too many API calls to the Store, which will throttle us if we make too many requests; putting in a bad token could
   otherwise put us in a state where `valid-token->features*` made API calls over and over, never itself getting cached
-  because checks failed. "
+  because checks failed."
+  ;; don't blast the token status check API with requests if this gets called a bunch of times all at once -- wait for
+  ;; the first request to finish
   (let [lock (Object.)
         f    (memoize/ttl
               fetch-token-status*
               :ttl/threshold (u/minutes->ms 5))]
     (fn [token]
       (locking lock
-        (let [result (f token)]
-          (cond-> result
-            (false? (:valid result)) (assoc :debugging-2 (debugging-info))))))))
+        (f token)))))
 
 (schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
   [token :- ValidToken]
@@ -151,7 +135,7 @@
 
 (def ^:private ^:const valid-token-recheck-interval-ms
   "Amount of time to cache the status of a valid embedding token before forcing a re-check"
-  (* 1000 60 60 24)) ; once a day
+  (u/hours->ms 24)) ; once a day
 
 (def ^:private ^{:arglists '([token])} valid-token->features
   "Check whether `token` is valid. Throws an Exception if not. Returns a set of supported features if it is."
