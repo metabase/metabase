@@ -14,6 +14,7 @@ export const Root = styled.div<{
   marginBottom?: string;
   borderBottom?: boolean;
 }>`
+  position: relative;
   ${props =>
     !props.noPadding &&
     css`

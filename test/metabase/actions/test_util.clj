@@ -138,6 +138,8 @@
                                            :required false
                                            :target [:variable [:template-tag "name"]]}]
                              :visualization_settings {:inline true}
+                             :public_uuid (str (java.util.UUID/randomUUID))
+                             :made_public_by_id (test.users/user->id :crowberto)
                              :database_id (data/id)
                              :creator_id (test.users/user->id :crowberto)
                              :dataset_query {:database (data/id)
@@ -160,6 +162,8 @@
                                      {:type :implicit
                                       :name "Update Example"
                                       :kind "row/update"
+                                      :public_uuid (str (java.util.UUID/randomUUID))
+                                      :made_public_by_id (test.users/user->id :crowberto)
                                       :creator_id (test.users/user->id :crowberto)
                                       :model_id model-id}
                                      options-map))]
@@ -180,8 +184,10 @@
                                                     :type "text"
                                                     :target [:template-tag "fail"]}]
                                       :response_handle ".body"
-                                      :creator_id (test.users/user->id :crowberto)
-                                      :model_id model-id}
+                                      :model_id model-id
+                                      :public_uuid (str (java.util.UUID/randomUUID))
+                                      :made_public_by_id (test.users/user->id :crowberto)
+                                      :creator_id (test.users/user->id :crowberto)}
                                      options-map))]
       {:action-id action-id :model-id model-id})))
 
