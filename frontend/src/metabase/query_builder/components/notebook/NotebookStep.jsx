@@ -118,6 +118,7 @@ export default class NotebookStep extends React.Component {
       isLastOpened,
       updateQuery,
       reportTimezone,
+      sourceQuestion,
     } = this.props;
     const { showPreview } = this.state;
 
@@ -184,6 +185,7 @@ export default class NotebookStep extends React.Component {
                   color={color}
                   step={step}
                   query={step.query}
+                  sourceQuestion={sourceQuestion}
                   updateQuery={updateQuery}
                   isLastOpened={isLastOpened}
                   reportTimezone={reportTimezone}

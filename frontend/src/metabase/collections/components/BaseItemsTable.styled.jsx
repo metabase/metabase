@@ -65,6 +65,20 @@ export const ItemLink = styled(Link)`
   }
 `;
 
+export const ItemNameCell = styled.td`
+  padding: 0 !important;
+
+  ${ItemLink} {
+    padding: 1em;
+  }
+  &:hover {
+    ${ItemLink} {
+      color: ${color("brand")};
+    }
+    cursor: pointer;
+  }
+`;
+
 export const SortingIcon = styled(Icon)`
   margin-left: 4px;
 `;
