@@ -38,8 +38,7 @@ function validateAllFiles() {
   // Will match all files in the scenarios dir, except the helpers
   const PATTERN = `${E2E_HOME}*/{*.js,!(helpers|shared)/*.js}`;
   const invalidFileNames = glob.sync(PATTERN).filter(fullPath => {
-    const basename = path.basename(fullPath);
-    return !basename.endsWith(E2E_FILE_EXTENSION);
+    return !path.basename(fullPath).endsWith(E2E_FILE_EXTENSION);
   });
 
   printFeedback(invalidFileNames);
