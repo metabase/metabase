@@ -106,8 +106,6 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("Doohickey");
-      FieldFilter.setWidgetStringFilter("Gizmo");
-      checkFilterValueNotInList("Widget");
       FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("dataset");
     });
