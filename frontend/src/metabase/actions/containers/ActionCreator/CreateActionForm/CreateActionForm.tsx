@@ -37,13 +37,13 @@ interface OwnProps {
   onCancel?: () => void;
 }
 
-type Props = OwnProps;
+type CreateActionFormProps = OwnProps;
 
 function CreateActionForm({
   initialValues: initialValuesProp,
   onCreate,
   onCancel,
-}: Props) {
+}: CreateActionFormProps) {
   const initialValues = useMemo(
     () => ({
       ...ACTION_SCHEMA.getDefault(),
