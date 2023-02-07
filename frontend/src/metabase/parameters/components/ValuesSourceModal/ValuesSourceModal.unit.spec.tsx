@@ -101,19 +101,43 @@ describe("ValuesSourceModal", () => {
             new Field(createMockField({ id: 1 })),
             new Field(createMockField({ id: 2 })),
           ],
+          values_source_config: {
+            values: ["A", "B"],
+          },
         }),
         parameterValues: createMockParameterValues({
-          values: [["A"], ["B"], ["C"]],
+          values: [["C"], ["D"]],
         }),
       });
 
       await waitFor(() => {
-        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+        expect(screen.getByRole("textbox")).toHaveValue("C\nD");
       });
 
       userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
-      expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      expect(screen.getByRole("textbox")).toHaveValue("C\nD");
+    });
+
+    it("should not overwrite custom list values when field values are empty", async () => {
+      setup({
+        parameter: createMockUiParameter({
+          fields: [
+            new Field(createMockField({ id: 1 })),
+            new Field(createMockField({ id: 2 })),
+          ],
+          values_source_config: {
+            values: ["A", "B"],
+          },
+        }),
+        parameterValues: createMockParameterValues({
+          values: [],
+        }),
+      });
+
+      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
+      expect(screen.getByRole("textbox")).toHaveValue("A\nB");
     });
   });
 
