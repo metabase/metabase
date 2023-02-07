@@ -607,7 +607,10 @@ export function isSearchable({
   } else if (valuesMode === "search") {
     return true;
   } else if (parameter) {
-    return canSearchParameterValues(parameter);
+    return (
+      canSearchParameterValues(parameter) &&
+      (valuesMode != null || !canListParameterValues(parameter))
+    );
   } else {
     return canSearchFieldValues(fields, disablePKRemappingForSearch);
   }
