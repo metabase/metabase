@@ -93,6 +93,7 @@ function resolveQuestion(
 
 function ActionCreator({
   action,
+  model,
   modelId,
   databaseId,
   metadata,
@@ -112,6 +113,7 @@ function ActionCreator({
 
   const query = question.query() as NativeQuery;
   const isNew = !action && !question.isSaved();
+  const isEditable = isNew || Boolean(model?.can_write);
 
   useEffect(() => {
     setQuestion(resolveQuestion(action, { metadata, databaseId }));
@@ -171,6 +173,7 @@ function ActionCreator({
     <>
       <ActionCreatorView
         isNew={isNew}
+        isEditable={isEditable}
         canSave={query.isEmpty()}
         action={action}
         question={question}
