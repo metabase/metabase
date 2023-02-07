@@ -3,7 +3,11 @@ import {
   openQuestionActions,
   restore,
   visitQuestion,
+  startNewNativeQuestion,
+  runNativeQuery,
 } from "__support__/e2e/helpers";
+
+import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 
 describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
@@ -262,5 +266,34 @@ describe("scenarios > question > native subquery", () => {
       visitQuestion(toplevelQuestionId);
       cy.contains("41");
     });
+  });
+
+  it.skip("should be able to reference a nested question (metabase#25988)", () => {
+    const questionDetails = {
+      name: "Nested GUI question",
+      query: {
+        "source-table": "card__1",
+        limit: 2,
+      },
+    };
+
+    cy.createQuestion(questionDetails).then(
+      ({ body: { id: nestedQuestionId } }) => {
+        const tagID = `#${nestedQuestionId}`;
+
+        startNewNativeQuestion();
+        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+
+        cy.findByTestId("sidebar-header-title")
+          .invoke("text")
+          .should("eq", questionDetails.name);
+
+        runNativeQuery({
+          callback: response => expect(response.body.error).not.to.exist,
+        });
+
+        cy.get(".cellData").should("contain", "37.65");
+      },
+    );
   });
 });
