@@ -5,19 +5,20 @@ import { t } from "ttag";
 import _ from "underscore";
 import { ModalFooter } from "metabase/components/ModalContent";
 import AdminContentTable from "metabase/components/AdminContentTable";
-import Button from "metabase/core/components/Button";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+import SettingToggle from "../SettingToggle";
 import {
   GroupMappingsWidgetRoot as Root,
   GroupMappingsWidgetHeader as Header,
   GroupMappingsWidgetToggleRoot as ToggleRoot,
   GroupMappingsWidgetAbout as About,
-  GroupMappingsToggle as Toggle,
   GroupMappingsWidgetAboutContentRoot as AboutContentRoot,
+  AddMappingButton,
 } from "./GroupMappingsWidget.styled";
 import MappingRow from "./LDAPMappingRow";
 import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
@@ -243,7 +244,7 @@ export default class GroupMappingsWidget extends React.Component {
         <Header>
           <ToggleRoot>
             <span>{t`Synchronize Group Memberships`}</span>
-            <Toggle {...this.props} hideLabel />
+            <SettingToggle {...this.props} hideLabel />
           </ToggleRoot>
           <About>
             <Tooltip
@@ -260,9 +261,9 @@ export default class GroupMappingsWidget extends React.Component {
 
         <div>
           <div>
-            <Button className="float-right" primary onClick={this._showAddRow}>
+            <AddMappingButton primary small onClick={this._showAddRow}>
               {t`New mapping`}
-            </Button>
+            </AddMappingButton>
             <AdminContentTable
               columnTitles={[this.props.groupHeading, t`Groups`, ""]}
             >
