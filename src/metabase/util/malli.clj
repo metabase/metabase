@@ -107,19 +107,20 @@ explain-fn-fail!
    i18n/localized-string?])
 
 (defn with-api-error-message
-  "Update a malli schema to have a :description (picked up by api docs),
-  and a :error/message (used by defendpoint). They don't have to be the same, but usually are.
+  "Update a malli schema to have a :description (used by umd/describe, which is used by api docs),
+  and a :error/fn (used by me/humanize, which is used by defendpoint).
+  They don't have to be the same, but usually are.
 
-    (with-api-error-message
-      [:string {:min 1}]
-      (deferred-tru \"Must be a string with at least 1 character.\"))"
+  (with-api-error-message
+    [:string {:min 1}]
+    (deferred-tru \"Must be a string with at least 1 character representing a User ID.\"))"
   ([mschema :- Schema error-message :- localized-string-schema]
    (with-api-error-message mschema error-message error-message))
-  ([mschema         :- :any
-    error-message   :- localized-string-schema
-    specific-errors :- localized-string-schema]
+  ([mschema                :- :any
+    description-message    :- localized-string-schema
+    specific-error-message :- localized-string-schema]
    (mut/update-properties (mc/schema mschema) assoc
-                          ;; override generic description in api docs and :errors in API's response
-                          :description error-message
-                          ;; override generic description in :specific-errors in API's response
-                          :error/fn    (fn [_ _] specific-errors))))
+                          ;; override generic description in api docs and :errors key in API's response
+                          :description description-message
+                          ;; override generic description in :specific-errors key in API's response
+                          :error/fn    (fn [_ _] specific-error-message))))

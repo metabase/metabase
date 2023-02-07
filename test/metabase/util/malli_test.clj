@@ -69,27 +69,30 @@
     (testing "outer schema"
       (let [special-lt-4-schema (mu/with-api-error-message
                                   [:fn less-than-four-fxn]
-                                  (deferred-tru "Special Number that has to be less than four error")
-                                  (deferred-tru "Special Number that has to be less than four description"))]
+                                  (deferred-tru "Special Number that has to be less than four description")
+                                  (deferred-tru "Special Number that has to be less than four error"))]
 
-        (is (= [(deferred-tru "Special Number that has to be less than four description")]
+        (is (= [(deferred-tru "Special Number that has to be less than four error")]
                (me/humanize (mc/explain special-lt-4-schema 8))))
 
-        (is (= ["Special Number that has to be less than four description, received: 8"]
+        (is (= ["Special Number that has to be less than four error, received: 8"]
                (me/humanize (mc/explain special-lt-4-schema 8) {:wrap #'mu/humanize-include-value})))
 
-        (testing "describe should be user-localized"
-          (is (= "Special Number that has to be less than four error"
+        (testing "should be user-localized"
+          (is (= "Special Number that has to be less than four description"
                  (umd/describe special-lt-4-schema)))
 
-          (mt/with-mock-i18n-bundles {"es" {:messages {"Special Number that has to be less than four error"
+          (mt/with-mock-i18n-bundles {"es" {:messages {"Special Number that has to be less than four description"
+                                                       "Número especial que tiene que ser menos de cuatro descripción"
+
+                                                       "Special Number that has to be less than four error"
                                                        "Número especial que tiene que ser menos de cuatro errores"
                                                        "received" "recibió"}}}
             (mt/with-user-locale "es"
-              (is (= "Número especial que tiene que ser menos de cuatro errores"
+              (is (= "Número especial que tiene que ser menos de cuatro descripción"
                      (umd/describe special-lt-4-schema)))
 
-              (is (= ["Special Number that has to be less than four description, recibió: 8"]
+              (is (= ["Número especial que tiene que ser menos de cuatro errores, recibió: 8"]
                    (me/humanize (mc/explain special-lt-4-schema 8) {:wrap #'mu/humanize-include-value}))))))))
 
 
