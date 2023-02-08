@@ -15,6 +15,10 @@ version: '3.1'
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data docker-compose --file docker-compose-dev.yml up
 # ;; Run a postgres app db, a sample postgres 14 and mysql 5.7 warehouses, and metabase itself in a container
 # ;; If you use this option, once the application starts you can jack in on 50505 and REPL away.
+# ;; Be aware that if you use this option your app will be running a docker
+# ;; network with ports 3001 and 50505 exposed to the outside. This means that
+# ;; when you connect to data warehouses, you'll use docker networking to
+# ;; connect (e.g. metabasedb_postgres_14_data:5432 vs. localhost:15432).
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,dev-app docker-compose --file docker-compose-dev.yml up
 # ;; All of the above, and builds the frontend, too. No need for `yarn build-hot` locally.
 # ;; NOTE: See comment below on fe-builder service. This isn't quite ready yet.
