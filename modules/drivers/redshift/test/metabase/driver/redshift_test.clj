@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.db.query :as mdb.query]
    [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -26,8 +27,7 @@
    [metabase.util.honey-sql-2-extensions :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db]
-   [metabase.db.query :as mdb.query])
+   [toucan.db :as db])
   (:import
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
