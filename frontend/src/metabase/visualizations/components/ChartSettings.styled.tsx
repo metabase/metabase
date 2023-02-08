@@ -5,8 +5,6 @@ import Radio from "metabase/core/components/Radio";
 import Button from "metabase/core/components/Button";
 import Warnings from "metabase/query_builder/components/Warnings";
 
-import Button from "metabase/core/components/Button";
-
 interface SectionContainerProps {
   isDashboard: boolean;
 }
@@ -49,7 +47,8 @@ export const SectionWarnings = styled(Warnings)`
 
 export const ChartSettingsRoot = styled.div`
   display: flex;
-  height: 100%;
+  flex-grow: 1;
+  overflow-y: auto;
 `;
 
 export const ChartSettingsMenu = styled.div`
@@ -89,9 +88,9 @@ export const ChartSettingsFooterRoot = styled.div`
 `;
 
 export const TitleButton = styled(Button)`
-  margin-left: 1.5rem;
-  margin-bottom: 0.5rem;
+  margin: 2rem 2rem 0;
   ${Button.Content} {
+    justify-content: start;
     color: ${color("text-dark")};
     &:hover {
       color: ${color("brand")};

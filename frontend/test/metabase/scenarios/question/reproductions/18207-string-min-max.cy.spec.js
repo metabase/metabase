@@ -5,6 +5,7 @@ import {
   visualize,
   openProductsTable,
   summarize,
+  assertVizType,
 } from "__support__/e2e/helpers";
 
 describe("issue 18207", () => {
@@ -65,8 +66,13 @@ describe("issue 18207", () => {
 
     // Why is it not a table?
     cy.contains("Settings").click();
-    cy.contains("Bar options").click();
-    cy.get("[data-testid=Table-button]").click();
+
+    assertVizType("bar");
+
+    cy.findByTestId("chart-type-widget").within(() => {
+      cy.icon("table").click();
+    });
+
     cy.contains("Done").click();
 
     cy.findByText("Zemlak-Wiegand");

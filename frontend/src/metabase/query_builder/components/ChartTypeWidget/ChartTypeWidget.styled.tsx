@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 
 export const ChartTypeWidgetRoot = styled.div`
   border-radius: 50px;
@@ -25,6 +25,11 @@ export const ChartTypeWidgetIcon = styled(Button)<ChartTypeWidgetIconProps>`
     isSelected &&
     css`
       color: ${color("brand")};
+      background-color: ${lighten("brand", 0.55)};
+
+      &:hover {
+        background-color: ${lighten("brand", 0.55)};
+      }
     `}
 
   &:hover {

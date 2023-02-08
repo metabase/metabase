@@ -40,8 +40,6 @@ import {
   ChartSettingsPreview,
   ChartSettingsListContainer,
   ChartSettingsVisualizationContainer,
-  SectionContainer,
-  SectionWarnings,
   ChartSettingsFooterRoot,
 } from "./ChartSettings.styled";
 
@@ -418,11 +416,13 @@ class ChartSettings extends Component {
       ) &&
       !currentWidget;
 
+    const showDisplayTypeWidget = !currentWidget;
+
     // default layout with visualization
     return (
       <ChartSettingsRoot className={className}>
-        <ChartSettingsMenu>
-          {!isDashboard && (
+        <ChartSettingsMenu data-testid="chartsettings-sidebar">
+          {!isDashboard && showDisplayTypeWidget && (
             <ChartTypeWidget
               onOpenChartType={onOpenChartType}
               results={series[0]}
@@ -432,12 +432,12 @@ class ChartSettings extends Component {
             />
           )}
           {showSectionPicker && sectionPicker}
+          {title && (
+            <TitleButton onClick={onBack} icon="chevronleft" onlyText>
+              {title}
+            </TitleButton>
+          )}
           <ChartSettingsListContainer className="scroll-show">
-            {title && (
-              <TitleButton onClick={onBack} icon="chevronleft" onlyText>
-                {title}
-              </TitleButton>
-            )}
             <ChartSettingsWidgetList
               widgets={visibleWidgets}
               extraWidgetProps={extraWidgetProps}

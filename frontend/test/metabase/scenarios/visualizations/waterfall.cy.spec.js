@@ -5,6 +5,7 @@ import {
   openNativeEditor,
   visualize,
   summarize,
+  openVizSelection,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -48,7 +49,10 @@ describe("scenarios > visualizations > waterfall", () => {
       "select 'A' as product, 10 as profit union select 'B' as product, -4 as profit",
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("Visualization").click();
+    cy.contains("Settings").click();
+
+    openVizSelection();
+
     cy.icon("waterfall").click();
 
     verifyWaterfallRendering("PRODUCT", "PROFIT");
@@ -60,7 +64,10 @@ describe("scenarios > visualizations > waterfall", () => {
     );
 
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("Visualization").click();
+
+    cy.findByText("Settings").click();
+    openVizSelection();
+
     cy.icon("waterfall").click();
 
     cy.contains("Select a field").click();
@@ -82,7 +89,10 @@ describe("scenarios > visualizations > waterfall", () => {
       "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("Visualization").click();
+
+    cy.findByText("Settings").click();
+    openVizSelection();
+
     cy.icon("waterfall").click();
 
     cy.contains("Select a field").click();
@@ -108,7 +118,8 @@ describe("scenarios > visualizations > waterfall", () => {
 
     visualize();
 
-    cy.contains("Visualization").click();
+    cy.findByText("Settings").click();
+    openVizSelection();
     cy.icon("waterfall").click();
 
     verifyWaterfallRendering("Created At", "Count");
@@ -123,7 +134,8 @@ describe("scenarios > visualizations > waterfall", () => {
 
     visualize();
 
-    cy.contains("Visualization").click();
+    cy.findByText("Settings").click();
+    openVizSelection();
     cy.icon("waterfall").click();
 
     cy.get(".Visualization .axis.x").within(() => {
@@ -145,7 +157,8 @@ describe("scenarios > visualizations > waterfall", () => {
       display: "line",
     });
 
-    cy.findByText("Visualization").click();
+    cy.findByText("Settings").click();
+    openVizSelection();
     cy.findByTestId("Waterfall-button").click();
     cy.findByText("Waterfall chart does not support multiple series");
 
@@ -172,7 +185,8 @@ describe("scenarios > visualizations > waterfall", () => {
       display: "line",
     });
 
-    cy.findByText("Visualization").click();
+    cy.findByText("Settings").click();
+    openVizSelection();
     cy.findByTestId("Waterfall-button").click();
 
     cy.contains("Select a field").click();
@@ -196,8 +210,9 @@ describe("scenarios > visualizations > waterfall", () => {
         database: SAMPLE_DB_ID,
       },
     });
-    cy.findByText("Visualization").click();
-    cy.icon("waterfall").click({ force: true });
+    cy.findByText("Settings").click();
+    openVizSelection();
+    cy.icon("waterfall").click();
     cy.get(".Visualization .bar");
   });
 
@@ -252,7 +267,8 @@ describe("scenarios > visualizations > waterfall", () => {
 
       openNativeEditor().type("select 'A' as X, -4.56 as Y");
       cy.get(".NativeQueryEditor .Icon-play").click();
-      cy.contains("Visualization").click();
+      cy.findByText("Settings").click();
+      openVizSelection();
       cy.icon("waterfall").click();
     });
 

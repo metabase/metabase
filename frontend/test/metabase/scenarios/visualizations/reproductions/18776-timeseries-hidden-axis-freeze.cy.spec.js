@@ -28,6 +28,6 @@ describe("issue 18776", () => {
 
   it("should not freeze when opening a timeseries chart with sparse data and without the X-axis", () => {
     visitQuestionAdhoc(questionDetails);
-    cy.findByText("Visualization").should("be.visible");
+    cy.findByText("Settings").should("be.visible");
   });
 });

@@ -3,6 +3,8 @@ import {
   popover,
   visitQuestionAdhoc,
   openNativeEditor,
+  openVizSelection,
+  assertVizType,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -25,7 +27,8 @@ describe("scenarios > visualizations > maps", () => {
     cy.get(".NativeQueryEditor .Icon-play").click();
 
     // switch to a pin map visualization
-    cy.contains("Visualization").click();
+    cy.contains("Settings").click();
+    openVizSelection();
     cy.icon("pinmap").click();
 
     cy.contains("Map type").next().click();
@@ -68,16 +71,10 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
-    cy.findByText("Visualization").closest(".Button").as("vizButton");
-    cy.get("@vizButton").find(".Icon-pinmap");
-    cy.get("@vizButton").click();
-    cy.findByTestId("display-options-sensible");
-
-    cy.findByTestId("sidebar-left").as("vizSidebar");
-
-    cy.get("@vizSidebar").within(() => {
-      cy.findByText("Map").parent().should("have.css", "opacity", "1");
-    });
+    cy.findByText("Settings").click();
+    assertVizType("pinmap");
+    openVizSelection();
+    cy.findByTestId("display-options-sensible").should("to.contain", "Map");
   });
 
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
@@ -195,7 +192,9 @@ describe("scenarios > visualizations > maps", () => {
     // Ensure chart is rendered
     cy.get(".leaflet-interactive");
 
-    cy.findByText("Visualization").click();
+    cy.findByText("Settings").click();
+
+    openVizSelection();
 
     // Ensure the Map visualization is sensible
     cy.findByTestId("Map-button").should(

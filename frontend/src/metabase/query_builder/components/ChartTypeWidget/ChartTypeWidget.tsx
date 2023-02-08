@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 
@@ -42,12 +41,14 @@ const ChartTypeWidget = ({
   });
 
   return (
-    <ChartTypeWidgetRoot>
+    <ChartTypeWidgetRoot data-testid="chart-type-widget">
       {suggestedVisualizations.map(vizName => (
         <ChartTypeWidgetIcon
           key={`${vizName}`}
           icon={visualizations.get(vizName).iconName}
           isSelected={vizName === question.display()}
+          aria-role="option"
+          aria-selected={vizName === question.display()}
           onlyIcon
           onClick={() => onUpdateDisplay(vizName)}
         />

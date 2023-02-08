@@ -205,7 +205,7 @@ describe("binning related reproductions", () => {
     cy.findByText("Settings").click();
 
     cy.findByTestId("sidebar-left").within(() => {
-      cy.findByTextEnsureVisible("Table options");
+      cy.findByTestId("sidebar-content").should("be.visible");
       cy.findByText("Add or remove columns").click();
       cy.findByText("Created At").click();
       cy.button("Done").click();

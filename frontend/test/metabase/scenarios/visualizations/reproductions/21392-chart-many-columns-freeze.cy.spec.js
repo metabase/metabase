@@ -30,6 +30,6 @@ describe("issue 21392", () => {
 
   it("should render a chart with many columns without freezing (metabase#21392)", () => {
     visitQuestionAdhoc({ dataset_query: TEST_QUERY, display: "line" });
-    cy.findByText("Visualization").should("be.visible");
+    cy.findByText("Settings").should("be.visible");
   });
 });

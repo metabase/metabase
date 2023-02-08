@@ -29,7 +29,7 @@ describe("issue 21615", () => {
     cy.icon("sql").click();
     cy.button("Convert this question to SQL").click();
 
-    cy.findByText("Visualization").should("be.visible");
+    cy.findByText("Settings").should("be.visible");
     cy.findByText("Something went wrong").should("not.exist");
   });
 });

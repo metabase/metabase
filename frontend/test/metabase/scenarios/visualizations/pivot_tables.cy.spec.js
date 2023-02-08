@@ -6,6 +6,7 @@ import {
   visitQuestion,
   visitDashboard,
   visitIframe,
+  assertVizType,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -63,7 +64,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     createAndVisitTestQuestion();
 
     // Switch to "ordinary" table
-    cy.findByText("Visualization").click();
+    cy.findByText("Settings").click();
     cy.icon("table").should("be.visible").click();
 
     cy.contains(`Started from ${QUESTION_NAME}`);
@@ -117,7 +118,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Settings").click();
 
     // Give it some time to open the side-bar fully before we start dragging
-    cy.findByText(/Pivot Table options/i);
+    assertVizType("pivot_table");
 
     // Drag the second aggregate (Product category) from table columns to table rows
     dragField(1, 0);
@@ -666,14 +667,17 @@ describe("scenarios > visualizations > pivot tables", () => {
       display: "line",
     });
 
-    cy.findByText("Visualization").click();
-    sidebar().within(() => {
-      // This part is still failing. Uncomment when fixed.
-      // cy.findByText("Pivot Table")
-      //   .parent()
-      //   .should("have.css", "opacity", "1");
-      cy.icon("pivot_table").click({ force: true });
+    cy.findByText("Settings").click();
+    cy.findByTestId("chart-type-widget").within(() => {
+      cy.icon("chevrondown").click();
     });
+
+    // This part is still failing. Uncomment when fixed.
+    // cy.findByTestId("display-options-sensible").should(
+    //   "contain",
+    //   "Pivot Table",
+    // );
+    cy.icon("pivot_table").click();
 
     cy.wait("@datasetPivot");
     cy.get(".Visualization").within(() => {
@@ -957,7 +961,8 @@ function assertOnPivotSettings() {
   cy.findAllByTestId(/draggable-item/).as("fieldOption");
 
   cy.log("Implicit side-bar assertions");
-  cy.findByText(/Pivot Table options/i);
+
+  assertVizType("pivot_table");
 
   cy.findAllByTestId("pivot-table-setting").eq(0);
   cy.get("@fieldOption")

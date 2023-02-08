@@ -1,4 +1,9 @@
-import { restore, setupSMTP, visitQuestion } from "__support__/e2e/helpers";
+import {
+  restore,
+  setupSMTP,
+  visitQuestion,
+  assertVizType,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -68,7 +73,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       visitQuestion(timeSeriesQuestionId);
 
       cy.findByText("Settings").click();
-      cy.findByText("Line options");
+      assertVizType("line");
       cy.findByText("Display").click();
 
       setGoal("7000");

@@ -18,3 +18,17 @@ export function openSeriesSettings(field, isBreakout = false) {
     });
   }
 }
+
+export function openVizSelection() {
+  cy.findByTestId("chart-type-widget").within(() => {
+    cy.icon("chevrondown").click();
+  });
+}
+
+export function assertVizType(icon) {
+  cy.findByTestId("chart-type-widget").within(() => {
+    cy.icon(icon)
+      .closest("button")
+      .should("have.attr", "aria-selected", "true");
+  });
+}

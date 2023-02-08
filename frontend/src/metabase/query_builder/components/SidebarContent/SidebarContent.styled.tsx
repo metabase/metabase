@@ -10,6 +10,8 @@ export const SidebarContentRoot = styled.div`
 
 export const SidebarContentMain = styled.div`
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 `;
 
 export const FooterButton = styled(ViewButton)`

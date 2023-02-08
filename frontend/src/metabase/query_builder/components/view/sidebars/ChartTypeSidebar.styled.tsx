@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, tint, isDark } from "metabase/lib/colors";
+import { color, tint, isDark, lighten } from "metabase/lib/colors";
 
 export interface OptionRootProps {
   isSelected?: boolean;
@@ -14,26 +14,6 @@ const getOptionIconColor = ({ isSelected }: OptionIconContainerProps) => {
     return color("brand");
   }
 };
-
-export const OptionRoot = styled.div<OptionRootProps>`
-  padding: 0.5rem;
-  width: 25%;
-  text-align: center;
-
-  ${props =>
-    props.isSelected &&
-    `
-    ${OptionIconContainer} {
-      background-color: ${color("brand")};
-      color: ${getOptionIconColor(props)};
-      border: 1px solid transparent;
-    }
-
-    ${OptionText} {
-      color: ${color("brand")};
-    }
-  `}
-`;
 
 export interface OptionIconContainerProps {
   isSelected?: boolean;
@@ -76,4 +56,32 @@ export const OptionList = styled.div`
   display: flex;
   margin: 1rem 1rem 3rem 1rem;
   flex-wrap: wrap;
+`;
+
+export const OptionRoot = styled.div<OptionRootProps>`
+  padding: 0.5rem;
+  width: 25%;
+  text-align: center;
+
+  ${props =>
+    props.isSelected &&
+    `
+    ${OptionIconContainer} {
+      background-color: ${color("brand")};
+      color: ${getOptionIconColor(props)};
+      border: 1px solid transparent;
+    }
+
+    ${OptionText} {
+      color: ${color("brand")};
+    }
+  `}
+
+  &:hover {
+    ${OptionIconContainer} {
+      background-color: ${lighten("brand", 0.55)};
+      color: ${color("brand")};
+      border: 1px solid transparent;
+    }
+  }
 `;

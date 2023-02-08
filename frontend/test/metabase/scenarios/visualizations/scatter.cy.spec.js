@@ -82,7 +82,7 @@ describe("scenarios > visualizations > scatter", () => {
       },
     });
 
-    cy.findByText("Visualization");
+    cy.findByText("Settings");
     cy.findAllByText("79").should("not.exist");
   });
 

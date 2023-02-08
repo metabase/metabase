@@ -25,7 +25,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should create the first event and timeline", () => {
       visitQuestion(3);
       cy.wait("@getCollection");
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByText("Settings").should("be.visible");
 
       cy.icon("calendar").click();
       cy.findByText("Add an event").click();
@@ -47,7 +47,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(3);
       cy.wait("@getCollection");
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByText("Settings").should("be.visible");
 
       cy.icon("calendar").click();
       cy.findByText("Add an event").click();
@@ -74,7 +74,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(3);
       cy.wait("@getCollection");
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByText("Settings").should("be.visible");
 
       cy.findByLabelText("calendar icon").click();
       cy.findByText("v1").should("not.exist");
@@ -95,7 +95,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(3);
       cy.wait("@getCollection");
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByText("Settings").should("be.visible");
 
       cy.icon("calendar").click();
       cy.findByText("Releases").should("be.visible");
@@ -121,7 +121,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(3);
       cy.wait("@getCollection");
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByText("Settings").should("be.visible");
 
       cy.icon("calendar").click();
       cy.findByText("Builds").should("be.visible");
@@ -143,7 +143,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(3);
       cy.wait("@getCollection");
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByText("Settings").should("be.visible");
 
       cy.icon("calendar").click();
       cy.findByText("Releases").should("be.visible");
@@ -200,7 +200,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByText("Settings").should("be.visible");
       cy.findByLabelText("star icon").should("be.visible");
     });
 
@@ -229,7 +229,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByText("Settings").should("be.visible");
       cy.findByLabelText("star icon").should("not.exist");
     });
 
@@ -254,7 +254,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByText("Settings").should("be.visible");
       cy.findByLabelText("star icon").should("be.visible");
     });
 
@@ -275,7 +275,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(3);
 
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByText("Settings").should("be.visible");
       cy.findByLabelText("cloud icon").should("be.visible");
 
       // should hide individual events from chart if hidden in sidebar

@@ -6,6 +6,7 @@ import {
   sidebar,
   visitQuestion,
   POPOVER_ELEMENT,
+  openVizSelection,
 } from "__support__/e2e/helpers";
 
 describe("11914, 18978, 18977", () => {
@@ -73,7 +74,8 @@ describe("11914, 18978, 18977", () => {
 });
 
 function setVisualizationTo(vizName) {
-  cy.findByTestId("viz-type-button").click();
+  cy.findByTestId("viz-settings-button").click();
+  openVizSelection();
 
   sidebar().within(() => {
     cy.icon(vizName).click();

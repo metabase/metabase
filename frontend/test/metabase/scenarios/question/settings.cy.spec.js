@@ -6,6 +6,7 @@ import {
   visitQuestionAdhoc,
   popover,
   sidebar,
+  assertVizType,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -204,7 +205,7 @@ describe("scenarios > question > settings", () => {
       });
 
       cy.findByText("Settings").click(); // open settings sidebar
-      cy.findByText("Table options"); // confirm it's open
+      assertVizType("table"); // confirm it's open
       cy.get(".TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
       popover().within(() => cy.icon("gear").click()); // open subtotal column settings
 
