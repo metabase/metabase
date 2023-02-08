@@ -3,21 +3,30 @@ name: E2E Tests for PR
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      - ".circleci/**"
-      - "**.unit.spec.*"
-      - "**_test.clj"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-20.04
+    timeout-minutes: 3
+    outputs:
+      e2e_and_sources: ${{ steps.changes.outputs.e2e_and_sources }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test which files changed
+        uses: dorny/paths-filter@v2.11.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
 
   build:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.e2e_and_sources == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 25
     strategy:
@@ -41,9 +50,13 @@ jobs:
       uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
+    needs: [build, files-changed]
+    if: |
+      always() &&
+      needs.files-changed.outputs.e2e_and_sources == 'true' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
     runs-on: ubuntu-20.04
     timeout-minutes: 45
-    needs: build
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
@@ -174,6 +187,48 @@ jobs:
           ./cypress
           ./logs/test.log
         if-no-files-found: ignore
+
+  e2e-tests-skipped-stub:
+    needs: [build, files-changed]
+    if: |
+      always() &&
+      needs.files-changed.outputs.e2e_and_sources == 'false' &&
+      needs.build.result == 'skipped'
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
+    strategy:
+      fail-fast: false
+      matrix:
+        java-version: [11]
+        edition: [ee]
+        folder:
+          - "admin"
+          - "binning"
+          - "collections"
+          - "custom-column"
+          - "dashboard"
+          - "dashboard-filters"
+          - "downloads"
+          - "embedding"
+          - "filters"
+          - "joins"
+          - "models"
+          - "native"
+          - "native-filters"
+          - "onboarding"
+          - "organization"
+          - "permissions"
+          - "question"
+          - "sharing"
+          - "visualizations"
+        include:
+          - edition: oss
+            context: grep
+            java-version: 11
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
 
   visual-regression-tests:
     runs-on: ubuntu-20.04
