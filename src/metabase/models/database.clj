@@ -272,7 +272,6 @@
   [db json-generator]
   (next-method
    (if (not (mi/can-write? db))
-     (dissoc db :details :settings)
      (-> db
           (dissoc :details)
           (update :settings (fn [settings]
