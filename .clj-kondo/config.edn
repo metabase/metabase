@@ -674,8 +674,40 @@
   {:pattern "metabase\\.cmd.*"
    :name    printable-namespaces}
   ;; Basically everything except `metabase.driver.` or `metabase.test-data.` except for the drivers explicitly called
-  ;; out below. Remove these drivers from the regex once we switch to Honey SQL 2
-  {:pattern "^(?!metabase\\.(?:(?:driver)|(?:test-data))\\.(?:(?:sql)|(?:athena)|(?:bigquery-cloud-sdk)|(?:h2)|(?:mysql)|(?:oracle)|(?:presto)|(?:snowflake)|(?:sparksql)|(?:vertica))(?:(?:\\..*)|$)).*"
+  ;; out below. Remove these drivers from the regex once we switch to Honey SQL 2.
+  ;;
+  ;; This regex is way too big to easily read or write by hand, so use the [[metabase.util.regex/rx]] macro to
+  ;; generate it. It was generated from the following form:
+  ;;
+  ;; (str
+  ;;  (metabase.util.regex/rx
+  ;;   #"^metabase\."
+  ;;   [:not [:and #"util\." [:or "honeysql-extensions" "honey-sql-1-extensions"]]]
+  ;;   [:not "query-processor-test"]
+  ;;   [:not [:and
+  ;;          [:or "driver" #"test\.data"]
+  ;;          #"\."
+  ;;          [:or
+  ;;           [:and "sql" [:? "-jdbc"]]
+  ;;           #"(?:sql(?:-jdbc)?)"
+  ;;           "athena"
+  ;;           "bigquery-cloud-sdk"
+  ;;           "h2"
+  ;;           "hive-like"
+  ;;           "mysql"
+  ;;           "oracle"
+  ;;           [:and "presto" [:? [:or "-common" "-jdbc"]]]
+  ;;           "snowflake"
+  ;;           "sparksql"
+  ;;           "sqlite"
+  ;;           "sqlserver"
+  ;;           "vertica"]
+  ;;          [:? "-test"]
+  ;;          [:or #"\." #"$"]]]
+  ;;   ".*"))
+  ;;
+  ;; Please keep this form updated when you change the generated regex! <3
+  {:pattern "^metabase\\.(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1-extensions)))(?!query-processor-test)(?!(?:(?:driver)|(?:test\\.data))\\.(?:(?:sql(?:-jdbc)?)|(?:(?:sql(?:-jdbc)?))|(?:athena)|(?:bigquery-cloud-sdk)|(?:h2)|(?:hive-like)|(?:mysql)|(?:oracle)|(?:presto(?:(?:(?:-common)|(?:-jdbc)))?)|(?:snowflake)|(?:sparksql)|(?:sqlite)|(?:sqlserver)|(?:vertica))(?:-test)?(?:(?:\\.)|(?:$))).*"
    :name    honey-sql-2-namespaces}]
 
  :config-in-ns
@@ -684,9 +716,8 @@
    {:inline-def                                    {:level :off}
     :missing-docstring                             {:level :off}
     :private-call                                  {:level :off}
-
-    ;; custom linters
     :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
+
   printable-namespaces
   {:linters
    {:discouraged-var {:level :off}}}
