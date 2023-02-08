@@ -1152,11 +1152,12 @@
                   (contains? allowed-visibilities (:visibility setting))))))
 
 (defn user-readable-values-map
-  "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.
+  "Returns Settings as a map of setting name -> site-wide value for a given set of [[Visibility]] keywords
+  e.g. `#{:public :authenticated}`.
 
   Settings marked `:sensitive?` (e.g. passwords) are excluded.
 
-  The is currently used by `GET /api/session/properties` ([[metabase.api.session/GET_properties]]) and
+  This is currently used by `GET /api/session/properties` ([[metabase.api.session/GET_properties]]) and
   in [[metabase.server.routes.index/load-entrypoint-template]]. These are used as read-only sources of Settings for
   the frontend client. For that reason, these Settings *should* include values that come back from environment
   variables, *unless* they are marked `:sensitive?`."
