@@ -247,16 +247,20 @@
 
 (mi/define-batched-hydration-method with-dimensions
   :dimensions
-  "Efficiently hydrate the `Dimension` for a collection of `fields`."
+  "Efficiently hydrate the `Dimension` for a collection of `fields`.
+
+  NOTE! Despite the name, this only returns at most one dimension. This is for historic reasons; see #13350 for more
+  details.
+
+  Despite the weirdness, this used to be even worse -- due to a bug in the code, this originally returned a *map* if
+  there was a matching Dimension, or an empty vector if there was not. In 0.46.0 I fixed this to return either a
+  vector with the matching Dimension, or an empty vector. At least the response shape is consistent now. Maybe in the
+  future we can change this key to `:dimension` and return it that way. -- Cam"
   [fields]
-  ;; TODO - it looks like we obviously thought this code would return *all* of the Dimensions for a Field, not just
-  ;; one! This code is obviously wrong! It will either assoc a single Dimension or an empty vector under the
-  ;; `:dimensions` key!!!!
-  ;; TODO - consult with tom and see if fixing this will break any hacks that surely must exist in the frontend to deal
-  ;; with this
   (let [id->dimensions (select-field-id->instance fields Dimension)]
-    (for [field fields]
-      (assoc field :dimensions (get id->dimensions (:id field) [])))))
+    (for [field fields
+          :let  [dimension (get id->dimensions (:id field))]]
+      (assoc field :dimensions (if dimension [dimension] [])))))
 
 (defn- is-searchable?
   "Is this `field` a Field that you should be presented with a search widget for (to search its values)? If so, we can

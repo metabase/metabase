@@ -402,7 +402,7 @@
 (s/defn ^:private col->dim-map :- (s/maybe InternalDimensionInfo)
   "Given a `:col` map from the results, return a map of information about the `internal` dimension used for remapping
   it."
-  [idx {{remap-to :name, remap-type :type, field-id :field_id}         :dimensions
+  [idx {[{remap-to :name, remap-type :type, field-id :field_id}]       :dimensions
         {values :values, human-readable-values :human_readable_values} :values
         :as                                                            col}]
   (when (and field-id

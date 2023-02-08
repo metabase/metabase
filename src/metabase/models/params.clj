@@ -126,28 +126,17 @@
 (defn- remove-dimension-nonpublic-columns
   "Strip nonpublic columns from a `dimension` and from its hydrated human-readable Field."
   [dimension]
-  (-> dimension
-      (update :human_readable_field #(select-keys % (rest Field:params-columns-only)))
-      ;; these aren't exactly secret but you the frontend doesn't need them either so while we're at it let's go ahead
-      ;; and strip them out
-      (dissoc :created_at :updated_at)))
+  (some-> dimension
+          (update :human_readable_field #(select-keys % (rest Field:params-columns-only)))
+          ;; these aren't exactly secret but you the frontend doesn't need them either so while we're at it let's go
+          ;; ahead and strip them out
+          (dissoc :created_at :updated_at)))
 
 (defn- remove-dimensions-nonpublic-columns
   "Strip nonpublic columns from the hydrated human-readable Field in the hydrated Dimensions in `fields`."
   [fields]
   (for [field fields]
-    (update field :dimensions
-            (fn [dimension-or-dimensions]
-              ;; as disucssed in `metabase.models.field` the hydration code for `:dimensions` is
-              ;; WRONG and the value ends up either being a single Dimension or an empty vector.
-              ;; However at some point we will fix this so deal with either a map or a sequence of
-              ;; maps
-              (cond
-                (map? dimension-or-dimensions)
-                (remove-dimension-nonpublic-columns dimension-or-dimensions)
-
-                (sequential? dimension-or-dimensions)
-                (map remove-dimension-nonpublic-columns dimension-or-dimensions))))))
+    (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
 
 
 (s/defn ^:private param-field-ids->fields
