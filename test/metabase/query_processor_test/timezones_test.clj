@@ -294,7 +294,8 @@
                                             trunc-unit)
                                           [:dt_tz])
                                         row))))]
-              (is (= expected-rows rows)))))))))
+              (doseq [[expected-row row] (map vector expected-rows rows)]
+                (is (= expected-row row))))))))))
 
 (deftest filter-datetime-by-date-in-timezone-test
   (mt/test-drivers (set-timezone-drivers)
