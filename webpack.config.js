@@ -143,6 +143,10 @@ const config = (module.exports = {
         process.env.MB_EDITION === "ee"
           ? ENTERPRISE_SRC_PATH + "/plugins"
           : SRC_PATH + "/lib/noop",
+      "ee-overrides":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/overrides"
+          : SRC_PATH + "/lib/noop",
     },
   },
   cache: useFilesystemCache
