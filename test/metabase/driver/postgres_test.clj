@@ -29,6 +29,8 @@
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2-extensions :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan.db :as db])
@@ -40,30 +42,26 @@
                         (thunk))))
 
 (deftest ^:parallel extract-test
-  (are [hsql-version driver expected] (= [expected]
-                                         (binding [hx/*honey-sql-version* hsql-version]
-                                           (sql.qp/format-honeysql driver (#'postgres/extract :month :%now))))
-    1 :sql      "extract(month from now())"
-    2 :postgres "extract(month from NOW())"))
+  (is (= ["extract(month from NOW())"]
+         (sql.qp/format-honeysql :postgres (#'postgres/extract :month :%now)))))
 
 (deftest ^:parallel datetime-diff-test
-  (binding [hx/*honey-sql-version* 2]
-    (is (= [["CAST("
-             "  extract("
-             "    year"
-             "    from"
-             "      AGE("
-             "        DATE_TRUNC('day', CAST(? AS timestamp)),"
-             "        DATE_TRUNC('day', CAST(? AS timestamp))"
-             "      )"
-             "  ) AS integer"
-             ")"]
-            "2021-10-03T09:00:00"
-            "2021-10-03T09:00:00"]
-           (as-> [:datetime-diff "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
-             (sql.qp/->honeysql :postgres <>)
-             (sql.qp/format-honeysql :postgres <>)
-             (update (vec <>) 0 #(str/split-lines (mdb.query/format-sql % :postgres))))))))
+  (is (= [["CAST("
+           "  extract("
+           "    year"
+           "    from"
+           "      AGE("
+           "        DATE_TRUNC('day', CAST(? AS timestamp)),"
+           "        DATE_TRUNC('day', CAST(? AS timestamp))"
+           "      )"
+           "  ) AS integer"
+           ")"]
+          "2021-10-03T09:00:00"
+          "2021-10-03T09:00:00"]
+         (as-> [:datetime-diff "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
+           (sql.qp/->honeysql :postgres <>)
+           (sql.qp/format-honeysql :postgres <>)
+           (update (vec <>) 0 #(str/split-lines (mdb.query/format-sql % :postgres)))))))
 
 (defn- drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
@@ -336,7 +334,7 @@
 
 (deftest ^:parallel json-query-test
   (binding [hx/*honey-sql-version* 2]
-    (let [boop-identifier (hx/identifier :field "boop" "bleh -> meh")]
+    (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
       (testing "Transforming MBQL query with JSON in it to postgres query works"
         (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
           (is (= ["(boop.bleh#>> ?::text[])::bigint" "{meh}"]
@@ -375,10 +373,9 @@
                                                               :min-value 0.75
                                                               :max-value 54.0
                                                               :bin-width 0.75}}]]
-              (binding [hx/*honey-sql-version* 2]
-                (is (= ["((FLOOR((((complicated_identifiers.jsons#>> ?::text[])::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
-                        "{values,qty}"]
-                       (sql/format-expr (sql.qp/->honeysql :postgres field-clause) {:nested true})))))))))))
+              (is (= ["((FLOOR((((complicated_identifiers.jsons#>> ?::text[])::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
+                      "{values,qty}"]
+                     (sql/format-expr (sql.qp/->honeysql :postgres field-clause) {:nested true}))))))))))
 
 (deftest json-alias-test
   (mt/test-driver :postgres
@@ -671,8 +668,8 @@
 (mt/defdataset ip-addresses
   [["addresses"
     [{:field-name "ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
-    [[(hx/raw "'192.168.1.1'::inet")]
-     [(hx/raw "'10.4.4.15'::inet")]]]])
+    [[[:raw "'192.168.1.1'::inet"]]
+     [[:raw "'10.4.4.15'::inet"]]]]])
 
 (deftest inet-columns-test
   (mt/test-driver :postgres
@@ -776,7 +773,7 @@
 (deftest enums-test
   (mt/test-driver :postgres
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
-      (is (= (hx/with-database-type-info (hx/call :cast "toucan" (keyword "bird type")) "bird type")
+      (is (= (h2x/with-database-type-info [:cast "toucan" (keyword "bird type")] "bird type")
              (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))
 
     (do-with-enums-db

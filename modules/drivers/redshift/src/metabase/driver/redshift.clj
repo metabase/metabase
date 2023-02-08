@@ -18,7 +18,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
@@ -109,15 +109,15 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
-  (let [hsql-form (hx/->timestamp hsql-form)]
-    (-> (hx/call :dateadd (hx/literal unit) amount hsql-form)
-        (hx/with-type-info (hx/type-info hsql-form)))))
+  (let [hsql-form (h2x/->timestamp hsql-form)]
+    (-> [:dateadd (h2x/literal unit) amount hsql-form]
+        (h2x/with-type-info (h2x/type-info hsql-form)))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
-  (hx/+ (hx/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
-        (hx/* expr
-              (hx/raw "INTERVAL '1 second'"))))
+  (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
+         (h2x/* expr
+                [:raw "INTERVAL '1 second'"])))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
   [_]
@@ -171,39 +171,33 @@
 
 (defmethod sql.qp/->honeysql [:redshift :regex-match-first]
   [driver [_ arg pattern]]
-  (hx/call
-   :regexp_substr
+  [:regexp_substr
    (sql.qp/->honeysql driver arg)
    ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
    ;; decoding functions seem to work (fails with java.sql.SQLExcecption: "The pattern must be a valid UTF-8 literal
    ;; character expression"), hence we will use a different function to safely escape it before splicing here
-   (hx/raw (quote-literal-for-database (qp.store/database) pattern))))
+   [:raw (quote-literal-for-database (qp.store/database) pattern)]])
 
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]
-  (hx/call
-   :replace
+  [:replace
    (sql.qp/->honeysql driver arg)
    (sql.qp/->honeysql driver pattern)
-   (sql.qp/->honeysql driver replacement)))
+   (sql.qp/->honeysql driver replacement)])
 
 (defmethod sql.qp/->honeysql [:redshift :concat]
   [driver [_ & args]]
-  (->> args
-       (map (partial sql.qp/->honeysql driver))
-       (reduce (partial hx/call :concat))))
+  (into [:concat] (map (partial sql.qp/->honeysql driver)) args))
 
 (defmethod sql.qp/->honeysql [:redshift :concat]
   [driver [_ & args]]
-  (->> args
-       (map (partial sql.qp/->honeysql driver))
-       (reduce (partial hx/call :concat))))
+  (into [:concat] (map (partial sql.qp/->honeysql driver)) args))
 
 (defn- extract [unit temporal]
-  (hx/call :extract (format "'%s'" (name unit)) temporal))
+  [:extract (format "'%s'" (name unit)) temporal])
 
 (defn- datediff [unit x y]
-  (hx/call :datediff (hx/raw (name unit)) x y))
+  [:datediff [:raw (name unit)] x y])
 
 (defmethod sql.qp/->honeysql [:redshift :datetime-diff]
   [driver [_ x y unit]]
@@ -213,33 +207,27 @@
         ;; unlike postgres, we need to make sure the values are timestamps before we
         ;; can do the calculation. otherwise, we'll get an error like
         ;; ERROR: function pg_catalog.date_diff("unknown", ..., ...) does not exist
-        x (hx/->timestamp x)
-        y (hx/->timestamp y)]
+        x (h2x/->timestamp x)
+        y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
 (defmethod sql.qp/datetime-diff [:redshift :year]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :month x y) 12))
+  (h2x// (sql.qp/datetime-diff driver :month x y) 12))
 
 (defmethod sql.qp/datetime-diff [:redshift :quarter]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :month x y) 3))
+  (h2x// (sql.qp/datetime-diff driver :month x y) 3))
 
 (defmethod sql.qp/datetime-diff [:redshift :month]
   [_driver _unit x y]
-  (hx/+ (datediff :month x y)
+  (h2x/+ (datediff :month x y)
         ;; redshift's datediff counts month boundaries not whole months, so we need to adjust
-        (hx/call
-         :case
-         ;; if x<y but x>y in the month calendar then subtract one month
-         (hx/call :and (hx/call :< x y) (hx/call :> (extract :day x) (extract :day y))) -1
-         ;; if x>y but x<y in the month calendar then add one month
-         (hx/call :and (hx/call :> x y) (hx/call :< (extract :day x) (extract :day y))) 1
-         :else 0)))
+        ))
 
 (defmethod sql.qp/datetime-diff [:redshift :week]
   [_driver _unit x y]
-  (hx// (datediff :day x y) 7))
+  (h2x// (datediff :day x y) 7))
 
 (defmethod sql.qp/datetime-diff [:redshift :day]
   [_driver _unit x y]
@@ -247,15 +235,15 @@
 
 (defmethod sql.qp/datetime-diff [:redshift :hour]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :second x y) 3600))
+  (h2x// (sql.qp/datetime-diff driver :second x y) 3600))
 
 (defmethod sql.qp/datetime-diff [:redshift :minute]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :second x y) 60))
+  (h2x// (sql.qp/datetime-diff driver :second x y) 60))
 
 (defmethod sql.qp/datetime-diff [:redshift :second]
   [_driver _unit x y]
-  (hx/- (extract :epoch y) (extract :epoch x)))
+  (h2x/- (extract :epoch y) (extract :epoch x)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

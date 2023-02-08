@@ -14,7 +14,9 @@
   (metabase.util.honeysql-extensions/identifier :field \"blah\")"
   [field-identifier field]
   (let [nfc-path          (:nfc_path field)
-        parent-components (-> (:components field-identifier)
+        parent-components (-> (case hx/*honey-sql-version*
+                                1 (:components field-identifier)
+                                2 (last field-identifier))
                               (vec)
                               (pop)
                               (conj (first nfc-path)))]

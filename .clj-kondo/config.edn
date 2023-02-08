@@ -673,7 +673,9 @@
    :name    test-namespaces}
   {:pattern "metabase\\.cmd.*"
    :name    printable-namespaces}
-  {:pattern "^metabase(?:-enterprise(?!\\.sandbox))\\.(?!driver)(?!test\\.data)(?!query-processor)(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1-extensions))).*"
+  ;; Basically everything except for metabase-enterprise.sandbox, metabase.driver.* or metabase.test-data.* or
+  ;; metabase.query-processor.* (besides postgres or redshift), and metabase.util.honeysql-extensions stuff
+  {:pattern "^metabase(?:-enterprise(?!\\.sandbox))?\\.(?!(?:(?:driver)|(?:test\\.data))(?!\\.(?:(?:postgres)|(?:redshift))))(?!query-processor)(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1-extensions))).*"
    :name    honey-sql-2-namespaces}]
 
  :config-in-ns

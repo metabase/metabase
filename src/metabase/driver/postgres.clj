@@ -30,7 +30,7 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
@@ -229,7 +229,7 @@
   2)
 
 (defn- ->timestamp [honeysql-form]
-  (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
+  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
 
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
@@ -237,39 +237,37 @@
   (if (= unit :quarter)
     (recur driver hsql-form (* 3 amount) :month)
     (let [hsql-form (->timestamp hsql-form)]
-      (-> (hx/+ hsql-form (let [s (format "(INTERVAL '%s %s')" amount (name unit))]
-                            (hx/raw s)))
-          (hx/with-type-info (hx/type-info hsql-form))))))
+      (-> (h2x/+ hsql-form (let [s (format "(INTERVAL '%s %s')" amount (name unit))]
+                             [:raw s]))
+          (h2x/with-type-info (h2x/type-info hsql-form))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
   [_driver]
-  (hx/with-database-type-info :%now "timestamptz"))
+  (h2x/with-database-type-info :%now "timestamptz"))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
-  (hx/call :to_timestamp expr))
+  [:to_timestamp expr])
 
 (defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  (hx/call :to_timestamp expr (hx/literal "YYYYMMDDHH24MISS")))
+  [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")])
 
 (defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
-                               (hx/call :convert_from expr (hx/literal "UTF8"))))
+                               [:convert_from expr (h2x/literal "UTF8")]))
 
 (defn- date-trunc [unit expr]
-  (hx/call :date_trunc (hx/literal unit) (->timestamp expr)))
+  [:date_trunc (h2x/literal unit) (->timestamp expr)])
 
 (defn- extract [unit expr]
-  (case hx/*honey-sql-version*
-    1 (hx/call :extract unit expr)
-    2 [:metabase.util.honey-sql-2-extensions/extract unit expr]))
+  [:metabase.util.honey-sql-2-extensions/extract unit expr])
 
 (defn- extract-from-timestamp [unit expr]
   (extract unit (->timestamp expr)))
 
-(def ^:private extract-integer (comp hx/->integer extract))
+(def ^:private extract-integer (comp h2x/->integer extract))
 
 (defmethod sql.qp/date [:postgres :default]          [_ _ expr] expr)
 (defmethod sql.qp/date [:postgres :second-of-minute] [_ _ expr] (extract-integer :second expr))
@@ -277,7 +275,7 @@
 (defmethod sql.qp/date [:postgres :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
 (defmethod sql.qp/date [:postgres :hour]             [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:postgres :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
-(defmethod sql.qp/date [:postgres :day]              [_ _ expr] (hx/->date expr))
+(defmethod sql.qp/date [:postgres :day]              [_ _ expr] (h2x/->date expr))
 (defmethod sql.qp/date [:postgres :day-of-month]     [_ _ expr] (extract-integer :day expr))
 (defmethod sql.qp/date [:postgres :day-of-year]      [_ _ expr] (extract-integer :doy expr))
 (defmethod sql.qp/date [:postgres :month]            [_ _ expr] (date-trunc :month expr))
@@ -296,7 +294,7 @@
   ;; Since that's different than what we normally consider the [[metabase.driver/db-start-of-week]] for Postgres
   ;; (Monday) we need to pass in a custom offset here
   (sql.qp/adjust-day-of-week driver
-                             (hx/+ (extract-integer :dow expr) 1)
+                             (h2x/+ (extract-integer :dow expr) 1)
                              (driver.common/start-of-week-offset-for-day :sunday)))
 
 (defmethod sql.qp/date [:postgres :week]
@@ -311,14 +309,14 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        timestamptz? (hx/is-of-type? expr "timestamptz")
+        timestamptz? (h2x/is-of-type? expr "timestamptz")
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
         expr         (cond->> expr
                        (not timestamptz?)
-                       (hx/call :timezone source-timezone)
+                       [:timezone source-timezone]
                        :always
-                       (hx/call :timezone target-timezone))]
-    (hx/with-database-type-info expr "timestamp")))
+                       [:timezone target-timezone])]
+    (h2x/with-database-type-info expr "timestamp")))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
@@ -327,10 +325,10 @@
       (condp #(isa? %2 %1) base-type
         :type/UUID         (when (not= "" value) ; support is-empty/non-empty checks
                              (UUID/fromString  value))
-        :type/IPAddress    (hx/cast :inet value)
+        :type/IPAddress    (h2x/cast :inet value)
         :type/PostgresEnum (if (quoted? database-type)
-                             (hx/cast database-type value)
-                             (hx/quoted-cast database-type value))
+                             (h2x/cast database-type value)
+                             (h2x/quoted-cast database-type value))
         (sql.qp/->honeysql driver value)))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
@@ -339,41 +337,41 @@
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]
-  (let [interval (hx/call :age (date-trunc :day y) (date-trunc :day x))]
-    (hx/->integer (extract :year interval))))
+  (let [interval [:age (date-trunc :day y) (date-trunc :day x)]]
+    (h2x/->integer (extract :year interval))))
 
 (defmethod sql.qp/datetime-diff [:postgres :quarter]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :month x y) 3))
+  (h2x// (sql.qp/datetime-diff driver :month x y) 3))
 
 (defmethod sql.qp/datetime-diff [:postgres :month]
   [_driver _unit x y]
-  (let [interval           (hx/call :age (date-trunc :day y) (date-trunc :day x))
+  (let [interval           [:age (date-trunc :day y) (date-trunc :day x)]
         year-diff          (extract :year interval)
         month-of-year-diff (extract :month interval)]
-    (hx/->integer (hx/+ month-of-year-diff (hx/* year-diff 12)))))
+    (h2x/->integer (h2x/+ month-of-year-diff (h2x/* year-diff 12)))))
 
 (defmethod sql.qp/datetime-diff [:postgres :week]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :day x y) 7))
+  (h2x// (sql.qp/datetime-diff driver :day x y) 7))
 
 (defmethod sql.qp/datetime-diff [:postgres :day]
   [_driver _unit x y]
-  (let [interval (hx/- (date-trunc :day y) (date-trunc :day x))]
-    (hx/->integer (extract :day interval))))
+  (let [interval (h2x/- (date-trunc :day y) (date-trunc :day x))]
+    (h2x/->integer (extract :day interval))))
 
 (defmethod sql.qp/datetime-diff [:postgres :hour]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :second x y) 3600))
+  (h2x// (sql.qp/datetime-diff driver :second x y) 3600))
 
 (defmethod sql.qp/datetime-diff [:postgres :minute]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :second x y) 60))
+  (h2x// (sql.qp/datetime-diff driver :second x y) 60))
 
 (defmethod sql.qp/datetime-diff [:postgres :second]
   [_driver _unit x y]
-  (let [seconds (hx/- (extract-from-timestamp :epoch y) (extract-from-timestamp :epoch x))]
-    (hx/->integer (hx/call :trunc seconds))))
+  (let [seconds (h2x/- (extract-from-timestamp :epoch y) (extract-from-timestamp :epoch x))]
+    (h2x/->integer [:trunc seconds])))
 
 (defn- format-regex-match-first [_fn [identifier pattern]]
   (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})
@@ -392,7 +390,7 @@
 
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]
-  (hx/->time time-value))
+  (h2x/->time time-value))
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
@@ -427,7 +425,7 @@
 
 (defmethod sql.qp/json-query :postgres
   [_driver unwrapped-identifier nfc-field]
-  (assert (hx/identifier? unwrapped-identifier)
+  (assert (h2x/identifier? unwrapped-identifier)
           (format "Invalid identifier: %s" (pr-str unwrapped-identifier)))
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
@@ -449,7 +447,7 @@
       (field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
-        (walk/postwalk #(if (hx/identifier? %)
+        (walk/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
                           %)
                        identifier))

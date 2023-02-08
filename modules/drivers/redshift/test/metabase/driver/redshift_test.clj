@@ -23,7 +23,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [toucan.db :as db])
   (:import
    (metabase.plugins.jdbc_proxy ProxyDriver)))
@@ -43,12 +43,11 @@
                (.getName (class driver))))))))
 
 (deftest ^:parallel default-select-test
-  (binding [hx/*honey-sql-version* 2]
-    (is (= ["SELECT \"source\".* FROM (SELECT *) AS \"source\""]
-           (->> {:from [[[::sql.qp/sql-source-query "SELECT *"]
-                         [(hx/identifier :table-alias "source")]]]}
-                (#'sql.qp/add-default-select :redshift)
-                (sql.qp/format-honeysql :redshift))))))
+  (is (= ["SELECT \"source\".* FROM (SELECT *) AS \"source\""]
+         (->> {:from [[[::sql.qp/sql-source-query "SELECT *"]
+                       [(h2x/identifier :table-alias "source")]]]}
+              (#'sql.qp/add-default-select :redshift)
+              (sql.qp/format-honeysql :redshift)))))
 
 (defn- query->native [query]
   (let [native-query (atom nil)
