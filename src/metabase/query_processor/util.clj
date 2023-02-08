@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]))
@@ -106,6 +107,34 @@
   non-unique at times, numeric ids are not guaranteed."
   [[tyype identifier]]
   [tyype identifier])
+
+(def field-options-for-identification
+  "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
+  #{:source-field :join-alias :base-type})
+
+(defn- field-normalizer
+  [field]
+  (let [[type id-or-name options ] (mbql.normalize/normalize-tokens field)]
+    [type id-or-name (select-keys options field-options-for-identification)]))
+
+(defn field->field-info
+  [field result-metadata]
+  (let [[_ttype id-or-name options :as field] (field-normalizer field)]
+    (or
+      ;; try match field_ref first
+      (first (filter (fn [field-info]
+                       (= field
+                          (-> field-info
+                              :field_ref
+                              field-normalizer)))
+                     result-metadata))
+      ;; if not match name and base type for aggregation or field with string id
+      (first (filter (fn [field-info]
+                       (and (= (:name field-info)
+                               id-or-name)
+                            (= (:base-type options)
+                               (:base_type field-info))))
+                     result-metadata)))))
 
 (def preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging

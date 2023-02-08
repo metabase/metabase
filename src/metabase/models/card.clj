@@ -274,6 +274,42 @@
   pre-update-check-sandbox-constraints
   (atom identity))
 
+(defn- update-parameter-on-card-result-metadata-changes
+  [{id :id, :as changes}]
+  (let [parameter-cards   (db/select ParameterCard :card_id id)
+        deleted-param-ids (atom #{})]
+    (doseq [[[po-type po-id] param-cards]
+            (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
+      (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
+            {:keys [parameters]}   (db/select-one [model :parameters] :id po-id)
+            affected-param-ids-set (cond
+                                     (:archived changes)
+                                     (set (map :parameter_id param-cards))
+
+                                     (:result_metadata changes)
+                                     (let [param-id->parameter (m/index-by :id parameters)]
+                                       (->> (for [param-card param-cards]
+                                              ;; if cant find the value-field in result_metadata, then we should remove it
+                                              (when (nil? (qp.util/field->field-info
+                                                            (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
+                                                            (:result_metadata changes)))
+                                                (:parameter_id param-card)))
+                                            (filter some?)
+                                            set))
+
+                                     :else #{})
+            new-parameters (map (fn [parameter]
+                                  (if (affected-param-ids-set (:id parameter))
+                                    (-> parameter
+                                        (assoc :values_source_type nil)
+                                        (dissoc :values_source_config))
+                                    parameter))
+                                parameters)]
+        (when-not (= parameters new-parameters)
+          (db/update! model po-id {:parameters new-parameters}))))
+    (when-let [to-delete-param-ids (seq @deleted-param-ids)]
+      (db/delete! ParameterCard :card_id id [:in :parameter_id to-delete-param-ids]))))
+
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
@@ -313,6 +349,7 @@
       (collection/check-collection-namespace Card (:collection_id changes))
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
+      (update-parameter-on-card-result-metadata-changes changes)
       (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)
