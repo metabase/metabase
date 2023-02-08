@@ -598,11 +598,8 @@
     NumericExpressionArg))
 
 (def ^:private IntGreaterThanZeroOrNumericExpression
-  (s/conditional
-    number?
+  (s/if number?
     helpers/IntGreaterThanZero
-
-    :else
     NumericExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} coalesce
