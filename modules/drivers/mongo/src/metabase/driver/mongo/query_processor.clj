@@ -466,8 +466,7 @@
 (defmethod ->rvalue :substring
   [[_ & [expr idx cnt]]]
   (let [expr-val (->rvalue expr)
-        ;; convert the MBQL 1-based index to a 0-based index
-        idx-val  {"$subtract" [(->rvalue idx) 1]}]
+        idx-val {"$subtract" [(->rvalue idx) 1]}]
     {"$substrCP" [expr-val
                   idx-val
                   ;; The last argument is not optional in mongo

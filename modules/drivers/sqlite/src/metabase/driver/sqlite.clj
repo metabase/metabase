@@ -275,9 +275,11 @@
   [_ bool]
   (if bool 1 0))
 
-(defmethod sql.qp/->honeysql [:sqlite ::sql.qp/substring-name]
-  [_ _]
-  :substr)
+(defmethod sql.qp/->honeysql [:sqlite :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hx/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hx/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
 
 (defmethod sql.qp/->honeysql [:sqlite :concat]
   [driver [_ & args]]

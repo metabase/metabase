@@ -267,9 +267,11 @@
   (let [s (str/replace s #"[\"\u0000]" "_")]
     (driver.impl/truncate-alias s legacy-max-identifier-length)))
 
-(defmethod sql.qp/->honeysql [:oracle ::sql.qp/substring-name]
-  [_ _]
-  :substr)
+(defmethod sql.qp/->honeysql [:oracle :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hx/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hx/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
 
 (defmethod sql.qp/->honeysql [:oracle :concat]
   [driver [_ & args]]

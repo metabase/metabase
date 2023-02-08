@@ -457,10 +457,9 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :substring]
   [driver [_ arg start length]]
-  ;; use parent impl. with explicit length arg, since SQL Server always requires it
-  ((get-method sql.qp/->honeysql [:sql :substring])
-   driver
-   [:substring arg start (or length (hx/call :len (sql.qp/->honeysql driver arg)))]))
+  (if length
+    (hx/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hx/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (hx/call :len (sql.qp/->honeysql driver arg)))))
 
 (defmethod sql.qp/->honeysql [:sqlserver :length]
   [driver [_ arg]]

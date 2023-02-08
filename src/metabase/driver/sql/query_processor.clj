@@ -606,14 +606,11 @@
   [driver [_ & args]]
   (apply hx/call :concat (mapv (partial ->honeysql driver) args)))
 
-;; returns only the substring function name
-
-(defmethod ->honeysql [:sql ::substring-name] [_ _] :substring)
-
 (defmethod ->honeysql [:sql :substring]
-  [driver [_ & [arg start & args]]]
-  (let [sql-args (list* ::substring-name arg start args)]
-    (apply hx/call (map (partial ->honeysql driver) sql-args))))
+  [driver [_ arg start length]]
+  (if length
+    (hx/call :substring (->honeysql driver arg) (->honeysql driver start) (->honeysql driver length))
+    (hx/call :substring (->honeysql driver arg) (->honeysql driver start))))
 
 (defmethod ->honeysql [:sql :length]
   [driver [_ arg]]
