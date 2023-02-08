@@ -612,8 +612,8 @@
 
 (defmethod ->honeysql [:sql :substring]
   [driver [_ & [arg start & args]]]
-  (let [sql-args (into [::substring-name arg start] args)]
-    (apply hx/call (mapv (partial ->honeysql driver) sql-args))))
+  (let [sql-args (list* ::substring-name arg start args)]
+    (apply hx/call (map (partial ->honeysql driver) sql-args))))
 
 (defmethod ->honeysql [:sql :length]
   [driver [_ arg]]
