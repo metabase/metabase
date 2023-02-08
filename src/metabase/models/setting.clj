@@ -878,13 +878,18 @@
   [description-form]
   (when-not (valid-trs-or-tru? description-form)
     ;; this doesn't need to be i18n'ed because it's a compile-time error.
-    (throw (ex-info (str "defsetting docstrings must be an *deferred* i18n form unless the Setting has"
-                         " `:visibilty` `:internal` or `:setter` `:none`."
+    (throw (ex-info (str "defsetting docstrings must be a *deferred* i18n form unless the Setting has"
+                         " `:visibilty` `:internal`, `:setter` `:none`, or is defined in a test namespace."
                          (format " Got: ^%s %s"
                                  (some-> description-form class (.getCanonicalName))
                                  (pr-str description-form)))
                     {:description-form description-form})))
   description-form)
+
+(defn- in-test?
+  "Is `defsetting` currently being used in a test namespace?"
+  []
+  (str/ends-with? (ns-name *ns*) "-test"))
 
 (defmacro defsetting
   "Defines a new Setting that will be added to the DB at some point in the future.
@@ -977,7 +982,8 @@
          ;; and `exciting!!` for the setter.
          (not (str/includes? (name setting-symbol) "!"))]}
   (let [description               (if (or (= (:visibility options) :internal)
-                                          (= (:setter options) :none))
+                                          (= (:setter options) :none)
+                                          (in-test?))
                                     description
                                     (validate-description-form description))
         definition-form           (assoc options
