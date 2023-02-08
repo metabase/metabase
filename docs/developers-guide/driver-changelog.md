@@ -57,8 +57,8 @@ generate forms appropriate for either Honey SQL 1 or Honey SQL 2. This is done a
 The actual changes you will need to make to your driver code will probably be fairly small. The most important things
 to note when porting your driver:
 
-1. Avoid use of things Honey SQL 1 namespaces like `honeysql.core` or `honeysql.format`. If you must, use Honey SQL
-   `honey.sql` instead; you may not need either.
+1. Avoid use of things from Honey SQL 1 namespaces like `honeysql.core` or `honeysql.format`. If you must, use Honey
+   SQL `honey.sql` instead; you may not need either.
 
 2. While you can continue to use `metabase.util.honeysql-extensions` (usually aliased as `hx`) in the short term,
    since it can target either version of Honey SQL, we will probably remove this namespace at some point in the
@@ -68,7 +68,8 @@ to note when porting your driver:
 3. `honeysql.core/call` no longer exists; instead of a form like `(hsql/call :my_function 1 2)`, you simply return a
    plain vector like `[:my_function 1 2]`. `(hsql/raw "x")` is now`[:raw "x"]`. New handlers can be registered with
    Honey SQL 2 with `honey.sql/register-fn!`. There is no equivalent of the Honey SQL 1 `honeysql.format./ToSql`
-   protocol, so you should no longer define one-off types to implement custom SQL compilation rules.
+   protocol, so you should no longer define one-off types to implement custom SQL compilation rules. Use
+   `honey.sql/register-fn!` instead.
 
 4. Because custom expressions are now just plain vectors like `[:my_function 1]`, you may need to wrap expressions in
    an additional vector if they appear inside `:select`, `:from`, or other places where a vector could be interpreted
