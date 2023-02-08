@@ -6,7 +6,7 @@
    [clojure.java.jdbc :as jdbc]
    [metabase.db.connection :as mdb.connection]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan.db :as db])

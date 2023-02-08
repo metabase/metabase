@@ -12,7 +12,7 @@
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 

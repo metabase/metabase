@@ -18,8 +18,8 @@ title: Driver interface changelog
    implementation of `->honeysql` for the `:datetime-diff`, which includes validation of argument types across all units.
 
 - The classes `metabase.util.honeysql_extensions.Identifer` and `metabase.util.honeysql_extensions.TypedHoneySQLForm`
-  have been moved to `metabase.util.honey_sql_1_extensions.Identifer` and
-  `metabase.util.honey_sql_1_extensions.TypedHoneySQLForm`, respectively. Code that was referencing these classes
+  have been moved to `metabase.util.honey_sql_1.Identifer` and
+  `metabase.util.honey_sql_1.TypedHoneySQLForm`, respectively. Code that was referencing these classes
   should be updated to reference the new class names.
 
 - `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; use

@@ -27,7 +27,7 @@
    [pretty.core :refer [PrettyPrintable]]
    [schema.core :as s])
   (:import
-   (metabase.util.honey_sql_1_extensions Identifier TypedHoneySQLForm)))
+   (metabase.util.honey_sql_1 Identifier TypedHoneySQLForm)))
 
 (comment metabase.models.field/keep-me) ; for FieldInstance
 

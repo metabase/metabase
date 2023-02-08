@@ -8,7 +8,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2-extensions :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defn- run-query
   [query-type & {:as additional-query-params}]

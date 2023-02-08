@@ -358,8 +358,8 @@
     metabase.util.encryption                                        encryption
     metabase.util.encryption-test                                   encryption-test
     metabase.util.files                                             u.files
-    metabase.util.honey-sql-1-extensions                            h1x
-    metabase.util.honey-sql-2-extensions                            h2x
+    metabase.util.honey-sql-1                                       h1x
+    metabase.util.honey-sql-2                                       h2x
     metabase.util.honeysql-extensions                               hx
     metabase.util.i18n                                              i18n
     metabase.util.i18n.impl                                         i18n.impl
@@ -692,10 +692,10 @@
   honey-sql-2-namespaces
   {:linters
    {:discouraged-namespace
-    {honeysql.core                        {:message "Use Honey SQL 2"}
-     honeysql.format                      {:message "Use Honey SQL 2"}
-     honeysql.helpers                     {:message "Use Honey SQL 2"}
-     honeysql.types                       {:message "Use Honey SQL 2"}
-     honeysql.util                        {:message "Use Honey SQL 2"}
-     metabase.util.honeysql-extensions    {:message "Use h2x"}
-     metabase.util.honey-sql-1-extensions {:message "Use h2x"}}}}}}
+    {honeysql.core                     {:message "Use Honey SQL 2"}
+     honeysql.format                   {:message "Use Honey SQL 2"}
+     honeysql.helpers                  {:message "Use Honey SQL 2"}
+     honeysql.types                    {:message "Use Honey SQL 2"}
+     honeysql.util                     {:message "Use Honey SQL 2"}
+     metabase.util.honeysql-extensions {:message "Use h2x"}
+     metabase.util.honey-sql-1         {:message "Use h2x"}}}}}}
