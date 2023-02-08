@@ -38,7 +38,13 @@
    (java.sql DatabaseMetaData)))
 
 (use-fixtures :each (fn [thunk]
-                      (binding [sync-util/*log-exceptions-and-continue?* false]
+                      ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
+                      ;;    can debug it. This is much less confusing when trying to fix broken tests.
+                      ;;
+                      ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
+                      ;;    tests.
+                      (binding [sync-util/*log-exceptions-and-continue?* false
+                                hx/*honey-sql-version*                   2]
                         (thunk))))
 
 (deftest ^:parallel extract-test
@@ -333,24 +339,23 @@
       {:json-unfolding false} false)))
 
 (deftest ^:parallel json-query-test
-  (binding [hx/*honey-sql-version* 2]
-    (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
-      (testing "Transforming MBQL query with JSON in it to postgres query works"
-        (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
-          (is (= ["(boop.bleh#>> ?::text[])::bigint" "{meh}"]
-                 (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
-      (testing "What if types are weird and we have lists"
-        (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
-          (is (= ["(boop.bleh#>> ?::text[])::bigint" "{meh,foobar,1234}"]
-                 (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier weird-field))))))
-      (testing "Give us a boolean cast when the field is boolean"
-        (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
-          (is (= ["(boop.bleh#>> ?::text[])::boolean" "{boop,foobar,1234}"]
-                 (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))
-      (testing "Give us a bigint cast when the field is bigint (#22732)"
-        (let [boolean-boop-field {:database_type "bigint" :nfc_path [:bleh "boop" :foobar 1234]}]
-          (is (= ["(boop.bleh#>> ?::text[])::bigint" "{boop,foobar,1234}"]
-                 (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field)))))))))
+  (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
+    (testing "Transforming MBQL query with JSON in it to postgres query works"
+      (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
+        (is (= ["(boop.bleh#>> ?::text[])::bigint" "{meh}"]
+               (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
+    (testing "What if types are weird and we have lists"
+      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
+        (is (= ["(boop.bleh#>> ?::text[])::bigint" "{meh,foobar,1234}"]
+               (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier weird-field))))))
+    (testing "Give us a boolean cast when the field is boolean"
+      (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
+        (is (= ["(boop.bleh#>> ?::text[])::boolean" "{boop,foobar,1234}"]
+               (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))
+    (testing "Give us a bigint cast when the field is bigint (#22732)"
+      (let [boolean-boop-field {:database_type "bigint" :nfc_path [:bleh "boop" :foobar 1234]}]
+        (is (= ["(boop.bleh#>> ?::text[])::bigint" "{boop,foobar,1234}"]
+               (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
 
 (deftest json-field-test
   (mt/test-driver :postgres
@@ -773,62 +778,63 @@
 (deftest enums-test
   (mt/test-driver :postgres
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
-      (is (= (h2x/with-database-type-info [:cast "toucan" (keyword "bird type")] "bird type")
+      (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
+                                          "bird type")
              (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))
 
     (do-with-enums-db
-     (fn [db]
-       (testing "check that we can actually fetch the enum types from a DB"
-         (is (= #{(keyword "bird type") :bird_status}
-                (#'postgres/enum-types :postgres db))))
+      (fn [db]
+        (testing "check that we can actually fetch the enum types from a DB"
+          (is (= #{(keyword "bird type") :bird_status}
+                 (#'postgres/enum-types :postgres db))))
 
-       (testing "check that describe-table properly describes the database & base types of the enum fields"
-         (is (= {:name   "birds"
-                 :fields #{{:name              "name"
-                            :database-type     "varchar"
-                            :base-type         :type/Text
-                            :pk?               true
-                            :database-position 0
-                            :database-required true}
-                           {:name              "status"
-                            :database-type     "bird_status"
-                            :base-type         :type/PostgresEnum
-                            :database-position 1
-                            :database-required true}
-                           {:name              "type"
-                            :database-type     "bird type"
-                            :base-type         :type/PostgresEnum
-                            :database-position 2
-                            :database-required true}}}
-                (driver/describe-table :postgres db {:name "birds"}))))
+        (testing "check that describe-table properly describes the database & base types of the enum fields"
+          (is (= {:name   "birds"
+                  :fields #{{:name              "name"
+                             :database-type     "varchar"
+                             :base-type         :type/Text
+                             :pk?               true
+                             :database-position 0
+                             :database-required true}
+                            {:name              "status"
+                             :database-type     "bird_status"
+                             :base-type         :type/PostgresEnum
+                             :database-position 1
+                             :database-required true}
+                            {:name              "type"
+                             :database-type     "bird type"
+                             :base-type         :type/PostgresEnum
+                             :database-position 2
+                             :database-required true}}}
+                 (driver/describe-table :postgres db {:name "birds"}))))
 
-       (testing "check that when syncing the DB the enum types get recorded appropriately"
-         (let [table-id (db/select-one-id Table :db_id (u/the-id db), :name "birds")]
-           (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
-                    {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
-                    {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
-                  (set (map (partial into {})
-                            (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
+        (testing "check that when syncing the DB the enum types get recorded appropriately"
+          (let [table-id (db/select-one-id Table :db_id (u/the-id db), :name "birds")]
+            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
+                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
+                     {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
+                   (set (map (partial into {})
+                             (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
-       (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-         (let [table-id           (db/select-one-id Table :db_id (u/the-id db), :name "birds")
-               bird-type-field-id (db/select-one-id Field :table_id table-id, :name "type")]
-           (is (= {:rows        [["Rasta" "good bird" "toucan"]]
-                   :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
-                                              " \"public\".\"birds\".\"status\" AS \"status\","
-                                              " \"public\".\"birds\".\"type\" AS \"type\" "
-                                              "FROM \"public\".\"birds\" "
-                                              "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
-                                              "LIMIT 10")
-                                 :params nil}}
-                  (-> (qp/process-query
-                       {:database (u/the-id db)
-                        :type     :query
-                        :query    {:source-table table-id
-                                   :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
-                                   :limit        10}})
-                      :data
-                      (select-keys [:rows :native_form]))))))))))
+        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
+          (let [table-id           (db/select-one-id Table :db_id (u/the-id db), :name "birds")
+                bird-type-field-id (db/select-one-id Field :table_id table-id, :name "type")]
+            (is (= {:rows        [["Rasta" "good bird" "toucan"]]
+                    :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
+                                               " \"public\".\"birds\".\"status\" AS \"status\","
+                                               " \"public\".\"birds\".\"type\" AS \"type\" "
+                                               "FROM \"public\".\"birds\" "
+                                               "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
+                                               "LIMIT 10")
+                                  :params nil}}
+                   (-> (qp/process-query
+                        {:database (u/the-id db)
+                         :type     :query
+                         :query    {:source-table table-id
+                                    :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
+                                    :limit        10}})
+                       :data
+                       (select-keys [:rows :native_form]))))))))))
 
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
@@ -907,7 +913,10 @@
           :native   {:query "SELECT adsasdasd;"}})
         (catch Throwable e
           (is (= "ERROR: column \"adsasdasd\" does not exist\n  Position: 20"
-                 (.. e getCause getMessage))))))))
+                 (try
+                   (.. e getCause getMessage)
+                   (catch Throwable e
+                     e)))))))))
 
 (deftest pgobject-test
   (mt/test-driver :postgres

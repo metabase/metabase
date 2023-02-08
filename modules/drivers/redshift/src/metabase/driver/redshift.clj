@@ -222,8 +222,22 @@
 (defmethod sql.qp/datetime-diff [:redshift :month]
   [_driver _unit x y]
   (h2x/+ (datediff :month x y)
-        ;; redshift's datediff counts month boundaries not whole months, so we need to adjust
-        ))
+         ;; redshift's datediff counts month boundaries not whole months, so we need to adjust
+         [:case
+          ;; if x<y but x>y in the month calendar then subtract one month
+          [:and
+           [:< x y]
+           [:> (extract :day x) (extract :day y)]]
+          [:inline -1]
+
+          ;; if x>y but x<y in the month calendar then add one month
+          [:and
+           [:> x y]
+           [:< (extract :day x) (extract :day y)]]
+          [:inline 1]
+
+          :else
+          [:inline 0]]))
 
 (defmethod sql.qp/datetime-diff [:redshift :week]
   [_driver _unit x y]

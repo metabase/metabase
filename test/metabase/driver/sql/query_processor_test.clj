@@ -12,12 +12,12 @@
    [metabase.models.setting :as setting]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util.honeysql-extensions :as hx]
    [schema.core :as s]
-   [metabase.query-processor.store :as qp.store]
    [toucan2.core :as t2]))
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)

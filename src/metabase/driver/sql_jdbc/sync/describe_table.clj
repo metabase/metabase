@@ -399,8 +399,8 @@
         #{}
         (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
               table-identifier (apply hx/identifier :table table-identifier-info)
-              sql-args         (sql.qp/format-honeysql driver {:select json-field-names
-                                                               :from   [table-identifier]
+              sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
+                                                               :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
                                                                :limit  metadata-queries/nested-field-sample-limit})
               query            (jdbc/reducible-query spec sql-args {:identifiers identity})
               field-types      (transduce describe-json-xform describe-json-rf query)
