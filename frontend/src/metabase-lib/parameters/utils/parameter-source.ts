@@ -76,16 +76,7 @@ export const canListParameterValues = (parameter: Parameter) => {
   const fields = getFields(parameter);
   const canListFields = canListFieldValues(fields);
 
-  return queryType === "list" && (sourceType != null || canListFields);
-};
-
-export const canListFieldValues = (fields: Field[]) => {
-  const hasFields = fields.length > 0;
-  const hasFieldValues = fields
-    .filter(field => !field.isVirtual())
-    .every(field => field.has_field_values === "list");
-
-  return hasFields && hasFieldValues;
+  return sourceType ? queryType === "list" : canListFields;
 };
 
 export const canSearchParameterValues = (
@@ -97,7 +88,16 @@ export const canSearchParameterValues = (
   const fields = getFields(parameter);
   const canSearchFields = canSearchFieldValues(fields, disablePKRemapping);
 
-  return queryType !== "none" && (sourceType != null || canSearchFields);
+  return sourceType ? queryType === "search" : canSearchFields;
+};
+
+export const canListFieldValues = (fields: Field[]) => {
+  const hasFields = fields.length > 0;
+  const hasFieldValues = fields
+    .filter(field => !field.isVirtual())
+    .every(field => field.has_field_values === "list");
+
+  return hasFields && hasFieldValues;
 };
 
 export const canSearchFieldValues = (
