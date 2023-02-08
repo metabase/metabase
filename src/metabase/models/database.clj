@@ -14,6 +14,7 @@
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -263,7 +264,13 @@
  (fn [db json-generator]
    (encode-map
     (if (not (mi/can-write? db))
-      (dissoc db :details :settings)
+      (-> db
+          (dissoc :details)
+          (update :settings (fn [settings]
+                              (into {}
+                                    (filter (fn [[setting-name _v]]
+                                              (setting/can-read-setting? setting-name (setting/current-user-visibilities))))
+                                    settings))))
       (update db :details (fn [details]
                             (reduce
                              #(m/update-existing %1 %2 (constantly protected-password))

@@ -198,7 +198,7 @@
                             (setting/admin-writable-settings)))))
             (testing "Env var value SHOULD come back with [[setting/user-readable-values-map]] -- should be READABLE."
               (is (= expected-value
-                     (get (setting/user-readable-values-map :public) :custom-geojson))))))))))
+                     (get (setting/user-readable-values-map #{:public}) :custom-geojson))))))))))
 
 (deftest disable-custom-geojson-test
   (testing "Should be able to disable GeoJSON proxying endpoints by env var"

@@ -282,14 +282,7 @@
 (api/defendpoint-schema GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
-  (merge
-   (setting/user-readable-values-map :public)
-   (when @api/*current-user*
-     (setting/user-readable-values-map :authenticated))
-   (when (setting/has-advanced-setting-access?)
-     (setting/user-readable-values-map :settings-manager))
-   (when api/*is-superuser?*
-     (setting/user-readable-values-map :admin))))
+  (setting/user-readable-values-map (setting/current-user-visibilities)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/google_auth"

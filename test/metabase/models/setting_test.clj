@@ -581,6 +581,63 @@
            (toucan-name)))))
 
 
+;;; ------------------------------------------------- Visibility Settings ------------------------------------------------
+
+(defsetting ^:private test-internal-setting
+  "test Setting"
+  :visibility :internal)
+
+(defsetting ^:private test-public-setting
+  (deferred-tru "test Setting")
+  :visibility :public)
+
+(defsetting ^:private test-authenticated-setting
+  (deferred-tru "test Setting")
+  :visibility :authenticated)
+
+(defsetting ^:private test-settings-manager-setting
+  (deferred-tru "test Setting")
+  :visibility :settings-manager)
+
+(defsetting ^:private test-admin-setting
+  (deferred-tru "test Setting")
+  :visibility :admin)
+
+(deftest can-read-setting-test
+  (testing "no authenticated user"
+    (mt/with-current-user nil
+      (doseq [[setting expected] {:test-public-setting           true
+                                  :test-authenticated-setting    false
+                                  :test-settings-manager-setting false
+                                  :test-admin-setting            false}]
+        (testing setting
+          (is (= expected (setting/can-read-setting? setting (setting/current-user-visibilities))))))))
+  (testing "authenticated non-admin user"
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [[setting expected] {:test-public-setting           true
+                                  :test-authenticated-setting    true
+                                  :test-settings-manager-setting false
+                                  :test-admin-setting            false}]
+        (testing setting
+          (is (= expected (setting/can-read-setting? setting (setting/current-user-visibilities))))))))
+  (testing "non-admin user with advanced setting access"
+    (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [[setting expected] {:test-public-setting           true
+                                    :test-authenticated-setting    true
+                                    :test-settings-manager-setting true
+                                    :test-admin-setting            false}]
+          (testing setting
+            (is (= expected (setting/can-read-setting? setting (setting/current-user-visibilities)))))))))
+  (testing "admin user"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [[setting expected] {:test-public-setting           true
+                                  :test-authenticated-setting    true
+                                  :test-settings-manager-setting true
+                                  :test-admin-setting            true}]
+        (testing setting
+          (is (= expected (setting/can-read-setting? setting (setting/current-user-visibilities)))))))))
+
 ;;; ------------------------------------------------- DB-local Settings ------------------------------------------------
 
 (defsetting ^:private test-database-local-only-setting
@@ -713,7 +770,7 @@
 
                        `setting/user-readable-values-map
                        (fn [k]
-                         (get (setting/user-readable-values-map :authenticated) k ::not-present))}]
+                         (get (setting/user-readable-values-map #{:authenticated}) k ::not-present))}]
     (testing fn-name
       (testing "should return Database-local-allowed Settings (site-wide-value only)"
         (mt/with-temporary-setting-values [test-database-local-allowed-setting 2]
