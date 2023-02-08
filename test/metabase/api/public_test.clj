@@ -791,6 +791,10 @@
             (testing "Check that we cannot fetch a public Action if public sharing is disabled"
               (mt/with-temporary-setting-values [enable-public-sharing false]
                 (is (= "An error occurred."
+                       (client/client :get 400 (str "public/action/" (:public_uuid action-opts)))))))
+            (testing "Check that we cannot fetch a public Action if actions are disabled on the database"
+              (mt/with-actions-disabled
+                (is (= "An error occurred."
                        (client/client :get 400 (str "public/action/" (:public_uuid action-opts)))))))))))))
 
 

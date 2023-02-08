@@ -5,6 +5,7 @@
    [clojure.core.async :as a]
    [compojure.core :refer [GET]]
    [medley.core :as m]
+   [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
@@ -320,10 +321,13 @@
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (-> (action/actions-with-implicit-params nil :public_uuid uuid)
-      first
-      api/check-404
-      (select-keys action-public-keys)))
+  (let [action      (-> (action/actions-with-implicit-params nil :public_uuid uuid)
+                        first
+                        api/check-404)
+        database_id (db/select-one-field :database_id Card :id (:model_id action))
+        database    (db/select-one 'Database :id database_id)]
+    (actions/check-actions-enabled! database)
+    (select-keys action action-public-keys)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
