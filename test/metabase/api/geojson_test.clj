@@ -171,7 +171,7 @@
 
 (deftest set-custom-geojson-from-env-var-test
   (testing "Should be able to set the `custom-geojson` Setting via env var (#18862)"
-    (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-current-user (mt/user->id :crowberto) ;; need admin permissions to get admin-writable settings
       (let [custom-geojson {:custom_states
                             {:name        "Custom States"
                              :url         "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/us-states.json"

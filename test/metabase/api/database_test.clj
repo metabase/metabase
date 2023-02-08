@@ -344,7 +344,7 @@
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (mt/object-defaults Database) :details :settings)
+    (is (= (merge (dissoc (mt/object-defaults Database) :details)
                   (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status :dbms_version])
                   {:engine        "h2"
                    :name          "test-data"
@@ -519,7 +519,7 @@
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> (into #{:features :native_permissions} (keys (db/select-one Database :id (mt/id))))
-                                (disj :details :settings))]
+                                (disj :details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
