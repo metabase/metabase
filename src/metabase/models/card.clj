@@ -274,7 +274,12 @@
   pre-update-check-sandbox-constraints
   (atom identity))
 
-(defn- update-parameter-on-card-result-metadata-changes
+(defn- update-parameter-use-card-as-sources
+  "Update the config of parameter on any Dashboard/Card use this `card` as values source .
+
+  Remove parameter.values_source_type and set parameter.values_source_type to nil ( the default type ) when:
+  - card is archived
+  - card.result_metadata changes"
   [{id :id, :as changes}]
   (let [parameter-cards   (db/select ParameterCard :card_id id)
         deleted-param-ids (atom #{})]
@@ -283,9 +288,11 @@
       (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
             {:keys [parameters]}   (db/select-one [model :parameters] :id po-id)
             affected-param-ids-set (cond
+                                     ;; update all parameter that use this card as source
                                      (:archived changes)
                                      (set (map :parameter_id param-cards))
 
+                                     ;; update only parameter that has value_field no longer in this card
                                      (:result_metadata changes)
                                      (let [param-id->parameter (m/index-by :id parameters)]
                                        (->> (for [param-card param-cards]
@@ -349,7 +356,7 @@
       (collection/check-collection-namespace Card (:collection_id changes))
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
-      (update-parameter-on-card-result-metadata-changes changes)
+      (update-parameter-use-card-as-sources changes)
       (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)

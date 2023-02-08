@@ -118,6 +118,7 @@
     [type id-or-name (select-keys options field-options-for-identification)]))
 
 (defn field->field-info
+  "Given a field and result_metadata, return a map of information about the field if result_metadata contains a matched field. "
   [field result-metadata]
   (let [[_ttype id-or-name options :as field] (field-normalizer field)]
     (or
