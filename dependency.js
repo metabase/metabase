@@ -5,11 +5,13 @@ const _ = require("underscore");
 const tree = dependencyTree({
   filename: "./frontend/src/metabase/static-viz/index.js",
   directory: "./frontend/src",
-  webpackConfig: "./webpack.config.js", // optional
+  webpackConfig: "./webpack.static-viz.config.js", // optional
   filter: path => path.indexOf("node_modules") === -1, // optional
   nonExistent: [], // optional
   isListForm: true,
 });
+
+//console.log(tree);
 
 (async () => {
   const { committedFiles, unCommittedFiles } = await gitChangedFiles();

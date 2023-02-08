@@ -7,7 +7,7 @@ const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache",
 };
 
-module.exports = env => {
+module.exports = (env = {}) => {
   const shouldDisableMinimization = env.WEBPACK_WATCH === true;
 
   return {
