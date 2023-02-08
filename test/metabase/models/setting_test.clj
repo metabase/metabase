@@ -971,7 +971,7 @@
       (try
         (walk/macroexpand-all
          `(defsetting ~'test-asdf-asdf-asdf
-            "test Setting"))
+            "untranslated description"))
         (catch Exception e
           (is (re-matches #"defsetting docstrings must be a \*deferred\* i18n form.*"
-                        (:cause (Throwable->map e)))))))))
+                          (:cause (Throwable->map e)))))))))
