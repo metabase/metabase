@@ -20,7 +20,6 @@ describe("ChartSettingsSidebar", () => {
     );
 
     // see options header with sections
-    expect(screen.getByText("Gauge options")).toBeInTheDocument();
     expect(screen.getByText("Formatting")).toBeInTheDocument();
     expect(screen.getByText("Display")).toBeInTheDocument();
 
@@ -31,7 +30,6 @@ describe("ChartSettingsSidebar", () => {
     expect(screen.getByText("Style")).toBeInTheDocument();
 
     // but the sections and back title are unchanged
-    expect(screen.getByText("Gauge options")).toBeInTheDocument();
     expect(screen.getByText("Formatting")).toBeInTheDocument();
     expect(screen.getByText("Display")).toBeInTheDocument();
   });
@@ -45,7 +43,6 @@ describe("ChartSettingsSidebar", () => {
     );
 
     // see header with formatting fields
-    expect(screen.getByText("Number options")).toBeInTheDocument();
     expect(screen.getByText("Style")).toBeInTheDocument();
   });
 });

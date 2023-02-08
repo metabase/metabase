@@ -416,7 +416,7 @@ class ChartSettings extends Component {
       ) &&
       !currentWidget;
 
-    const showDisplayTypeWidget = !currentWidget;
+    const showDisplayTypeWidget = !currentWidget && !!question;
 
     // default layout with visualization
     return (
