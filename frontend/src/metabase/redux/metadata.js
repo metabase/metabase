@@ -93,7 +93,7 @@ export const fetchField = createThunkAction(
       if (field?.dimensions?.[0]?.human_readable_field_id != null) {
         await dispatch(
           Fields.actions.fetch(
-            { id: field.dimensions[0].human_readable_field_id },
+            { id: field.dimensions?.[0]?.human_readable_field_id },
             { reload },
           ),
         );
