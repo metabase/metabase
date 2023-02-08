@@ -52,6 +52,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
     - run: yarn run lint-eslint
       name: Run ESLint linter
 
@@ -62,6 +66,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
     - run: yarn build-quick:cljs
       name: Compile CLJS
     - run: yarn type-check
@@ -75,6 +83,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
     - run: yarn run test-unit --coverage --silent
       name: Run frontend unit tests
     - name: Upload coverage to codecov.io
@@ -91,6 +103,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
     - run: yarn run test-timezones
       name: Run frontend timezones tests
 
@@ -104,6 +120,10 @@ jobs:
           fetch-depth: 0
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'cljs'
       - name: Publish to Chromatic
         uses: chromaui/action@v1
         env:
