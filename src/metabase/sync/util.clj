@@ -4,7 +4,6 @@
   (:require
    [clojure.math.numeric-tower :as math]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -20,6 +19,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db])

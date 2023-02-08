@@ -8,6 +8,10 @@ export function filter({ mode } = {}) {
   initiateAction("Filter", mode);
 }
 
+export function join() {
+  initiateAction("Join", "notebook");
+}
+
 export function filterField(
   fieldName,
   { operator, value, placeholder, order } = {},
@@ -95,6 +99,10 @@ function getIcon(actionType) {
 
     case "Summarize":
       icon = "sum";
+      break;
+
+    case "Join":
+      icon = "join_left_outer";
       break;
 
     default:

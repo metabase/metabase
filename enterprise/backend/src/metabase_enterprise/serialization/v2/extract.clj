@@ -5,13 +5,13 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.models.collection :as collection]
    [metabase.models.serialization.base :as serdes.base]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 

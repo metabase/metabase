@@ -3,7 +3,6 @@
   multimethods for SQL JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.driver :as driver]
@@ -12,6 +11,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [metabase.util.ssh :as ssh]
    [schema.core :as s]

@@ -52,6 +52,11 @@ describe("DataPicker — picking questions", () => {
     expect(screen.getByText(/Nothing here/i)).toBeInTheDocument();
   });
 
+  it("doesn't show section when there are no saved questions", async () => {
+    await setup({ hasSavedQuestions: false });
+    expect(screen.queryByText(/Saved Questions/i)).not.toBeInTheDocument();
+  });
+
   it("respects initial value", async () => {
     await setup({
       initialValue: {

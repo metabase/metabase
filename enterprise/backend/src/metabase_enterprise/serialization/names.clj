@@ -2,7 +2,6 @@
   "Consistent instance-independent naming scheme that replaces IDs with human-readable paths."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
@@ -18,6 +17,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
    [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]

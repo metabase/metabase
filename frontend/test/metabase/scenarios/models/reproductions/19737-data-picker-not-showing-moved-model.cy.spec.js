@@ -1,4 +1,9 @@
-import { restore, modal, popover } from "__support__/e2e/helpers";
+import {
+  restore,
+  modal,
+  popover,
+  navigationSidebar,
+} from "__support__/e2e/helpers";
 
 const modelName = "Orders Model";
 
@@ -51,7 +56,7 @@ describe("issue 19737", () => {
     cy.go("back");
 
     // move "Orders Model" from a custom collection ("First collection") to another collection
-    cy.findByText("First collection").click();
+    navigationSidebar().findByText("First collection").click();
 
     moveModel(modelName, "My personal collection");
 

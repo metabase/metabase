@@ -2,7 +2,6 @@
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.tools.reader.edn :as edn]
    [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
@@ -20,6 +19,7 @@
    [metabase.test.initialize :as initialize]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [toucan.db :as db]))
 

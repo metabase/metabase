@@ -753,7 +753,7 @@
   (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
     (mt/with-temp PermissionsGroup [group]
       ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
-      (mt/with-current-user 1
+      (mt/with-current-user (mt/user->id :rasta)
         (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
                                                    :revision (:revision (perms/data-perms-graph))})))
         (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
@@ -925,8 +925,8 @@
                                   w w w w w w w;
                                       w   w;
                                       w   w
-                                    w w   w w;
-                                    ) ) ) ) ) )
+                                    w w   w w))))));
+
 
 (deftest data-permissions-v2-migration-move-test
   (testing "move admin"

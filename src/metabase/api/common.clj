@@ -1,11 +1,10 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
+   [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :as compojure]
-   [honeysql.types :as htypes]
    [medley.core :as m]
    [metabase.api.common.internal
     :refer [add-route-param-regexes
@@ -16,9 +15,11 @@
             route-fn-name
             validate-params
             wrap-response-if-needed]]
+   [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as schema]
    [toucan.db :as db]))
@@ -261,16 +262,50 @@
                                   (ns-name *ns*) fn-name)))
       (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
 
+(defn validate-param-values
+  "Log a warning if the request body contains any parameters not included in `expected-params` (which is presumably
+  populated by the defendpoint schema)"
+  [{route :compojure/route body :body} expected-params]
+  (when (and (not config/is-prod?)
+             (map? body))
+    (let [extraneous-params (set/difference (set (keys body))
+                                            (set expected-params))]
+      (when (seq extraneous-params)
+        (log/warnf "Unexpected parameters at %s: %s\nPlease add them to the schema or remove them from the API client"
+                   route (vec extraneous-params))))))
+
+
+(defn method-symbol->keyword
+  "Convert Compojure-style HTTP method symbols (PUT, POST, etc.) to the keywords used internally by
+  Compojure (:put, :post, ...)"
+  [method-symbol]
+  (-> method-symbol
+      name
+      u/lower-case-en
+      keyword))
+
 (defmacro defendpoint*
   "Impl macro for [[defendpoint]]; don't use this directly."
-  [{:keys [method route fn-name docstr args body]}]
+  [{:keys [method route fn-name docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
-  `(def ~(vary-meta fn-name
-                    assoc
-                    :doc          docstr
-                    :is-endpoint? true)
-     (~(symbol "compojure.core" (name method)) ~route ~args
-      ~@body)))
+  (let [method-kw      (method-symbol->keyword method)
+        allowed-params (keys arg->schema)
+        prep-route     #'compojure/prepare-route]
+    `(def ~(vary-meta fn-name
+                      assoc
+                      :doc          docstr
+                      :is-endpoint? true)
+       ;; The next form is a copy of `compojure/compile-route`, with the sole addition of the call to
+       ;; `validate-param-values`. This is because to validate the request body we need to intercept the request
+       ;; before the destructuring takes place. I.e., we need to validate the value of `(:body request#)`, and that's
+       ;; not available if we called `compile-route` ourselves.
+       (compojure/make-route
+        ~method-kw
+        ~(prep-route route)
+        (fn [request#]
+          (validate-param-values request# (quote ~allowed-params))
+          (compojure/let-request [~args request#]
+            ~@body))))))
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`
@@ -503,7 +538,7 @@
                      (doseq [model '[Card Dashboard Pulse]]
                        (db/update-where! model {:collection_id       collection-id
                                                 :collection_position position-update-clause}
-                         :collection_position (htypes/call plus-or-minus :collection_position 1))))]
+                         :collection_position [plus-or-minus :collection_position 1])))]
     (when (not= new-position old-position)
       (cond
         (and (nil? new-position)

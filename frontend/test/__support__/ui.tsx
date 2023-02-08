@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import type { ByRoleMatcher } from "@testing-library/react";
 import { merge } from "icepick";
 import _ from "underscore";
 import { createMemoryHistory, History } from "history";
@@ -154,12 +155,12 @@ function MaybeDNDProvider({
   );
 }
 
-export function getIcon(name: string) {
-  return screen.getByLabelText(`${name} icon`);
+export function getIcon(name: string, role: ByRoleMatcher = "img") {
+  return screen.getByRole(role, { name: `${name} icon` });
 }
 
-export function queryIcon(name: string) {
-  return screen.queryByLabelText(`${name} icon`);
+export function queryIcon(name: string, role: ByRoleMatcher = "img") {
+  return screen.queryByRole(role, { name: `${name} icon` });
 }
 
 export * from "@testing-library/react";

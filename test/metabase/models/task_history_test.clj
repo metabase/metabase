@@ -73,14 +73,18 @@
         (is (= #{task-1 task-2}
                (set (map :task (db/select TaskHistory)))))))))
 
-(defn- insert-then-pop!
-  "Insert a task history and get the last snowplow event."
-  [task]
-  (db/insert! TaskHistory task)
+(defn- last-snowplow-event
+  []
   (-> (snowplow-test/pop-event-data-and-user-id!)
       last
       mt/boolean-ids-and-timestamps
       (update-in [:data "task_details"] json/parse-string)))
+
+(defn- insert-then-pop!
+  "Insert a task history then returns the last snowplow event."
+  [task]
+  (db/insert! TaskHistory task)
+  (last-snowplow-event))
 
 (deftest snowplow-tracking-test
   (snowplow-test/with-fake-snowplow-collector
@@ -136,3 +140,56 @@
           (let [event (:data (first (snowplow-test/pop-event-data-and-user-id!)))]
             (is (snowplow-test/valid-datetime-for-snowplow? (get event "started_at")))
             (is (snowplow-test/valid-datetime-for-snowplow? (get event "ended_at")))))))))
+
+(deftest ensure-no-stacktrace-send-to-snowplow
+  ;; The snowplow schema for task history has a limit of 2048 chars for task_details.
+  ;; Most of the time the task_details < 200 chars, but when an exception happens it could exceed the limit.
+  ;; And the stack trace is the longest part of the exception, so we need to make sure no stacktrace
+  ;; is serialized before sending it to snowplow (#28006)
+  (snowplow-test/with-fake-snowplow-collector
+    (testing "Filter out exceptions's stacktrace when send to snowplow"
+      (testing "when using `with-task-history`"
+        ;; register a task history with exception
+        (u/ignore-exceptions
+          (task-history/with-task-history {:task "test-exception"}
+            (throw (ex-info "Oops" {:oops true}))))
+
+        (is (= {"ex-data"       {"oops" true}
+                "exception"     "class clojure.lang.ExceptionInfo"
+                "message"       "Oops"
+                "original-info" nil
+                "status"        "failed"}
+               (get-in (last-snowplow-event) [:data "task_details"]))))
+
+      (testing "when task_details is an exception from sync task"
+        (is (= {"throwable" {"cause" "Oops", "data" {"oops" true}}}
+               (-> (assoc (make-10-millis-task (t/local-date-time))
+                          :task         "a fake task"
+                          ;; sync task include the exception as {:throwable e}
+                          :task_details  {:throwable (ex-info "Oops" {:oops true})})
+                   insert-then-pop!
+                   (get-in [:data "task_details"])))))
+
+      (testing "when task_details is an exception"
+        (is (= {"cause" "Oops", "data" {"oops" true}}
+               (-> (assoc (make-10-millis-task (t/local-date-time))
+                          :task         "a fake task"
+                          ;; sync task include the exception as {:throwable e}
+                          :task_details  (ex-info "Oops" {:oops true}))
+                   insert-then-pop!
+                   (get-in [:data "task_details"]))))))
+
+    (testing "if task_details is more than 2048 chars, ignore it but still send the infos"
+      (let [task-details {:a (apply str (repeat 2048 "a"))}]
+        (is (= {"duration"     10
+                "ended_at"     true
+                "started_at"   true
+                "event"        "new_task_history"
+                "task_details" nil
+                "task_id"      true
+                "task_name"   "a fake task"}
+               (-> (assoc (make-10-millis-task (t/local-date-time))
+                          :task         "a fake task"
+                          :task_details task-details)
+                   insert-then-pop!
+                   (get-in [:data]))))))))

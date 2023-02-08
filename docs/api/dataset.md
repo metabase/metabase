@@ -48,6 +48,28 @@ Fetch a native version of an MBQL query.
 
 *  **`query`**
 
+## `POST /api/dataset/parameter/search/:query`
+
+Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`.
+
+### PARAMS:
+
+*  **`query`** string
+
+*  **`parameter`** map where {:id -> <string with length <= 1>, :type -> <keyword, or string with length <= 1>, :values_source_type (optional) -> <enum of static-list, card, >, :values_source_config (optional) -> <map where {:values (optional) -> <zero or more anything>, :card_id (optional) -> <integer greater than or equal to 1>, :value_field (optional) -> <function>, :label_field (optional) -> <function>}>, :slug (optional) -> <string>, :name (optional) -> <string>, :default (optional) -> <anything>, :sectionId (optional) -> <string with length <= 1>}
+
+*  **`field_ids`** nullable sequence of integer greater than or equal to 1
+
+## `POST /api/dataset/parameter/values`
+
+Return parameter values for cards or dashboards that are being edited.
+
+### PARAMS:
+
+*  **`parameter`** map where {:id -> <string with length <= 1>, :type -> <keyword, or string with length <= 1>, :values_source_type (optional) -> <enum of static-list, card, >, :values_source_config (optional) -> <map where {:values (optional) -> <zero or more anything>, :card_id (optional) -> <integer greater than or equal to 1>, :value_field (optional) -> <function>, :label_field (optional) -> <function>}>, :slug (optional) -> <string>, :name (optional) -> <string>, :default (optional) -> <anything>, :sectionId (optional) -> <string with length <= 1>}
+
+*  **`field_ids`** nullable sequence of integer greater than or equal to 1
+
 ## `POST /api/dataset/pivot`
 
 Generate a pivoted dataset for an ad-hoc query.
