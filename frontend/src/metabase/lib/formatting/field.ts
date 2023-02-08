@@ -5,5 +5,5 @@ export function formatField(field: Field) {
     return "";
   }
 
-  return field.dimensions?.name || field.display_name || field.name;
+  return field.dimensions?.[0]?.name || field.display_name || field.name;
 }

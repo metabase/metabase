@@ -12,7 +12,8 @@
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel QueryAction :query_action)
 (models/defmodel HTTPAction :http_action)
@@ -84,7 +85,7 @@
   (db/transaction
     (let [action (db/insert! Action (select-keys action-data action-columns))
           model  (type->model (:type action))]
-      (db/execute! {:insert-into model
+      (db/execute! {:insert-into (t2/table-name model)
                     :values [(-> (apply dissoc action-data action-columns)
                                  (u/update-if-exists :template json/encode)
                                  (u/update-if-exists :dataset_query json/encode)

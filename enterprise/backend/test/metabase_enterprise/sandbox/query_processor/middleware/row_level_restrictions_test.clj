@@ -72,8 +72,9 @@
                    ;; have one.) HACK
                    (= driver/*driver* :sparksql)
                    (update :from (fn [[table]]
-                                   [[table (sql.qp/->honeysql :sparksql
-                                             (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
+                                   [[table (sql.qp/->honeysql
+                                            :sparksql
+                                            (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
     (first (hsql/format honeysql, :quoting (sql.qp/quote-style driver/*driver*), :allow-dashed-names? true))))
 
 (defn- venues-category-native-gtap-def []

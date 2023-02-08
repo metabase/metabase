@@ -2,7 +2,6 @@
   (:gen-class)
   (:require [clojure.java.io :as io]))
 
-
 ;; athena includes `log4j2.properties` which is the first location checked for config. This takes precedence over our
 ;; own log4j2.xml and dynamically reloads and kills useful logging. Should we move our log4j2.xml into
 ;; metabase/metabase/log4j2.xml and refer to it that way so presumably no jar could add another log4j2.xml that we

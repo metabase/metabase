@@ -68,9 +68,10 @@
     ;; ...but if we do, return the Field <3
     field))
 
-(defn- clear-dimension-on-fk-change! [{{dimension-id :id dimension-type :type} :dimensions :as _field}]
-  (when (and dimension-id (= :external dimension-type))
-    (db/delete! Dimension :id dimension-id))
+(defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
+  (doseq [{dimension-id :id, dimension-type :type} dimensions]
+    (when (and dimension-id (= :external dimension-type))
+      (db/delete! Dimension :id dimension-id)))
   true)
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
@@ -89,11 +90,12 @@
 (defn- clear-dimension-on-type-change!
   "Removes a related dimension if the field is moving to a type that
   does not support remapping"
-  [{{old-dim-id :id, old-dim-type :type} :dimensions, :as _old-field} base-type new-semantic-type]
-  (when (and old-dim-id
-             (= :internal old-dim-type)
-             (not (internal-remapping-allowed? base-type new-semantic-type)))
-    (db/delete! Dimension :id old-dim-id))
+  [{:keys [dimensions], :as _old-field} base-type new-semantic-type]
+  (doseq [{old-dim-id :id, old-dim-type :type} dimensions]
+    (when (and old-dim-id
+               (= :internal old-dim-type)
+               (not (internal-remapping-allowed? base-type new-semantic-type)))
+      (db/delete! Dimension :id old-dim-id)))
   true)
 
 #_{:clj-kondo/ignore [:deprecated-var]}
