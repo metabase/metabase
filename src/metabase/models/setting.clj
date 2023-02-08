@@ -1083,6 +1083,26 @@
                        (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
 
+(defn current-user-readable-visibilities
+  "Returns a set of setting visibilities that the current user has read access to."
+  []
+  (set (concat [:public]
+               (when @api/*current-user*
+                 [:authenticated])
+               (when (has-advanced-setting-access?)
+                 [:settings-manager])
+               (when api/*is-superuser?*
+                 [:admin]))))
+
+(defn current-user-writable-visibilities
+  "Returns a set of setting visibilities that the current user has write access to."
+  []
+  (set (concat []
+               (when (has-advanced-setting-access?)
+                 [:settings-manager :authenticated :public])
+               (when api/*is-superuser?*
+                 [:admin]))))
+
 (defn admin-writable-settings
   "Return a sequence of site-wide Settings maps in a format suitable for consumption by the frontend.
   (For security purposes, this doesn't return the value of a Setting if it was set via env var).
@@ -1097,16 +1117,15 @@
   are returned."
   [& {:as options}]
   ;; ignore Database-local values, but not User-local values
-  (binding [*database-local-values* nil]
-    (into
-     []
-     (comp (filter (fn [setting]
-                     (and (not= (:visibility setting) :internal)
-                          (or api/*is-superuser?*
-                              (not= (:visibility setting) :admin))
-                          (not= (:database-local setting) :only))))
-           (map #(m/mapply user-facing-info % options)))
-     (sort-by :name (vals @registered-settings)))))
+  (let [writable-visibilities (current-user-writable-visibilities)]
+    (binding [*database-local-values* nil]
+      (into
+       []
+       (comp (filter (fn [setting]
+                       (and (contains? writable-visibilities (:visibility setting))
+                            (not= (:database-local setting) :only))))
+             (map #(m/mapply user-facing-info % options)))
+       (sort-by :name (vals @registered-settings))))))
 
 (defn admin-writable-site-wide-settings
   "Returns a sequence of site-wide Settings maps, similar to [[admin-writable-settings]]. However, this function
@@ -1128,17 +1147,6 @@
            (map #(m/mapply user-facing-info % options)))
      (sort-by :name (vals @registered-settings)))))
 
-(defn current-user-visibilities
-  "Returns a set of setting visibilities that the current user has read access to."
-  []
-  (set (concat [:public]
-               (when @api/*current-user*
-                 [:authenticated])
-               (when (has-advanced-setting-access?)
-                 [:settings-manager])
-               (when api/*is-superuser?*
-                 [:admin]))))
-
 (defn can-read-setting?
   "Returns true if the current user can read the setting, and false otherwise.
    `visibilities` is a set of visibilities that the current user has access to."
@@ -1146,6 +1154,7 @@
   (let [setting (resolve-setting setting)]
     (boolean (and (not (:sensitive? setting))
                   (contains? allowed-visibilities (:visibility setting))))))
+
 
 (defn user-readable-values-map
   "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.

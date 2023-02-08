@@ -611,7 +611,7 @@
                                   :test-settings-manager-setting false
                                   :test-admin-setting            false}]
         (testing setting
-          (is (= expected (setting/can-read-setting? setting (setting/current-user-visibilities))))))))
+          (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities))))))))
   (testing "authenticated non-admin user"
     (mt/with-current-user (mt/user->id :rasta)
       (doseq [[setting expected] {:test-public-setting           true
@@ -619,7 +619,7 @@
                                   :test-settings-manager-setting false
                                   :test-admin-setting            false}]
         (testing setting
-          (is (= expected (setting/can-read-setting? setting (setting/current-user-visibilities))))))))
+          (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities))))))))
   (testing "non-admin user with advanced setting access"
     (with-redefs [setting/has-advanced-setting-access? (constantly true)]
       (mt/with-current-user (mt/user->id :rasta)
@@ -628,7 +628,7 @@
                                     :test-settings-manager-setting true
                                     :test-admin-setting            false}]
           (testing setting
-            (is (= expected (setting/can-read-setting? setting (setting/current-user-visibilities)))))))))
+            (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities)))))))))
   (testing "admin user"
     (mt/with-current-user (mt/user->id :crowberto)
       (doseq [[setting expected] {:test-public-setting           true
@@ -636,7 +636,7 @@
                                   :test-settings-manager-setting true
                                   :test-admin-setting            true}]
         (testing setting
-          (is (= expected (setting/can-read-setting? setting (setting/current-user-visibilities)))))))))
+          (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities)))))))))
 
 ;;; ------------------------------------------------- DB-local Settings ------------------------------------------------
 

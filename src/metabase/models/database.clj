@@ -269,7 +269,7 @@
           (update :settings (fn [settings]
                               (into {}
                                     (filter (fn [[setting-name _v]]
-                                              (setting/can-read-setting? setting-name (setting/current-user-visibilities))))
+                                              (setting/can-read-setting? setting-name (setting/current-user-readable-visibilities))))
                                     settings))))
       (update db :details (fn [details]
                             (reduce
