@@ -87,9 +87,9 @@
                   :breakout     [value-field]
                   :limit        *max-rows*}
                  {:filter [:and
-                           [(if-not (isa? value-base-type :type/Text)
-                              :not-null
-                              :not-empty)
+                           [(if (isa? value-base-type :type/Text)
+                              :not-empty
+                              :not-null)
                             value-field]
                            (when query
                              (if-not (isa? value-base-type :type/Text)
@@ -132,16 +132,11 @@
         card    (db/select-one Card :id card-id)]
     (values-from-card card (:value_field config) query)))
 
-(defn- check-can-get-card-values?
+(defn- can-get-card-values?
   [card value-field]
-  (cond
-    (:archived card)
-    false
-
-    (not (field->field-info value-field (:result_metadata card)))
-    false
-
-    :else true))
+  (boolean
+    (and (not (:archived card))
+         (some? (field->field-info value-field (:result_metadata card))))))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
@@ -149,15 +144,15 @@
   "Given a parameter with a custom-values source, return the values.
 
   `default-case-fn` is a 0-arity function that returns values list when:
-  - :values_source_type = card but the card is archived or value-field does not exists inside the card.
-  - valeus_source_type = ni."
+  - :values_source_type = card but the card is archived or the card no longer contains the value-field.
+  - :values_source_type = nil."
   [parameter query default-case-fn]
   (case (:values_source_type parameter)
     "static-list" (static-list-values parameter query)
     "card"        (let [card (db/select-one Card :id (get-in parameter [:values_source_config :card_id]))]
                     (when-not (mi/can-read? card)
                       (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
-                    (if (check-can-get-card-values? card (get-in parameter [:values_source_config :value_field]))
+                    (if (can-get-card-values? card (get-in parameter [:values_source_config :value_field]))
                       (card-values parameter query)
                       (default-case-fn)))
     nil           (default-case-fn)
