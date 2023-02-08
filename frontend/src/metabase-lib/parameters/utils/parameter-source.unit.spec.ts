@@ -7,7 +7,7 @@ import {
 } from "./parameter-source";
 
 describe("canListParameterValues", () => {
-  it("should not list when is is disabled", () => {
+  it("should not list when it is disabled", () => {
     const parameter = createMockUiParameter({
       fields: [
         new Field(
