@@ -1372,8 +1372,8 @@
                      (:details d)
                      (select-keys d [:password-source :password-value]))))))))
 
-;; these are tagged i18n because the `defsetting` macro complains if they're not, but since these are in tests they
-;; won't get scraped for i18n purposes so it's ok.
+;; these descriptions use deferred-tru because the `defsetting` macro complains if they're not, but since these are in
+;; tests they won't get scraped for i18n purposes so it's ok.
 (defsetting test-db-local-setting-public
   (deferred-tru "Test Database-local Setting with internal visibility.")
   :database-local :only
@@ -1393,7 +1393,7 @@
   :type :integer)
 
 (defsetting test-db-local-setting-internal
-  (deferred-tru "Test Database-local Setting with internal visibility.")
+  "Test Database-local Setting with internal visibility."
   :database-local :only
   :visibility :internal
   :type :integer)
