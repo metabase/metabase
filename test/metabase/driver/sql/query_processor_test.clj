@@ -16,7 +16,9 @@
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util.honeysql-extensions :as hx]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [metabase.query-processor.store :as qp.store]
+   [toucan2.core :as t2]))
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
@@ -216,27 +218,49 @@
 
 (defn- compile-join [driver]
   (driver/with-driver driver
-    (mt/with-everything-store
+    (qp.store/with-store
+      (qp.store/store-database! (t2/instance :metabase.models.database/Database
+                                             {:id       1
+                                              :name     "test-data"
+                                              :engine   driver
+                                              :details  {}
+                                              :settings {}}))
+      (qp.store/store-table!    (t2/instance :metabase.models.table/Table
+                                             {:id     1
+                                              :db_id  1
+                                              :schema "public"
+                                              :name   "checkins"}))
+      (qp.store/store-field!    (t2/instance :metabase.models.field/Field
+                                             {:id            1
+                                              :table_id      1
+                                              :name          "id"
+                                              :description   nil
+                                              :database_type "integer"
+                                              :semantic_type nil
+                                              :nfc_path      nil
+                                              :parent_id     nil
+                                              :display_name  "ID"
+                                              :fingerprint   nil
+                                              :base_type     :type/Integer}))
       (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
         (let [join (sql.qp/join->honeysql
                     driver
-                    (mt/$ids checkins
-                      {:source-query {:native "SELECT * FROM VENUES;", :params []}
-                       :alias        "card"
-                       :strategy     :left-join
-                       :condition    [:=
-                                      [:field %venue_id {::add/source-table $$checkins
-                                                         ::add/source-alias "VENUE_ID"}]
-                                      [:field "id" {:base-type         :type/Text
-                                                    ::add/source-table "card"
-                                                    ::add/source-alias "id"}]]}))]
+                    {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                     :alias        "card"
+                     :strategy     :left-join
+                     :condition    [:=
+                                    [:field 1 {::add/source-table 1
+                                               ::add/source-alias "VENUE_ID"}]
+                                    [:field "id" {:base-type         :type/Text
+                                                  ::add/source-table "card"
+                                                  ::add/source-alias "id"}]]})]
           (sql.qp/format-honeysql driver {:join join}))))))
 
 (deftest ^:parallel compile-honeysql-test
   (testing "make sure the generated HoneySQL will compile to the correct SQL"
     (are [driver expected] (= [expected]
                               (compile-join driver))
-      :h2       "INNER JOIN (SELECT * FROM VENUES) \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""
+      :h2       "INNER JOIN (SELECT * FROM VENUES) \"card\" ON \"public\".\"checkins\".\"VENUE_ID\" = \"card\".\"id\""
       :postgres "INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"public\".\"checkins\".\"VENUE_ID\" = \"card\".\"id\"")))
 
 (deftest adjust-start-of-week-test
