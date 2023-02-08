@@ -311,11 +311,9 @@
                                                  (string? arg) u.date/parse))
         timestamptz? (h2x/is-of-type? expr "timestamptz")
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
-        expr         (cond->> expr
-                       (not timestamptz?)
-                       [:timezone source-timezone]
-                       :always
-                       [:timezone target-timezone])]
+        expr         [:timezone target-timezone (if (not timestamptz?)
+                                                  [:timezone source-timezone expr]
+                                                  expr)]]
     (h2x/with-database-type-info expr "timestamp")))
 
 (defmethod sql.qp/->honeysql [:postgres :value]

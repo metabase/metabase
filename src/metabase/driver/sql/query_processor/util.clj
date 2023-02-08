@@ -13,6 +13,7 @@
 
   (metabase.util.honeysql-extensions/identifier :field \"blah\")"
   [field-identifier field]
+  {:pre [(hx/identifier? field-identifier)]}
   (let [nfc-path          (:nfc_path field)
         parent-components (-> (case hx/*honey-sql-version*
                                 1 (:components field-identifier)

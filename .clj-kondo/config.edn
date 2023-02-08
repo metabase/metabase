@@ -673,9 +673,9 @@
    :name    test-namespaces}
   {:pattern "metabase\\.cmd.*"
    :name    printable-namespaces}
-  ;; Basically everything except for metabase-enterprise.sandbox, metabase.driver.* or metabase.test-data.* or
-  ;; metabase.query-processor.* (besides postgres or redshift), and metabase.util.honeysql-extensions stuff
-  {:pattern "^metabase(?:-enterprise(?!\\.sandbox))?\\.(?!(?:(?:driver)|(?:test\\.data))(?!\\.(?:(?:postgres)|(?:redshift))))(?!query-processor)(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1-extensions))).*"
+  ;; Basically everything except `metabase.driver.` or `metabase.test-data.` except for the drivers explicitly called
+  ;; out below. Remove these drivers from the regex once we switch to Honey SQL 2
+  {:pattern "^(?!metabase\\.(?:(?:driver)|(?:test-data))\\.(?:(?:sql)|(?:athena)|(?:bigquery-cloud-sdk)|(?:h2)|(?:mysql)|(?:oracle)|(?:presto)|(?:snowflake)|(?:sparksql)|(?:vertica))(?:(?:\\..*)|$)).*"
    :name    honey-sql-2-namespaces}]
 
  :config-in-ns
