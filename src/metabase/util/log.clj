@@ -14,29 +14,35 @@
 (defn- glogi-logp
   "Macro helper for [[logp]] in CLJS."
   [logger-name level x more]
-  `(when (is-loggable? ~logger-name ~level)
+  `(let [level#  (glogi-level ~level)
+         logger# ~logger-name]
+    (when (is-loggable? logger# level#)
      (let [x# ~x]
        (if (instance? js/Error x#)
-         (lambdaisland.glogi/log ~logger-name ~level x# (print-str ~@more))
-         (lambdaisland.glogi/log ~logger-name ~level nil (print-str x# ~@more))))))
+         (lambdaisland.glogi/log logger# level# (print-str ~@more) x#)
+         (lambdaisland.glogi/log logger# level# (print-str x# ~@more) nil))))))
 
 (defn- glogi-logf
   "Macro helper for [[logf]] in CLJS."
   [logger-name level x more]
-  `(when (is-loggable? ~logger-name ~level)
-     (let [x# ~x]
-       (if (instance? js/Error x#)
-         (lambdaisland.glogi/log ~logger-name ~level x# (format-msg ~@more))
-         (lambdaisland.glogi/log ~logger-name ~level nil (format-msg x# ~@more))))))
+  `(let [level#  (glogi-level ~level)
+         logger# ~logger-name]
+     (when (is-loggable? logger# level#)
+       (let [x# ~x]
+         (if (instance? js/Error x#)
+           (lambdaisland.glogi/log logger# level# (format-msg ~@more) x#)
+           (lambdaisland.glogi/log logger# level# (format-msg x# ~@more) nil))))))
 
 (defn- glogi-spy
   "Macro helper for [[spy]] and [[spyf]] in CLJS."
   [logger-name level expr formatter]
-  `(when (is-loggable? ~logger-name ~level)
-     (let [a# ~expr
-           s# (~formatter a#)]
-       (lambdaisland.glogi/log ~logger-name ~level nil s#)
-       a#)))
+  `(let [level#  (glogi-level ~level)
+         logger# ~logger-name]
+     (when (is-loggable? logger# level#)
+       (let [a# ~expr
+             s# (~formatter a#)]
+         (lambdaisland.glogi/log logger# level# nil s#)
+         a#))))
 
 (defn- tools-logp
   "Macro helper for [[logp]] in CLJ."
@@ -53,8 +59,8 @@
 (defn- tools-logf
   "Macro helper for [[logf]] in CLJ."
   [logger-ns level x more]
-  (if (or (instance? String x) (nil? more))
-    ;; Simple cases: just a String, or no args.
+  (if (and (instance? String x) (nil? more))
+    ;; Simple case: just a String and no args.
     `(let [logger# (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* ~logger-ns)]
        (when (clojure.tools.logging.impl/enabled? logger# ~level)
          (clojure.tools.logging/log* logger# ~level nil ~x)))
