@@ -2,10 +2,10 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.test.data.interface :as tx]
-   [metabase.test.data.sql-jdbc.spec :as spec])
+   [metabase.test.data.sql-jdbc.spec :as spec]
+   [metabase.util.log :as log])
   (:import
    (java.sql SQLException)))
 

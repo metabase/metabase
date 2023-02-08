@@ -1,13 +1,11 @@
 (ns metabase.api.persist
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [GET POST]]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.db.query :as mdb.query]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
@@ -19,43 +17,45 @@
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
   [{:keys [persisted-info-id card-id db-ids]} limit offset]
   (let [site-uuid-str    (public-settings/site-uuid)
-        db-id->fire-time (task.persist-refresh/job-info-by-db-id)]
-    (-> (cond-> {:select    [:p.id :p.database_id :p.definition
-                             :p.active :p.state :p.error
-                             :p.refresh_begin :p.refresh_end
-                             :p.table_name :p.creator_id
-                             :p.card_id [:c.name :card_name]
-                             [:c.archived :card_archived]
-                             [:c.dataset :card_dataset]
-                             [:db.name :database_name]
-                             [:col.id :collection_id] [:col.name :collection_name]
-                             [:col.authority_level :collection_authority_level]]
-                 :from      [[:persisted_info :p]]
-                 :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
-                             [:report_card :c]        [:= :c.id :p.card_id]
-                             [:collection :col]       [:= :c.collection_id :col.id]]
-                 :order-by  [[:p.refresh_begin :desc]]}
-          persisted-info-id (sql.helpers/where [:= :p.id persisted-info-id])
-          (seq db-ids)      (sql.helpers/where [:in :p.database_id db-ids])
-          card-id           (sql.helpers/where [:= :p.card_id card-id])
-          limit             (sql.helpers/limit limit)
-          offset            (sql.helpers/offset offset))
-        mdb.query/query
-        (hydrate :creator)
-        (->> (db/do-post-select PersistedInfo)
-             (map (fn [{:keys [database_id] :as pi}]
-                    (assoc pi
-                           :schema_name (ddl.i/schema-name {:id database_id} site-uuid-str)
-                           :next-fire-time (get-in db-id->fire-time [database_id :next-fire-time]))))))))
+        db-id->fire-time (task.persist-refresh/job-info-by-db-id)
+        query            (cond-> {:select    [:p.id :p.database_id :p.definition
+                                              :p.active :p.state :p.error
+                                              :p.refresh_begin :p.refresh_end
+                                              :p.table_name :p.creator_id
+                                              :p.card_id [:c.name :card_name]
+                                              [:c.archived :card_archived]
+                                              [:c.dataset :card_dataset]
+                                              [:db.name :database_name]
+                                              [:col.id :collection_id] [:col.name :collection_name]
+                                              [:col.authority_level :collection_authority_level]]
+                                  :from      [[:persisted_info :p]]
+                                  :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
+                                              [:report_card :c]        [:= :c.id :p.card_id]
+                                              [:collection :col]       [:= :c.collection_id :col.id]]
+                                  :order-by  [[:p.refresh_begin :desc]]}
+                           persisted-info-id (sql.helpers/where [:= :p.id persisted-info-id])
+                           (seq db-ids)      (sql.helpers/where [:in :p.database_id db-ids])
+                           card-id           (sql.helpers/where [:= :p.card_id card-id])
+                           limit             (sql.helpers/limit limit)
+                           offset            (sql.helpers/offset offset))]
+    (as-> (t2/select PersistedInfo query) results
+      (hydrate results :creator)
+      (map (fn [{:keys [database_id] :as pi}]
+             (assoc pi
+                    :schema_name (ddl.i/schema-name {:id database_id} site-uuid-str)
+                    :next-fire-time (get-in db-id->fire-time [database_id :next-fire-time])))
+           results))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"

@@ -4,7 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.oracle :as oracle]
@@ -30,6 +29,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.util.test :as tt])
   (:import

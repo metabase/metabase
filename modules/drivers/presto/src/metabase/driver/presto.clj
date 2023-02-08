@@ -4,7 +4,6 @@
             [clojure.core.async :as a]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.presto-common :as presto-common]
@@ -20,6 +19,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.log :as log]
             [metabase.util.schema :as su]
             [metabase.util.ssh :as ssh]
             [schema.core :as s]))

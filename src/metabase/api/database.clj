@@ -2,7 +2,6 @@
   "/api/database endpoints."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
@@ -40,8 +39,9 @@
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -507,32 +507,34 @@
                            (cond
                              ;; e.g. search-string = "123"
                              (and (not-empty search-id) (empty? search-name))
-                             [:like (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text) :report_card.id) (str search-id "%")]
+                             [:like
+                              (h2x/cast (if (= (mdb.connection/db-type) :mysql) :char :text) :report_card.id)
+                              (str search-id "%")]
 
                              ;; e.g. search-string = "123-foo"
                              (and (not-empty search-id) (not-empty search-name))
                              [:and
                               [:= :report_card.id (Integer/parseInt search-id)]
                               ;; this is a prefix match to be consistent with substring matches on the entire slug
-                              [:like :%lower.report_card.name (str search-name "%")]]
+                              [:like [:lower :report_card.name] (str search-name "%")]]
 
                              ;; e.g. search-string = "foo"
                              (and (empty? search-id) (not-empty search-name))
-                             [:like :%lower.report_card.name (str "%" search-name "%")])]
+                             [:like [:lower :report_card.name] (str "%" search-name "%")])]
                 :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
                 :order-by [[:report_card.id :desc]]
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
   (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
-    :metabase_field.active          true
-    :%lower.metabase_field.name     [:like (u/lower-case-en search-string)]
-    :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
-    :table.db_id                    db-id
-    {:order-by  [[:%lower.metabase_field.name :asc]
-                 [:%lower.table.name :asc]]
-     :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
-     :limit     limit}))
+             :metabase_field.active          true
+             :%lower.metabase_field/name     [:like (u/lower-case-en search-string)]
+             :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
+             :table.db_id                    db-id
+             {:order-by  [[[:lower :metabase_field.name] :asc]
+                          [[:lower :table.name] :asc]]
+              :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
+              :limit     limit}))
 
 (defn- autocomplete-results [tables fields limit]
   (let [tbl-count   (count tables)
@@ -889,43 +891,42 @@
         ;; TODO - is there really a reason to let someone change the engine on an existing database?
         ;;       that seems like the kind of thing that will almost never work in any practical way
         ;; TODO - this means one cannot unset the description. Does that matter?
-        (api/check-500 (db/update-non-nil-keys! Database id
-                                                (merge
-                                                 {:name               name
-                                                  :engine             engine
-                                                  :details            details
-                                                  :refingerprint      refingerprint
-                                                  :is_full_sync       full-sync?
-                                                  :is_on_demand       (boolean is_on_demand)
-                                                  :description        description
-                                                  :caveats            caveats
-                                                  :points_of_interest points_of_interest
-                                                  :auto_run_queries   auto_run_queries}
-                                                 (cond
-                                                   ;; transition back to metabase managed schedules. the schedule
-                                                   ;; details, even if provided, are ignored. database is the
-                                                   ;; current stored value and check against the incoming details
-                                                   (and (get-in existing-database [:details :let-user-control-scheduling])
-                                                        (not (:let-user-control-scheduling details)))
+        (db/update-non-nil-keys! Database id
+                                 (merge
+                                  {:name               name
+                                   :engine             engine
+                                   :details            details
+                                   :refingerprint      refingerprint
+                                   :is_full_sync       full-sync?
+                                   :is_on_demand       (boolean is_on_demand)
+                                   :description        description
+                                   :caveats            caveats
+                                   :points_of_interest points_of_interest
+                                   :auto_run_queries   auto_run_queries}
+                                  (cond
+                                    ;; transition back to metabase managed schedules. the schedule
+                                    ;; details, even if provided, are ignored. database is the
+                                    ;; current stored value and check against the incoming details
+                                    (and (get-in existing-database [:details :let-user-control-scheduling])
+                                         (not (:let-user-control-scheduling details)))
+                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
 
-                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
+                                    ;; if user is controlling schedules
+                                    (:let-user-control-scheduling details)
+                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
 
-                                                   ;; if user is controlling schedules
-                                                   (:let-user-control-scheduling details)
-                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
-
-                                                   ;; upsert settings with a PATCH-style update. `nil` key means unset
-                                                   ;; the Setting.
-                                                   (seq settings)
-                                                   {:settings (into {}
-                                                                    (remove (fn [[_k v]] (nil? v)))
-                                                                    (merge (:settings existing-database)
-                                                                           settings))}))))
+                                    ;; upsert settings with a PATCH-style update. `nil` key means unset
+                                    ;; the Setting.
+                                    (seq settings)
+                                    {:settings (into {}
+                                                     (remove (fn [[_k v]] (nil? v)))
+                                                     (merge (:settings existing-database)
+                                                            settings))})))
         ;; do nothing in the case that user is not in control of
         ;; scheduling. leave them as they are in the db
 
         ;; unlike the other fields, folks might want to nil out cache_ttl
-        (api/check-500 (db/update! Database id {:cache_ttl cache_ttl}))
+        (db/update! Database id {:cache_ttl cache_ttl})
 
         (let [db (db/select-one Database :id id)]
           (events/publish-event! :database-update db)

@@ -1,15 +1,17 @@
-(ns metabase.models.params.card-values-test
+(ns metabase.models.params.custom-values-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card]]
-   [metabase.models.params.card-values :as params.card-values]
+   [metabase.models :refer [Card Collection]]
+   [metabase.models.params.custom-values :as custom-values]
    [metabase.test :as mt]
    [toucan.db :as db]))
+
+;;; --------------------------------------------- source=card ----------------------------------------------
 
 (deftest with-mbql-card-test
   (doseq [dataset? [true false]]
     (testing (format "source card is a %s" (if dataset? "model" "question"))
-      (binding [params.card-values/*max-rows* 3]
+      (binding [custom-values/*max-rows* 3]
         (testing "with simple mbql"
           (mt/with-temp* [Card [{card-id :id}
                                 (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
@@ -19,14 +21,14 @@
             (testing "get values"
               (is (=? {:has_more_values true,
                        :values          ["20th Century Cafe" "25°" "33 Taps"]}
-                      (params.card-values/values-from-card
+                      (custom-values/values-from-card
                         (db/select-one Card :id card-id)
                         (mt/$ids $venues.name)))))
 
             (testing "case in-sensitve search test"
               (is (=? {:has_more_values false
                        :values          ["Liguria Bakery" "Noe Valley Bakery"]}
-                      (params.card-values/values-from-card
+                      (custom-values/values-from-card
                         (db/select-one Card :id card-id)
                         (mt/$ids $venues.name)
                         "bakery"))))))
@@ -44,21 +46,21 @@
             (testing "get values from breakout columns"
               (is (=? {:has_more_values true,
                        :values          ["American" "Artisan" "Asian"]}
-                      (params.card-values/values-from-card
+                      (custom-values/values-from-card
                         (db/select-one Card :id card-id)
                         (mt/$ids $categories.name)))))
 
             (testing "get values from aggregation column"
               (is (=? {:has_more_values true,
                        :values          [1 2 3]}
-                      (params.card-values/values-from-card
+                      (custom-values/values-from-card
                         (db/select-one Card :id card-id)
                         [:field "sum" {:base-type :type/Float}]))))
 
             (testing "can search on aggregation column"
               (is (=? {:has_more_values false,
                        :values          [2]}
-                      (params.card-values/values-from-card
+                      (custom-values/values-from-card
                         (db/select-one Card :id card-id)
                         [:field "sum" {:base-type :type/Float}]
                         2))))
@@ -66,7 +68,7 @@
             (testing "doing case in-sensitve search on breakout columns"
               (is (=? {:has_more_values false
                        :values          ["Bakery"]}
-                      (params.card-values/values-from-card
+                      (custom-values/values-from-card
                         (db/select-one Card :id card-id)
                         [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
                         "bakery"))))))
@@ -84,7 +86,7 @@
               (testing "get values returns the value, not remapped values"
                 (is (=? {:has_more_values true,
                          :values          [2 3 4]}
-                        (params.card-values/values-from-card
+                        (custom-values/values-from-card
                           (db/select-one Card :id card-id)
                           (mt/$ids $venues.category_id)))))
 
@@ -92,7 +94,7 @@
               (testing "search with  the value, not remapped values"
                 (is (=? {:has_more_values false,
                          :values          [2]}
-                        (params.card-values/values-from-card
+                        (custom-values/values-from-card
                           (db/select-one Card :id card-id)
                           (mt/$ids $venues.category_id)
                           2)))))))))))
@@ -100,7 +102,7 @@
 (deftest with-native-card-test
   (doseq [dataset? [true false]]
     (testing (format "source card is a %s with native question" (if dataset? "model" "question"))
-      (binding [params.card-values/*max-rows* 3]
+      (binding [custom-values/*max-rows* 3]
         (mt/with-temp* [Card [{card-id :id}
                               (merge (mt/card-with-source-metadata-for-query
                                        (mt/native-query {:query "select * from venues where lower(name) like '%red%'"}))
@@ -110,7 +112,7 @@
           (testing "get values from breakout columns"
             (is (=? {:has_more_values false,
                      :values          ["Fred 62" "Red Medicine"]}
-                    (params.card-values/values-from-card
+                    (custom-values/values-from-card
                       (db/select-one Card :id card-id)
                       [:field "NAME" {:base-type :type/Text}]))))
 
@@ -118,7 +120,7 @@
           (testing "doing case in-sensitve search on breakout columns"
             (is (=? {:has_more_values false
                      :values          ["Red Medicine"]}
-                    (params.card-values/values-from-card
+                    (custom-values/values-from-card
                       (db/select-one Card :id card-id)
                       [:field "NAME" {:base-type :type/Text}]
                       "medicine")))))))))
@@ -133,7 +135,7 @@
           (testing "get values from breakout columns"
             (is (=? {:has_more_values false,
                      :values          ["Affiliate" "Facebook" "Google" "Organic" "Twitter"]}
-                    (params.card-values/values-from-card
+                    (custom-values/values-from-card
                       (db/select-one Card :id card-id)
                       [:field "SOURCE" {:base-type :type/Text}]))))
 
@@ -141,7 +143,7 @@
           (testing "doing case in-sensitve search on breakout columns"
             (is (=? {:has_more_values false
                      :values          ["Facebook" "Google"]}
-                    (params.card-values/values-from-card
+                    (custom-values/values-from-card
                       (db/select-one Card :id card-id)
                       [:field "SOURCE" {:base-type :type/Text}]
                       "oo"))))))
@@ -153,7 +155,7 @@
           (testing "get values from breakout columns"
             (is (=? {:has_more_values false,
                      :values          ["Affiliate" "Facebook" "Google" "Organic" "Twitter"]}
-                    (params.card-values/values-from-card
+                    (custom-values/values-from-card
                       (db/select-one Card :id card-id)
                       (mt/$ids $people.source)))))
 
@@ -161,36 +163,59 @@
           (testing "doing case in-sensitve search on breakout columns"
             (is (=? {:has_more_values false
                      :values          ["Facebook" "Google"]}
-                    (params.card-values/values-from-card
+                    (custom-values/values-from-card
                       (db/select-one Card :id card-id)
                       (mt/$ids $people.source)
                       "oo")))))))))
 
 (deftest errors-test
-  (testing "error if source card does not exist"
-    (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #"Source card not found"
-         (params.card-values/param->values
-           {:name                 "Card as source"
-            :slug                 "card"
-            :id                   "_CARD_"
-            :type                 "category"
-            :values_source_type   "card"
-            :values_source_config {:card_id     (inc (db/count Card))
-                                   :value_field (mt/$ids $venues.name)}}
-           nil))))
-  (testing "error if source card is archived"
-    (mt/with-temp Card [card {:archived true}]
-     (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Source card is archived"
-          (params.card-values/param->values
-            {:name                 "Card as source"
-             :slug                 "card"
-             :id                   "_CARD_"
-             :type                 "category"
-             :values_source_type   "card"
-             :values_source_config {:card_id     (:id card)
-                                    :value_field (mt/$ids $venues.name)}}
-            nil))))))
+  (testing "error if doesn't have permissions"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp*
+          [Collection [coll]
+           Card       [card {:collection_id (:id coll)}]]
+          (is (thrown-with-msg?
+                clojure.lang.ExceptionInfo
+                #"You don't have permissions to do that."
+                (custom-values/parameter->values
+                  {:name                 "Card as source"
+                   :slug                 "card"
+                   :id                   "_CARD_"
+                   :type                 "category"
+                   :values_source_type   "card"
+                   :values_source_config {:card_id     (:id card)
+                                          :value_field (mt/$ids $venues.name)}}
+                  nil
+                  (fn [] (throw (ex-info "Shouldn't call this function" {}))))))))))
+
+  ;; bind to an admin to bypass the permissions check
+  (mt/with-current-user (mt/user->id :crowberto)
+    (testing "call to default-case-fn if "
+      (testing "souce card is archived"
+        (mt/with-temp Card [card {:archived true}]
+          (is (= :archived
+                 (custom-values/parameter->values
+                   {:name                 "Card as source"
+                    :slug                 "card"
+                    :id                   "_CARD_"
+                    :type                 "category"
+                    :values_source_type   "card"
+                    :values_source_config {:card_id     (:id card)
+                                           :value_field (mt/$ids $venues.name)}}
+                   nil
+                   (constantly :archived))))))
+
+      (testing "value-field not found in card's result_metadata"
+        (mt/with-temp Card [card {}]
+          (is (= :field-not-found
+                 (custom-values/parameter->values
+                   {:name                 "Card as source"
+                    :slug                 "card"
+                    :id                   "_CARD_"
+                    :type                 "category"
+                    :values_source_type   "card"
+                    :values_source_config {:card_id     (:id card)
+                                           :value_field [:field 0 nil]}}
+                   nil
+                   (constantly :field-not-found)))))))))

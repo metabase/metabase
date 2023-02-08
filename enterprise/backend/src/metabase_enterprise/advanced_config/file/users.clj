@@ -1,11 +1,11 @@
 (ns metabase-enterprise.advanced-config.file.users
   (:require
    [clojure.spec.alpha :as s]
-   [clojure.tools.logging :as log]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/first_name
