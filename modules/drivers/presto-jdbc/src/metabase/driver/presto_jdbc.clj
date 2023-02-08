@@ -151,6 +151,10 @@
   [_ _ expr]
   (hx/call :date_trunc (hx/literal :year) (in-report-zone expr)))
 
+(defmethod sql.qp/date [:presto-jdbc :year-of-era]
+  [_ _ expr]
+  (hx/call :year (in-report-zone expr)))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :seconds]
   [_ _ expr]
   (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)]
