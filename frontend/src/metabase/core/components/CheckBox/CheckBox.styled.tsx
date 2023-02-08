@@ -39,7 +39,7 @@ export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   opacity: ${props => (props.disabled ? "0.4" : "")};
 
   ${CheckBoxInput}:focus + & {
-    outline: 2px solid ${() => color("focus")};
+    outline: 2px solid ${color("focus")};
   }
 
   ${CheckBoxInput}:focus:not(:focus-visible) + & {
