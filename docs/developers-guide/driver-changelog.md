@@ -17,13 +17,118 @@ title: Driver interface changelog
   `->honeysql` for the `:datetime-diff` clause. It is recommended to implement this if you want to use the default SQL
    implementation of `->honeysql` for the `:datetime-diff`, which includes validation of argument types across all units.
 
-- The classes `metabase.util.honeysql_extensions.Identifer` and `metabase.util.honeysql_extensions.TypedHoneySQLForm`
-  have been moved to `metabase.util.honey_sql_1_extensions.Identifer` and
-  `metabase.util.honey_sql_1_extensions.TypedHoneySQLForm`, respectively. Code that was referencing these classes
-  should be updated to reference the new class names.
+### Honey SQL 2
 
-- `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; use
-  `metabase.util.honeysql-extensions/at-time-zone` instead.
+The following only applies to SQL drivers; you can ignore it for non-SQL drivers.
+
+Prior to Metabase 0.46.0, SQL drivers used Honey SQL 1 as an intermediate target when compiling queries. In 0.46.0 we
+have began the process of migrating to Honey SQL 2 as our new intermediate target.
+
+We plan to continue to support use of Honey SQL 1 until Metabase 0.49.0. Please be sure to migrate your drivers before
+then.
+
+In Metabase 0.46.x, 0.47.x, and 0.48.x, you can specify which version of Honey SQL you driver should use by
+implementing the `metabase.driver.sql.query-processor/honey-sql-version` multimethod:
+
+```clj
+(require '[metabase.driver.sql.query-processor :as sql.qp])
+
+;;; use Honey SQL 2 for :my-driver
+(defmethod sql.qp/honey-sql-version :my-driver
+  [_driver]
+  2)
+```
+
+This method must return either `1` or `2`. Currently, the default implementation returns `1`. Effectively this means
+you currently have to opt-in to Honey SQL 2 compilation. It's a good idea to do this sooner rather than later so your
+driver is prepared for 0.49.0 well in advance.
+
+In Metabase 0.47.x or 0.48.x we will likely change the default Honey SQL version to `2` to ensure everyone is aware of
+the upcoming breaking changes in 0.49.0 and give them one or two release cycles to update their drivers to target
+Honey SQL 2. You will still be able to opt-in to using Honey SQL 1 until 0.49.0 by implementing
+`sql.qp/honey-sql-version` and returning `1`.
+
+#### What You Need to Change
+
+Our Honey SQL utility namespace, `metabase.util.honeysql-extensions`, commonly aliased as `hx`, has been updated to
+generate forms appropriate for either Honey SQL 1 or Honey SQL 2. This is done automatically based on your driver's
+`honey-sql-version`. `metabase.driver.sql.query-processor` itself also supports both targets in the same way.
+
+The actual changes you will need to make to your driver code will probably be fairly small. The most important things
+to note when porting your driver:
+
+1. Avoid use of things Honey SQL 1 namespaces like `honeysql.core` or `honeysql.format`. If you must, use Honey SQL
+   `honey.sql` instead; you may not need either.
+
+2. While you can continue to use `metabase.util.honeysql-extensions` (usually aliased as `hx`) in the short term,
+   since it can target either version of Honey SQL, we will probably remove this namespace at some point in the
+   future. Update your code to use `metabase.util.honey-sql-2-extensions` instead. The namespaces implement an almost
+   identical set of helper functions, so all you should need to switch is which one you `:require` in your `ns` form.
+
+3. `honeysql.core/call` no longer exists; instead of a form like `(hsql/call :my_function 1 2)`, you simply return a
+   plain vector like `[:my_function 1 2]`. `(hsql/raw "x")` is now`[:raw "x"]`. New handlers can be registered with
+   Honey SQL 2 with `honey.sql/register-fn!`. There is no equivalent of the Honey SQL 1 `honeysql.format./ToSql`
+   protocol, so you should no longer define one-off types to implement custom SQL compilation rules.
+
+4. Because custom expressions are now just plain vectors like `[:my_function 1]`, you may need to wrap expressions in
+   an additional vector if they appear inside `:select`, `:from`, or other places where a vector could be interpreted
+   as `[expression alias]`. e.g.
+
+   ```clj
+   ;; Honey SQL 1
+   (honeysql.core/format {:select [[:my_function 1]]})
+   ;; => ["SELECT my_function AS 1"]
+
+   ;; Honey SQL 2
+   ;;
+   ;; WRONG
+   (honey.sql/format {:select [[:my_function 1]]})
+   ;; => ["SELECT my_function AS ?" 1]
+
+   ;; CORRECT
+   (honey.sql/format {:select [[[:my_function 1]]]})
+   ;; => ["SELECT MY_FUNCTION(?)" 1]
+   ```
+
+   The SQL query processor does this automatically for forms it generates, so you only need to worry about this if
+   you're overriding the way it generates `:select` or other top-level clauses.
+
+5. Numbers are parameterized by default, e.g. `{:select [1]}` becomes `SELECT ?` rather than `SELECT 1`. You can use
+   `:inline` to force the SQL to be generated inline instead: `{:select [[[:inline 1]]]}` becomes `SELECT 1`. Numbers
+   generated by the SQL query processor code should automatically be inlined, but you may need to make sure any
+   numbers you generate are wrapped in `:inline` if they can end up as expressions inside a `GROUP BY` clause. Some
+   databases can recognize expressions as being the same thing only when they are *not* parameterized:
+
+   ```sql
+   -- This is okay
+   SELECT x + 1
+   FROM table
+   GROUP BY x + 1
+
+   -- Bad: DB doesn't know whether the two x + ? expressions are the same thing
+   SELECT x + ?
+   FROM table
+   GROUP BY x + ?
+   ```
+
+  Exercise caution when `:inline`ing things -- take care not to use it on untrusted strings or other avenues for SQL
+  injection. Only inlining things that are a `number?` is a safe bet.
+
+Please read [Differences between Honey SQL 1.x and
+2.x](https://github.com/seancorfield/honeysql/blob/develop/doc/differences-from-1-x.md) for more information on the
+differences between the library versions.
+
+#### Breaking Changes in 0.46.0 related to the Honey SQL 2 transition
+
+**Note: these breaking changes will hopefully be fixed before 0.46.0 ships. This will be updated if they are.**
+
+The classes `metabase.util.honeysql_extensions.Identifer` and `metabase.util.honeysql_extensions.TypedHoneySQLForm`
+have been moved to `metabase.util.honey_sql_1_extensions.Identifer` and
+`metabase.util.honey_sql_1_extensions.TypedHoneySQLForm`, respectively. On the off chance that your driver directly
+referencing these class names, you may need to update things to use the new class names.
+
+Similarly, `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; use
+`metabase.util.honeysql-extensions/at-time-zone` instead.
 
 ## Metabase 0.45.0
 
