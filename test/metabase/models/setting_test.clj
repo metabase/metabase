@@ -583,22 +583,27 @@
 
 ;;; ------------------------------------------------- Visibility Settings ------------------------------------------------
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defsetting ^:private test-internal-setting
   "test Setting"
   :visibility :internal)
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defsetting ^:private test-public-setting
   (deferred-tru "test Setting")
   :visibility :public)
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defsetting ^:private test-authenticated-setting
   (deferred-tru "test Setting")
   :visibility :authenticated)
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defsetting ^:private test-settings-manager-setting
   (deferred-tru "test Setting")
   :visibility :settings-manager)
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defsetting ^:private test-admin-setting
   (deferred-tru "test Setting")
   :visibility :admin)
