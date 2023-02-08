@@ -44,7 +44,7 @@
        (update (:metadata result) :running_time int?)))))
 
 (deftest success-test
-  (let [query {:query? true}]
+  (let [query {:query {:type ::success-test}}]
     (with-query-execution [qe query]
       (is (= #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
              (t/zoned-date-time))
@@ -54,18 +54,18 @@
               :row_count              0
               :database_id            nil
               :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-              :json_query             {:query? true}
+              :json_query             query
               :average_execution_time nil
               :context                nil
               :running_time           true}
              (process-userland-query query))
           "Result should have query execution info")
-      (is (= {:hash         "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99"
+      (is (= {:hash         "29f0bca06d6679e873b1f5a3a36dac18a5b4642c6545d24456ad34b1cad4ecc6"
               :database_id  nil
               :result_rows  0
               :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
               :executor_id  nil
-              :json_query   {:query? true}
+              :json_query   query
               :native       false
               :pulse_id     nil
               :card_id      nil
@@ -77,7 +77,7 @@
           "QueryExecution should be saved"))))
 
 (deftest failure-test
-  (let [query {:query? true}]
+  (let [query {:query {:type ::failure-test}}]
     (with-query-execution [qe query]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -85,13 +85,13 @@
            (process-userland-query query {:runf (fn [_ _ context]
                                                   (qp.context/raisef (ex-info "Oops!" {:type qp.error-type/qp})
                                                                      context))})))
-      (is (= {:hash         "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99"
+      (is (= {:hash         "d673f355de41679623bfcbda4923d29c1ca64aec6314d79de0369bea2ac246d1"
               :database_id  nil
               :error        "Oops!"
               :result_rows  0
               :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
               :executor_id  nil
-              :json_query   {:query? true}
+              :json_query   query
               :native       false
               :pulse_id     nil
               :card_id      nil
