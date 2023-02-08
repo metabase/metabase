@@ -11,7 +11,8 @@ export const GroupMappingsWidgetRoot = styled.div`
   border-radius: 8px;
   display: flex;
   flex-direction: column;
-  width: 980px;
+  max-width: 720px;
+  width: 100%;
 `;
 
 export const GroupMappingsWidgetHeader = styled.div`
@@ -33,6 +34,7 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
   display: flex;
 
   > * {
+    color: ${color("text-dark")};
     padding-right: ${space(1)};
     padding-top: 0;
   }
