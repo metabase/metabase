@@ -16,6 +16,9 @@ version: '3.1'
 # ;; Run a postgres app db, a sample postgres 14 and mysql 5.7 warehouses, and metabase itself in a container
 # ;; If you use this option, once the application starts you can jack in on 50505 and REPL away.
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,dev-app docker-compose --file docker-compose-dev.yml up
+# ;; All of the above, and builds the frontend, too. No need for `yarn build-hot` locally.
+# ;; NOTE: See comment below on fe-builder service. This isn't quite ready yet.
+# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,fe-builder,dev-app docker-compose --file docker-compose-dev.yml up
 #
 # TODOs:
 # - Configure the local-dev service via env so there's only one
@@ -63,6 +66,29 @@ services:
     command: ["clojure", "-M:run:dev:drivers:drivers-dev:ee:ee-dev:socket"]
     profiles:
       - dev-app
+    networks:
+      - metabasenet
+
+# NOTE: This service isn't ready for prime time. It takes a LONG time to start
+#       up. I think there's some mounts to caches that are needed or something.
+#       Hopefully one of our node geniuses can figure it out.
+#  # Just build the frontend. Mounts local dev so nothing else needed
+#  fe-builder:
+#    image: node:18.14
+#    container_name: fe-builder
+#    working_dir: /dev/metabase
+#    volumes:
+#      - .:/dev/metabase
+#      - ~/.npm:/root/.npm
+#      - ~/Library/Caches/Yarn/v6:/usr/local/share/.cache/yarn/v6
+#    command:
+#      - /bin/sh
+#      - -c
+#      - |
+#        yarn install
+#        yarn build-hot
+#    profiles:
+#      - fe-builder
 
   # App dbs. You only need one. If running metabase containerized, use the
   # corresponding service.
@@ -78,6 +104,8 @@ services:
       POSTGRES_DB: metabase
     profiles:
       - postgresappdb
+    networks:
+      - metabasenet
 
   # If using the mysql app db, be sure to set the environment correctly for the
   # metabase app, whether running the app containerized or locally
@@ -94,6 +122,8 @@ services:
       MYSQL_DATABASE: metabase
     profiles:
       - mysql57appdb
+    networks:
+      - metabasenet
 
   # The following *-data instances are sample warehouse dbs that can be found at
   # https://hub.docker.com/r/metabase/qa-databases/tags.
@@ -110,6 +140,8 @@ services:
     restart: always
     profiles:
       - postgres14data
+    networks:
+      - metabasenet
 
   mysql-sample-5.7-data:
     image: metabase/qa-databases:mysql-sample-5.7
@@ -119,6 +151,8 @@ services:
     restart: always
     profiles:
       - mysql57data
+    networks:
+      - metabasenet
 
   mysql-sample-8-data:
     image: metabase/qa-databases:mysql-sample-8
@@ -128,6 +162,8 @@ services:
     restart: always
     profiles:
       - mysql8data
+    networks:
+      - metabasenet
 
   # Plain old mongo db + UI services
   mongo:
@@ -141,6 +177,8 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: admin
     profiles:
       - mongo
+    networks:
+      - metabasenet
 
   mongo-express:
     image: mongo-express
@@ -154,6 +192,8 @@ services:
       ME_CONFIG_MONGODB_URL: mongodb://admin:admin@mongo:27017/
     profiles:
       - mongo
+    networks:
+      - metabasenet
 
   # Used this if you need to test metabase's email capabilities
   maildev:
@@ -164,6 +204,8 @@ services:
       - "1025:1025"
     profiles:
       - pulse
+    networks:
+      - metabasenet
 
   # Used for testing with SAML
   saml:
@@ -186,3 +228,8 @@ services:
       - https://www.okta.com/saml2/service-provider/spf5aFRRXFGIMAYXQPNV"
     profiles:
       - sso
+    networks:
+      - metabasenet
+
+networks:
+  metabasenet:
