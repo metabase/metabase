@@ -10,10 +10,11 @@
    [metabase.driver.util :as driver.u]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models
-    :refer [Card Collection Database Field FieldValues Table Metric Segment]]
+    :refer [Card Collection Database Field FieldValues Metric Segment Table]]
    [metabase.models.database :as database :refer [protected-password]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -22,6 +23,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
@@ -1370,26 +1372,69 @@
                      (:details d)
                      (select-keys d [:password-source :password-value]))))))))
 
+;; these are tagged i18n because the `defsetting` macro complains if they're not, but since these are in tests they
+;; won't get scraped for i18n purposes so it's ok.
+(defsetting test-db-local-setting-public
+  (deferred-tru "Test Database-local Setting with internal visibility.")
+  :database-local :only
+  :visibility :public
+  :type :integer)
+
+(defsetting test-db-local-setting-authenticated
+  (deferred-tru "Test Database-local Setting with internal visibility.")
+  :database-local :only
+  :visibility :authenticated
+  :type :integer)
+
+(defsetting test-db-local-setting-admin
+  (deferred-tru "Test Database-local Setting with internal visibility.")
+  :database-local :only
+  :visibility :admin
+  :type :integer)
+
+(defsetting test-db-local-setting-internal
+  (deferred-tru "Test Database-local Setting with internal visibility.")
+  :database-local :only
+  :visibility :internal
+  :type :integer)
+
 (deftest database-local-settings-come-back-with-database-test
   (testing "Database-local Settings should come back with"
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:max-results-bare-rows 1337}}
-      ;; only returned for admin users at this point in time. See #22683 -- issue to return them for non-admins as well.
-      (doseq [{:keys [endpoint response]} [{:endpoint "GET /api/database/:id"
-                                            :response (fn []
-                                                        (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id))))}
-                                           {:endpoint "GET /api/database"
-                                            :response (fn []
-                                                        (some
-                                                         (fn [database]
-                                                           (when (= (:id database) (mt/id))
-                                                             database))
-                                                         (:data (mt/user-http-request :crowberto :get 200 "database"))))}]]
-        (testing endpoint
-          (let [{:keys [settings], :as response} (response)]
-            (testing (format "\nresponse = %s" (u/pprint-to-str response))
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:test-db-local-setting-public        1
+                                                          :test-db-local-setting-authenticated 1
+                                                          :test-db-local-setting-admin         1
+                                                          :test-db-local-setting-internal      1}}
+      (doseq [[user user-type] {:crowberto :admin, :rasta :non-admin}]
+        (doseq [{:keys [endpoint response]} [{:endpoint "GET /api/database/:id"
+                                              :response (fn []
+                                                          (mt/user-http-request user :get 200 (format "database/%d" (mt/id))))}
+                                             {:endpoint "GET /api/database"
+                                              :response (fn []
+                                                          (some
+                                                           (fn [database]
+                                                             (when (= (:id database) (mt/id))
+                                                               database))
+                                                           (:data (mt/user-http-request user :get 200 "database"))))}]]
+          (testing endpoint
+            (let [{:keys [settings], :as response} (response)]
               (is (map? response))
-              (is (partial= {:max-results-bare-rows 1337}
-                            settings)))))))))
+              (is (map? settings))
+              (doseq [{:keys [setting visible?]} [{:setting  :test-db-local-setting-public
+                                                   :visible? (if (= user-type :non-admin) true true)}
+                                                  {:setting  :test-db-local-setting-authenticated
+                                                   :visible? (if (= user-type :non-admin) true true)}
+                                                  {:setting  :test-db-local-setting-admin
+                                                   :visible? (if (= user-type :non-admin) false true)}
+                                                  {:setting  :test-db-local-setting-internal
+                                                   :visible? (if (= user-type :non-admin) false false)}]
+                      :let                       [{:keys [visibility]} (setting/resolve-setting setting)]]
+                (testing (format "\nIf Setting visibility is %s, %s user should %s be able to see its value"
+                                 visibility user-type (if visible? "SHOULD" "SHOULD NOT"))
+                  (testing (format "\nresponse = %s" (u/pprint-to-str response))
+                    (if visible?
+                      (is (partial= {setting 1}
+                                    settings))
+                      (is (not (contains? settings setting))))))))))))))
 
 (deftest admins-set-database-local-settings-test
   (testing "Admins should be allowed to update Database-local Settings (#19409)"
