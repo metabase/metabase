@@ -62,7 +62,7 @@
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
   (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
     (let [honeysql {:select [:*]
-                    :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
+                    :from   [(sql.qp/maybe-wrap-unaliased-expr (sql.qp/->honeysql driver (hx/identifier :table schema table)))]
                     :where  [:not= (sql.qp/inline-num 1) (sql.qp/inline-num 1)]}
           honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
       (sql.qp/format-honeysql driver honeysql))))
