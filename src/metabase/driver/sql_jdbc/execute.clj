@@ -8,7 +8,6 @@
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -27,6 +26,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [potemkin :as p])
   (:import
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types)

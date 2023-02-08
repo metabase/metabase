@@ -3,8 +3,7 @@
    used for classification. This fingerprint is saved as a column on the Field it belongs to."
   (:require
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -17,6 +16,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [redux.core :as redux]
    [schema.core :as s]
@@ -166,8 +166,8 @@
              (not *refingerprint?*) (conj (cons :or (versions-clauses))))})
 
   ([table :- i/TableInstance]
-   (hh/merge-where (honeysql-for-fields-that-need-fingerprint-updating)
-                   [:= :table_id (u/the-id table)])))
+   (sql.helpers/where (honeysql-for-fields-that-need-fingerprint-updating)
+                      [:= :table_id (u/the-id table)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |

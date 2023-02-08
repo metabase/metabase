@@ -17,6 +17,7 @@ import { getFullName } from "metabase/lib/user";
 
 import {
   ItemCell,
+  ItemNameCell,
   EntityIconCheckBox,
   ItemLink,
   TableItemSecondaryField,
@@ -116,7 +117,7 @@ export function BaseTableItem({
             showCheckbox={isHoveringOverRow}
           />
         </ItemCell>
-        <ItemCell data-testid={`${testId}-name`}>
+        <ItemNameCell data-testid={`${testId}-name`}>
           <ItemLink {...linkProps} to={item.getUrl()}>
             <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
@@ -131,7 +132,7 @@ export function BaseTableItem({
               />
             )}
           </ItemLink>
-        </ItemCell>
+        </ItemNameCell>
         <ItemCell data-testid={`${testId}-last-edited-by`}>
           <Ellipsified>{lastEditedBy}</Ellipsified>
         </ItemCell>

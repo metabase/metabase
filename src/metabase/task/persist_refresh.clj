@@ -1,7 +1,6 @@
 (ns metabase.task.persist-refresh
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -9,7 +8,6 @@
    [java-time :as t]
    [medley.core :as m]
    [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -25,11 +23,14 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [potemkin.types :as p]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
    (org.quartz ObjectAlreadyExistsException Trigger)))
@@ -158,35 +159,35 @@
   after a sufficient delay to ensure no queries are running against them and to allow changing mind. Also selects
   persisted info records pointing to cards that are no longer models and archived cards/models."
   []
-  (->> (mdb.query/query (binding [hx/*honey-sql-version* 2]
-                          {:select    [:p.*]
-                           :from      [[:persisted_info :p]]
-                           :left-join [[:report_card :c] [:= :c.id :p.card_id]]
-                           :where     [:or
-                                       [:and
-                                        [:in :state prunable-states]
-                                        ;; Buffer deletions for an hour if the
-                                        ;; prune job happens soon after setting state.
-                                        ;; 1. so that people have a chance to change their mind.
-                                        ;; 2. if a query is running against the cache, it doesn't get ripped out.
-                                        [:< :state_change_at
-                                         (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
-                                       [:= :c.dataset false]
-                                       [:= :c.archived true]]}))
-       (db/do-post-select PersistedInfo)))
+  (t2/select PersistedInfo
+             (binding [hx/*honey-sql-version* 2]
+               {:select    [:p.*]
+                :from      [[:persisted_info :p]]
+                :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+                :where     [:or
+                            [:and
+                             [:in :state prunable-states]
+                             ;; Buffer deletions for an hour if the
+                             ;; prune job happens soon after setting state.
+                             ;; 1. so that people have a chance to change their mind.
+                             ;; 2. if a query is running against the cache, it doesn't get ripped out.
+                             [:< :state_change_at
+                              (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
+                            [:= :c.dataset false]
+                            [:= :c.archived true]]})))
 
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
   [database-id]
-  (->> (mdb.query/query {:select    [:p.* :c.dataset :c.archived :c.name]
-                         :from      [[:persisted_info :p]]
-                         :left-join [[:report_card :c] [:= :c.id :p.card_id]]
-                         :where     [:and
-                                     [:= :p.database_id database-id]
-                                     [:in :p.state refreshable-states]
-                                     [:= :c.archived false]
-                                     [:= :c.dataset true]]})
-       (db/do-post-select PersistedInfo)))
+  (t2/select PersistedInfo
+             {:select    [:p.* :c.dataset :c.archived :c.name]
+              :from      [[:persisted_info :p]]
+              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :where     [:and
+                          [:= :p.database_id database-id]
+                          [:in :p.state refreshable-states]
+                          [:= :c.archived false]
+                          [:= :c.dataset true]]}))
 
 (defn- prune-all-deletable!
   "Prunes all deletable PersistInfos, should not be called from tests as

@@ -5,7 +5,7 @@
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
@@ -66,9 +66,9 @@
                            [:and
                             [:= :time_matters false]
                             (when start
-                              [:<= (hx/->date start) (hx/->date :timestamp)])
+                              [:<= (h2x/->date start) (h2x/->date :timestamp)])
                             (when end
-                              [:<= (hx/->date :timestamp) (hx/->date end)])]])]}]
+                              [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
     (hydrate (db/select TimelineEvent clause) :creator)))
 
 (defn include-events

@@ -17,7 +17,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.card :as api.card]
@@ -36,6 +35,7 @@
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))

@@ -4,7 +4,6 @@
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honeysql.helpers :as hh]
    [java-time :as t]
    [metabase.config :as config]
@@ -22,7 +21,8 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
   (:import
    (java.sql Connection ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))

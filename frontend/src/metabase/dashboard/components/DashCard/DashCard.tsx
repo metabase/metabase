@@ -20,6 +20,8 @@ import { isVirtualDashCard } from "metabase/dashboard/utils";
 
 import { isActionCard } from "metabase/actions/utils";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
+
 import type {
   Card,
   CardId,
@@ -289,6 +291,7 @@ function DashCard({
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
+            metadata={metadata}
           />
         </DashboardCardActionsPanel>
       );
@@ -308,49 +311,52 @@ function DashCard({
     onReplaceAllVisualizationSettings,
     handlePreviewToggle,
     handleShowClickBehaviorSidebar,
+    metadata,
   ]);
 
   return (
-    <DashCardRoot
-      className="Card rounded flex flex-column hover-parent hover--visibility"
-      hasHiddenBackground={hasHiddenBackground}
-      isNightMode={isNightMode}
-      isUsuallySlow={isSlow === "usually-slow"}
-      ref={cardRootRef}
-    >
-      {renderDashCardActions()}
-      <DashCardVisualization
-        dashboard={dashboard}
-        dashcard={dashcard}
-        series={series}
-        parameterValues={parameterValues}
-        parameterValuesBySlug={parameterValuesBySlug}
-        metadata={metadata}
-        mode={mode}
-        gridSize={gridSize}
-        gridItemWidth={gridItemWidth}
-        totalNumGridCols={totalNumGridCols}
-        headerIcon={headerIcon}
-        expectedDuration={expectedDuration}
-        error={error}
-        isAction={isAction}
-        isEmbed={isEmbed}
-        isEditing={isEditing}
-        isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
-        isEditingDashboardLayout={isEditingDashboardLayout}
-        isEditingParameter={isEditingParameter}
-        isClickBehaviorSidebarOpen={isClickBehaviorSidebarOpen}
-        isSlow={isSlow}
-        isPreviewing={isPreviewingCard}
-        isFullscreen={isFullscreen}
+    <ErrorBoundary>
+      <DashCardRoot
+        className="Card rounded flex flex-column hover-parent hover--visibility"
+        hasHiddenBackground={hasHiddenBackground}
         isNightMode={isNightMode}
-        isMobile={isMobile}
-        showClickBehaviorSidebar={showClickBehaviorSidebar}
-        onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-        onChangeCardAndRun={changeCardAndRunHandler}
-        onChangeLocation={onChangeLocation}
-      />
-    </DashCardRoot>
+        isUsuallySlow={isSlow === "usually-slow"}
+        ref={cardRootRef}
+      >
+        {renderDashCardActions()}
+        <DashCardVisualization
+          dashboard={dashboard}
+          dashcard={dashcard}
+          series={series}
+          parameterValues={parameterValues}
+          parameterValuesBySlug={parameterValuesBySlug}
+          metadata={metadata}
+          mode={mode}
+          gridSize={gridSize}
+          gridItemWidth={gridItemWidth}
+          totalNumGridCols={totalNumGridCols}
+          headerIcon={headerIcon}
+          expectedDuration={expectedDuration}
+          error={error}
+          isAction={isAction}
+          isEmbed={isEmbed}
+          isEditing={isEditing}
+          isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
+          isEditingDashboardLayout={isEditingDashboardLayout}
+          isEditingParameter={isEditingParameter}
+          isClickBehaviorSidebarOpen={isClickBehaviorSidebarOpen}
+          isSlow={isSlow}
+          isPreviewing={isPreviewingCard}
+          isFullscreen={isFullscreen}
+          isNightMode={isNightMode}
+          isMobile={isMobile}
+          showClickBehaviorSidebar={showClickBehaviorSidebar}
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onChangeCardAndRun={changeCardAndRunHandler}
+          onChangeLocation={onChangeLocation}
+        />
+      </DashCardRoot>
+    </ErrorBoundary>
   );
 }
 

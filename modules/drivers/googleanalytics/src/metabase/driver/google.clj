@@ -1,11 +1,11 @@
 (ns metabase.driver.google
   "Shared logic for various Google drivers, including BigQuery and Google Analytics."
-  (:require [clojure.tools.logging :as log]
-            [metabase.config :as config]
+  (:require [metabase.config :as config]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
+            [metabase.util.log :as log]
             [ring.util.codec :as codec]
             [toucan.db :as db])
   (:import [com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder GoogleCredential GoogleCredential$Builder GoogleTokenResponse]

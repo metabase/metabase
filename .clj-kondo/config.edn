@@ -92,8 +92,12 @@
    clojure.string/upper-case {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
    honeysql.core/call        {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw         {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
+   java-time/with-clock      {:message "Use mt/with-clock"}
    toucan.db/query           {:message "Use mdb.query/query instead of toucan.db/query"}
    toucan.db/reducible-query {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
+
+  :discouraged-namespace
+  {clojure.tools.logging {:message "Use metabase.util.log instead of clojure.tools.logging directly"}}
 
   :unresolved-var
   {:exclude
@@ -359,6 +363,7 @@
     metabase.util.honeysql-extensions                               hx
     metabase.util.i18n                                              i18n
     metabase.util.i18n.impl                                         i18n.impl
+    metabase.util.log                                               log
     metabase.util.malli                                             mu
     metabase.util.malli.schema                                      ms
     metabase.util.password                                          u.password
@@ -664,20 +669,12 @@
  ;;
  ;; this list isn't exhaustive because it misses some stuff like the test runner and HTTP client but it's easier to go
  ;; fix those namespaces than it is to make this regex super hairy.
- [{:name    test-namespaces
-   :pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"}
-  ;; drivers that should by using `hx/` and support BOTH Honey SQL 1 and Honey SQL 2 for the time being, but that
-  ;; should move towards Honey SQL 2. These are drivers that are also used by app DB code
-  {:name    cross-compatible-drivers
-   :pattern "^metabase\\.(?:(?:driver)|(?:test\\.data))\\.(?:(?:postgres)|(?:sql(?!server)(?!ite))).*"}
-  ;; drivers that should be using Honey SQL 2 *ONLY*
-  ;;
-  ;; Currently just Redshift, more will be added in the future.
-  {:pattern "^metabase\\.(?:(?:driver)|(?:test\\.data))\\.redshift.*"
-   :name    honey-sql-2-only-drivers}
-  ;; namespaces allowed to use `println`
+ [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"
+   :name    test-namespaces}
   {:pattern "metabase\\.cmd.*"
-   :name    printable-namespaces}]
+   :name    printable-namespaces}
+  {:pattern "^metabase(?:-enterprise(?!\\.sandbox))\\.(?!driver)(?!test\\.data)(?!query-processor)(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1-extensions))).*"
+   :name    honey-sql-2-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -688,31 +685,17 @@
 
     ;; custom linters
     :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
-
   printable-namespaces
   {:linters
    {:discouraged-var {:level :off}}}
 
-  honey-sql-2-only-drivers
+  honey-sql-2-namespaces
   {:linters
    {:discouraged-namespace
     {honeysql.core                        {:message "Use Honey SQL 2"}
      honeysql.format                      {:message "Use Honey SQL 2"}
      honeysql.helpers                     {:message "Use Honey SQL 2"}
      honeysql.types                       {:message "Use Honey SQL 2"}
-     metabase.util.honey-sql-extensions   {:message "Use metabase.util.honey-sql-2-extensions"}
-     metabase.util.honey-sql-1-extensions {:message "Use metabase.util.honey-sql-2-extensions"}}}}
-
-  cross-compatible-drivers
-  {:linters
-   {:discouraged-namespace
-    {honeysql.core                        {:message "Do not use Honey SQL 1 directly in cross-compatible drivers"}
-     honeysql.format                      {:message "Do not use Honey SQL 1 directly in cross-compatible drivers"}
-     honeysql.helpers                     {:message "Use honey.sql.helpers"}
-     honeysql.types                       {:message "Do not use Honey SQL 1 directly in cross-compatible drivers"}
-     metabase.util.honey-sql-1-extensions {:message "Use metabase.util.honey-sql-extensions"}
-     metabase.util.honey-sql-2-extensions {:message "Use metabase.util.honey-sql-extensions"}}
-
-    :discouraged-var
-    {honey.sql/call   {:message "Use hx/call"}
-     honey.sql/format {:message "Use sql.qp/format-honeysql"} }}}}}
+     honeysql.util                        {:message "Use Honey SQL 2"}
+     metabase.util.honeysql-extensions    {:message "Use h2x"}
+     metabase.util.honey-sql-1-extensions {:message "Use h2x"}}}}}}

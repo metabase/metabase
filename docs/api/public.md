@@ -58,6 +58,28 @@ Fetch FieldValues for a Field that is referenced by a public Card.
 
 *  **`field-id`**
 
+## `GET /api/public/card/:uuid/params/:param-key/search/:query`
+
+Fetch values for a parameter on a public card containing `query`.
+
+### PARAMS:
+
+*  **`uuid`** 
+
+*  **`param-key`** 
+
+*  **`query`**
+
+## `GET /api/public/card/:uuid/params/:param-key/values`
+
+Fetch values for a parameter on a public card.
+
+### PARAMS:
+
+*  **`uuid`** 
+
+*  **`param-key`**
+
 ## `GET /api/public/card/:uuid/query`
 
 Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth

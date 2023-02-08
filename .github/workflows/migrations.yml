@@ -16,5 +16,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: check-migrations
     - name: Verify Liquibase Migrations
       run: ./bin/lint-migrations-file.sh

@@ -1,16 +1,17 @@
 import {
   enterCustomColumnDetails,
+  filter,
+  filterField,
   getNotebookStep,
+  join,
   openOrdersTable,
   openProductsTable,
   popover,
   restore,
+  startNewQuestion,
+  summarize,
   visitQuestionAdhoc,
   visualize,
-  summarize,
-  filter,
-  filterField,
-  startNewQuestion,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -372,6 +373,32 @@ describe("scenarios > question > notebook", () => {
     filterField("Min of Vendor", {
       operator: "ends with",
     });
+  });
+
+  it("should prompt to join with a model if the question is based on a model", () => {
+    cy.createQuestion({
+      name: "Products model",
+      query: { "source-table": PRODUCTS_ID },
+      dataset: true,
+      display: "table",
+    });
+
+    cy.createQuestion({
+      name: "Orders model",
+      query: { "source-table": ORDERS_ID },
+      dataset: true,
+      display: "table",
+    });
+
+    startNewQuestion();
+    popover().findByText("Models").click();
+    popover().findByText("Products model").click();
+    join();
+    popover().findByText("Orders model").click();
+    popover().findByText("ID").click();
+    popover().findByText("Product ID").click();
+
+    visualize();
   });
 
   // flaky test

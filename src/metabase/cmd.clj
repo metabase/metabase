@@ -17,14 +17,14 @@
   (:refer-clojure :exclude [load import])
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [environ.core :as env]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 (defn- system-exit!
   "Proxy function to System/exit to enable the use of `with-redefs`."

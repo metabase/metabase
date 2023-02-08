@@ -5,7 +5,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [honey.sql :as sql]
    [malli.core :as mc]
    [metabase.config :as config]
@@ -31,6 +30,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
    [toucan.db :as db])
   (:import
    (java.sql DatabaseMetaData)))

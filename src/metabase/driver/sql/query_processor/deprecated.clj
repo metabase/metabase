@@ -7,14 +7,12 @@
   method."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [honeysql.core :as hsql]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [honeysql.format :as hformat]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [pretty.core :as pretty]))
 

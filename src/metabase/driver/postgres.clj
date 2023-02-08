@@ -5,7 +5,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time :as t]
@@ -22,6 +21,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.models.field :as field]
@@ -31,7 +31,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
   (:import
    (java.sql ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
@@ -431,7 +432,7 @@
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
-          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
+          parent-identifier    (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)
           names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
       [::json-query parent-identifier field-type names])))
 

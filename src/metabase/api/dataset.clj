@@ -3,7 +3,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.api.field :as api.field]
@@ -12,8 +11,7 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database :refer [Database]]
-   [metabase.models.params.card-values :as params.card-values]
-   [metabase.models.params.static-values :as params.static-values]
+   [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
    [metabase.models.table :refer [Table]]
@@ -26,6 +24,8 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -176,55 +176,43 @@
       (qp.pivot/run-pivot-query (assoc query :async? true) info context))))
 
 
-(def ^:private Parameter
-  (su/open-schema
-   {:values_source_type (s/enum nil "static-list" "card")}))
-
-(def ^:private FieldIds (s/maybe [s/Int]))
-
 (defn- parameter-field-values
   [field-ids query]
-  (reduce (fn [resp id]
-            (let [{values :values more? :has_more_values} (api.field/field-id->values id query)]
-              (-> resp
-                  (update :values concat values)
-                  (update :has_more_values #(or % more?)))))
-          {:has_more_values false
-           :values []}
-          field-ids))
+  (when-not (seq field-ids)
+    (throw (ex-info (tru "Missing field-ids for parameter")
+                    {:status-code 400})))
+  (-> (reduce (fn [resp id]
+                (let [{values :values more? :has_more_values} (api.field/field-id->values id query)]
+                  (-> resp
+                      (update :values concat values)
+                      (update :has_more_values #(or % more?)))))
+              {:has_more_values false
+               :values          []}
+              field-ids)
+      ;; deduplicate the values returned from multiple fields
+      (update :values set)))
 
 (defn parameter-values
   "Fetch parameter values. Parameter should be a full parameter, field-ids is an optional vector of field ids, only
   consulted if `:values_source_type` is nil. Query is an optional string return matching field values not all."
   [parameter field-ids query]
-  (case (:values_source_type parameter)
-    "static-list" (params.static-values/param->values parameter query)
-    "card"        (params.card-values/param->values parameter query)
-    nil           (if (seq field-ids)
-                    (parameter-field-values field-ids query)
-                    (throw (ex-info (tru "Missing field-ids for parameter")
-                                    {:status-code 400
-                                     :parameter parameter})))
-    (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
-                    {:status-code 400
-                     :parameter parameter}))))
+  (custom-values/parameter->values
+    parameter query
+    (fn [] (parameter-field-values field-ids query))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/parameter/values"
+(api/defendpoint POST "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
   [:as {{:keys [parameter field_ids]} :body}]
-  {parameter Parameter
-   field_ids  FieldIds}
-  (let [nil-query nil]
-    (parameter-values parameter field_ids nil-query)))
+  {parameter ms/Parameter
+   field_ids [:maybe [:sequential ms/IntGreaterThanZero]]}
+  (parameter-values parameter field_ids nil))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/parameter/search/:query"
+(api/defendpoint POST "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
   [query :as {{:keys [parameter field_ids]} :body}]
-  {parameter Parameter
-   field_ids FieldIds
-   query     s/Str}
+  {parameter ms/Parameter
+   field_ids [:maybe [:sequential ms/IntGreaterThanZero]]
+   query     :string}
   (parameter-values parameter field_ids query))
 
 (api/define-routes)

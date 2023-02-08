@@ -3,7 +3,6 @@
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.driver :as driver]
@@ -23,6 +22,7 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (metabase.util.honey_sql_1_extensions Identifier TypedHoneySQLForm)))

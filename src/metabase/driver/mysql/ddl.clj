@@ -3,14 +3,14 @@
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.ddl :as sql.ddl]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
   (:import
    (java.sql SQLNonTransientConnectionException)))
 

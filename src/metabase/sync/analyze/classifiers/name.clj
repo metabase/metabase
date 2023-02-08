@@ -2,12 +2,12 @@
   "Classifier that infers the semantic type of a Field based on its name and base type."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.models.database :refer [Database]]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))

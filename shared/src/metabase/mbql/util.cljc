@@ -5,7 +5,6 @@
   (:clj
    [(:require
      [clojure.string :as str]
-     [clojure.tools.logging :as log]
      [metabase.mbql.predicates :as mbql.preds]
      [metabase.mbql.schema :as mbql.s]
      [metabase.mbql.schema.helpers :as schema.helpers]
@@ -13,6 +12,7 @@
      [metabase.models.dispatch :as models.dispatch]
      [metabase.shared.util.i18n :as i18n]
      [metabase.util.i18n]
+     [metabase.util.log :as log]
      [potemkin :as p]
      [schema.core :as s])]
    :cljs

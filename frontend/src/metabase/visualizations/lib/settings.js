@@ -124,7 +124,7 @@ function getSettingWidget(
   const settingDef = settingDefs[settingId];
   const value = computedSettings[settingId];
   const onChange = value => {
-    const newSettings = { [settingId]: value };
+    const newSettings = { [settingDef.writeSettingId || settingId]: value };
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
     }

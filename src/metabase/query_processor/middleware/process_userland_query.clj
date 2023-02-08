@@ -3,7 +3,6 @@
   to queries ran internally e.g. as part of the sync process).
   These include things like saving QueryExecutions and adding query ViewLogs, storing exceptions and formatting the results."
   (:require
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.events :as events]
    [metabase.models.query :as query]
@@ -12,6 +11,7 @@
     :refer [QueryExecution]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]

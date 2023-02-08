@@ -4,7 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honeysql.format :as hformat]
    [java-time :as t]
    [medley.core :as m]
@@ -20,7 +19,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
   (:import
    (java.sql DatabaseMetaData)
    (java.time OffsetDateTime ZonedDateTime)))
