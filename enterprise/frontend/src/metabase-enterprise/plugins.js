@@ -8,7 +8,6 @@ MetabaseSettings.isEnterprise = () => true;
 
 // PLUGINS:
 
-import "./whitelabel/overrides";
 import "./tools";
 import "./sandboxes";
 import "./auth";
