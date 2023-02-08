@@ -581,7 +581,7 @@
            (toucan-name)))))
 
 
-;;; ------------------------------------------------- Visibility Settings ------------------------------------------------
+;;; ------------------------------------------------- Setting Visibility ------------------------------------------------
 
 #_{:clj-kondo/ignore [:unused-private-var]}
 (defsetting ^:private test-internal-setting
