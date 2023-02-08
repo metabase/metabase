@@ -267,10 +267,10 @@
 
 (methodical/defmethod mi/to-json Database
   "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.
-  Also remove settings that the User doesn't have read perms for.
-
   Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
-  an API response!"
+  an API response!
+
+  Also remove settings that the User doesn't have read perms for."
   [db json-generator]
   (next-method
    (let [db (if (not (mi/can-write? db))
