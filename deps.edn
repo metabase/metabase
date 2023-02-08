@@ -489,6 +489,9 @@
   {:extra-deps {nrepl/nrepl {:mvn/version "0.9.0"}}
    :main-opts  ["-m" "nrepl.cmdline"]}
 
+  ;; - start a Socket REPL on port 50505 that you can connect your editor to:
+  :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
+
   ;; Liquibase CLI:
   ;;
   ;;    clojure -M:liquibase <command>
