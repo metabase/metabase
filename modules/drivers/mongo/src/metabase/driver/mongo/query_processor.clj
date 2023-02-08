@@ -288,7 +288,7 @@
                                                (week column))]
                               {:$ceil {$divide [{$dayOfYear week-start}
                                                 7.0]}})
-          :week-of-year-iso {:$isoWeek column}
+          :week-of-year-iso (extract :$isoWeek column)
           :week-of-year-us  (week-of-year column :us)
           :week-of-year-instance  (week-of-year column :instance)
           :month            (truncate :month)
@@ -307,7 +307,7 @@
                                 :timezone (qp.timezone/results-timezone-id)}}))
 
           :quarter-of-year
-          {:$toInt {:$ceil {$divide [{$month {:date column :timezone (qp.timezone/results-timezone-id)}} 3.0]}}}
+          {:$toInt {:$ceil {$divide [(extract $month column) 3.0]}}}
 
           :year
           (truncate :year)

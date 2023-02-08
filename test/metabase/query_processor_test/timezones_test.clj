@@ -236,55 +236,65 @@
                 actual   (select-keys (attempts) (keys expected))]
             (is (= expected actual))))))))
 
+(mt/defdataset all-dates-leap-year
+  (let [start-date #t "2012-01-01T01:30:54Z"]
+    [["alldates" [{:field-name "dt"
+                   :base-type :type/DateTimeWithTZ}]
+      (for [i (range 366)]
+        [(u.date/add start-date :day i)])]]))
+
 (deftest general-timezone-support-test
-  (mt/dataset test-data-with-timezones
+  (mt/dataset all-dates-leap-year
     (mt/test-drivers (set-timezone-drivers)
-      (let [expected-datetime #t "2014-04-01T08:30:00Z"
-            extract-units (disj u.date/extract-units :day-of-year :week-of-year :year)
+      (let [extract-units (disj u.date/extract-units :day-of-year)
+            ;; :week-of-year-instance is the behavior of u.date/extract (based on public-settings start-of-week)
+            extract-translate {:year :year-of-era :week-of-year :week-of-year-us}
             trunc-units (disj u.date/truncate-units :millisecond :second)]
-        (doseq [timezone ["Pacific/Honolulu" "America/Los_Angeles" "UTC"]
-                :let [in-tz (u.date/with-time-zone-same-instant expected-datetime timezone)
-                      expected (concat
-                                 (for [extract-unit extract-units]
-                                   [extract-unit (u.date/extract in-tz extract-unit)])
-                                 (for [trunc-unit trunc-units]
-                                   [trunc-unit
-                                    (-> in-tz
-                                        (u.date/truncate trunc-unit)
-                                        u.date/format-sql
-                                        (str/replace #" " "T"))])
-                                 [[:last_login
-                                   (-> in-tz
-                                       u.date/format-sql
-                                       (str/replace #" " "T"))]])]]
+        (doseq [timezone ["Pacific/Honolulu" "America/Los_Angeles" "UTC" "Pacific/Auckland"]
+                :let [expected-rows (for [i (range 366)
+                                          :let [expected-datetime (u.date/add #t "2012-01-01T01:30:54Z" :day i)
+                                                in-tz (u.date/with-time-zone-same-instant expected-datetime timezone)]]
+                                      (concat
+                                        (for [extract-unit extract-units]
+                                          [extract-unit (u.date/extract in-tz extract-unit)])
+                                        (for [trunc-unit trunc-units]
+                                          [trunc-unit
+                                           (-> in-tz
+                                               (u.date/truncate trunc-unit)
+                                               u.date/format-sql
+                                               (str/replace #" " "T"))])
+                                        [[:dt_tz
+                                          (-> in-tz
+                                              u.date/format-sql
+                                              (str/replace #" " "T"))]]))]]
           (mt/with-temporary-setting-values [report-timezone timezone]
-            (let [row (-> (mt/run-mbql-query users
-                            {:expressions (into {}
-                                                (map
-                                                  (fn [extract-unit]
-                                                    [extract-unit [:temporal-extract
-                                                                   [:field (mt/id :users :last_login) nil]
-                                                                   extract-unit]])
-                                                  extract-units))
-                             :fields (concat
-                                       (for [extract-unit extract-units]
-                                         [:expression extract-unit])
-                                       (for [trunc-unit trunc-units]
-                                         [:field (mt/id :users :last_login)
-                                          {:temporal-unit trunc-unit}])
-                                       [[:field (mt/id :users :last_login)]])
-                             :filter [:= (mt/id :users :id) 1]})
-                          (mt/rows)
-                          first)
-                  result-row (map vector
-                                  (concat
-                                    (for [extract-unit extract-units]
-                                      extract-unit)
-                                    (for [trunc-unit trunc-units]
-                                      trunc-unit)
-                                    [:last_login])
-                                  row)]
-            (is (= expected result-row)))))))))
+            (let [rows (->> (mt/run-mbql-query alldates
+                              {:expressions (->> extract-units
+                                                 (map
+                                                   (fn [extract-unit]
+                                                     [extract-unit [:temporal-extract
+                                                                    [:field (mt/id :alldates :dt) nil]
+                                                                    (get extract-translate extract-unit extract-unit)]]))
+                                                 (into {}))
+                               :fields (concat
+                                         (for [extract-unit extract-units]
+                                           [:expression extract-unit])
+                                         (for [trunc-unit trunc-units]
+                                           [:field (mt/id :alldates :dt)
+                                            {:temporal-unit trunc-unit}])
+                                         [[:field (mt/id :alldates :dt)]])
+                               :order-by [[:asc (mt/id :alldates :id)]]})
+                            (mt/rows)
+                            (map (fn [row]
+                                   (map vector
+                                        (concat
+                                          (for [extract-unit extract-units]
+                                            extract-unit)
+                                          (for [trunc-unit trunc-units]
+                                            trunc-unit)
+                                          [:dt_tz])
+                                        row))))]
+              (is (= expected-rows rows)))))))))
 
 (deftest filter-datetime-by-date-in-timezone-test
   (mt/test-drivers (set-timezone-drivers)
