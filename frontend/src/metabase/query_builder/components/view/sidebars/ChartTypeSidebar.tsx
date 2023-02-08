@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from "react";
-import _ from "underscore";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";

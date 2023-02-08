@@ -62,8 +62,8 @@ describe("ChartSettingsSidebar", () => {
       screen.getByTestId("display-options-not-sensible"),
     ).getAllByTestId(/container/i);
 
-    expect(sensible).toHaveLength(5);
-    expect(nonSensible).toHaveLength(12);
+    expect(sensible).toHaveLength(6);
+    expect(nonSensible).toHaveLength(11);
 
     const sensibleOrder = [
       "Table",
@@ -71,6 +71,7 @@ describe("ChartSettingsSidebar", () => {
       "Gauge",
       "Progress",
       "Object Detail",
+      "Waterfall",
     ];
     const nonSensibleOrder = [
       "Bar",
@@ -84,7 +85,6 @@ describe("ChartSettingsSidebar", () => {
       "Funnel",
       "Map",
       "Scatter",
-      "Waterfall",
     ];
 
     sensible.forEach((node, index) => {
