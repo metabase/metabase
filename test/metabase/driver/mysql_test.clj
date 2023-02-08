@@ -3,10 +3,10 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
    [java-time :as t]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.ddl :as mysql.ddl]
@@ -27,11 +27,17 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2-extensions :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]))
+
+(use-fixtures :each (fn [thunk]
+                      (binding [hx/*honey-sql-version* 2]
+                        (thunk))))
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
@@ -304,23 +310,26 @@
 (deftest group-on-time-column-test
   (mt/test-driver :mysql
     (testing "can group on TIME columns (#12846)"
-      (mt/dataset attempted-murders
-        (let [now-date-str (u.date/format (t/local-date (t/zone-id "UTC")))
-              add-date-fn  (fn [t] [(str now-date-str "T" t)])]
-          (testing "by minute"
-            (is (= (map add-date-fn ["00:14:00Z" "00:23:00Z" "00:35:00Z"])
-                   (mt/rows
-                     (mt/run-mbql-query attempts
-                       {:breakout [!minute.time]
-                        :order-by [[:asc !minute.time]]
-                        :limit    3})))))
-          (testing "by hour"
-            (is (= (map add-date-fn ["23:00:00Z" "20:00:00Z" "19:00:00Z"])
-                   (mt/rows
-                     (mt/run-mbql-query attempts
-                       {:breakout [!hour.time]
-                        :order-by [[:desc !hour.time]]
-                        :limit    3}))))))))))
+      (mt/with-temporary-setting-values [report-timezone "UTC"]
+        (mt/dataset attempted-murders
+          (let [now-date-str (u.date/format (t/local-date (t/zone-id "UTC")))
+                add-date-fn  (fn [t] [(str now-date-str "T" t)])]
+            (testing "by minute"
+              (let [query (mt/mbql-query attempts
+                            {:breakout [!minute.time]
+                             :order-by [[:asc !minute.time]]
+                             :limit    3})]
+                (mt/with-native-query-testing-context query
+                  (is (= (map add-date-fn ["00:14:00Z" "00:23:00Z" "00:35:00Z"])
+                         (mt/rows (qp/process-query query)))))))
+            (testing "by hour"
+              (let [query (mt/mbql-query attempts
+                            {:breakout [!hour.time]
+                             :order-by [[:desc !hour.time]]
+                             :limit    3})]
+                (mt/with-native-query-testing-context query
+                  (is (= (map add-date-fn ["23:00:00Z" "20:00:00Z" "19:00:00Z"])
+                         (mt/rows (qp/process-query query)))))))))))))
 
 (defn- pretty-sql [s]
   (str/replace s #"`" ""))
@@ -332,19 +341,19 @@
         (let [query (mt/mbql-query attempts
                       {:aggregation [[:count]]
                        :breakout    [!day.date]})]
-          (is (= (str "SELECT attempts.date AS date, count(*) AS count "
+          (is (= (str "SELECT attempts.date AS date, COUNT(*) AS count "
                       "FROM attempts "
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
                  (some-> (qp/compile query) :query pretty-sql))))))
 
     (testing "trunc-with-format should not cast a field if it is already a DATETIME"
-      (is (= ["SELECT str_to_date(date_format(CAST(field AS datetime), '%Y'), '%Y')"]
-             (hsql/format {:select [(#'mysql/trunc-with-format "%Y" :field)]})))
-      (is (= ["SELECT str_to_date(date_format(field, '%Y'), '%Y')"]
-             (hsql/format {:select [(#'mysql/trunc-with-format
-                                     "%Y"
-                                     (hx/with-database-type-info :field "datetime"))]}))))))
+      (is (= ["SELECT STR_TO_DATE(DATE_FORMAT(CAST(`field` AS datetime), '%Y'), '%Y')"]
+             (sql.qp/format-honeysql :mysql {:select [[(#'mysql/trunc-with-format "%Y" :field)]]})))
+      (is (= ["SELECT STR_TO_DATE(DATE_FORMAT(`field`, '%Y'), '%Y')"]
+             (sql.qp/format-honeysql :mysql {:select [[(#'mysql/trunc-with-format
+                                                        "%Y"
+                                                        (h2x/with-database-type-info :field "datetime"))]]}))))))
 
 (deftest mysql-connect-with-ssl-and-pem-cert-test
   (mt/test-driver :mysql
@@ -445,19 +454,19 @@
                          {:name "big_json"})))))))))
 
 (deftest json-query-test
-  (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
+  (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
-        (is (= ["convert(json_extract(boop.bleh, ?), UNSIGNED)" "$.\"meh\""]
-               (hsql/format (#'sql.qp/json-query :mysql boop-identifier boop-field))))))
+        (is (= ["CONVERT(JSON_EXTRACT(`boop`.`bleh`, ?), UNSIGNED)" "$.\"meh\""]
+               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
-        (is (= ["convert(json_extract(boop.bleh, ?), UNSIGNED)" "$.\"meh\".\"foobar\".\"1234\""]
-               (hsql/format (#'sql.qp/json-query :mysql boop-identifier weird-field))))))
+        (is (= ["CONVERT(JSON_EXTRACT(`boop`.`bleh`, ?), UNSIGNED)" "$.\"meh\".\"foobar\".\"1234\""]
+               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier weird-field))))))
     (testing "Doesn't complain when field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
-        (is (= ["json_extract(boop.bleh, ?)" "$.\"boop\".\"foobar\".\"1234\""]
-               (hsql/format (#'sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
+        (is (= ["JSON_EXTRACT(`boop`.`bleh`, ?)" "$.\"boop\".\"foobar\".\"1234\""]
+               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
 
 (deftest json-alias-test
   (mt/test-driver :mysql
@@ -468,15 +477,21 @@
             (sync/sync-table! table)
             (let [field (db/select-one Field :table_id (u/id table) :name "json_bit → 1234")
                   compile-res (qp/compile
-                                {:database (u/the-id (mt/db))
-                                 :type     :query
-                                 :query    {:source-table (u/the-id table)
-                                            :aggregation  [[:count]]
-                                            :breakout     [[:field (u/the-id field) nil]]}})]
-              (is (= (str "SELECT convert(json_extract(json.json_bit, ?), UNSIGNED) AS `json_bit → 1234`, "
-                          "count(*) AS `count` FROM `json` GROUP BY convert(json_extract(json.json_bit, ?), UNSIGNED) "
-                          "ORDER BY convert(json_extract(json.json_bit, ?), UNSIGNED) ASC")
-                     (:query compile-res)))
+                               {:database (u/the-id (mt/db))
+                                :type     :query
+                                :query    {:source-table (u/the-id table)
+                                           :aggregation  [[:count]]
+                                           :breakout     [[:field (u/the-id field) nil]]}})]
+              (is (= ["SELECT"
+                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED) AS `json_bit → 1234`,"
+                      "  COUNT(*) AS `count`"
+                      "FROM"
+                      "  `json`"
+                      "GROUP BY"
+                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED)"
+                      "ORDER BY"
+                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED) ASC"]
+                     (str/split-lines (mdb.query/format-sql (:query compile-res) :mysql))))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
 (deftest complicated-json-identifier-test
@@ -495,8 +510,8 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((floor(((convert(json_extract(json.json_bit, ?), UNSIGNED) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
-                         (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
+                  (is (= ["(FLOOR(((CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED) - 0.75) / 0.75)) * 0.75) + 0.75" "$.\"1234\""]
+                         (sql.qp/format-honeysql :mysql (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
 (tx/defdataset json-unwrap-bigint-and-boolean
   "Used for testing mysql json value unwrapping"

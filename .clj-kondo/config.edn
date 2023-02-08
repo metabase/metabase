@@ -694,7 +694,6 @@
   ;;           "bigquery-cloud-sdk"
   ;;           "h2"
   ;;           "hive-like"
-  ;;           "mysql"
   ;;           "oracle"
   ;;           [:and "presto" [:? [:or "-common" "-jdbc"]]]
   ;;           "snowflake"
@@ -707,7 +706,7 @@
   ;;   ".*"))
   ;;
   ;; Please keep this form updated when you change the generated regex! <3
-  {:pattern "^metabase\\.(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1-extensions)))(?!query-processor-test)(?!(?:(?:driver)|(?:test\\.data))\\.(?:(?:sql(?:-jdbc)?)|(?:(?:sql(?:-jdbc)?))|(?:athena)|(?:bigquery-cloud-sdk)|(?:h2)|(?:hive-like)|(?:mysql)|(?:oracle)|(?:presto(?:(?:(?:-common)|(?:-jdbc)))?)|(?:snowflake)|(?:sparksql)|(?:sqlite)|(?:sqlserver)|(?:vertica))(?:-test)?(?:(?:\\.)|(?:$))).*"
+  {:pattern "^metabase\\.(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1-extensions)))(?!query-processor-test)(?!(?:(?:driver)|(?:test\\.data))\\.(?:(?:sql(?:-jdbc)?)|(?:(?:sql(?:-jdbc)?))|(?:athena)|(?:bigquery-cloud-sdk)|(?:h2)|(?:hive-like)|(?:oracle)|(?:presto(?:(?:(?:-common)|(?:-jdbc)))?)|(?:snowflake)|(?:sparksql)|(?:sqlite)|(?:sqlserver)|(?:vertica))(?:-test)?(?:(?:\\.)|(?:$))).*"
    :name    honey-sql-2-namespaces}]
 
  :config-in-ns
