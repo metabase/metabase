@@ -21,10 +21,10 @@ version: '3.1'
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,fe-builder,dev-app docker-compose --file docker-compose-dev.yml up
 #
 # TODOs:
-# - Configure the local-dev service via env so there's only one
-# - Run yarn-hot out of the dev container as well. Could also be done its own
-#   service/container with the same volume mounts if we want to keep things
-#   separate.
+# - Get the fe-builder service working correctly. If anyone wants to see what it
+#   does, uncomment it and try
+#   COMPOSE_PROFILES=fe-builder docker-compose --file docker-compose-dev.yml up
+#   It will hang on step 4/5.
 # - Consider using swarm to declaratively scale up/down.
 services:
 
@@ -72,23 +72,23 @@ services:
 # NOTE: This service isn't ready for prime time. It takes a LONG time to start
 #       up. I think there's some mounts to caches that are needed or something.
 #       Hopefully one of our node geniuses can figure it out.
-#  # Just build the frontend. Mounts local dev so nothing else needed
-#  fe-builder:
-#    image: node:18.14
-#    container_name: fe-builder
-#    working_dir: /dev/metabase
-#    volumes:
-#      - .:/dev/metabase
-#      - ~/.npm:/root/.npm
-#      - ~/Library/Caches/Yarn/v6:/usr/local/share/.cache/yarn/v6
-#    command:
-#      - /bin/sh
-#      - -c
-#      - |
-#        yarn install
-#        yarn build-hot
-#    profiles:
-#      - fe-builder
+  # Just build the frontend. Mounts local dev so nothing else needed
+  fe-builder:
+    image: node:18.14
+    container_name: fe-builder
+    working_dir: /dev/metabase
+    volumes:
+      - .:/dev/metabase
+      - ~/.npm:/root/.npm
+      - ~/Library/Caches/Yarn/v6:/usr/local/share/.cache/yarn/v6
+    command:
+      - /bin/sh
+      - -c
+      - |
+        yarn install
+        yarn build-hot
+    profiles:
+      - fe-builder
 
   # App dbs. You only need one. If running metabase containerized, use the
   # corresponding service.
