@@ -153,8 +153,7 @@
 (deftest persistence-and-permissions
   (mt/with-model-cleanup [PersistedInfo]
     (testing "Queries from cache if not sandboxed"
-      (mt/with-current-user
-        (mt/user->id :rasta)
+      (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temp*
           [Card [card {:dataset_query (mt/mbql-query venues)
                        :dataset true

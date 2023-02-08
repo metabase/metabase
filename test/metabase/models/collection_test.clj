@@ -415,7 +415,8 @@
     ;;           |
     ;;           +-> F -> G
     (with-collection-hierarchy [{:keys [a b c d e f g]}]
-      (db/delete! Collection :id (u/the-id a))
+      (is (= true
+             (db/delete! Collection :id (u/the-id a))))
       (is (= 0
              (db/count Collection :id [:in (map u/the-id [a b c d e f g])])))))
 

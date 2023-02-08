@@ -29,6 +29,8 @@ jobs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: e2e-main
 
     - name: Build uberjar with ./bin/build
       run: >-

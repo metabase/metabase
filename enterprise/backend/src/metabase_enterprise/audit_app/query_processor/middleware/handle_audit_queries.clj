@@ -59,10 +59,10 @@
         (throw
          (Exception.
           (str "results-keys and metadata-keys differ.\n"
-               "results-keys:" results-keys "\n"
-               "metadata-keys:" metadata-keys "\n"
-               "in results, but not metadata:" only-in-results "\n"
-               "in metadata, but not results:" only-in-metadata)))))))
+               "results-keys: " results-keys "\n"
+               "metadata-keys: " metadata-keys "\n"
+               "in results, but not metadata: " only-in-results "\n"
+               "in metadata, but not results: " only-in-metadata)))))))
 
 (defn- metadata->cols [metadata]
   (for [[k v] metadata]

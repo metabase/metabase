@@ -283,6 +283,7 @@
                   :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
                                                                         (.getName (class clock))
                                                                         (pr-str clock)))))]
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (t/with-clock clock
         (thunk)))))
 

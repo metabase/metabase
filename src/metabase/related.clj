@@ -17,7 +17,8 @@
    [metabase.models.table :refer [Table]]
    [metabase.query-processor.util :as qp.util]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def ^:private ^Long max-best-matches        3)
 (def ^:private ^Long max-serendipity-matches 2)
@@ -93,14 +94,14 @@
   (let [[best rest] (split-at max-best-matches matches)]
     (concat best (->> rest shuffle (take max-serendipity-matches)))))
 
-(def ^:private ^{:arglists '([entities])} filter-visible
-  (partial filter (fn [{:keys [archived visibility_type active] :as entity}]
-                    (and (some? entity)
+(def ^:private ^{:arglists '([instances])} filter-visible
+  (partial filter (fn [{:keys [archived visibility_type active] :as instance}]
+                    (and (some? instance)
                          (or (nil? visibility_type)
                              (= (qp.util/normalize-token visibility_type) :normal))
                          (not archived)
                          (not= active false)
-                         (mi/can-read? entity)))))
+                         (mi/can-read? instance)))))
 
 (defn- metrics-for-table
   [table]
@@ -173,32 +174,33 @@
 
 (defn- recently-modified-dashboards
   []
-  (->> (db/select-field :model_id 'Revision
-         :model     "Dashboard"
-         :user_id   api/*current-user-id*
-         {:order-by [[:timestamp :desc]]})
-       (map (partial db/select-one Dashboard :id))
-       filter-visible
-       (take max-serendipity-matches)))
+  (when-let [dashboard-ids (not-empty (t2/select-fn-set :model_id 'Revision
+                                                        :model     "Dashboard"
+                                                        :user_id   api/*current-user-id*
+                                                        {:order-by [[:timestamp :desc]]}))]
+    (->> (db/select Dashboard :id [:in dashboard-ids])
+         filter-visible
+         (take max-serendipity-matches))))
 
 (defn- recommended-dashboards
   [cards]
-  (let [recent           (recently-modified-dashboards)
-        card->dashboards (->> (apply db/select [DashboardCard :card_id :dashboard_id]
-                                     (cond-> []
-                                       (seq cards)
-                                       (concat [:card_id [:in (map :id cards)]])
+  (let [recent                   (recently-modified-dashboards)
+        card-id->dashboard-cards (->> (apply db/select [DashboardCard :card_id :dashboard_id]
+                                             (cond-> []
+                                               (seq cards)
+                                               (concat [:card_id [:in (map :id cards)]])
 
-                                       (seq recent)
-                                       (concat [:dashboard_id [:not-in recent]])))
-                              (group-by :card_id))
-        best             (->> cards
-                              (mapcat (comp card->dashboards :id))
-                              distinct
-                              ;; TODO -- extremely naughty to be doing a separate select for every single Dashboard ID
-                              (map (partial db/select-one Dashboard :id))
-                              filter-visible
-                              (take max-best-matches))]
+                                               (seq recent)
+                                               (concat [:dashboard_id [:not-in (map :id recent)]])))
+                                      (group-by :card_id))
+        dashboard-ids (->> (map :id cards)
+                           (mapcat card-id->dashboard-cards)
+                           (map :dashboard_id)
+                           distinct)
+        best          (when (seq dashboard-ids)
+                        (->> (db/select Dashboard :id [:in dashboard-ids])
+                             filter-visible
+                             (take max-best-matches)))]
     (concat best recent)))
 
 (defn- recommended-collections

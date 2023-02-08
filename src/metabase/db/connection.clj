@@ -4,7 +4,9 @@
   (:require
    [metabase.db.connection-pool-setup :as connection-pool-setup]
    [metabase.db.env :as mdb.env]
-   [potemkin :as p])
+   [methodical.core :as methodical]
+   [potemkin :as p]
+   [toucan2.connection :as t2.conn])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
@@ -129,3 +131,7 @@
                       (apply f args)))]
     (fn [& args]
       (apply f* (unique-identifier) args))))
+
+(methodical/defmethod t2.conn/do-with-connection :default
+  [_connectable f]
+  (t2.conn/do-with-connection *application-db* f))

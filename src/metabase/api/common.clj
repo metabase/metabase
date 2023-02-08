@@ -5,7 +5,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [compojure.core :as compojure]
-   [honeysql.types :as htypes]
    [medley.core :as m]
    [metabase.api.common.internal
     :refer [add-route-param-regexes
@@ -539,7 +538,7 @@
                      (doseq [model '[Card Dashboard Pulse]]
                        (db/update-where! model {:collection_id       collection-id
                                                 :collection_position position-update-clause}
-                         :collection_position (htypes/call plus-or-minus :collection_position 1))))]
+                         :collection_position [plus-or-minus :collection_position 1])))]
     (when (not= new-position old-position)
       (cond
         (and (nil? new-position)
