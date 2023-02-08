@@ -5,6 +5,7 @@ import {
   popover,
   restore,
   saveQuestion,
+  setDropdownFilterType,
   setFilterListSource,
   setFilterQuestionSource,
   visitEmbeddedPage,
@@ -80,6 +81,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
       );
+      setDropdownFilterType();
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
       saveQuestion("SQL filter");
 
@@ -102,6 +104,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
       );
+      setDropdownFilterType();
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
 
       FieldFilter.openEntryForm();
@@ -117,6 +120,7 @@ describe("scenarios > filters > sql filters > values source", () => {
         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
       );
 
+      setDropdownFilterType();
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
       FieldFilter.openEntryForm();
       cy.wait("@parameterValues");
