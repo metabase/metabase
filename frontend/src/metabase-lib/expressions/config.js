@@ -124,7 +124,7 @@ export const MBQL_CLAUSES = {
     type: "string",
     args: ["string", "number", "number"],
     validator: function (_arg, start, _length) {
-      if (typeof start === "number" && start <= 0) {
+      if (start <= 0) {
         return t`Expected positive integer but found ${start}`;
       }
     },
