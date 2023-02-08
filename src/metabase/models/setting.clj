@@ -1155,7 +1155,6 @@
     (boolean (and (not (:sensitive? setting))
                   (contains? allowed-visibilities (:visibility setting))))))
 
-
 (defn user-readable-values-map
   "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.
 
