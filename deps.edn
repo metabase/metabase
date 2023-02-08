@@ -280,6 +280,13 @@
   :oss-dev
   {}
 
+  :cljs
+  {:extra-paths ["test" "shared/test"]
+   :extra-deps
+   {com.lambdaisland/glogi  {:mvn/version "1.2.164"}
+    io.github.metabase/hawk {:sha "45ed36008014f9ac1ea66beb56fb1c4c39f8342b"}
+    thheller/shadow-cljs    {:mvn/version "2.19.6"}}}
+
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
   {:extra-deps
