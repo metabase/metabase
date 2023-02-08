@@ -73,6 +73,7 @@
                    ;; The below 'print will provide warnings such as:
                    ;; test/metabase/query_processor_test/nested_field_test.clj:10:19: warning: Use clojure.tools.logging instead of clojure.core/print
                    ;; I was able to fix by changing 'print to (constantly nil), so this isn't critical, but would be nice to have fixed.
+                   ;; Note that #_{:clj-kondo/ignore [:discouraged-var]} does not work here.
                    (list* (hooks/token-node 'print)
                       body))]
     {:node (with-meta (hooks/list-node (with-meta body
