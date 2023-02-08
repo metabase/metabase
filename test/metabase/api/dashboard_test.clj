@@ -2149,6 +2149,32 @@
                   :has_more_values false}
                  (mt/user-http-request :rasta :get 200 url)))))))
 
+  (testing "fallback to chain-filter"
+    (with-redefs [api.dashboard/chain-filter (constantly "chain-filter")]
+      (testing "if value-field not found in source card"
+        (mt/with-temp* [Card       [{card-id :id}]
+                        Dashboard  [dashboard
+                                    {:parameters    [{:id                   "abc"
+                                                      :type                 "category"
+                                                      :name                 "CATEGORY"
+                                                      :values_source_type   "card"
+                                                      :values_source_config {:card_id     card-id
+                                                                             :value_field (mt/$ids $venues.name)}}]}]]
+          (let-url [url (chain-filter-values-url dashboard "abc")]
+            (is (= "chain-filter" (mt/user-http-request :rasta :get 200 url))))))
+
+      (testing "if card is archived"
+        (mt/with-temp* [Card       [{card-id :id} {:archived true}]
+                        Dashboard  [dashboard
+                                    {:parameters    [{:id                   "abc"
+                                                      :type                 "category"
+                                                      :name                 "CATEGORY"
+                                                      :values_source_type   "card"
+                                                      :values_source_config {:card_id     card-id
+                                                                             :value_field (mt/$ids $venues.name)}}]}]]
+          (let-url [url (chain-filter-values-url dashboard "abc")]
+            (is (= "chain-filter" (mt/user-http-request :rasta :get 200 url))))))))
+
   (testing "users must have permissions to read the collection that source card is in"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp*
@@ -2159,14 +2185,14 @@
                       :table_id      (mt/id :venues)
                       :dataset_query (mt/mbql-query venues {:limit 5})}]
          Collection [coll2 {:name "Dashboard collections"}]
-         Dashboard [{dashboard-id :id}
-                    {:collection_id (:id coll2)
-                     :parameters    [{:id                   "abc"
-                                      :type                 "category"
-                                      :name                 "CATEGORY"
-                                      :values_source_type   "card"
-                                      :values_source_config {:card_id     source-card-id
-                                                             :value_field (mt/$ids $venues.name)}}]}]]
+         Dashboard  [{dashboard-id :id}
+                     {:collection_id (:id coll2)
+                      :parameters    [{:id                   "abc"
+                                       :type                 "category"
+                                       :name                 "CATEGORY"
+                                       :values_source_type   "card"
+                                       :values_source_config {:card_id     source-card-id
+                                                              :value_field (mt/$ids $venues.name)}}]}]]
         (testing "Fail because user doesn't have read permissions to coll1"
           (is (=? "You don't have permissions to do that."
                   (mt/user-http-request :rasta :get 403 (chain-filter-values-url dashboard-id "abc"))))
