@@ -68,7 +68,12 @@
                ;; (this used to be a `do` form (which makes a lot more semantic sense), but that resulted in warnings
                ;; about unused values
                (:unqualified/from-dataset-defs-namespace :unqualified/unknown)
-               (list* (hooks/token-node noop)
+
+                   ;; NOTE for borkdude WRT https://github.com/clj-kondo/clj-kondo/issues/1980
+                   ;; The below 'print will provide warnings such as:
+                   ;; test/metabase/query_processor_test/nested_field_test.clj:10:19: warning: Use clojure.tools.logging instead of clojure.core/print
+                   ;; I was able to fix by changing 'print to (constantly nil), so this isn't critical, but would be nice to have fixed.
+                   (list* (hooks/token-node 'print)
                       body))]
     {:node (with-meta (hooks/list-node (with-meta body
                                                   (meta dataset)))
