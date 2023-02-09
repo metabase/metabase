@@ -29,7 +29,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.test :as mt]
-   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.schema :as su]
@@ -95,32 +94,15 @@
                   (filter :personal_owner_id)
                   (map :name))))
 
-      (testing "...even if we are *admins*"
-        (is (= ["Crowberto Corv's Personal Collection"]
+      (testing "...unless we are *admins*"
+        (is (= ["Crowberto Corv's Personal Collection"
+                "Lucky Pigeon's Personal Collection"
+                "Rasta Toucan's Personal Collection"
+                "Trash Bird's Personal Collection"]
                (->> (mt/user-http-request :crowberto :get 200 "collection")
                     (filter #((set (map mt/user->id [:crowberto :lucky :rasta :trashbird])) (:personal_owner_id %)))
                     (map :name)
                     sort)))))
-
-    (testing "You should only see your collection and public collections"
-      (let [user-id (u/the-id (test.users/fetch-user :crowberto))
-            crowberto-root    (db/select-one Collection :personal_owner_id user-id)]
-        (mt/with-temp* [Collection [collection]
-                        Collection [{collection-id :id} {:name "Collection with Items"}]
-                        Collection [_ {:name            "subcollection"
-                                       :location        (format "/%d/" collection-id)
-                                       :authority_level "official"}]
-                        Collection [_ {:name     "Crowberto's Child Collection"
-                                       :location (collection/location-path crowberto-root)}]]
-          (let [public-collections #{"Our analytics" (:name collection) "Collection with Items" "subcollection"}
-                crowbertos         (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
-                luckys             (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
-            (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
-                   crowbertos))
-            (is (false? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
-            (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
-                   luckys))
-            (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))
 
     (testing "Personal Collection's name and slug should be returned in user's locale"
       (with-french-user-and-personal-collection user _collection
