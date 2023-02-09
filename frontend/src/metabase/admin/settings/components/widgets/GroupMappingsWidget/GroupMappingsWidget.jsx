@@ -72,7 +72,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
       value: mappingsPlusNewMapping,
     }).then(
       () => {
-        props.onChangeSetting(mappingSetting, mappings);
+        props.onChangeSetting(mappingSetting, mappingsPlusNewMapping);
         setMappings(mappingsPlusNewMapping);
 
         setShowAddRow(false);
@@ -95,7 +95,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
       value: updatedMappings,
     }).then(
       () => {
-        props.onChangeSetting(mappingSetting, mappings);
+        props.onChangeSetting(mappingSetting, updatedMappings);
         setMappings(updatedMappings);
 
         setSaveError(null);
@@ -149,7 +149,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
       value: mappingsMinusDeletedMapping,
     }).then(
       () => {
-        props.onChangeSetting(mappingSetting, mappings);
+        props.onChangeSetting(mappingSetting, mappingsMinusDeletedMapping);
         setMappings(mappingsMinusDeletedMapping);
 
         onSuccess();
