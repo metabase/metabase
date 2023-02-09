@@ -465,20 +465,20 @@ const TITLE_LOCALES_BN = {
     'bn': 'বৈদেশিক/স্থানীয় প্রশিক্ষণের পরিসংখ্যান'
   },
   'teacher.male.female.ratio.as.trainee': {
-    'en': 'Statistics of Male/Female Teacher as Trainee',
-    'bn': 'প্রশিক্ষনার্থী হিসেবে পুরুষ/মহিলা শিক্ষক পরিসংখ্যান'
+    'en': 'Statistics of Male/Female Trainees',
+    'bn': 'পুরুষ/মহিলা প্রশিক্ষনার্থীদের পরিসংখ্যান'
   },
   'total.training.count': {
     'en': 'Total Trainings',
     'bn': 'মোট প্রশিক্ষণ'
   },
   'total.teacher.trainee.count': {
-    'en': 'Total Teachers as Trainee',
-    'bn': 'প্রশিক্ষণার্থী হিসেবে মোট শিক্ষক'
+    'en': 'Total Trainees (Teacher)',
+    'bn': 'মোট প্রশিক্ষণার্থী (শিক্ষক)'
   },
   'total.officer.trainee.count': {
-    'en': 'Total Officers as Trainee',
-    'bn': 'প্রশিক্ষণার্থী হিসেবে মোট কর্মকর্তা'
+    'en': 'Total Trainees (Officer)',
+    'bn': 'মোট প্রশিক্ষণার্থী (কর্মকর্তা)'
   },
   'at.ht.training.ratio': {
     'en': 'Statistics of Head/Assistant Teacher',
