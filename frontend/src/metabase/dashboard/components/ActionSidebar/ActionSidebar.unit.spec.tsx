@@ -108,6 +108,6 @@ describe("Dashboard > ActionSidebar", () => {
   it("changes the modal trigger button when an action is assigned already", async () => {
     setup({ dashcardId: 3 });
 
-    expect(screen.getByText("Update assigned action")).toBeInTheDocument();
+    expect(screen.getByText("Change action")).toBeInTheDocument();
   });
 });
