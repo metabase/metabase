@@ -7,7 +7,7 @@ export interface StatusListingProps {
 }
 
 const StatusListing = ({ isAdmin }: StatusListingProps): JSX.Element => {
-  return <StatusListingRoot>{isAdmin && <DatabaseStatus />}</StatusListingRoot>;
+  return <StatusListingRoot>{false && <DatabaseStatus />}</StatusListingRoot>;
 };
 
 export default StatusListing;
