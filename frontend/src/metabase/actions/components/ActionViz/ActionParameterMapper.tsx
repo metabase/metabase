@@ -1,12 +1,9 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
-import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
 
-import Actions from "metabase/entities/actions";
-import Questions from "metabase/entities/questions";
 import { setParameterMapping } from "metabase/dashboard/actions";
 
 import type {
@@ -17,7 +14,6 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 
-import type { State } from "metabase-types/store";
 import type {
   ParameterTarget,
   ParameterId,

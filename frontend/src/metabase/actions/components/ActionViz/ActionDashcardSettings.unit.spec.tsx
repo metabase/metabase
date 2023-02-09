@@ -80,11 +80,6 @@ const dashboard = createMockDashboard({
   parameters: [dashboardParameter],
 });
 
-const dashcardParamaterMappings = {
-  parameter_id: dashboardParameter.id,
-  target: actionParameter1.target,
-};
-
 const setup = (
   options?: Partial<
     React.ComponentProps<typeof ConnectedActionDashcardSettings>
@@ -139,6 +134,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
     userEvent.click(modelExpander);
 
+    await screen.findByText("Action Uno");
     expect(screen.getByText("Action Uno")).toBeInTheDocument();
     expect(screen.getByText("Action Dos")).toBeInTheDocument();
   });
@@ -158,7 +154,6 @@ describe("ActionViz > ActionDashcardSettings", () => {
     setup({
       dashcard: actionDashcardWithAction,
     });
-
     expect(screen.getByText("Action Parameter 1")).toBeInTheDocument();
     expect(screen.getByText("Action Parameter 2")).toBeInTheDocument();
   });

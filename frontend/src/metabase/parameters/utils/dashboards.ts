@@ -9,7 +9,6 @@ import type {
   DashboardParameterMapping,
   DashboardOrderedCard,
   Parameter,
-  ActionDashboardCard,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
