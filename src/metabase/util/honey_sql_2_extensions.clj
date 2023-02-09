@@ -28,16 +28,18 @@
  (update (sql/get-dialect :ansi) :quote (fn [quote]
                                           (comp english-upper-case quote))))
 
-;; register the `extract` function with HoneySQL
-;; (hsql/format (sql/call :extract :a :b)) -> "extract(a from b)"
-(defn- format-extract [_fn [unit expr]]
+;; register the `::extract` function with HoneySQL
+(defn- format-extract
+  "(sql/format-expr [::extract :a :b])
+   => \"extract(a from b)\""
+  [_fn [unit expr]]
   (let [[sql & args] (sql/format-expr expr {:nested true})]
     (into [(clojure.core/format "extract(%s from %s)" (name unit) sql)]
           args)))
 
 (sql/register-fn! ::extract #'format-extract)
 
-;; register the function `distinct-count` with HoneySQL
+;; register the function `::distinct-count` with HoneySQL
 (defn- format-distinct-count
   "(sql/format-expr [::h2x/distinct-count :x])
    =>

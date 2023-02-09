@@ -194,7 +194,7 @@
   (into [:concat] (map (partial sql.qp/->honeysql driver)) args))
 
 (defn- extract [unit temporal]
-  [:extract (format "'%s'" (name unit)) temporal])
+  [::h2x/extract (format "'%s'" (name unit)) temporal])
 
 (defn- datediff [unit x y]
   [:datediff [:raw (name unit)] x y])
