@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 
@@ -138,7 +137,7 @@ const ConnectedModelActionPicker = Actions.loadList({
   query: (state: State, props: { model: { id: number | null } }) => ({
     "model-id": props?.model?.id,
   }),
-  loadingAndErrorWrapper: true,
+  loadingAndErrorWrapper: false,
 })(ModelActionPicker);
 
 export const ConnectedActionPicker = Search.loadList({
