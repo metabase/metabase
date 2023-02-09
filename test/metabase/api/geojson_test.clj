@@ -184,7 +184,7 @@
               (testing "Should parse env var custom GeoJSON and merge in"
                 (is (= expected-value
                        (api.geojson/custom-geojson))))
-              (testing "Env var value SHOULD NOT come back with [[setting/writeable-settings]] -- should NOT be WRITABLE"
+              (testing "Env var value SHOULD NOT come back with [[setting/writable-settings]] -- should NOT be WRITABLE"
                 (is (schema= {:key            (s/eq :custom-geojson)
                               :value          (s/eq nil)
                               :is_env_setting (s/eq true)
@@ -196,7 +196,7 @@
                               (fn [{setting-name :key, :as setting}]
                                 (when (= setting-name :custom-geojson)
                                   setting))
-                              (setting/writeable-settings)))))
+                              (setting/writable-settings)))))
               (testing "Env var value SHOULD come back with [[setting/user-readable-values-map]] -- should be READABLE."
                 (is (= expected-value
                        (get (setting/user-readable-values-map #{:public}) :custom-geojson)))))))))))

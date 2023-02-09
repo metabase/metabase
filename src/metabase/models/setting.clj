@@ -29,7 +29,7 @@
   You can define additional Settings types adding implementations of [[default-tag-for-type]], [[get-value-of-type]],
   and [[set-value-of-type!]].
 
-  [[writeable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
+  [[writable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
   User-readable Settings, respectively. See their docstrings for more information.
 
   ### User-local and Database-local Settings
@@ -50,7 +50,7 @@
 
   * `:only` means this Setting can *only* have a User- or Database-local value and cannot have a 'normal' site-wide
   value. It cannot be set via env var. Default values are still allowed for User- and Database-local-only Settings.
-  User- and Database-local-only Settings are never returned by [[writeable-settings]] or
+  User- and Database-local-only Settings are never returned by [[writable-settings]] or
   [[user-readable-values-map]] regardless of their [[Visibility]].
 
   * `:allowed` means this Setting can be User- or Database-local and can also have a normal site-wide value; if both
@@ -946,7 +946,7 @@
 
   Is this a sensitive setting, such as a password, that we should never return in plaintext? (Default: `false`).
   Obfuscation is not done by getter functions, but instead by functions that ultimately return these values via the
-  API, such as [[writeable-settings]] below. (In other words, code in the backend can continute to consume
+  API, such as [[writable-settings]] below. (In other words, code in the backend can continute to consume
   sensitive Settings normally; sensitivity is a purely user-facing option.)
 
   ###### `:database-local`
