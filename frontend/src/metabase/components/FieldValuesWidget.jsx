@@ -649,6 +649,7 @@ function getTokenFieldPlaceholder({
     })
   ) {
     return getSearchableTokenFieldPlaceholder(
+      parameter,
       fields,
       firstField,
       disablePKRemappingForSearch,
