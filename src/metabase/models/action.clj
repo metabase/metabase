@@ -113,12 +113,6 @@
         (merge (db/select-one subtype :action_id (:id action)))
         (dissoc :action_id))))
 
-(defn select-one
-  "Selects an action and fills in the subtype data.
-   `options` is passed to `db/select-one` `& options` arg."
-  [& options]
-  (hydrate-subtype (apply db/select-one Action options)))
-
 (defn- normalize-query-actions [actions]
   (when (seq actions)
     (let [query-actions (db/select QueryAction :action_id [:in (map :id actions)])
@@ -167,19 +161,19 @@
 (defn implicit-action-parameters
   "Return a set of parameters for the given models"
   [cards]
-  (let [card-by-table-id (into {}
+  (let [card-by-table-id (into {}        ; table-id->card
                                (for [card cards
                                      :let [{:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
                                      :when table-id]
                                  [table-id card]))
-        tables (when-let [table-ids (seq (keys card-by-table-id))]
+        tables (when-let [table-ids (seq (keys card-by-table-id))] ; tables that are used in cards dataset query
                  (hydrate (db/select 'Table :id [:in table-ids]) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
                 ;; Skip tables for have conflicting slugified columns i.e. table has "name" and "NAME" columns.
                 :when (unique-field-slugs? fields)
-                :let [card (get card-by-table-id (:id table))
+                :let [card (get card-by-table-id (:id table)) ; one card that uses the table. not sure what happens if multiple cards use the same table?
                       exposed-fields (into #{} (keep :id) (:result_metadata card))
                       parameters (->> fields
                                       (filter #(contains? exposed-fields (:id %)))
@@ -197,7 +191,7 @@
 
    Pass in known-models to save a second Card lookup."
   [known-models & options]
-  (let [actions                         (apply select-actions options)
+  (let [actions                         (apply select options)
         implicit-action-model-ids       (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
         models-with-implicit-actions    (if known-models
                                           (->> known-models
@@ -228,6 +222,19 @@
                                     (map #(dissoc % ::pk? ::field-id))
 
                                     :always seq))))))
+
+(defn select-action
+  "Selects an Action and fills in the subtype data and implicit parameters.
+   `options` is passed to `db/select-one` `& options` arg."
+  [& options]
+  (first (apply actions-with-implicit-params nil options)))
+
+(defn select-action-without-implicit-params
+  "Selects an Action and fills in the subtype data. Doesn't include generated parameters for implicit actions,
+   like [[select-action]]. `options` is passed to `db/select-one` `& options` arg.
+   Only use this if you know you don't need implicit parameters."
+  [& options]
+  (hydrate-subtype (apply db/select-one Action options)))
 
 (mi/define-batched-hydration-method dashcard-action
   :dashcard/action
@@ -265,7 +272,7 @@
 (defmethod serdes.base/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))
   (update! (assoc ingested :id (:id local)) local)
-  (select-one :id (:id local)))
+  (select-action-without-implicit-params :id (:id local)))
 
 (defmethod serdes.base/load-insert! "Action" [_model-name ingested]
   (log/tracef "Inserting Action: %s" (pr-str ingested))
