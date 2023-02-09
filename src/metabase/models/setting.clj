@@ -29,7 +29,7 @@
   You can define additional Settings types adding implementations of [[default-tag-for-type]], [[get-value-of-type]],
   and [[set-value-of-type!]].
 
-  [[admin-writable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
+  [[writeable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
   User-readable Settings, respectively. See their docstrings for more information.
 
   ### User-local and Database-local Settings
@@ -50,7 +50,7 @@
 
   * `:only` means this Setting can *only* have a User- or Database-local value and cannot have a 'normal' site-wide
   value. It cannot be set via env var. Default values are still allowed for User- and Database-local-only Settings.
-  User- and Database-local-only Settings are never returned by [[admin-writable-settings]] or
+  User- and Database-local-only Settings are never returned by [[writeable-settings]] or
   [[user-readable-values-map]] regardless of their [[Visibility]].
 
   * `:allowed` means this Setting can be User- or Database-local and can also have a normal site-wide value; if both
@@ -946,7 +946,7 @@
 
   Is this a sensitive setting, such as a password, that we should never return in plaintext? (Default: `false`).
   Obfuscation is not done by getter functions, but instead by functions that ultimately return these values via the
-  API, such as [[admin-writable-settings]] below. (In other words, code in the backend can continute to consume
+  API, such as [[writeable-settings]] below. (In other words, code in the backend can continute to consume
   sensitive Settings normally; sensitivity is a purely user-facing option.)
 
   ###### `:database-local`
@@ -1099,7 +1099,7 @@
                (when api/*is-superuser?*
                  [:admin]))))
 
-(defn admin-writable-settings
+(defn writable-settings
   "Return a sequence of site-wide Settings maps in a format suitable for consumption by the frontend.
   (For security purposes, this doesn't return the value of a Setting if it was set via env var).
 
@@ -1124,7 +1124,7 @@
        (sort-by :name (vals @registered-settings))))))
 
 (defn admin-writable-site-wide-settings
-  "Returns a sequence of site-wide Settings maps, similar to [[admin-writable-settings]]. However, this function
+  "Returns a sequence of site-wide Settings maps, similar to [[writable-settings]]. However, this function
   excludes User-local Settings in addition to Database-local Settings. Settings that are optionally user-local will
   be included with their site-wide value, if a site-wide value is set.
 
@@ -1144,8 +1144,8 @@
      (sort-by :name (vals @registered-settings)))))
 
 (defn can-read-setting?
-  "Returns true if the current user can read the setting, and false otherwise.
-   `visibilities` is a set of visibilities that the current user has access to."
+  "Returns true if a setting can be read according to the provided set of `allowed-visibilities`, and false otherwise.
+   `allowed-visibilities` is a set of visibilities that the user can read."
   [setting allowed-visibilities]
   (let [setting (resolve-setting setting)]
     (boolean (and (not (:sensitive? setting))

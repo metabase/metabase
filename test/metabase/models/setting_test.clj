@@ -266,8 +266,8 @@
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
            (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" "ENV VAR")))))
 
-(deftest admin-writable-settings-test
-  (testing `setting/admin-writable-settings
+(deftest writeable-settings-test
+  (testing `setting/writeable-settings
     (mt/with-test-user :crowberto
       (test-setting-1! nil)
       (test-setting-2! "TOUCANS")
@@ -280,7 +280,7 @@
              (some (fn [setting]
                      (when (re-find #"^test-setting-2$" (name (:key setting)))
                        setting))
-                   (setting/admin-writable-settings))))
+                   (setting/writeable-settings))))
 
       (testing "with a custom getter"
         (test-setting-1! nil)
@@ -294,7 +294,7 @@
                (some (fn [setting]
                        (when (re-find #"^test-setting-2$" (name (:key setting)))
                          setting))
-                     (setting/admin-writable-settings :getter (comp count (partial setting/get-value-of-type :string)))))))
+                     (setting/writeable-settings :getter (comp count (partial setting/get-value-of-type :string)))))))
 
       ;; TODO -- probably don't need both this test and the "TOUCANS" test above, we should combine them
       (testing "test settings"
@@ -312,7 +312,7 @@
                  :env_name       "MB_TEST_SETTING_2"
                  :description    "Test setting - this only shows up in dev (2)"
                  :default        "[Default Value]"}]
-               (for [setting (setting/admin-writable-settings)
+               (for [setting (setting/writeable-settings)
                      :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
                  setting)))))))
 
@@ -327,7 +327,7 @@
                   (some (fn [{:keys [key description]}]
                           (when (= :test-i18n-setting key)
                             description))
-                        (setting/admin-writable-settings)))]
+                        (setting/writeable-settings)))]
           (is (= "Test setting - with i18n"
                  (description)))
           (mt/with-user-locale "zz"
@@ -768,9 +768,9 @@
 (deftest database-local-settings-api-functions-test
   ;; we'll use `::not-present` below to signify that the Setting isn't returned AT ALL (as opposed to being returned
   ;; with a `nil` value)
-  (doseq [[fn-name f] {`setting/admin-writable-settings
+  (doseq [[fn-name f] {`setting/writeable-settings
                        (fn [k]
-                         (let [m (into {} (map (juxt :key :value)) (setting/admin-writable-settings))]
+                         (let [m (into {} (map (juxt :key :value)) (setting/writeable-settings))]
                            (get m k ::not-present)))
 
                        `setting/user-readable-values-map

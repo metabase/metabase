@@ -30,7 +30,7 @@
   For non-superusers, a list of visible settings and values can be retrieved using the /api/session/properties endpoint."
   []
   (validation/check-has-application-permission :setting)
-  (setting/admin-writable-settings))
+  (setting/writeable-settings))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/"
