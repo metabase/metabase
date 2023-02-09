@@ -24,6 +24,7 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan2.core :as t2]
+   [toucan2.instance :as t2.instance]
    [toucan2.realize :as t2.realize]))
 
 (def ^:private SearchContext
@@ -151,7 +152,7 @@
 (s/defn ^:private from-clause-for-model :- [(s/one [(s/one s/Keyword "table name") (s/one s/Keyword "alias")]
                                                    "from clause")]
   [model :- SearchableModel]
-  (let [db-model (get search-config/model-to-db-model model)]
+  (let [db-model (get search-config/model-to-db-model-t1 model)]
     [[(t2/table-name db-model) (-> db-model name u/lower-case-en keyword)]]))
 
 (defmulti ^:private archived-where-clause
@@ -364,16 +365,16 @@
   true)
 
 (defmethod check-permissions-for-model :metric
-  [{:keys [id]}]
-  (-> (db/select-one Metric :id id) mi/can-read?))
+  [o]
+  (mi/can-read? o))
 
 (defmethod check-permissions-for-model :segment
-  [{:keys [id]}]
-  (-> (db/select-one Segment :id id) mi/can-read?))
+  [o]
+  (mi/can-read? o))
 
 (defmethod check-permissions-for-model :database
-  [{:keys [id]}]
-  (-> (db/select-one Database :id id) mi/can-read?))
+  [o]
+  (mi/can-read? o))
 
 (defn- query-model-set
   "Queries all models with respect to query for one result to see if we get a result or not"
@@ -405,21 +406,23 @@
 (s/defn ^:private search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
-  (let [search-query      (full-search-query search-ctx)
-        _                 (log/tracef "Searching with query:\n%s\n%s"
-                                      (u/pprint-to-str search-query)
-                                      (mdb.query/format-sql (first (mdb.query/compile search-query))))
-        reducible-results (mdb.query/reducible-query search-query :max-rows search-config/*db-max-results*)
-        xf                (comp
-                           (map t2.realize/realize)
-                           (filter check-permissions-for-model)
-                           ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
-                           ;; needed
-                           (map #(update % :bookmark api/bit->boolean))
-                           (map #(update % :archived api/bit->boolean))
-                           (map (partial scoring/score-and-result (:search-string search-ctx)))
-                           (filter #(pos? (:score %))))
-        total-results     (scoring/top-results reducible-results search-config/max-filtered-results xf)]
+  (let [search-query       (full-search-query search-ctx)
+        _                  (log/tracef "Searching with query:\n%s\n%s"
+                                       (u/pprint-to-str search-query)
+                                       (mdb.query/format-sql (first (mdb.query/compile search-query))))
+        to-toucan-instance (fn [o] (t2.instance/instance (search-config/model-to-db-model (:model o)) o))
+        reducible-results  (mdb.query/reducible-query search-query :max-rows search-config/*db-max-results*)
+        xf                 (comp
+                            (map t2.realize/realize)
+                            (map to-toucan-instance)
+                            (filter check-permissions-for-model)
+                            ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
+                            ;; needed
+                            (map #(update % :bookmark api/bit->boolean))
+                            (map #(update % :archived api/bit->boolean))
+                            (map (partial scoring/score-and-result (:search-string search-ctx)))
+                            (filter #(pos? (:score %))))
+        total-results      (scoring/top-results reducible-results search-config/max-filtered-results xf)]
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
@@ -464,7 +467,7 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Search within a bunch of models for the substring `q`.
-  For the list of models, check `metabase.search.config/all-models.
+  For the list of models, check [[metabase.search.config/all-models]].
 
   To search in archived portions of models, pass in `archived=true`.
   To search for tables, cards, and models of a certain DB, pass in a DB id value

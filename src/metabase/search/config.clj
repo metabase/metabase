@@ -37,8 +37,8 @@
   "Show this many words of context before/after matches in long search results"
   2)
 
-(def model-to-db-model
-  "Mapping from string model to the Toucan model backing it."
+(def model-to-db-model-t1
+  "Mapping from string model to the Toucan 1 model backing it."
   {"dashboard"  Dashboard
    "metric"     Metric
    "segment"    Segment
@@ -47,6 +47,17 @@
    "collection" Collection
    "table"      Table
    "database"   Database})
+
+(def model-to-db-model
+  "Mapping from string model to the Toucan 2 model backing it."
+  {"dashboard"  :metabase.models.dashboard/Dashboard
+   "metric"     :metabase.models.metric/Metric
+   "segment"    :metabase.models.segment/Segment
+   "card"       :metabase.models.card/Card
+   "dataset"    :metabase.models.card/Card
+   "collection" :metabase.models.collection/Collection
+   "table"      :metabase.models.table/Table
+   "database"   :metabase.models.database/Database})
 
 (def all-models
   "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
