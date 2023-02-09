@@ -152,7 +152,7 @@
 (s/defn ^:private from-clause-for-model :- [(s/one [(s/one s/Keyword "table name") (s/one s/Keyword "alias")]
                                                    "from clause")]
   [model :- SearchableModel]
-  (let [db-model (get search-config/model-to-db-model-t1 model)]
+  (let [db-model (get search-config/model-to-db-model model)]
     [[(t2/table-name db-model) (-> db-model name u/lower-case-en keyword)]]))
 
 (defmulti ^:private archived-where-clause
