@@ -892,42 +892,6 @@
     {:revision (perms-revision/latest-id)
      :groups   (generate-graph @db-ids group-id->v2-paths)}))
 
-(do (require '[hyperfiddle.rcf :as rcf]) (rcf/enable!))
-(rcf/tests "tests"
-
-           (generate-graph #{2} {1 ["/db/2/"]})
-           :=
-           {1 {2 {:data {:native :write, :schemas :all}}}}
-
-           (generate-graph #{2} {1 ["/data/db/2/"]})
-           :=
-           {1 {2 {:data {:native :write}}}}
-
-           (generate-graph #{2} {1 ["/query/db/2/schema/"]})
-           :=
-           {1 {2 {:query {:data {:schemas :all}}}}}
-
-           (generate-graph #{2} {1 ["/query/db/2/schema/PUBLIC/"]})
-           :=
-           {1 {2 {:query {:data {:schemas {"PUBLIC" :all}}}}}}
-
-           (generate-graph #{2} {1 ["/query/db/2/schema//"]})
-           :=
-           {1 {2 {:query {:data {:schemas {"" :all}}}}}}
-
-           (generate-graph #{2} {1 ["/db/2/schema/"]})
-           :=
-           {1 {2 {:data {:schemas :all}}}}
-
-           (generate-graph #{2} {1 ["/query/db/2/schema/" "/data/db/2/"]})
-           :=
-           {1 {2 {:query {:data {:schemas :all}}, :data {:native :write}}}}
-
-           (generate-graph #{2} {1 ["/db/2/"]})
-           :=
-           {1 {2 {:data {:native :write, :schemas :all}}}})
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn execution-perms-graph
   "Fetch a graph representing the current *execution* permissions status for

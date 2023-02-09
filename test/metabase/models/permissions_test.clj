@@ -970,3 +970,29 @@
 
 (deftest quickcheck-->v2-path-test
   (is (:pass? (check-fn! #'perms/->v2-path))))
+
+
+(deftest generate-graph-test
+  (is (= {1 {2 {:data {:native :write, :schemas :all}}}}
+         (#'perms/generate-graph #{2} {1 ["/db/2/"]})))
+
+  (is (= {1 {2 {:data {:native :write}}}}
+         (#'perms/generate-graph #{2} {1 ["/data/db/2/"]})))
+
+  (is (= {1 {2 {:query {:schemas :all, :native :none}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema/"]})))
+
+  (is (= {1 {2 {:query {:schemas {"PUBLIC" :all}}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema/PUBLIC/"]})))
+
+  (is (= {1 {2 {:query {:schemas {"" :all}}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema//"]})))
+
+  (is (= {1 {2 {:data {:schemas :all}}}}
+         (#'perms/generate-graph #{2} {1 ["/db/2/schema/"]})))
+
+  (is (= {1 {2 {:query {:schemas :all}, :data {:native :write}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema/" "/data/db/2/"]})))
+
+  (is (= {1 {2 {:data {:native :write, :schemas :all}}}}
+         (#'perms/generate-graph #{2} {1 ["/db/2/"]}))))
