@@ -1,23 +1,18 @@
-(ns ^{:deprecated "0.46.0"} metabase.util.honey-sql-1-extensions
+(ns ^{:added  "0.46.0"} metabase.util.honey-sql-2
+  "Honey SQL 2 extensions. Used for the application database. For QP/drivers stuff,
+  see [[metabase.util.honeysql-extensions]], which at the time of this writing still uses Honey SQL 1."
   (:refer-clojure
    :exclude
    [+ - / * abs mod inc dec cast concat format second])
   (:require
-   [clojure.pprint :as pprint]
    [clojure.string :as str]
-   [honeysql.core :as hsql]
-   [honeysql.format :as hformat]
-   [honeysql.types]
+   [honey.sql :as sql]
    [metabase.util :as u]
-   [metabase.util.schema :as su]
-   [potemkin.types :as p.types]
-   [pretty.core :as pretty]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [potemkin.types :as p.types])
   (:import
-   (honeysql.format ToSql)
    (java.util Locale)))
-
-(comment honeysql.types/keep-me)
 
 (defn- english-upper-case
   "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`
@@ -28,44 +23,54 @@
   [^CharSequence s]
   (-> s str (.toUpperCase Locale/ENGLISH)))
 
-;; Add an `:h2` quote style that uppercases the identifier
-(let [{ansi-quote-fn :ansi} @#'honeysql.format/quote-fns]
-  (alter-var-root #'hformat/quote-fns assoc :h2 (comp english-upper-case ansi-quote-fn)))
+(sql/register-dialect!
+ :h2
+ (update (sql/get-dialect :ansi) :quote (fn [quote]
+                                          (comp english-upper-case quote))))
 
 ;; register the `extract` function with HoneySQL
-;; (hsql/format (hsql/call :extract :a :b)) -> "extract(a from b)"
-(defmethod hformat/fn-handler "extract" [_ unit expr]
-  (str "extract(" (name unit) " from " (hformat/to-sql expr) ")"))
+;; (hsql/format (sql/call :extract :a :b)) -> "extract(a from b)"
+(defn- format-extract [_fn [unit expr]]
+  (let [[sql & args] (sql/format-expr expr)]
+    (into [(str "extract(" (name unit) " from " sql ")")]
+          args)))
+
+(sql/register-fn! ::extract format-extract)
 
 ;; register the function `distinct-count` with HoneySQL
-;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
-(defmethod hformat/fn-handler "distinct-count" [_ field]
-  (str "count(distinct " (hformat/to-sql field) ")"))
+(defn- format-distinct-count
+  "(sql/format-expr [::h2x/distinct-count :x])
+   =>
+   count(distinct x)"
+  [_fn [expr]]
+  (let [[sql & args] (sql/format-expr expr)]
+    (into [(str "count(distinct " sql ")")]
+          args)))
+
+(sql/register-fn! ::distinct-count format-distinct-count)
 
 ;; register the function `percentile` with HoneySQL
-;; (hsql/format (hsql/call :percentile-cont :a 0.9)) -> "percentile_cont(0.9) within group (order by a)"
-(defmethod hformat/fn-handler "percentile-cont" [_ field p]
-  (str "PERCENTILE_CONT(" (hformat/to-sql p) ") within group (order by " (hformat/to-sql field) ")"))
+;; (hsql/format (sql/call :percentile-cont :a 0.9)) -> "percentile_cont(0.9) within group (order by a)"
+(defn- format-percentile-cont [_fn [expr p]]
+  {:pre [(number? p)]}
+  (let [[sql & args] (sql/format-expr expr)]
+    (into [(str "PERCENTILE_CONT(" p ") within group (order by " sql ")")]
+          args)))
 
+(sql/register-fn! ::percentile-cont format-percentile-cont)
 
 ;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see
 ;; https://github.com/jkk/honeysql/pull/122. However, this broke some of Metabase's behavior, specifically queries
 ;; with calculated columns with numeric literals -- some SQL databases can't recognize that a calculated field in a
 ;; SELECT clause and a GROUP BY clause is the same thing if the calculation involves parameters. Go ahead an use the
 ;; old behavior so we can keep our HoneySQL dependency up to date.
-(extend-protocol honeysql.format/ToSql
-  Number
-  (to-sql [x] (str x)))
-
-;; Ratios are represented as the division of two numbers which may cause order-of-operation issues when dealing with
-;; queries. The easiest way around this is to convert them to their decimal representations.
-(extend-protocol honeysql.format/ToSql
-  clojure.lang.Ratio
-  (to-sql [x] (hformat/to-sql (double x))))
+#_(extend-protocol honeysql.format/ToSql
+    Number
+    (to-sql [x] (str x)))
 
 (def IdentifierType
-  "Schema for valid Identifier types."
-  (s/enum
+  "Malli schema for valid Identifier types."
+  [:enum
    :database
    :schema
    :constraint
@@ -73,31 +78,24 @@
    ;; Suppose we have a query like:
    ;; SELECT my_field f FROM my_table t
    ;; then:
-   :table          ; is `my_table`
-   :table-alias    ; is `t`
-   :field          ; is `my_field`
-   :field-alias))  ; is `f`
+   :table                               ; is `my_table`
+   :table-alias                         ; is `t`
+   :field                               ; is `my_field`
+   :field-alias])  ; is `f`
 
-(p.types/defrecord+ Identifier [identifier-type components]
-  ToSql
-  (to-sql [_]
-    (binding [hformat/*allow-dashed-names?* true]
-      (str/join
-       \.
-       (for [component components]
-         (hformat/quote-identifier component, :split false)))))
-  pretty/PrettyPrintable
-  (pretty [this]
-    (if (= (set (keys this)) #{:identifier-type :components})
-      (cons `identifier (cons identifier-type components))
-      ;; if there's extra info beyond the usual two keys print with the record type reader literal syntax e.g. #metabase..Identifier {...}
-      (list (symbol (str \# `Identifier)) (into {} this)))))
+(defn- identifier? [x]
+  (and (vector? x)
+       (= (first x) ::identifier)))
 
-;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
-(alter-meta! #'->Identifier    assoc :private true)
-(alter-meta! #'map->Identifier assoc :private true)
+(defn- format-identifier [_fn [_identifier-type components]]
+  ;; `:aliased` `true` => don't split dots in the middle of components
+  [(str/join \. (map (fn [component]
+                       (sql/format-entity component {:aliased true}))
+                     components))])
 
-(s/defn identifier :- Identifier
+(sql/register-fn! ::identifier format-identifier)
+
+(mu/defn identifier
   "Define an identifer of type with `components`. Prefer this to using keywords for identifiers, as those do not
   properly handle identifiers with slashes in them.
 
@@ -106,30 +104,27 @@
 
   This function automatically unnests any Identifiers passed as arguments, removes nils, and converts all args to
   strings."
-  [identifier-type :- IdentifierType, & components]
-  (Identifier.
+  [identifier-type :- IdentifierType & components]
+  [::identifier
    identifier-type
-   (for [component components
-         component (if (instance? Identifier component)
-                     (:components component)
-                     [component])
-         :when     (some? component)]
-     (u/qualified-name component))))
+   (vec (for [component components
+              component (if (identifier? component)
+                          (last component)
+                          [component])
+              :when     (some? component)]
+          (u/qualified-name component)))])
 
-;; Single-quoted string literal
-(p.types/defrecord+ Literal [literal]
-  ToSql
-  (to-sql [_]
-    (as-> literal <>
-      (str/replace <> #"(?<![\\'])'(?![\\'])"  "''")
-      (str \' <> \')))
-  pretty/PrettyPrintable
-  (pretty [_]
-    (list `literal literal)))
+;;; Single-quoted string literal
 
-;; as with `Identifier` you should use the the `literal` function below instead of the auto-generated factory functions.
-(alter-meta! #'->Literal    assoc :private true)
-(alter-meta! #'map->Literal assoc :private true)
+(defn- escape-and-quote-literal [s]
+  (as-> s <>
+    (str/replace <> #"(?<![\\'])'(?![\\'])"  "''")
+    (str \' <> \')))
+
+(sql/register-fn!
+ ::literal
+ (fn [_fn [s]]
+   [(escape-and-quote-literal s)]))
 
 (defn literal
   "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
@@ -139,7 +134,26 @@
 
   DON'T USE `LITERAL` FOR THINGS THAT MIGHT BE WACKY (USER INPUT). Only use it for things that are hardcoded."
   [s]
-  (Literal. (u/qualified-name s)))
+  [::literal (u/qualified-name s)])
+
+(defn- format-at-time-zone [_fn [expr zone]]
+  (let [[expr-sql & expr-args] (sql/format-expr expr)
+        [zone-sql & zone-args] (sql/format-expr (literal zone))]
+    (into [(clojure.core/format "(%s AT TIME ZONE %s)"
+                                expr-sql
+                                zone-sql)]
+          cat
+          [expr-args zone-args])))
+
+(sql/register-fn!
+ ::at-time-zone
+ format-at-time-zone)
+
+(defn at-time-zone
+  "Create a Honey SQL form that returns `expr` at time `zone`. Does not add type info! Add appropriate DB type info
+  yourself to the result."
+  [expr zone]
+  [::at-time-zone expr zone])
 
 (p.types/defprotocol+ TypedHoneySQL
   "Protocol for a HoneySQL form that has type information such as `:metabase.util.honeysql-extensions/database-type`.
@@ -153,36 +167,23 @@
     "If `honeysql-form` is a `TypedHoneySQLForm`, unwrap it and return the original form without type information.
     Otherwise, returns form as-is."))
 
-;; a wrapped for any HoneySQL form that records additional type information in an `info` map.
-(p.types/defrecord+ TypedHoneySQLForm [form info]
-  pretty/PrettyPrintable
-  (pretty [_]
-    `(with-type-info ~form ~info))
+(defn- format-typed [_fn [expr _type-info]]
+  (sql/format-expr expr))
 
-  ToSql
-  (to-sql [_]
-    (hformat/to-sql form)))
-
-(alter-meta! #'->TypedHoneySQLForm assoc :private true)
-(alter-meta! #'map->TypedHoneySQLForm assoc :private true)
-
-(p.types/defrecord+ AtTimeZone
-  [expr zone]
-  hformat/ToSql
-  (to-sql [_]
-    (clojure.core/format "(%s AT TIME ZONE %s)"
-            (hformat/to-sql expr)
-            (hformat/to-sql (literal zone)))))
+(sql/register-fn! ::typed format-typed)
 
 (def ^:private NormalizedTypeInfo
-  {(s/optional-key :metabase.util.honeysql-extensions/database-type)
-   (s/constrained
-    su/NonBlankString
-    (fn [s]
-      (= s (u/lower-case-en s)))
-    "lowercased string")})
+  [:map
+   [:metabase.util.honeysql-extensions/database-type
+    {:optional true}
+    [:and
+     ms/NonBlankString
+     [:fn
+      {:error/message "lowercased string"}
+      (fn [s]
+        (= s (u/lower-case-en s)))]]]])
 
-(s/defn ^:private normalize-type-info :- NormalizedTypeInfo
+(mu/defn ^:private normalize-type-info :- NormalizedTypeInfo
   "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
   `:metabase.util.honeysql-extensions/database-type` to a lower-case string)."
   [type-info]
@@ -190,12 +191,16 @@
     (:metabase.util.honeysql-extensions/database-type type-info)
     (update :metabase.util.honeysql-extensions/database-type (comp u/lower-case-en name))))
 
+(defn- typed? [x]
+  (and (vector? x)
+       (= (first x) ::typed)))
+
 (extend-protocol TypedHoneySQL
   Object
   (type-info [_]
     nil)
   (with-type-info [this new-info]
-    (TypedHoneySQLForm. this (normalize-type-info new-info)))
+    [::typed this (normalize-type-info new-info)])
   (unwrap-typed-honeysql-form [this]
     this)
 
@@ -203,17 +208,26 @@
   (type-info [_]
     nil)
   (with-type-info [_ new-info]
-    (TypedHoneySQLForm. nil (normalize-type-info new-info)))
+    [::typed nil (normalize-type-info new-info)])
   (unwrap-typed-honeysql-form [_]
     nil)
 
-  TypedHoneySQLForm
+  clojure.lang.IPersistentVector
   (type-info [this]
-    (:info this))
+    (when (typed? this)
+      (last this)))
+
   (with-type-info [this new-info]
-    (assoc this :info (normalize-type-info new-info)))
+    [::typed
+     (if (typed? this)
+       (clojure.core/second this)
+       this)
+     (normalize-type-info new-info)])
+
   (unwrap-typed-honeysql-form [this]
-    (:form this)))
+    (if (typed? this)
+      (clojure.core/second this)
+      this)))
 
 (defn type-info->db-type
   "For a given type-info, returns the `database-type`."
@@ -240,26 +254,28 @@
       (= form-type
          (some-> db-type name u/lower-case-en)))))
 
-(s/defn with-database-type-info
+(mu/defn with-database-type-info
   "Convenience for adding only database type information to a `honeysql-form`. Wraps `honeysql-form` and returns a
   `TypedHoneySQLForm`. Passing `nil` as `database-type` will remove any existing type info.
 
     (with-database-type-info :field \"text\")
     ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
   {:style/indent [:form]}
-  [honeysql-form db-type :- (s/maybe su/KeywordOrString)]
+  [honeysql-form db-type :- [:maybe ms/KeywordOrString]]
   (if (some? db-type)
     (with-type-info honeysql-form {:metabase.util.honeysql-extensions/database-type db-type})
     (unwrap-typed-honeysql-form honeysql-form)))
 
-(s/defn cast :- TypedHoneySQLForm
+(def ^:private TypedExpression
+  [:fn {:error/message "::h2x/typed Honey SQL form"} typed?])
+
+(mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [db-type expr]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (-> (hsql/call :cast expr (hsql/raw (name db-type)))
+  (-> [:cast expr [:raw (name db-type)]]
       (with-type-info {:metabase.util.honeysql-extensions/database-type db-type})))
 
-(s/defn quoted-cast :- TypedHoneySQLForm
+(mu/defn quoted-cast :- TypedExpression
   "Generate a statement like `cast(expr AS \"sql-type\")`.
 
   Like `cast` but quotes `sql-type`. This is useful for cases where we deal with user-defined types or other types
@@ -267,11 +283,10 @@
 
   Returns a typed HoneySQL form."
   [sql-type expr]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (-> (hsql/call :cast expr (keyword sql-type))
+  (-> [:cast expr (keyword sql-type)]
       (with-type-info {:metabase.util.honeysql-extensions/database-type sql-type})))
 
-(s/defn maybe-cast :- TypedHoneySQLForm
+(mu/defn maybe-cast :- TypedExpression
   "Cast `expr` to `sql-type`, unless `expr` is typed and already of that type. Returns a typed HoneySQL form."
   [sql-type expr]
   (if (is-of-type? expr sql-type)
@@ -296,8 +311,7 @@
     (let [arg-db-type (some (fn [arg]
                               (-> arg type-info type-info->db-type))
                             args)]
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (cond-> (apply hsql/call operator args)
+      (cond-> (apply sql/call operator args)
         arg-db-type (with-database-type-info arg-db-type)))))
 
 (def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between `exprs` and wrap in parentheses." (math-operator :+))
@@ -312,14 +326,12 @@
 (defn format
   "SQL `format` function."
   [format-str expr]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (hsql/call :format expr (literal format-str)))
+  (sql/call :format expr (literal format-str)))
 
 (defn round
   "SQL `round` function."
   [x decimal-places]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (hsql/call :round x decimal-places))
+  (sql/call :round x decimal-places))
 
 (defn ->date                     "CAST `x` to a `date`."                     [x] (maybe-cast :date x))
 (defn ->datetime                 "CAST `x` to a `datetime`."                 [x] (maybe-cast :datetime x))
@@ -330,38 +342,15 @@
 (defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (maybe-cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
-(def ^{:arglists '([& exprs])} abs     "SQL `abs` function."     (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :abs))
-(def ^{:arglists '([& exprs])} ceil    "SQL `ceil` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :ceil))
-(def ^{:arglists '([& exprs])} floor   "SQL `floor` function."   (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :floor))
-(def ^{:arglists '([& exprs])} second  "SQL `second` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :second))
-(def ^{:arglists '([& exprs])} minute  "SQL `minute` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :minute))
-(def ^{:arglists '([& exprs])} hour    "SQL `hour` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :hour))
-(def ^{:arglists '([& exprs])} day     "SQL `day` function."     (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :day))
-(def ^{:arglists '([& exprs])} week    "SQL `week` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :week))
-(def ^{:arglists '([& exprs])} month   "SQL `month` function."   (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :month))
-(def ^{:arglists '([& exprs])} quarter "SQL `quarter` function." (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :quarter))
-(def ^{:arglists '([& exprs])} year    "SQL `year` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :year))
-(def ^{:arglists '([& exprs])} concat  "SQL `concat` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :concat))
-
-;; Etc (Dev Stuff)
-
-(extend-protocol pretty/PrettyPrintable
-  honeysql.types.SqlCall
-  (pretty [{fn-name :name, args :args, :as this}]
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (with-meta (apply list `hsql/call fn-name args)
-               (meta this))))
-
-(defmethod print-method honeysql.types.SqlCall
-  [call writer]
-  (print-method (pretty/pretty call) writer))
-
-(defmethod pprint/simple-dispatch honeysql.types.SqlCall
-  [call]
-  (pprint/write-out (pretty/pretty call)))
-
-(defmethod hformat/format-clause :returning [[_ fields] _]
-  (->> (flatten fields)
-       (map hformat/to-sql)
-       (hformat/comma-join)
-       (str "RETURNING ")))
+(def ^{:arglists '([& exprs])} abs     "SQL `abs` function."     (partial sql/call :abs))
+(def ^{:arglists '([& exprs])} ceil    "SQL `ceil` function."    (partial sql/call :ceil))
+(def ^{:arglists '([& exprs])} floor   "SQL `floor` function."   (partial sql/call :floor))
+(def ^{:arglists '([& exprs])} second  "SQL `second` function."  (partial sql/call :second))
+(def ^{:arglists '([& exprs])} minute  "SQL `minute` function."  (partial sql/call :minute))
+(def ^{:arglists '([& exprs])} hour    "SQL `hour` function."    (partial sql/call :hour))
+(def ^{:arglists '([& exprs])} day     "SQL `day` function."     (partial sql/call :day))
+(def ^{:arglists '([& exprs])} week    "SQL `week` function."    (partial sql/call :week))
+(def ^{:arglists '([& exprs])} month   "SQL `month` function."   (partial sql/call :month))
+(def ^{:arglists '([& exprs])} quarter "SQL `quarter` function." (partial sql/call :quarter))
+(def ^{:arglists '([& exprs])} year    "SQL `year` function."    (partial sql/call :year))
+(def ^{:arglists '([& exprs])} concat  "SQL `concat` function."  (partial sql/call :concat))
