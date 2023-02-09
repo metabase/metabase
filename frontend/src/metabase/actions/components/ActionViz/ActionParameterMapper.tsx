@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import Select from "metabase/core/components/Select";
 
 import { setParameterMapping } from "metabase/dashboard/actions";
+import type { SelectChangeEvent } from "metabase/core/components/Select";
 
 import type {
   ActionDashboardCard,
@@ -33,12 +34,6 @@ interface ActionParameterMapperProps {
   model?: Question;
   action?: WritebackAction;
 }
-
-type NewParameterChangeEvent = {
-  target: {
-    value: string;
-  };
-};
 
 type ParameterMappingFn = (
   parameterId: ParameterId,
@@ -96,7 +91,7 @@ export const ActionParameterMappingForm = ({
           </ParameterFormLabel>
           <Select
             value={currentMappings[getTargetKey(actionParam)] ?? null}
-            onChange={(e: NewParameterChangeEvent) =>
+            onChange={(e: SelectChangeEvent<string>) =>
               handleParameterChange(e?.target?.value, actionParam.target)
             }
             options={[
