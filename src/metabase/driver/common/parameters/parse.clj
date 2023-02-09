@@ -10,64 +10,50 @@
   (:import
    (metabase.driver.common.parameters Optional Param)))
 
-;; tokenizing
-
-(def ^:private StringOrToken  (s/cond-pre s/Str (s/enum :optional-begin :param-begin :optional-end :param-end)))
-
-(defmulti ^:private read-token
-  "Return vector of [index token-or-text remaining-text] from s."
-  (fn [_ pattern _] (type pattern)))
-
-(defmethod read-token java.lang.String
-  [s pattern token]
-  (when-let [index (str/index-of s pattern)]
-    [index token (subs s (+ index (count pattern)))]))
-
-(defmethod read-token java.util.regex.Pattern
-  [s re token]
-  (when-let [match (re-find re s)]
-    (let [text   (if (vector? match)
-                   (first match)
-                   match)
-          index  (str/index-of s text)
-          after  (subs s (+ index (count text)))
-          ;; comments are ignored and treated as text in the tokenizer
-          token-or-text (if (= :comment token) text token)]
-      [index token-or-text after])))
-
-(def ^:private token-patterns
-  "A sequence of pairs of [token-name pattern]"
-  [[:comment        #"--.*(\n|$)"]
-   [:comment        #"(?s)/\*.*\*/"]
-   [:optional-begin "[["]
-   [:optional-end   "]]"]
-    ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
-    ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
-   [:param-begin    #"(?s)\{\{(?!\{)"]
-   [:param-end      "}}"]])
-
-(defn- find-token
-  "Returns vector of first token found in s and remaining text, if any match is found"
-  [s]
-  (first
-   (sort-by first
-            (for [[token pattern] token-patterns
-                  :let [[index token after] (read-token s pattern token)]
-                  :when token]
-              [index token after]))))
-
-(defn- tokenize
-  "Returns a sequence of strings or keyword tokens from s for further parsing."
-  [s]
-  (loop [tokens []
-         s      s]
-    (if-let [[index token after] (find-token s)]
-      (recur (conj tokens (subs s 0 index) token) after)
-      (conj tokens s))))
-
-;; parsing
+(def ^:private StringOrToken  (s/cond-pre s/Str {:token (s/enum :optional-begin :param-begin :optional-end :param-end :comment)
+                                                 :text  s/Str}))
 
 (def ^:private ParsedToken (s/cond-pre s/Str Param Optional))
+
+(defn- find-token
+  [s pattern]
+  (if (string? pattern)
+    (when-let [index (str/index-of s pattern)]
+      [index pattern])
+    (when-let [match (re-find pattern s)]
+      (let [text (if (vector? match) (first match) match)]
+        [(str/index-of s text) text]))))
+
+(defn- tokenize-one [s pattern token]
+  (loop [acc [], s s]
+    (if (empty? s)
+      acc
+      (if-let [[index text] (find-token s pattern)]
+        (recur (conj acc (subs s 0 index) {:text text :token token})
+               (subs s (+ index (count text))))
+        (conj acc s)))))
+
+(s/defn ^:private tokenize :- [StringOrToken]
+  [s :- s/Str]
+  (reduce
+   (fn [strs [token-str token]]
+     (filter
+      (some-fn keyword? seq)
+      (mapcat
+       (fn [s]
+         (if-not (string? s)
+           [s]
+           (tokenize-one s token-str token)))
+       strs)))
+   [s]
+   [[#"--.*?(\n|$)" :comment]
+    [#"(?s)/\*.*\*/" :comment]
+    ["[[" :optional-begin]
+    ["]]" :optional-end]
+    ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
+    ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
+    [#"(?s)\{\{(?!\{)" :param-begin]
+    ["}}" :param-end]]))
 
 (defn- param [& [k & more]]
   (when (or (seq more)
@@ -88,33 +74,39 @@
 
 (s/defn ^:private parse-tokens* :- [(s/one [ParsedToken] "parsed tokens") (s/one [StringOrToken] "remaining tokens")]
   [tokens :- [StringOrToken], optional-level :- s/Int, param-level :- s/Int]
-  (loop [acc [], [token & more] tokens]
-    (condp = token
-      nil
+  (loop [acc [], [string-or-token & more] tokens]
+    (cond
+      (nil? string-or-token)
       (if (or (pos? optional-level) (pos? param-level))
         (throw (ex-info (tru "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'")
                         {:type qp.error-type/invalid-query}))
         [acc nil])
 
-      :optional-begin
-      (let [[parsed more] (parse-tokens* more (inc optional-level) param-level)]
-        (recur (conj acc (apply optional parsed)) more))
+      (string? string-or-token)
+      (recur (conj acc string-or-token) more)
 
-      :param-begin
-      (let [[parsed more] (parse-tokens* more optional-level (inc param-level))]
-        (recur (conj acc (apply param parsed)) more))
+      :else
+      (let [{:keys [text token]} string-or-token]
+        (condp = token
+          :optional-begin
+          (let [[parsed more] (parse-tokens* more (inc optional-level) param-level)]
+            (recur (conj acc (apply optional parsed)) more))
 
-      :optional-end
-      (if (pos? optional-level)
-        [acc more]
-        (recur (conj acc "]]") more))
+          :param-begin
+          (let [[parsed more] (parse-tokens* more optional-level (inc param-level))]
+            (recur (conj acc (apply param parsed)) more))
 
-      :param-end
-      (if (pos? param-level)
-        [acc more]
-        (recur (conj acc "}}") more))
+          :optional-end
+          (if (pos? optional-level)
+            [acc more]
+            (recur (conj acc text) more))
 
-      (recur (conj acc token) more))))
+          :param-end
+          (if (pos? param-level)
+            [acc more]
+            (recur (conj acc text) more))
+
+          (recur (conj acc text) more))))))
 
 (s/defn ^:private parse-tokens :- [ParsedToken]
   [tokens :- [StringOrToken]]
