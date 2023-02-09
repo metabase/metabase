@@ -15,7 +15,7 @@
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2-extensions]
+   [metabase.util.honey-sql-2]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -29,7 +29,7 @@
 (set! *warn-on-reflection* true)
 
 ;;; needed so the `:h2` dialect gets registered with Honey SQL
-(comment metabase.util.honey-sql-2-extensions/keep-me)
+(comment metabase.util.honey-sql-2/keep-me)
 
 (defn- print-migrations-and-quit-if-needed!
   "If we are not doing auto migrations then print out migration SQL for user to run manually. Then throw an exception to

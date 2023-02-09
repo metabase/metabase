@@ -4,7 +4,7 @@
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
    [metabase.db.connection :as mdb.connection]
-   [metabase.util.honey-sql-2-extensions :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 ;; DEPRECATED Query that returns data for a two-series timeseries chart with number of queries ran and average query
 ;; running time broken out by day.
