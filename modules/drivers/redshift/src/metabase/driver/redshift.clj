@@ -187,11 +187,12 @@
 
 (defmethod sql.qp/->honeysql [:redshift :concat]
   [driver [_ & args]]
-  (into [:concat] (map (partial sql.qp/->honeysql driver)) args))
-
-(defmethod sql.qp/->honeysql [:redshift :concat]
-  [driver [_ & args]]
-  (into [:concat] (map (partial sql.qp/->honeysql driver)) args))
+  ;; concat() only takes 2 args, so generate multiple concats if we have more,
+  ;; e.g. [:concat :x :y :z] => [:concat [:concat :x :y] :z] => concat(concat(x, y), z)
+  (->> args
+       (map (partial sql.qp/->honeysql driver))
+       (reduce (fn [x y]
+                 [:concat x y]))))
 
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])
