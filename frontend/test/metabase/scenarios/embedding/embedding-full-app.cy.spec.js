@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/helpers";
+import { popover, restore } from "__support__/e2e/helpers";
 
 describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -226,6 +226,25 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findByText("More X-rays").should("be.visible");
       cy.button("Save this").should("not.exist");
+    });
+  });
+
+  describe("data loading (metabase#21511)", () => {
+    beforeEach(() => {
+      cy.signOut();
+      cy.signInAsNormalUser();
+    });
+
+    it("should allow to create a new question from the menu", () => {
+      visitUrl({
+        url: "/collection/root",
+        qs: { top_nav: true, new_button: true, side_nav: false },
+      });
+
+      cy.findByText("New").click();
+      popover().findByText("Question").click();
+      popover().findByText("Sample Database").click();
+      popover().findByText("Orders").click();
     });
   });
 });
