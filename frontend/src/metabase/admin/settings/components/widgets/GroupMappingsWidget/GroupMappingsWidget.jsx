@@ -91,14 +91,25 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   };
 
   const handleChangeMapping = dn => (group, selected) => {
-    if (selected) {
-      setMappings({ ...mappings, [dn]: [...mappings[dn], group.id] });
-    } else {
-      setMappings({
-        ...mappings,
-        [dn]: mappings[dn].filter(id => id !== group.id),
-      });
-    }
+    const updatedMappings = selected
+      ? { ...mappings, [dn]: [...mappings[dn], group.id] }
+      : {
+          ...mappings,
+          [dn]: mappings[dn].filter(id => id !== group.id),
+        };
+
+    SettingsApi.put({
+      key: mappingSetting,
+      value: updatedMappings,
+    }).then(
+      () => {
+        props.onChangeSetting(mappingSetting, mappings);
+        setMappings(updatedMappings);
+
+        setSaveError(null);
+      },
+      e => setSaveError(e),
+    );
   };
 
   const handleShowDeleteMappingModal = (groups, dn) => {
