@@ -3,12 +3,12 @@
   (:require
    [clojure.core :as core]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.server.protocols :as server.protocols]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [ring.adapter.jetty :as ring-jetty]
    [ring.util.servlet :as servlet])
   (:import

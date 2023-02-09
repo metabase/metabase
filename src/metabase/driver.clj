@@ -8,12 +8,12 @@
   [[metabase.driver.sql-jdbc]] for more details."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.driver.impl :as driver.impl]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [toucan.db :as db]))
 
@@ -757,6 +757,12 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+;;; TODO:
+;;;
+;;; 1. We definitely should not be asking drivers to "update the value for `:details`". Drivers shouldn't touch the
+;;;    application database.
+;;;
+;;; 2. Something that is done for side effects like updating the application DB NEEDS TO END IN AN EXCLAMATION MARK!
 (defmulti normalize-db-details
   "Normalizes db-details for the given driver. This is to handle migrations that are too difficult to perform via
   regular Liquibase queries. This multimethod will be called from a `:post-select` handler within the database model.

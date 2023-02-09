@@ -248,7 +248,7 @@ export class UnconnectedDataSelector extends Component {
   }
 
   static propTypes = {
-    selectedDataBucketId: PropTypes.number,
+    selectedDataBucketId: PropTypes.string,
     selectedDatabaseId: PropTypes.number,
     selectedSchemaId: PropTypes.string,
     selectedTableId: PropTypes.number,
@@ -436,6 +436,10 @@ export class UnconnectedDataSelector extends Component {
       await this.hydrateActiveStep();
     }
 
+    if (this.props.selectedDataBucketId === DATA_BUCKET.DATASETS) {
+      this.showSavedQuestionPicker();
+    }
+
     if (this.props.selectedTableId) {
       await this.props.fetchFields(this.props.selectedTableId);
       if (this.isSavedQuestionSelected()) {
@@ -534,7 +538,11 @@ export class UnconnectedDataSelector extends Component {
 
   async hydrateActiveStep() {
     const { steps } = this.props;
-    if (this.isSavedQuestionSelected()) {
+    if (
+      this.isSavedQuestionSelected() ||
+      this.state.selectedDataBucketId === DATA_BUCKET.DATASETS ||
+      this.state.selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS
+    ) {
       await this.switchToStep(DATABASE_STEP);
     } else if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
       await this.switchToStep(FIELD_STEP);

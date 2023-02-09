@@ -3,7 +3,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.dimension :refer [Dimension]]
@@ -15,11 +14,13 @@
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
@@ -38,7 +39,7 @@
   and which type of widget should be used to pick values of this Field when filtering by it in the Query Builder."
   ;; AUTOMATICALLY-SET VALUES, SET DURING SYNC
   ;;
-  ;; `nil` -- means infer which widget to use based on logic in `with-has-field-values`; this will either return
+  ;; `nil` -- means infer which widget to use based on logic in [[infer-has-field-values]]; this will either return
   ;; `:search` or `:none`.
   ;;
   ;; This is the default state for Fields not marked `auto-list`. Admins cannot explicitly mark a Field as
@@ -222,25 +223,6 @@
     (m/index-by :field_id (when (seq field-ids)
                             (apply db/select model :field_id [:in field-ids] conditions)))))
 
-(defn nfc-field->parent-identifier
-  "Take a nested field column field corresponding to something like an inner key within a JSON column,
-  and then get the parent column's identifier from its own identifier and the nfc path stored in the field.
-
-  Suppose you have the child with corresponding identifier
-
-  (metabase.util.honeysql-extensions/identifier :field \"blah -> boop\")
-
-  Ultimately, this is just a way to get the parent identifier
-
-  (metabase.util.honeysql-extensions/identifier :field \"blah\")"
-  [field-identifier field]
-  (let [nfc-path          (:nfc_path field)
-        parent-components (-> (:components field-identifier)
-                              (vec)
-                              (pop)
-                              (conj (first nfc-path)))]
-    (apply hx/identifier (cons :field parent-components))))
-
 (mi/define-batched-hydration-method with-values
   :values
   "Efficiently hydrate the `FieldValues` for a collection of `fields`."
@@ -265,16 +247,20 @@
 
 (mi/define-batched-hydration-method with-dimensions
   :dimensions
-  "Efficiently hydrate the `Dimension` for a collection of `fields`."
+  "Efficiently hydrate the `Dimension` for a collection of `fields`.
+
+  NOTE! Despite the name, this only returns at most one dimension. This is for historic reasons; see #13350 for more
+  details.
+
+  Despite the weirdness, this used to be even worse -- due to a bug in the code, this originally returned a *map* if
+  there was a matching Dimension, or an empty vector if there was not. In 0.46.0 I fixed this to return either a
+  vector with the matching Dimension, or an empty vector. At least the response shape is consistent now. Maybe in the
+  future we can change this key to `:dimension` and return it that way. -- Cam"
   [fields]
-  ;; TODO - it looks like we obviously thought this code would return *all* of the Dimensions for a Field, not just
-  ;; one! This code is obviously wrong! It will either assoc a single Dimension or an empty vector under the
-  ;; `:dimensions` key!!!!
-  ;; TODO - consult with tom and see if fixing this will break any hacks that surely must exist in the frontend to deal
-  ;; with this
   (let [id->dimensions (select-field-id->instance fields Dimension)]
-    (for [field fields]
-      (assoc field :dimensions (get id->dimensions (:id field) [])))))
+    (for [field fields
+          :let  [dimension (get id->dimensions (:id field))]]
+      (assoc field :dimensions (if dimension [dimension] [])))))
 
 (defn- is-searchable?
   "Is this `field` a Field that you should be presented with a search widget for (to search its values)? If so, we can
@@ -301,14 +287,22 @@
      :search
      :none)))
 
-(mi/define-batched-hydration-method with-has-field-values
-  :has_field_values
+(methodical/defmethod t2.hydrate/simple-hydrate [#_model :default #_k :has_field_values]
   "Infer what the value of the `has_field_values` should be for Fields where it's not set. See documentation for
-  [[has-field-values-options]] above for a more detailed explanation of what these values mean."
-  [fields]
-  (for [field fields]
-    (when field
-      (assoc field :has_field_values (infer-has-field-values field)))))
+  [[has-field-values-options]] above for a more detailed explanation of what these values mean.
+
+  This does one important thing: if `:has_field_values` is already present and set to `:auto-list`, it is replaced by
+  `:list` -- presumably because the frontend doesn't need to know `:auto-list` even exists?
+  See [[infer-has-field-values]] for more info."
+  [_model k field]
+  (when field
+    (assoc field k (infer-has-field-values field))))
+
+(methodical/defmethod t2.hydrate/needs-hydration? [#_model :default #_k :has_field_values]
+  "Always (re-)hydrate `:has_field_values`. This is used to convert an existing value of `:auto-list` to
+  `:list` (see [[infer-has-field-values]])."
+  [_model _k _field]
+  true)
 
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"

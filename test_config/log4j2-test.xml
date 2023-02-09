@@ -10,7 +10,7 @@
     <Logger name="metabase-enterprise" level="FATAL"/>
     <Logger name="liquibase" level="FATAL"/>
 
-    <Root level="ERROR">
+    <Root level="FATAL">
       <AppenderRef ref="Console"/>
     </Root>
   </Loggers>

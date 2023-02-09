@@ -2,7 +2,6 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.spec :as mdb.spec]
@@ -19,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.ssh :as ssh])
   (:import
    (java.sql Clob ResultSet ResultSetMetaData)

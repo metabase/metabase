@@ -2,8 +2,8 @@
   (:require
    [clojure.string :as str]
    [environ.core :refer [env]]
-   [metabase.shared.util.log :as log]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn- get-drivers-from-env []
   (when (seq (env :engines))

@@ -61,7 +61,7 @@ export const RelativeSizeIcon = styled(Icon)`
 `;
 
 export const InvertedColorRelativeSizeIcon = styled(RelativeSizeIcon)`
-  background-color: ${() => color("brand")};
+  background-color: ${color("brand")};
   color: ${color("white")};
   border-radius: 0.3em;
   padding: 0.3em;
@@ -87,7 +87,7 @@ export const LoadingSpinner = styled(_LoadingSpinner)`
   flex-grow: 1;
   align-self: center;
   justify-content: center;
-  color: ${() => color("brand")};
+  color: ${color("brand")};
 `;
 
 export const Table = styled.table`

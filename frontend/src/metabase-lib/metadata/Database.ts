@@ -27,6 +27,7 @@ class DatabaseInner extends Base {
   name: string;
   engine: string;
   description: string;
+  is_saved_questions: boolean;
   tables: Table[];
   schemas: Schema[];
   metadata: Metadata;

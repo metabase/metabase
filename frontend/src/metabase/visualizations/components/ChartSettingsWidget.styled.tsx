@@ -67,7 +67,7 @@ export const Root = styled.div<{
 
     &:hover {
       transition: border 0.3s;
-      border-color: ${() => color("brand")};
+      border-color: ${color("brand")};
     }
   }
 `;

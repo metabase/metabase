@@ -14,6 +14,10 @@ export function setupCollectionsEndpoints(
 ) {
   scope.get("/api/collection").reply(200, collections);
   scope.get("/api/collection/tree?tree=true").reply(200, collections);
+  scope.get("/api/collection/tree?tree=true&exclude-archived=true").reply(
+    200,
+    collections.filter(collection => !collection.archived),
+  );
   scope.get("/api/collection/root").reply(200, ROOT_COLLECTION);
 }
 

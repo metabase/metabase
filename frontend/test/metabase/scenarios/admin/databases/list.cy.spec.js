@@ -131,4 +131,29 @@ describe("scenarios > admin > databases > list", () => {
 
     cy.findByRole("status").should("not.exist");
   });
+
+  it.skip("should handle malformed (null) database details (metabase#25715)", () => {
+    cy.request("GET", "/api/database/1").then(({ body }) => {
+      const stubbedResponse = {
+        ...body,
+        details: null,
+      };
+
+      cy.intercept("GET", "/api/database/1", req => {
+        req.reply({ body: stubbedResponse });
+      }).as("loadDatabase");
+    });
+
+    cy.visit("/admin/databases/1");
+    cy.wait("@loadDatabase");
+
+    // It is unclear how this issue will be handled,
+    // but at the very least it shouldn't render the blank page.
+    cy.get("nav").should("contain", "Metabase Admin");
+    // The response still contains the database name,
+    // so there's no reason we can't display it.
+    cy.contains(/Sample Database/i);
+    // This seems like a reasonable CTA if the database is beyond repair.
+    cy.button("Remove this database");
+  });
 });
