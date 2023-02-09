@@ -182,6 +182,10 @@ class DataSelectorInner extends Component {
 }
 
 const DataSelector = _.compose(
+  Databases.loadList({
+    loadingAndErrorWrapper: false,
+    listName: "allDatabases",
+  }),
   Search.loadList({
     // If there is at least one dataset,
     // we want to display a slightly different data picker view
@@ -210,7 +214,7 @@ const DataSelector = _.compose(
       hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
         entityQuery: { include: "tables" },
       }),
-      hasDataAccess: getHasDataAccess(Databases.selectors.getList(state) ?? []),
+      hasDataAccess: getHasDataAccess(ownProps.allDatabases ?? []),
     }),
     {
       fetchDatabases: databaseQuery =>
@@ -284,6 +288,7 @@ export class UnconnectedDataSelector extends Component {
     reload: PropTypes.func,
     list: PropTypes.arrayOf(PropTypes.object),
     search: PropTypes.arrayOf(PropTypes.object),
+    allDatabases: PropTypes.arrayOf(PropTypes.object),
   };
 
   static defaultProps = {
