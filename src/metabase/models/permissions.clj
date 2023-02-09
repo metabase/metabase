@@ -170,7 +170,6 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
@@ -861,11 +860,6 @@
               (:db permissions-graph)))))
        post-process-graph))
 
-;;     v1 permissions
-;;|-------------------------|
-;;v1-data | all other paths | v2-data, v2-query
-;;        |-----------------------------------|
-;;                 v2 permissions
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
