@@ -321,7 +321,6 @@
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
   (-> (action/select-action :public_uuid uuid)
-      first
       api/check-404
       (select-keys action-public-keys)))
 
