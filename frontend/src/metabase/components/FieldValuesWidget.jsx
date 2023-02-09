@@ -567,7 +567,7 @@ function getSearchableTokenFieldPlaceholder(
     names.size !== 1 ||
     (parameter != null && getSourceType(parameter) != null)
   ) {
-    placeholder = t`Search the list`;
+    placeholder = t`Search`;
   } else {
     const [name] = names;
 
