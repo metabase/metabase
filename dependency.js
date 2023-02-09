@@ -1,17 +1,10 @@
-const dependencyTree = require("dependency-tree");
+const stats = require("./compilation-stats.json");
 const gitChangedFiles = require("git-changed-files");
 const _ = require("underscore");
 
-const tree = dependencyTree({
-  filename: "./frontend/src/metabase/static-viz/index.js",
-  directory: "./frontend/src",
-  webpackConfig: "./webpack.static-viz.config.js", // optional
-  filter: path => path.indexOf("node_modules") === -1, // optional
-  nonExistent: [], // optional
-  isListForm: true,
-});
-
-//console.log(tree);
+const modules = stats.modules
+  .filter(module => module.type !== "hidden modules")
+  .map(module => module.nameForCondition);
 
 (async () => {
   const { committedFiles, unCommittedFiles } = await gitChangedFiles();
@@ -20,6 +13,6 @@ const tree = dependencyTree({
     file => `${__dirname}/${file}`,
   );
 
-  const staticVizChange = _.intersection(changedFiles, tree).length > 0;
+  const staticVizChange = _.intersection(changedFiles, modules).length > 0;
   console.log(staticVizChange);
 })();

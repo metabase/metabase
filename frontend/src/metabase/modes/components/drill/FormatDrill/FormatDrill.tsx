@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { t } from "ttag";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";

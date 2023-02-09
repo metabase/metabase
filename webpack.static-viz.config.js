@@ -53,5 +53,14 @@ module.exports = (env = {}) => {
     optimization: {
       minimize: !shouldDisableMinimization,
     },
+    stats: {
+      excludeModules: [/node_modules/],
+      source: false,
+      reasons: false,
+      assets: false,
+      chunks: false,
+      nestedModules: false,
+      optimizationBailout: false,
+    },
   };
 };
