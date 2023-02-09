@@ -83,8 +83,8 @@
 
 (defmethod ddl.i/format-name :mongo
   [_ table-or-field-name]
-  (if (= table-or-field-name "id")
-    "_id"
+  (if (re-matches #"id(?:_\d+)?" table-or-field-name)
+    (str "_" table-or-field-name)
     table-or-field-name))
 
 (defn- json-raw

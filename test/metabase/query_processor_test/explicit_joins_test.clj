@@ -260,7 +260,7 @@
                rows))))))
 
 (deftest select-*-source-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :foreign-keys)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
       (let [{:keys [rows columns]} (mt/format-rows-by [int int]
                                      (mt/rows+column-names

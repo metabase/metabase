@@ -234,6 +234,8 @@
 
 (doseq [feature [:basic-aggregations
                  :expression-aggregations
+                 :inner-join
+                 :left-join
                  :nested-fields
                  :nested-queries
                  :native-parameters
