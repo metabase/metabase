@@ -17,7 +17,6 @@ const collection = {
   archived: false,
 };
 
-const onToggleSelected = action("onToggleSelected");
 const onCopy = action("onCopy");
 const onMove = action("onMove");
 

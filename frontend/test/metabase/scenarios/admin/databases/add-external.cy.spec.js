@@ -114,6 +114,34 @@ describe(
       });
     });
 
+    it("should add Mongo database via the connection string", () => {
+      const connectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
+
+      cy.contains("MongoDB").click({ force: true });
+      cy.findByText("Paste a connection string").click();
+      typeAndBlurUsingLabel("Display name", "QA Mongo4");
+      cy.findByLabelText("Port").should("not.exist");
+      cy.findByLabelText("Paste your connection string").type(
+        connectionString,
+        { delay: 0 },
+      );
+
+      cy.findByText("Save").should("not.be.disabled").click();
+
+      cy.wait("@createDatabase");
+
+      cy.url().should("match", /\/admin\/databases\?created=true$/);
+
+      cy.findByRole("table").within(() => {
+        cy.findByText("QA Mongo4");
+      });
+
+      cy.findByRole("status").within(() => {
+        cy.findByText("Syncing…");
+        cy.findByText("Done!");
+      });
+    });
+
     it("should add MySQL database and redirect to listing", () => {
       cy.contains("MySQL").click({ force: true });
       cy.findByText("Show advanced options").click();

@@ -6,7 +6,7 @@
    [metabase.models :refer [ApplicationPermissionsRevision Permissions]]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.permissions :as perms]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -27,9 +27,9 @@
   Only groups that has at least one application permission enabled will be included."
   []
   (let [application-permissions (db/select Permissions
-                                       {:where [:or
-                                                [:= :object "/"]
-                                                [:like :object (hx/literal "/application/%")]]})]
+                                           {:where [:or
+                                                    [:= :object "/"]
+                                                    [:like :object (h2x/literal "/application/%")]]})]
     (into {} (for [[group-id perms] (group-by :group_id application-permissions)]
                {group-id (set (map :object perms))}))))
 

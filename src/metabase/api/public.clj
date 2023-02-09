@@ -15,6 +15,7 @@
    [metabase.async.util :as async.u]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dimension :refer [Dimension]]
@@ -31,6 +32,7 @@
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
@@ -304,6 +306,26 @@
      :html    (embed/iframe url width height)}))
 
 
+;;; ----------------------------------------------- Public Action ------------------------------------------------
+
+(def ^:private action-public-keys
+  "The only keys for an action that should be visible to the general public."
+  #{:name
+    :id
+    :visualization_settings
+    :parameters})
+
+(api/defendpoint GET "/action/:uuid"
+  "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
+  [uuid]
+  {uuid ms/UUIDString}
+  (validation/check-public-sharing-enabled)
+  (-> (action/actions-with-implicit-params nil :public_uuid uuid)
+      first
+      api/check-404
+      (select-keys action-public-keys)))
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -530,6 +552,42 @@
      :dashcard-id   dashcard-id
      :export-format :api
      :parameters    parameters :qp-runner qp.pivot/run-pivot-query)))
+
+(def ^:private action-execution-throttle
+  "Rate limit at 1 action per second on a per action basis.
+   The goal of rate limiting should be to prevent very obvious abuse, but it should
+   be relatively lax so we don't annoy legitimate users."
+  (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 1000 :delay-exponent 1))
+
+(api/defendpoint POST "/action/:uuid/execute"
+  "Execute the Action.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values."
+  [uuid :as {{:keys [parameters], :as _body} :body}]
+  {uuid       ms/UUIDString
+   parameters [:maybe [:map-of :keyword any?]]}
+  (let [throttle-message (try
+                           (throttle/check action-execution-throttle uuid)
+                           nil
+                           (catch ExceptionInfo e
+                             (get-in (ex-data e) [:errors :action-uuid])))
+        throttle-time (when throttle-message
+                        (second (re-find #"You must wait ([0-9]+) seconds" throttle-message)))]
+    (if throttle-message
+      (cond-> {:status 429
+               :body   throttle-message}
+        throttle-time (assoc :headers {"Retry-After" throttle-time}))
+      (do
+        (validation/check-public-sharing-enabled)
+        ;; Run this query with full superuser perms. We don't want the various perms checks
+        ;; failing because there are no current user perms; if this Dashcard is public
+        ;; you're by definition allowed to run it without a perms check anyway
+        (binding [api/*current-user-permissions-set* (delay #{"/"})]
+          (let [action (api/check-404 (first (action/actions-with-implicit-params nil :public_uuid uuid)))]
+            ;; Undo middleware string->keyword coercion
+            (actions.execution/execute-action! action (update-keys parameters name))))))))
+
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 

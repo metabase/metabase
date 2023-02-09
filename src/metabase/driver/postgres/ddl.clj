@@ -1,7 +1,6 @@
 (ns metabase.driver.postgres.ddl
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [java-time :as t]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -9,7 +8,8 @@
    [metabase.driver.sql.ddl :as sql.ddl]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 (defn- set-statement-timeout!
   "Must be called within a transaction.

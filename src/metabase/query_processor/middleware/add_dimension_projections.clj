@@ -25,7 +25,6 @@
   `name` is `:remapped_from` `:category_id`."
   (:require
    [clojure.data :as data]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.mbql.schema :as mbql.s]
@@ -33,6 +32,7 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -402,7 +402,7 @@
 (s/defn ^:private col->dim-map :- (s/maybe InternalDimensionInfo)
   "Given a `:col` map from the results, return a map of information about the `internal` dimension used for remapping
   it."
-  [idx {{remap-to :name, remap-type :type, field-id :field_id}         :dimensions
+  [idx {[{remap-to :name, remap-type :type, field-id :field_id}]       :dimensions
         {values :values, human-readable-values :human_readable_values} :values
         :as                                                            col}]
   (when (and field-id

@@ -1,10 +1,8 @@
 (ns metabase.models.secret
   (:require
-   [cheshire.generate :refer [add-encoder encode-map]]
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -13,6 +11,8 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan.db :as db]
    [toucan.models :as models])
   (:import
@@ -319,12 +319,9 @@
                                                                  details
                                                                  expand-inferred-secret-values))))
 
-;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
-
-(add-encoder
- #_{:clj-kondo/ignore [:unresolved-symbol]}
- SecretInstance
- (fn [secret json-generator]
-   (encode-map
-    (dissoc secret :value)              ; never include the secret value in JSON
-    json-generator)))
+(methodical/defmethod mi/to-json Secret
+  "Never include the secret value in JSON."
+  [secret json-generator]
+  (next-method
+   (dissoc secret :value)
+   json-generator))

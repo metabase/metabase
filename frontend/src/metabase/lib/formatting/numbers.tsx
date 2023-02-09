@@ -1,7 +1,6 @@
 import React from "react";
 
 import { format_number } from "cljs/metabase.shared.formatting.numbers";
-import { getCurrencySymbol } from "./currency";
 
 interface FormatNumberOptionsType {
   compact?: boolean;

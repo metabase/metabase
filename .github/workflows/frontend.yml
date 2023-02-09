@@ -5,37 +5,28 @@ on:
     branches:
       - 'master'
       - 'release-**'
-    paths-ignore:
-      # documentation
-      - "docs/**"
-      - "**.md"
-      # backend
-      - "enterprise/backend/**"
-      - "src/**"
-      - "test/**"
-      - "*modules/**" # modules/, test_modules/
-      # E2E
-      - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
-      - "frontend/test/__support__/e2e/**"
-      - "frontend/test/__runner__/*cypress*"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      # documentation
-      - "docs/**"
-      - "**.md"
-      # backend
-      - "enterprise/backend/**"
-      - "src/**"
-      - "test/**"
-      - "*modules/**" # modules/, test_modules/
-      # E2E
-      - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
-      - "frontend/test/__support__/e2e/**"
-      - "frontend/test/__runner__/*cypress*"
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-20.04
+    timeout-minutes: 3
+    outputs:
+      frontend_all: ${{ steps.changes.outputs.frontend_all }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test which files changed
+        uses: dorny/paths-filter@v2.11.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
   fe-linter-prettier:
+    needs: files-changed
+    if: needs.files-changed.outputs.frontend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
@@ -46,35 +37,52 @@ jobs:
       name: Run Prettier formatting linter
 
   fe-linter-eslint:
+    needs: files-changed
+    if: needs.files-changed.outputs.frontend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
     - run: yarn run lint-eslint
       name: Run ESLint linter
 
   fe-type-check:
+    needs: files-changed
+    if: needs.files-changed.outputs.frontend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
     - run: yarn build-quick:cljs
       name: Compile CLJS
     - run: yarn type-check
       name: Check types
 
   fe-tests-unit:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
     - run: yarn run test-unit --coverage --silent
       name: Run frontend unit tests
     - name: Upload coverage to codecov.io
@@ -84,18 +92,24 @@ jobs:
         flags: front-end
 
   fe-tests-timezones:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 14
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
     - run: yarn run test-timezones
       name: Run frontend timezones tests
 
   fe-chromatic:
-    if: github.event.pull_request.draft == false
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository
@@ -104,6 +118,10 @@ jobs:
           fetch-depth: 0
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'cljs'
       - name: Publish to Chromatic
         uses: chromaui/action@v1
         env:

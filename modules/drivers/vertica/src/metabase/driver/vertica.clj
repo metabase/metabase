@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [honeysql.format :as hformat]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -19,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
   (:import
    (java.sql ResultSet ResultSetMetaData Types)))
 

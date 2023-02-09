@@ -1,5 +1,5 @@
 import React from "react";
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";

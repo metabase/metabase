@@ -4,13 +4,13 @@
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [environ.core :as env]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
    [metabase.plugins.initialize :as plugins.init]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [yaml.core :as yaml])
   (:import
    (java.io File)

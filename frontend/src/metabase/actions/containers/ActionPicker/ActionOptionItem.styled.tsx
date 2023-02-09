@@ -1,4 +1,3 @@
-import _ from "underscore";
 import styled from "@emotion/styled";
 
 import { color, lighten } from "metabase/lib/colors";

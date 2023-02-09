@@ -5,14 +5,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [honeysql.format :as hformat]
    [java-time :as t]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -22,6 +20,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.models.field :as field]
@@ -32,6 +31,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [pretty.core :refer [PrettyPrintable]])
   (:import
@@ -397,7 +397,7 @@
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
-          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
+          parent-identifier    (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)
           names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
       (reify
         hformat/ToSql
@@ -548,23 +548,6 @@
    ;; maybe we should switch this to use `sql-jdbc.sync/pattern-based-database-type->base-type`
    (keyword "timestamp with time zone")    :type/DateTimeWithTZ
    (keyword "timestamp without time zone") :type/DateTime})
-
-(doseq [[base-type db-type] {:type/BigInteger          "BIGINT"
-                             :type/Boolean             "BOOL"
-                             :type/Date                "DATE"
-                             :type/DateTime            "TIMESTAMP"
-                             :type/DateTimeWithTZ      "TIMESTAMP WITH TIME ZONE"
-                             :type/DateTimeWithLocalTZ "TIMESTAMP WITH TIME ZONE"
-                             :type/Decimal             "DECIMAL"
-                             :type/Float               "FLOAT"
-                             :type/Integer             "INTEGER"
-                             :type/IPAddress           "INET"
-                             :type/Text                "TEXT"
-                             :type/Time                "TIME"
-                             :type/TimeWithTZ          "TIME WITH TIME ZONE"
-                             :type/UUID                "UUID"}]
-  ;; todo: we get DB types in the metadata, let's persist these in model metadata
-  (defmethod ddl.i/field-base-type->sql-type [:postgres base-type] [_ _] db-type))
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
   [_driver column]

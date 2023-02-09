@@ -3,7 +3,6 @@
   (:require [cheshire.core :as json]
             [cheshire.generate :as json.generate]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
@@ -17,6 +16,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
+            [metabase.util.log :as log]
             [monger.command :as cmd]
             [monger.conversion :as m.conversion]
             [monger.core :as mg]
@@ -229,9 +229,11 @@
                         column-info))})))
 
 (doseq [feature [:basic-aggregations
+                 :expression-aggregations
                  :nested-fields
                  :nested-queries
                  :native-parameters
+                 :set-timezone
                  :standard-deviation-aggregations]]
   (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 

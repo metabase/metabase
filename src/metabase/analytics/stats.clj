@@ -4,7 +4,6 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
@@ -36,6 +35,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]))
 
 (defn- merge-count-maps
@@ -241,7 +241,6 @@
      ;; Pulses only (filter out Alerts)
      (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])"
   [& where-conditions]
-  ;; :%distinct-count is a custom fn we registered in `metabase.util.honeysql-extensions`!
   (-> (mdb.query/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
                         :from      [:pulse]
                         :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
@@ -364,7 +363,7 @@
 (defn- cache-metrics
   "Metrics based on use of the QueryCache."
   []
-  (let [{:keys [length count]} (db/select-one [QueryCache [:%avg.%length.results :length] [:%count.* :count]])]
+  (let [{:keys [length count]} (db/select-one [QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
     {:average_entry_size (int (or length 0))
      :num_queries_cached (bin-small-number count)}))
 

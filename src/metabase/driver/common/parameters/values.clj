@@ -10,7 +10,6 @@
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver.common.parameters :as params]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
@@ -22,6 +21,7 @@
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db])

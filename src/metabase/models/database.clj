@@ -1,7 +1,5 @@
 (ns metabase.models.database
   (:require
-   [cheshire.generate :refer [add-encoder encode-map]]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -17,6 +15,8 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan.db :as db]
    [toucan.models :as models]))
 
@@ -59,14 +59,24 @@
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! database)))
 
-(defn- post-select [{driver :engine, :as database}]
-  (cond-> database
-    ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-    (driver.impl/registered? driver)
-    (assoc :features (driver.u/features driver database))
+(def ^:private ^:dynamic *normalizing-details*
+  "Track whether we're calling [[driver/normalize-db-details]] already to prevent infinite
+  recursion. [[driver/normalize-db-details]] is actually done for side effects!"
+  false)
 
-    (and (driver.impl/registered? driver) (:details database))
-    (->> (driver/normalize-db-details driver))))
+(defn- post-select [{driver :engine, :as database}]
+  (letfn [(normalize-details [db]
+            (binding [*normalizing-details* true]
+              (driver/normalize-db-details driver db)))]
+    (cond-> database
+      ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
+      (driver.impl/registered? driver)
+      (assoc :features (driver.u/features driver database))
+
+      (and (driver.impl/registered? driver)
+           (:details database)
+           (not *normalizing-details*))
+      normalize-details)))
 
 (defn- delete-orphaned-secrets!
   "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
@@ -254,22 +264,20 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
-;; when encoding a Database as JSON remove the `details` and `settings` for any User without write perms for the DB.
-;; Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
-;; an API response!
-(add-encoder
- #_{:clj-kondo/ignore [:unresolved-symbol]}
- DatabaseInstance
- (fn [db json-generator]
-   (encode-map
-    (if (not (mi/can-write? db))
-      (dissoc db :details :settings)
-      (update db :details (fn [details]
-                            (reduce
-                             #(m/update-existing %1 %2 (constantly protected-password))
-                             details
-                             (sensitive-fields-for-db db)))))
-    json-generator)))
+(methodical/defmethod mi/to-json Database
+  "When encoding a Database as JSON remove the `details` and `settings` for any User without write perms for the DB.
+  Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
+  an API response!"
+  [db json-generator]
+  (next-method
+   (if (not (mi/can-write? db))
+     (dissoc db :details :settings)
+     (update db :details (fn [details]
+                           (reduce
+                            #(m/update-existing %1 %2 (constantly protected-password))
+                            details
+                            (sensitive-fields-for-db db)))))
+   json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 

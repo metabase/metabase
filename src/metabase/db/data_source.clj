@@ -2,11 +2,11 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.db.spec :as mdb.spec]
    [metabase.db.update-h2 :as update-h2]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [pretty.core :as pretty])
   (:import
