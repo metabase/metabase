@@ -94,7 +94,7 @@ export const executeRowAction = async ({
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
   const executeAction =
     getDashboardType(dashboard.id) === "public"
-      ? PublicApi.executeAction
+      ? PublicApi.executeDashcardAction
       : ActionsApi.execute;
 
   try {
