@@ -53,7 +53,7 @@
     ;; We don't check the permissions on the actions, we assume they are
     ;; readable if the model is readable.
     (hydrate
-     (action/actions-with-implicit-params [model] :model_id model-id)
+     (action/select-actions [model] :model_id model-id)
      :creator)))
 
 (api/defendpoint GET "/:action-id"
@@ -102,7 +102,7 @@
       (action/select-action :id action-id)
       ;; db/insert! does not return a value when used with h2
       ;; so we return the most recently updated http action.
-      (last (action/actions-with-implicit-params nil :type type)))))
+      (last (action/select-actions nil :type type)))))
 
 (api/defendpoint PUT "/:id"
   [id :as
