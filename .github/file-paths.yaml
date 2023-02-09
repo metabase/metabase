@@ -1,6 +1,7 @@
 default: &default
-  - "locales/**"
   - "bin/**"
+  - "locales/**"
+  - "resources/**"
 
 ci: &ci
   - ".github/**"
