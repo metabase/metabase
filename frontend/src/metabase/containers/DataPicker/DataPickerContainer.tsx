@@ -46,10 +46,10 @@ type DataPickerProps = DataPickerOwnProps &
   DatabaseListLoaderProps &
   SearchListLoaderProps;
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, { databases }: DatabaseListLoaderProps) {
   return {
     hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
-    hasDataAccess: getHasDataAccess(state),
+    hasDataAccess: getHasDataAccess(databases),
   };
 }
 
