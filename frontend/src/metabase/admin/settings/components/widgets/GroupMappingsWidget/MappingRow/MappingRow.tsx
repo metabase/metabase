@@ -2,8 +2,11 @@ import React from "react";
 import { t } from "ttag";
 import { isAdminGroup } from "metabase/lib/groups";
 
-import Button from "metabase/core/components/Button";
+import Tooltip from "metabase/core/components/Tooltip";
+import Icon from "metabase/components/Icon";
+
 import Selectbox from "../GroupSelect";
+import { DeleteMappingButton } from "./MappingRow.styled";
 
 type MappingRowProps = {
   dn: any;
@@ -51,7 +54,13 @@ const MappingRow = ({
         />
       </td>
       <td className="Table-actions">
-        <Button warning onClick={onDelete}>{t`Remove`}</Button>
+        <div className="float-right mr1">
+          <Tooltip tooltip={t`Remove mapping`} placement="top">
+            <DeleteMappingButton onClick={onDelete}>
+              <Icon name="close" />
+            </DeleteMappingButton>
+          </Tooltip>
+        </div>
       </td>
     </tr>
   );
