@@ -94,8 +94,8 @@
     (throw (ex-info (tru "Must provide a database_id for query actions")
                     {:type        type
                      :status-code 400})))
-  (api/write-check Card model_id)
-  (actions/check-actions-enabled! action)
+  (let [model (api/write-check Card model_id)]
+    (actions/check-actions-enabled-for-database! (db/select-one 'Database :id (:database_id model))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (if action-id
       (first (action/actions-with-implicit-params nil :id action-id))
@@ -121,7 +121,7 @@
    template               [:maybe http-action-template]
    type                   [:maybe supported-action-type]
    visualization_settings [:maybe map?]}
-  (actions/check-actions-enabled! action)
+  (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
   (first (action/actions-with-implicit-params nil :id id)))

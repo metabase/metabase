@@ -118,6 +118,7 @@
 (defn check-actions-enabled-for-database!
   "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
   [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  (tap> db)
   (when-not (driver/database-supports? driver :actions db)
     (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
                               (u/qualified-name driver)
@@ -132,12 +133,13 @@
   nil)
 
 (defn database-for-action [action-or-id]
-  (t2/instance 'Database
-               (t2/query-one {:select [:db.*]
-                              :from   :action
-                              :join   [[:report_card :card] [:= :card.id :action.model_id]
-                                       [:metabase_database :db] [:= :db.id :card.database_id]]
-                              :where  [:= :action.id (u/the-id action-or-id)]})))
+  (toucan.models/do-post-select
+   'Database
+   (first (db/query {:select [:db.*]
+                     :from   :action
+                     :join   [[:report_card :card] [:= :card.id :action.model_id]
+                              [:metabase_database :db] [:= :db.id :card.database_id]]
+                     :where  [:= :action.id (u/the-id action-or-id)]}))))
 
 (defn check-actions-enabled!
   "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
