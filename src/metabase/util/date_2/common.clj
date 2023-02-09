@@ -1,6 +1,6 @@
 (ns metabase.util.date-2.common
   (:require
-   [camel-snake-kebab.core :as csk]
+   [clojure.string :as str]
    [java-time :as t]
    [metabase.util :as u])
   (:import
@@ -17,7 +17,7 @@
   ([^Class klass ^Class target-class]
    (into {} (for [^java.lang.reflect.Field f (.getFields klass)
                   :when                      (.isAssignableFrom target-class (.getType f))]
-              [(keyword (u/lower-case-en (csk/->kebab-case (.getName f))))
+              [(keyword (u/lower-case-en (str/replace (.getName f))))
                (.get f nil)]))))
 
 (def ^TemporalField temporal-field
