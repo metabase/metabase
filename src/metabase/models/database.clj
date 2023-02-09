@@ -280,12 +280,13 @@
                                      #(m/update-existing %1 %2 (constantly protected-password))
                                      details
                                      (sensitive-fields-for-db db)))))]
-     (update db :settings (fn [settings]
-                            (into {}
-                                  (filter (fn [[setting-name _v]]
-                                            (setting/can-read-setting? setting-name
-                                                                       (setting/current-user-readable-visibilities))))
-                                  settings))))
+     (m/update db :settings (fn [settings]
+                              (when settings
+                                (into {}
+                                      (filter (fn [[setting-name _v]]
+                                                (setting/can-read-setting? setting-name
+                                                                           (setting/current-user-readable-visibilities))))
+                                      settings)))))
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------

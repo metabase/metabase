@@ -157,7 +157,6 @@
 
    Database
    (fn [_] {:details   {}
-            :settings  {}
             :engine    :h2
             :is_sample false
             :name      (random-name)})
