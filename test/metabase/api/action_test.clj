@@ -272,6 +272,12 @@
                 (is (= "Public sharing is not enabled."
                        (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id))))))
 
+            (testing "We *cannot* share an action if actions are disabled"
+              (mt/with-actions-disabled
+                (is (= "Actions are not enabled."
+                       (:cause
+                        (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id)))))))
+
             (testing "We get a 404 if the Action doesn't exist"
               (is (= "Not found."
                      (mt/user-http-request :crowberto :post 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))
@@ -285,9 +291,14 @@
   (testing "DELETE /api/action/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-actions-enabled
-        (testing "Test that we can unshare an action"
-          (let [action-opts (shared-action-opts)]
-            (mt/with-actions [{:keys [action-id]} action-opts]
+        (let [action-opts (shared-action-opts)]
+          (mt/with-actions [{:keys [action-id]} action-opts]
+            (testing "We *cannot* unshare an action if actions are disabled"
+              (mt/with-actions-disabled
+                (is (= "Actions are not enabled."
+                       (:cause
+                        (mt/user-http-request :crowberto :delete 400 (format "action/%d/public_link" action-id)))))))
+            (testing "Test that we can unshare an action"
               (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
               (is (= false
                      (db/exists? Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
