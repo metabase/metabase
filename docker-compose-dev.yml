@@ -63,10 +63,6 @@ services:
       MB_POSTGRESQL_TEST_PASSWORD: password
       MB_POSTGRESQL_TEST_PORT: 5432
       MB_POSTGRESQL_TEST_USER: user
-      MB_REDSHIFT_TEST_DB: testdb
-      MB_REDSHIFT_TEST_HOST: ci-test-cluster.cru0iemq4gyi.us-east-1.redshift.amazonaws.com
-      MB_REDSHIFT_TEST_PASSWORD: 123abcDEF
-      MB_REDSHIFT_TEST_USER: cam
     command: ["clojure", "-M:run:dev:drivers:drivers-dev:ee:ee-dev:socket"]
     profiles:
       - dev-app
