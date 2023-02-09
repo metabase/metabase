@@ -38,7 +38,7 @@
    (java.sql ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)
-   (metabase.util.honey_sql_1_extensions Identifier)))
+   (metabase.util.honey_sql_1 Identifier)))
 
 (comment
   ;; method impls live in these namespaces.
