@@ -14,10 +14,8 @@
       "/db/3/schema/PUBLIC/table/4/read/"             {:db {3 {:data {:schemas {"PUBLIC" {4 {:read :all}}}}}}}
       "/db/3/schema/PUBLIC/table/4/query/"            {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :all}}}}}}}
       "/db/3/schema/PUBLIC/table/4/query/segmented/"  {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :segmented}}}}}}}
-      "/download/db/3/"                               {:db {3 {:download {:native  :full
-                                                                          :schemas :full}}}}
-      "/download/limited/db/3/"                       {:db {3 {:download {:native  :limited
-                                                                          :schemas :limited}}}}
+      "/download/db/3/"                               {:db {3 {:download {:native :full :schemas :full}}}}
+      "/download/limited/db/3/"                       {:db {3 {:download {:native :limited :schemas :limited}}}}
       "/download/db/3/native/"                        {:db {3 {:download {:native :full}}}}
       "/download/limited/db/3/native/"                {:db {3 {:download {:native :limited}}}}
       "/download/db/3/schema/"                        {:db {3 {:download {:schemas :full}}}}
@@ -32,15 +30,14 @@
       "/details/db/3/"                                {:db {3 {:details :yes}}}
 
       ;; v2 style
-      "/data/db/3/"                                       {:db {3 {:data {:native :write}}}}
-      "/data/db/3/native/"                                {:db {3 {:data {:native :write}}}}
-      "/data/db/3/schema/"                                {:db {3 {:data {:schemas :all}}}}
-      "/data/db/3/schema/PUBLIC/"                         {:db {3 {:data {:schemas {"PUBLIC" :all}}}}}
-      "/data/db/3/schema/PUBLIC/table/4/"                 {:db {3 {:data {:schemas {"PUBLIC" {4 :all}}}}}}
-      "/data/db/3/schema/PUBLIC/table/4/read/"            {:db {3 {:data {:schemas {"PUBLIC" {4 {:read :all}}}}}}}
-      "/data/db/3/schema/PUBLIC/table/4/query/"           {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :all}}}}}}}
-      "/data/db/3/schema/PUBLIC/table/4/query/segmented/" {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :segmented}}}}}}}
-
+      "/data/db/3/"                                        {:db {3 {:data {:native :write}}}}
+      "/data/db/3/native/"                                 {:db {3 {:data {:native :write}}}}
+      "/data/db/3/schema/"                                 {:db {3 {:data {:schemas :all}}}}
+      "/data/db/3/schema/PUBLIC/"                          {:db {3 {:data {:schemas {"PUBLIC" :all}}}}}
+      "/data/db/3/schema/PUBLIC/table/4/"                  {:db {3 {:data {:schemas {"PUBLIC" {4 :all}}}}}}
+      "/data/db/3/schema/PUBLIC/table/4/read/"             {:db {3 {:data {:schemas {"PUBLIC" {4 {:read :all}}}}}}}
+      "/data/db/3/schema/PUBLIC/table/4/query/"            {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :all}}}}}}}
+      "/data/db/3/schema/PUBLIC/table/4/query/segmented/"  {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :segmented}}}}}}}
       "/query/db/3/"                                       {:db {3 {:query {:native :write :schemas :all}}}}
       "/query/db/3/native/"                                {:db {3 {:query {:native :write}}}}
       "/query/db/3/schema/"                                {:db {3 {:query {:schemas :all}}}}
@@ -129,7 +126,6 @@
                                        {:native :write}))}}}
                (perms-parse/->graph paths)))))))
 
-
 (deftest parser-works-for-v2-tests
   (is (= [:permission [:data-v2 "1"]]
          (#'perms-parse/parser "/data/db/1/")))
@@ -154,9 +150,4 @@
   (is (= [:permission [:data-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
          (#'perms-parse/parser "/data/db/1/schema/PUBLIC/table/1/")))
   (is (= [:permission [:query-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
-         (#'perms-parse/parser "/query/db/1/schema/PUBLIC/table/1/")))
-  )
-
-
-(deftest permissions->graph-v2-test
-)
+         (#'perms-parse/parser "/query/db/1/schema/PUBLIC/table/1/"))))
