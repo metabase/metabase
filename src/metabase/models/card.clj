@@ -274,15 +274,14 @@
   pre-update-check-sandbox-constraints
   (atom identity))
 
-(defn- update-parameter-use-card-as-sources
+(defn- update-parameters-using-card-as-values-sources
   "Update the config of parameter on any Dashboard/Card use this `card` as values source .
 
   Remove parameter.values_source_type and set parameter.values_source_type to nil ( the default type ) when:
   - card is archived
   - card.result_metadata changes"
   [{id :id, :as changes}]
-  (let [parameter-cards   (db/select ParameterCard :card_id id)
-        deleted-param-ids (atom #{})]
+  (let [parameter-cards   (db/select ParameterCard :card_id id)]
     (doseq [[[po-type po-id] param-cards]
             (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
       (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
@@ -313,9 +312,7 @@
                                     parameter))
                                 parameters)]
         (when-not (= parameters new-parameters)
-          (db/update! model po-id {:parameters new-parameters}))))
-    (when-let [to-delete-param-ids (seq @deleted-param-ids)]
-      (db/delete! ParameterCard :card_id id [:in :parameter_id to-delete-param-ids]))))
+          (db/update! model po-id {:parameters new-parameters}))))))
 
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
@@ -356,7 +353,7 @@
       (collection/check-collection-namespace Card (:collection_id changes))
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
-      (update-parameter-use-card-as-sources changes)
+      (update-parameters-using-card-as-values-sources changes)
       (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)
