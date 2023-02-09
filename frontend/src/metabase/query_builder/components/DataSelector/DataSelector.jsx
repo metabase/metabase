@@ -694,19 +694,27 @@ export class UnconnectedDataSelector extends Component {
       },
       [SCHEMA_STEP]: () => {
         return Promise.all([
-          this.props.fetchDatabases(this.props.databaseQuery),
-          this.props.fetchSchemas(this.state.selectedDatabaseId),
+          loadersForSteps[DATABASE_STEP](),
+          ...(this.state.selectedDatabaseId != null
+            ? [this.props.fetchSchemas(this.state.selectedDatabaseId)]
+            : []),
         ]);
       },
       [TABLE_STEP]: () => {
-        if (this.state.selectedSchemaId != null) {
-          return this.props.fetchSchemaTables(this.state.selectedSchemaId);
-        }
+        return Promise.all([
+          loadersForSteps[SCHEMA_STEP](),
+          ...(this.state.selectedSchemaId != null
+            ? [this.props.fetchSchemaTables(this.state.selectedSchemaId)]
+            : []),
+        ]);
       },
       [FIELD_STEP]: () => {
-        if (this.state.selectedTableId != null) {
-          return this.props.fetchFields(this.state.selectedTableId);
-        }
+        return Promise.all([
+          loadersForSteps[TABLE_STEP](),
+          ...(this.state.selectedTableId != null
+            ? [this.props.fetchFields(this.state.selectedTableId)]
+            : []),
+        ]);
       },
     };
 
