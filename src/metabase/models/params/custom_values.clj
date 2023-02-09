@@ -7,10 +7,10 @@
   "
   (:require
    [clojure.string :as str]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.util :as qp.util]
    [metabase.search.util :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -49,37 +49,10 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
-(def field-options-for-identification
-  "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
-  #{:source-field :join-alias :base-type})
-
-(defn- field-normalizer
-  [field]
-  (let [[type id-or-name options ] (mbql.normalize/normalize-tokens field)]
-    [type id-or-name (select-keys options field-options-for-identification)]))
-
-(defn- field->field-info
-  [field result-metadata]
-  (let [[_ttype id-or-name options :as field] (field-normalizer field)]
-    (or
-      ;; try match field_ref first
-      (first (filter (fn [field-info]
-                       (= field
-                          (-> field-info
-                              :field_ref
-                              field-normalizer)))
-                     result-metadata))
-      ;; if not match name and base type for aggregation or field with string id
-      (first (filter (fn [field-info]
-                       (and (= (:name field-info)
-                               id-or-name)
-                            (= (:base-type options)
-                               (:base_type field-info))))
-                     result-metadata)))))
 
 (defn- values-from-card-query
   [card value-field query]
-  (let [value-base-type (:base_type (field->field-info value-field (:result_metadata card)))]
+  (let [value-base-type (:base_type (qp.util/field->field-info value-field (:result_metadata card)))]
     {:database (:database_id card)
      :type     :query
      :query    (merge
@@ -136,7 +109,7 @@
   [card value-field]
   (boolean
     (and (not (:archived card))
-         (some? (field->field-info value-field (:result_metadata card))))))
+         (some? (qp.util/field->field-info value-field (:result_metadata card))))))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
