@@ -3,8 +3,8 @@ import {
   queryTestDB,
   resetTestTable,
   getTableId,
-  waitForSyncToFinish,
   fillActionQuery,
+  resyncDatabase,
 } from "__support__/e2e/helpers";
 
 const DB_ID = 2;
@@ -24,9 +24,7 @@ const TEST_TABLE = "scoreboard_actions";
       resetTestTable({ type: dialect, table: TEST_TABLE });
       restore(`${dialect}-writable`);
       cy.signInAsAdmin();
-      cy.request("POST", `/api/database/${DB_ID}/sync_schema`);
-      cy.request("POST", `/api/database/${DB_ID}/rescan_values`);
-      waitForSyncToFinish(0, DB_ID);
+      resyncDatabase(DB_ID);
     });
 
     it("should show testing_db with actions enabled", () => {
@@ -83,6 +81,7 @@ const TEST_TABLE = "scoreboard_actions";
       cy.findByLabelText("pencil icon").click();
       cy.findByLabelText("click icon").click();
       cy.get("aside").within(() => {
+        cy.findByText("Test Model").click();
         cy.findByText("Add Zebras").click();
       });
       cy.findByLabelText("click icon").click();

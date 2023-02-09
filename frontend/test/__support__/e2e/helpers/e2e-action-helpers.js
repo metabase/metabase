@@ -10,7 +10,7 @@ export function enableActionsForDB(dbId = SAMPLE_DB_ID) {
 
 export function fillActionQuery(query) {
   cy.get(".ace_content").type(query, { parseSpecialCharSequences: false });
-
+}
 /**
  *
  * @param {import("metabase/entities/actions/actions").CreateQueryActionParams} actionDetails

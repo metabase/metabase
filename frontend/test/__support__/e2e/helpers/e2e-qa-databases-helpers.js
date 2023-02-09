@@ -200,3 +200,10 @@ export function waitForSyncToFinish(iteration = 0, databaseId = 2) {
     return;
   });
 }
+
+export function resyncDatabase(DB_ID = 2) {
+  // must be signed in as admin to sync
+  cy.request("POST", `/api/database/${DB_ID}/sync_schema`);
+  cy.request("POST", `/api/database/${DB_ID}/rescan_values`);
+  waitForSyncToFinish(0, DB_ID);
+}
