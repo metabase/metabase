@@ -16,13 +16,14 @@
 (def ^:private ParsedToken (s/cond-pre s/Str Param Optional))
 
 (defn- find-token
+  "Returns a vector of [index match] for string or regex pattern found in s"
   [s pattern]
   (if (string? pattern)
     (when-let [index (str/index-of s pattern)]
       [index pattern])
-    (when-let [match (re-find pattern s)]
-      (let [text (if (vector? match) (first match) match)]
-        [(str/index-of s text) text]))))
+    (let [m (re-matcher pattern s)]
+      (when (.find m)
+        [(.start m) (subs s (.start m) (.end m))]))))
 
 (defn- tokenize-one [s pattern token]
   (loop [acc [], s s]

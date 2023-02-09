@@ -6,6 +6,14 @@
 (def ^:private ^{:arglists '([field-name])} param    (var-get #'params.parse/param))
 (def ^:private ^{:arglists '([& args])}     optional (var-get #'params.parse/optional))
 
+(defn- normalize-tokens
+  [tokens]
+  (for [token tokens]
+    (cond
+      (string? token) token
+      (:token token)  (:token token)
+      :else           token)))
+
 (deftest tokenize-test
   (doseq [[query expected]
           {"{{num_toucans}}"
@@ -24,7 +32,7 @@
            ["SELECT * FROM toucanneries WHERE TRUE " :optional-begin "AND num_toucans > " :param-begin "num_toucans" :param-end :optional-end
             " " :optional-begin "AND total_birds > " :param-begin "total_birds" :param-end :optional-end]}]
     (is (= expected
-           (#'params.parse/tokenize query))
+           (normalize-tokens (#'params.parse/tokenize query)))
         (format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
 
 (deftest parse-test
@@ -85,7 +93,7 @@
     (testing group
       (doseq [[s expected] s->expected]
         (is (= expected
-               (params.parse/parse s))
+               (normalize-tokens (params.parse/parse s)))
             (format "%s should get parsed to %s" (pr-str s) (pr-str expected))))))
 
   (testing "Testing that invalid/unterminated template params/clauses throw an exception"
