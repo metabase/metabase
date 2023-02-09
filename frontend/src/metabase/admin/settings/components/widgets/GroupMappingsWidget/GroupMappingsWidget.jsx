@@ -169,7 +169,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
         </ToggleRoot>
         <About>
           <Tooltip
-            tooltip={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. Users are only ever added to or removed from mapped groups.`}
+            tooltip={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced.`}
             placement="top"
           >
             <AboutContentRoot>
