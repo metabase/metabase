@@ -1,4 +1,4 @@
-import { popover, restore } from "__support__/e2e/helpers";
+import { adhocQuestionHash, popover, restore } from "__support__/e2e/helpers";
 
 describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -229,13 +229,13 @@ describe("scenarios > embedding > full app", () => {
     });
   });
 
-  describe("data loading (metabase#21511)", () => {
+  describe("data loading", () => {
     beforeEach(() => {
       cy.signOut();
       cy.signInAsNormalUser();
     });
 
-    it("should allow to create a new question from the menu", () => {
+    it("should allow to create a new question from the menu (metabase#21511)", () => {
       visitUrl({
         url: "/collection/root",
         qs: { top_nav: true, new_button: true, side_nav: false },
@@ -245,6 +245,26 @@ describe("scenarios > embedding > full app", () => {
       popover().findByText("Question").click();
       popover().findByText("Sample Database").click();
       popover().findByText("Orders").click();
+    });
+
+    it("should show the database for a native question (metabase#21511)", () => {
+      const newQuestionQuery = {
+        dataset_query: {
+          database: null,
+          native: {
+            query: "",
+          },
+          type: "native",
+        },
+        visualization_settings: {},
+      };
+
+      visitUrl({
+        url: `/question#${adhocQuestionHash(newQuestionQuery)}`,
+        qs: { side_nav: false },
+      });
+
+      cy.findByText("Sample Database").should("be.visible");
     });
   });
 });

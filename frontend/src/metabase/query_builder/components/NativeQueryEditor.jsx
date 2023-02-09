@@ -28,6 +28,7 @@ import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 
+import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
@@ -628,6 +629,7 @@ const mapDispatchToProps = dispatch => ({
 
 export default _.compose(
   ExplicitSize(),
+  Databases.loadList({ loadingAndErrorWrapper: false }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
   connect(null, mapDispatchToProps),
