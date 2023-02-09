@@ -28,12 +28,12 @@ jobs:
     timeout-minutes: 60
     steps:
     - uses: actions/checkout@v3
-    - name: Build static viz frontend
-      run: yarn build-static-viz
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: 'cloverage'
+    - name: Build static viz frontend
+      run: yarn build-static-viz
     - name: Collect the test coverage
       run: clojure -X:dev:ee:ee-dev:test:cloverage
     - name: Upload coverage to codecov.io
@@ -120,6 +120,8 @@ jobs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: java-11-ee-pre-check
 
     - run: yarn install --frozen-lockfile --prefer-offline
     - name: Build static viz frontend
@@ -152,6 +154,8 @@ jobs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: be-tests
 
     - run: yarn install --frozen-lockfile --prefer-offline
     - name: Build static viz frontend
@@ -182,5 +186,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: be-check
       - name: Check namespaces
         run: clojure -M:ee:drivers:check

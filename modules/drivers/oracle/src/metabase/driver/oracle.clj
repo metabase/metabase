@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honeysql.format :as hformat]
    [java-time :as t]
    [metabase.config :as config]
@@ -27,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.ssh :as ssh])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)

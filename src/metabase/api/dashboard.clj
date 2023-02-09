@@ -3,7 +3,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
    [metabase.actions.execution :as actions.execution]
@@ -22,9 +21,8 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
-   [metabase.models.params.card-values :as params.card-values]
    [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.static-values :as params.static-values]
+   [metabase.models.params.custom-values :as custom-values]
    [metabase.models.query :as query :refer [Query]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
@@ -38,6 +36,7 @@
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -401,20 +400,17 @@
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
     (check-allowed-to-change-embedding dash-before-update dash-updates)
-    (api/check-500
-     (db/transaction
-
-       ;;If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
-       ;;adjust the collection position of other dashboards in the collection
-       (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
-
-       (db/update! Dashboard id
-         ;; description, position, collection_id, and collection_position are allowed to be `nil`.
-         ;; Everything else must be non-nil
-         (u/select-keys-when dash-updates
-           :present #{:description :position :collection_id :collection_position :cache_ttl}
-           :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                      :embedding_params :archived})))))
+    (db/transaction
+      ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
+      ;; adjust the collection position of other dashboards in the collection
+      (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
+      ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
+      ;; non-nil
+      (when-let [updates (not-empty (u/select-keys-when dash-updates
+                                      :present #{:description :position :collection_id :collection_position :cache_ttl}
+                                      :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                                                 :embedding_params :archived}))]
+        (db/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (db/select-one Dashboard :id id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
@@ -773,12 +769,7 @@
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
-     (case (:values_source_type param)
-       "static-list" (params.static-values/param->values param query)
-       "card"        (do
-                       (api/read-check Card (get-in param [:values_source_config :card_id]))
-                       (params.card-values/param->values param query))
-       nil           (chain-filter dashboard param-key constraint-param-key->value query)))))
+     (custom-values/parameter->values param query (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/params/:param-key/values"

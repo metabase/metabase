@@ -1,13 +1,13 @@
 (ns metabase.query-processor.context.default
   (:require
    [clojure.core.async :as a]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]))
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]))
 
 (def query-timeout-ms
   "Maximum amount of time to wait for a running query to complete before throwing an Exception."

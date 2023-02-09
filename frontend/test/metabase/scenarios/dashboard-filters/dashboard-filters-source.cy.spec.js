@@ -12,6 +12,7 @@ import {
   visitEmbeddedPage,
   visitPublicDashboard,
   describeEE,
+  setSearchBoxFilterType,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -75,6 +76,21 @@ describe("scenarios > dashboard > filters", () => {
 
       cy.get("@questionId").then(visitQuestion);
       archiveQuestion();
+    });
+
+    it("should be able to use a structured question source without mapping to a field", () => {
+      cy.createQuestion(structuredSourceQuestion);
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+      }).then(({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
+      });
+
+      editDashboard();
+      setFilter("Text or Category", "Is");
+      setFilterQuestionSource({ question: "GUI source", field: "Category" });
+      saveDashboard();
+      filterDashboard();
     });
 
     it("should be able to use a structured question source when embedded", () => {
@@ -203,6 +219,23 @@ describe("scenarios > dashboard > filters", () => {
       filterDashboard();
     });
   });
+
+  describe("field source", () => {
+    it("should be able to use search box with fields configured for list", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+      }).then(({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
+      });
+
+      editDashboard();
+      setFilter("Text or Category", "Is");
+      mapFilterToQuestion();
+      setSearchBoxFilterType();
+      saveDashboard();
+      filterDashboard({ isField: true });
+    });
+  });
 });
 
 describeEE("scenarios > dashboard > filters", () => {
@@ -242,19 +275,19 @@ const mapFilterToQuestion = () => {
   popover().within(() => cy.findByText("Category").click());
 };
 
-const filterDashboard = ({ isSandboxed } = {}) => {
+const filterDashboard = ({ isField = false, isSandboxed = false } = {}) => {
   cy.findByText("Text").click();
 
   popover().within(() => {
     cy.findByText("Gizmo").should("be.visible");
-    cy.findByText("Doohickey").should("not.exist");
+    cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
     cy.findByText("Gadget").should(isSandboxed ? "not.exist" : "be.visible");
     cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
 
     cy.findByPlaceholderText("Search the list").type("i");
     cy.findByText("Gadget").should("not.exist");
     cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
-    cy.findByText("Doohickey").should("not.exist");
+    cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
 
     cy.findByText("Gizmo").click();
     cy.button("Add filter").click();

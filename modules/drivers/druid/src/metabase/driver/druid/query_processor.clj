@@ -1,7 +1,6 @@
 (ns metabase.driver.druid.query-processor
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [metabase.driver.common :as driver.common]
             [metabase.driver.druid.js :as druid.js]
             [metabase.mbql.schema :as mbql.s]
@@ -15,6 +14,7 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.log :as log]
             [schema.core :as s]))
 
 (def ^:private ^:const topN-max-results

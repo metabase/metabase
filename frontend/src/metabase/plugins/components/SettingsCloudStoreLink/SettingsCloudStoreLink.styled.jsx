@@ -13,7 +13,7 @@ export const Link = styled(ExternalLink)`
   align-items: center;
   color: ${color("text-white")};
   font-weight: bold;
-  background-color: ${() => color("brand")};
+  background-color: ${color("brand")};
   padding: 12px 18px;
   border-radius: 6px;
 

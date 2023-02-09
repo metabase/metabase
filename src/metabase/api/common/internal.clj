@@ -3,13 +3,13 @@
    These are primarily used as the internal implementation of `defendpoint`."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.describe :as umd]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]

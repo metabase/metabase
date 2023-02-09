@@ -1,33 +1,39 @@
 (ns metabase.driver.bigquery-cloud-sdk
-  (:require [clojure.core.async :as a]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver :as driver]
-            [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-            [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
-            [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
-            [metabase.driver.sync :as driver.s]
-            [metabase.models :refer [Database]]
-            [metabase.models.table :as table :refer [Table] :rename {Table MetabaseTable}] ; Table clashes with the class below
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import clojure.lang.PersistentList
-           [com.google.cloud.bigquery
-            BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
-            BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions
-            Dataset DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration
-            Schema Table TableDefinition$Type TableId TableResult]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
+   [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
+   [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
+   [metabase.driver.sync :as driver.s]
+   [metabase.models :refer [Database]]
+   [metabase.models.table
+    :as table
+    :refer [Table]
+    :rename
+    {Table MetabaseTable}]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang PersistentList)
+   (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
+                              BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions Dataset
+                              DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table
+                              TableDefinition$Type TableId TableResult)))
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
 
@@ -411,7 +417,7 @@
     (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                     db-id))
     (try
-      (db/execute! {:update MetabaseTable
+      (db/execute! {:update (t2/table-name MetabaseTable)
                     :set    {:schema dataset-id}
                     :where  [:and
                              [:= :db_id db-id]
@@ -429,7 +435,7 @@
       updated-db)))
 
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
-  [_ {:keys [:details] :as database}]
+  [_driver {:keys [:details] :as database}]
   (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
     (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
                      " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"

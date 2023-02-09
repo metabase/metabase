@@ -1,7 +1,9 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.events :as events]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -10,17 +12,23 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (defn- do-with-query-execution [query run]
-  (mt/with-open-channels [save-chan (a/promise-chan)]
-    (with-redefs [process-userland-query/save-query-execution!* (partial a/>!! save-chan)]
-      (run
-        (fn qe-result* []
-          (let [qe (mt/wait-for-result save-chan)]
-            (cond-> qe
-              (:running_time qe) (update :running_time int?)
-              (:hash qe)         (update :hash (fn [^bytes a-hash]
-                                                 (when a-hash
-                                                   (java.util.Arrays/equals a-hash (qp.util/query-hash query))))))))))))
+  (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
+    (let [original-hash (qp.util/query-hash query)
+          result        (promise)]
+      (with-redefs [process-userland-query/save-query-execution!* (fn [query-execution]
+                                                                    (when-let [^bytes qe-hash (:hash query-execution)]
+                                                                      (when (java.util.Arrays/equals qe-hash original-hash)
+                                                                        (deliver result query-execution))))]
+        (run
+          (fn qe-result* []
+            (let [qe (deref result 1000 ::timed-out)]
+              (cond-> qe
+                (:running_time qe) (update :running_time int?)
+                (:hash qe)         (update :hash (fn [^bytes a-hash]
+                                                   (some-> a-hash codecs/bytes->hex)))))))))))
 
 (defmacro ^:private with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
@@ -30,32 +38,34 @@
    (process-userland-query query nil))
 
   ([query context]
-   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
-     (let [result (mt/test-qp-middleware process-userland-query/process-userland-query query {} [] context)]
-       (if-not (map? result)
-         result
-         (update (:metadata result) :running_time int?))))))
+   (let [result (mt/test-qp-middleware process-userland-query/process-userland-query query {} [] context)]
+     (if-not (map? result)
+       result
+       (update (:metadata result) :running_time int?)))))
 
 (deftest success-test
-  (let [query {:query? true}]
+  (let [query {:query {:type ::success-test}}]
     (with-query-execution [qe query]
+      (is (= #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+             (t/zoned-date-time))
+          "sanity check")
       (is (= {:status                 :completed
               :data                   {}
               :row_count              0
               :database_id            nil
               :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-              :json_query             {:query? true}
+              :json_query             query
               :average_execution_time nil
               :context                nil
               :running_time           true}
              (process-userland-query query))
-          "Result should have query execution info ")
-      (is (= {:hash         true
+          "Result should have query execution info")
+      (is (= {:hash         "29f0bca06d6679e873b1f5a3a36dac18a5b4642c6545d24456ad34b1cad4ecc6"
               :database_id  nil
               :result_rows  0
               :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
               :executor_id  nil
-              :json_query   {:query? true}
+              :json_query   query
               :native       false
               :pulse_id     nil
               :card_id      nil
@@ -67,7 +77,7 @@
           "QueryExecution should be saved"))))
 
 (deftest failure-test
-  (let [query {:query? true}]
+  (let [query {:query {:type ::failure-test}}]
     (with-query-execution [qe query]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -75,13 +85,13 @@
            (process-userland-query query {:runf (fn [_ _ context]
                                                   (qp.context/raisef (ex-info "Oops!" {:type qp.error-type/qp})
                                                                      context))})))
-      (is (= {:hash         true
+      (is (= {:hash         "d673f355de41679623bfcbda4923d29c1ca64aec6314d79de0369bea2ac246d1"
               :database_id  nil
               :error        "Oops!"
               :result_rows  0
               :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
               :executor_id  nil
-              :json_query   {:query? true}
+              :json_query   query
               :native       false
               :pulse_id     nil
               :card_id      nil

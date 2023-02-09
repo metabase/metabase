@@ -3,9 +3,9 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [environ.core :as env]
-   [metabase.plugins.classloader :as classloader])
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.log :as log])
   (:import
    (clojure.lang Keyword)
    (java.util UUID)))

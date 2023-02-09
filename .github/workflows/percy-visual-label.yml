@@ -21,6 +21,8 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: percy-visual-label
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
       - run: ./bin/build

@@ -1,7 +1,6 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honeysql.format :as hformat]
    [java-time :as t]
    [metabase.driver :as driver]
@@ -24,13 +23,14 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [pretty.core :refer [PrettyPrintable]]
    [schema.core :as s])
   (:import
    (com.google.cloud.bigquery Field$Mode FieldValue)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (metabase.driver.common.parameters FieldFilter)
-   (metabase.util.honey_sql_1_extensions Identifier TypedHoneySQLForm)))
+   (metabase.util.honey_sql_1 Identifier TypedHoneySQLForm)))
 
 (defn- valid-project-identifier?
   "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain

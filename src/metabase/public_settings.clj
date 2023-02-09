@@ -4,7 +4,6 @@
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -15,6 +14,7 @@
    [metabase.util.i18n
     :as i18n
     :refer [available-locales-with-names deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [toucan.db :as db])
   (:import

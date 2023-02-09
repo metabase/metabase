@@ -2,7 +2,6 @@
   "Tests for Mongo driver."
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.db.metadata-queries :as metadata-queries]
@@ -20,6 +19,7 @@
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.mongo :as tdm]
+            [metabase.util.log :as log]
             [monger.collection :as mcoll]
             [taoensso.nippy :as nippy]
             [toucan.db :as db])

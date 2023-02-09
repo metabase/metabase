@@ -11,7 +11,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.liquibase :as liquibase]
@@ -21,7 +20,8 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.log :as log])
   (:import
    (liquibase Contexts Liquibase)
    (liquibase.changelog ChangeSet DatabaseChangeLog)))

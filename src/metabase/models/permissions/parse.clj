@@ -7,10 +7,10 @@
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [instaparse.core :as insta]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"

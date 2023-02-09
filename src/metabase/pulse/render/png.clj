@@ -7,11 +7,11 @@
 
   CSSBox JavaDoc is here: http://cssbox.sourceforge.net/api/index.html"
   (:require
-   [clojure.tools.logging :as log]
    [hiccup.core :refer [html]]
    [metabase.pulse.render.common :as common]
    [metabase.pulse.render.style :as style]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (cz.vutbr.web.css MediaSpec)

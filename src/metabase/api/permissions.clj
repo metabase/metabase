@@ -3,7 +3,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [compojure.core :refer [DELETE GET POST PUT]]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
@@ -115,9 +115,9 @@
   [limit offset query]
   (db/select PermissionsGroup
              (cond-> {:order-by [:%lower.name]}
-               (some? limit)  (hh/limit  limit)
-               (some? offset) (hh/offset offset)
-               (some? query)  (hh/where query))))
+               (some? limit)  (sql.helpers/limit  limit)
+               (some? offset) (sql.helpers/offset offset)
+               (some? query)  (sql.helpers/where query))))
 
 (mi/define-batched-hydration-method add-member-counts
   :member_count
@@ -189,8 +189,7 @@
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/membership"
+(api/defendpoint GET "/membership"
   "Fetch a map describing the group memberships of various users.
    This map's format is:
 
@@ -203,7 +202,7 @@
                                 (cond-> {}
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
-                                  (hh/merge-where
+                                  (sql.helpers/where
                                    [:in :group_id {:select [:group_id]
                                                    :from   [:permissions_group_membership]
                                                    :where  [:and

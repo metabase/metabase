@@ -9,7 +9,6 @@
      CREATE TABLE ...               -- Bad"
   (:require
    [cheshire.core :as json]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
@@ -17,6 +16,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [Setting]]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.models :as models]))
 

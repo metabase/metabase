@@ -2,9 +2,9 @@
   "Middleware responsible for converting MBQL queries to native queries (by calling the driver's QP methods)
    so the query can then be executed."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn query->native-form
   "Return a `:native` query form for `query`, converting it from MBQL if needed."

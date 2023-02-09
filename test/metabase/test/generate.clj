@@ -2,7 +2,6 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.test.check.generators :as gen]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Action Activity Card Collection Dashboard
@@ -10,6 +9,7 @@
                             HTTPAction ImplicitAction Metric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient QueryAction
                             Segment Table Timeline TimelineEvent User]]
+   [metabase.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
    [talltale.core :as tt]

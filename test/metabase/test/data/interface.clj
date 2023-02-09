@@ -7,7 +7,6 @@
   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.tools.reader.edn :as edn]
    [environ.core :refer [env]]
    [hawk.init]
@@ -23,6 +22,7 @@
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]

@@ -188,8 +188,9 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
@@ -869,15 +870,15 @@
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
-  (let [group-id->v1-paths (->> (permissions-by-group-ids [:or
+  (let [db-ids             (delay (db/select-ids 'Database))
+        group-id->v1-paths (->> (permissions-by-group-ids [:or
                                                            [:= :object (hx/literal "/")]
                                                            [:like :object (hx/literal "%/db/%")]])
                                 ;;  keep v1 paths, implicitly remove v2
                                 (m/map-vals (fn [paths]
                                               (filter (fn [path]
                                                         (mc/validate [:re path-regex-v1] path))
-                                                      paths))))
-        db-ids          (delay (db/select-ids 'Database))]
+                                                      paths))))]
     {:revision (perms-revision/latest-id)
      :groups   (generate-graph @db-ids group-id->v1-paths)}))
 
@@ -885,15 +886,15 @@
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
-  (let [group-id->v2-paths (->> (permissions-by-group-ids [:or
+  (let [db-ids             (delay (db/select-ids 'Database))
+        group-id->v2-paths (->> (permissions-by-group-ids [:or
                                                            [:= :object (hx/literal "/")]
                                                            [:like :object (hx/literal "%/db/%")]])
                                 (m/map-vals (fn [paths]
                                               ;; remove v1 paths, implicitly keep v2 paths
                                               (remove (fn [path] (mc/validate [:re (u.regex/rx "^/" v1-data-permissions-rx "$")]
                                                                   path))
-                                                      paths))))
-        db-ids (delay (db/select-ids 'Database))]
+                                                      paths))))]
     {:revision (perms-revision/latest-id)
      :groups   (generate-graph @db-ids group-id->v2-paths)}))
 
@@ -939,8 +940,8 @@
   every Group and all permissioned databases."
   []
   (let [group-id->paths (permissions-by-group-ids [:or
-                                                   [:= :object (hx/literal "/")]
-                                                   [:like :object (hx/literal "/execute/%")]])
+                                                   [:= :object (h2x/literal "/")]
+                                                   [:like :object (h2x/literal "/execute/%")]])
         group-id->graph (m/map-vals
                          (fn [paths]
                            (let [permissions-graph (perms-parse/permissions->graph paths)]
@@ -981,7 +982,7 @@
                              :and
                              [:= :group_id (u/the-id group-or-id)]
                              [:or
-                              [:like path (hx/concat :object (hx/literal "%"))]
+                              [:like path (h2x/concat :object (h2x/literal "%"))]
                               [:like :object (str path "%")]]
                              other-conditions)}]
     (when-let [revoked (db/select-field :object Permissions where)]
@@ -1175,8 +1176,8 @@
                    {:where [:and
                             [:= :group_id group-id]
                             [:or
-                             [:= :object (hx/literal "/")]
-                             [:like :object (hx/literal "/download/%")]]]}))
+                             [:= :object (h2x/literal "/")]
+                             [:like :object (h2x/literal "/download/%")]]]}))
 
 (defn- download-permissions-level
   [permissions-set db-id & [schema-name table-id]]
