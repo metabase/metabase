@@ -24,14 +24,6 @@ import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
 
 const groupIsMappable = group => !isDefaultGroup(group);
 
-// ⚠️ Uncomment
-/*
-const whenDeletingMappingGroups = {
-  groupsToClearAllPermissions: [],
-  groupsToDelete: [],
-};
-*/
-
 function GroupMappingsWidget({ mappingSetting, ...props }) {
   const [showAddRow, setShowAddRow] = useState(false);
   const [showDeleteMappingModal, setShowDeleteMappingModal] = useState(false);
@@ -125,49 +117,31 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   };
 
   const handleConfirmDeleteMapping = (whatToDoAboutGroups, groups, dn) => {
-    handleDeleteMapping(dn);
-
-    setShowDeleteMappingModal(false);
-    setDnForVisibleDeleteMappingModal(null);
-    setGroupIdsForVisibleDeleteMappingModal(null);
-
-    updateGroupsListsForCallbacksAfterDeletingMappings(
+    const onSuccess = getCallbackForGroupsAfterDeletingMapping(
       whatToDoAboutGroups,
       groups,
     );
+
+    handleDeleteMapping(dn, onSuccess);
+    setShowDeleteMappingModal(false);
   };
 
-  const updateGroupsListsForCallbacksAfterDeletingMappings = (
+  const getCallbackForGroupsAfterDeletingMapping = (
     whatToDoAboutGroups,
-    groupIds,
+    groups,
   ) => {
-    if (whatToDoAboutGroups === "nothing") {
-      return;
+    switch (whatToDoAboutGroups) {
+      case "clear":
+        return () =>
+          groups.forEach(id => PermissionsApi.clearGroupMembership({ id }));
+      case "delete":
+        return () => groups.forEach(id => PermissionsApi.deleteGroup({ id }));
+      default:
+        return () => {};
     }
-
-    // ⚠️ Uncomment and translate
-    /*
-    const allGroupIdsExceptAdmin = groupIds.filter(
-      groupId => !isAdminGroup(groups.find(group => group.id === groupId)),
-    );
-
-    const stateKey = {
-      clear: "groupsToClearAllPermissions",
-      delete: "groupsToDelete",
-    }[whatToDoAboutGroups];
-
-    this.setState(({ whenDeletingMappingGroups }) => ({
-      whenDeletingMappingGroups: {
-        ...whenDeletingMappingGroups,
-        [stateKey]: _.uniq(
-          whenDeletingMappingGroups[stateKey].concat(allGroupIdsExceptAdmin),
-        ),
-      },
-    }));
-    */
   };
 
-  const handleDeleteMapping = dn => {
+  const handleDeleteMapping = (dn, onSuccess) => {
     const mappingsMinusDeletedMapping = _.omit(mappings, dn);
 
     SettingsApi.put({
@@ -178,34 +152,13 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
         props.onChangeSetting(mappingSetting, mappings);
         setMappings(mappingsMinusDeletedMapping);
 
+        onSuccess();
+
         setSaveError(null);
       },
       e => setSaveError(e),
     );
   };
-
-  /*
-  const updateGroupsFromDeletedMappings = () => {
-    const { groupsToDelete } = whenDeletingMappingGroups;
-
-    groupsToDelete.forEach(id => PermissionsApi.deleteGroup({ id }));
-
-    // Avoid calling the API for groups that have just been deleted
-    getGroupsToClearAllPermissionsThatAreNotAlsoGroupsToDelete().forEach(id =>
-      PermissionsApi.clearGroupMembership({ id }),
-    );
-  };
-
-  const getGroupsToClearAllPermissionsThatAreNotAlsoGroupsToDelete = () => {
-    const { groupsToClearAllPermissions, groupsToDelete } =
-      whenDeletingMappingGroups;
-
-    return groupsToClearAllPermissions.filter(
-      groupToClearAllPermission =>
-        !groupsToDelete.includes(groupToClearAllPermission),
-    );
-  };
-  */
 
   return (
     <Root>
