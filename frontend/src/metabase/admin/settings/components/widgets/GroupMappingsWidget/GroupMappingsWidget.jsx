@@ -38,7 +38,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   const [groups, setGroups] = useState(null);
   const [mappings, setMappings] = useState({});
   const [savedMappings, setSavedMappings] = useState({});
-  const [saveError /*, setSaveError*/] = useState(null);
+  const [saveError, setSaveError] = useState(null);
   const [dnForVisibleDeleteMappingModal, setDnForVisibleDeleteMappingModal] =
     useState(null);
   const [
@@ -73,8 +73,21 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   };
 
   const handleAddMapping = dn => {
-    setMappings({ ...mappings, [dn]: [] });
-    setShowAddRow(false);
+    const mappingsPlusNewMapping = { ...mappings, [dn]: [] };
+
+    SettingsApi.put({
+      key: mappingSetting,
+      value: mappingsPlusNewMapping,
+    }).then(
+      () => {
+        props.onChangeSetting(mappingSetting, mappings);
+        setMappings(mappingsPlusNewMapping);
+
+        setShowAddRow(false);
+        setSaveError(null);
+      },
+      e => setSaveError(e),
+    );
   };
 
   const handleChangeMapping = dn => (group, selected) => {
