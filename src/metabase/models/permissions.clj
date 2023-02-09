@@ -855,7 +855,7 @@
   (->> group-id->paths
        (m/map-vals
         (fn [paths]
-          (let [permissions-graph (perms-parse/permissions->graph paths)]
+          (let [permissions-graph (perms-parse/->graph paths)]
             (if (= permissions-graph :all)
               (all-permissions db-ids)
               (:db permissions-graph)))))
@@ -944,7 +944,7 @@
                                                    [:like :object (h2x/literal "/execute/%")]])
         group-id->graph (m/map-vals
                          (fn [paths]
-                           (let [permissions-graph (perms-parse/permissions->graph paths)]
+                           (let [permissions-graph (perms-parse/->graph paths)]
                              (if (#{:all {:execute :all}} permissions-graph)
                                :all
                                (:execute permissions-graph))))

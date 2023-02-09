@@ -51,29 +51,6 @@
   "Function that parses permission strings"
   (insta/parser grammar))
 
-(rcf/tests
- "parser works for v2 tests"
- (parser "/data/db/1/")                        := [:permission [:data-v2 "1"]]
- (parser "/query/db/1/")                       := [:permission [:query-v2 "1"]]
-
- (parser "/query/db/1/schema/")                := [:permission [:query-v2 "1" [:schemas]]]
- (parser "/data/db/1/schema/")                 := [:permission [:data-v2 "1" [:schemas]]]
-
- (parser "/data/db/1/schema//")                := [:permission [:data-v2 "1" [:schemas [:schema [:schema-name ""]]]]]
- (parser "/query/db/1/schema//")               := [:permission [:query-v2 "1" [:schemas [:schema [:schema-name ""]]]]]
-
- (parser "/data/db/1/schema/PUBLIC/")          := [:permission [:data-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"]]]]]
- (parser "/query/db/1/schema/PUBLIC/")         := [:permission [:query-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"]]]]]
-
- (parser "/data/db/1/schema/PUBLIC/table/1/")  := [:permission [:data-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
- (parser "/query/db/1/schema/PUBLIC/table/1/") := [:permission [:query-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
-
- (parser "/data/db/1/schema/PUBLIC/table/1/")  := [:permission [:data-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
- (parser "/query/db/1/schema/PUBLIC/table/1/") := [:permission [:query-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
-
- (parser "/data/db/1/schema/PUBLIC/table/1/")  := [:permission [:data-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]]
- (parser "/query/db/1/schema/PUBLIC/table/1/") := [:permission [:query-v2 "1" [:schemas [:schema [:schema-name "PUBLIC"] [:table "1"]]]]])
-
 (defn- collection-id
   [id]
   (if (= id "root") :root (Long/parseUnsignedLong id)))
@@ -123,7 +100,7 @@
                                       "read"            [:read :all]
                                       "query"           [:query :all]
                                       "query/segmented" [:query :segmented])
-    [:native]                      [:data :native :write]
+    [:native]                      [:native :write]
     ;; block perms. Parse something like /block/db/1/ to {:db {1 {:schemas :block}}}
     [:block db-id]                 [:db (Long/parseUnsignedLong db-id) :data :schemas :block]
     ;; download perms
@@ -146,11 +123,6 @@
     [:collection id "read"]        [:collection (collection-id id) :read]
     ;; return nil if the tree could not be parsed, so that we can try calling `path2` instead
     :else                          nil))
-
-(rcf/tests
- "s"
- (path1 [:permission [:query-v2 "1"]]) := [[:db 1 :query :native :write] [:db 1 :query :schemas :all]]
- (path1 [:permission [:data-v2 "1"]]) := [[:db 1 :data :native :write]])
 
 (defn- path2
   [tree]
@@ -198,7 +170,6 @@
                    (into paths path)
                    (conj paths path)))
                [])
-       (#(do (def before %) %))
        (walk/prewalk (fn [x]
                        (if (and (sequential? x) (sequential? (first x)) (seq (first x)))
                          (->> x
@@ -207,23 +178,15 @@
                                            (assoc m k (->> (map rest v) (filter seq))))
                                          {}))
                          x)))
-       (#(do (def after %) %))
        (walk/prewalk (fn [x]
                        (or (when (map? x)
                              (some #(and (= (% x) '()) %)
                                    [:block :all :some :write :read :segmented :full :limited :yes]))
-                           x)))
-       (#(do (def final %) %))))
+                           x)))))
 
-(defn permissions->graph
+(defn ->graph
   "Given a set of permission strings, return a graph that expresses the most permissions possible for the set"
   [permissions]
   (->> permissions
        (map (comp path parser))
        graph))
-
-(do (require '[hyperfiddle.rcf :as rcf]) (rcf/enable!))
-(rcf/tests "example tests"
-           (permissions->graph ["/db/209/schema/"]) := {:db {209 {:data {:schemas :all}}}}
-           (permissions->graph ["/data/db/209/"]) := {:db {209 {:data {:native :write}}}}
-           (permissions->graph ["/query/db/209/"]) := {:db {209 {:query {:native :write :schemas :all}}}})
