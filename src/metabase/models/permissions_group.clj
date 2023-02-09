@@ -22,7 +22,6 @@
 
 (models/defmodel PermissionsGroup :permissions_group)
 
-
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [group-name]

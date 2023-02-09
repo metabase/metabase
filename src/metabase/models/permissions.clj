@@ -171,6 +171,7 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
@@ -235,6 +236,14 @@
    [:and #"db/\d+/" "schema" "/" path-char "*" "/table/\\d+/" "query/" "segmented/"] :dk/db-schema-name-table-and-segmented})
 
 (def ^:private DataKind (into [:enum] (vals data-rx->data-kind)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; *-permissions-rx
+;;
+;; The *-permissions-rx do not have anchors, since they get combined (and anchors placed around them) below. Take care
+;; to use anchors where they make sense.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private v1-data-permissions-rx
   "Paths starting with /db/ is a DATA ACCESS permissions path
@@ -338,8 +347,12 @@
    [(u.regex/rx "^/" admin-permissions-rx "$")           :admin]])
 
 (def ^:private path-regex-v2
-  "Regex for a valid permissions path. will not match a path like \"/db/1\" or \"/db/1/\".
-   [[metabase.util.regex/rx]] is used to make the big-and-hairy regex somewhat readable."
+  "Regex for a valid permissions path. built with [[metabase.util.regex/rx]] to make the big-and-hairy regex somewhat readable.
+  Will not match:
+  - a v1 data path like \"/db/1\" or \"/db/1/\"
+  - a block path like \"block/db/2/\"
+    see: https://www.notion.so/metabase/Permissions-Refactor-Design-Doc-18ff5e6be32f4a52b9422bd7f4237ca7?pvs=4#76f57eab3299418a92650f9ea8a58523
+  "
   (u.regex/rx
    "^/" [:or
          v2-data-permissions-rx
@@ -350,15 +363,14 @@
          execute-permissions-rx
          collection-permissions-rx
          non-scoped-permissions-rx
-         block-permissions-rx
          admin-permissions-rx]
    "$"))
 
 (def ^:private Path "A permission path."
-  [:or [:re path-regex-v1] [:re path-regex-v2]])
+  [:or {:title "Path"} [:re path-regex-v1] [:re path-regex-v2]])
 
 (def ^:private Kind
-  (into [:enum] (map second rx->kind)))
+  (into [:enum {:title "Kind"}] (map second rx->kind)))
 
 (mu/defn classify-path :- Kind
   "Classifies a permission [[metabase.models.permissions/Path]] into a [[metabase.models.permissions/Kind]], or throws."
@@ -830,18 +842,29 @@
             {}
             permissions)))
 
-(mu/defn generate-graph :- :map
-  [db-ids group-id->paths :- [:map-of :int [:* Path]]]
-  (def db-ids db-ids)
-  (def group-id->paths group-id->paths)
-  (m/map-vals
-   (fn [paths]
-     (let [permissions-graph (perms-parse/permissions->graph paths)]
-       (if (= permissions-graph :all)
-         (all-permissions db-ids)
-         (:db permissions-graph))))
-   group-id->paths))
+(defn- post-process-graph [graph]
+  (->>
+   graph
+   (walk/postwalk-replace {{:query {:schemas :all}}             {:query {:schemas :all :native :none}}
+                           {:query {:schemas :all :native nil}} {:query {:schemas :all :native :none}}})))
 
+(mu/defn generate-graph :- :map
+  "Used to generation permission graph from parsed permission paths of v1 and v2 permission graphs for the api layer."
+  [db-ids group-id->paths :- [:map-of :int [:* Path]]]
+  (->> group-id->paths
+       (m/map-vals
+        (fn [paths]
+          (let [permissions-graph (perms-parse/permissions->graph paths)]
+            (if (= permissions-graph :all)
+              (all-permissions db-ids)
+              (:db permissions-graph)))))
+       post-process-graph))
+
+;;     v1 permissions
+;;|-------------------------|
+;;v1-data | all other paths | v2-data, v2-query
+;;        |-----------------------------------|
+;;                 v2 permissions
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
@@ -849,7 +872,7 @@
   (let [group-id->v1-paths (->> (permissions-by-group-ids [:or
                                                            [:= :object (hx/literal "/")]
                                                            [:like :object (hx/literal "%/db/%")]])
-                                ;; remove v2 paths, implicitly keep v1 paths
+                                ;;  keep v1 paths, implicitly remove v2
                                 (m/map-vals (fn [paths]
                                               (filter (fn [path]
                                                         (mc/validate [:re path-regex-v1] path))
@@ -1009,13 +1032,14 @@
       :data (let [data-permission-kind (classify-data-path path)
                   rewrite-fn (data-kind->rewrite-fn data-permission-kind)]
               (rewrite-fn path))
+
       :admin ["/"]
       :block []
 
-      ;; for sake of idempotency, v2 perm-paths should be left untouched.
+      ;; for sake of idempotency, v2 perm-paths should be unchanged.
       (:data-v2 :query-v2) [path]
 
-      ;; other paths should be left untouched too
+      ;; other paths should be unchanged too.
       [path])))
 
 (defn grant-permissions!
@@ -1028,7 +1052,7 @@
    ;; TEMPORARY HACK: v2 paths won't be in the graph, so they will not be seen in the old graph, so will be
    ;; interpreted as being new, and hence will not get deleted.
    ;; But we can simply delete them here:
-   ;; This must be pulled out once we are properly parsing v2 query and data permissions
+   ;; This must be pulled out once the frontend is sending up a proper v2 graph.
    (db/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/query/%"])
    (db/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/data/%"])
    (try
@@ -1398,7 +1422,7 @@
    returns the newly created `PermissionsRevision` entry.
 
   Code for updating the Collection permissions graph is in [[metabase.models.collection.graph]]."
-  ([new-graph :- metabase.api.permission-graph/strict-data]
+  ([new-graph :- metabase.api.permission-graph/StrictData]
    (let [old-graph (data-perms-graph)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})

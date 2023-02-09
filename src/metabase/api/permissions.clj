@@ -23,6 +23,8 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core]
    [toucan.db :as db]
@@ -71,13 +73,13 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
-  (let [graph (mc/decode api.permission-graph/data-permissions-graph
+  (let [graph (mc/decode api.permission-graph/DataPermissionsGraph
                          body
                          (mtx/transformer
                           mtx/string-transformer
                           (mtx/transformer {:name :perm-graph})))]
-    (when-not (mc/validate api.permission-graph/data-permissions-graph graph)
-      (let [explained (mc/explain api.permission-graph/data-permissions-graph body)]
+    (when-not (mc/validate api.permission-graph/DataPermissionsGraph graph)
+      (let [explained (mc/explain api.permission-graph/DataPermissionsGraph body)]
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
                              (pr-str explained))
                         {:status-code 400
@@ -208,13 +210,12 @@
                                                             [:= :user_id api/*current-user-id*]
                                                             [:= :is_group_manager true]]}])))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/membership"
+(api/defendpoint POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [:as {{:keys [group_id user_id is_group_manager]} :body}]
-  {group_id         su/IntGreaterThanZero
-   user_id          su/IntGreaterThanZero
-   is_group_manager (schema.core/maybe schema.core/Bool)}
+  {group_id         ms/IntGreaterThanZero
+   user_id          ms/IntGreaterThanZero
+   is_group_manager [:maybe :boolean]}
   (let [is_group_manager (boolean is_group_manager)]
     (validation/check-manager-of-group group_id)
     (when is_group_manager
@@ -231,11 +232,10 @@
     ;; let the frontend add it as appropriate
     (perms-group/members {:id group_id})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/membership/:id"
+(api/defendpoint PUT "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
   [id :as {{:keys [is_group_manager]} :body}]
-  {is_group_manager schema.core/Bool}
+  {is_group_manager :boolean}
   ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
   (validation/check-advanced-permissions-enabled :group-manager)
   ;; Make sure only Super user or Group Managers can call this
@@ -250,8 +250,7 @@
                 :is_group_manager is_group_manager)
     (db/select-one PermissionsGroupMembership :id (:id old))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/membership/:group-id/clear"
+(api/defendpoint PUT "/membership/:group-id/clear"
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [group-id]
   (validation/check-manager-of-group group-id)
@@ -260,8 +259,7 @@
   (db/delete! PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/membership/:id"
+(api/defendpoint DELETE "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
   [id]
   (let [membership (db/select-one PermissionsGroupMembership :id id)]
@@ -291,6 +289,7 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
+  ;; TODO remove api.permission-graph/converted-json->graph call
   (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/execution-permissions-graph body)]
     (when (= graph :clojure.spec.alpha/invalid)
       (throw (ex-info (tru "Invalid execution permission graph: {0}"

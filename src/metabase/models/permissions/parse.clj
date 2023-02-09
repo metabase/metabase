@@ -51,12 +51,6 @@
   "Function that parses permission strings"
   (insta/parser grammar))
 
-(do (require '[hyperfiddle.rcf :as rcf]) (rcf/enable!))
-(rcf/tests " tests"
-          1 := 1
-          2 := 2
-          2 :is even?)
-
 (rcf/tests
  "parser works for v2 tests"
  (parser "/data/db/1/")                        := [:permission [:data-v2 "1"]]
@@ -109,19 +103,16 @@
     [:all]                         [:all] ; admin permissions
 
     [:db db-id]                    (let [db-id (Long/parseUnsignedLong db-id)] [[:db db-id :data :native :write] [:db db-id :data :schemas :all]])
-    [:db db-id db-node]            (into [:db (Long/parseUnsignedLong db-id)] (path1 db-node))
+    [:db db-id db-node]            (into [:db (Long/parseUnsignedLong db-id) :data] (path1 db-node))
 
     [:data-v2 db-id]              (let [db-id (Long/parseUnsignedLong db-id)] [[:db db-id :data :native :write]])
     [:data-v2 db-id db-node]      (into [:db (Long/parseUnsignedLong db-id) :data] (path1 db-node))
 
-    [:query-v2 db-id]              (let [db-id (Long/parseUnsignedLong db-id)] [[:db db-id :query :native :write]
-                                                                                ;; TODO idk.
-                                                                                ;; [:db db-id :query :schemas :all]
-                                                                                ])
+    [:query-v2 db-id]              (let [db-id (Long/parseUnsignedLong db-id)] [[:db db-id :query :native :write] [:db db-id :query :schemas :all]])
     [:query-v2 db-id db-node]      (into [:db (Long/parseUnsignedLong db-id) :query] (path1 db-node))
 
-    [:schemas]                     [:data :schemas :all]
-    [:schemas schema]              (into [:data :schemas] (path1 schema))
+    [:schemas]                     [:schemas :all]
+    [:schemas schema]              (into [:schemas] (path1 schema))
     [:schema schema-name]          [(path1 schema-name) :all]
     [:schema schema-name table]    (into [(path1 schema-name)] (path1 table))
 
@@ -159,7 +150,7 @@
 (rcf/tests
  "s"
  (path1 [:permission [:query-v2 "1"]]) := [[:db 1 :query :native :write] [:db 1 :query :schemas :all]]
- (path1 [:permission [:data-v2 "1"]]) := [[:db 1 :data :native :write] [:db 1 :data :data :schemas :all]])
+ (path1 [:permission [:data-v2 "1"]]) := [[:db 1 :data :native :write]])
 
 (defn- path2
   [tree]
@@ -235,32 +226,4 @@
 (rcf/tests "example tests"
            (permissions->graph ["/db/209/schema/"]) := {:db {209 {:data {:schemas :all}}}}
            (permissions->graph ["/data/db/209/"]) := {:db {209 {:data {:native :write}}}}
-           (permissions->graph ["/query/db/209/"]) := {:db {209 {:query {:native :write}}}})
-
-
-;; (graph [(path (parser "/db/209/schema/"))])
-;; ;; => {:db {209 {:data {:schemas {:all ()}}}}}
-
-;; (ddiff-seq [before after final])
-;; ;; => [[[:db 209 :data :schemas :all]] {:db {209 {:data {:schemas {:all ()}}}}}]
-
-;; (graph [(path (parser "/query/db/209/schema/"))])
-;; ;; => {:query {209 {:data {:schemas {:all ()}}}}}
-
-;; (ddiff-seq [before after final])
-;; ;; => [[[:query 209 :data :schemas :all]] {:query {209 {:data {:schemas {:all ()}}}}}]
-
-
-;; (require '[lambdaisland.deep-diff2 :as ddiff])
-
-;; (defn ddiff-seq [xs]
-;;   (println "---------- firstly ----------")
-;;   (clojure.pprint/pprint (first xs))
-;;   (doall (map-indexed (fn [idx [a b]]
-;;                         (println (apply str (repeat 40 (inc idx))))
-;;                         (ddiff/pretty-print (ddiff/diff a b)))
-;;                       (partition 2 1 xs)))
-;;   (println "---------- last ----------")
-;;   (clojure.pprint/pprint (last xs)))
-
-;; (ddiff-seq [{:a 1} {:a 1 :b 2} {:a 2 :b 2}])
+           (permissions->graph ["/query/db/209/"]) := {:db {209 {:query {:native :write :schemas :all}}}})

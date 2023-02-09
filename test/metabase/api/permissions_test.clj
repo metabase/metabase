@@ -140,7 +140,10 @@
                      [:groups (u/the-id group) (mt/id) :data :schemas]
                      {"PUBLIC" {db-id :all}}))
           (is (= {db-id :all}
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))))
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))
+          (is (= {:query {:schemas {"PUBLIC" {(mt/id :venues) :all}}},
+                  :data {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}
+                 (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)])))))
 
       (testing "Table-specific perms"
         (mt/with-temp PermissionsGroup [group]
@@ -151,7 +154,10 @@
                      {"PUBLIC" {(mt/id :venues) {:read :all, :query :segmented}}}))
           (is (= {(mt/id :venues) {:read  :all
                                    :query :segmented}}
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))))
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))
+          (is (= {:query {:schemas {"PUBLIC" {(mt/id :venues) :all}}},
+                  :data {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}
+                 (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)]))))))
 
     (testing "permissions for new db"
       (mt/with-temp* [PermissionsGroup [group]
@@ -162,8 +168,10 @@
          (assoc-in (perms/data-perms-graph)
                    [:groups (u/the-id group) db-id :data :schemas]
                    :all))
-        (is (= :all
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))
+        (is (= {:data {:schemas :all}}
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id])))
+        (is (= {:data {:native :write}, :query {:schemas :all}}
+               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))
 
     (testing "permissions for new db with no tables"
       (mt/with-temp* [PermissionsGroup [group]
@@ -173,8 +181,10 @@
          (assoc-in (perms/data-perms-graph)
                    [:groups (u/the-id group) db-id :data :schemas]
                    :all))
-        (is (= :all
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))))
+        (is (= {:data {:schemas :all}}
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id])))
+        (is (= {:query {:schemas :all}, :data {:native :write}}
+               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))))
 
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"

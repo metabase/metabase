@@ -29,13 +29,14 @@
 
 ;;; --------------------------------------------------- Common ----------------------------------------------------
 
+(defn- kw-int->int-decoder [kw-int]
+  (if (int? kw-int)
+    kw-int
+    (parse-long (name kw-int))))
+
 (def DecodableKwInt
   "Integer malli schema that knows how to decode itself from the :123 sort of shape used in perm-graphs"
-  [:int {:decode/perm-graph
-         (fn kw-int->int-decoder [kw-int]
-           (if (int? kw-int)
-             kw-int
-             (Integer/parseInt (name kw-int))))}])
+  [:int {:decode/perm-graph kw-int->int-decoder}])
 
 (def ^:private Id DecodableKwInt)
 
@@ -86,14 +87,14 @@
       (not (and (= native :write) schemas (not= schemas :all))))]])
 
 (def ^:private DbGraph
-  [:schema {:registry {"data-perms" DataPerms}}
+  [:schema {:registry {"DataPerms" DataPerms}}
    [:map-of
     Id
     [:map
-     [:data {:optional true} "data-perms"]
-     [:query {:optional true} "data-perms"]
-     [:download {:optional true} "data-perms"]
-     [:data-model {:optional true} "data-perms"]
+     [:data {:optional true} "DataPerms"]
+     [:query {:optional true} "DataPerms"]
+     [:download {:optional true} "DataPerms"]
+     [:data-model {:optional true} "DataPerms"]
      ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
      ;; consistency with the language used on the frontend.
      [:details {:optional true} [:enum :yes :no]]
@@ -101,24 +102,24 @@
 
 (def StrictDbGraph
   "like db-graph, but if you have write access for native queries, you must have data access to all schemas."
-  [:schema {:registry {"strict-data-perms" StrictDataPerms}}
+  [:schema {:registry {"StrictDataPerms" StrictDataPerms}}
    [:map-of
     Id
     [:map
-     [:data {:optional true} "strict-data-perms"]
-     [:query {:optional true} "strict-data-perms"]
-     [:download {:optional true} "strict-data-perms"]
-     [:data-model {:optional true} "strict-data-perms"]
+     [:data {:optional true} "StrictDataPerms"]
+     [:query {:optional true} "StrictDataPerms"]
+     [:download {:optional true} "StrictDataPerms"]
+     [:data-model {:optional true} "StrictDataPerms"]
      ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
      ;; consistency with the language used on the frontend.
      [:details {:optional true} [:enum :yes :no]]
      [:execute {:optional true} [:enum :all :none]]]]])
 
-(def data-permissions-graph
+(def DataPermissionsGraph
   "Used to transform, and verify data permissions graph"
   [:map [:groups [:map-of Id DbGraph]]])
 
-(def strict-data
+(def StrictData
   "Top level strict data graph schema"
   [:map
    [:groups [:map-of Id StrictDbGraph]]
