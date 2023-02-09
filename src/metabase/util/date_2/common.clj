@@ -17,7 +17,7 @@
   ([^Class klass ^Class target-class]
    (into {} (for [^java.lang.reflect.Field f (.getFields klass)
                   :when                      (.isAssignableFrom target-class (.getType f))]
-              [(keyword (u/lower-case-en (str/replace (.getName f))))
+              [(keyword (u/lower-case-en (str/replace (.getName f)) #"_" "-"))
                (.get f nil)]))))
 
 (def ^TemporalField temporal-field
