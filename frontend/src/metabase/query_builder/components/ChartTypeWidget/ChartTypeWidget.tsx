@@ -44,10 +44,9 @@ const ChartTypeWidget = ({
     <ChartTypeWidgetRoot data-testid="chart-type-widget">
       {suggestedVisualizations.map(vizName => (
         <ChartTypeWidgetIcon
-          key={`${vizName}`}
+          key={vizName}
           icon={visualizations.get(vizName).iconName}
           isSelected={vizName === question.display()}
-          aria-role="option"
           aria-selected={vizName === question.display()}
           onlyIcon
           onClick={() => onUpdateDisplay(vizName)}

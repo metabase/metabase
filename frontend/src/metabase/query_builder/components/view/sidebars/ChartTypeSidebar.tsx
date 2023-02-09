@@ -22,7 +22,7 @@ import {
 interface ChartTypeSidebarProps {
   question: Question;
   result: any;
-  onOpenChartSettings: (props: { section: string }) => void;
+  onOpenChartSettings: (props?: { section: string }) => void;
   onCloseChartType: () => void;
   updateQuestion: (
     question: Question,
@@ -46,6 +46,11 @@ const ChartTypeSidebar = ({
     [result, query],
   );
 
+  const currentViz = useMemo(
+    () => visualizations.get(question.display()),
+    [question],
+  );
+
   const handleClick = useCallback(
     display => {
       const newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
@@ -61,7 +66,12 @@ const ChartTypeSidebar = ({
   );
 
   return (
-    <SidebarContent className="full-height px1" onDone={onCloseChartType}>
+    <SidebarContent
+      className="full-height px1"
+      onDone={onCloseChartType}
+      title={`${currentViz.uiName} options`}
+      onBack={onOpenChartSettings}
+    >
       <OptionList data-testid="display-options-sensible">
         {makesSense.map(type => {
           const visualization = visualizations.get(type);

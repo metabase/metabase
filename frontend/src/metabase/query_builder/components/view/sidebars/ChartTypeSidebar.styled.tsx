@@ -38,8 +38,8 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
   cursor: pointer;
   padding: 0.875rem;
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
+    color: ${color("brand")};
+    background-color: ${lighten("brand", 0.55)};
     border: 1px solid transparent;
   }
 `;
@@ -54,7 +54,7 @@ export const OptionLabel = styled.h4`
 
 export const OptionList = styled.div`
   display: flex;
-  margin: 1rem 1rem 3rem 1rem;
+  margin: 0.5rem 1rem 3rem;
   flex-wrap: wrap;
 `;
 
@@ -67,21 +67,14 @@ export const OptionRoot = styled.div<OptionRootProps>`
     props.isSelected &&
     `
     ${OptionIconContainer} {
-      background-color: ${color("brand")};
-      color: ${getOptionIconColor(props)};
-      border: 1px solid transparent;
+      &, &:hover {          
+        background-color: ${color("brand")};
+        color: ${getOptionIconColor(props)};
+        border: 1px solid transparent;
     }
 
     ${OptionText} {
       color: ${color("brand")};
     }
   `}
-
-  &:hover {
-    ${OptionIconContainer} {
-      background-color: ${lighten("brand", 0.55)};
-      color: ${color("brand")};
-      border: 1px solid transparent;
-    }
-  }
 `;

@@ -20,7 +20,7 @@ export default class WaterfallChart extends LineAreaBarChart {
   static maxDimensionsSupported = 1;
 
   static isSensible({ cols }) {
-    return cols.length <= 2;
+    return cols.length === 2;
   }
 
   static settings = {
