@@ -13,6 +13,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.middleware.ssl :as mw.ssl]
    [metabase.server.routes :as routes]
+   [metabase.util.log :as log]
    [ring.core.protocols :as ring.protocols]
    [ring.middleware.cookies :refer [wrap-cookies]]
    [ring.middleware.gzip :refer [wrap-gzip]]
@@ -85,5 +86,5 @@
   (doseq [varr  (cons #'routes/routes middleware)
           :when (instance? clojure.lang.IRef varr)]
     (add-watch varr ::reload (fn [_ _ _ _]
-                               (printf "%s changed, rebuilding %s" varr #'app)
+                               (log/infof "%s changed, rebuilding %s" varr #'app)
                                (alter-var-root #'app (constantly (apply-middleware routes/routes)))))))

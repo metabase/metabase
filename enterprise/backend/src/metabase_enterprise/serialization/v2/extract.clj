@@ -5,13 +5,13 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.models.collection :as collection]
    [metabase.models.serialization.base :as serdes.base]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
@@ -132,25 +132,25 @@
   "Given the analysis map from [[escape-analysis]], report the results in a human-readable format with Card titles etc."
   [{:keys [escaped-dashcards escaped-questions]}]
   (when-not (empty? escaped-dashcards)
-    (println "Dashboard cards outside the collection")
-    (println "======================================")
+    (log/info "Dashboard cards outside the collection")
+    (log/info "======================================")
     (doseq [[dash-id card-ids] escaped-dashcards
             :let [dash-name (db/select-one-field :name Dashboard :id dash-id)]]
-      (printf "Dashboard %d: %s\n" dash-id dash-name)
+      (log/infof "Dashboard %d: %s\n" dash-id dash-name)
       (doseq [card_id card-ids
               :let [card (db/select-one [Card :collection_id :name] :id card_id)]]
-        (printf "          \tCard %d: %s\n"    card_id (:name card))
-        (printf "        from collection %s\n" (collection-label (:collection_id card))))))
+        (log/infof "          \tCard %d: %s\n"    card_id (:name card))
+        (log/infof "        from collection %s\n" (collection-label (:collection_id card))))))
 
   (when-not (empty? escaped-questions)
-    (println "Questions based on outside questions")
-    (println "====================================")
+    (log/info "Questions based on outside questions")
+    (log/info "====================================")
     (doseq [[curated-id alien-id] escaped-questions
             :let [curated-card (db/select-one [Card :collection_id :name] :id curated-id)
                   alien-card   (db/select-one [Card :collection_id :name] :id alien-id)]]
-      (printf "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
-              curated-id (:name curated-card) (collection-label (:collection_id curated-card))
-              alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))
+      (log/infof "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
+                 curated-id (:name curated-card) (collection-label (:collection_id curated-card))
+                 alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))
 
 (defn extract-subtrees
   "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.

@@ -2,7 +2,7 @@
   "Utility functions for core.async-based async logic."
   (:require
    [clojure.core.async :as a]
-   [clojure.tools.logging :as log]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (clojure.core.async.impl.buffers PromiseBuffer)

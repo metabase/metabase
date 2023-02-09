@@ -1,7 +1,7 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button/Button";
-import { Table, TableVisibilityType } from "metabase-types/api";
+import { TableVisibilityType } from "metabase-types/api";
 import {
   SyncWarningRoot,
   SyncWarningDescription,

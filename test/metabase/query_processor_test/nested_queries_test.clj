@@ -20,6 +20,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
    [schema.core :as s]
    [toucan.db :as db]))
 
@@ -356,14 +357,14 @@
                     [:source.LONGITUDE :LONGITUDE]
                     [:source.PRICE :PRICE]]
            :from   [[venues-source-honeysql :source]]
-           :where  [:= (hsql/raw "\"source\".\"BIRD.ID\"") 1]
+           :where  [:= (hx/raw "\"source\".\"BIRD.ID\"") 1]
            :limit  10})
          (qp/compile
-           {:database (mt/id)
-            :type     :query
-            :query    {:source-query {:source-table (mt/id :venues)}
-                       :filter       [:= [:field "BIRD.ID" {:base-type :type/Integer}] 1]
-                       :limit        10}}))
+          {:database (mt/id)
+           :type     :query
+           :query    {:source-query {:source-table (mt/id :venues)}
+                      :filter       [:= [:field "BIRD.ID" {:base-type :type/Integer}] 1]
+                      :limit        10}}))
       (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
            "from other tables using them"))
   (is (= (honeysql->sql
@@ -375,14 +376,14 @@
                     [:source.PRICE :PRICE]]
            :from   [[venues-source-honeysql :source]]
            :where  [:and
-                    [:>= (hsql/raw "\"source\".\"BIRD.ID\"") (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                    [:< (hsql/raw "\"source\".\"BIRD.ID\"")  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+                    [:>= (hx/raw "\"source\".\"BIRD.ID\"") (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
+                    [:< (hx/raw "\"source\".\"BIRD.ID\"")  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
            :limit  10})
          (qp/compile
-           (mt/mbql-query venues
-             {:source-query {:source-table $$venues}
-              :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
-              :limit        10})))
+          (mt/mbql-query venues
+            {:source-query {:source-table $$venues}
+             :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
+             :limit        10})))
       "make sure that field-literals work as DateTimeFields"))
 
 (deftest aggregatation-references-test

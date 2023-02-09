@@ -3,12 +3,12 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.db.liquibase.h2 :as liquibase.h2]
    [metabase.db.liquibase.mysql :as liquibase.mysql]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (java.io StringWriter)

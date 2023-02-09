@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
@@ -79,17 +78,17 @@
 
 (deftest add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
-    (is (= (hsql/call :dateadd
-             (hx/literal "millisecond")
-             (hx/with-database-type-info (hsql/call :cast 100500.0 (hsql/raw "long")) "long")
-             (hx/with-database-type-info (hsql/call :cast :%now (hsql/raw "datetime")) "datetime"))
+    (is (= (hx/call :dateadd
+                    (hx/literal "millisecond")
+                    (hx/with-database-type-info (hx/call :cast 100500.0 (hx/raw "long")) "long")
+                    (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
 
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
-    (is (= (hsql/call :dateadd
-             (hx/literal "second")
-             (hx/with-database-type-info (hsql/call :cast 100.0 (hsql/raw "long")) "long")
-             (hx/with-database-type-info (hsql/call :cast :%now (hsql/raw "datetime")) "datetime"))
+    (is (= (hx/call :dateadd
+                    (hx/literal "second")
+                    (hx/with-database-type-info (hx/call :cast 100.0 (hx/raw "long")) "long")
+                    (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
 (deftest clob-test

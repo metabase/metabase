@@ -1,6 +1,7 @@
 (ns metabase.models.permissions-test
   (:require
    [clojure.test :refer :all]
+   [malli.generator :as mg]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -752,7 +753,7 @@
   (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
     (mt/with-temp PermissionsGroup [group]
       ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
-      (mt/with-current-user 1
+      (mt/with-current-user (mt/user->id :rasta)
         (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
                                                    :revision (:revision (perms/data-perms-graph))})))
         (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
@@ -856,3 +857,114 @@
         (testing (format "Able to revoke `%s` permission" (name perm-type))
           (perms/revoke-application-permissions! group-id perm-type)
           (is (not (= (perms) #{perm-path}))))))))
+
+(deftest permission-classify-path
+  (is (= :admin           (perms/classify-path "/")))
+  (is (= :block           (perms/classify-path "/block/db/0/")))
+  (is (= :collection      (perms/classify-path "/collection/7/")))
+  (is (= :data            (perms/classify-path "/db/3/")))
+  (is (= :data-model      (perms/classify-path "/data-model/db/0/schema/\\/\\/\\/񊏱\\\\\\\\\\\\򍕦\\/\\/\\\\\\/\\/񴹰󿧊񢣣\\/𪄬\\/\\\\\\/񺟭\\\\򾔪\\/\\\\\\/򛱞򰫰\\\\𰑨񓊼\\\\\\/\\\\\\/\\/\\/򐮫\\/\\\\妕\\/\\/򆀀񚷮\\/\\/󷨾򂁚\\\\\\/󽝅\\/\\\\\\/\\\\\\\\񡳮񯲱󴲱\\\\𹂆𦅧\\\\񰑯\\/\\/\\\\\\\\񜍖\\\\\\\\\\/\\/\\\\\\\\񯦊\\/󗦯\\/\\\\\\\\􇿤\\\\\\\\򄩂\\/𵚰񝐜\\\\\\\\􅸷\\/\\\\󙼳\\\\򍁀񷓧\\\\򛍐𽸁\\\\񂲝񢄘\\\\􊻄\\/𰊸\\/\\/\\\\\\\\󭽾򼪿\\/𖉠\\/\\\\\\\\\\/򂬘\\\\\\\\\\\\\\/\\\\󉁡\\/\\\\\\\\󰈤\\\\\\\\/table/4/")))
+  (is (= :data-v2         (perms/classify-path "/data/db/3/schema/򰴕\\/\\\\\\/\\\\\\/\\/\\/\\\\\\/󇄤\\\\\\/\\/\\/󬽐\\\\\\/\\/򟇌\\\\񅂲\\/\\/\\/\\/\\\\񋐡􌵬\\\\\\\\񄵕\\/\\/򪰫\\\\򉍼\\/\\/\\/\\/򻍄\\\\񄤆\\\\\\/\\\\\\\\񷱨\\/򷣙\\/񰅡򲏪\\/\\/맳\\\\\\\\\\\\\\/񥟬\\\\蝝\\\\\\/\\/\\/\\\\񶫑\\/\\/\\\\򿄚򜬹\\/򄫑\\/\\/\\\\\\/\\\\\\/񠉅\\\\\\\\󽜔\\/\\\\\\\\\\\\\\\\젭񅄾\\/\\/񵊊\\\\\\/󫊽\\\\𻴄\\\\𳇖\\/\\/\\\\\\\\𨴟򫔌\\/񿶮\\/񦀯덱\\/󤯲\\/򡔾􆎱\\\\\\/\\/󕅀򩤞\\\\\\\\􊍧\\/\\\\\\/󤄹\\\\\\\\\\\\󡎨񃩍𬛫\\\\𗦣\\/󭭤\\\\\\/򈅎\\\\\\/\\\\\\/\\\\\\/🯐\\\\󍬠񸇊񆰕錪󰱗񎛣񆛀\\\\\\\\򻒉𝬘\\\\\\\\򺬅\\/\\\\\\/\\\\򡱉\\\\񸇹\\\\񅴅\\\\㏎𸷙\\\\\\/\\/\\/򤟉\\/\\/񑴍\\/\\/\\/\\/\\\\𠳏\\/\\\\󙇅\\\\\\\\􇟞\\\\\\\\󛞯\\\\\\\\\\\\\\\\󮕧\\\\񇰞񡿳\\/\\/\\\\󒧡\\/\\/\\/\\\\\\\\\\/򍊫\\\\\\/󼹅\\/񘖰񠔕򕀏\\/\\\\񀫸\\/󓤧\\\\\\/\\/\\\\\\/\\/Ꚋ\\\\\\/\\/\\/\\/\\\\󏏎󬂊\\/\\/\\\\􌍎\\\\\\\\ꗴ\\\\\\\\\\\\󡉕\\\\񖮖\\\\\\\\\\\\\\/瓮񋞈򺏽𺵩\\\\򷗇\\/\\\\\\\\\\\\\\/\\\\󀍋󦜩򱽙\\\\\\\\򓩥\\\\\\/\\/\\\\\\\\󂻑\\/򪲮\\/񣁛\\/𝵼\\/\\/򁗩\\/\\\\\\\\\\\\\\\\\\/\\\\􇸧􈣤\\\\򭤃\\/\\\\򽗗\\\\\\\\\\\\\\\\\\/\\/\\\\\\/񒆐򿞿\\/񌥊\\/򼻪\\/\\\\\\/\\\\\\\\\\/\\\\񻽁\\/𹈏\\/\\\\\\\\󃝈\\/\\/\\/\\/𫟗\\\\𦁺\\\\\\/\\\\\\\\ျ􍂮򧚾󹵞\\\\\\/\\\\󮋵\\/\\/𧻄\\/\\\\󊢔\\\\\\/\\\\\\/\\/󵲴\\\\\\\\\\/\\/\\\\𫲉\\/\\\\\\\\󥞥\\\\\\/\\/\\/󯇥\\\\\\\\\\/\\/􄢒\\/\\/\\/\\/򉢬\\/򭻄\\/\\/􀤻\\/\\/񌒾󦼿\\/\\/\\\\񎊢\\/\\\\򚻇\\\\񛀪𦢵\\\\􈀤\\/\\/\\\\\\/\\\\\\\\󀹎/table/3/")))
+  (is (= :db-conn-details (perms/classify-path "/details/db/6/")))
+  (is (= :download        (perms/classify-path "/download/db/7/")))
+  (is (= :execute         (perms/classify-path "/execute/")))
+  (is (= :non-scoped      (perms/classify-path "/application/monitoring/")))
+  (is (= :query-v2        (perms/classify-path "/query/db/0/native/"))))
+
+(deftest data-permissions-classify-path
+  (is (= :data (perms/classify-path "/db/3/")))
+  (is (= :data (perms/classify-path "/db/3/native/")))
+  (is (= :data (perms/classify-path "/db/3/schema/")))
+  (is (= :data (perms/classify-path "/db/3/schema//")))
+  (is (= :data (perms/classify-path "/db/3/schema/secret_base/")))
+  (is (= :data (perms/classify-path "/db/3/schema/secret_base/table/3/")))
+  (is (= :data (perms/classify-path "/db/3/schema/secret_base/table/3/read/")))
+  (is (= :data (perms/classify-path "/db/3/schema/secret_base/table/3/query/")))
+  (is (= :data (perms/classify-path "/db/3/schema/secret_base/table/3/query/segmented/"))))
+
+(deftest data-permissions-v2-migration-data-perm-classification-test
+  (is (= :dk/db                                 (perms/classify-data-path "/db/3/")))
+  (is (= :dk/db-native                          (perms/classify-data-path "/db/3/native/")))
+  (is (= :dk/db-schema                          (perms/classify-data-path "/db/3/schema/")))
+  (is (= :dk/db-schema-name                     (perms/classify-data-path "/db/3/schema//")))
+  (is (= :dk/db-schema-name                     (perms/classify-data-path "/db/3/schema/secret_base/")))
+  (is (= :dk/db-schema-name-and-table           (perms/classify-data-path "/db/3/schema/secret_base/table/3/")))
+  (is (= :dk/db-schema-name-table-and-read      (perms/classify-data-path "/db/3/schema/secret_base/table/3/read/")))
+  (is (= :dk/db-schema-name-table-and-query     (perms/classify-data-path "/db/3/schema/secret_base/table/3/query/")))
+  (is (= :dk/db-schema-name-table-and-segmented (perms/classify-data-path "/db/3/schema/secret_base/table/3/query/segmented/"))))
+
+(deftest idempotent-move-test
+  (let [;; all v1 paths:
+        v1-paths ["/db/3/" "/db/3/native/" "/db/3/schema/" "/db/3/schema//" "/db/3/schema/secret_base/"
+                  "/db/3/schema/secret_base/table/3/" "/db/3/schema/secret_base/table/3/read/"
+                  "/db/3/schema/secret_base/table/3/query/" "/db/3/schema/secret_base/table/3/query/segmented/"]
+        ;; cooresponding v2 paths:
+        v2-paths ["/data/db/3/" "/query/db/3/" "/data/db/3/" "/query/db/3/" "/data/db/3/" "/query/db/3/schema/"
+                  "/data/db/3/schema//" "/query/db/3/schema//" "/data/db/3/schema/secret_base/"
+                  "/query/db/3/schema/secret_base/" "/data/db/3/schema/secret_base/table/3/"
+                  "/query/db/3/schema/secret_base/table/3/" "/data/db/3/schema/secret_base/table/3/"
+                  "/query/db/3/schema/secret_base/table/3/" "/data/db/3/schema/secret_base/table/3/"
+                  "/query/db/3/schema/secret_base/table/3/"]]
+    (is (= v2-paths (mapcat #'perms/->v2-path v1-paths)))
+    (is (= v2-paths (mapcat #'perms/->v2-path v2-paths)))
+    (let [w (partial mapcat #'perms/->v2-path)]
+      (is (= v2-paths (->
+                                    v1-paths
+                          w w                       w w;
+                          w w                       w w;
+                          w w w w w w w w w w w w w w w;
+                          w w w w w w w w w w w w w w w;
+                          w w w                   w w w;
+                          w w      w         w      w w
+                          w w     w w       w w     w w
+                          w w           w           w w
+                          w w           w           w w
+                          w w w w w w w w w w w w w w w;
+                              w w w w w w w w w w w;;;;
+                              w w w w w w w w w w w;;
+                                  w w w w w w w;
+                                      w   w;
+                                      w   w
+                                    w w   w w))))));
+
+
+(deftest data-permissions-v2-migration-move-test
+  (testing "move admin"
+    (is (= ["/"] (#'perms/->v2-path "/"))))
+  (testing "move block"
+    (is (= []
+           (#'perms/->v2-path "/block/db/1/"))))
+  (testing "move data"
+    (is (= ["/data/db/1/" "/query/db/1/"]
+           (#'perms/->v2-path "/db/1/")))
+    (is (= ["/data/db/1/" "/query/db/1/"]
+           (#'perms/->v2-path "/db/1/native/")))
+    (is (= ["/data/db/1/" "/query/db/1/schema/"]
+           (#'perms/->v2-path "/db/1/schema/")))
+    (is (= ["/data/db/1/schema//" "/query/db/1/schema//"]
+           (#'perms/->v2-path "/db/1/schema//")))
+    (is (= ["/data/db/1/schema/PUBLIC/" "/query/db/1/schema/PUBLIC/"]
+           (#'perms/->v2-path "/db/1/schema/PUBLIC/")))
+    (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
+           (#'perms/->v2-path "/db/1/schema/PUBLIC/table/1/")))
+    (is (= []
+           (#'perms/->v2-path "/db/1/schema/PUBLIC/table/1/read/")))
+    (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
+           (#'perms/->v2-path "/db/1/schema/PUBLIC/table/1/query/")))
+    (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
+           (#'perms/->v2-path "/db/1/schema/PUBLIC/table/1/query/segmented/")))))
+
+(defn- check-fn! [fn-var & [iterations]]
+  (let [iterations (or iterations 5000)]
+    (if-let [result ((mg/function-checker (:schema (meta fn-var)) {::mg/=>iterations iterations}) @fn-var)]
+      result
+      {:pass? true :iterations iterations})))
+
+(deftest quickcheck-perm-path-classification-test
+  (is (:pass? (check-fn! #'perms/classify-path))))
+
+(deftest quickcheck-data-path-classification-test
+  (is (:pass? (check-fn! #'perms/classify-data-path))))
+
+(deftest quickcheck-->v2-path-test
+  (is (:pass? (check-fn! #'perms/->v2-path))))

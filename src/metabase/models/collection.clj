@@ -7,8 +7,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase.api.common
     :as api
@@ -22,14 +20,16 @@
    [metabase.models.serialization.util :as serdes.util]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [potemkin :as p]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models])
+   [toucan.models :as models]
+   [toucan2.protocols :as t2.protocols])
   (:import
    (metabase.models.collection.root RootCollection)))
 
@@ -313,17 +313,15 @@
     (into
      ;; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
      ;; the (1 = 1) is to prevent this
-     [:and (case hx/*honey-sql-version*
-             1 [:= 1 1]
-             2 [:= [:inline 1] [:inline 1]])]
+     [:and [:= [:inline 1] [:inline 1]]]
      (if (= collection-ids :all)
        ;; In the case that visible-collection-ids is all, that means there's no invisible collection ids
        ;; meaning, the effective children are always the direct children. So check for being a direct child.
-       [[:like :location (hx/literal child-literal)]]
+       [[:like :location (h2x/literal child-literal)]]
        (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
              disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
          (for [visible-collection-id disj-collection-ids]
-           [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
+           [:not-like :location (h2x/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
 
 (s/defn ^:private effective-location-path* :- (s/maybe LocationPath)
@@ -481,7 +479,7 @@
     (into
       [:and
        ;; it is a descendant of Collection A
-       [:like :location (hx/literal (str (children-location collection) "%"))]
+       [:like :location (h2x/literal (str (children-location collection) "%"))]
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A
@@ -539,7 +537,7 @@
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn perms-for-archiving :- #{perms/Path}
+(s/defn perms-for-archiving :- #{perms/PathSchema}
   "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
   *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
   permissions for the Collection itself and all its descendants, but not for its parent Collection.
@@ -568,7 +566,7 @@
                             (db/select-ids Collection :location [:like (str (children-location collection) "%")])))]
      (perms/collection-readwrite-path collection-or-id))))
 
-(s/defn perms-for-moving :- #{perms/Path}
+(s/defn perms-for-moving :- #{perms/PathSchema}
   "Return the set of Permissions needed to move a `collection`. Like archiving, moving is recursive, so we require
   perms for both the Collection and its descendants; we additionally require permissions for its new parent Collection.
 
@@ -612,7 +610,7 @@
       ;; we need to update all the descendant collections as well...
       (db/execute!
        {:update :collection
-        :set    {:location (hsql/call :replace :location orig-children-location new-children-location)}
+        :set    {:location [:replace :location orig-children-location new-children-location]}
         :where  [:like :location (str orig-children-location "%")]}))))
 
 (s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
@@ -630,10 +628,10 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived false}
         :archived true)
-      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-        (db/update-where! model {:collection_id [:in affected-collection-ids]
-                                 :archived      false}
-          :archived true)))))
+     (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
+       (db/update-where! model {:collection_id [:in affected-collection-ids]
+                                :archived      false}
+                         :archived true)))))
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
@@ -1161,7 +1159,7 @@
   "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
   default namespace (namespace = `nil`)."
   {:arglists '([model])}
-  class)
+  t2.protocols/dispatch-value)
 
 (defmethod allowed-namespaces :default
   [_]

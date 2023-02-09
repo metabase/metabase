@@ -5,7 +5,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
@@ -17,7 +16,8 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.table :as table]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx])
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 

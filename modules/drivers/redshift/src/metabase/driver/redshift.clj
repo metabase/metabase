@@ -1,27 +1,29 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
-  (:require [cheshire.core :as json]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
-  (:import [java.sql Connection PreparedStatement ResultSet Types]
-           java.time.OffsetTime))
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.jdbc :as jdbc]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-table
+    :as sql-jdbc.describe-table]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
+  (:import
+   (java.sql Connection PreparedStatement ResultSet Types)
+   (java.time OffsetTime)))
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
@@ -108,14 +110,14 @@
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
   (let [hsql-form (hx/->timestamp hsql-form)]
-    (-> (hsql/call :dateadd (hx/literal unit) amount hsql-form)
+    (-> (hx/call :dateadd (hx/literal unit) amount hsql-form)
         (hx/with-type-info (hx/type-info hsql-form)))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
-  (hx/+ (hsql/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
+  (hx/+ (hx/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
         (hx/* expr
-              (hsql/raw "INTERVAL '1 second'"))))
+              (hx/raw "INTERVAL '1 second'"))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
   [_]
@@ -169,39 +171,39 @@
 
 (defmethod sql.qp/->honeysql [:redshift :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call
-    :regexp_substr
-    (sql.qp/->honeysql driver arg)
-    ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
-    ;; decoding functions seem to work (fails with java.sql.SQLExcecption: "The pattern must be a valid UTF-8 literal
-    ;; character expression"), hence we will use a different function to safely escape it before splicing here
-    (hsql/raw (quote-literal-for-database (qp.store/database) pattern))))
+  (hx/call
+   :regexp_substr
+   (sql.qp/->honeysql driver arg)
+   ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
+   ;; decoding functions seem to work (fails with java.sql.SQLExcecption: "The pattern must be a valid UTF-8 literal
+   ;; character expression"), hence we will use a different function to safely escape it before splicing here
+   (hx/raw (quote-literal-for-database (qp.store/database) pattern))))
 
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]
-  (hsql/call
-    :replace
-    (sql.qp/->honeysql driver arg)
-    (sql.qp/->honeysql driver pattern)
-    (sql.qp/->honeysql driver replacement)))
+  (hx/call
+   :replace
+   (sql.qp/->honeysql driver arg)
+   (sql.qp/->honeysql driver pattern)
+   (sql.qp/->honeysql driver replacement)))
 
 (defmethod sql.qp/->honeysql [:redshift :concat]
   [driver [_ & args]]
   (->> args
        (map (partial sql.qp/->honeysql driver))
-       (reduce (partial hsql/call :concat))))
+       (reduce (partial hx/call :concat))))
 
 (defmethod sql.qp/->honeysql [:redshift :concat]
   [driver [_ & args]]
   (->> args
        (map (partial sql.qp/->honeysql driver))
-       (reduce (partial hsql/call :concat))))
+       (reduce (partial hx/call :concat))))
 
 (defn- extract [unit temporal]
-  (hsql/call :extract (format "'%s'" (name unit)) temporal))
+  (hx/call :extract (format "'%s'" (name unit)) temporal))
 
 (defn- datediff [unit x y]
-  (hsql/call :datediff (hsql/raw (name unit)) x y))
+  (hx/call :datediff (hx/raw (name unit)) x y))
 
 (defmethod sql.qp/->honeysql [:redshift :datetime-diff]
   [driver [_ x y unit]]
@@ -227,12 +229,12 @@
   [_driver _unit x y]
   (hx/+ (datediff :month x y)
         ;; redshift's datediff counts month boundaries not whole months, so we need to adjust
-        (hsql/call
+        (hx/call
          :case
          ;; if x<y but x>y in the month calendar then subtract one month
-         (hsql/call :and (hsql/call :< x y) (hsql/call :> (extract :day x) (extract :day y))) -1
+         (hx/call :and (hx/call :< x y) (hx/call :> (extract :day x) (extract :day y))) -1
          ;; if x>y but x<y in the month calendar then add one month
-         (hsql/call :and (hsql/call :> x y) (hsql/call :< (extract :day x) (extract :day y))) 1
+         (hx/call :and (hx/call :> x y) (hx/call :< (extract :day x) (extract :day y))) 1
          :else 0)))
 
 (defmethod sql.qp/datetime-diff [:redshift :week]

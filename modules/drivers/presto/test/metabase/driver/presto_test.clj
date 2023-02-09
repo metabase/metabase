@@ -1,24 +1,25 @@
 (ns metabase.driver.presto-test
-  (:require [clj-http.client :as http]
-            [clojure.core.async :as a]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver :as driver]
-            [metabase.driver.presto :as presto]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clj-http.client :as http]
+   [clojure.core.async :as a]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
+   [metabase.driver.presto :as presto]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -132,7 +133,7 @@
     (is (= {:select ["name" "id"]
             :from   [{:select   [[:default.categories.name "name"]
                                  [:default.categories.id "id"]
-                                 [(hsql/raw "row_number() OVER (ORDER BY \"default\".\"categories\".\"id\" ASC)")
+                                 [(hx/raw "row_number() OVER (ORDER BY \"default\".\"categories\".\"id\" ASC)")
                                   :__rownum__]]
                       :from     [:default.categories]
                       :order-by [[:default.categories.id :asc]]}]

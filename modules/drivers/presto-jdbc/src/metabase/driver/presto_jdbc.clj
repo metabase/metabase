@@ -1,34 +1,37 @@
 (ns metabase.driver.presto-jdbc
   "Presto JDBC driver. See https://prestodb.io/docs/current/ for complete dox."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [java-time :as t]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver :as driver]
-            [metabase.driver.presto-common :as presto-common]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
-            [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
-            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models.secret :as secret]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
-  (:import com.facebook.presto.jdbc.PrestoConnection
-           com.mchange.v2.c3p0.C3P0ProxyConnection
-           [java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types]
-           [java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           java.time.format.DateTimeFormatter
-           [java.time.temporal ChronoField Temporal]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [honeysql.format :as hformat]
+   [java-time :as t]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver :as driver]
+   [metabase.driver.presto-common :as presto-common]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
+   [metabase.driver.sql-jdbc.sync.describe-database
+    :as sql-jdbc.describe-database]
+   [metabase.driver.sql.parameters.substitution
+    :as sql.params.substitution]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.secret :as secret]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
+  (:import
+   (com.facebook.presto.jdbc PrestoConnection)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types)
+   (java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.time.format DateTimeFormatter)
+   (java.time.temporal ChronoField Temporal)))
 
 (driver/register! :presto-jdbc, :parent #{:presto-common
                                           :sql-jdbc
@@ -43,7 +46,7 @@
 (defmethod sql.qp/->honeysql [:presto-jdbc :log]
   [driver [_ field]]
   ;; recent Presto versions have a `log10` function (not `log`)
-  (hsql/call :log10 (sql.qp/->honeysql driver field)))
+  (hx/call :log10 (sql.qp/->honeysql driver field)))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :count-where]
   [driver [_ pred]]
@@ -77,13 +80,13 @@
         type-info   (hx/type-info expr)
         db-type     (hx/type-info->db-type type-info)]
     (if (and ;; AT TIME ZONE is only valid on these Presto types; if applied to something else (ex: `date`), then
-             ;; an error will be thrown by the query analyzer
-             (contains? #{"timestamp" "timestamp with time zone" "time" "time with time zone"} db-type)
-             ;; if one has already been set, don't do so again
-             (not (::in-report-zone? (meta expr)))
-             report-zone)
+         ;; an error will be thrown by the query analyzer
+         (contains? #{"timestamp" "timestamp with time zone" "time" "time with time zone"} db-type)
+         ;; if one has already been set, don't do so again
+         (not (::in-report-zone? (meta expr)))
+         report-zone)
       (-> (hx/with-database-type-info (hx/at-time-zone expr report-zone) timestamp-with-time-zone-db-type)
-        (vary-meta assoc ::in-report-zone? true))
+          (vary-meta assoc ::in-report-zone? true))
       expr)))
 
 ;; most date extraction and bucketing functions need to account for report timezone
@@ -94,79 +97,83 @@
 
 (defmethod sql.qp/date [:presto-jdbc :minute]
   [_ _ expr]
-  (hsql/call :date_trunc (hx/literal :minute) (in-report-zone expr)))
+  (hx/call :date_trunc (hx/literal :minute) (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :minute-of-hour]
   [_ _ expr]
-  (hsql/call :minute (in-report-zone expr)))
+  (hx/call :minute (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :hour]
   [_ _ expr]
-  (hsql/call :date_trunc (hx/literal :hour) (in-report-zone expr)))
+  (hx/call :date_trunc (hx/literal :hour) (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :hour-of-day]
   [_ _ expr]
-  (hsql/call :hour (in-report-zone expr)))
+  (hx/call :hour (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :day]
   [_ _ expr]
-  (hsql/call :date (in-report-zone expr)))
+  (hx/call :date (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :day-of-week]
   [_ _ expr]
-  (sql.qp/adjust-day-of-week :presto-jdbc (hsql/call :day_of_week (in-report-zone expr))))
+  (sql.qp/adjust-day-of-week :presto-jdbc (hx/call :day_of_week (in-report-zone expr))))
 
 (defmethod sql.qp/date [:presto-jdbc :day-of-month]
   [_ _ expr]
-  (hsql/call :day (in-report-zone expr)))
+  (hx/call :day (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :day-of-year]
   [_ _ expr]
-  (hsql/call :day_of_year (in-report-zone expr)))
+  (hx/call :day_of_year (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :week]
   [_ _ expr]
-  (sql.qp/adjust-start-of-week :presto-jdbc (partial hsql/call :date_trunc (hx/literal :week)) (in-report-zone expr)))
+  (sql.qp/adjust-start-of-week :presto-jdbc (partial hx/call :date_trunc (hx/literal :week)) (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :month]
   [_ _ expr]
-  (hsql/call :date_trunc (hx/literal :month) (in-report-zone expr)))
+  (hx/call :date_trunc (hx/literal :month) (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :month-of-year]
   [_ _ expr]
-  (hsql/call :month (in-report-zone expr)))
+  (hx/call :month (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :quarter]
   [_ _ expr]
-  (hsql/call :date_trunc (hx/literal :quarter) (in-report-zone expr)))
+  (hx/call :date_trunc (hx/literal :quarter) (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :quarter-of-year]
   [_ _ expr]
-  (hsql/call :quarter (in-report-zone expr)))
+  (hx/call :quarter (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :year]
   [_ _ expr]
-  (hsql/call :date_trunc (hx/literal :year) (in-report-zone expr)))
+  (hx/call :date_trunc (hx/literal :year) (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :year-of-era]
+  [_ _ expr]
+  (hx/call :year (in-report-zone expr)))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :seconds]
   [_ _ expr]
   (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)]
-    (hsql/call :from_unixtime expr (hx/literal (or report-zone "UTC")))))
+    (hx/call :from_unixtime expr (hx/literal (or report-zone "UTC")))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :milliseconds]
   [_ _ expr]
   ;; from_unixtime doesn't support milliseconds directly, but we can add them back in
   (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
-        millis      (hsql/call (u/qualified-name ::mod) expr 1000)]
-    (hsql/call :date_add
-               (hx/literal "millisecond")
-               millis
-               (hsql/call :from_unixtime (hsql/call :/ expr 1000) (hx/literal (or report-zone "UTC"))))))
+        millis      (hx/call (u/qualified-name ::mod) expr 1000)]
+    (hx/call :date_add
+             (hx/literal "millisecond")
+             millis
+             (hx/call :from_unixtime (hx/call :/ expr 1000) (hx/literal (or report-zone "UTC"))))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :microseconds]
   [driver _ expr]
   ;; Presto can't even represent microseconds, so convert to millis and call that version
-  (sql.qp/unix-timestamp->honeysql driver :milliseconds (hsql/call :/ expr 1000)))
+  (sql.qp/unix-timestamp->honeysql driver :milliseconds (hx/call :/ expr 1000)))
 
 (defmethod sql.qp/current-datetime-honeysql-form :presto-jdbc
   [_]

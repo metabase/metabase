@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import moment from "moment-timezone";
 
-import { formatTime } from "metabase/lib/formatting";
 import type { Database } from "metabase-types/api/database";
 import { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
 

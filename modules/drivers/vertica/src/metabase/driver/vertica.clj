@@ -1,25 +1,27 @@
 (ns metabase.driver.vertica
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
-  (:import [java.sql ResultSet ResultSetMetaData Types]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [honeysql.format :as hformat]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.empty-string-is-null
+    :as sql.qp.empty-string-is-null]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
+  (:import
+   (java.sql ResultSet ResultSetMetaData Types)))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
@@ -77,11 +79,11 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :vertica
   [_]
-  (hx/with-database-type-info (hsql/call :current_timestamp 6) :TimestampTz))
+  (hx/with-database-type-info (hx/call :current_timestamp 6) :TimestampTz))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]
-  (hsql/call :to_timestamp expr))
+  (hx/call :to_timestamp expr))
 
 ;; TODO - not sure if needed or not
 (defn- cast-timestamp
@@ -93,9 +95,9 @@
     (hx/cast :timestamp expr)
     expr))
 
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (cast-timestamp expr)))
-(defn- extract    [unit expr] (hsql/call :extract    unit              (cast-timestamp expr)))
-(defn- datediff   [unit a b]  (hsql/call :datediff   (hx/literal unit) (cast-timestamp a) (cast-timestamp b)))
+(defn- date-trunc [unit expr] (hx/call :date_trunc (hx/literal unit) (cast-timestamp expr)))
+(defn- extract    [unit expr] (hx/call :extract    unit              (cast-timestamp expr)))
+(defn- datediff   [unit a b]  (hx/call :datediff   (hx/literal unit) (cast-timestamp a) (cast-timestamp b)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
@@ -118,11 +120,11 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :vertica (partial date-trunc :week) (cast-timestamp expr)))
 
-(defmethod sql.qp/date [:vertica :week-of-year-iso] [_driver _ expr] (hsql/call :week_iso expr))
+(defmethod sql.qp/date [:vertica :week-of-year-iso] [_driver _ expr] (hx/call :week_iso expr))
 
 (defmethod sql.qp/date [:vertica :day-of-week]
   [_ _ expr]
-  (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
+  (sql.qp/adjust-day-of-week :vertica (hx/call :dayofweek_iso expr)))
 
 (defmethod sql.qp/->honeysql [:vertica :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
@@ -139,17 +141,17 @@
   [driver [_ & args]]
   (->> args
        (map (partial sql.qp/->honeysql driver))
-       (reduce (partial hsql/call :concat))))
+       (reduce (partial hx/call :concat))))
 
 (defmethod sql.qp/datetime-diff [:vertica :year]
   [driver _unit x y]
   (let [months (sql.qp/datetime-diff driver :month x y)]
-    (hx/->integer (hsql/call :trunc (hx// months 12)))))
+    (hx/->integer (hx/call :trunc (hx// months 12)))))
 
 (defmethod sql.qp/datetime-diff [:vertica :quarter]
   [driver _unit x y]
   (let [months (sql.qp/datetime-diff driver :month x y)]
-    (hx/->integer (hsql/call :trunc (hx// months 3)))))
+    (hx/->integer (hx/call :trunc (hx// months 3)))))
 
 (defmethod sql.qp/datetime-diff [:vertica :month]
   [_driver _unit x y]
@@ -157,19 +159,19 @@
         ;; datediff counts month boundaries not whole months, so we need to adjust
         ;; if x<y but x>y in the month calendar then subtract one month
         ;; if x>y but x<y in the month calendar then add one month
-        (hsql/call
+        (hx/call
          :case
-         (hsql/call :and
-                    (hsql/call :< (cast-timestamp x) (cast-timestamp y))
-                    (hsql/call :> (extract :day x) (extract :day y))) -1
-         (hsql/call :and
-                    (hsql/call :> (cast-timestamp x) (cast-timestamp y))
-                    (hsql/call :< (extract :day x) (extract :day y))) 1
+         (hx/call :and
+                  (hx/call :< (cast-timestamp x) (cast-timestamp y))
+                  (hx/call :> (extract :day x) (extract :day y))) -1
+         (hx/call :and
+                  (hx/call :> (cast-timestamp x) (cast-timestamp y))
+                  (hx/call :< (extract :day x) (extract :day y))) 1
          :else 0)))
 
 (defmethod sql.qp/datetime-diff [:vertica :week]
   [_driver _unit x y]
-  (hx/->integer (hsql/call :trunc (hx// (datediff :day x y) 7))))
+  (hx/->integer (hx/call :trunc (hx// (datediff :day x y) 7))))
 
 (defmethod sql.qp/datetime-diff [:vertica :day]
   [_driver _unit x y]
@@ -178,44 +180,44 @@
 (defmethod sql.qp/datetime-diff [:vertica :hour]
   [_driver _unit x y]
   (let [seconds (hx/- (extract :epoch y) (extract :epoch x))]
-    (hx/->integer (hsql/call :trunc (hx// seconds 3600)))))
+    (hx/->integer (hx/call :trunc (hx// seconds 3600)))))
 
 (defmethod sql.qp/datetime-diff [:vertica :minute]
   [_driver _unit x y]
   (let [seconds (hx/- (extract :epoch y) (extract :epoch x))]
-    (hx/->integer (hsql/call :trunc (hx// seconds 60)))))
+    (hx/->integer (hx/call :trunc (hx// seconds 60)))))
 
 (defmethod sql.qp/datetime-diff [:vertica :second]
   [_driver _unit x y]
-  (hx/->integer (hsql/call :trunc (hx/- (extract :epoch y) (extract :epoch x)))))
+  (hx/->integer (hx/call :trunc (hx/- (extract :epoch y) (extract :epoch x)))))
 
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+  (hx/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 (defmethod sql.qp/->honeysql [:vertica :percentile]
   [driver [_ arg p]]
-  (hsql/raw (format "APPROXIMATE_PERCENTILE(%s USING PARAMETERS percentile=%s)"
-                    (hformat/to-sql (sql.qp/->honeysql driver arg))
-                    (hformat/to-sql (sql.qp/->honeysql driver p)))))
+  (hx/raw (format "APPROXIMATE_PERCENTILE(%s USING PARAMETERS percentile=%s)"
+                  (hformat/to-sql (sql.qp/->honeysql driver arg))
+                  (hformat/to-sql (sql.qp/->honeysql driver p)))))
 
 (defmethod sql.qp/->honeysql [:vertica :median]
   [driver [_ arg]]
-  (hsql/call :approximate_median (sql.qp/->honeysql driver arg)))
+  (hx/call :approximate_median (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
-  (hsql/call :timestampadd unit)
+  (hx/call :timestampadd unit)
   ;; using `timestampadd` instead of `+ (INTERVAL)` because vertica add inteval for month, or year
   ;; by adding the equivalent number of days, not adding the unit compoinent.
   ;; For example `select date '2004-02-02' + interval '1 year' will return `2005-02-01` because it's adding
   ;; 365 days under the hood and 2004 is a leap year. Whereas other dbs will return `2006-02-02`.
   ;; So we use timestampadd to make the behavior consistent with other dbs
   (let [acceptable-types (case unit
-                          (:millisecond :second :minute :hour) #{"time" "timetz" "timestamp" "timestamptz"}
-                          (:day :week :month :quarter :year)   #{"date" "timestamp" "timestamptz"})
+                           (:millisecond :second :minute :hour) #{"time" "timetz" "timestamp" "timestamptz"}
+                           (:day :week :month :quarter :year)   #{"date" "timestamp" "timestamptz"})
         hsql-form        (hx/cast-unless-type-in "timestamp" acceptable-types hsql-form)]
-   (hsql/call :timestampadd unit amount hsql-form)))
+    (hx/call :timestampadd unit amount hsql-form)))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica `database`.

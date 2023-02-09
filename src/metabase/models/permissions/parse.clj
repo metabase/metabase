@@ -7,10 +7,10 @@
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [instaparse.core :as insta]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
@@ -157,7 +157,7 @@
   [paths]
   (->> paths
        (reduce (fn [paths path]
-                 (if (every? vector? path) ;; handle case wher /db/x/ returns two vectors
+                 (if (every? vector? path) ;; handle case where /db/x/ returns two vectors
                    (into paths path)
                    (conj paths path)))
                [])
@@ -177,6 +177,7 @@
                              (some #(and (= (% x) '()) %)
                                    [:block :all :some :write :read :segmented :full :limited :yes]))
                            x)))))
+
 
 (defn permissions->graph
   "Given a set of permission strings, return a graph that expresses the most permissions possible for the set"

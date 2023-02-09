@@ -2,12 +2,12 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.models.database :refer [Database]]
    [metabase.plugins :as plugins]
    [metabase.sync :as sync]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [ring.util.codec :as codec]
    [toucan.db :as db])
   (:import

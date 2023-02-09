@@ -43,6 +43,7 @@
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util.log :as log]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
    [toucan.db :as db]
@@ -282,6 +283,7 @@
                   :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
                                                                         (.getName (class clock))
                                                                         (pr-str clock)))))]
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (t/with-clock clock
         (thunk)))))
 
@@ -371,7 +373,7 @@
                                  (when run (run))
                                  (qp.context/reducef rff context (assoc metadata :pre query) rows)
                                  (catch Throwable e
-                                   (println "Error in test-qp-middleware runf:" e)
+                                   (log/errorf "Error in test-qp-middleware runf: %s" e)
                                    (throw e))))}
                    context)]
      (if async?

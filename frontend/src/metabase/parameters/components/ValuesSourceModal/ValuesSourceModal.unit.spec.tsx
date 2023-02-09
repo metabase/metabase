@@ -2,17 +2,18 @@ import React from "react";
 import nock from "nock";
 import userEvent from "@testing-library/user-event";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { Card, FieldValues } from "metabase-types/api";
+import { Card, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockField,
-  createMockFieldValues,
+  createMockParameterValues,
 } from "metabase-types/api/mocks";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
-  setupFieldsValuesEndpoints,
+  setupErrorParameterValuesEndpoints,
+  setupParameterValuesEndpoints,
   setupUnauthorizedCardsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -40,12 +41,9 @@ describe("ValuesSourceModal", () => {
         parameter: createMockUiParameter({
           fields: [new Field(createMockField({ id: 1 }))],
         }),
-        fieldsValues: [
-          createMockFieldValues({
-            field_id: 1,
-            values: [],
-          }),
-        ],
+        parameterValues: createMockParameterValues({
+          values: [],
+        }),
       });
 
       expect(
@@ -53,7 +51,7 @@ describe("ValuesSourceModal", () => {
       ).toBeInTheDocument();
     });
 
-    it("should show unique non-null mapped fields values", async () => {
+    it("should show field values", async () => {
       setup({
         parameter: createMockUiParameter({
           fields: [
@@ -61,21 +59,90 @@ describe("ValuesSourceModal", () => {
             new Field(createMockField({ id: 2 })),
           ],
         }),
-        fieldsValues: [
-          createMockFieldValues({
-            field_id: 1,
-            values: [["A"], [null], ["B"], ["A"]],
-          }),
-          createMockFieldValues({
-            field_id: 2,
-            values: [["B", "Remapped"], ["C"]],
-          }),
-        ],
+        parameterValues: createMockParameterValues({
+          values: [["A"], ["B"], ["C"]],
+        }),
       });
 
       await waitFor(() => {
         expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
       });
+    });
+
+    it("should not show the fields option for variable template tags", () => {
+      setup({
+        parameter: createMockUiParameter({
+          hasVariableTemplateTagTarget: true,
+        }),
+      });
+
+      expect(
+        screen.queryByRole("radio", { name: "From connected fields" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: "From another model or question" }),
+      ).toBeChecked();
+    });
+
+    it("should preserve custom list option for variable template tags", () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: "static-list",
+          hasVariableTemplateTagTarget: true,
+        }),
+      });
+
+      expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
+    });
+
+    it("should copy field values when switching to custom list", async () => {
+      setup({
+        parameter: createMockUiParameter({
+          fields: [
+            new Field(createMockField({ id: 1 })),
+            new Field(createMockField({ id: 2 })),
+          ],
+          values_source_config: {
+            values: ["A", "B"],
+          },
+        }),
+        parameterValues: createMockParameterValues({
+          values: [["C"], ["D"]],
+        }),
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole("textbox")).toHaveValue("C\nD");
+      });
+
+      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
+      expect(screen.getByRole("textbox")).toHaveValue("C\nD");
+    });
+
+    it("should not overwrite custom list values when field values are empty", async () => {
+      setup({
+        parameter: createMockUiParameter({
+          fields: [
+            new Field(createMockField({ id: 1 })),
+            new Field(createMockField({ id: 2 })),
+          ],
+          values_source_config: {
+            values: ["A", "B"],
+          },
+        }),
+        parameterValues: createMockParameterValues({
+          values: [],
+        }),
+      });
+
+      expect(
+        await screen.findByText(/We don’t have any cached values/),
+      ).toBeInTheDocument();
+
+      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
+      expect(screen.getByRole("textbox")).toHaveValue("A\nB");
     });
   });
 
@@ -146,7 +213,40 @@ describe("ValuesSourceModal", () => {
       });
     });
 
-    it("should display an error message when the user has no access to the card", async () => {
+    it("should show card values", async () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+            value_field: ["field", 2, null],
+          },
+        }),
+        parameterValues: createMockParameterValues({
+          values: [["A"], ["B"], ["C"]],
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockField({
+                id: 2,
+                display_name: "Category",
+                base_type: "type/Text",
+                semantic_type: "type/Category",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      });
+    });
+
+    it("should display a message when the user has no access to the card", async () => {
       setup({
         parameter: createMockUiParameter({
           values_source_type: "card",
@@ -166,6 +266,74 @@ describe("ValuesSourceModal", () => {
       expect(
         await screen.findByText("You don't have permissions to do that."),
       ).toBeInTheDocument();
+    });
+
+    it("should display a message when there is an error in the underlying query", async () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+            value_field: ["field", 2, null],
+          },
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockField({
+                id: 2,
+                display_name: "Category",
+                base_type: "type/Text",
+                semantic_type: "type/Category",
+              }),
+            ],
+          }),
+        ],
+        hasParameterValuesError: true,
+      });
+
+      expect(
+        await screen.findByText("An error occurred in your query"),
+      ).toBeInTheDocument();
+    });
+
+    it("should copy card values when switching to custom list", async () => {
+      setup({
+        parameter: createMockUiParameter({
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+            value_field: ["field", 2, null],
+          },
+        }),
+        parameterValues: createMockParameterValues({
+          values: [["A"], ["B"], ["C"]],
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockField({
+                id: 2,
+                display_name: "Category",
+                base_type: "type/Text",
+                semantic_type: "type/Category",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      });
+
+      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
+      expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
     });
   });
 
@@ -204,16 +372,18 @@ describe("ValuesSourceModal", () => {
 
 interface SetupOpts {
   parameter?: UiParameter;
+  parameterValues?: ParameterValues;
   cards?: Card[];
-  fieldsValues?: FieldValues[];
   hasDataAccess?: boolean;
+  hasParameterValuesError?: boolean;
 }
 
 const setup = ({
   parameter = createMockUiParameter(),
+  parameterValues = createMockParameterValues(),
   cards = [],
-  fieldsValues = [],
   hasDataAccess = true,
+  hasParameterValuesError = false,
 }: SetupOpts = {}) => {
   const scope = nock(location.origin);
   const onSubmit = jest.fn();
@@ -222,7 +392,12 @@ const setup = ({
   if (hasDataAccess) {
     setupCollectionsEndpoints(scope, [createMockCollection(ROOT_COLLECTION)]);
     setupCardsEndpoints(scope, cards);
-    setupFieldsValuesEndpoints(scope, fieldsValues);
+
+    if (!hasParameterValuesError) {
+      setupParameterValuesEndpoints(scope, parameterValues);
+    } else {
+      setupErrorParameterValuesEndpoints(scope);
+    }
   } else {
     setupUnauthorizedCardsEndpoints(scope, cards);
   }

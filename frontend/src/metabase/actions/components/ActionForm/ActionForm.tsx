@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 import type {
@@ -190,7 +189,7 @@ export const ActionForm = ({
             {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
             <FormSubmitButton
               disabled={!dirty && hasFormFields}
-              title={submitTitle ?? t`Save`}
+              title={submitTitle ?? t`Submit`}
               {...submitButtonVariant}
             />
           </ActionFormButtonContainer>

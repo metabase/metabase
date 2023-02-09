@@ -1,23 +1,25 @@
 (ns metabase.driver.presto-common
   "Abstract common driver for Presto. It only defines SQL generation logic and doesn't involve the transport/execution
   mechanism for actually connecting to Presto."
-  (:require [buddy.core.codecs :as codecs]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [honeysql.helpers :as hh]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.Time
-           [java.time OffsetDateTime ZonedDateTime]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [honeysql.helpers :as hh]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honeysql-extensions :as hx])
+  (:import
+   (java.sql Time)
+   (java.time OffsetDateTime ZonedDateTime)))
 
 (defmethod driver/database-supports? [:presto-common :now] [_driver _feat _db] true)
 
@@ -56,7 +58,7 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :presto-common
   [_ hsql-form amount unit]
-  (hsql/call :date_add (hx/literal unit) amount hsql-form))
+  (hx/call :date_add (hx/literal unit) amount hsql-form))
 
 (defn describe-catalog-sql
   "The SHOW SCHEMAS statement that will list all schemas for the given `catalog`."
@@ -86,16 +88,16 @@
 
 (defmethod sql.qp/cast-temporal-string [:presto-common :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_ _coercion-strategy expr]
-  (hsql/call :date_parse expr (hx/literal "%Y%m%d%H%i%s")))
+  (hx/call :date_parse expr (hx/literal "%Y%m%d%H%i%s")))
 
 (defmethod sql.qp/cast-temporal-byte [:presto-common :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
-    (hsql/call :from_utf8 expr)))
+                               (hx/call :from_utf8 expr)))
 
 (defmethod sql.qp/->honeysql [:presto-common Boolean]
   [_ bool]
-  (hsql/raw (if bool "TRUE" "FALSE")))
+  (hx/raw (if bool "TRUE" "FALSE")))
 
 (defmethod sql.qp/->honeysql [:presto-common :time]
   [_ [_ t]]
@@ -107,15 +109,15 @@
 
 (defmethod sql.qp/->honeysql [:presto-common :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+  (hx/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 (defmethod sql.qp/->honeysql [:presto-common :median]
   [driver [_ arg]]
-  (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) 0.5))
+  (hx/call :approx_percentile (sql.qp/->honeysql driver arg) 0.5))
 
 (defmethod sql.qp/->honeysql [:presto-common :percentile]
   [driver [_ arg p]]
-  (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
+  (hx/call :approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
 
 ;; Presto mod is a function like mod(x, y) rather than an operator like x mod y
 (defmethod hformat/fn-handler (u/qualified-name ::mod)
@@ -164,7 +166,7 @@
                                                     :allow-dashed-names? true
                                                     :quoting :ansi)))]
         (-> (apply hh/select (map last (:select honeysql-query)))
-            (hh/from (hh/merge-select honeysql-query [(hsql/raw over-clause) :__rownum__]))
+            (hh/from (hh/merge-select honeysql-query [(hx/raw over-clause) :__rownum__]))
             (hh/where [:> :__rownum__ offset])
             (hh/limit items))))))
 
@@ -172,35 +174,35 @@
   [_]
   (hx/with-database-type-info :%now "timestamp with time zone"))
 
-(defn- date-diff [unit a b] (hsql/call :date_diff (hx/literal unit) a b))
-(defn- date-trunc [unit x] (hsql/call :date_trunc (hx/literal unit) x))
+(defn- date-diff [unit a b] (hx/call :date_diff (hx/literal unit) a b))
+(defn- date-trunc [unit x] (hx/call :date_trunc (hx/literal unit) x))
 
 (defmethod sql.qp/date [:presto-common :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:presto-common :minute]          [_ _ expr] (date-trunc :minute expr))
-(defmethod sql.qp/date [:presto-common :minute-of-hour]  [_ _ expr] (hsql/call :minute expr))
+(defmethod sql.qp/date [:presto-common :minute-of-hour]  [_ _ expr] (hx/call :minute expr))
 (defmethod sql.qp/date [:presto-common :hour]            [_ _ expr] (date-trunc :hour expr))
-(defmethod sql.qp/date [:presto-common :hour-of-day]     [_ _ expr] (hsql/call :hour expr))
+(defmethod sql.qp/date [:presto-common :hour-of-day]     [_ _ expr] (hx/call :hour expr))
 (defmethod sql.qp/date [:presto-common :day]             [_ _ expr] (date-trunc :day expr))
-(defmethod sql.qp/date [:presto-common :day-of-month]    [_ _ expr] (hsql/call :day expr))
-(defmethod sql.qp/date [:presto-common :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
+(defmethod sql.qp/date [:presto-common :day-of-month]    [_ _ expr] (hx/call :day expr))
+(defmethod sql.qp/date [:presto-common :day-of-year]     [_ _ expr] (hx/call :day_of_year expr))
 
 (defmethod sql.qp/date [:presto-common :day-of-week]
   [driver _ expr]
-  (sql.qp/adjust-day-of-week driver (hsql/call :day_of_week expr)))
+  (sql.qp/adjust-day-of-week driver (hx/call :day_of_week expr)))
 
 (defmethod sql.qp/date [:presto-common :week]
   [driver _ expr]
   (sql.qp/adjust-start-of-week driver (partial date-trunc :week) expr))
 
 (defmethod sql.qp/date [:presto-common :month]           [_ _ expr] (date-trunc :month expr))
-(defmethod sql.qp/date [:presto-common :month-of-year]   [_ _ expr] (hsql/call :month expr))
+(defmethod sql.qp/date [:presto-common :month-of-year]   [_ _ expr] (hx/call :month expr))
 (defmethod sql.qp/date [:presto-common :quarter]         [_ _ expr] (date-trunc :quarter expr))
-(defmethod sql.qp/date [:presto-common :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
+(defmethod sql.qp/date [:presto-common :quarter-of-year] [_ _ expr] (hx/call :quarter expr))
 (defmethod sql.qp/date [:presto-common :year]            [_ _ expr] (date-trunc :year expr))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-common :seconds]
   [_ _ expr]
-  (hsql/call :from_unixtime expr))
+  (hx/call :from_unixtime expr))
 
 (defn ->date
   "Same as [[hx/->date]], but truncates `x` to the date in the results time zone."

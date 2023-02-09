@@ -6,8 +6,9 @@ import {
   HoveredDimension,
   HoveredObject,
   VisualizationSettings,
-} from "./types";
-import { formatValueForTooltip } from "./utils";
+} from "../types";
+import { formatValueForTooltip } from "../utils";
+import { TooltipTableCell } from "./KeyValuePairChartTooltip.styled";
 
 export interface StackedDataTooltipProps {
   hovered: HoveredObject;
@@ -46,12 +47,18 @@ export interface TooltipRowProps {
 
 const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
   <tr>
-    {name ? <td className="text-light text-right pr1">{name}:</td> : <td />}
-    <td className="text-bold text-left">
+    {name ? (
+      <TooltipTableCell className="text-light text-right pr1">
+        {name}:
+      </TooltipTableCell>
+    ) : (
+      <TooltipTableCell />
+    )}
+    <TooltipTableCell className="text-bold text-left">
       {React.isValidElement(value)
         ? value
         : formatValueForTooltip({ value, column, settings })}
-    </td>
+    </TooltipTableCell>
   </tr>
 );
 

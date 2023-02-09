@@ -4,8 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -29,6 +27,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -173,9 +172,9 @@
     :OBJECT                     :type/Dictionary
     :ARRAY                      :type/*} base-type))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
-(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
-(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] (hsql/call :to_timestamp expr 6))
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] (hx/call :to_timestamp expr))
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] (hx/call :to_timestamp expr 3))
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] (hx/call :to_timestamp expr 6))
 
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake
   [_]
@@ -183,13 +182,13 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
   [_ hsql-form amount unit]
-  (hsql/call :dateadd
-    (hsql/raw (name unit))
-    (hsql/raw (int amount))
-    (hx/->timestamp hsql-form)))
+  (hx/call :dateadd
+           (hx/raw (name unit))
+           (hx/raw (int amount))
+           (hx/->timestamp hsql-form)))
 
-(defn- extract    [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
-(defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))
+(defn- extract    [unit expr] (hx/call :date_part unit (hx/->timestamp expr)))
+(defn- date-trunc [unit expr] (hx/call :date_trunc unit (hx/->timestamp expr)))
 
 (defmethod sql.qp/date [:snowflake :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:snowflake :minute]          [_ _ expr] (date-trunc :minute expr))
@@ -236,35 +235,35 @@
   [unit x y]
   (let [x (cond->> x
             (hx/is-of-type? x "timestamptz")
-            (hsql/call :convert_timezone (qp.timezone/results-timezone-id)))
+            (hx/call :convert_timezone (qp.timezone/results-timezone-id)))
         y (cond->> y
             (hx/is-of-type? y "timestamptz")
-            (hsql/call :convert_timezone (qp.timezone/results-timezone-id)))]
-    (hsql/call :datediff (hsql/raw (name unit)) x y)))
+            (hx/call :convert_timezone (qp.timezone/results-timezone-id)))]
+    (hx/call :datediff (hx/raw (name unit)) x y)))
 
 (defn- time-zoned-extract
   "Same as `extract` but converts the arg to the results time zone if it's a timestamptz."
   [unit x]
   (let [x (cond->> x
             (hx/is-of-type? x "timestamptz")
-            (hsql/call :convert_timezone (qp.timezone/results-timezone-id)))]
+            (hx/call :convert_timezone (qp.timezone/results-timezone-id)))]
     (extract unit x)))
 
 (defn- sub-day-datediff
   "Same as snowflake's `datediff`, but accurate to the millisecond for sub-day units."
   [unit x y]
-  (let [milliseconds (hsql/call :datediff (hsql/raw "milliseconds") x y)]
+  (let [milliseconds (hx/call :datediff (hx/raw "milliseconds") x y)]
     ;; millseconds needs to be cast to float because division rounds incorrectly with large integers
-    (hsql/call :trunc (hx// (hx/cast :float milliseconds)
-                            (case unit :hour 3600000 :minute 60000 :second 1000)))))
+    (hx/call :trunc (hx// (hx/cast :float milliseconds)
+                          (case unit :hour 3600000 :minute 60000 :second 1000)))))
 
 (defmethod sql.qp/datetime-diff [:snowflake :year]
   [driver _unit x y]
-  (hsql/call :trunc (hx// (sql.qp/datetime-diff driver :month x y) 12)))
+  (hx/call :trunc (hx// (sql.qp/datetime-diff driver :month x y) 12)))
 
 (defmethod sql.qp/datetime-diff [:snowflake :quarter]
   [driver _unit x y]
-  (hsql/call :trunc (hx// (sql.qp/datetime-diff driver :month x y) 3)))
+  (hx/call :trunc (hx// (sql.qp/datetime-diff driver :month x y) 3)))
 
 (defmethod sql.qp/datetime-diff [:snowflake :month]
   [_driver _unit x y]
@@ -272,17 +271,17 @@
         ;; datediff counts month boundaries not whole months, so we need to adjust
         ;; if x<y but x>y in the month calendar then subtract one month
         ;; if x>y but x<y in the month calendar then add one month
-        (hsql/call
+        (hx/call
          :case
-         (hsql/call :and (hsql/call :< x y) (hsql/call :> (time-zoned-extract :day x) (time-zoned-extract :day y)))
+         (hx/call :and (hx/call :< x y) (hx/call :> (time-zoned-extract :day x) (time-zoned-extract :day y)))
          -1
-         (hsql/call :and (hsql/call :> x y) (hsql/call :< (time-zoned-extract :day x) (time-zoned-extract :day y)))
+         (hx/call :and (hx/call :> x y) (hx/call :< (time-zoned-extract :day x) (time-zoned-extract :day y)))
          1
          :else 0)))
 
 (defmethod sql.qp/datetime-diff [:snowflake :week]
   [_driver _unit x y]
-  (hsql/call :trunc (hx// (time-zoned-datediff :day x y) 7)))
+  (hx/call :trunc (hx// (time-zoned-datediff :day x y) 7)))
 
 (defmethod sql.qp/datetime-diff [:snowflake :day]
   [_driver _unit x y]
@@ -294,7 +293,7 @@
 
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+  (hx/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 (defmethod sql.qp/->honeysql [:snowflake :median]
   [driver [_ arg]]
@@ -357,10 +356,10 @@
         timestamptz? (hx/is-of-type? hsql-form "timestamptz")]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
-          (hsql/call :convert_timezone target-timezone hsql-form)
+          (hx/call :convert_timezone target-timezone hsql-form)
           (->> hsql-form
-               (hsql/call :convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
-               (hsql/call :to_timestamp_ntz)))
+               (hx/call :convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
+               (hx/call :to_timestamp_ntz)))
         (hx/with-database-type-info "timestampntz"))))
 
 (defmethod driver/table-rows-seq :snowflake

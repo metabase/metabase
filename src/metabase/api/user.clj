@@ -2,7 +2,7 @@
   "/api/user endpoints"
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -100,9 +100,9 @@
   "Honeysql clause to shove into user query if there's a query"
   [query]
   [:or
-   [:like [:%lower.first_name] [(wildcard-query query)]]
-   [:like [:%lower.last_name] [(wildcard-query query)]]
-   [:like [:%lower.email] [(wildcard-query query)]]])
+   [:like :%lower.first_name (wildcard-query query)]
+   [:like :%lower.last_name  (wildcard-query query)]
+   [:like :%lower.email      (wildcard-query query)]])
 
 (defn- user-visible-columns
   "Columns of user table visible to current caller of API."
@@ -125,14 +125,14 @@
   - with include_deactivatved"
   [status query group_id include_deactivated]
   (cond-> {}
-        true (hh/merge-where (status-clause status include_deactivated))
-        true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                               (when (segmented-user?)
-                                 [:= :core_user.id api/*current-user-id*])))
-        (some? query) (hh/merge-where (query-clause query))
-        (some? group_id) (hh/merge-right-join :permissions_group_membership
-                                              [:= :core_user.id :permissions_group_membership.user_id])
-        (some? group_id) (hh/merge-where [:= :permissions_group_membership.group_id group_id])))
+    true             (sql.helpers/where (status-clause status include_deactivated))
+    true             (sql.helpers/where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                                          (when (segmented-user?)
+                                            [:= :core_user.id api/*current-user-id*])))
+    (some? query)    (sql.helpers/where (query-clause query))
+    (some? group_id) (sql.helpers/right-join :permissions_group_membership
+                                             [:= :core_user.id :permissions_group_membership.user_id])
+    (some? group_id) (sql.helpers/where [:= :permissions_group_membership.group_id group_id])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -159,12 +159,12 @@
     (validation/check-group-manager))
   (let [include_deactivated (Boolean/parseBoolean include_deactivated)]
     {:data   (cond-> (db/select
-                       (vec (cons User (user-visible-columns)))
-                       (cond-> (user-clauses status query group_id include_deactivated)
-                         (some? group_id) (hh/merge-order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
-                         true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                         (some? mw.offset-paging/*limit*)  (hh/limit mw.offset-paging/*limit*)
-                         (some? mw.offset-paging/*offset*) (hh/offset mw.offset-paging/*offset*)))
+                      (vec (cons User (user-visible-columns)))
+                      (cond-> (user-clauses status query group_id include_deactivated)
+                        (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
+                        true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                        (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
+                        (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*)))
                ;; For admins also include the IDs of Users' Personal Collections
                api/*is-superuser?*
                (hydrate :personal_collection_id)

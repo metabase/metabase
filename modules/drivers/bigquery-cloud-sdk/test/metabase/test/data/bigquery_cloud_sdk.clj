@@ -12,6 +12,7 @@
             [metabase.test.data.sql :as sql.tx]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
+            [metabase.util.log :as log]
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption
@@ -92,14 +93,14 @@
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
   (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
-  (println (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id)))
+  (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id)))
 
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
   (.delete (bigquery) dataset-id (u/varargs
                                    BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
-  (println (u/format-color 'red "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id)))
+  (log/error (u/format-color 'red "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id)))
 
 (defn execute!
   "Execute arbitrary (presumably DDL) SQL statements against the test project. Waits for statement to complete, throwing
@@ -107,7 +108,7 @@
   ^TableResult [format-string & args]
   (driver/with-driver :bigquery-cloud-sdk
     (let [sql (apply format format-string args)]
-      (printf "[BigQuery] %s\n" sql)
+      (log/infof "[BigQuery] %s\n" sql)
       (flush)
       (#'bigquery/execute-bigquery-on-db (data/db) sql nil nil nil))))
 
@@ -121,7 +122,7 @@
 (s/defn ^:private delete-table!
   [dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
   (.delete (bigquery) (TableId/of dataset-id table-id))
-  (println (u/format-color 'red "Deleted table `%s.%s.%s`" (project-id) dataset-id table-id)))
+  (log/error (u/format-color 'red "Deleted table `%s.%s.%s`" (project-id) dataset-id table-id)))
 
 (s/defn ^:private create-table!
   [^String dataset-id :- su/NonBlankString
@@ -139,7 +140,7 @@
     (.create (bigquery) tbl (u/varargs BigQuery$TableOption)))
   ;; now verify that the Table was created
   (.listTables (bigquery) dataset-id (u/varargs BigQuery$TableListOption))
-  (println (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id)))
+  (log/info (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
   (let [sql                           (format "SELECT count(*) FROM `%s.%s.%s`" (project-id) dataset-id table-id)
@@ -204,17 +205,16 @@
 (defn- insert-data! [^String dataset-id ^String table-id row-maps]
   {:pre [(seq dataset-id) (seq table-id) (sequential? row-maps) (seq row-maps) (every? map? row-maps)]}
   (doseq [chunk (partition-all max-rows-per-request row-maps)
-          :let  [_                           (println (format
-                                                        "Inserting %d rows like\n%s"
+          :let  [_                           (log/infof "Inserting %d rows like\n%s"
                                                         (count chunk)
-                                                        (u/pprint-to-str (first chunk))))
+                                                        (u/pprint-to-str (first chunk)))
                  req                         (rows->request dataset-id table-id chunk)
                  ^InsertAllResponse response (.insertAll (bigquery) req)]]
-    (println (u/format-color 'blue "Sent request to insert %d rows into `%s.%s.%s`"
-               (count (.getRows req))
-               (project-id) dataset-id table-id))
+    (log/info  (u/format-color 'blue "Sent request to insert %d rows into `%s.%s.%s`"
+                (count (.getRows req))
+                (project-id) dataset-id table-id))
     (when (seq (.getInsertErrors response))
-      (println "Error inserting rows:" (u/pprint-to-str (seq (.getInsertErrors response))))
+      (log/errorf "Error inserting rows: %s" (u/pprint-to-str (seq (.getInsertErrors response))))
       (throw (ex-info "Error inserting rows"
                       {:errors                       (seq (.getInsertErrors response))
                        :metabase.util/no-auto-retry? true
@@ -223,25 +223,24 @@
   ;; Wait up to 120 seconds for all the rows to be loaded and become available by BigQuery
   (let [max-wait-seconds   120
         expected-row-count (count row-maps)]
-    (println (format "Waiting for %d rows to be loaded..." expected-row-count))
+    (log/infof "Waiting for %d rows to be loaded..." expected-row-count)
     (loop [seconds-to-wait-for-load max-wait-seconds]
       (let [actual-row-count (table-row-count dataset-id table-id)]
         (cond
           (= expected-row-count actual-row-count)
           (do
-            (println (format "Loaded %d rows in %d seconds." expected-row-count (- max-wait-seconds seconds-to-wait-for-load)))
+            (log/infof "Loaded %d rows in %d seconds." expected-row-count (- max-wait-seconds seconds-to-wait-for-load))
             :ok)
 
           (> seconds-to-wait-for-load 0)
           (do (Thread/sleep 1000)
-              (print ".")
-              (flush)
+              (log/info ".")
               (recur (dec seconds-to-wait-for-load)))
 
           :else
           (let [error-message (format "Failed to load table data for `%s.%s.%s`: expected %d rows, loaded %d"
                                       (project-id) dataset-id table-id expected-row-count actual-row-count)]
-            (println (u/format-color 'red error-message))
+            (log/error (u/format-color 'red error-message))
             (throw (ex-info error-message {:metabase.util/no-auto-retry? true}))))))))
 
 (defn base-type->bigquery-type [base-type]
@@ -269,7 +268,7 @@
     (for [{:keys [field-name base-type]} field-definitions]
       [field-name (or (base-type->bigquery-type base-type)
                       (let [message (format "Don't know what BigQuery type to use for base type: %s" base-type)]
-                        (println (u/format-color 'red message))
+                        (log/error (u/format-color 'red message))
                         (throw (ex-info message {:metabase.util/no-auto-retry? true}))))]))))
 
 (defn- tabledef->prepared-rows
@@ -327,12 +326,12 @@
     (let [{transient-datasets true non-transient-datasets false} (group-by transient-dataset?
                                                                    (existing-dataset-names))]
       (reset! existing-datasets (set non-transient-datasets))
-      (println "These BigQuery datasets have already been loaded:\n" (u/pprint-to-str (sort @existing-datasets)))
+      (log/infof "These BigQuery datasets have already been loaded:\n%s" (u/pprint-to-str (sort @existing-datasets)))
       (when-let [outdated-transient-datasets (seq (filter transient-dataset-outdated? transient-datasets))]
-        (println (u/format-color
-                   'blue
-                   "These BigQuery datasets are transient, and more than two hours old; deleting them: %s`."
-                   (u/pprint-to-str (sort outdated-transient-datasets))))
+        (log/info (u/format-color
+                    'blue
+                    "These BigQuery datasets are transient, and more than two hours old; deleting them: %s`."
+                    (u/pprint-to-str (sort outdated-transient-datasets))))
         (doseq [delete-ds outdated-transient-datasets]
           (u/ignore-exceptions
             (destroy-dataset! delete-ds))))))
@@ -343,7 +342,7 @@
         (destroy-dataset! database-name))
       (u/auto-retry 2
         (try
-          (println (format "Creating dataset %s..." (pr-str database-name)))
+          (log/infof "Creating dataset %s..." (pr-str database-name))
           ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
           ;; again from a blank slate
           (destroy-dataset! database-name)
@@ -354,10 +353,10 @@
           (doseq [tabledef table-definitions]
             (load-tabledef! database-name tabledef))
           (swap! existing-datasets conj database-name)
-          (println (u/format-color 'green "Successfully created %s." (pr-str database-name)))
+          (log/info (u/format-color 'green "Successfully created %s." (pr-str database-name)))
           (catch Throwable e
-            (println (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str database-name)))
-            (println (u/pprint-to-str 'red (Throwable->map e)))
+            (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str database-name)))
+            (log/error (u/pprint-to-str 'red (Throwable->map e)))
             ;; if creating the dataset ultimately fails to complete, then delete it so it will hopefully
             ;; work next time around
             (u/ignore-exceptions

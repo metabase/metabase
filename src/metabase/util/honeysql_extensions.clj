@@ -6,6 +6,7 @@
    :exclude
    [+ - / * abs mod inc dec cast concat format second])
   (:require
+   [honeysql.core :as hsql]
    [metabase.util.honey-sql-1-extensions :as h1x]
    [metabase.util.honey-sql-2-extensions :as h2x]
    [schema.core :as s]))
@@ -360,3 +361,21 @@
   (case *honey-sql-version*
     1 (h1x/->AtTimeZone expr zone)
     2 (h2x/at-time-zone expr zone)))
+
+(defn call
+  "Like [[honeysql.core/call]] but works with either Honey SQL 1 or Honey SQL 2. Prefer using raw Honey SQL 2 code
+  directly unless you need HoneySQL 1 compatibility."
+  [f & args]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (case *honey-sql-version*
+    1 (apply hsql/call f args)
+    2 (apply vector f args)))
+
+(defn raw
+  "Like [[honeysql.core/raw]] but works with either Honey SQL 1 or Honey SQL 2. Prefer using raw Honey SQL 2 code
+  directly unless you need HoneySQL 1 compatibility."
+  [x]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (case *honey-sql-version*
+    1 (hsql/raw x)
+    2 [:raw x]))

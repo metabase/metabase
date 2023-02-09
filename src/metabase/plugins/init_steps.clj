@@ -5,11 +5,11 @@
 
   The entire list of possible init steps is below, as impls for the `do-init-step!` multimethod."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.plugins.classloader :as classloader]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 (defmulti ^:private do-init-step!
   "Perform a driver init step. Steps are listed in `init:` in the plugin manifest; impls for each step are found below

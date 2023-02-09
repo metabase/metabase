@@ -48,12 +48,6 @@ type Props = {
   checkedColor?: string;
 };
 
-type State = {
-  filter: Filter | null;
-  choosingField: boolean;
-  editingFilter: boolean;
-};
-
 export default function FilterPopover({
   isNew: isNewProp,
   filter: filterProp,

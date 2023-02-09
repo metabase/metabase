@@ -17,6 +17,7 @@ import Collections, {
   ROOT_COLLECTION,
   CollectionTreeItem,
 } from "metabase/entities/collections";
+import Databases from "metabase/entities/databases";
 import { logout } from "metabase/auth/actions";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
@@ -185,6 +186,9 @@ export default _.compose(
   }),
   Collections.loadList({
     query: () => ({ tree: true, "exclude-archived": true }),
+    loadingAndErrorWrapper: false,
+  }),
+  Databases.loadList({
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),

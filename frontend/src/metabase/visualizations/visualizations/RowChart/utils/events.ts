@@ -1,4 +1,5 @@
 import _ from "underscore";
+import { getIn } from "icepick";
 import {
   DatasetColumn,
   RowValue,
@@ -33,13 +34,17 @@ import { isMetric } from "metabase-lib/types/utils/isa";
 const getMetricColumnData = (
   columns: DatasetColumn[],
   metricDatum: MetricDatum,
+  visualizationSettings: VisualizationSettings,
 ) => {
   return Object.entries(metricDatum).map(([columnName, value]) => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const col = columns.find(column => column.name === columnName)!;
+    const key =
+      getIn(visualizationSettings, ["series_settings", col.name, "title"]) ??
+      col.display_name;
 
     return {
-      key: col.display_name,
+      key,
       value: formatNullable(value),
       col,
     };
@@ -81,6 +86,7 @@ const getColumnsData = (
   series: Series<GroupedDatum, unknown>,
   datum: GroupedDatum,
   datasetColumns: DatasetColumn[],
+  visualizationSettings: VisualizationSettings,
 ) => {
   const data = [
     {
@@ -104,7 +110,9 @@ const getColumnsData = (
     metricDatum = datum.metrics;
   }
 
-  data.push(...getMetricColumnData(datasetColumns, metricDatum));
+  data.push(
+    ...getMetricColumnData(datasetColumns, metricDatum, visualizationSettings),
+  );
 
   const otherColumnsDescriptiors = getColumnDescriptors(
     datasetColumns
@@ -124,7 +132,13 @@ export const getClickData = (
   datasetColumns: DatasetColumn[],
 ) => {
   const { series, datum } = bar;
-  const data = getColumnsData(chartColumns, series, datum, datasetColumns);
+  const data = getColumnsData(
+    chartColumns,
+    series,
+    datum,
+    datasetColumns,
+    visualizationSettings,
+  );
 
   const xValue = series.xAccessor(datum);
   const yValue = series.yAccessor(datum);
@@ -279,6 +293,7 @@ export const getHoverData = (
       bar.series,
       bar.datum,
       datasetColumns,
+      settings,
     );
 
     return {

@@ -1,26 +1,28 @@
 (ns metabase.driver.sqlite
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.sql :as driver.sql]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [tru]]
-            [schema.core :as s])
-  (:import [java.sql Connection ResultSet Types]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           java.time.temporal.Temporal))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [honeysql.format :as hformat]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.parameters.substitution
+    :as sql.params.substitution]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [tru]]
+   [schema.core :as s])
+  (:import
+   (java.sql Connection ResultSet Types)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.time.temporal Temporal)))
 
 (driver/register! :sqlite, :parent :sql-jdbc)
 
@@ -110,17 +112,17 @@
 
 ;; register the SQLite concatenation operator `||` with HoneySQL as `sqlite-concat`
 ;;
-;;    (hsql/format (hsql/call :sqlite-concat :a :b)) -> "(a || b)"
+;;    (hsql/format (hx/call :sqlite-concat :a :b)) -> "(a || b)"
 (defmethod hformat/fn-handler "sqlite-concat"
   [_ & args]
   (str "(" (str/join " || " (map hformat/to-sql args)) ")"))
 
-(def ^:private ->date     (partial hsql/call :date))
-(def ^:private ->datetime (partial hsql/call :datetime))
-(def ^:private ->time     (partial hsql/call :time))
+(def ^:private ->date     (partial hx/call :date))
+(def ^:private ->datetime (partial hx/call :datetime))
+(def ^:private ->time     (partial hx/call :time))
 
 (defn- strftime [format-str expr]
-  (hsql/call :strftime (hx/literal format-str) expr))
+  (hx/call :strftime (hx/literal format-str) expr))
 
 ;; See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html).
 
@@ -203,11 +205,11 @@
   (let [v (sql.qp/->honeysql driver expr)]
     (->date
      (->date v (hx/literal "start of month"))
-     (hsql/call :sqlite-concat
-       (hx/literal "-")
-       (hx/mod (hx/dec (strftime "%m" v))
-               3)
-       (hx/literal " months")))))
+     (hx/call :sqlite-concat
+              (hx/literal "-")
+              (hx/mod (hx/dec (strftime "%m" v))
+                      3)
+              (hx/literal " months")))))
 
 ;; q = (m + 2) / 3
 (defmethod sql.qp/date [:sqlite :quarter-of-year]
@@ -276,26 +278,26 @@
 (defmethod sql.qp/->honeysql [:sqlite :substring]
   [driver [_ arg start length]]
   (if length
-    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
-    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
+    (hx/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hx/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
 
 (defmethod sql.qp/->honeysql [:sqlite :concat]
   [driver [_ & args]]
   (apply
-   hsql/call :sqlite-concat
+   hx/call :sqlite-concat
    (mapv (partial sql.qp/->honeysql driver) args)))
 
 (defmethod sql.qp/->honeysql [:sqlite :floor]
   [_driver [_ arg]]
-  (hsql/call :round (hsql/call :- arg 0.5)))
+  (hx/call :round (hx/call :- arg 0.5)))
 
 (defmethod sql.qp/->honeysql [:sqlite :ceil]
   [_driver [_ arg]]
-  (hsql/call :case
-    ;; if we're ceiling a whole number, just cast it to an integer
-    ;; [:ceil 1.0] should returns 1
-    (hsql/call := (hsql/call :round arg) arg) (hx/->integer arg)
-    :else                                     (hsql/call :round (hsql/call :+ arg 0.5))))
+  (hx/call :case
+           ;; if we're ceiling a whole number, just cast it to an integer
+           ;; [:ceil 1.0] should returns 1
+           (hx/call := (hx/call :round arg) arg) (hx/->integer arg)
+           :else                                     (hx/call :round (hx/call :+ arg 0.5))))
 
 ;; See https://sqlite.org/lang_datefunc.html
 
@@ -310,33 +312,33 @@
 
 (defmethod sql.qp/->honeysql [:sqlite LocalDate]
   [_ t]
-  (hsql/call :date (hx/literal (u.date/format-sql t))))
+  (hx/call :date (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite LocalDateTime]
   [driver t]
   (if (zero-time? t)
     (sql.qp/->honeysql driver (t/local-date t))
-    (hsql/call :datetime (hx/literal (u.date/format-sql t)))))
+    (hx/call :datetime (hx/literal (u.date/format-sql t)))))
 
 (defmethod sql.qp/->honeysql [:sqlite LocalTime]
   [_ t]
-  (hsql/call :time (hx/literal (u.date/format-sql t))))
+  (hx/call :time (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite OffsetDateTime]
   [driver t]
   (if (zero-time? t)
     (sql.qp/->honeysql driver (t/local-date t))
-    (hsql/call :datetime (hx/literal (u.date/format-sql t)))))
+    (hx/call :datetime (hx/literal (u.date/format-sql t)))))
 
 (defmethod sql.qp/->honeysql [:sqlite OffsetTime]
   [_ t]
-  (hsql/call :time (hx/literal (u.date/format-sql t))))
+  (hx/call :time (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite ZonedDateTime]
   [driver t]
   (if (zero-time? t)
     (sql.qp/->honeysql driver (t/local-date t))
-    (hsql/call :datetime (hx/literal (u.date/format-sql t)))))
+    (hx/call :datetime (hx/literal (u.date/format-sql t)))))
 
 ;; SQLite defaults everything to UTC
 (defmethod driver.common/current-db-time-date-formatters :sqlite
@@ -357,7 +359,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :sqlite
   [_]
-  (hsql/call :datetime (hx/literal :now)))
+  (hx/call :datetime (hx/literal :now)))
 
 (defmethod sql.qp/datetime-diff [:sqlite :year]
   [driver _unit x y]
@@ -377,11 +379,11 @@
           ;; total-month-diff counts month boundaries not whole months, so we need to adjust
           ;; if x<y but x>y in the month calendar then subtract one month
           ;; if x>y but x<y in the month calendar then add one month
-          (hsql/call
+          (hx/call
            :case
-           (hsql/call :and (hsql/call :< x y) (hsql/call :> (extract :day-of-month x) (extract :day-of-month y)))
+           (hx/call :and (hx/call :< x y) (hx/call :> (extract :day-of-month x) (extract :day-of-month y)))
            -1
-           (hsql/call :and (hsql/call :> x y) (hsql/call :< (extract :day-of-month x) (extract :day-of-month y)))
+           (hx/call :and (hx/call :> x y) (hx/call :< (extract :day-of-month x) (extract :day-of-month y)))
            1
            :else 0))))
 
@@ -392,8 +394,8 @@
 (defmethod sql.qp/datetime-diff [:sqlite :day]
   [_driver _unit x y]
   (hx/->integer
-   (hx/- (hsql/call :julianday y (hx/literal "start of day"))
-         (hsql/call :julianday x (hx/literal "start of day")))))
+   (hx/- (hx/call :julianday y (hx/literal "start of day"))
+         (hx/call :julianday x (hx/literal "start of day")))))
 
 (defmethod sql.qp/datetime-diff [:sqlite :hour]
   [driver _unit x y]

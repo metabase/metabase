@@ -23,19 +23,19 @@ The databases listed below have official drivers maintained by the Metabase team
 
 - [Amazon Athena](./connections/athena.md)
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
-- Druid
+- [Druid](./connections/druid.md)
 - [Google Analytics](./connections/google-analytics.md)
 - [H2](./connections/h2.md)
 - [MongoDB (version 4.2 or higher)](./connections/mongodb.md)
 - [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](./connections/mysql.md)
 - [Oracle](./connections/oracle.md)
-- [PostgreSQL](connections/postgresql.md)
-- Presto
+- [PostgreSQL](./connections/postgresql.md)
+- [Presto](./connections/presto.md)
 - [Redshift (Amazon Web Services)](./connections/redshift.md)
 - [Snowflake](./connections/snowflake.md)
-- SparkSQL
-- SQL Server
-- SQLite
+- [SparkSQL](./connections/sparksql.md)
+- [SQL Server](./connections/sql-server.md)
+- [SQLite](./connections/sqlite.md)
 - [Vertica](./connections/vertica.md)
 
 If you don't see your database listed here, see [partner and community drivers](../developers-guide/partner-and-community-drivers.md#partner-drivers).
@@ -84,7 +84,7 @@ A Metabase **sync** is a query that gets a list of updated table and view names,
 
 ### How database scans work
 
-A Metabase **scan** is a query that caches the column _values_ for filter dropdowns by looking at the first 1,000 distinct records from each table, in ascending order. For each record, Metabase only stores the first 100 kilobytes of text, so if you have data with 1,000 characters each (like addresses), and your column has more than 200 unique addresses, Metabase will only cache the first 100 values from the scan query.
+A Metabase **scan** is a query that caches the column _values_ for filter dropdowns by looking at the first 1,000 distinct records from each table, in ascending order. For each record, Metabase only stores the first 100 kilobytes of text, so if you have data with 1,000 characters each (like addresses), and your column has more than 100 unique addresses, Metabase will only cache the first 100 values from the scan query.
 
 Cached column values are displayed in filter dropdown menus. If people type in the filter search box for values that aren't in the first 1,000 distinct records or 100kB of text, Metabase will run a query against your database to look for those values on the fly.
 

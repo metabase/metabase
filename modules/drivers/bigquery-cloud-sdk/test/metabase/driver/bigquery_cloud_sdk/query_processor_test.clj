@@ -1,26 +1,27 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.bigquery-cloud-sdk :as bigquery]
-            [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Database Field Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
-            [metabase.test.util :as tu]
-            [metabase.test.util.timezone :as test.tz]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.bigquery-cloud-sdk :as bigquery]
+   [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Database Field Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
+   [metabase.test.util :as tu]
+   [metabase.test.util.timezone :as test.tz]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan.util.test :as tt]))
 
 (deftest native-query-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -263,13 +264,13 @@
    (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery-cloud-sdk :seconds :some_field)]
      {:value unix-ts
       :type  :timestamp
-      :as    {:date     (hsql/call :date unix-ts)
-              :datetime (hsql/call :datetime unix-ts)}})
+      :as    {:date     (hx/call :date unix-ts)
+              :datetime (hx/call :datetime unix-ts)}})
    (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery-cloud-sdk :milliseconds :some_field)]
      {:value unix-ts
       :type  :timestamp
-      :as    {:date     (hsql/call :date unix-ts)
-              :datetime (hsql/call :datetime unix-ts)}})])
+      :as    {:date     (hx/call :date unix-ts)
+              :datetime (hx/call :datetime unix-ts)}})])
 
 (deftest temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
@@ -344,10 +345,10 @@
                                                                       ::bigquery.qp/do-not-qualify? true)
                                            expected-identifier (case temporal-type
                                                                  :date      (hx/with-database-type-info identifier "date")
-                                                                 :datetime  (hsql/call :timestamp identifier)
+                                                                 :datetime  (hx/call :timestamp identifier)
                                                                  :timestamp (hx/with-database-type-info identifier "timestamp"))]]
               (testing (format "\ntemporal-type = %s" temporal-type)
-                (is (= [:= (hsql/call :extract :dayofweek expected-identifier) 1]
+                (is (= [:= (hx/call :extract :dayofweek expected-identifier) 1]
                        (sql.qp/->honeysql :bigquery-cloud-sdk [:= [:field (:id field) {:temporal-unit     :day-of-week
                                                                                        ::add/source-table "ABC"}] 1])))))))))))
 
@@ -481,7 +482,7 @@
                 (t/local-date-time "2019-11-11T00:00")
                 (t/local-date-time "2019-11-12T00:00")]
                (between->sql [:between
-                              (with-meta (hsql/raw "field") {:bigquery-cloud-sdk/temporal-type :datetime})
+                              (with-meta (hx/raw "field") {:bigquery-cloud-sdk/temporal-type :datetime})
                               (t/local-date "2019-11-11")
                               (t/local-date "2019-11-12")]))))
       (testing "If first arg has no temporal-type info, should look at next arg"
@@ -489,7 +490,7 @@
                 (t/local-date "2019-11-11")
                 (t/local-date "2019-11-12")]
                (between->sql [:between
-                              (hsql/raw "field")
+                              (hx/raw "field")
                               (t/local-date "2019-11-11")
                               (t/local-date "2019-11-12")]))))
       (testing "No need to cast if args agree on temporal type"
@@ -497,7 +498,7 @@
                 (t/local-date "2019-11-11")
                 (t/local-date "2019-11-12")]
                (between->sql [:between
-                              (with-meta (hsql/raw "field") {:bigquery-cloud-sdk/temporal-type :date})
+                              (with-meta (hx/raw "field") {:bigquery-cloud-sdk/temporal-type :date})
                               (t/local-date "2019-11-11")
                               (t/local-date "2019-11-12")]))))
       (mt/test-driver :bigquery-cloud-sdk

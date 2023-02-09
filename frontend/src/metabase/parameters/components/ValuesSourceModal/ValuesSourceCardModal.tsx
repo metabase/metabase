@@ -19,6 +19,7 @@ import {
   Card,
   CardId,
   Collection,
+  Parameter,
   ValuesSourceConfig,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
@@ -41,7 +42,7 @@ const DATA_PICKER_FILTERS = {
 };
 
 interface ModalOwnProps {
-  name: string;
+  parameter: Parameter;
   sourceConfig: ValuesSourceConfig;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onSubmit: () => void;
@@ -72,7 +73,7 @@ type ModalProps = ModalOwnProps &
   ModalDispatchProps;
 
 const ValuesSourceCardModal = ({
-  name,
+  parameter,
   question,
   collection,
   onFetchCard,
@@ -100,7 +101,7 @@ const ValuesSourceCardModal = ({
   return (
     <DataPicker.Provider>
       <ModalContent
-        title={t`Selectable values for ${name}`}
+        title={t`Selectable values for ${parameter.name}`}
         footer={[
           <Button key="cancel" onClick={onSubmit}>{t`Back`}</Button>,
           <Button

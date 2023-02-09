@@ -1,30 +1,31 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:require [clojure.data.xml :as xml]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [honeysql.helpers :as hh]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.sql :as driver.sql]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
-  (:import [java.sql Connection ResultSet Time]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
+  (:require
+   [clojure.data.xml :as xml]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [honeysql.helpers :as hh]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
+  (:import
+   (java.sql Connection ResultSet Time)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
@@ -130,13 +131,13 @@
 
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
-  (hsql/call :datepart (hsql/raw (name unit)) expr))
+  (hx/call :datepart (hx/raw (name unit)) expr))
 
 (defn- date-add [unit & exprs]
-  (apply hsql/call :dateadd (hsql/raw (name unit)) exprs))
+  (apply hx/call :dateadd (hx/raw (name unit)) exprs))
 
 (defn- date-diff [unit x y]
-  (hsql/call :datediff_big (hsql/raw (name unit)) x y))
+  (hx/call :datediff_big (hx/raw (name unit)) x y))
 
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
 ;; details on the functions we're using.
@@ -159,7 +160,7 @@
 
 (defmethod sql.qp/date [:sqlserver :hour]
   [_ _ expr]
-  (hsql/call :datetime2fromparts (hx/year expr) (hx/month expr) (hx/day expr) (date-part :hour expr) 0 0 0 0))
+  (hx/call :datetime2fromparts (hx/year expr) (hx/month expr) (hx/day expr) (date-part :hour expr) 0 0 0 0))
 
 (defmethod sql.qp/date [:sqlserver :hour-of-day]
   [_ _ expr]
@@ -171,7 +172,7 @@
   ;; SQL functions like `day()` that don't return a full DATE. See `optimized-temporal-buckets` below for more info.
   (if (::optimized-bucketing? *field-options*)
     (hx/day expr)
-    (hsql/call :DateFromParts (hx/year expr) (hx/month expr) (hx/day expr))))
+    (hx/call :DateFromParts (hx/year expr) (hx/month expr) (hx/day expr))))
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_ _ expr]
@@ -208,7 +209,7 @@
   [_ _ expr]
   (if (::optimized-bucketing? *field-options*)
     (hx/month expr)
-    (hsql/call :DateFromParts (hx/year expr) (hx/month expr) 1)))
+    (hx/call :DateFromParts (hx/year expr) (hx/month expr) 1)))
 
 (defmethod sql.qp/date [:sqlserver :month-of-year]
   [_ _ expr]
@@ -221,7 +222,7 @@
   [_ _ expr]
   (date-add :quarter
             (hx/dec (date-part :quarter expr))
-            (hsql/call :DateFromParts (hx/year expr) 1 1)))
+            (hx/call :DateFromParts (hx/year expr) 1 1)))
 
 (defmethod sql.qp/date [:sqlserver :quarter-of-year]
   [_ _ expr]
@@ -231,7 +232,7 @@
   [_ _ expr]
   (if (::optimized-bucketing? *field-options*)
     (hx/year expr)
-    (hsql/call :DateFromParts (hx/year expr) 1 1)))
+    (hx/call :DateFromParts (hx/year expr) 1 1)))
 
 (defmethod sql.qp/date [:sqlserver :year-of-era]
   [_ _ expr]
@@ -308,10 +309,10 @@
         ;; datediff counts month boundaries not whole months, so we need to adjust
         ;; if x<y but x>y in the month calendar then subtract one month
         ;; if x>y but x<y in the month calendar then add one month
-        (hsql/call
+        (hx/call
          :case
-         (hsql/call :and (hsql/call :< x y) (hsql/call :> (date-part :day x) (date-part :day y))) -1
-         (hsql/call :and (hsql/call :> x y) (hsql/call :< (date-part :day x) (date-part :day y))) 1
+         (hx/call :and (hx/call :< x y) (hx/call :> (date-part :day x) (date-part :day y))) -1
+         (hx/call :and (hx/call :> x y) (hx/call :< (date-part :day x) (date-part :day y))) 1
          :else 0)))
 
 (defmethod sql.qp/datetime-diff [:sqlserver :week] [_driver _unit x y] (hx// (date-diff :day x y) 7))
@@ -329,7 +330,7 @@
   ;; "20190421164300" -> "2019-04-21 16:43:00"
   ;;                          5  8  11 14 17
   (let [formatted (reduce (fn [expr [index c]]
-                            (hsql/call :stuff expr index 0 c))
+                            (hx/call :stuff expr index 0 c))
                           expr
                           [[5 "-"]
                            [8 "-"]
@@ -339,7 +340,7 @@
     ;; 20 is ODBC canonical yyyy-mm-dd hh:mi:ss (24h). I couldn't find a way to use an arbitrary format string when
     ;; parsing and SO seems to push towards manually formatting a string and then parsing with one of the available
     ;; formats. Not great.
-    (hsql/call :convert (hsql/raw "datetime2") formatted 20)))
+    (hx/call :convert (hx/raw "datetime2") formatted 20)))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]
   [_ _ honeysql-form {value :limit}]
@@ -347,9 +348,9 @@
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :page]
   [_ _ honeysql-form {{:keys [items page]} :page}]
-  (assoc honeysql-form :offset (hsql/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
-                                                 (* items (dec page))
-                                                 items))))
+  (assoc honeysql-form :offset (hx/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
+                                               (* items (dec page))
+                                               items))))
 
 (defn- optimized-temporal-buckets
   "If `field-clause` is being truncated temporally to `:year`, `:month`, or `:day`, return a optimized set of
@@ -448,33 +449,33 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :stddev]
   [driver [_ field]]
-  (hsql/call :stdevp (sql.qp/->honeysql driver field)))
+  (hx/call :stdevp (sql.qp/->honeysql driver field)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :var]
   [driver [_ field]]
-  (hsql/call :varp (sql.qp/->honeysql driver field)))
+  (hx/call :varp (sql.qp/->honeysql driver field)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :substring]
   [driver [_ arg start length]]
   (if length
-    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
-    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (hsql/call :len (sql.qp/->honeysql driver arg)))))
+    (hx/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hx/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (hx/call :len (sql.qp/->honeysql driver arg)))))
 
 (defmethod sql.qp/->honeysql [:sqlserver :length]
   [driver [_ arg]]
-  (hsql/call :len (sql.qp/->honeysql driver arg)))
+  (hx/call :len (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :ceil]
   [driver [_ arg]]
-  (hsql/call :ceiling (sql.qp/->honeysql driver arg)))
+  (hx/call :ceiling (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :round]
   [driver [_ arg]]
-  (hsql/call :round (hx/cast :float (sql.qp/->honeysql driver arg)) 0))
+  (hx/call :round (hx/cast :float (sql.qp/->honeysql driver arg)) 0))
 
 (defmethod sql.qp/->honeysql [:sqlserver :power]
   [driver [_ arg power]]
-  (hsql/call :power (hx/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)))
+  (hx/call :power (hx/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ arg]]

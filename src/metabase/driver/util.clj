@@ -4,7 +4,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
@@ -13,6 +12,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db])

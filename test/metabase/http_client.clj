@@ -7,7 +7,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.test :as t]
-   [clojure.tools.logging :as log]
    [java-time]
    [metabase.config :as config]
    [metabase.server.middleware.session :as mw.session]
@@ -15,6 +14,7 @@
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as schema]))
@@ -123,7 +123,7 @@
       (or (:id response)
           (throw (ex-info "Unexpected response" {:response response}))))
     (catch Throwable e
-      (println "Failed to authenticate with credentials" credentials e)
+      (log/errorf "Failed to authenticate with credentials %s %s" credentials e)
       (throw (ex-info "Failed to authenticate with credentials"
                       {:credentials credentials}
                       e)))))

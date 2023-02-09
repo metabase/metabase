@@ -4,7 +4,6 @@
    like running MBQL queries and fetching values to do things like determine Table row counts
    and infer field semantic types."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.models.field :refer [Field]]
    [metabase.sync.analyze.classify :as classify]
    [metabase.sync.analyze.fingerprint :as fingerprint]
@@ -12,6 +11,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db]))
 

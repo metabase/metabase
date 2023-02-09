@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.normalize-query
   "Middleware that converts a query into a normalized, canonical form."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn normalize
   "Middleware that converts a query into a normalized, canonical form, including things like converting all identifiers

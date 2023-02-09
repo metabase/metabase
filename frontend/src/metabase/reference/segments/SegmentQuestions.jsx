@@ -31,7 +31,7 @@ import {
 const emptyStateData = (table, segment) => {
   return {
     message: t`Questions about this segment will appear here as they're added`,
-    icon: "all",
+    icon: "folder",
     action: t`Ask a question`,
     link: getQuestionUrl({
       dbId: table && table.db_id,

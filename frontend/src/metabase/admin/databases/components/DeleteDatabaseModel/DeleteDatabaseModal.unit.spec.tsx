@@ -130,4 +130,15 @@ describe("DeleteDatabaseModal", () => {
 
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
   });
+
+  it("shows a loader while fetching usage info", () => {
+    useFetchMock.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as any);
+
+    setup();
+
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+  });
 });

@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { t } from "ttag";
 
 import type {
   WritebackQueryAction,

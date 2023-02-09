@@ -86,7 +86,10 @@ describe("issue 17514", () => {
 
       openVisualizationOptions();
 
-      hideColumn("Products → Ean");
+      cy.findByTestId("chartsettings-sidebar").within(() => {
+        cy.findByText("Add or remove columns").click();
+        cy.findByText("Ean").click();
+      });
 
       closeModal();
 
@@ -150,12 +153,6 @@ describe("issue 17514", () => {
 function openVisualizationOptions() {
   showDashboardCardActions();
   cy.icon("palette").click({ force: true });
-}
-
-function hideColumn(columnName) {
-  cy.findByTestId("chartsettings-sidebar").within(() => {
-    cy.findByText(columnName).siblings(".Icon-eye_outline").click();
-  });
 }
 
 function closeModal() {

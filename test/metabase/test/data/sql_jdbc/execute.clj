@@ -2,10 +2,10 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.test.data.interface :as tx]
-   [metabase.test.data.sql-jdbc.spec :as spec])
+   [metabase.test.data.sql-jdbc.spec :as spec]
+   [metabase.util.log :as log])
   (:import
    (java.sql SQLException)))
 
@@ -28,14 +28,14 @@
         (try
           (execute! (spec/dbdef->spec driver context dbdef) sql)
           (catch SQLException e
-            (println "Error executing SQL:" sql)
-            (printf "Caught SQLException:\n%s\n"
-                    (with-out-str (jdbc/print-sql-exception-chain e)))
+            (log/errorf "Error executing SQL: %s" sql)
+            (log/errorf "Caught SQLException:\n%s\n"
+                        (with-out-str (jdbc/print-sql-exception-chain e)))
             (throw e))
           (catch Throwable e
-            (println "Error executing SQL:" sql)
-            (printf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
-                    (with-out-str (.printStackTrace e)))
+            (log/errorf "Error executing SQL: %s" sql)
+            (log/errorf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
+                        (with-out-str (.printStackTrace e)))
             (throw e)))))))
 
 (defn sequentially-execute-sql!

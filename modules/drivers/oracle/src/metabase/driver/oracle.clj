@@ -2,8 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
    [honeysql.format :as hformat]
    [java-time :as t]
    [metabase.config :as config]
@@ -16,9 +14,11 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
-   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.describe-table
+    :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
+   [metabase.driver.sql.query-processor.empty-string-is-null
+    :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.models.secret :as secret]
@@ -26,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.ssh :as ssh])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
@@ -184,29 +185,29 @@
 
       (trunc :day v) -> TRUNC(v, 'day')"
   [format-template v]
-  (-> (hsql/call :trunc v (hx/literal format-template))
+  (-> (hx/call :trunc v (hx/literal format-template))
       ;; trunc() returns a date -- see https://docs.oracle.com/cd/E11882_01/server.112/e10729/ch4datetime.htm#NLSPG253
       (hx/with-database-type-info "date")))
 
 (defmethod sql.qp/date [:oracle :second-of-minute] [_ _ v] (->> v
                                                                 hx/->timestamp
-                                                                (hsql/call :extract :second)
-                                                                (hsql/call :floor)
+                                                                (hx/call :extract :second)
+                                                                (hx/call :floor)
                                                                 hx/->integer))
 
 (defmethod sql.qp/date [:oracle :minute]           [_ _ v] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
-(defmethod sql.qp/date [:oracle :minute-of-hour]   [_ _ v] (hsql/call :extract :minute (hx/->timestamp v)))
+(defmethod sql.qp/date [:oracle :minute-of-hour]   [_ _ v] (hx/call :extract :minute (hx/->timestamp v)))
 (defmethod sql.qp/date [:oracle :hour]             [_ _ v] (trunc :hh v))
-(defmethod sql.qp/date [:oracle :hour-of-day]      [_ _ v] (hsql/call :extract :hour (hx/->timestamp v)))
+(defmethod sql.qp/date [:oracle :hour-of-day]      [_ _ v] (hx/call :extract :hour (hx/->timestamp v)))
 (defmethod sql.qp/date [:oracle :day]              [_ _ v] (trunc :dd v))
-(defmethod sql.qp/date [:oracle :day-of-month]     [_ _ v] (hsql/call :extract :day v))
+(defmethod sql.qp/date [:oracle :day-of-month]     [_ _ v] (hx/call :extract :day v))
 ;; [SIC] The format template for truncating to start of week is 'day' in Oracle #WTF
 (defmethod sql.qp/date [:oracle :month]            [_ _ v] (trunc :month v))
-(defmethod sql.qp/date [:oracle :month-of-year]    [_ _ v] (hsql/call :extract :month v))
+(defmethod sql.qp/date [:oracle :month-of-year]    [_ _ v] (hx/call :extract :month v))
 (defmethod sql.qp/date [:oracle :quarter]          [_ _ v] (trunc :q v))
 (defmethod sql.qp/date [:oracle :year]             [_ _ v] (trunc :year v))
-(defmethod sql.qp/date [:oracle :year-of-era]      [_ _ v] (hsql/call :extract :year v))
+(defmethod sql.qp/date [:oracle :year-of-era]      [_ _ v] (hx/call :extract :year v))
 
 (defmethod sql.qp/date [:oracle :week]
   [driver _ v]
@@ -215,7 +216,7 @@
 (defmethod sql.qp/date [:oracle :week-of-year-iso]
   [_ _ v]
   ;; the full list of format elements is in https://docs.oracle.com/cd/B19306_01/server.102/b14200/sql_elements004.htm#i34924
-  (hx/->integer (hsql/call :to_char v (hx/literal :iw))))
+  (hx/->integer (hx/call :to_char v (hx/literal :iw))))
 
 (defmethod sql.qp/date [:oracle :day-of-year]
   [driver _ v]
@@ -232,28 +233,28 @@
   [driver _ v]
   (sql.qp/adjust-day-of-week
    driver
-   (hx/->integer (hsql/call :to_char v (hx/literal :d)))
+   (hx/->integer (hx/call :to_char v (hx/literal :d)))
    (driver.common/start-of-week-offset driver)
-   (partial hsql/call (u/qualified-name ::mod))))
+   (partial hx/call (u/qualified-name ::mod))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :oracle
   [_]
-  (-> (hsql/raw "CURRENT_TIMESTAMP")
+  (-> (hx/raw "CURRENT_TIMESTAMP")
       (hx/with-database-type-info "timestamp with time zone")))
 
 (defmethod sql.qp/->honeysql [:oracle :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr          (sql.qp/->honeysql driver arg)
         has-timezone? (hx/is-of-type? expr #"timestamp(\(\d\))? with time zone")]
-   (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
-   (-> (if has-timezone?
-         expr
-         (hsql/call :from_tz expr (or source-timezone (qp.timezone/results-timezone-id))))
-       (hx/at-time-zone target-timezone)
-       hx/->timestamp)))
+    (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
+    (-> (if has-timezone?
+          expr
+          (hx/call :from_tz expr (or source-timezone (qp.timezone/results-timezone-id))))
+        (hx/at-time-zone target-timezone)
+        hx/->timestamp)))
 
-(defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
-(defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
+(defn- num-to-ds-interval [unit v] (hx/call :numtodsinterval v (hx/literal unit)))
+(defn- num-to-ym-interval [unit v] (hx/call :numtoyminterval v (hx/literal unit)))
 
 (def ^:private legacy-max-identifier-length
   "Maximal identifier length for Oracle < 12.2"
@@ -269,18 +270,18 @@
 (defmethod sql.qp/->honeysql [:oracle :substring]
   [driver [_ arg start length]]
   (if length
-    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
-    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
+    (hx/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hx/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
 
 (defmethod sql.qp/->honeysql [:oracle :concat]
   [driver [_ & args]]
   (->> args
        (map (partial sql.qp/->honeysql driver))
-       (reduce (partial hsql/call :concat))))
+       (reduce (partial hx/call :concat))))
 
 (defmethod sql.qp/->honeysql [:oracle :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+  (hx/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 (def ^:private timestamp-types
   #{"timestamp" "timestamp with time zone" "timestamp with local time zone"})
@@ -296,7 +297,7 @@
   (hx/cast-unless-type-in "date" (conj timestamp-types "date") hsql-form))
 
 (defn- add-months [hsql-form amount]
-  (-> (hsql/call :add_months (cast-to-date-if-needed hsql-form) amount)
+  (-> (hx/call :add_months (cast-to-date-if-needed hsql-form) amount)
       (hx/with-database-type-info "date")))
 
 (defmethod sql.qp/add-interval-honeysql-form :oracle
@@ -310,33 +311,33 @@
     :minute  (hx/+ (cast-to-timestamp-if-needed hsql-form) (num-to-ds-interval :minute amount))
     :hour    (hx/+ (cast-to-timestamp-if-needed hsql-form) (num-to-ds-interval :hour   amount))
     :day     (hx/+ (cast-to-date-if-needed hsql-form)      (num-to-ds-interval :day    amount))
-    :week    (hx/+ (cast-to-date-if-needed hsql-form)      (num-to-ds-interval :day    (hx/* amount (hsql/raw 7))))
+    :week    (hx/+ (cast-to-date-if-needed hsql-form)      (num-to-ds-interval :day    (hx/* amount (hx/raw 7))))
     :year    (hx/+ (cast-to-date-if-needed hsql-form)      (num-to-ym-interval :year   amount))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :seconds]
   [_ _ field-or-value]
-  (hx/+ (hsql/raw "timestamp '1970-01-01 00:00:00 UTC'")
+  (hx/+ (hx/raw "timestamp '1970-01-01 00:00:00 UTC'")
         (num-to-ds-interval :second field-or-value)))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
-  (hsql/call :to_timestamp expr "YYYY-MM-DD HH:mi:SS"))
+  (hx/call :to_timestamp expr "YYYY-MM-DD HH:mi:SS"))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->Date]
   [_driver _coercion-strategy expr]
-  (hsql/call :to_date expr "YYYY-MM-DD"))
+  (hx/call :to_date expr "YYYY-MM-DD"))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  (hsql/call :to_timestamp expr "YYYYMMDDHH24miSS"))
+  (hx/call :to_timestamp expr "YYYYMMDDHH24miSS"))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
   [driver _ field-or-value]
-  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000))))
+  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hx/raw 1000))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :microseconds]
   [driver _ field-or-value]
-  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000000))))
+  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hx/raw 1000000))))
 
 (defn- time-zoned-trunc
   "Same as [[trunc]], but truncates `x` to `unit` in the results timezone
@@ -357,7 +358,7 @@
 
 (defmethod sql.qp/datetime-diff [:oracle :month]
   [_driver _unit x y]
-  (hsql/call :MONTHS_BETWEEN (time-zoned-trunc :dd y) (time-zoned-trunc :dd x)))
+  (hx/call :MONTHS_BETWEEN (time-zoned-trunc :dd y) (time-zoned-trunc :dd x)))
 
 (defmethod sql.qp/datetime-diff [:oracle :week]
   [driver _unit x y]
@@ -423,7 +424,7 @@
    :from   [(-> (merge {:select [:*]}
                        honeysql-query)
                 (update :select sql.u/select-clause-deduplicate-aliases))]
-   :where  [:<= (hsql/raw "rownum") value]})
+   :where  [:<= (hx/raw "rownum") value]})
 
 (defmethod sql.qp/apply-top-level-clause [:oracle :page]
   [driver _ honeysql-query {{:keys [items page]} :page}]
@@ -433,11 +434,11 @@
       (sql.qp/apply-top-level-clause driver :limit honeysql-query {:limit items})
       ;; if we need to do an offset we have to do double-nesting
       {:select [:*]
-       :from   [{:select [:__table__.* [(hsql/raw "rownum") :__rownum__]]
+       :from   [{:select [:__table__.* [(hx/raw "rownum") :__rownum__]]
                  :from   [[(merge {:select [:*]}
                                   honeysql-query)
                            :__table__]]
-                 :where  [:<= (hsql/raw "rownum") (+ offset items)]}]
+                 :where  [:<= (hx/raw "rownum") (+ offset items)]}]
        :where  [:> :__rownum__ offset]})))
 
 

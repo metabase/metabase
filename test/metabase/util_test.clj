@@ -329,7 +329,7 @@
               (shuffle (range 30))))))
 
 (defspec sorted-take-test-size
-  (prop/for-all [coll (gen/list (gen/tuple gen/int gen/string))
+  (prop/for-all [coll (gen/list (gen/tuple gen/small-integer gen/string))
                  size (gen/fmap inc gen/nat)]
     (= (vec (take-last size (sort coll)))
        (transduce (map identity)
@@ -337,7 +337,7 @@
                   coll))))
 
 (defspec sorted-take-test-comparator
-  (prop/for-all [coll (gen/list (gen/fmap (fn [x] {:score x}) gen/int))
+  (prop/for-all [coll (gen/list (gen/fmap (fn [x] {:score x}) gen/small-integer))
                  size (gen/fmap inc gen/nat)]
     (let [coll    (shuffle coll)
           kompare (fn [{score-1 :score} {score-2 :score}]
@@ -362,7 +362,7 @@
     true  "cam.saul+1@metabase.com"   "metabase.com"))
 
 (defspec pick-first-test 100
-  (prop/for-all [coll (gen/list gen/int)]
+  (prop/for-all [coll (gen/list gen/small-integer)]
     (let [result (u/pick-first pos? coll)]
       (or (and (nil? result)
                (every? (complement pos?) coll))

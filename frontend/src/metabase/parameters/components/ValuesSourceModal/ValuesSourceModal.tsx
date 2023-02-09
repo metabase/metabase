@@ -1,15 +1,15 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Parameter,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
 import {
   getSourceConfig,
   getSourceConfigForType,
   getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
+import { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
 import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 import ValuesSourceCardModal from "./ValuesSourceCardModal";
 
@@ -30,12 +30,8 @@ const ValuesSourceModal = ({
   onClose,
 }: ModalProps): JSX.Element => {
   const [step, setStep] = useState<ModalStep>("main");
-  const [sourceType, setSourceType] = useState(getSourceType(parameter));
+  const [sourceType, setSourceType] = useState(getInitialSourceType(parameter));
   const [sourceConfig, setSourceConfig] = useState(getSourceConfig(parameter));
-
-  const fields = useMemo(() => {
-    return getNonVirtualFields(parameter);
-  }, [parameter]);
 
   const handlePickerOpen = useCallback(() => {
     setStep("card");
@@ -52,8 +48,7 @@ const ValuesSourceModal = ({
 
   return step === "main" ? (
     <ValuesSourceTypeModal
-      name={parameter.name}
-      fields={fields}
+      parameter={parameter}
       sourceType={sourceType}
       sourceConfig={sourceConfig}
       onChangeSourceType={setSourceType}
@@ -64,13 +59,21 @@ const ValuesSourceModal = ({
     />
   ) : (
     <ValuesSourceCardModal
-      name={parameter.name}
+      parameter={parameter}
       sourceConfig={sourceConfig}
       onChangeSourceConfig={setSourceConfig}
       onSubmit={handlePickerClose}
       onClose={onClose}
     />
   );
+};
+
+const getInitialSourceType = (parameter: ParameterWithTemplateTagTarget) => {
+  const sourceType = getSourceType(parameter);
+
+  return sourceType === null && parameter.hasVariableTemplateTagTarget
+    ? "card"
+    : sourceType;
 };
 
 export default ValuesSourceModal;

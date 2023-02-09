@@ -7,15 +7,19 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [schema.core :as s]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;; let's make sure the `:metabase-query`/`:metric-segment-definition`/`::dashboard-card/parameter-mappings`
 ;; normalization functions respond gracefully to invalid stuff when pulling them out of the Database. See #8914
 
 (defn type-fn [toucan-type in-or-out]
-  (-> @@#'models/type-fns toucan-type in-or-out))
+  (@#'models/type-fn toucan-type in-or-out))
 
 (deftest ^:parallel handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
@@ -73,6 +77,18 @@
          (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
            ((type-fn :parameters-list :in)
             [{:target [:dimension [:field "ABC" nil]]}]))))))
+
+(deftest timestamped-property-test
+  (testing "Make sure updated_at gets updated for timestamped models"
+    (t2.with-temp/with-temp [Table table {:updated_at #t "2023-02-02T01:00:00"}]
+      (let [updated-at (:updated_at table)
+            new-name   (u/qualified-name ::a-new-name)]
+        (is (= 1
+               (t2/update! table (u/the-id table) {:name new-name})))
+        (is (=? {:id         (:id table)
+                 :name       new-name
+                 :updated_at (partial not= updated-at)}
+                (t2/select-one [Table :id :name :updated_at] (u/the-id table))))))))
 
 (deftest timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"

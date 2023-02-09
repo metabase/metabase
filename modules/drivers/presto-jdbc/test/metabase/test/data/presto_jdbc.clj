@@ -14,7 +14,8 @@
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.log :as log])
   (:import [java.sql Connection DriverManager PreparedStatement]))
 
 (sql-jdbc.tx/add-test-extensions! :presto-jdbc)
@@ -119,7 +120,7 @@
             (sql-jdbc.execute/set-parameters! driver stmt params)
             (let [tbl-nm        ((comp last :components) (into {} table-identifier))
                   rows-affected (.executeUpdate stmt)]
-              (println (format "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm))))
+              (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm)))
           (catch Throwable e
             (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
                      {:driver driver, :sql sql, :params params}

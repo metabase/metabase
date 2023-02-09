@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { CSSTransitionGroup } from "react-transition-group";
+import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
 import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
@@ -158,34 +158,37 @@ export default class SaveQuestionModal extends Component {
                 hidden={!showSaveType}
                 originalCard={originalCard}
               />
-              <CSSTransitionGroup
-                component="div"
-                transitionName="saveQuestionModalFields"
-                transitionEnterTimeout={500}
-                transitionLeaveTimeout={500}
-              >
+              <TransitionGroup>
                 {values.saveType === "create" && (
-                  <div className="saveQuestionModalFields">
-                    <FormField
-                      autoFocus
-                      name="name"
-                      title={t`Name`}
-                      placeholder={nameInputPlaceholder}
-                    />
-                    <FormField
-                      name="description"
-                      type="text"
-                      title={t`Description`}
-                      placeholder={t`It's optional but oh, so helpful`}
-                    />
-                    <FormField
-                      name="collection_id"
-                      title={t`Which collection should this go in?`}
-                      type="collection"
-                    />
-                  </div>
+                  <CSSTransition
+                    classNames="saveQuestionModalFields"
+                    timeout={{
+                      enter: 500,
+                      exit: 500,
+                    }}
+                  >
+                    <div className="saveQuestionModalFields">
+                      <FormField
+                        autoFocus
+                        name="name"
+                        title={t`Name`}
+                        placeholder={nameInputPlaceholder}
+                      />
+                      <FormField
+                        name="description"
+                        type="text"
+                        title={t`Description`}
+                        placeholder={t`It's optional but oh, so helpful`}
+                      />
+                      <FormField
+                        name="collection_id"
+                        title={t`Which collection should this go in?`}
+                        type="collection"
+                      />
+                    </div>
+                  </CSSTransition>
                 )}
-              </CSSTransitionGroup>
+              </TransitionGroup>
               <FormFooter submitTitle={t`Save`} onCancel={this.props.onClose} />
             </Form>
           )}

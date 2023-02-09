@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.api.dataset :as api.dataset]
    [metabase.api.pivots :as api.pivots]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
@@ -444,6 +445,7 @@
                                                    {:parameter parameter})
                              :values set)]
               (is (= #{"Gizmo" "Widget" "Gadget"} values)))))))
+
     (testing "nil value (current behavior of field values)"
       (let [parameter {:values_query_type "list",
                        :values_source_type nil,
@@ -461,6 +463,7 @@
                                                               (mt/id :people :source)]})
                            :values set)]
             (is (set/subset? #{["Doohickey"] ["Facebook"]} values))))
+
         (testing "search"
           (let [values (-> (mt/user-http-request :rasta :post 200
                                                  "dataset/parameter/search/g"
@@ -470,4 +473,37 @@
                            :values set)]
             ;; results matched on g, does not include Doohickey (which is in above results)
             (is (set/subset? #{["Widget"] ["Google"]} values))
-            (is (not (contains? values ["Doohickey"])))))))))
+            (is (not (contains? values ["Doohickey"])))))
+
+        (testing "deduplicates the values returned from multiple fields"
+          (let [values (-> (mt/user-http-request :rasta :post 200
+                                                 "dataset/parameter/values"
+                                                 {:parameter parameter
+                                                  :field_ids [(mt/id :people :source)
+                                                              (mt/id :people :source)]})
+                           :values)]
+            (is (= [["Twitter"] ["Organic"] ["Affiliate"] ["Google"] ["Facebook"]] values))))))
+
+    (testing "fallback to field-values"
+      (with-redefs [api.dataset/parameter-field-values (constantly "field-values")]
+        (testing "if value-field not found in source card"
+          (mt/with-temp Card [{source-card-id :id}]
+            (is (= "field-values"
+                   (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
+                                         {:parameter  {:values_source_type   "card"
+                                                       :values_source_config {:card_id     source-card-id
+                                                                              :value_field (mt/$ids $people.source)}
+                                                       :type                 :string/=,
+                                                       :name                 "Text"
+                                                       :id                   "abc"}})))))
+
+        (testing "if value-field not found in source card"
+          (mt/with-temp Card [{source-card-id :id} {:archived true}]
+            (is (= "field-values"
+                   (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
+                                         {:parameter  {:values_source_type   "card"
+                                                       :values_source_config {:card_id     source-card-id
+                                                                              :value_field (mt/$ids $people.source)}
+                                                       :type                 :string/=,
+                                                       :name                 "Text"
+                                                       :id                   "abc"}})))))))))

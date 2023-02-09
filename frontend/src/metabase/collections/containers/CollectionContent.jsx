@@ -36,7 +36,14 @@ import {
 
 const PAGE_SIZE = 25;
 
-const ALL_MODELS = ["dashboard", "dataset", "card", "snippet", "pulse"];
+const ALL_MODELS = [
+  "dashboard",
+  "dataset",
+  "card",
+  "snippet",
+  "pulse",
+  "collection",
+];
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 

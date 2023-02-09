@@ -28,6 +28,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]))
@@ -351,10 +352,10 @@
       (testing "MySQL with SSL connectivity using PEM certificate"
         (mt/with-env-keys-renamed-by #(str/replace-first % "mb-mysql-ssl-test" "mb-mysql-test")
           (string-extracts-test/test-breakout)))
-      (println (u/format-color 'yellow
-                               "Skipping %s because %s env var is not set"
-                               "mysql-connect-with-ssl-and-pem-cert-test"
-                               "MB_MYSQL_SSL_TEST_SSL_CERT")))))
+      (log/info (u/format-color 'yellow
+                                "Skipping %s because %s env var is not set"
+                                "mysql-connect-with-ssl-and-pem-cert-test"
+                                "MB_MYSQL_SSL_TEST_SSL_CERT")))))
 
 ;; MariaDB doesn't have support for explicit JSON columns, it does it in a more SQL Server-ish way
 ;; where LONGTEXT columns are the actual JSON columns and there's JSON functions that just work on them,

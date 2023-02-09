@@ -1,22 +1,25 @@
 (ns metabase.driver.bigquery-cloud-sdk-test
-  (:require [clojure.core.async :as a]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver :as driver]
-            [metabase.driver.bigquery-cloud-sdk :as bigquery]
-            [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-            [metabase.models :refer [Database Field Table]]
-            [metabase.query-processor :as qp]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db])
-  (:import com.google.cloud.bigquery.BigQuery))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
+   [metabase.driver.bigquery-cloud-sdk :as bigquery]
+   [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.models :refer [Database Field Table]]
+   [metabase.query-processor :as qp]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [toucan.db :as db]
+   [toucan2.core :as t2])
+  (:import
+   (com.google.cloud.bigquery BigQuery)))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -473,9 +476,9 @@
               ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
               (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))
               (is (= "inclusion" (get-in updated [:details :dataset-filters-type])))
-              (doseq [table (map Table [(u/the-id table1) (u/the-id table2)])]
-                ;; and the existing tables should have been updated with that schema
-                (is (= "my-dataset" (:schema table)))))))))))
+              ;; and the existing tables should have been updated with that schema
+              (is (= ["my-dataset" "my-dataset"]
+                     (t2/select-fn-vec :schema Table :id [:in [(u/the-id table1) (u/the-id table2)]]))))))))))
 
 (deftest query-drive-external-tables
   (mt/test-driver :bigquery-cloud-sdk

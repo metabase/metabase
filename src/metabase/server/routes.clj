@@ -2,7 +2,6 @@
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in `metabase.api.routes`."
   (:require
-   [clojure.tools.logging :as log]
    [compojure.core :refer [context defroutes GET]]
    [compojure.route :as route]
    [metabase.api.dataset :as api.dataset]
@@ -16,6 +15,7 @@
    [metabase.server.routes.index :as index]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [ring.util.response :as response]))
 
 (u/ignore-exceptions (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))

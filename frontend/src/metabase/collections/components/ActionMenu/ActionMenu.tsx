@@ -88,7 +88,7 @@ function ActionMenu({
         isBookmarked={isBookmarked}
         isPreviewShown={isPreviewShown(item)}
         isPreviewAvailable={isFullyParametrized(item)}
-        onPin={collection.can_write ? handlePin : null}
+        onPin={collection.can_write && item.setPinned ? handlePin : null}
         onMove={collection.can_write && item.setCollection ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
         onArchive={collection.can_write ? handleArchive : null}

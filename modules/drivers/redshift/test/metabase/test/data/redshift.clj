@@ -5,7 +5,8 @@
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.log :as log]))
 
 (defmethod tx/supports-time-type? :redshift [_driver] false)
 
@@ -76,9 +77,9 @@
 (defn execute! [format-string & args]
   (let [sql  (apply format format-string args)
         spec (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
-    (println (u/format-color 'blue "[redshift] %s" sql))
+    (log/info (u/format-color 'blue "[redshift] %s" sql))
     (jdbc/execute! spec sql))
-  (println (u/format-color 'blue "[ok]")))
+  (log/info (u/format-color 'blue "[ok]")))
 
 (defmethod tx/before-run :redshift
   [_]

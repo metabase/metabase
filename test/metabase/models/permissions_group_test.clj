@@ -13,7 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))
@@ -69,11 +69,11 @@
 
 (s/defn ^:private group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
-  [group-id :- su/IntGreaterThanOrEqualToZero object :- perms/Path]
+  [group-id :- su/IntGreaterThanOrEqualToZero object :- perms/PathSchema]
   ;; e.g. WHERE (object || '%') LIKE '/db/1000/'
   (db/exists? Permissions
     :group_id group-id
-    object    [:like (hx/concat :object (hx/literal "%"))]))
+    object    [:like (h2x/concat :object (h2x/literal "%"))]))
 
 (deftest newly-created-databases-test
   (testing "magic groups should have permissions for newly created databases\n"

@@ -12,13 +12,14 @@
   (:require
    [colorize.core :as colorize]
    [metabase.test.data.env.impl :as tx.env.impl]
-   [metabase.test.initialize :as initialize]))
+   [metabase.test.initialize :as initialize]
+   [metabase.util.log :as log]))
 
 (defonce ^:private env-test-drivers
   (delay
     (let [drivers (tx.env.impl/get-test-drivers)]
       ;; this is println on purpose so it always shows up regardless of log level
-      (println (colorize/cyan "Running QP tests against these drivers: " drivers))
+      (log/info (colorize/cyan "Running QP tests against these drivers: " drivers))
       (when-not (= drivers #{:h2})
         (initialize/initialize-if-needed! :plugins))
       drivers)))

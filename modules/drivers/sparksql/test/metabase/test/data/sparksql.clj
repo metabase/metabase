@@ -15,7 +15,8 @@
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.log :as log]))
 
 (sql-jdbc.tx/add-test-extensions! :sparksql)
 
@@ -74,7 +75,7 @@
         (doseq [sql+args statements]
           (jdbc/execute! {:connection conn} sql+args {:transaction? false}))
         (catch java.sql.SQLException e
-          (println "Error inserting data:" (u/pprint-to-str 'red statements))
+          (log/infof "Error inserting data: %s" (u/pprint-to-str 'red statements))
           (jdbc/print-sql-exception-chain e)
           (throw e))))))
 

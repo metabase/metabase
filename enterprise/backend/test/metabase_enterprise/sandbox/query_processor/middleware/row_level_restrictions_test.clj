@@ -28,6 +28,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db]))
 
@@ -71,46 +72,47 @@
                    ;; have one.) HACK
                    (= driver/*driver* :sparksql)
                    (update :from (fn [[table]]
-                                   [[table (sql.qp/->honeysql :sparksql
-                                             (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
+                                   [[table (sql.qp/->honeysql
+                                            :sparksql
+                                            (hx/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]])))]
     (first (hsql/format honeysql, :quoting (sql.qp/quote-style driver/*driver*), :allow-dashed-names? true))))
 
 (defn- venues-category-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/supports? driver/*driver* :native-parameters))
     {:query (mt/native-query
-              {:query
-               (format-honeysql
-                {:select   [:*]
-                 :from     [(identifier :venues)]
-                 :where    [:= (identifier :venues :category_id) (hsql/raw "{{cat}}")]
-                 :order-by [(identifier :venues :id)]})
+             {:query
+              (format-honeysql
+               {:select   [:*]
+                :from     [(identifier :venues)]
+                :where    [:= (identifier :venues :category_id) (hx/raw "{{cat}}")]
+                :order-by [(identifier :venues :id)]})
 
-               :template_tags
-               {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+              :template_tags
+              {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
      :remappings {:cat ["variable" ["template-tag" "cat"]]}}))
 
 (defn- parameterized-sql-with-join-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/supports? driver/*driver* :native-parameters))
     {:query (mt/native-query
-              {:query
-               (format-honeysql
-                {:select    [(identifier :checkins :id)
-                             (identifier :checkins :user_id)
-                             (identifier :venues :name)
-                             (identifier :venues :category_id)]
-                 :from      [(identifier :checkins)]
-                 :left-join [(identifier :venues)
-                             [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
-                 :where     [:= (identifier :checkins :user_id) (hsql/raw "{{user}}")]
-                 :order-by  [[(identifier :checkins :id) :asc]]})
+             {:query
+              (format-honeysql
+               {:select    [(identifier :checkins :id)
+                            (identifier :checkins :user_id)
+                            (identifier :venues :name)
+                            (identifier :venues :category_id)]
+                :from      [(identifier :checkins)]
+                :left-join [(identifier :venues)
+                            [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
+                :where     [:= (identifier :checkins :user_id) (hx/raw "{{user}}")]
+                :order-by  [[(identifier :checkins :id) :asc]]})
 
-               :template_tags
-               {"user" {:name         "user"
-                        :display-name "User ID"
-                        :type         :number
-                        :required     true}}})
+              :template_tags
+              {"user" {:name         "user"
+                       :display-name "User ID"
+                       :type         :number
+                       :required     true}}})
      :remappings {:user ["variable" ["template-tag" "user"]]}}))
 
 (defn- venue-names-native-gtap-def []
@@ -250,13 +252,6 @@
   (mt/test-drivers (into #{}
                          (filter #(isa? driver/hierarchy % :sql))
                          (mt/normal-drivers-with-feature :nested-queries))
-    (testing "When querying with full permissions, no changes should be made"
-      (met/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
-                       :attributes {"cat" 50}}
-        (perms/grant-permissions! &group (perms/table-query-path (db/select-one Table :id (mt/id :venues))))
-        (is (= [[100]]
-               (run-venues-count-query)))))
-
     (testing (str "Basic test around querying a table by a user with segmented only permissions and a GTAP question that "
                   "is a native query")
       (met/with-gtaps {:gtaps      {:venues (venues-category-native-gtap-def)}
@@ -426,7 +421,7 @@
                                            (reset! remark <>)))]
       (let [results (run-query-fn)]
         (or (some-> @remark (str/replace #"queryHash: \w+" "queryHash: <hash>"))
-            (println "NO REMARK FOUND:\n" (u/pprint-to-str 'red results))
+            (log/infof "NO REMARK FOUND:\n %s" (u/pprint-to-str 'red results))
             (throw (ex-info "No remark found!" {:results results})))))))
 
 (deftest remark-test

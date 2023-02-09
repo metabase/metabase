@@ -27,6 +27,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
    [toucan.db :as db])
   (:import
    (java.sql DatabaseMetaData)))
@@ -276,7 +277,7 @@
                 ;; all three of these tables should appear in the metadata (including, importantly, the "main" table)
                 (is (= {:tables (set (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"]))}
                        (driver/describe-database :postgres database)))))
-            (println
+            (log/warn
              (u/format-color
               'yellow
               "Skipping partitioned-table-test; Postgres major version %d doesn't support PARTITION BY" major-v))))))))
@@ -588,8 +589,8 @@
 (mt/defdataset ip-addresses
   [["addresses"
     [{:field-name "ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
-    [[(hsql/raw "'192.168.1.1'::inet")]
-     [(hsql/raw "'10.4.4.15'::inet")]]]])
+    [[(hx/raw "'192.168.1.1'::inet")]
+     [(hx/raw "'10.4.4.15'::inet")]]]])
 
 (deftest inet-columns-test
   (mt/test-driver :postgres
@@ -687,62 +688,62 @@
 (deftest enums-test
   (mt/test-driver :postgres
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
-      (is (= (hx/with-database-type-info (hsql/call :cast "toucan" (keyword "bird type")) "bird type")
+      (is (= (hx/with-database-type-info (hx/call :cast "toucan" (keyword "bird type")) "bird type")
              (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))
 
     (do-with-enums-db
-      (fn [db]
-        (testing "check that we can actually fetch the enum types from a DB"
-          (is (= #{(keyword "bird type") :bird_status}
-                 (#'postgres/enum-types :postgres db))))
+     (fn [db]
+       (testing "check that we can actually fetch the enum types from a DB"
+         (is (= #{(keyword "bird type") :bird_status}
+                (#'postgres/enum-types :postgres db))))
 
-        (testing "check that describe-table properly describes the database & base types of the enum fields"
-          (is (= {:name   "birds"
-                  :fields #{{:name              "name"
-                             :database-type     "varchar"
-                             :base-type         :type/Text
-                             :pk?               true
-                             :database-position 0
-                             :database-required true}
-                            {:name              "status"
-                             :database-type     "bird_status"
-                             :base-type         :type/PostgresEnum
-                             :database-position 1
-                             :database-required true}
-                            {:name              "type"
-                             :database-type     "bird type"
-                             :base-type         :type/PostgresEnum
-                             :database-position 2
-                             :database-required true}}}
-                 (driver/describe-table :postgres db {:name "birds"}))))
+       (testing "check that describe-table properly describes the database & base types of the enum fields"
+         (is (= {:name   "birds"
+                 :fields #{{:name              "name"
+                            :database-type     "varchar"
+                            :base-type         :type/Text
+                            :pk?               true
+                            :database-position 0
+                            :database-required true}
+                           {:name              "status"
+                            :database-type     "bird_status"
+                            :base-type         :type/PostgresEnum
+                            :database-position 1
+                            :database-required true}
+                           {:name              "type"
+                            :database-type     "bird type"
+                            :base-type         :type/PostgresEnum
+                            :database-position 2
+                            :database-required true}}}
+                (driver/describe-table :postgres db {:name "birds"}))))
 
-        (testing "check that when syncing the DB the enum types get recorded appropriately"
-          (let [table-id (db/select-one-id Table :db_id (u/the-id db), :name "birds")]
-            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
-                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
-                     {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
-                   (set (map (partial into {})
-                             (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
+       (testing "check that when syncing the DB the enum types get recorded appropriately"
+         (let [table-id (db/select-one-id Table :db_id (u/the-id db), :name "birds")]
+           (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
+                    {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
+                    {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
+                  (set (map (partial into {})
+                            (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
-        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-          (let [table-id           (db/select-one-id Table :db_id (u/the-id db), :name "birds")
-                bird-type-field-id (db/select-one-id Field :table_id table-id, :name "type")]
-            (is (= {:rows        [["Rasta" "good bird" "toucan"]]
-                    :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
-                                               " \"public\".\"birds\".\"status\" AS \"status\","
-                                               " \"public\".\"birds\".\"type\" AS \"type\" "
-                                               "FROM \"public\".\"birds\" "
-                                               "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
-                                               "LIMIT 10")
-                                  :params nil}}
-                   (-> (qp/process-query
-                        {:database (u/the-id db)
-                         :type     :query
-                         :query    {:source-table table-id
-                                    :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
-                                    :limit        10}})
-                       :data
-                       (select-keys [:rows :native_form]))))))))))
+       (testing "End-to-end check: make sure everything works as expected when we run an actual query"
+         (let [table-id           (db/select-one-id Table :db_id (u/the-id db), :name "birds")
+               bird-type-field-id (db/select-one-id Field :table_id table-id, :name "type")]
+           (is (= {:rows        [["Rasta" "good bird" "toucan"]]
+                   :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
+                                              " \"public\".\"birds\".\"status\" AS \"status\","
+                                              " \"public\".\"birds\".\"type\" AS \"type\" "
+                                              "FROM \"public\".\"birds\" "
+                                              "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
+                                              "LIMIT 10")
+                                 :params nil}}
+                  (-> (qp/process-query
+                       {:database (u/the-id db)
+                        :type     :query
+                        :query    {:source-table table-id
+                                   :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
+                                   :limit        10}})
+                      :data
+                      (select-keys [:rows :native_form]))))))))))
 
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
@@ -931,10 +932,10 @@
       (testing "We should be able to connect to a Postgres instance, providing our own root CA via a secret property"
         (mt/with-env-keys-renamed-by #(str/replace-first % "mb-postgres-ssl-test" "mb-postgres-test")
           (id-field-parameter-test)))
-      (println (u/format-color 'yellow
-                               "Skipping %s because %s env var is not set"
-                               "postgres-ssl-connectivity-test"
-                               "MB_POSTGRES_SSL_TEST_SSL")))))
+      (log/warn (u/format-color 'yellow
+                                "Skipping %s because %s env var is not set"
+                                "postgres-ssl-connectivity-test"
+                                "MB_POSTGRES_SSL_TEST_SSL")))))
 
 (def ^:private dummy-pem-contents
   (str "-----BEGIN CERTIFICATE-----\n"

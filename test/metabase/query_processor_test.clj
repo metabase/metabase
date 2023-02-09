@@ -20,6 +20,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [schema.core :as s]
    [toucan.db :as db]))
 
@@ -299,7 +300,7 @@
 
   ([format-fns format-nil-values? response]
    (when (= (:status response) :failed)
-     (println "Error running query:" (u/pprint-to-str 'red response))
+     (log/warnf "Error running query: %s" (u/pprint-to-str 'red response))
      (throw (ex-info (:error response) response)))
 
    (let [format-fns (map format-rows-fn (format-rows-fns format-fns))]

@@ -1,10 +1,11 @@
 (ns metabase.models.interface
   (:require
    [buddy.core.codecs :as codecs]
+   [camel-snake-kebab.core :as csk]
    [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -15,17 +16,25 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [potemkin :as p]
    [schema.core :as schema]
    [taoensso.nippy :as nippy]
    [toucan.db :as db]
-   [toucan.hydrate :as hydrate]
-   [toucan.models :as models])
+   [toucan.models :as models]
+   [toucan2.core :as t2]
+   [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.hydrate :as t2.hydrate]
+   [toucan2.util :as t2.u])
   (:import
    (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
    (java.sql Blob)
-   (java.util.zip GZIPInputStream)))
+   (java.util.zip GZIPInputStream)
+   (toucan2.instance Instance)))
 
 (p/import-vars
  [models.dispatch
@@ -258,15 +267,20 @@
   max (nanosecond) resolution)."
   []
   (classloader/require 'metabase.driver.sql.query-processor)
-  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
+  (binding [hx/*honey-sql-version* 2]
+    ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type))))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj
     (not (:created_at obj)) (assoc :created_at (now))))
 
-(defn- add-updated-at-timestamp [obj & _]
-  (cond-> obj
-    (not (:updated_at obj)) (assoc :updated_at (now))))
+(defn- add-updated-at-timestamp [obj]
+  ;; don't stomp on `:updated_at` if it's already explicitly specified.
+  (let [changes-already-include-updated-at? (if (t2/instance? obj)
+                                              (:updated_at (t2/changes obj))
+                                              (:updated_at obj))]
+    (cond-> obj
+      (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
 
 (models/add-property! ::timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
@@ -292,6 +306,7 @@
 (models/add-property! ::entity-id
   :insert add-entity-id)
 
+(methodical/prefer-method! #'t2.before-insert/before-insert ::timestamped? ::entity-id)
 
 ;;;; [[define-simple-hydration-method]] and [[define-batched-hydration-method]]
 
@@ -307,10 +322,7 @@
 
 (defn- define-hydration-method [hydration-type fn-name hydration-key fn-tail]
   {:pre [(#{:hydrate :batched-hydrate} hydration-type)]}
-  ;; let's be nice and clear the Toucan 1 hydration method cache while we're at it, so that redefined hydration
-  ;; functions get picked up.
-  (hydrate/flush-hydration-key-caches!)
-  ;; Let's  be EXTRA nice and make sure there are no duplicate hydration keys!
+  ;; Let's be EXTRA nice and make sure there are no duplicate hydration keys!
   (let [fn-symb (symbol (str (ns-name *ns*)) (name fn-name))]
     (when-let [existing-fn-symb (get @defined-hydration-methods hydration-key)]
       (when (not= fn-symb existing-fn-symb)
@@ -318,8 +330,21 @@
                         {:hydration-key       hydration-key
                          :existing-definition existing-fn-symb}))))
     (swap! defined-hydration-methods assoc hydration-key fn-symb))
-  `(defn ~(vary-meta fn-name assoc hydration-type hydration-key)
-     ~@fn-tail))
+  `(do
+     (defn ~fn-name
+       ~@fn-tail)
+     ~(case hydration-type
+        :hydrate
+        `(methodical/defmethod t2.hydrate/simple-hydrate
+           [:default ~hydration-key]
+           [~'_model k# row#]
+           (assoc row# k# (~fn-name row#)))
+
+        :batched-hydrate
+        `(methodical/defmethod t2.hydrate/batched-hydrate
+           [:default ~hydration-key]
+           [~'_model ~'_k rows#]
+           (~fn-name rows#)))))
 
 (defmacro define-simple-hydration-method
   "Define a Toucan hydration function (Toucan 1) or method (Toucan 2) to do 'simple' hydration (this function is called
@@ -353,10 +378,9 @@
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn dispatch-on-model
+(def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
-  [x & _args]
-  (models.dispatch/model x))
+  t2.u/dispatch-on-first-arg)
 
 (defmulti perms-objects-set
   "Return a set of permissions object paths that a user must have access to in order to access this object. This should be
@@ -535,47 +559,37 @@
 
 ;;;; [[define-methods]]
 
-(defn- validate-properties [properties]
-  (doseq [k (keys properties)]
-    (assert (namespace k) "All :properties keys should be namespaced!")
-    (assert (contains? (set (keys @@#'models/property-fns)) k)
-            (str "Invalid property: " k))))
-
 (defn define-methods
-  "Helper for defining [[toucan.models/IModel]] methods for a `model`. Prefer this over using `extend` directly, because
-  it's easier to swap a single function when we make the switch to Toucan 2 in the future than to update all the
-  various model namespaces."
+  "Helper for defining Toucan 2 methods using a Toucan-1-style `IModel` method map. This should be considered deprecated
+  and will be removed at some point in the future."
   {:style/indent [:form]}
   [model method-map]
-  (when-let [properties-method (:properties method-map)]
-    (validate-properties (properties-method model)))
-  (extend (class model)
-    models/IModel
-    (merge
-     models/IModelDefaults
-     method-map)))
+  (models/define-methods-with-IModel-method-map model method-map))
 
-;;;; redefs
+;;;; [[to-json]]
 
-;;; swap out [[models/defmodel]] with a special magical version that avoids redefining stuff if the definition has not
-;;; changed at all. This is important to make the stuff in [[models.dispatch]] work properly, since we're dispatching
-;;; off of the model objects themselves e.g. [[metabase.models.user/User]] -- it is important that they do not change
-;;;
-;;; This code is temporary until the switch to Toucan 2.
+(methodical/defmulti to-json
+  "Serialize an `instance` to JSON."
+  {:arglists            '([instance json-generator])
+   :defmethod-arities   #{2}
+   :dispatch-value-spec (some-fn keyword? symbol?)} ; dispatch value should be either keyword model name or symbol
+  t2.u/dispatch-on-first-arg)
 
-(defonce ^:private original-defmodel @(resolve `models/defmodel))
+(methodical/defmethod to-json :default
+  "Default method for encoding instances of a Toucan model to JSON."
+  [instance json-generator]
+  (json.generate/encode-map instance json-generator))
 
-(defmacro ^:private defmodel [model & args]
-  (let [varr           (ns-resolve *ns* model)
-        existing-hash  (some-> varr meta ::defmodel-hash)
-        has-same-hash? (= existing-hash (hash &form))]
-    (when has-same-hash?
-      (println model "has not changed, skipping redefinition"))
-    (when-not has-same-hash?
-      `(do
-         ~(apply original-defmodel &form &env model args)
-         (alter-meta! (var ~model) assoc ::defmodel-hash ~(hash &form))))))
+(json.generate/add-encoder
+ Instance
+ #'to-json)
 
-(alter-var-root #'models/defmodel (constantly @#'defmodel))
-(alter-meta! #'models/defmodel (fn [mta]
-                                 (merge mta (select-keys (meta #'defmodel) [:file :line :column :ns]))))
+;;;; etc
+
+;;; Trigger errors when hydrate encounters a key that has no corresponding method defined.
+(reset! t2.hydrate/global-error-on-unknown-key true)
+
+(methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration :default
+  "In Metabase the FK key used for automagic hydration should use underscores (work around unstream Toucan 2 issue)."
+  [_original-model dest-key _hydrated-key]
+  [(csk/->snake_case (keyword (str (name dest-key) "_id")))])

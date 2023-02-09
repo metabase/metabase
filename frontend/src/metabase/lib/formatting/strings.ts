@@ -1,11 +1,5 @@
 import inflection from "inflection";
 
-import { formatUrl } from "./url";
-import { formatEmail } from "./email";
-import { formatImage } from "./image";
-
-import type { OptionsType } from "./types";
-
 export function singularize(str: string, singular?: string) {
   return inflection.singularize(str, singular);
 }

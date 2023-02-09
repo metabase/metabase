@@ -2,13 +2,13 @@
   "Utility functions for writing SQL drivers."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (metabase.util.honey_sql_1_extensions Identifier)))

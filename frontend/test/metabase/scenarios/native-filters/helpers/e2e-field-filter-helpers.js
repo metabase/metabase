@@ -38,10 +38,13 @@ export function setWidgetStringFilter(value) {
  * @param {string} value
  */
 
-export function selectFilterValueFromList(value) {
+export function selectFilterValueFromList(value, { addFilter = true } = {}) {
   popover().within(() => {
     cy.findByText(value).click();
-    cy.button("Add filter").click();
+
+    if (addFilter) {
+      cy.button("Add filter").click();
+    }
   });
 }
 
@@ -121,6 +124,12 @@ export function openEntryForm(isFilterRequired) {
     : filterWidget();
 
   selector.click();
+}
+
+export function closeEntryForm() {
+  popover().within(() => {
+    cy.get("input").type("{esc}");
+  });
 }
 
 // LOCAL SCOPE

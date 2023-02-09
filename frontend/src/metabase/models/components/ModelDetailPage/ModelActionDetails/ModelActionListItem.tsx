@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
+import { isNotNull } from "metabase/core/utils/types";
 import StackedInsightIcon from "./StackedInsightIcon";
 import {
   ActionTitle,
@@ -12,6 +13,7 @@ import {
   EditButton,
   ImplicitActionCardContentRoot,
   ImplicitActionMessage,
+  ActionSubtitlePart,
 } from "./ModelActionListItem.styled";
 
 interface Props {
@@ -42,11 +44,21 @@ function ModelActionListItem({ action, onEdit }: Props) {
       <ImplicitActionCardContent />
     ) : null;
 
+  const subtitleParts = [
+    action.public_uuid && t`Public Action`,
+    // Remove this optional chaining after removed all the existing actions without creators
+    action.creator?.common_name && t`Created by ${action.creator.common_name}`,
+  ].filter(isNotNull);
+
   return (
     <>
       <ActionTitle>{action.name}</ActionTitle>
-      {action?.creator?.common_name && (
-        <ActionSubtitle>{t`Created by ${action.creator.common_name}`}</ActionSubtitle>
+      {subtitleParts.length > 0 && (
+        <ActionSubtitle>
+          {subtitleParts.map((subtitlePart, index) => (
+            <ActionSubtitlePart key={index}>{subtitlePart}</ActionSubtitlePart>
+          ))}
+        </ActionSubtitle>
       )}
       <Card>
         {renderCardContent()}

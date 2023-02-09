@@ -21,6 +21,7 @@
      acc)
 
     ([row-count row]
+     #_{:clj-kondo/ignore [:discouraged-var]}
      (printf "ROW %d -> %s\n" (inc row-count) (pr-str row))
      (inc row-count))))
 

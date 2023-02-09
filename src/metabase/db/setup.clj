@@ -7,9 +7,7 @@
   Because functions here don't know where the JDBC spec came from, you can use them to perform the usual application
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
-   [clojure.tools.logging :as log]
    [honey.sql :as sql]
-   [honeysql.format :as hformat]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
@@ -17,11 +15,21 @@
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2-extensions]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.jdbc :as t2.jdbc]
+   [toucan2.map-backend.honeysql2 :as t2.honeysql]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (liquibase.exception LockException)))
+
+(set! *warn-on-reflection* true)
+
+;;; needed so the `:h2` dialect gets registered with Honey SQL
+(comment metabase.util.honey-sql-2-extensions/keep-me)
 
 (defn- print-migrations-and-quit-if-needed!
   "If we are not doing auto migrations then print out migration SQL for user to run manually. Then throw an exception to
@@ -160,12 +168,9 @@
   "Quote SQL identifier string `s` appropriately for the currently bound application database."
   ([s]
    (quote-for-application-db (mdb.connection/quoting-style (mdb.connection/db-type)) s))
-  ([db-type s]
-   ((get @#'hformat/quote-fns db-type) s)))
-
-;;; register with Honey SQL 1
-(alter-var-root #'hformat/quote-fns assoc ::application-db quote-for-application-db)
-(db/set-default-quoting-style! ::application-db)
+  ([dialect s]
+   {:pre [(#{:h2 :ansi :mysql} dialect)]}
+   ((:quote (sql/get-dialect dialect)) s)))
 
 ;;; register with Honey SQL 2
 (sql/register-dialect!
@@ -173,16 +178,20 @@
  (assoc (sql/get-dialect :ansi)
         :quote quote-for-application-db))
 
-(sql/set-dialect! ::application-db)
-(sql/set-options! {:quoted true})
+(reset! t2.honeysql/global-options
+        {:quoted       true
+         :dialect      ::application-db
+         :quoted-snake false})
 
-;;; Define the default Toucan JDBC connection spec; it's just a proxy DataSource that ultimately calls
-;;; [[mdb.connection/data-source]]
-(def ^:private ^javax.sql.DataSource data-source*
-  (reify javax.sql.DataSource
-    (getConnection [_]
-      (.getConnection (mdb.connection/data-source)))))
+(reset! t2.jdbc/global-options
+        {:read-columns mdb.jdbc-protocols/read-columns
+         :label-fn     u/lower-case-en})
 
-(db/set-default-db-connection! {:datasource data-source*})
-
-(db/set-default-jdbc-options! {:read-columns mdb.jdbc-protocols/read-columns})
+(methodical/defmethod t2.pipeline/build :around :default
+  "Normally, our Honey SQL 2 `:dialect` is set to `::application-db`; however, Toucan 2 does need to know the actual
+  dialect to do special query building magic. When building a Honey SQL form, make sure `:dialect` is bound to the
+  *actual* dialect for the application database."
+  [query-type model parsed-args resolved-query]
+  (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
+                                         :dialect (mdb.connection/quoting-style (mdb.connection/db-type)))]
+    (next-method query-type model parsed-args resolved-query)))

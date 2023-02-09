@@ -33,19 +33,37 @@
                                  :values                (range 10)
                                  :human_readable_values (map #(str "id_" %) (range 10))})
         (let [categories-id (mt/id :categories :id)
-              fv            (params.field-values/get-or-create-advanced-field-values!
-                             fv-type
-                             (db/select-one Field :id (mt/id :categories :id)))]
-          (is (= 1 (db/count FieldValues :field_id categories-id :type fv-type)))
+              f             (db/select-one Field :id (mt/id :categories :id))
+              card-id       (-> f :table_id (#'ee-params.field-values/table-id->gtap) :card :id)
+              fv            (params.field-values/get-or-create-advanced-field-values! fv-type f)]
+          (is (= [(range 4 6)]
+                 (->> (db/select [FieldValues :values] :field_id categories-id :type fv-type)
+                      (map :values))))
           (is (= [4 5] (:values fv)))
           (is (= ["id_4" "id_5"] (:human_readable_values fv)))
           (is (some? (:hash_key fv)))
 
           (testing "call second time shouldn't create a new FieldValues"
             (params.field-values/get-or-create-advanced-field-values!
-             :sandbox
+             fv-type
              (db/select-one Field :id (mt/id :categories :id)))
-            (is (= 1 (db/count FieldValues :field_id categories-id :type fv-type)))))))
+            (is (= 1 (db/count FieldValues :field_id categories-id :type fv-type))))
+
+          (testing "after changing the question, should create new FieldValues"
+            (let [new-query (mt/mbql-query categories
+                                           {:filter [:and [:> $id 1] [:< $id 4]]})]
+              ;; sleeping should ensure that updated_at changes
+              (Thread/sleep 1)
+              (db/update! Card card-id :dataset_query new-query))
+            (params.field-values/get-or-create-advanced-field-values!
+             fv-type
+             (db/select-one Field :id (mt/id :categories :id)))
+            (is (= [(range 4 6)
+                    (range 2 4)]
+                   (->> (db/select [FieldValues :values]
+                          :field_id categories-id :type fv-type
+                          {:order-by [:id]})
+                        (map :values))))))))
 
     (testing "make sure the Fieldvalues respect [field-values/*total-max-length*]"
       (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and

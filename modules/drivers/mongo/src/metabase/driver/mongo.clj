@@ -3,7 +3,6 @@
   (:require [cheshire.core :as json]
             [cheshire.generate :as json.generate]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
@@ -17,6 +16,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
+            [metabase.util.log :as log]
             [monger.command :as cmd]
             [monger.conversion :as m.conversion]
             [monger.core :as mg]
@@ -189,6 +189,13 @@
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
+(defn- sample-documents [^com.mongodb.DB conn table sort-direction]
+  (-> (.getCollection conn (:name table))
+      mq/empty-query
+      (assoc :sort {:_id sort-direction}
+             :limit metadata-queries/nested-field-sample-limit)
+      mq/exec))
+
 (defn- table-sample-column-info
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
    sample. The results will look something like:
@@ -204,11 +211,7 @@
            fields
            (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
      {}
-     (-> (.getCollection conn (:name table))
-         mq/empty-query
-         (assoc :sort {:_id -1}
-                :limit metadata-queries/nested-field-sample-limit)
-         mq/exec))
+     (concat (sample-documents conn table 1) (sample-documents conn table -1)))
     (catch Throwable t
       (log/error (format "Error introspecting collection: %s" (:name table)) t))))
 
@@ -226,9 +229,11 @@
                         column-info))})))
 
 (doseq [feature [:basic-aggregations
+                 :expression-aggregations
                  :nested-fields
                  :nested-queries
                  :native-parameters
+                 :set-timezone
                  :standard-deviation-aggregations]]
   (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 

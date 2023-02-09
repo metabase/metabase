@@ -12,7 +12,7 @@
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2-extensions :as h2x]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
@@ -145,36 +145,40 @@
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
   [views-limit card-runs-limit all-users?]
-  (let [dashboard-and-table-views (db/select [ViewLog :%min.view_log.user_id :model :model_id
-                                              [:%count.* :cnt] [:%max.timestamp :max_ts]]
-                                    {:group-by  [:model :model_id]
-                                     :where     [:and
-                                                 (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
-                                                 [:in :model #{"dashboard" "table"}]
-                                                 [:= :bm.id nil]]
-                                     :order-by  [[:max_ts :desc] [:model :desc]]
-                                     :limit     views-limit
-                                     :left-join [[:dashboard_bookmark :bm]
-                                                 [:and
-                                                  [:= :model "dashboard"]
-                                                  [:= :bm.user_id *current-user-id*]
-                                                  [:= :model_id :bm.dashboard_id]]]})
+  (let [dashboard-and-table-views (db/select [ViewLog
+                                              [[:min :view_log.user_id] :user_id]
+                                              :model
+                                              :model_id
+                                              [:%count.* :cnt]
+                                              [:%max.timestamp :max_ts]]
+                                             {:group-by  [:model :model_id]
+                                              :where     [:and
+                                                          (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
+                                                          [:in :model #{"dashboard" "table"}]
+                                                          [:= :bm.id nil]]
+                                              :order-by  [[:max_ts :desc] [:model :desc]]
+                                              :limit     views-limit
+                                              :left-join [[:dashboard_bookmark :bm]
+                                                          [:and
+                                                           [:= :model "dashboard"]
+                                                           [:= :bm.user_id *current-user-id*]
+                                                           [:= :model_id :bm.dashboard_id]]]})
         card-runs                 (->> (db/select [QueryExecution
                                                    [:%min.executor_id :user_id]
-                                                   [:query_execution.card_id :model_id]
+                                                   [(db/qualify QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt]
                                                    [:%max.started_at :max_ts]]
-                                         {:group-by [:query_execution.card_id :context]
-                                          :where    [:and
-                                                     (when-not all-users? [:= :executor_id *current-user-id*])
-                                                     [:= :context (hx/literal :question)]
-                                                     [:= :bm.id nil]]
-                                          :order-by [[:max_ts :desc]]
-                                          :limit    card-runs-limit
-                                          :left-join [[:card_bookmark :bm]
-                                                      [:and
-                                                       [:= :bm.user_id *current-user-id*]
-                                                       [:= :query_execution.card_id :bm.card_id]]]})
+                                                  {:group-by [(db/qualify QueryExecution :card_id) :context]
+                                                   :where    [:and
+                                                              (when-not all-users? [:= :executor_id *current-user-id*])
+                                                              [:= :context (h2x/literal :question)]
+                                                              [:= :bm.id nil]]
+                                                   :order-by [[:max_ts :desc]]
+                                                   :limit    card-runs-limit
+                                                   :left-join [[:card_bookmark :bm]
+                                                               [:and
+                                                                [:= :bm.user_id *current-user-id*]
+                                                                [:= (db/qualify QueryExecution :card_id) :bm.card_id]]]})
                                        (map #(dissoc % :row_count))
                                        (map #(assoc % :model "card")))]
     (->> (concat card-runs dashboard-and-table-views)

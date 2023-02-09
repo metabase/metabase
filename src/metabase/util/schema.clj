@@ -418,3 +418,8 @@
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
   (with-api-error-message #"^[A-Za-z0-9_\-]{21}$"
     (deferred-tru "String must be a valid 21-character NanoID string.")))
+
+(def UUIDString
+  "Schema for a UUID string"
+  (with-api-error-message u/uuid-regex
+    (deferred-tru "String must be a valid 21-character NanoID string.")))

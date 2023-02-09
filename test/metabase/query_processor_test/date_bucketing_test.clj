@@ -31,6 +31,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -943,7 +944,7 @@
     ;; TODO - perhaps this should be rolled into `mt/dataset` itself -- it seems like a useful feature?
     (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
       (binding [*recreate-db-if-stale?* false]
-        (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
+        (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
         (db/delete! Database :id (mt/id))
         (apply count-of-grouping dataset field-grouping relative-datetime-args))
       (let [results (mt/run-mbql-query checkins
@@ -1269,10 +1270,8 @@
                                    ;; guess you could make a case for either June 30th or July 1st. I don't really know
                                    ;; how you can get June 29th from this, but that's what Vertica returns. :shrug: The
                                    ;; main thing here is that it's not barfing.
-                                   (or (and "06-" (or "29" "30")) "07-01")
+                                   [:or [:and "06-" [:or "29" "30"]] "07-01"]
                                    ;; We also don't really care if this is returned as a date or a timestamp with or
                                    ;; without time zone.
-                                   (opt (or "T" #"\s")
-                                        "00:00:00"
-                                        (opt "Z")))
+                                   [:? [:or "T" #"\s"] "00:00:00" [:? "Z"]])
                        (first (mt/first-row (qp/process-query query))))))))))))

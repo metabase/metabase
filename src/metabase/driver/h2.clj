@@ -2,8 +2,6 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
    [java-time :as t]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.spec :as mdb.spec]
@@ -20,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.ssh :as ssh])
   (:import
    (java.sql Clob ResultSet ResultSetMetaData)
@@ -50,7 +49,7 @@
 
 (defmethod sql.qp/->honeysql [:h2 :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+  (hx/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -158,10 +157,7 @@
     (recur driver hsql-form (* amount 1000.0) :millisecond)
 
     :else
-    (let [args [:dateadd (hx/literal unit) (hx/cast :long amount) (hx/cast :datetime hsql-form)]]
-      (case hx/*honey-sql-version*
-        1 (apply hsql/call args)
-        2 args))))
+    (hx/call :dateadd (hx/literal unit) (hx/cast :long amount) (hx/cast :datetime hsql-form))))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]
@@ -201,10 +197,10 @@
   (hx/with-database-type-info :%now :TIMESTAMP))
 
 (defn- add-to-1970 [expr unit-str]
-  (hsql/call :timestampadd
+  (hx/call :timestampadd
     (hx/literal unit-str)
     expr
-    (hsql/raw "timestamp '1970-01-01T00:00:00Z'")))
+    (hx/raw "timestamp '1970-01-01T00:00:00Z'")))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:h2 :seconds] [_ _ expr]
   (add-to-1970 expr "second"))
@@ -217,16 +213,16 @@
 
 (defmethod sql.qp/cast-temporal-string [:h2 :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  (hsql/call :parsedatetime expr (hx/literal "yyyyMMddHHmmss")))
+  (hx/call :parsedatetime expr (hx/literal "yyyyMMddHHmmss")))
 
 (defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
-                               (hsql/call :utf8tostring expr)))
+                               (hx/call :utf8tostring expr)))
 
 ;; H2 v2 added date_trunc and extract, so we can borrow the Postgres implementation
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
-(defn- extract    [unit expr] (hsql/call :extract    unit              expr))
+(defn- date-trunc [unit expr] (hx/call :date_trunc (hx/literal unit) expr))
+(defn- extract    [unit expr] (hx/call :extract    unit              expr))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
@@ -260,12 +256,12 @@
 
 (defmethod sql.qp/->honeysql [:h2 :log]
   [driver [_ field]]
-  (hsql/call :log10 (sql.qp/->honeysql driver field)))
+  (hx/call :log10 (sql.qp/->honeysql driver field)))
 
 (defn- datediff
   "Like H2's `datediff` function but accounts for timestamps with time zones."
   [unit x y]
-  (hsql/call :datediff (hsql/raw (name unit)) (hx/->timestamp x) (hx/->timestamp y)))
+  (hx/call :datediff (hx/raw (name unit)) (hx/->timestamp x) (hx/->timestamp y)))
 
 (defn- time-zoned-extract
   "Like H2's extract but accounts for timestamps with time zones."
@@ -281,11 +277,11 @@
         ;; datediff counts month boundaries not whole months, so we need to adjust
         ;; if x<y but x>y in the month calendar then subtract one month
         ;; if x>y but x<y in the month calendar then add one month
-        (hsql/call
+        (hx/call
          :case
-         (hsql/call :and (hsql/call :< x y) (hsql/call :> (time-zoned-extract :day x) (time-zoned-extract :day y)))
+         (hx/call :and (hx/call :< x y) (hx/call :> (time-zoned-extract :day x) (time-zoned-extract :day y)))
          -1
-         (hsql/call :and (hsql/call :> x y) (hsql/call :< (time-zoned-extract :day x) (time-zoned-extract :day y)))
+         (hx/call :and (hx/call :> x y) (hx/call :< (time-zoned-extract :day x) (time-zoned-extract :day y)))
          1
          :else 0)))
 

@@ -1,7 +1,6 @@
 (ns metabase.actions.execution
   (:require
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
@@ -17,6 +16,7 @@
    [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
@@ -80,8 +80,6 @@
                          :type                   qp.error-type/invalid-parameter
                          :parameters             request-parameters
                          :destination-parameters (:parameters action)}))))
-    (when-not (contains? #{:query :http} action-type)
-      (throw (ex-info (tru "Unknown action type {0}." (name action-type)) action)))
     (actions/check-actions-enabled! database)
     (try
       (case action-type
@@ -163,17 +161,25 @@
       (catch Exception e
         (handle-action-execution-error e)))))
 
+(defn execute-action!
+  "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
+  [action request-parameters]
+  (case (:type action)
+    :implicit
+    (execute-implicit-action action request-parameters)
+    (:query :http)
+    (execute-custom-action action request-parameters)
+    (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action))))
+
 (defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
   [dashboard-id dashcard-id request-parameters]
   (let [dashcard (api/check-404 (db/select-one DashboardCard
-                                  :id dashcard-id
-                                  :dashboard_id dashboard-id))
-        action   (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
-    (if (= :implicit (:type action))
-      (execute-implicit-action action request-parameters)
-      (execute-custom-action action request-parameters))))
+                                               :id dashcard-id
+                                               :dashboard_id dashboard-id))
+        action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
+    (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values
   [dashboard-id action request-parameters]

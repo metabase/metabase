@@ -1,6 +1,5 @@
 (ns metabase.pulse.render
   (:require
-   [clojure.tools.logging :as log]
    [hiccup.core :refer [h]]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.pulse.render.body :as body]
@@ -9,6 +8,7 @@
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.urls :as urls]
    [schema.core :as s]))
 

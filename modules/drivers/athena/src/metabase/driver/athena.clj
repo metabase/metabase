@@ -4,8 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
    [honeysql.format :as hformat]
    [java-time :as t]
    [medley.core :as m]
@@ -21,7 +19,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
   (:import
    (java.sql DatabaseMetaData)
    (java.time OffsetDateTime ZonedDateTime)))
@@ -203,7 +202,7 @@
          :limit items
          ::offset (* items (dec page))))
 
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
+(defn- date-trunc [unit expr] (hx/call :date_trunc (hx/literal unit) expr))
 
 ;;; Example of handling report timezone
 ;;; (defn- date-trunc
@@ -211,8 +210,8 @@
 ;;;   [unit expr]
 ;;;   (let [timezone (get-in sql.qp/*query* [:settings :report-timezone])]
 ;;;     (if (nil? timezone)
-;;;       (hsql/call :date_trunc (hx/literal unit) expr)
-;;;       (hsql/call :date_trunc (hx/literal unit) timezone expr))))
+;;;       (hx/call :date_trunc (hx/literal unit) expr)
+;;;       (hx/call :date_trunc (hx/literal unit) timezone expr))))
 
 (defmethod driver/db-start-of-week :athena
   [_driver]
@@ -222,40 +221,40 @@
 
 ;;; If `expr` is a date, we need to cast it to a timestamp before we can truncate to a finer granularity Ideally, we
 ;;; should make this conditional. There's a generic approach above, but different use cases should b tested.
-(defmethod sql.qp/date [:athena :minute]  [_driver _unit expr] (hsql/call :date_trunc (hx/literal :minute) expr))
-(defmethod sql.qp/date [:athena :hour]    [_driver _unit expr] (hsql/call :date_trunc (hx/literal :hour) expr))
-(defmethod sql.qp/date [:athena :day]     [_driver _unit expr] (hsql/call :date_trunc (hx/literal :day) expr))
-(defmethod sql.qp/date [:athena :month]   [_driver _unit expr] (hsql/call :date_trunc (hx/literal :month) expr))
-(defmethod sql.qp/date [:athena :quarter] [_driver _unit expr] (hsql/call :date_trunc (hx/literal :quarter) expr))
-(defmethod sql.qp/date [:athena :year]    [_driver _unit expr] (hsql/call :date_trunc (hx/literal :year) expr))
+(defmethod sql.qp/date [:athena :minute]  [_driver _unit expr] (hx/call :date_trunc (hx/literal :minute) expr))
+(defmethod sql.qp/date [:athena :hour]    [_driver _unit expr] (hx/call :date_trunc (hx/literal :hour) expr))
+(defmethod sql.qp/date [:athena :day]     [_driver _unit expr] (hx/call :date_trunc (hx/literal :day) expr))
+(defmethod sql.qp/date [:athena :month]   [_driver _unit expr] (hx/call :date_trunc (hx/literal :month) expr))
+(defmethod sql.qp/date [:athena :quarter] [_driver _unit expr] (hx/call :date_trunc (hx/literal :quarter) expr))
+(defmethod sql.qp/date [:athena :year]    [_driver _unit expr] (hx/call :date_trunc (hx/literal :year) expr))
 
 (defmethod sql.qp/date [:athena :week]
   [driver _ expr]
-  (sql.qp/adjust-start-of-week driver (partial hsql/call :date_trunc (hx/literal :week)) expr))
+  (sql.qp/adjust-start-of-week driver (partial hx/call :date_trunc (hx/literal :week)) expr))
 
 ;;;; Datetime extraction functions
 
-(defmethod sql.qp/date [:athena :minute-of-hour]  [_driver _unit expr] (hsql/call :minute expr))
-(defmethod sql.qp/date [:athena :hour-of-day]     [_driver _unit expr] (hsql/call :hour expr))
-(defmethod sql.qp/date [:athena :day-of-month]    [_driver _unit expr] (hsql/call :day_of_month expr))
-(defmethod sql.qp/date [:athena :day-of-year]     [_driver _unit expr] (hsql/call :day_of_year expr))
-(defmethod sql.qp/date [:athena :month-of-year]   [_driver _unit expr] (hsql/call :month expr))
-(defmethod sql.qp/date [:athena :quarter-of-year] [_driver _unit expr] (hsql/call :quarter expr))
+(defmethod sql.qp/date [:athena :minute-of-hour]  [_driver _unit expr] (hx/call :minute expr))
+(defmethod sql.qp/date [:athena :hour-of-day]     [_driver _unit expr] (hx/call :hour expr))
+(defmethod sql.qp/date [:athena :day-of-month]    [_driver _unit expr] (hx/call :day_of_month expr))
+(defmethod sql.qp/date [:athena :day-of-year]     [_driver _unit expr] (hx/call :day_of_year expr))
+(defmethod sql.qp/date [:athena :month-of-year]   [_driver _unit expr] (hx/call :month expr))
+(defmethod sql.qp/date [:athena :quarter-of-year] [_driver _unit expr] (hx/call :quarter expr))
 
 (defmethod sql.qp/date [:athena :day-of-week]
   [driver _ expr]
-  (sql.qp/adjust-day-of-week driver (hsql/call :day_of_week expr)))
+  (sql.qp/adjust-day-of-week driver (hx/call :day_of_week expr)))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:athena :seconds]
   [_driver _seconds-or-milliseconds expr]
-  (hsql/call :from_unixtime expr))
+  (hx/call :from_unixtime expr))
 
 (defmethod sql.qp/add-interval-honeysql-form :athena
   [_driver hsql-form amount unit]
-  (hsql/call :date_add
-             (hx/literal (name unit))
-             (hsql/raw (int amount))
-             hsql-form))
+  (hx/call :date_add
+           (hx/literal (name unit))
+           (hx/raw (int amount))
+           hsql-form))
 
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->DateTime]
   [_driver _semantic-type expr]
@@ -275,9 +274,9 @@
         y (sql.qp/->honeysql driver y)]
     (case unit
       (:year :month :quarter :week :day)
-      (hsql/call :date_diff (hx/literal unit) (date-trunc :day x) (date-trunc :day y))
+      (hx/call :date_diff (hx/literal unit) (date-trunc :day x) (date-trunc :day y))
       (:hour :minute :second)
-      (hsql/call :date_diff (hx/literal unit) (hx/->timestamp x) (hx/->timestamp y)))))
+      (hx/call :date_diff (hx/literal unit) (hx/->timestamp x) (hx/->timestamp y)))))
 
 ;; fix to allow integer division to be cast as double (float is not supported by athena)
 (defmethod sql.qp/->float :athena
@@ -287,15 +286,15 @@
 ;; Support for median/percentile functions
 (defmethod sql.qp/->honeysql [:athena :median]
   [driver [_ arg]]
-  (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) 0.5))
+  (hx/call :approx_percentile (sql.qp/->honeysql driver arg) 0.5))
 
 (defmethod sql.qp/->honeysql [:athena :percentile]
   [driver [_ arg p]]
-  (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
+  (hx/call :approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
 
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) pattern))
+  (hx/call :regexp_extract (sql.qp/->honeysql driver arg) pattern))
 
 ;; keyword function converts database-type variable to a symbol, so we use symbols above to map the types
 (defn- database-type->base-type-or-warn
