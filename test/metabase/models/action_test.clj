@@ -13,7 +13,7 @@
                        :name "Query Example"
                        :model_id model-id
                        :parameters [{:id "id" :type :number}]}
-                      (first (action/select-actions-without-implicit-params :id action-id))))
+                      (action/select-action-without-implicit-params :id action-id)))
         (is (partial= {:id action-id
                        :name "Query Example"
                        :model_id model-id
@@ -28,7 +28,7 @@
                        :name "Echo Example"
                        :parameters [{:id "id" :type :number}
                                     {:id "fail" :type :text}]}
-                      (first (action/select-actions-without-implicit-params :id action-id))))
+                      (action/select-action-without-implicit-params :id action-id)))
         (is (partial= {:id action-id
                        :name "Echo Example"
                        :parameters [{:id "id" :type :number}
@@ -45,7 +45,7 @@
                        :creator_id (mt/user->id :crowberto)
                        :creator {:common_name "Crowberto Corv"}
                        :parameters [{:id "id" :type :number}]}
-                      (hydrate (first (action/select-actions-without-implicit-params :id action-id)) :creator)))
+                      (hydrate (action/select-action-without-implicit-params :id action-id) :creator)))
         (is (partial= {:id action-id
                        :name "Query Example"
                        :model_id model-id
