@@ -168,30 +168,23 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   };
 
   const handleDeleteMapping = dn => {
-    setMappings(_.omit(mappings, dn));
-  };
+    const mappingsMinusDeletedMapping = _.omit(mappings, dn);
 
-  // ⚠️ This happened after closing the modal
-  // TODO: move what's usable of this to save of entire auth method page
-  /*
-  const handleUpdateMappings = e => {
-    e.preventDefault();
-
-    const { mappingSetting, onChangeSetting } = props;
-
-    SettingsApi.put({ key: mappingSetting, value: mappings }).then(
+    SettingsApi.put({
+      key: mappingSetting,
+      value: mappingsMinusDeletedMapping,
+    }).then(
       () => {
-        onChangeSetting(mappingSetting, mappings);
+        props.onChangeSetting(mappingSetting, mappings);
+        setMappings(mappingsMinusDeletedMapping);
 
-        updateGroupsFromDeletedMappings();
-
-        setShowAddRow(false);
         setSaveError(null);
       },
       e => setSaveError(e),
     );
   };
 
+  /*
   const updateGroupsFromDeletedMappings = () => {
     const { groupsToDelete } = whenDeletingMappingGroups;
 
