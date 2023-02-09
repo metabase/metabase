@@ -288,9 +288,7 @@ describe("scenarios > question > native subquery", () => {
           .invoke("text")
           .should("eq", questionDetails.name);
 
-        runNativeQuery({
-          callback: response => expect(response.body.error).not.to.exist,
-        });
+        runNativeQuery();
 
         cy.get(".cellData").should("contain", "37.65");
       },
