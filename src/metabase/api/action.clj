@@ -124,7 +124,7 @@
    visualization_settings [:maybe map?]}
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
-  (action/select-one-with-implicit-params :id id))
+  (action/select-action :id id))
 
 (api/defendpoint POST "/:id/public_link"
   "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
