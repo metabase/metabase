@@ -563,7 +563,10 @@ function getSearchableTokenFieldPlaceholder(
     ),
   );
 
-  if (names.size !== 1 || getSourceType(parameter) != null) {
+  if (
+    names.size !== 1 ||
+    (parameter != null && getSourceType(parameter) != null)
+  ) {
     placeholder = t`Search the list`;
   } else {
     const [name] = names;
