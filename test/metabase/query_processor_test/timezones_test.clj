@@ -299,18 +299,54 @@
 
 (deftest filter-datetime-by-date-in-timezone-test
   (mt/test-drivers (set-timezone-drivers)
-    (mt/dataset test-data-with-timezones
-      (doseq [[timezone date-filter] [["US/Pacific" "2014-07-02"]
-                                      ["US/Eastern" "2014-07-02"]
-                                      ["UTC" "2014-07-03"]
-                                      ["Asia/Hong_Kong" "2014-07-03"]]
-              :let [expected (-> (u.date/with-time-zone-same-instant #t "2014-07-03T01:30:00Z" timezone)
-                                 (u.date/format-sql)
-                                 (str/replace #" " "T"))]]
-        (mt/with-temporary-setting-values [report-timezone timezone]
-          (is (= [expected]
-                 (mt/first-row
-                   (mt/run-mbql-query users
-                                      {:fields [$last_login]
-                                       :filter [:and [:= $id 12]
-                                                [:= $last_login date-filter]]})))))))))
+    (testing "Relative to current date"
+      (let [expected-datetime (u.date/truncate (t/zoned-date-time) :second)]
+        (mt/with-temp-test-data
+            ["relative_filter"
+             [{:field-name "created", :base-type :type/DateTimeWithTZ}]
+             [[expected-datetime]]]
+            (doseq [timezone ["UTC" "America/Los_Angeles"]]
+              (mt/with-temporary-setting-values [report-timezone timezone]
+                (is (= (-> expected-datetime
+                           (u.date/with-time-zone-same-instant timezone)
+                           t/offset-date-time)
+                       (-> (mt/run-mbql-query relative_filter {:fields [$created]
+                                                               :filter [:time-interval $created :current :minute]})
+                           mt/first-row
+                           first
+                           (u.date/parse nil)
+                           t/offset-date-time))))))))
+    (testing "Relative to days since"
+      (let [expected-datetime (u.date/truncate (u.date/add (t/zoned-date-time) :day -1) :second)]
+        (mt/with-temp-test-data
+          ["relative_filter"
+           [{:field-name "created", :base-type :type/DateTimeWithTZ}]
+           [[expected-datetime]]]
+          (doseq [timezone ["UTC" "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
+            (mt/with-temporary-setting-values [report-timezone timezone]
+              (is (= (-> expected-datetime
+                         (u.date/with-time-zone-same-instant timezone)
+                         t/offset-date-time)
+                     (-> (mt/run-mbql-query relative_filter {:fields [$created]
+                                                             :filter [:time-interval $created -1 :day]})
+                         mt/first-row
+                         first
+                         (u.date/parse nil)
+                         t/offset-date-time))))))))
+    (testing "Fixed date"
+      (mt/dataset test-data-with-timezones
+        (let [expected-datetime #t "2014-07-03T01:30:00Z"]
+          (doseq [[timezone date-filter] [["US/Pacific" "2014-07-02"]
+                                          ["US/Eastern" "2014-07-02"]
+                                          ["UTC" "2014-07-03"]
+                                          ["Asia/Hong_Kong" "2014-07-03"]]
+                  :let [expected (-> (u.date/with-time-zone-same-instant expected-datetime timezone)
+                                     (u.date/format-sql)
+                                     (str/replace #" " "T"))]]
+            (mt/with-temporary-setting-values [report-timezone timezone]
+              (is (= [expected]
+                     (mt/first-row
+                       (mt/run-mbql-query users
+                                          {:fields [$last_login]
+                                           :filter [:and [:= $id 12]
+                                                    [:= $last_login date-filter]]})))))))))))
