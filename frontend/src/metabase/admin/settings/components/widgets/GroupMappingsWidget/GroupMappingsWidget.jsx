@@ -182,9 +182,11 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
 
       <div>
         <div>
-          <AddMappingButton primary small onClick={handleShowAddRow}>
-            {t`New mapping`}
-          </AddMappingButton>
+          {!showAddRow && (
+            <AddMappingButton primary small onClick={handleShowAddRow}>
+              {t`New mapping`}
+            </AddMappingButton>
+          )}
           <AdminContentTable columnTitles={[props.groupHeading, t`Groups`, ""]}>
             {showAddRow && (
               <AddMappingRow
