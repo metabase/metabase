@@ -161,19 +161,19 @@
 (defn implicit-action-parameters
   "Return a set of parameters for the given models"
   [cards]
-  (let [card-by-table-id (into {}        ; table-id->card
+  (let [card-by-table-id (into {}
                                (for [card cards
                                      :let [{:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
                                      :when table-id]
                                  [table-id card]))
-        tables (when-let [table-ids (seq (keys card-by-table-id))] ; tables that are used in cards dataset query
+        tables (when-let [table-ids (seq (keys card-by-table-id))]
                  (hydrate (db/select 'Table :id [:in table-ids]) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
                 ;; Skip tables for have conflicting slugified columns i.e. table has "name" and "NAME" columns.
                 :when (unique-field-slugs? fields)
-                :let [card (get card-by-table-id (:id table)) ; one card that uses the table. not sure what happens if multiple cards use the same table?
+                :let [card (get card-by-table-id (:id table))
                       exposed-fields (into #{} (keep :id) (:result_metadata card))
                       parameters (->> fields
                                       (filter #(contains? exposed-fields (:id %)))
@@ -190,7 +190,6 @@
   "Find actions with given options and generate implicit parameters for execution.
 
    Pass in known-models to save a second Card lookup."
-  ()
   ([known-models & options]
    (let [actions                         (apply select-actions-without-implicit-params options)
          implicit-action-model-ids       (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
