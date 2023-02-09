@@ -33,8 +33,6 @@ export const BookmarkApi = {
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
-  create: POST("/api/mt/gtap"),
-  update: PUT("/api/mt/gtap/:id"),
   attributes: GET("/api/mt/user/attributes"),
 };
 
