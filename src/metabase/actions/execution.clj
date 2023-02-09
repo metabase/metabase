@@ -68,9 +68,7 @@
 
 (defn- execute-custom-action [action request-parameters]
   (let [{action-type :type}          action
-        destination-parameters-by-id (m/index-by :id (:parameters action))
-        db-id                        (db/select-one-field :database_id Card :id (:model_id action))
-        database                     (db/select-one Database :id db-id)]
+        destination-parameters-by-id (m/index-by :id (:parameters action))]
     (doseq [[parameter-id _value] request-parameters]
       (when-not (contains? destination-parameters-by-id parameter-id)
         (throw (ex-info (tru "No destination parameter found for id {0}. Found: {1}"
@@ -80,7 +78,7 @@
                          :type                   qp.error-type/invalid-parameter
                          :parameters             request-parameters
                          :destination-parameters (:parameters action)}))))
-    (actions/check-actions-enabled! database)
+    (actions/check-actions-enabled-for-database! action)
     (try
       (case action-type
         :query

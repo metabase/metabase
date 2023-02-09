@@ -321,12 +321,10 @@
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (let [action      (-> (action/actions-with-implicit-params nil :public_uuid uuid)
-                        first
-                        api/check-404)
-        database_id (db/select-one-field :database_id Card :id (:model_id action))
-        database    (db/select-one 'Database :id database_id)]
-    (actions/check-actions-enabled! database)
+  (let [action (-> (action/actions-with-implicit-params nil :public_uuid uuid)
+                   first
+                   api/check-404)]
+    (actions/check-actions-enabled! action)
     (select-keys action action-public-keys)))
 
 
