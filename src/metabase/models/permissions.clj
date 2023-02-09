@@ -866,8 +866,8 @@
   []
   (let [db-ids             (delay (db/select-ids 'Database))
         group-id->v1-paths (->> (permissions-by-group-ids [:or
-                                                           [:= :object (hx/literal "/")]
-                                                           [:like :object (hx/literal "%/db/%")]])
+                                                           [:= :object (h2x/literal "/")]
+                                                           [:like :object (h2x/literal "%/db/%")]])
                                 ;;  keep v1 paths, implicitly remove v2
                                 (m/map-vals (fn [paths]
                                               (filter (fn [path]
@@ -882,8 +882,8 @@
   []
   (let [db-ids             (delay (db/select-ids 'Database))
         group-id->v2-paths (->> (permissions-by-group-ids [:or
-                                                           [:= :object (hx/literal "/")]
-                                                           [:like :object (hx/literal "%/db/%")]])
+                                                           [:= :object (h2x/literal "/")]
+                                                           [:like :object (h2x/literal "%/db/%")]])
                                 (m/map-vals (fn [paths]
                                               ;; remove v1 paths, implicitly keep v2 paths
                                               (remove (fn [path] (mc/validate [:re (u.regex/rx "^/" v1-data-permissions-rx "$")]

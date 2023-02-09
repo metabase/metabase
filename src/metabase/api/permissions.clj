@@ -23,7 +23,6 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core]
