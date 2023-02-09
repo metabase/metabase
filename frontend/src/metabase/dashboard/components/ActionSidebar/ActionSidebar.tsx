@@ -13,6 +13,11 @@ import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
+import Ellipsified from "metabase/core/components/Ellipsified";
+import {
+  FieldLabel,
+  FieldLabelContainer,
+} from "metabase/core/components/FormField/FormField.styled";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Sidebar from "metabase/dashboard/components/Sidebar";
@@ -28,6 +33,7 @@ import {
   SidebarBody,
   SidebarHeader,
   SidebarFooter,
+  ChangeActionContainer,
 } from "./ActionSidebar.styled";
 
 const buttonVariantOptions = ActionViz.settings["button.variant"].props.options;
@@ -103,15 +109,27 @@ export function ActionSidebarFn({
             />
           </Form>
         </FormProvider>
+        <FieldLabelContainer>
+          <FieldLabel hasError={false}>{t`Action`}</FieldLabel>
+        </FieldLabelContainer>
 
         <ModalWithTrigger
           ref={actionSettingsModalRef}
           fit
           enableMouseEvents
           triggerElement={
-            <Button primary={!dashcard.action} fullWidth>
-              {dashcard.action ? t`Update assigned action` : t`Pick an action`}
-            </Button>
+            !dashcard.action ? (
+              <Button primary={!dashcard.action} fullWidth>
+                {t`Pick an action`}
+              </Button>
+            ) : (
+              <ChangeActionContainer>
+                <Ellipsified>
+                  <strong>{dashcard.action.name}</strong>
+                </Ellipsified>
+                <Button onlyText>{t`Change action`}</Button>
+              </ChangeActionContainer>
+            )
           }
         >
           <ConnectedActionDashcardSettings

@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -19,11 +18,7 @@ interface Props {
   setEditingDashcardId: (dashcardId: number) => void;
 }
 
-function ActionSettingsButton({
-  dashboard,
-  dashcard,
-  setEditingDashcardId,
-}: Props) {
+function ActionSettingsButton({ dashcard, setEditingDashcardId }: Props) {
   if (dashcard.justAdded) {
     setEditingDashcardId(dashcard.id);
   }
@@ -33,7 +28,7 @@ function ActionSettingsButton({
       tooltip={t`Action Settings`}
       onClick={() => setEditingDashcardId(dashcard.id)}
     >
-      <DashCardActionButton.Icon name="bolt" />
+      <DashCardActionButton.Icon name="gear" />
     </DashCardActionButton>
   );
 }

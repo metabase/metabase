@@ -31,3 +31,8 @@ export const ClickBehaviorPickerText = styled.div`
   margin-bottom: ${space(2)};
   margin-left: ${space(2)};
 `;
+
+export const ChangeActionContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+`;
