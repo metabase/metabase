@@ -71,7 +71,6 @@
                    ffirst
                    int)))))
 
-
 (defn- aggregation=
   [expected agg]
   (testing "As a top-level aggregation"

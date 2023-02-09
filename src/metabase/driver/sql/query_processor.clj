@@ -598,7 +598,7 @@
 (defmethod ->honeysql [:sql :round] [driver [_ field]] (hx/call :round (->honeysql driver field)))
 (defmethod ->honeysql [:sql :abs]   [driver [_ field]] (hx/call :abs (->honeysql driver field)))
 
-(defmethod ->honeysql [:sql :log]   [driver [_ field]] (hx/call :log 10 (->honeysql driver field)))
+(defmethod ->honeysql [:sql :log]   [driver [_ field]] (hx/call :log (inline-num 10) (->honeysql driver field)))
 (defmethod ->honeysql [:sql :exp]   [driver [_ field]] (hx/call :exp (->honeysql driver field)))
 (defmethod ->honeysql [:sql :sqrt]  [driver [_ field]] (hx/call :sqrt (->honeysql driver field)))
 (defmethod ->honeysql [:sql :power] [driver [_ field power]]

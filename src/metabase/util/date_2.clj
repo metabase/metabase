@@ -208,7 +208,11 @@
   (keyword ((requiring-resolve 'metabase.public-settings/start-of-week))))
 
 (def ^:private ^{:arglists '(^java.time.DayOfWeek [k])} day-of-week*
-  (u.date.common/static-instances DayOfWeek))
+  (let [m (u.date.common/static-instances DayOfWeek)]
+    (fn [k]
+      (or (get m k)
+          (throw (ex-info (tru "Invalid day of week: {0}" (pr-str k))
+                          {:k k, :allowed (keys m)}))))))
 
 (defn- week-fields
   "Create a new instance of a `WeekFields`, which is used for localized day-of-week, week-of-month, and week-of-year.
@@ -234,7 +238,7 @@
   ([unit]
    (extract (t/zoned-date-time) unit))
 
-  ([t :- Temporal, unit :- (apply s/enum extract-units)]
+  ([t :- Temporal unit :- (apply s/enum extract-units)]
    (t/as t (case unit
              :second-of-minute :second-of-minute
              :minute-of-hour   :minute-of-hour

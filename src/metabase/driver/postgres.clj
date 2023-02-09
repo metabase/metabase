@@ -267,7 +267,8 @@
 (defn- extract-from-timestamp [unit expr]
   (extract unit (->timestamp expr)))
 
-(def ^:private extract-integer (comp h2x/->integer extract))
+(defn- extract-integer [unit expr]
+  (h2x/->integer (extract-from-timestamp unit expr)))
 
 (defmethod sql.qp/date [:postgres :default]          [_ _ expr] expr)
 (defmethod sql.qp/date [:postgres :second-of-minute] [_ _ expr] (extract-integer :second expr))
