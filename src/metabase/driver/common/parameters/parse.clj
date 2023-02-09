@@ -10,61 +10,64 @@
   (:import
    (metabase.driver.common.parameters Optional Param)))
 
+;; tokenizing
+
 (def ^:private StringOrToken  (s/cond-pre s/Str (s/enum :optional-begin :param-begin :optional-end :param-end)))
 
-(def ^:private ParsedToken (s/cond-pre s/Str Param Optional))
+(defmulti ^:private read-token
+  "Return vector of [index token-or-text remaining-text] from s."
+  (fn [_ pattern _] (type pattern)))
 
-(defn- split-on-token-string
-  "Split string `s` once when substring `token-str` is encountered; replace `token-str` with `token` keyword instead.
+(defmethod read-token java.lang.String
+  [s pattern token]
+  (when-let [index (str/index-of s pattern)]
+    [index token (subs s (+ index (count pattern)))]))
 
-    (split-on-token \"ABxCxD\" \"x\" :x) ;; -> [\"AB\" :x \"CxD\"]"
-  [^String s token-str token]
-  (when-let [index (str/index-of s token-str)]
-    (let [before (.substring s 0 index)
-          after  (.substring s (+ index (count token-str)) (count s))]
-      [before token after])))
-
-(defn- split-on-token-pattern
-  "Like `split-on-token-string`, but splits on a regular expression instead, replacing the matched group with `token`.
-  The pattern match an entire query, and return 3 groups — everything before the match; the match itself; and
-  everything after the match."
+(defmethod read-token java.util.regex.Pattern
   [s re token]
-  (when-let [[_ before _ after] (re-matches re s)]
-    [before token after]))
+  (when-let [match (re-find re s)]
+    (let [text   (if (vector? match)
+                   (first match)
+                   match)
+          index  (str/index-of s text)
+          after  (subs s (+ index (count text)))
+          ;; comments are ignored and treated as text in the tokenizer
+          token-or-text (if (= :comment token) text token)]
+      [index token-or-text after])))
 
-(defn- split-on-token
-  [s token-str token]
-  ((if (string? token-str)
-     split-on-token-string
-     split-on-token-pattern) s token-str token))
-
-(defn- tokenize-one [s token-str token]
-  (loop [acc [], s s]
-    (if (empty? s)
-      acc
-      (if-let [[before token after] (split-on-token s token-str token)]
-        (recur (into acc [before token]) after)
-        (conj acc s)))))
-
-(s/defn ^:private tokenize :- [StringOrToken]
-  [s :- s/Str]
-  (reduce
-   (fn [strs [token-str token]]
-     (filter
-      (some-fn keyword? seq)
-      (mapcat
-       (fn [s]
-         (if-not (string? s)
-           [s]
-           (tokenize-one s token-str token)))
-       strs)))
-   [s]
-   [["[[" :optional-begin]
-    ["]]" :optional-end]
+(def ^:private token-patterns
+  "A sequence of pairs of [token-name pattern]"
+  [[:comment        #"--.*(\n|$)"]
+   [:comment        #"(?s)/\*.*\*/"]
+   [:optional-begin "[["]
+   [:optional-end   "]]"]
     ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
     ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
-    [#"(?s)(.*?)(\{\{(?!\{))(.*)" :param-begin]
-    ["}}" :param-end]]))
+   [:param-begin    #"(?s)\{\{(?!\{)"]
+   [:param-end      "}}"]])
+
+(defn- find-token
+  "Returns vector of first token found in s and remaining text, if any match is found"
+  [s]
+  (first
+   (sort-by first
+            (for [[token pattern] token-patterns
+                  :let [[index token after] (read-token s pattern token)]
+                  :when token]
+              [index token after]))))
+
+(defn- tokenize
+  "Returns a sequence of strings or keyword tokens from s for further parsing."
+  [s]
+  (loop [tokens []
+         s      s]
+    (if-let [[index token after] (find-token s)]
+      (recur (conj tokens (subs s 0 index) token) after)
+      (conj tokens s))))
+
+;; parsing
+
+(def ^:private ParsedToken (s/cond-pre s/Str Param Optional))
 
 (defn- param [& [k & more]]
   (when (or (seq more)
