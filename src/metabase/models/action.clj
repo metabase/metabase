@@ -190,38 +190,38 @@
   "Find actions with given options and generate implicit parameters for execution.
 
    Pass in known-models to save a second Card lookup."
-  ([known-models & options]
-   (let [actions                         (apply select-actions-without-implicit-params options)
-         implicit-action-model-ids       (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
-         models-with-implicit-actions    (if known-models
-                                           (->> known-models
-                                                (filter #(contains? implicit-action-model-ids (:id %)))
-                                                distinct)
-                                           (when (seq implicit-action-model-ids)
-                                             (db/select 'Card :id [:in implicit-action-model-ids])))
-         implicit-parameters-by-model-id (when (seq models-with-implicit-actions)
-                                           (implicit-action-parameters models-with-implicit-actions))]
-     (for [{:keys [parameters] :as action} actions
-           :let [model-id        (:model_id action)
-                 implicit-params (when (= (:type action) :implicit)
-                                   (let [implicit-params (get implicit-parameters-by-model-id model-id)
-                                         saved-params    (m/index-by :id parameters)]
-                                     (for [param implicit-params
-                                           :let [saved-param (get saved-params (:id param))]]
-                                       (merge param saved-param))))]]
-       (cond-> action
-         implicit-params
-         (m/assoc-some :parameters (cond->> implicit-params
-                                     (= "row/delete" (:kind action))
-                                     (filter ::pk?)
+  [known-models & options]
+  (let [actions                         (apply select-actions-without-implicit-params options)
+        implicit-action-model-ids       (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
+        models-with-implicit-actions    (if known-models
+                                          (->> known-models
+                                               (filter #(contains? implicit-action-model-ids (:id %)))
+                                               distinct)
+                                          (when (seq implicit-action-model-ids)
+                                            (db/select 'Card :id [:in implicit-action-model-ids])))
+        implicit-parameters-by-model-id (when (seq models-with-implicit-actions)
+                                          (implicit-action-parameters models-with-implicit-actions))]
+    (for [{:keys [parameters] :as action} actions
+          :let [model-id        (:model_id action)
+                implicit-params (when (= (:type action) :implicit)
+                                  (let [implicit-params (get implicit-parameters-by-model-id model-id)
+                                        saved-params    (m/index-by :id parameters)]
+                                    (for [param implicit-params
+                                          :let [saved-param (get saved-params (:id param))]]
+                                      (merge param saved-param))))]]
+      (cond-> action
+        implicit-params
+        (m/assoc-some :parameters (cond->> implicit-params
+                                    (= "row/delete" (:kind action))
+                                    (filter ::pk?)
 
-                                     (contains? #{"row/update" "row/delete"} (:kind action))
-                                     (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
+                                    (contains? #{"row/update" "row/delete"} (:kind action))
+                                    (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
 
-                                     :always
-                                     (map #(dissoc % ::pk? ::field-id))
+                                    :always
+                                    (map #(dissoc % ::pk? ::field-id))
 
-                                     :always seq)))))))
+                                    :always seq))))))
 
 (defn select-action
   "Selects an Action and fills in the subtype data and implicit parameters.
