@@ -210,13 +210,18 @@ function DatasetEditor(props) {
     if (!Array.isArray(orderedColumns)) {
       return columns;
     }
-    return orderedColumns
-      .map(
-        col =>
-          columns.find(c => isSameField(c.field_ref, col.fieldRef)) ||
-          virtualCardColumns.find(c => isSameField(c.field_ref, col.fieldRef)),
-      )
-      .filter(Boolean);
+
+    function getFieldFromColumnVizSetting(columnVizSetting) {
+      const fieldRef = columnVizSetting.fieldRef || columnVizSetting.field_ref;
+      return (
+        columns.find(column => isSameField(column.field_ref, fieldRef)) ||
+        virtualCardColumns.find(column =>
+          isSameField(column.field_ref, fieldRef),
+        )
+      );
+    }
+
+    return orderedColumns.map(getFieldFromColumnVizSetting).filter(Boolean);
   }, [dataset, orderedColumns, resultsMetadata]);
 
   const isEditingQuery = datasetEditorTab === "query";
