@@ -193,32 +193,25 @@ const DataSelector = _.compose(
     loadingAndErrorWrapper: false,
   }),
   connect(
-    (state, ownProps) => {
-      const databases =
-        ownProps.databases ??
+    (state, ownProps) => ({
+      metadata: getMetadata(state),
+      databases:
+        ownProps.databases ||
         Databases.selectors.getList(state, {
           entityQuery: ownProps.databaseQuery,
-        }) ??
-        [];
-
-      return {
-        metadata: getMetadata(state),
-        databases,
-        hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(
-          state,
-          {
-            entityQuery: { include: "tables", saved: true },
-          },
-        ),
-        hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
-          entityQuery: { saved: true },
-        }),
-        hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
-          entityQuery: { include: "tables" },
-        }),
-        hasDataAccess: getHasDataAccess(databases),
-      };
-    },
+        }) ||
+        [],
+      hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
+        entityQuery: { include: "tables", saved: true },
+      }),
+      hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
+        entityQuery: { saved: true },
+      }),
+      hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
+        entityQuery: { include: "tables" },
+      }),
+      hasDataAccess: getHasDataAccess(Databases.selectors.getList(state) ?? []),
+    }),
     {
       fetchDatabases: databaseQuery =>
         Databases.actions.fetchList(databaseQuery),
