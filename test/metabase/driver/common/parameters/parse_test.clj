@@ -83,6 +83,10 @@
            {"SELECT count(*)\nFROM products\nWHERE category = {{category}}"
             ["SELECT count(*)\nFROM products\nWHERE category = " (param "category")]}
 
+           "Queries with params in SQL comments (#7742)"
+           {"SELECT -- {{foo}}" ["SELECT -- {{foo}}"]
+            "SELECT /* \n --{{foo}} */ {{bar}}" ["SELECT /* \n --{{foo}} */ " (param "bar")]}
+
            "JSON queries that contain non-param fragments like '}}'"
            {"{x: {y: \"{{param}}\"}}"         ["{x: {y: \"" (param "param") "\"}}"]
             "{$match: {{{date}}, field: 1}}}" ["{$match: {" (param "date") ", field: 1}}}"]}

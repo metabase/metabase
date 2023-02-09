@@ -47,8 +47,8 @@
            (tokenize-one s token-str token)))
        strs)))
    [s]
-   [[#"--.*?(\n|$)" :comment]
-    [#"(?s)/\*.*\*/" :comment]
+   [[#"(?s)/\*.*\*/" :comment]
+    [#"--.*?(\n|$)" :comment]
     ["[[" :optional-begin]
     ["]]" :optional-end]
     ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
