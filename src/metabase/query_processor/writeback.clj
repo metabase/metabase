@@ -1,14 +1,14 @@
 (ns metabase.query-processor.writeback
   "Code for executing writeback queries."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
 (def ^:private execution-middleware
   "Middleware that happens after compilation, AROUND query execution itself. Has the form

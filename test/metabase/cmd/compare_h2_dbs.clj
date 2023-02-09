@@ -3,9 +3,9 @@
   (:require
    [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [metabase.db.jdbc-protocols]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (comment metabase.db.jdbc-protocols/keep-me)
 

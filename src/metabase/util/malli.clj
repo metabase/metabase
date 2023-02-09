@@ -70,7 +70,7 @@ explain-fn-fail!
                        (str "Inputs: " (if single
                                          (pr-str (first (mapv :raw-arglist parglists)))
                                          (str "(" (str/join "\n           " (map (comp pr-str :raw-arglist) parglists)) ")"))
-                            "\n  Return: " (str/replace (u/pprint-to-str (:schema return))
+                            "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
                                                         "\n"
                                                         (str "\n          "))
                             (when (not-empty doc) (str "\n\n  " doc))))

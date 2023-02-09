@@ -3,9 +3,9 @@
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [saml20-clj.core :as saml]
    [schema.core :as s]))

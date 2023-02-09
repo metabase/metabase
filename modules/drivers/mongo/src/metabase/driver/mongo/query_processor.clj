@@ -3,7 +3,6 @@
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time :as t]
@@ -23,6 +22,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [monger.operators :refer [$add $addToSet $and $avg $cond
                              $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
@@ -210,7 +210,7 @@
 
 (defn- day-of-week
   [column]
-  (mongo-let [day_of_week (add-start-of-week-offset {$dayOfWeek column}
+  (mongo-let [day_of_week (add-start-of-week-offset {$dayOfWeek {:date column :timezone (qp.timezone/results-timezone-id)}}
                                                     (driver.common/start-of-week-offset :mongo))]
     {$cond {:if   {$eq [day_of_week 0]}
             :then 7
@@ -250,6 +250,10 @@
                  (days-till-start-of-first-full-week column))]
     {:$toInt {:$add [1 {:$ceil {:$divide [{:$subtract [doy dtsofw]} 7]}}]}}))
 
+(defn- extract
+  [op column]
+  {op {:date column :timezone (qp.timezone/results-timezone-id)}})
+
 (defn- with-rvalue-temporal-bucketing
   [field unit]
   (if (= unit :default)
@@ -267,15 +271,15 @@
                   (truncate-to-resolution column unit)))]
         (case unit
           :default          column
-          :second-of-minute {$second column}
+          :second-of-minute (extract $second column)
           :minute           (truncate :minute)
-          :minute-of-hour   {$minute column}
+          :minute-of-hour   (extract $minute column)
           :hour             (truncate :hour)
-          :hour-of-day      {$hour column}
+          :hour-of-day      (extract $hour column)
           :day              (truncate :day)
           :day-of-week      (day-of-week column)
-          :day-of-month     {$dayOfMonth column}
-          :day-of-year      {$dayOfYear column}
+          :day-of-month     (extract $dayOfMonth column)
+          :day-of-year      (extract $dayOfYear column)
           :week             (if supports-dateTrunc?
                               (truncate :week)
                               (truncate-to-resolution (week column) :day))
@@ -284,31 +288,32 @@
                                                (week column))]
                               {:$ceil {$divide [{$dayOfYear week-start}
                                                 7.0]}})
-          :week-of-year-iso {:$isoWeek column}
+          :week-of-year-iso (extract :$isoWeek column)
           :week-of-year-us  (week-of-year column :us)
           :week-of-year-instance  (week-of-year column :instance)
           :month            (truncate :month)
-          :month-of-year    {$month column}
+          :month-of-year    (extract $month column)
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
           ;; stringify it as yyyy-MM Subtracting (($dayOfYear(column) % 91) - 3) days will put you in correct month.
           ;; Trust me.
           :quarter
           (if supports-dateTrunc?
             (truncate :quarter)
-            (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column}}]
-                       {:$dateFromParts {:year  :$$parts.year
-                                         :month {$subtract [:$$parts.month
-                                                            {$mod [{$add [:$$parts.month 2]}
-                                                                   3]}]}}}))
+            (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (qp.timezone/results-timezone-id)}}]
+              {:$dateFromParts {:year  :$$parts.year
+                                :month {$subtract [:$$parts.month
+                                                   {$mod [{$add [:$$parts.month 2]}
+                                                          3]}]}
+                                :timezone (qp.timezone/results-timezone-id)}}))
 
           :quarter-of-year
-          {:$ceil {$divide [{$month column} 3.0]}}
+          {:$toInt {:$ceil {$divide [(extract $month column) 3.0]}}}
 
           :year
           (truncate :year)
 
           :year-of-era
-          {$year column})))))
+          (extract $year column))))))
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit] ::add/keys [source-alias]}]]

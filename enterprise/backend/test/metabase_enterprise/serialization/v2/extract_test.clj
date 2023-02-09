@@ -5,9 +5,27 @@
    [java-time :as t]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field FieldValues Metric
-                            NativeQuerySnippet Pulse PulseCard Segment Table Timeline TimelineEvent User]]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCard
+            Database
+            Dimension
+            Field
+            FieldValues
+            Metric
+            NativeQuerySnippet
+            Pulse
+            PulseCard
+            Segment
+            Table
+            Timeline
+            TimelineEvent
+            User]]
+   [metabase.models.action :as action]
    [metabase.models.serialization.base :as serdes.base]
+   [metabase.test :as mt]
    [schema.core :as s]
    [toucan.db :as db])
   (:import [java.time LocalDateTime OffsetDateTime]))
@@ -726,6 +744,116 @@
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest implicit-action-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{ann-id       :id} {:first_name "Ann"
+                                                       :last_name  "Wilson"
+                                                       :email      "ann@heart.band"}]
+                       Database   [{db-id :id :as db} {:name "My Database"}]]
+      (mt/with-db db
+        (mt/with-actions [{card-id-1  :id
+                           card-eid-1 :entity_id} {:name          "Source question"
+                                                   :database_id   db-id
+                                                   :dataset       true
+                                                   :query_type    :native
+                                                   :dataset_query (mt/native-query {:native "select 1"})
+                                                   :creator_id    ann-id}
+                          {:keys [action-id]} {:name          "My Action"
+                                               :type          :implicit
+                                               :kind          "row/update"
+                                               :creator_id    ann-id
+                                               :model_id      card-id-1}]
+          (let [action (action/select-one :id action-id)]
+            (testing "implicit action"
+              (let [ser (serdes.base/extract-one "Action" {} action)]
+                (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
+                              :creator_id  (s/eq "ann@heart.band")
+                              :type        (s/eq :implicit)
+                              :kind        (s/eq "row/update")
+                              :created_at  OffsetDateTime
+                              :model_id    (s/eq card-eid-1)
+                              s/Keyword    s/Any}
+                             ser))
+                (is (not (contains? ser :id)))
+
+                (testing "depends on the Model"
+                  (is (= #{[{:model "Card" :id card-eid-1}]}
+                         (set (serdes.base/serdes-dependencies ser)))))))))))))
+
+(deftest http-action-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{ann-id       :id} {:first_name "Ann"
+                                                       :last_name  "Wilson"
+                                                       :email      "ann@heart.band"}]
+                       Database   [{db-id :id :as db} {:name "My Database"}]]
+      (mt/with-db db
+        (mt/with-actions [{card-id-1  :id
+                           card-eid-1 :entity_id} {:name          "Source question"
+                                                   :database_id   db-id
+                                                   :dataset       true
+                                                   :query_type    :native
+                                                   :dataset_query (mt/native-query {:native "select 1"})
+                                                   :creator_id    ann-id}
+                          {:keys [action-id]} {:name          "My Action"
+                                               :type          :http
+                                               :template      {}
+                                               :creator_id    ann-id
+                                               :model_id      card-id-1}]
+          (let [action (action/select-one :id action-id)]
+            (testing "action"
+              (let [ser (serdes.base/extract-one "Action" {} action)]
+                (is (schema= {:serdes/meta (s/eq [{:model "Action" :id (:entity_id action) :label "my_action"}])
+                              :creator_id  (s/eq "ann@heart.band")
+                              :created_at  OffsetDateTime
+                              :template    (s/eq {})
+                              :model_id    (s/eq card-eid-1)
+                              s/Keyword    s/Any}
+                             ser))
+                (is (not (contains? ser :id)))
+
+                (testing "depends on the Model"
+                  (is (= #{[{:model "Card" :id card-eid-1}]}
+                         (set (serdes.base/serdes-dependencies ser)))))))))))))
+
+(deftest query-action-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{ann-id       :id} {:first_name "Ann"
+                                                       :last_name  "Wilson"
+                                                       :email      "ann@heart.band"}]
+                       Database   [{db-id :id :as db} {:name "My Database"}]]
+      (mt/with-db db
+        (mt/with-actions [{card-id-1  :id
+                           card-eid-1 :entity_id} {:name          "Source question"
+                                                   :database_id   db-id
+                                                   :dataset       true
+                                                   :query_type    :native
+                                                   :dataset_query (mt/native-query {:native "select 1"})
+                                                   :creator_id    ann-id}
+                          {:keys [action-id]} {:name          "My Action"
+                                               :type          :query
+                                               :dataset_query {:type "native", :native {:native "select 1"}, :database db-id}
+                                               :database_id   db-id
+                                               :creator_id    ann-id
+                                               :model_id      card-id-1}]
+          (let [action (action/select-one :id action-id)]
+            (testing "action"
+              (let [ser (serdes.base/extract-one "Action" {} action)]
+                (is (schema= {:serdes/meta   (s/eq [{:model "Action"
+                                                     :id    (:entity_id action)
+                                                     :label "my_action"}])
+                              :creator_id    (s/eq "ann@heart.band")
+                              :created_at    OffsetDateTime
+                              :dataset_query (s/eq {:type "native", :native {:native "select 1"}, :database db-id})
+                              :model_id      (s/eq card-eid-1)
+                              s/Keyword      s/Any}
+                             ser))
+                (is (not (contains? ser :id)))
+
+                (testing "depends on the Model and Database"
+                  (is (= #{[{:model "Database" :id "My Database"}]
+                           [{:model "Card" :id card-eid-1}]}
+                         (set (serdes.base/serdes-dependencies ser)))))))))))))
 
 (deftest field-values-test
   (ts/with-empty-h2-app-db

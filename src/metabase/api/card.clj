@@ -4,7 +4,6 @@
    [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.data :as data]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -13,7 +12,6 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.api.timeline :as api.timeline]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -33,8 +31,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.params :as params]
-   [metabase.models.params.card-values :as params.card-values]
-   [metabase.models.params.static-values :as params.static-values]
+   [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
@@ -51,12 +48,14 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.util UUID)))
@@ -134,15 +133,14 @@
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
   [_filter-option model-id]
-  (->> (mdb.query/query {:select [:c.*]
-                         :from [[:report_card :m]]
-                         :join [[:report_card :c] [:and
-                                                   [:= :c.database_id :m.database_id]
-                                                   [:or
-                                                    [:like :c.dataset_query (format "%%card__%s%%" model-id)]
-                                                    [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                         :where [:and [:= :m.id model-id] [:not :c.archived]]})
-       (db/do-post-select Card)
+  (->> (t2/select Card {:select [:c.*]
+                        :from [[:report_card :m]]
+                        :join [[:report_card :c] [:and
+                                                  [:= :c.database_id :m.database_id]
+                                                  [:or
+                                                   [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+                                                   [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
+                        :where [:and [:= :m.id model-id] [:not :c.archived]]})
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
 
@@ -945,15 +943,7 @@ saved later when it is ready."
      (when-not param
        (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
                        {:status-code 400})))
-     (case source-type
-       "static-list" (params.static-values/param->values param query)
-       "card"        (do
-                       (api/read-check Card (get-in param [:values_source_config :card_id]))
-                       (params.card-values/param->values param query))
-       nil           (mapping->field-values card param query)
-       (throw (ex-info (tru "Invalid values-source-type: {0}" (pr-str source-type))
-                       {:values-source-type source-type
-                        :status-code        400}))))))
+     (custom-values/parameter->values param query (fn [] (mapping->field-values card param query))))))
 
 (api/defendpoint GET "/:card-id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`.
@@ -963,8 +953,7 @@ saved later when it is ready."
   [card-id param-key]
   {card-id   ms/IntGreaterThanZero
    param-key ms/NonBlankString}
-  (let [card (api/read-check Card card-id)]
-    (param-values card param-key)))
+  (param-values (api/read-check Card card-id) param-key))
 
 (api/defendpoint GET "/:card-id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
@@ -977,7 +966,6 @@ saved later when it is ready."
   {card-id   ms/IntGreaterThanZero
    param-key ms/NonBlankString
    query     ms/NonBlankString}
-  (let [card (api/read-check Card card-id)]
-    (param-values card param-key query)))
+  (param-values (api/read-check Card card-id) param-key query))
 
 (api/define-routes)

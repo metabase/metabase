@@ -1,7 +1,6 @@
 (ns metabase.test.data.snowflake
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.util.unprepare :as unprepare]
@@ -11,7 +10,8 @@
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.log :as log]))
 
 (sql-jdbc.tx/add-test-extensions! :snowflake)
 

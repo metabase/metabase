@@ -14162,8 +14162,23 @@ databaseChangeLog:
         - sql: >-
             DELETE FROM sandboxes
             WHERE permission_id IS NULL;
-      rollback:
-        # not required, orphaned sandboxes should not be re-added to the DB
+      rollback: # not required, orphaned sandboxes should not be re-added to the DB
+
+  - changeSet:
+      id: v46.00-070
+      author: calherries
+      comment: Added 0.46.0 - add entity_id column to action
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: action
 
   - changeSet:
       id: v46.00-074

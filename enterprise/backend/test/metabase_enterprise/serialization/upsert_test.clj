@@ -72,9 +72,9 @@
       (testing "Card 2"
         (is (same? (db/select-one Card :id id2) e2))))))
 
-(defn- dummy-entity [dummy-dashboard instance entity instance-num]
+(defn- dummy-entity [dummy-dashboard model entity instance-num]
   (cond
-    (mi/instance-of? DashboardCard instance)
+    (isa? model DashboardCard)
     ;; hack to make sure that :visualization_settings are slightly different between the two dummy instances
     ;; this is necessary because DashboardCards have that as part of their identity-condition
     (assoc entity :dashboard_id (u/the-id dummy-dashboard)

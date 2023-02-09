@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [load])
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
@@ -25,6 +24,7 @@
    [metabase.plugins :as plugins]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))

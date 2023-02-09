@@ -4,7 +4,6 @@
   for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require
    [clojure.core.memoize :as memoize]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
    [metabase-enterprise.sandbox.models.group-table-access-policy
@@ -29,6 +28,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]))

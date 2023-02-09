@@ -1,9 +1,8 @@
 (ns metabase.api.collection
   "`/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
-  the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
-  `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
-  To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
-  `?namespace=snippet`)."
+  the namespace that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
+  `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
+  endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`)."
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
@@ -33,7 +32,7 @@
    [metabase.models.timeline :as timeline :refer [Timeline]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]

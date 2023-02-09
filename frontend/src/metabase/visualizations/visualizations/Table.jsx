@@ -7,10 +7,14 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import * as DataGrid from "metabase/lib/data_grid";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { getColumnCardinality } from "metabase/visualizations/lib/utils";
+import {
+  getColumnCardinality,
+  getFriendlyName,
+} from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
-import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
+import ChartSettingColumnEditor from "metabase/visualizations/components/settings/ChartSettingColumnEditor";
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import ChartSettingsTableFormatting, {
   isFormattable,
@@ -28,7 +32,11 @@ import {
   isImageURL,
   isAvatarURL,
 } from "metabase-lib/types/utils/isa";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import {
+  findColumnIndexForColumnSetting,
+  findColumnForColumnSetting,
+} from "metabase-lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 import TableSimple from "../components/TableSimple";
@@ -165,19 +173,21 @@ export default class Table extends Component {
     "table.columns": {
       section: t`Columns`,
       title: t`Columns`,
-      widget: ChartSettingOrderedColumns,
-      getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-      isValid: ([{ card, data }]) =>
+      widget: ChartSettingOrderedSimple,
+      getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
+      isValid: ([{ card, data }], _vizSettings, extra = {}) =>
         // If "table.columns" happened to be an empty array,
         // it will be treated as "all columns are hidden",
         // This check ensures it's not empty,
         // otherwise it will be overwritten by `getDefault` below
         card.visualization_settings["table.columns"].length !== 0 &&
-        _.all(
-          card.visualization_settings["table.columns"],
-          columnSetting =>
-            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-        ),
+        (extra.isQueryRunning ||
+          _.all(
+            card.visualization_settings["table.columns"],
+            columnSetting =>
+              !columnSettings.enabled ||
+              findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+          )),
       getDefault: ([
         {
           data: { cols },
@@ -194,6 +204,49 @@ export default class Table extends Component {
         },
       ]) => ({
         columns: cols,
+        hasOnEnable: false,
+        paddingLeft: "0",
+        hideOnDisabled: true,
+        getPopoverProps: columnSetting => ({
+          id: "column_settings",
+          props: {
+            initialKey: getColumnKey(
+              findColumnForColumnSetting(cols, columnSetting),
+            ),
+          },
+        }),
+        extraButton: {
+          text: t`Add or remove columns`,
+          key: "table.columns_visibility",
+        },
+        getItemTitle: columnSetting =>
+          getFriendlyName(
+            findColumnForColumnSetting(cols, columnSetting) || {
+              display_name: "[Unknown]",
+            },
+          ),
+      }),
+    },
+    "table.columns_visibility": {
+      hidden: true,
+      writeSettingId: "table.columns",
+      readDependencies: ["table.columns"],
+      widget: ChartSettingColumnEditor,
+      getValue: (_series, vizSettings) => vizSettings["table.columns"],
+      getProps: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        _settings,
+        _onChange,
+        extra,
+      ) => ({
+        columns: cols,
+        isDashboard: extra.isDashboard,
+        metadata: extra.metadata,
+        isQueryRunning: extra.isQueryRunning,
       }),
     },
     "table.column_widths": {},

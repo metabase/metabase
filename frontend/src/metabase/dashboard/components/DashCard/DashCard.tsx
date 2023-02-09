@@ -291,6 +291,7 @@ function DashCard({
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
+            metadata={metadata}
           />
         </DashboardCardActionsPanel>
       );
@@ -310,6 +311,7 @@ function DashCard({
     onReplaceAllVisualizationSettings,
     handlePreviewToggle,
     handleShowClickBehaviorSidebar,
+    metadata,
   ]);
 
   return (

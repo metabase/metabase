@@ -4,7 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honeysql.format :as hformat]
    [java-time :as t]
    [metabase.db.spec :as mdb.spec]
@@ -24,7 +23,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
   (:import
    (com.facebook.presto.jdbc PrestoConnection)
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
@@ -150,6 +150,10 @@
 (defmethod sql.qp/date [:presto-jdbc :year]
   [_ _ expr]
   (hx/call :date_trunc (hx/literal :year) (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :year-of-era]
+  [_ _ expr]
+  (hx/call :year (in-report-zone expr)))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :seconds]
   [_ _ expr]

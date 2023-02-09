@@ -170,7 +170,6 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
@@ -187,8 +186,9 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
@@ -835,8 +835,8 @@
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
   (let [group-id->paths (permissions-by-group-ids [:or
-                                                   [:= :object (hx/literal "/")]
-                                                   [:like :object (hx/literal "%/db/%")]])
+                                                   [:= :object (h2x/literal "/")]
+                                                   [:like :object (h2x/literal "%/db/%")]])
         db-ids          (delay (db/select-ids 'Database))
         group-id->graph (m/map-vals
                          (fn [paths]
@@ -856,8 +856,8 @@
   every Group and all permissioned databases."
   []
   (let [group-id->paths (permissions-by-group-ids [:or
-                                                   [:= :object (hx/literal "/")]
-                                                   [:like :object (hx/literal "/execute/%")]])
+                                                   [:= :object (h2x/literal "/")]
+                                                   [:like :object (h2x/literal "/execute/%")]])
         group-id->graph (m/map-vals
                          (fn [paths]
                            (let [permissions-graph (perms-parse/permissions->graph paths)]
@@ -898,7 +898,7 @@
                              :and
                              [:= :group_id (u/the-id group-or-id)]
                              [:or
-                              [:like path (hx/concat :object (hx/literal "%"))]
+                              [:like path (h2x/concat :object (h2x/literal "%"))]
                               [:like :object (str path "%")]]
                              other-conditions)}]
     (when-let [revoked (db/select-field :object Permissions where)]
@@ -1091,8 +1091,8 @@
                    {:where [:and
                             [:= :group_id group-id]
                             [:or
-                             [:= :object (hx/literal "/")]
-                             [:like :object (hx/literal "/download/%")]]]}))
+                             [:= :object (h2x/literal "/")]
+                             [:like :object (h2x/literal "/download/%")]]]}))
 
 (defn- download-permissions-level
   [permissions-set db-id & [schema-name table-id]]

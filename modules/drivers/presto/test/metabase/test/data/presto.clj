@@ -1,7 +1,6 @@
 (ns metabase.test.data.presto
   "Presto driver test extensions."
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.helpers :as hh]
             [metabase.config :as config]
@@ -13,7 +12,8 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.log :as log]))
 
 (sql.tx/add-test-extensions! :presto)
 

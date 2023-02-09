@@ -73,7 +73,7 @@ export interface ConcreteField {
   fk_target_field_id?: FieldId;
   target?: Field;
   values?: FieldValue[];
-  dimensions?: FieldDimension;
+  dimensions?: FieldDimension[];
 
   max_value?: number;
   min_value?: number;

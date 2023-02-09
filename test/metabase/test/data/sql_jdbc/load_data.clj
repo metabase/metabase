@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.tools.reader.edn :as edn]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -16,7 +15,8 @@
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx])
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log])
   (:import
    (java.sql SQLException)))
 
@@ -35,7 +35,7 @@
   You usually do not need to override this, and can instead use a different implementation of `load-data!`. You can
   also override `ddl/insert-rows-honeysql-form` or `ddl/insert-rows-ddl-statements` instead if you only need to change
   DDL statement(s) themselves, rather than how they are executed."
-  {:arglists '([driver spec ^metabase.util.honey_sql_1_extensions table-identifier row-or-rows])}
+  {:arglists '([driver spec ^metabase.util.honey_sql_1 table-identifier row-or-rows])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

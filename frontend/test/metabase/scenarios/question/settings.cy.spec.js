@@ -34,29 +34,19 @@ describe("scenarios > question > settings", () => {
 
       cy.findByTestId("sidebar-content").as("tableOptions");
 
+      cy.get("@tableOptions").contains("Add or remove columns").click();
+
       // remove Total column
-      cy.get("@tableOptions")
-        .contains("Total")
-        .scrollIntoView()
-        .nextAll(".Icon-eye_outline")
-        .click();
+      cy.get("@tableOptions").contains("Total").scrollIntoView().click();
 
       // Add people.category
-      cy.get("@tableOptions")
-        .contains("Category")
-        .scrollIntoView()
-        .nextAll(".Icon-add")
-        .click();
+      cy.get("@tableOptions").contains("Category").scrollIntoView().click();
 
       // wait a Category value to appear in the table, so we know the query completed
       cy.contains("Widget");
 
       // Add people.ean
-      cy.get("@tableOptions")
-        .contains("Ean")
-        .scrollIntoView()
-        .nextAll(".Icon-add")
-        .click();
+      cy.get("@tableOptions").contains("Ean").scrollIntoView().click();
 
       // wait a Ean value to appear in the table, so we know the query completed
       cy.contains("8833419218504");
@@ -68,7 +58,43 @@ describe("scenarios > question > settings", () => {
       cy.get("@table").contains("Total").should("not.exist");
     });
 
-    it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
+    it("should allow you to bulk add and remove columns", () => {
+      // Need to increase the viewport size to count columns later in the test
+      cy.viewport(2000, 1400);
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            limit: 5,
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "table",
+      });
+      cy.findByText("Settings").click();
+
+      cy.findByText("Add or remove columns").click();
+
+      cy.findByText("People").siblings().contains("Select All").click();
+
+      cy.findByText("Add or remove columns").click();
+
+      getSidebarColumns().filter(":visible").should("have.length", 22);
+
+      cy.findByText("Add or remove columns").click();
+
+      cy.findByText("People").siblings().contains("Deselect All").click();
+
+      cy.findByText("Add or remove columns").click();
+
+      cy.icon("play").last().click();
+      cy.wait(["@dataset", "@dataset"]);
+
+      getSidebarColumns().filter(":visible").should("have.length", 9);
+    });
+
+    it("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
       cy.viewport(2000, 1200);
       // Orders join Products
       visitQuestionAdhoc({
@@ -102,7 +128,7 @@ describe("scenarios > question > settings", () => {
         .as("prod-category")
         .contains(/Products? → Category/);
 
-      // Drag and drop this column between "Tax" and "Discount" (index 5 in @sidebarColumns array)
+      // Drag and drop this column between "Tax" and "Discount" (index 6 in @sidebarColumns array)
       cy.get("@prod-category")
         .trigger("mousedown", 0, 0, { force: true })
         .trigger("mousemove", 5, 5, { force: true })
@@ -111,29 +137,26 @@ describe("scenarios > question > settings", () => {
 
       reloadResults();
 
-      findColumnAtIndex("Products → Category", 5);
+      findColumnAtIndex("Products → Category", 6);
 
       // Remove "Total"
-      getSidebarColumns()
-        .contains("Total")
-        .closest("[data-testid^=draggable-item]")
-        .find(".Icon-eye_outline")
-        .click();
+      toggleColumn("Total");
 
       reloadResults();
 
       cy.findByText("117.03").should("not.exist");
 
       // This click doesn't do anything, but simply allows the array to be updated (test gives false positive without this step)
-      cy.findByText("Visible columns").click();
+      cy.get("body").click("bottomRight");
 
-      findColumnAtIndex("Products → Category", 5);
+      findColumnAtIndex("Products → Category", 6);
 
       // We need to do some additional checks. Please see:
       // https://github.com/metabase/metabase/pull/21338#pullrequestreview-928807257
 
       // Add "Address"
-      cy.findByText("Address").siblings(".Icon-add").click();
+      toggleColumn("Address");
+      //cy.findByText("Address").siblings(".Icon-add").click();
 
       // The result automatically load when adding new fields but two requests are fired.
       // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
@@ -160,6 +183,14 @@ describe("scenarios > question > settings", () => {
 
       function findColumnAtIndex(column_name, index) {
         return getSidebarColumns().eq(index).contains(column_name);
+      }
+
+      function toggleColumn(column_name) {
+        sidebar().within(() => {
+          cy.findByText("Add or remove columns").click();
+          cy.findByText(column_name).click();
+          cy.findByText("Add or remove columns").click();
+        });
       }
     });
 

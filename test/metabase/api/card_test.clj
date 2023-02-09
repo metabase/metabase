@@ -2396,6 +2396,32 @@
                 :has_more_values false}
                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))
 
+  (testing "fallback to field-values"
+    (with-redefs [api.card/mapping->field-values (constantly "field-values")]
+      (testing "if value-field not found in source card"
+        (mt/with-temp* [Card [{source-card-id :id}]
+                        Card [card
+                              {:parameters [{:id                   "abc"
+                                             :type                 "category"
+                                             :name                 "CATEGORY"
+                                             :values_source_type   "card"
+                                             :values_source_config {:card_id     source-card-id
+                                                                    :value_field (mt/$ids $venues.name)}}]}]]
+          (let [url (param-values-url card "abc")]
+            (is (= "field-values" (mt/user-http-request :rasta :get 200 url))))))
+
+      (testing "if card is archived"
+        (mt/with-temp* [Card [{source-card-id :id} {:archived true}]
+                        Card [card
+                              {:parameters [{:id                   "abc"
+                                             :type                 "category"
+                                             :name                 "CATEGORY"
+                                             :values_source_type   "card"
+                                             :values_source_config {:card_id     source-card-id
+                                                                    :value_field (mt/$ids $venues.name)}}]}]]
+          (let [url (param-values-url card "abc")]
+            (is (= "field-values" (mt/user-http-request :rasta :get 200 url))))))))
+
   (testing "users must have permissions to read the collection that source card is in"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp*
@@ -2434,6 +2460,7 @@
         (testing "success if has read permission to the source card's collection"
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc"))))
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "search-query")))))))))
+
 (deftest paramters-using-old-style-field-values
   (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
     (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"

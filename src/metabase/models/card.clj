@@ -4,7 +4,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -26,6 +25,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.models :as models]))
 
@@ -274,6 +274,46 @@
   pre-update-check-sandbox-constraints
   (atom identity))
 
+(defn- update-parameters-using-card-as-values-source
+  "Update the config of parameter on any Dashboard/Card use this `card` as values source .
+
+  Remove parameter.values_source_type and set parameter.values_source_type to nil ( the default type ) when:
+  - card is archived
+  - card.result_metadata changes and the parameter values source field can't be found anymore"
+  [{id :id, :as changes}]
+  (let [parameter-cards   (db/select ParameterCard :card_id id)]
+    (doseq [[[po-type po-id] param-cards]
+            (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
+      (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
+            {:keys [parameters]}   (db/select-one [model :parameters] :id po-id)
+            affected-param-ids-set (cond
+                                     ;; update all parameters that use this card as source
+                                     (:archived changes)
+                                     (set (map :parameter_id param-cards))
+
+                                     ;; update only parameters that have value_field no longer in this card
+                                     (:result_metadata changes)
+                                     (let [param-id->parameter (m/index-by :id parameters)]
+                                       (->> param-cards
+                                            (filter (fn [param-card]
+                                                      ;; if cant find the value-field in result_metadata, then we should remove it
+                                                      (nil? (qp.util/field->field-info
+                                                              (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
+                                                              (:result_metadata changes)))))
+                                            (map :parameter_id)
+                                            set))
+
+                                     :else #{})
+            new-parameters (map (fn [parameter]
+                                  (if (affected-param-ids-set (:id parameter))
+                                    (-> parameter
+                                        (assoc :values_source_type nil)
+                                        (dissoc :values_source_config))
+                                    parameter))
+                                parameters)]
+        (when-not (= parameters new-parameters)
+          (db/update! model po-id {:parameters new-parameters}))))))
+
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
@@ -313,6 +353,7 @@
       (collection/check-collection-namespace Card (:collection_id changes))
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
+      (update-parameters-using-card-as-values-source changes)
       (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)

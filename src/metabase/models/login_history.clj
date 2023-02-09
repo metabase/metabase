@@ -1,6 +1,5 @@
 (ns metabase.models.login-history
   (:require
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.email.messages :as messages]
    [metabase.models.interface :as mi]
@@ -8,8 +7,10 @@
    [metabase.server.request.util :as request.u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.connection :as t2.conn]))
 
 (defn- timezone-display-name [^java.time.ZoneId zone-id]
   (when zone-id
@@ -72,13 +73,16 @@
   (when (and (send-email-on-first-login-from-new-device)
              (first-login-on-this-device? login-history)
              (not (first-login-ever? login-history)))
-    (future
-      ;; off thread for both IP lookup and email sending. Either one could block and slow down user login (#16169)
-      (try
-        (let [[info] (human-friendly-infos [login-history])]
-          (messages/send-login-from-new-device-email! info))
-        (catch Throwable e
-          (log/error e (trs "Error sending ''login from new device'' notification email")))))))
+    ;; if there's an existing open connection (and there seems to be one, but I'm not 100% sure why) we can't try to use
+    ;; it across threads since it can close at any moment! So unbind it so the future can get its own thread.
+    (binding [t2.conn/*current-connectable* nil]
+      (future
+        ;; off thread for both IP lookup and email sending. Either one could block and slow down user login (#16169)
+        (try
+          (let [[info] (human-friendly-infos [login-history])]
+            (messages/send-login-from-new-device-email! info))
+          (catch Throwable e
+            (log/error e (trs "Error sending ''login from new device'' notification email"))))))))
 
 (defn- post-insert [login-history]
   (maybe-send-login-from-new-device-email login-history)

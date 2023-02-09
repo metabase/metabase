@@ -5,6 +5,7 @@ import {
   popover,
   restore,
   saveQuestion,
+  setDropdownFilterType,
   setFilterListSource,
   setFilterQuestionSource,
   visitEmbeddedPage,
@@ -15,7 +16,6 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
-import { toggleRequired } from "./helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 const { COLLECTION_GROUP } = USER_GROUPS;
@@ -69,7 +69,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
 
-      toggleRequired();
+      SQLFilter.toggleRequired();
       FieldFilter.openEntryForm(true);
       FieldFilter.selectFilterValueFromList("Gadget");
     });
@@ -81,15 +81,18 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
       );
+      setDropdownFilterType();
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
       saveQuestion("SQL filter");
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gadget", { addFilter: false });
       FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
+      cy.findByText("Showing 51 rows").should("exist");
 
-      toggleRequired();
+      SQLFilter.toggleRequired();
       FieldFilter.openEntryForm(true);
       FieldFilter.selectFilterValueFromList("Gadget");
     });
@@ -101,12 +104,11 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
       );
+      setDropdownFilterType();
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("Doohickey");
-      FieldFilter.setWidgetStringFilter("Gizmo");
-      checkFilterValueNotInList("Widget");
       FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("dataset");
     });
@@ -118,6 +120,7 @@ describe("scenarios > filters > sql filters > values source", () => {
         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
       );
 
+      setDropdownFilterType();
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
       FieldFilter.openEntryForm();
       cy.wait("@parameterValues");

@@ -89,6 +89,28 @@ Fetch FieldValues for a Field that is referenced by an embedded Card.
 
 *  **`field-id`**
 
+## `GET /api/embed/card/:token/params/:param-key/search/:prefix`
+
+Embedded version of chain filter search endpoint.
+
+### PARAMS:
+
+*  **`token`** 
+
+*  **`param-key`** 
+
+*  **`prefix`**
+
+## `GET /api/embed/card/:token/params/:param-key/values`
+
+Embedded version of api.card filter values endpoint.
+
+### PARAMS:
+
+*  **`token`** 
+
+*  **`param-key`**
+
 ## `GET /api/embed/card/:token/query`
 
 Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.

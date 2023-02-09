@@ -3,7 +3,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -20,7 +19,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
   (:import
    (java.sql Connection PreparedStatement ResultSet Types)
    (java.time OffsetTime)))
