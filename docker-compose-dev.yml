@@ -10,7 +10,7 @@ version: '3.1'
 #  shown in the following examples:
 #
 # ;; Run a postgres app db and a sample postgres 14 and mongo warehouses
-# COMPOSE_PROFILES=postgresappdb,postgres14data,mongo docker-compose --file docker-compose-dev.yml up
+# COMPOSE_PROFILES=postgresappdb,postgres14data,mongodata docker-compose --file docker-compose-dev.yml up
 # ;; Run a postgres app db and a sample postgres 14 and mysql 5.7 warehouses
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data docker-compose --file docker-compose-dev.yml up
 # ;; Run a postgres app db, a sample postgres 14 and mysql 5.7 warehouses, and metabase itself in a container
@@ -165,33 +165,14 @@ services:
     networks:
       - metabasenet
 
-  # Plain old mongo db + UI services
   mongo:
-    image: mongo
-    container_name: mb-mongo
+    image: metabase/qa-databases:mongo-sample-6
+    container_name: metabasedb_mongo_6
     restart: always
     ports:
       - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin
     profiles:
-      - mongo
-    networks:
-      - metabasenet
-
-  mongo-express:
-    image: mongo-express
-    container_name: mb-mongo-express
-    restart: always
-    ports:
-      - "8081:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-      ME_CONFIG_MONGODB_ADMINPASSWORD: admin
-      ME_CONFIG_MONGODB_URL: mongodb://admin:admin@mongo:27017/
-    profiles:
-      - mongo
+      - mongodata
     networks:
       - metabasenet
 
