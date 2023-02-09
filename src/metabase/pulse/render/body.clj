@@ -563,6 +563,25 @@
         (/ overlap-width max-width))
       0)))
 
+(defn- overlap2
+  [vals-a vals-b]
+  (let [[min-a max-a]          ((juxt first last) (sort vals-a))
+        [min-b max-b]          ((juxt first last) (sort vals-b))
+        valid-ranges?          (and min-a min-b max-a max-b
+                                    ;; ranges with same min and max won't be considered ranges.
+                                    (not= min-a max-a)
+                                    (not= min-b max-b))
+        overlapping-and-valid? (and valid-ranges?
+                                    (or (<= min-a min-b max-a)
+                                        (<= min-a max-b max-a)))]
+    (if
+     overlapping-and-valid?
+      (let [[a b c d]     (sort [min-a min-b max-a max-b])
+            max-width     (- d a)
+            overlap-width (- c b)]
+        (/ overlap-width (double max-width)))
+      0)))
+
 (defn- group-axes
   [cols-meta group-threshold]
   (when-let [groupable-cols (->> cols-meta
@@ -639,14 +658,32 @@
 (def ^:private axis-group-threshold 0.33)
 
 (defn- group-axes-at-once
-  [group-keys {viz-settings :viz-settings metadata :results_metadata} group-threshold]
+  [group-keys joined-rows viz-settings threshold]
   (let [starting-positions (into {} (for [k group-keys]
-                                      [k (series-setting viz-settings k :axis)]))]
-    (intern 'user 'cols-meta (:columns metadata))
-    (if (some nil? (vals starting-positions))
-      ;; we do some logic to group the unknowns into L or R
-      (update-vals starting-positions #(or % "left"))
-      ;; all starting positions are set
+                                      [k (series-setting viz-settings k :axis)]))
+        positions          (-> (group-by second starting-positions)
+                               (update-vals #(mapv first %)))]
+    (if (contains? positions nil)
+      (let [joined-rows-map    (-> (group-by #(second (first %)) joined-rows)
+                                   (update-vals #(mapcat last %)))
+            overlaps           (-> joined-rows-map
+                                   (update-vals (fn [vals]
+                                                  (into {} (map (fn [k]
+                                                                  [k (overlap2 (get joined-rows-map k) vals)])
+                                                                (keys joined-rows-map))))))
+            lefts              (or (:left positions) [(first (get positions nil))])
+            rights             (or (:right positions) [])
+            to-group           (remove (set (concat lefts rights)) (get positions nil))
+            relevant-distances (get overlaps (first lefts))
+            all-positions      (apply (partial merge-with concat)
+                                      (conj
+                                       (for [k to-group]
+                                         (if (> (get relevant-distances k) threshold)
+                                           {:left [k]}
+                                           {:right [k]}))
+                                       (-> positions (dissoc nil) (assoc :left lefts))))]
+        (into {} (apply concat (for [[pos ks] all-positions]
+                                 (map (fn [k] [k pos]) ks)))))
       starting-positions)))
 
 (defn- single-x-axis-combo-series
@@ -673,18 +710,16 @@
 
   This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
-  [chart-type joined-rows x-cols _y-cols {:keys [viz-settings] :as data} card-name]
+  [chart-type joined-rows x-cols _y-cols {:keys [viz-settings]} card-name]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)
         groups       (keys grouped-rows)
-        y-positions  (group-axes-at-once groups data axis-group-threshold)]
+        y-positions  (group-axes-at-once groups joined-rows viz-settings axis-group-threshold)]
     (for [[idx group-key] (map-indexed vector groups)]
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
                                    (nth default-combo-chart-types idx))
-            #_y-axis-pos       #_(or (series-setting viz-settings group-key :axis)
-                                     (nth (default-y-pos data axis-group-threshold) idx))
             y-axis-pos         (get y-positions group-key)]
         {:cardName      card-name
          :type          card-type
@@ -717,8 +752,7 @@
 
 (defn- render-multiple-lab-chart
   "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
-  [render-type card dashcard {:keys [viz-settings]
-                              :as   data}]
+  [render-type card dashcard {:keys [viz-settings] :as data}]
   (let [viz-settings      (merge viz-settings (:visualization_settings dashcard))
         multi-res         (pu/execute-multi-card card dashcard)
         ;; multi-res gets the other results from the set of multis.

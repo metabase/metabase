@@ -154,7 +154,12 @@ export const calculateYDomains = (
       setMinValue,
       setMaxValue,
     ),
-    right: calculateYDomain(rightScaleSeries),
+    right: calculateYDomain(
+      rightScaleSeries,
+      goalValue,
+      setMinValue,
+      setMaxValue,
+    ),
   };
 };
 
