@@ -25,7 +25,7 @@ function AddMappingRow({
     setValue("");
   };
 
-  const handleCancelClick = (e: React.MouseEvent<HTMLElement>) => {
+  const handleCancelClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     onCancel && onCancel();
     setValue("");
@@ -37,7 +37,7 @@ function AddMappingRow({
     <tr>
       <td colSpan={3} style={{ padding: 0 }}>
         <form
-          className="my2 pl1 p1 bordered border-brand rounded relative flex align-center"
+          className="my2 pl1 p1 bordered border-brand justify-between rounded relative flex align-center"
           onSubmit={isValid ? handleSubmit : undefined}
         >
           <input
@@ -48,16 +48,15 @@ function AddMappingRow({
             autoFocus
             onChange={e => setValue(e.target.value)}
           />
-          <span
-            className="link no-decoration cursor-pointer"
-            onClick={handleCancelClick}
-          >{t`Cancel`}</span>
-          <Button
-            className="ml2"
-            type="submit"
-            primary={!!isValid}
-            disabled={!isValid}
-          >{t`Add`}</Button>
+          <div>
+            <Button borderless onClick={handleCancelClick}>{t`Cancel`}</Button>
+            <Button
+              className="ml2"
+              type="submit"
+              primary={!!isValid}
+              disabled={!isValid}
+            >{t`Add`}</Button>
+          </div>
         </form>
       </td>
     </tr>

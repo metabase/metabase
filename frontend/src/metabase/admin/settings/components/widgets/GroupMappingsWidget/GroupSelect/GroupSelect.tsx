@@ -6,21 +6,21 @@ import GroupSelect from "metabase/admin/people/components/GroupSelect";
 
 import type { GroupIds } from "../types";
 
-type LDAPMappingGroupSelectProps = {
-  groups: any;
-  selectedGroups: any;
+type Props = {
+  groups: GroupIds;
+  selectedGroupIds: any;
   onGroupChange: () => void;
 };
 
-const LDAPMappingGroupSelect = ({
+const GroupMappingsWidgetGroupSelect = ({
   groups,
-  selectedGroups,
+  selectedGroupIds,
   onGroupChange,
-}: LDAPMappingGroupSelectProps) =>
+}: Props) =>
   groups ? (
     <GroupSelect
       groups={groups}
-      selectedGroupIds={selectedGroups}
+      selectedGroupIds={selectedGroupIds}
       onGroupChange={onGroupChange}
       emptyListMessage={t`No mappable groups`}
     />
@@ -28,4 +28,4 @@ const LDAPMappingGroupSelect = ({
     <LoadingSpinner />
   );
 
-export default LDAPMappingGroupSelect;
+export default GroupMappingsWidgetGroupSelect;

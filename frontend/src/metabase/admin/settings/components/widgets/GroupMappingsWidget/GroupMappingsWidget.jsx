@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { PermissionsApi, SettingsApi } from "metabase/services";
-import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
+import { isDefaultGroup } from "metabase/lib/groups";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -19,15 +19,18 @@ import {
   GroupMappingsWidgetAboutContentRoot as AboutContentRoot,
   AddMappingButton,
 } from "./GroupMappingsWidget.styled";
-import MappingRow from "./LDAPMappingRow";
+import MappingRow from "./MappingRow";
 import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
 
 const groupIsMappable = group => !isDefaultGroup(group);
 
+// ⚠️ Uncomment
+/*
 const whenDeletingMappingGroups = {
   groupsToClearAllPermissions: [],
   groupsToDelete: [],
 };
+*/
 
 function GroupMappingsWidget({ mappingSetting, ...props }) {
   const [showAddRow, setShowAddRow] = useState(false);
@@ -35,7 +38,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
   const [groups, setGroups] = useState(null);
   const [mappings, setMappings] = useState({});
   const [savedMappings, setSavedMappings] = useState({});
-  const [saveError, setSaveError] = useState(null);
+  const [saveError /*, setSaveError*/] = useState(null);
   const [dnForVisibleDeleteMappingModal, setDnForVisibleDeleteMappingModal] =
     useState(null);
   const [
@@ -164,7 +167,6 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
       e => setSaveError(e),
     );
   };
-  */
 
   const updateGroupsFromDeletedMappings = () => {
     const { groupsToDelete } = whenDeletingMappingGroups;
@@ -186,6 +188,7 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
         !groupsToDelete.includes(groupToClearAllPermission),
     );
   };
+  */
 
   return (
     <Root>
@@ -221,34 +224,25 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
                 placeholder={props.groupPlaceholder}
               />
             )}
-            {Object.entries(mappings).map(([dn, ids]) => {
-              const isMappingLinkedOnlyToAdminGroup =
-                groups &&
-                ids.length === 1 &&
-                isAdminGroup(groups.find(group => group.id === ids[0]));
-
-              const isSavedMapping = Object.keys(savedMappings).includes(dn);
-
-              const shouldUseDeleteMappingModal =
-                ids.length > 0 &&
-                !isMappingLinkedOnlyToAdminGroup &&
-                isSavedMapping;
-
-              const onDelete = shouldUseDeleteMappingModal
-                ? () => handleShowDeleteMappingModal(ids, dn)
-                : () => handleDeleteMapping(dn);
-
-              return (
-                <MappingRow
-                  key={dn}
-                  dn={dn}
-                  groups={groups || []}
-                  selectedGroups={ids}
-                  onChange={handleChangeMapping(dn)}
-                  onDelete={onDelete}
-                />
-              );
-            })}
+            {Object.keys(mappings).length === 0 && (
+              <tr>
+                <td>&nbsp;</td>
+                <td> {t`No mappings yet`}</td>
+                <td>&nbsp;</td>
+              </tr>
+            )}
+            {Object.entries(mappings).map(([dn, ids]) => (
+              <MappingRow
+                key={dn}
+                dn={dn}
+                groups={groups || []}
+                savedMappings={savedMappings}
+                selectedGroupIds={ids}
+                onChange={handleChangeMapping(dn)}
+                onShowDeleteMappingModal={handleShowDeleteMappingModal}
+                onDeleteMapping={handleDeleteMapping}
+              />
+            ))}
           </AdminContentTable>
         </div>
         <div>
